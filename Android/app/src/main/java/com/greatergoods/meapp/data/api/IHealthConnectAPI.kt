@@ -38,7 +38,7 @@ interface IHealthConnectAPI {
   @DELETE("${INTEGRATION}${HEALTH_CONNECT}/{deviceId}")
   suspend fun removeIntegration(
     @Path("deviceId") deviceId: String
-  ): Unit
+  )
 
   /**
    * Marks entries as synced.
@@ -81,5 +81,5 @@ data class HealthConnectSyncEntry(
   val muscleMass: Double?,
   val water: Double?,
   val bmi: Double?,
-  val data: List<String>
+  val data: List<String>?
 )

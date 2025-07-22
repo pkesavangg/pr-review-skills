@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.greatergoods.meapp.data.api.HealthConnectSyncEntry
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectData
 import com.greatergoods.meapp.domain.model.integrations.IntegratedDeviceInfo
 import com.greatergoods.meapp.domain.model.integrations.IntegrationData
@@ -47,6 +48,22 @@ interface IHealthConnectRepository {
 
   /** Gets the open status for an account. */
   suspend fun getOpen(accountId: String): Boolean
+
+  /** Sets the assignedTo field for an account. */
+  suspend fun setAssignedTo(accountId: String, assignedTo: String)
+
+  /** Gets the assignedTo field for an account. */
+  suspend fun getAssignedTo(accountId: String): String?
+
+  /** Clears the assignedTo field for an account. */
+  suspend fun clearAssignedTo(accountId: String)
+
+  /**
+   * Checks if Health Connect is already assigned to another account.
+   * @return true if Health Connect can be used by current account
+   * @throws Exception if Health Connect is assigned to a different account
+   */
+  suspend fun checkIfHealthConnectIsAlreadyAssigned(): Boolean
 
   /** Updates the modal state for an account. */
   suspend fun updateModalState(accountId: String, state: Boolean)
@@ -100,12 +117,6 @@ interface IHealthConnectRepository {
   fun updateIntegrationState(newState: IntegrationState)
 
   /**
-   * Updates the integration state from local storage data for the current account.
-   * This method should be called to sync the UI state with local storage.
-   */
-  suspend fun updateIntegrationStateFromLocalStorage()
-
-  /**
    * Updates the Health Connect integration status in local storage and syncs the state.
    */
   suspend fun updateHealthConnectIntegrationStatus(accountId: String, integrated: Boolean)
@@ -120,4 +131,5 @@ interface IHealthConnectRepository {
    * This method should be called to start automatic state synchronization.
    */
   suspend fun observeAccountChanges()
+  suspend fun syncEntry(entry: HealthConnectSyncEntry)
 }

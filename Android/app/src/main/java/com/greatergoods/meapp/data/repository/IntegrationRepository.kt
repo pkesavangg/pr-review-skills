@@ -8,13 +8,15 @@ import com.greatergoods.meapp.domain.model.api.user.AccountInfo
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.features.integration.model.Integrations
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 @Singleton
 class IntegrationRepository @Inject constructor(
@@ -23,6 +25,12 @@ class IntegrationRepository @Inject constructor(
   private val integrationAPI: IIntegrationAPI,
   private val accountDao: AccountDao
 ) : IIntegrationRepository {
+
+  init {
+    CoroutineScope(Dispatchers.IO).launch {
+      updateLocalAccount();
+    }
+  }
 
   // Default integrations (match your Angular default)
   private val defaultIntegrations = Integrations(
@@ -37,7 +45,6 @@ class IntegrationRepository @Inject constructor(
     healthkit = false,
     isHealthConnectOn = false
   )
-
   // StateFlow for integrations (like BehaviorSubject)
   private val _integrations = MutableStateFlow<Integrations?>(defaultIntegrations)
   override val integrations: StateFlow<Integrations?> = _integrations.asStateFlow()
@@ -46,8 +53,8 @@ class IntegrationRepository @Inject constructor(
     return authAPI.getAccountWithToken(accountId)
   }
 
-  override suspend fun removeIntegration(provider: String) {
-    return integrationAPI.removeIntegration(provider)
+  override suspend fun removeIntegration(provider: String, suggestion: Map<String, String>) {
+    return integrationAPI.removeIntegration(provider, suggestion)
   }
 
   override suspend fun updateLocalAccount() {
@@ -57,7 +64,6 @@ class IntegrationRepository @Inject constructor(
       return
     }
     val account = accountRepository.getAccountFromAPI(remoteAccount.id)
-    Log.d("acountRepository", account.isHealthConnectOn.toString())
     accountRepository.updateAccountInfo(account.id, account)
     // Convert to IntegrationsSettingsEntity
     val integrationsSettings = IntegrationsSettingsEntity(

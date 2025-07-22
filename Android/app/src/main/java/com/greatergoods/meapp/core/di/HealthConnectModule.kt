@@ -7,7 +7,9 @@ import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IEntryRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
+import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.domain.services.IHealthConnectService
+import com.greatergoods.meapp.domain.services.IIntegrationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,6 +38,8 @@ object HealthConnectModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       entryRepository: IEntryRepository,
+      integrationService: IIntegrationService,
+      entryService: IEntryService
     ): IHealthConnectService = HealthConnectService(
       context,
       healthConnectRepository,
@@ -43,6 +47,8 @@ object HealthConnectModule {
       dialogQueueService,
       appNavigationService,
       entryRepository,
-      integrationRepository
+      integrationRepository,
+      integrationService,
+      entryService
     )
 }

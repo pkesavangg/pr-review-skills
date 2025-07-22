@@ -122,9 +122,10 @@ object ServiceModule {
   fun provideLogManager(
     logRepository: ILogRepository,
     connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
   ): LogManager = LogManager(
-    logRepository, connectivityObserver, dialogQueueService,
+    logRepository, connectivityObserver, dialogQueueService, appNavigationService,
   )
 
   /**
@@ -153,42 +154,50 @@ object ServiceModule {
     accountRepository: IAccountRepository,
   ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository)
 
+  @Provides
+  @Singleton
+  fun provideDeviceInfoService(
+    @ApplicationContext context: Context,
+    deviceInfoRepository: IDeviceInfoRepository,
+    connectivityObserver: IConnectivityObserver,
+    offlineHandlerService: IOfflineHandlerService,
+    appRepository: IAppRepository,
+    accountRepository: IAccountRepository,
+    healthConnectRepository: IHealthConnectRepository,
+    integrationRepository: IIntegrationRepository
+  ): IDeviceInfoService =
+    DeviceInfoService(
+      context,
+      deviceInfoRepository,
+      connectivityObserver,
+      offlineHandlerService,
+      appRepository,
+      accountRepository,
+      healthConnectRepository,
+      integrationRepository,
+    )
 
-    @Provides
-    @Singleton
-    fun provideDeviceInfoService(
-        @ApplicationContext context: Context,
-        deviceInfoRepository: IDeviceInfoRepository,
-        connectivityObserver: IConnectivityObserver,
-        offlineHandlerService: IOfflineHandlerService,
-        appRepository: IAppRepository,
-        accountRepository: IAccountRepository,
-        healthConnectRepository: IHealthConnectRepository
-    ): IDeviceInfoService =
-        DeviceInfoService(
-            context,
-            deviceInfoRepository,
-            connectivityObserver,
-            offlineHandlerService,
-            appRepository,
-            accountRepository,
-            healthConnectRepository
-        )
-
-   /**
-    * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
-    * @param integrationRepository The repository for integration operations.
-    * @param dialogQueueService The service for managing dialog queues.
-    * @return [IntegrationService] instance.
-    */
-   @Provides
-   @Singleton
-   fun provideIntegrationService(
-         connectivityObserver: IConnectivityObserver,
-      dialogQueueService: IDialogQueueService,
-        accountService: IAccountService,
-      integrationRepository: IIntegrationRepository
-   ): IIntegrationService = IntegrationService(connectivityObserver,dialogQueueService, accountService,integrationRepository)
+  /**
+   * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+   * @param integrationRepository The repository for integration operations.
+   * @param dialogQueueService The service for managing dialog queues.
+   * @return [IntegrationService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideIntegrationService(
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    accountService: IAccountService,
+    integrationRepository: IIntegrationRepository,
+    appNavigationService: IAppNavigationService
+  ): IIntegrationService = IntegrationService(
+    connectivityObserver,
+    dialogQueueService,
+    appNavigationService,
+    accountService,
+    integrationRepository,
+  )
 
   /**
    * Provides the export service implementation.

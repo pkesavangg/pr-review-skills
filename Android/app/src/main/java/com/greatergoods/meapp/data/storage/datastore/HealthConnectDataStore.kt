@@ -158,6 +158,46 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     }
 
     /**
+     * Sets the assignedTo field for an account.
+     */
+    suspend fun setAssignedTo(accountId: String, assignedTo: String) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.setAssignedTo(assignedTo)
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .setAssignedTo(assignedTo)
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
+     * Gets the assignedTo field for an account.
+     */
+    suspend fun getAssignedTo(accountId: String): String? {
+        return getData().dataMap[accountId]?.assignedTo
+    }
+
+    /**
+     * Clears the assignedTo field for an account.
+     */
+    suspend fun clearAssignedTo(accountId: String) {
+        updateData { current ->
+            current.toBuilder().putData(
+                accountId,
+                current.dataMap[accountId]?.toBuilder()
+                    ?.clearAssignedTo()
+                    ?.build()
+                    ?: HealthConnectData.newBuilder()
+                        .build(),
+            ).build()
+        }
+    }
+
+    /**
      * Updates the modal state for an account.
      */
     suspend fun updateModalState(accountId: String, state: Boolean) {

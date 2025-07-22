@@ -41,9 +41,6 @@ constructor(
     loadEntries()
     subscribeMetrics()
     subscribeProgress()
-    viewModelScope.launch {
-      healthConnectService.checkHealthConnectPermissionDisabled()
-    }
   }
 
   override fun onResume(owner: LifecycleOwner) {

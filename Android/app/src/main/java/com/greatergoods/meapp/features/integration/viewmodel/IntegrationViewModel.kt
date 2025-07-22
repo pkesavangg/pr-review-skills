@@ -22,8 +22,6 @@ import com.greatergoods.meapp.features.integration.strings.HealthConnectStrings
 import com.greatergoods.meapp.features.integration.strings.IntegrationStrings
 import com.greatergoods.meapp.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -38,7 +36,7 @@ class IntegrationViewModel @Inject constructor(
     private val integrationService: IIntegrationService,
     private val healthConnectService: IHealthConnectService,
     private val healthConnectRepository: IHealthConnectRepository, // Inject repository
-    private val integrationRepository: IIntegrationRepository // Inject IntegrationRepository for integrations flow
+    private val integrationRepository: IIntegrationRepository
 ) : BaseIntentViewModel<IntegrationState, IntegrationIntent>(
     reducer = IntegrationReducer(),
 ) {
@@ -65,19 +63,12 @@ class IntegrationViewModel @Inject constructor(
         viewModelScope.launch {
             accountService.activeAccountFlow.collectLatest { account ->
                 currentAccount = account
-                healthConnectRepository.updateIntegrationStateFromLocalStorage()
                 AppLog.d("IntegrationViewModel", "Active account updated: ${account?.id}")
             }
+
+          loadIntegrations()
         }
 
-        // Observe integrations from IntegrationRepository (like BehaviorSubject)
-        viewModelScope.launch {
-            integrationRepository.integrations.collectLatest { integrations ->
-                if (integrations != null) {
-                    loadIntegrations()
-                }
-            }
-        }
     }
 
     /**
@@ -91,7 +82,6 @@ class IntegrationViewModel @Inject constructor(
             is IntegrationIntent.OpenIntegration -> openIntegration(intent.integrations)
             is IntegrationIntent.AddIntegration -> addIntegrations(intent.provider)
             is IntegrationIntent.RemoveIntegration -> disconnectAuthIntegration()
-            is IntegrationIntent.ConfirmDisconnect -> confirmDisconnect()
             is IntegrationIntent.OnBack -> onBack()
             is IntegrationIntent.NavigateToHealthConnect -> handleHealthConnectNavigation()
             is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
@@ -129,27 +119,21 @@ class IntegrationViewModel @Inject constructor(
         cancelText = HealthConnectStrings.ActionButtons.cancel,
         onConfirm = {
           dialogQueueService.showLoader("Removing...")
-          CoroutineScope(Dispatchers.IO).launch {
-            healthConnectService.removeHealthConnectIntegration()
-
-            // Update local storage and sync state
-            currentAccount?.let { account ->
-              healthConnectRepository.updateHealthConnectIntegrationStatus(account.id, false)
+          viewModelScope.launch {
+            try{
+              healthConnectService.removeHealthConnectIntegration()
+              dialogQueueService.dismissLoader()
+              dialogQueueService.dismissCurrent()
+              refreshIntegrationStatus()
             }
-
-            // Update UI state
-            handleIntent(
-              IntegrationIntent.UpdateIntegrationConnectionStatus(
-                IntegrationProvider.HealthConnect,
-                isConnected = false,
-                isValid = false,
+            catch (e: Exception){
+            }
+            finally {
+              // Refresh integrations to get updated status from server
+              dialogQueueService.showToast(
+                Toast(HealthConnectStrings.ToastStrings.removeHC)
               )
-            )
-            dialogQueueService.showToast(
-              Toast(HealthConnectStrings.ToastStrings.removeHC)
-            )
-            dialogQueueService.dismissCurrent()
-            dialogQueueService.dismissLoader()
+            }
           }
         },
         onCancel = {
@@ -193,22 +177,20 @@ class IntegrationViewModel @Inject constructor(
      * Loads all integrations with their current connection status.
      */
     private fun loadIntegrations() {
-      subscribeBrowserState()
         viewModelScope.launch {
             try {
+              val inactiveProviders = listOf(IntegrationProvider.Fitbit)
+              showReintegrateAlert(inactiveProviders)
                 handleIntent(IntegrationIntent.InitializeIntegrations)
-                integrationService.getIntegrationsWithStatus().collect { integrations ->
-                    // Update integrations state to show proper checkmarks
+                integrationService.getIntegrationsWithStatus().collectLatest { integrations ->
                     val updatedIntegrations = integrations.map { integration ->
                         if (integration.provider == IntegrationProvider.HealthConnect) {
                             val currentAccount = currentAccount
-                            // Get Health Connect status from local storage (like Angular service)
-                            val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
+                            val isHealthConnectOn = currentAccount?.isHealthConnectOn ?: false
                             val healthConnectData = currentAccount?.let { account ->
                                 healthConnectRepository.getAccountByID(account.id)
                             }
-                            val isOutOfSync = healthConnectData?.outOfSync == true
-
+                            val isOutOfSync = healthConnectData?.outOfSync ?: false
                             integration.copy(
                                 isConnected = isHealthConnectOn,
                                 iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo,
@@ -218,24 +200,21 @@ class IntegrationViewModel @Inject constructor(
                         }
                     }
                     handleIntent(IntegrationIntent.SetIntegrations(updatedIntegrations))
-
-                    // Update the HealthConnectRepository state to sync with local storage
-                    healthConnectRepository.updateIntegrationStateFromLocalStorage()
-
                     AppLog.d("IntegrationViewModel", "Loaded ${updatedIntegrations.size} integrations with status")
                     if (!skipInvalidIntegrationsCheck) {
-                        val inactiveProviders = checkForInactiveIntegrations()
+                        val inactiveProviders = integrationService.checkForInactiveIntegrations()
                         if (inactiveProviders.isNotEmpty()) {
                             AppLog.d("IntegrationViewModel", "Found ${inactiveProviders.size} inactive integrations, showing alert")
-                            showReintegrateAlert(inactiveProviders)
+                          showReintegrateAlert(inactiveProviders)
                         }
-                    } else {
-                        checkForInactiveIntegrations()
+                      skipInvalidIntegrationsCheck = true
                     }
                 }
             } catch (e: Exception) {
                 AppLog.e("IntegrationViewModel", "Failed to load integrations", e.toString())
             }
+          subscribeBrowserState()
+
         }
     }
 
@@ -322,7 +301,6 @@ class IntegrationViewModel @Inject constructor(
     private fun refreshIntegrationStatus() {
         viewModelScope.launch {
             AppLog.d("IntegrationViewModel", "Refreshing integration status")
-
             runCatching {
                 integrationService.getIntegrationsWithStatus().first()
             }.onSuccess { integrations ->
@@ -364,7 +342,7 @@ class IntegrationViewModel @Inject constructor(
                     "Loading..."
                 )
                 val oAuthUrl = integrationService.getOAuthUrl(provider, accountId)
-                customTabManager.openChromeTab(oAuthUrl)
+                customTabManager.openChromeTab(oAuthUrl ?: "")
                 dialogQueueService.dismissLoader()
             } catch (e: Exception) {
                 AppLog.e(
@@ -475,29 +453,13 @@ class IntegrationViewModel @Inject constructor(
     }
 
     /**
-     * Checks for inactive integrations and returns them.
-     * This method does NOT update state variables to avoid interfering with UI checkmarks.
-     * It directly queries the integration service to determine validity.
-     * @return List of IntegrationProvider that are inactive
+     * Checks for inactive integrations by verifying connection and validity status.
+     * @return List of inactive integration providers
      */
     private suspend fun checkForInactiveIntegrations(): List<IntegrationProvider> {
         return try {
-            AppLog.d("IntegrationViewModel", "Checking for inactive integrations via API only")
-            val inactiveIntegrations = mutableListOf<IntegrationProvider>()
-            val allProviders = IntegrationProvider.getAllProviders()
-            for (provider in allProviders) {
-                try {
-                    val (isConnected, isValid) = integrationService.getIntegrationStatus(provider)
-                    if (isConnected && !isValid) {
-                        inactiveIntegrations.add(provider)
-                        AppLog.d("IntegrationViewModel", "Found inactive integration: $provider (connected but invalid)")
-                    }
-                } catch (e: Exception) {
-                    AppLog.e("IntegrationViewModel", "Failed to check status for $provider", e.toString())
-                }
-            }
-            AppLog.d("IntegrationViewModel", "Found ${inactiveIntegrations.size} inactive integrations: $inactiveIntegrations")
-            inactiveIntegrations
+            AppLog.d("IntegrationViewModel", "Checking for inactive integrations via IntegrationService")
+            integrationService.checkForInactiveIntegrations()
         } catch (e: Exception) {
             AppLog.e("IntegrationViewModel", "Failed to check for inactive integrations", e.toString())
             emptyList()
@@ -505,63 +467,27 @@ class IntegrationViewModel @Inject constructor(
     }
 
     /**
-     * Gets the names of invalid integrations from the provided list.
-     * @param providers List of IntegrationProvider to get names for
-     * @return List of display names for the provided integration providers
-     */
-    private fun getInvalidIntegrationNames(providers: List<IntegrationProvider>): List<String> {
-        return providers.map { it.displayName }
-            .also { names ->
-                AppLog.d("IntegrationViewModel", "Invalid integration names: $names")
-            }
-    }
-
-    /**
-     * Gets the names of all invalid integrations from current state.
-     * @return List of display names for integrations that are connected but invalid
-     */
-    private fun getAllInvalidIntegrationNames(): List<String> {
-        return state.value.integrations
-            .filter { it.isConnected && !it.isValid }
-            .map { it.provider.displayName }
-            .also { names ->
-                AppLog.d("IntegrationViewModel", "Found ${names.size} invalid integrations: $names")
-            }
-    }
-
-    /**
-     * Public method to get invalid integration names for UI display.
-     * @return List of display names for integrations that are connected but invalid
-     */
-    fun getInvalidIntegrationNamesForUI(): List<String> {
-        return getAllInvalidIntegrationNames()
-    }
-
-    /**
      * Shows reintegrate alert for inactive integrations.
      * @param inactiveProviders List of inactive integration providers
      */
     private fun showReintegrateAlert(inactiveProviders: List<IntegrationProvider>) {
-        val integrationNames = getInvalidIntegrationNames(inactiveProviders)
-        val namesText = integrationNames.joinToString(", ")
+        val providerNames = integrationService.getInvalidIntegrationNames(inactiveProviders)
 
         val isMultiple = inactiveProviders.size > 1
         val disableButtonText = if (isMultiple) {
             IntegrationStrings.removeAllIntegrations
         } else {
-            IntegrationStrings.removeIntegration(namesText)
+            IntegrationStrings.removeIntegration(providerNames)
         }
-
         val pluralityText = if (isMultiple) {
             IntegrationStrings.pluralityThese
         } else {
             IntegrationStrings.pluralityThis
         }
-
         dialogQueueService.enqueue(
           DialogModel.Confirm(
                 title = IntegrationStrings.reintegrateAlertTitle,
-                message = IntegrationStrings.reintegrateAlertMessage(pluralityText, namesText),
+                message = IntegrationStrings.reintegrateAlertMessage(pluralityText, providerNames),
                 confirmText = disableButtonText,
                 cancelText = IntegrationStrings.ok,
                 onConfirm = {
@@ -595,14 +521,12 @@ class IntegrationViewModel @Inject constructor(
                             isValid = true
                         )
                     )
-
                     integrationService.disconnectIntegration(provider)
                     disableResults.add(true)
                     AppLog.d("IntegrationViewModel", "Successfully disabled inactive integration: $provider")
                 } catch (e: Exception) {
                     AppLog.e("IntegrationViewModel", "Failed to disable inactive integration: $provider", e.toString())
                     disableResults.add(false)
-
                     // On error, mark as invalid (still connected but invalid)
                     handleIntent(
                         IntegrationIntent.UpdateIntegrationConnectionStatus(
@@ -635,6 +559,12 @@ class IntegrationViewModel @Inject constructor(
                 confirmText = IntegrationStrings.retry,
                 cancelText = IntegrationStrings.cancel,
                 onConfirm = {
+                    // Retry the OAuth flow for the current provider
+                    currentOAuthProvider?.let { provider ->
+                        currentAccount?.let { account ->
+                            startOAuthFlow(provider = provider, accountId = account.id)
+                        }
+                    }
                     dialogQueueService.dismissCurrent()
                 },
                 onCancel = {
