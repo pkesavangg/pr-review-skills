@@ -99,6 +99,6 @@ struct WifiScaleSetupScreen: View {
 }
 
 #Preview {
-    WifiScaleSetupScreen(sku: "0376")
+    WifiScaleSetupScreen(sku: "0385")
         .environmentObject(Theme.shared)
 }
