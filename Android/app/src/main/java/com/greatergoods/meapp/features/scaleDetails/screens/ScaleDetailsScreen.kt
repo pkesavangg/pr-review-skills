@@ -291,6 +291,11 @@ fun ScaleDetailsScreenContent(
                     title = ScaleDetailsStrings.WiFi,
                     type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
                     enabled = device?.device?.isWifiConfigured ?: false,
+                    onClick = {
+                      handleIntent(
+                        ScaleDetailsIntent.OpenWiFiSetup,
+                      )
+                    },
                   ),
                 )
                 add(

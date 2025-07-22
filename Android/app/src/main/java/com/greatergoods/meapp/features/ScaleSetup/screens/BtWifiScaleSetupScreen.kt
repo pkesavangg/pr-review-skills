@@ -60,13 +60,12 @@ fun BtWifiScaleSetupScreen(
 @Composable
 fun BtWifiScaleSetupScreenContent(
   state: BtWifiScaleSetupState,
-  isFromWiFiSetup : Boolean = false,
+  isFromWiFiSetup: Boolean = false,
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
@@ -127,7 +126,7 @@ fun BtWifiScaleSetupScreenContent(
 
         else -> null
       },
-      middleContent = when  {
+      middleContent = when {
         state.currentStep == BtWifiSetupStep.SETUP_FINISHED -> {
           {
             AppButton(
@@ -142,7 +141,7 @@ fun BtWifiScaleSetupScreenContent(
           }
         }
 
-       state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !isFromWiFiSetup -> {
+        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !isFromWiFiSetup -> {
           {
             AppButton(
               type = ButtonType.TextTertiary,
@@ -274,7 +273,7 @@ fun BtWifiScaleSetupScreenContent(
               wifiList = state.wifiList,
               title = BtWifiScaleSetupStrings.WifiList.Title,
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
-              configuredSSID = null,
+              configuredSSID = state.connectedSSID,
               onSelect = {
                 state.wifiPasswordForm.ssid.onValueChange(it)
                 onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))

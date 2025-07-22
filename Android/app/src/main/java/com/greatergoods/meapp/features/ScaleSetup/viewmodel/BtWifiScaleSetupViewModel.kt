@@ -370,7 +370,8 @@ constructor(
    */
   private fun onRefreshNetworks() {
     AppLog.d(TAG, "Refreshing networks, going back to GATHERING_NETWORK")
-    // Let the base class handle the RefreshNetworks intent through the reducer
+    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+    handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
   }
 
   /**
@@ -629,6 +630,11 @@ constructor(
           }
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
+          ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) {
+            handleIntent(
+              BtWifiScaleSetupIntent.SetConnectedSSID(it),
+            )
+          }
           handleIntent(SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
         }
       } catch (e: Exception) {
