@@ -166,7 +166,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Public Configuration
-    func configure(with sku: String,) {
+    func configure(with sku: String) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         resetDiscoveryState()
