@@ -140,7 +140,7 @@ struct WifiScreen:View {
                 )
                 if network != networks.last {
                     Divider()
-                        .frame(height: 1)
+                        .frame(height: 0.5)
                         .frame(maxWidth: .infinity)
                         .background(theme.statusUtilityPrimary)
                 }

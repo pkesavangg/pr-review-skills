@@ -32,6 +32,22 @@ class HelpStore: ObservableObject {
     // NEW – debug-menu state
     @Published var showDebugMenu = false
     
+    // MARK: - Scale Log State
+    @Published var showScaleLogSheet = false
+    @Published var scales: [Device] = []
+    
+    var isSendScaleLogEnabled: Bool {
+        if scales.count > 1 {
+            return true
+        }
+        return scales.first?.isConnected == true
+    }
+    
+    var shouldShowScaleTroubleshooting: Bool {
+        !scales.isEmpty
+    }
+    
+    var cancellables: Set<AnyCancellable> = []
     private let loaderLang = LoaderStrings.self
     private let toastLang = ToastStrings.self
     
@@ -41,6 +57,15 @@ class HelpStore: ObservableObject {
     private var headerTapCounter = 0
     private var firstTapTime: Date?
     private let tag = "HelpStore"
+    
+    init() {
+        scaleService.scalesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scales in
+                self?.scales = scales.filter({$0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue})
+            }
+            .store(in: &cancellables)
+    }
     
     /// Presents the in-app browser for the given product SKU.
     func openProductManual(sku: String) {
@@ -175,10 +200,46 @@ class HelpStore: ObservableObject {
     }
     
     /// Sends scale-specific logs.
-    func sendScaleLog() {
-        logger.log(level: .info, tag: tag, message: "Send Scale Log tapped")
-        // TODO: Implement scale log export.
-        notificationService.showToast(ToastModel(message: "Scale logs sent."))
+    /// Sends scale-specific logs.
+    func sendScaleLogHandler(broadcastId: String? = nil) {
+        let resolvedBroadcastId: String? = {
+            if let id = broadcastId {
+                return id
+            } else if scales.count == 1 {
+                return scales.first?.broadcastIdString
+            } else {
+                return nil
+            }
+        }()
+
+        if let idToSend = resolvedBroadcastId {
+            sendScaleLogsToServer(broadcastId: idToSend)
+        } else {
+            showScaleLogSheet = true
+        }
+    }
+
+    private func sendScaleLogsToServer(broadcastId: String) {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
+            
+            do {
+                // TODO: Implement actual scale log sending
+                // await exportService.sendScaleLog(broadcastId)
+                try await Task.sleep(for: .seconds(3)) // Simulate API call
+                notificationService.showToast(ToastModel(message: toastLang.logsSent))
+                showScaleLogSheet = false // Hide sheet after sending
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to send scale log: \(error.localizedDescription)")
+                switch error {
+                case HTTPError.noInternet:
+                    break // No message needed, handled by NetworkMonitor
+                default:
+                    notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
+                }
+            }
+            notificationService.dismissLoader()
+        }
     }
     
     private func showErrorToast() {
@@ -186,6 +247,10 @@ class HelpStore: ObservableObject {
             title: toastLang.resyncErrorTitle,
             message: toastLang.resyncError
         ))
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
     }
 }
 
