@@ -118,4 +118,15 @@ object AppPopupStrings {
       else -> "Return"
     }
   }
+
+  object AppsyncEntryPopup {
+    const val Title = "Your AppSync Scan was successful!"
+    fun Weight(weight: Float) = "Weight: $weight"
+    fun Bodyfat(bodyfat: Float) = "Body Fat: $bodyfat"
+    fun MuscleMass(muscleMass: Float) = "Muscle Mass: $muscleMass"
+    fun WaterWeight(waterWeight: Float) = "Water Weight: $waterWeight"
+    fun Bmi(bmi: Float) = "BMI: $bmi"
+    const val SaveButton = "Save"
+    const val EditButton = "Edit"
+  }
 }
