@@ -625,6 +625,27 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return .failure(.updateProfileFailed(error))
         }
     }
+
+    /**
+     Retrieves device logs from the scale.
+     - Returns: Result<DeviceLogs, BluetoothServiceError>
+     */
+    func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            let response = await ggBleSDK.getDeviceLogs(ggDevice)
+            let deviceLogs = DeviceLogs(logs: response.logs.map { log in
+                DeviceLogEntry(macAddress: log.macAddress, log: log.log)
+            })
+            return .success(deviceLogs)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
+    }
     
     /**
      Retrieves live measurement data while a user is on the scale.
