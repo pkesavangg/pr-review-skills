@@ -9,6 +9,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import GGBluetoothSwiftPackage
 
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
@@ -300,5 +301,10 @@ class BottomTabBarViewModel: ObservableObject {
             return false
         }
         return true
+    }
+    
+    // MARK: - Permission Handling
+    func handleCameraPermission() async -> GGPermissionState {
+        return await permissionsService.handlePermission(.camera)
     }
 }
