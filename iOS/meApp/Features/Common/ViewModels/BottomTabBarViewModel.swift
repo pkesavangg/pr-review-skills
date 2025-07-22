@@ -305,6 +305,11 @@ class BottomTabBarViewModel: ObservableObject {
     
     // MARK: - Permission Handling
     func handleCameraPermission() async -> GGPermissionState {
+        // Check if camera permission is already granted
+        let cameraPermissionState = permissionsService.getPermissionState(.CAMERA) ?? .ENABLED
+        if cameraPermissionState == .ENABLED {
+            return cameraPermissionState
+        }
         return await permissionsService.handlePermission(.camera)
     }
 }
