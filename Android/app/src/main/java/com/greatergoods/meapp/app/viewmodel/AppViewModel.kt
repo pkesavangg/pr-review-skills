@@ -7,8 +7,10 @@ import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.service.IAppNavigationService
@@ -17,12 +19,15 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.SCALES
@@ -32,6 +37,7 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -61,11 +67,13 @@ constructor(
   reducer = AppReducer(),
 ) {
   companion object {
-    private const val TAG = "AppLoaderView"
+    private const val TAG = "AppViewModel"
     private var currentAccountId: String? = null
   }
 
   override fun provideInitialState(): AppState = AppState()
+  private var canShowPopUp = true
+  private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
@@ -90,6 +98,40 @@ constructor(
       val account = accountService.getCurrentAccount()
       initLoadingData(account)
       initEvents()
+    }
+  }
+
+  override fun handleIntent(intent: AppIntent) {
+    when (intent) {
+      is AppIntent.OnPopUpConnect -> onPopUpConnect()
+
+      is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
+
+      else -> {}
+    }
+    super.handleIntent(intent)
+  }
+
+  private fun onPopUpConnect() {
+    viewModelScope.launch {
+      navigationService.navigateTo(
+        AppRoute.ScaleSetup.BtWifiScaleSetup(
+          "0412",
+          BtWifiSetupStep.CONNECTING_BLUETOOTH,
+          discoveredBroadcastId,
+        ),
+      )
+      onPopUpDismiss()
+    }
+  }
+
+  private fun onPopUpDismiss() {
+    viewModelScope.launch {
+      handleIntent(AppIntent.SetScaleDiscovered(false))
+      if (discoveredBroadcastId != null)
+        ggDeviceService.skipDevice(discoveredBroadcastId!!)
+      delay(30 * 1000)
+      canShowPopUp = true
     }
   }
 
@@ -291,23 +333,52 @@ constructor(
 
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
-    when (deviceResponse.type) {
-      GGScanResponseType.DEVICE_CONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.CONNECTED,
-        )
-      }
+    viewModelScope.launch {
 
-      GGScanResponseType.DEVICE_DISCONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.DISCONNECTED,
-        )
-      }
+      when (deviceResponse.type) {
+        GGScanResponseType.NEW_DEVICE -> {
+          if (canShowPopUp && data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
+            val currentRoute = navigationService.getCurrentRoute()
+            if (currentRoute !is AppRoute.ScaleSetup) {
+              handleIntent(AppIntent.SetScaleDiscovered(true))
+              discoveredBroadcastId = data.broadcastId
+              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizeDevice(data))
+              canShowPopUp = false
+            }
+          }
+        }
 
-      else -> null
+        GGScanResponseType.DEVICE_CONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.CONNECTED,
+          )
+        }
+
+        GGScanResponseType.DEVICE_DISCONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.DISCONNECTED,
+          )
+        }
+
+        else -> null
+      }
     }
+  }
+
+  private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail): GGCacheDevice {
+    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    val token = deviceService.getScaleToken()
+    val device = Device(
+      device = ggDeviceDetail,
+      token = token,
+    )
+    return device.copy(
+      deviceType = ScaleSetupType.BtWifiR4.value,
+      sku = "0412",
+      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+    )
   }
 
   private fun saveEntry(ggEntry: List<GGScaleEntry>) {

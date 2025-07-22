@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.domain.interfaces.INavigationUtility
 import com.greatergoods.meapp.domain.interfaces.NavigationIntent
 import com.greatergoods.meapp.domain.services.AuthState
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -24,6 +25,12 @@ class AppNavigationService : IAppNavigationService {
    * Shared flow of navigation intents to be observed by the UI.
    */
   override val navigationIntent = _navigationIntent.asSharedFlow()
+
+  override suspend fun getCurrentRoute(): NavKey? {
+    val response = CompletableDeferred<NavKey?>()
+    emitNavigationIntent(NavigationIntent.GetCurrentRoute(response))
+    return response.await()
+  }
 
   /**
    * Emits a navigation intent to navigate to the specified route.
