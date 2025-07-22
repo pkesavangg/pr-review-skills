@@ -582,6 +582,13 @@ struct AlertStrings {
         static let errorMessage = "Please restart your app and try again. If the problem continues, you can clear your data by deleting the app."
         static let okButton = "OK"
     }
+    
+    struct SkipPermissionsAlert {
+        static let title = "Are you sure you want to skip?"
+        static let message = "Doing so makes necessary a more in-depth, time consuming setup process."
+        static let skipButton = "YES, SKIP"
+        static let goBackButton = "GO BACK"
+    }
 }
 
 struct LoaderStrings {

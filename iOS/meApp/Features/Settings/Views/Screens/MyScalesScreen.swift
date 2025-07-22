@@ -67,7 +67,7 @@ struct MyScalesScreen: View {
     private func determineScaleType(for scale: Device) -> ScaleType {
         return ScaleTypeHelper.determineScaleType(for: scale)
     }
-
+    
     /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
     /// - Parameters:
     ///   - scale: The `ScaleItemInfo` that the user selected / submitted.
@@ -82,7 +82,7 @@ struct MyScalesScreen: View {
             activeSheet = .setupFlow(scale)
             hideKeyboard()
         }
-
+        
         switch scale.setupType {
         case .appSync:
             // Prevent adding duplicate AppSync scales unless the user explicitly confirms.
@@ -97,7 +97,7 @@ struct MyScalesScreen: View {
             proceed()
         }
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -190,15 +190,9 @@ struct MyScalesScreen: View {
                         case .bluetooth:
                             BluetoothScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                        default:
-                            // TODO: Handle other setup types
-                            VStack(spacing: .spacingMD) {
-                                Text("Setup flow coming soon")
-                                    .fontOpenSans(.heading4)
-                                Text("Selected scale: \(scale.productName)")
-                                    .fontOpenSans(.body2)
-                            }
-                            .padding()
+                        case .espTouchWifi, .wifi:
+                            WifiScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         }
                     }
                 }
