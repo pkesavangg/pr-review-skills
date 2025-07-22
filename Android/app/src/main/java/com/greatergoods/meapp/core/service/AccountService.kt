@@ -17,6 +17,8 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.signup.strings.SignupStrings
 import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
@@ -34,9 +36,9 @@ class AccountService
     private val accountRepository: IAccountRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
-    private val appNavigationService: IAppNavigationService,
+    appNavigationService: IAppNavigationService,
     private val storageClearService: StorageClearService,
-  ) : BaseService(connectivityObserver, dialogQueueService),
+  ) : BaseService(connectivityObserver, dialogQueueService,appNavigationService),
     IAccountService {
     companion object {
       private const val MAX_ACCOUNTS = 10
@@ -67,6 +69,13 @@ class AccountService
     override val hasReachedMaxAccounts: Flow<Boolean> = loggedInAccountsFlow.map { it.size >= MAX_ACCOUNTS }
 
     /**
+     * Flow for triggering integration checks, similar to Angular BehaviorSubject.
+     * Emits true when login or checkLoginStatusForLoggedInAccounts is called.
+     */
+    private val _checkIntegrations = MutableStateFlow(false)
+    override val checkIntegrations: StateFlow<Boolean> = _checkIntegrations
+
+    /**
      * Gets the current active account.
      * @return The active account or null if none
      */
@@ -83,10 +92,6 @@ class AccountService
      * @return Flow of ThemeMode that emits changes
      */
     override val currentThemeModeFlow = accountRepository.currentThemeModeFlow
-
-    // endregion
-
-    // region Public Functions
 
     /**
      * Logs in a user with email and password.
@@ -331,6 +336,8 @@ class AccountService
         val loggedInAccounts = getLoggedInAccounts().filter { !it.isActiveAccount }
         if (loggedInAccounts.isEmpty()) {
           AppLog.d(TAG, "No non-active logged-in accounts found in offline mode. Returning true.")
+          // Emit true to trigger integration checks even in offline mode
+          _checkIntegrations.value = true
           return true
         }
         val anyExpired = loggedInAccounts.any { it.isExpired }
@@ -339,6 +346,7 @@ class AccountService
           return false
         }
         AppLog.d(TAG, "All logged-in accounts are valid in local DB. Returning true.")
+        // Emit true to trigger integration checks
         return true
       }
       // Online mode: keep existing logic
@@ -351,6 +359,8 @@ class AccountService
             TAG,
             "No non-active logged-in accounts found in checkLoginStatusForLoggedInAccounts(). Returning true.",
           )
+          // Emit true to trigger integration checks
+          _checkIntegrations.value = true
           return true
         }
         for (account in loggedInAccounts) {
@@ -370,6 +380,8 @@ class AccountService
           }
         }
         AppLog.d(TAG, "Logged-in accounts status check completed.")
+        // Emit true to trigger integration checks
+        _checkIntegrations.value = true
         true
       } catch (e: Exception) {
         AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
