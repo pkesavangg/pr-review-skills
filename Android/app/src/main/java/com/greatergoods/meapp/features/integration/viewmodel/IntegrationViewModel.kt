@@ -179,8 +179,6 @@ class IntegrationViewModel @Inject constructor(
     private fun loadIntegrations() {
         viewModelScope.launch {
             try {
-              val inactiveProviders = listOf(IntegrationProvider.Fitbit)
-              showReintegrateAlert(inactiveProviders)
                 handleIntent(IntegrationIntent.InitializeIntegrations)
                 integrationService.getIntegrationsWithStatus().collectLatest { integrations ->
                     val updatedIntegrations = integrations.map { integration ->

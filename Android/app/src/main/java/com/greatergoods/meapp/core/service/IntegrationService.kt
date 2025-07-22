@@ -58,8 +58,6 @@ class IntegrationService @Inject constructor(
   init {
     // Subscribe to checkIntegrations flow from AccountService
     serviceScope.launch {
-      val inactiveProviders = listOf(IntegrationProvider.MyFitnessPal)
-      showReintegrateAlert(inactiveProviders)
       accountService.checkIntegrations.collectLatest { shouldCheck ->
         if (shouldCheck) {
           AppLog.d(TAG, "Received checkIntegrations signal, checking for inactive integrations")
