@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.features.manualEntry.helper
 
+import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -12,6 +14,7 @@ import com.greatergoods.meapp.domain.model.storage.entry.Entry
 import com.greatergoods.meapp.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.manualEntry.viewmodel.EntryForm
 import java.time.Instant
@@ -223,5 +226,58 @@ object EntryHelper {
         )
       }
     }
+  }
+
+  fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String): ScaleEntry {
+    val entryEntity = EntryEntity(
+      accountId = accountId,
+      entryTimestamp = DateTimeConverter.timestampToIso(date), // you may want to format it properly
+      serverTimestamp = null,
+      opTimestamp = null,
+      operationType = operationType ?: "create", // default fallback
+      deviceType = protocolType,
+      deviceId = deviceId,
+      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB,
+      isSynced = false,
+    )
+
+    val bodyScaleEntryEntity = BodyScaleEntryEntity(
+      id = 0, // Will be auto-generated in DB
+      weight = weight.toDouble(),
+      bodyFat = bodyFat.toDouble(),
+      muscleMass = muscleMass.toDouble(),
+      water = water.toDouble(),
+      bmi = bmi.toDouble(),
+      source = getScaleSetupType(protocolType).value,
+    )
+
+    val metricEntity = BodyScaleEntryMetricEntity(
+      id = 0, // Will be same as scaleEntryEntity.id when inserted
+      bmr = bmr.toDouble(),
+      metabolicAge = metabolicAge,
+      proteinPercent = proteinPercent.toDouble(),
+      pulse = pulse,
+      skeletalMusclePercent = skeletalMusclePercent.toDouble(),
+      subcutaneousFatPercent = subcutaneousFatPercent.toDouble(),
+      visceralFatLevel = visceralFatLevel.toDouble(),
+      boneMass = boneMass.toDouble(),
+      impedance = impedance.toInt(),
+    )
+
+    val scaleEntryWithMetrics = ScaleEntryWithMetrics(
+      scaleEntry = bodyScaleEntryEntity,
+      scaleEntryMetric = metricEntity,
+    )
+
+    return ScaleEntry(
+      entry = entryEntity,
+      scale = scaleEntryWithMetrics,
+    )
+  }
+
+  fun getScaleSetupType(protocolType: String): ScaleSetupType = when (protocolType) {
+    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.BtWifiR4
+    else -> ScaleSetupType.Bluetooth
+
   }
 }

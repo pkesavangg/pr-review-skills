@@ -165,8 +165,3 @@ class ScaleUsersManager: ObservableObject {
     }
 }
 
-// MARK: - Scale Errors
-enum ScaleUserError: Error {
-    case userDeletionFailed
-    case userUpdateFailed
-} 

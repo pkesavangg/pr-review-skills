@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -119,6 +120,7 @@ fun AppText(
   textType: TextType,
   modifier: Modifier = Modifier,
   annotatedText: String? = null,
+  canApplyUppercaseStyle: Boolean = false,
   annotationPosition: AnnotationPosition = AnnotationPosition.Start,
   spanStyle: SpanStyle? = null,
   enabled: Boolean = true,
@@ -164,7 +166,7 @@ fun AppText(
           }
         }
       }
-    } else {
+    } else if (canApplyUppercaseStyle) {
       buildAnnotatedString {
         text.split(" ").forEachIndexed { index, word ->
           val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
@@ -178,6 +180,9 @@ fun AppText(
           if (index != text.lastIndex) append(" ")
         }
       }
+    }
+    else {
+      AnnotatedString(text)
     }
   }
 

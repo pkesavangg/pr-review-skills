@@ -224,7 +224,7 @@ constructor(
       entry.entry.copy(
         isSynced = false,
         operationType = OperationType.CREATE.name,
-        accountId = "1",
+        accountId = accountId ?: entry.entry.accountId,
       ),
     )
 
@@ -257,7 +257,7 @@ constructor(
         val baseEntry = entry.entry.copy(
           isSynced = false,
           operationType = OperationType.CREATE.name,
-          accountId = "1",
+          accountId = accountId ?: entry.entry.accountId,
         )
 
         val updatedEntry = entry.updateEntry(baseEntry)

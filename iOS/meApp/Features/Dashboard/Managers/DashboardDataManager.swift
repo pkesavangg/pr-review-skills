@@ -296,16 +296,16 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
-        
+
         // Validate that all summaries have valid dates
         let validSummaries = summaries.filter { summary in
             // Ensure the date is not in the distant past or future (basic validation)
             let year = calendar.component(.year, from: summary.date)
             return year >= 1900 && year <= 2100
         }
-        
+
         guard !validSummaries.isEmpty else { return true }
-        
+
         let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
         return years.count == 1
     }
@@ -349,42 +349,38 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Cache Optimization
     func optimizeCache() async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Optimizing cache")
+        logger.log(level: .info, tag: "DashboardDataManager", message: "Optimizing cache")
 
-            // Remove old entries beyond a certain threshold (e.g., 1 year)
-            let cutoffDate = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+        // Remove old entries beyond a certain threshold (e.g., 1 year)
+        let cutoffDate = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
 
-            // Filter out old daily entries
-            let filteredDailyCache = state.dailyCache.filter { _, summary in
-                summary.date >= cutoffDate
-            }
-
-            // Filter out old monthly entries (keep longer for monthly view)
-            let monthlyCutoffDate = Calendar.current.date(byAdding: .year, value: -2, to: Date()) ?? Date()
-            let filteredMonthlyCache = state.monthlyCache.filter { _, summary in
-                summary.date >= monthlyCutoffDate
-            }
-
-            // Update caches if optimization removed entries
-            if filteredDailyCache.count < state.dailyCache.count {
-                state.dailyCache = filteredDailyCache
-                logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized daily cache: removed \(state.dailyCache.count - filteredDailyCache.count) old entries")
-            }
-
-            if filteredMonthlyCache.count < state.monthlyCache.count {
-                state.monthlyCache = filteredMonthlyCache
-                logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized monthly cache: removed \(state.monthlyCache.count - filteredMonthlyCache.count) old entries")
-            }
-
-            // Update published arrays
-            updatePublishedArrays()
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Cache optimization completed")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to optimize cache: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to optimize cache")
+        // Filter out old daily entries
+        let filteredDailyCache = state.dailyCache.filter { _, summary in
+            summary.date >= cutoffDate
         }
+
+        // Filter out old monthly entries (keep longer for monthly view)
+        let monthlyCutoffDate = Calendar.current.date(byAdding: .year, value: -2, to: Date()) ?? Date()
+        let filteredMonthlyCache = state.monthlyCache.filter { _, summary in
+            summary.date >= monthlyCutoffDate
+        }
+
+        // Update caches if optimization removed entries
+        if filteredDailyCache.count < state.dailyCache.count {
+            state.dailyCache = filteredDailyCache
+            logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized daily cache: removed \(state.dailyCache.count - filteredDailyCache.count) old entries")
+        }
+
+        if filteredMonthlyCache.count < state.monthlyCache.count {
+            state.monthlyCache = filteredMonthlyCache
+            logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized monthly cache: removed \(state.monthlyCache.count - filteredMonthlyCache.count) old entries")
+        }
+
+        // Update published arrays
+        updatePublishedArrays()
+
+        logger.log(level: .info, tag: "DashboardDataManager", message: "Cache optimization completed")
     }
+
+    
 }

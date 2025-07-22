@@ -9,6 +9,7 @@ import com.greatergoods.meapp.features.ScaleMetricsSetting.enum.NotifyScaleMode
 import com.greatergoods.meapp.features.ScaleMetricsSetting.model.ScaleMetric
 import com.greatergoods.meapp.features.ScaleMetricsSetting.model.otherScaleMetrics
 import com.greatergoods.meapp.features.ScaleMetricsSetting.model.scaleMetrics
+import java.util.UUID
 
 /**
  * Helper object providing utility functions for display metrics management.
@@ -36,8 +37,9 @@ object ScaleMetricsHelper {
     )
   }
 
-  fun getDefaultPreference(displayName: String): Preferences {
+  fun getDefaultPreference(displayName: String, id: String = UUID.randomUUID().toString()): Preferences {
     return Preferences(
+      id = id,
       timeFormat = TimeFormat.TWELVE,
       tzOffset = Utils.getTimeZoneInMinutes(),
       displayName = displayName,

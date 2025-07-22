@@ -6,26 +6,39 @@ enum BodyMetricsConvertor {
     ///   - value: The raw metric value
     ///   - shouldCompose: Whether to apply composition transformation (divide by 10)
     ///   - wholeNumber: Whether to return whole number or decimal
+    ///   - fallbackValue: Optional fallback value to use if primary value is zero/nil
     /// - Returns: Formatted string representation of the metric
-    static func convert(_ value: Double?, shouldCompose: Bool = true, wholeNumber: Bool = false) -> String {
-        // Handle nil or invalid values
-        guard let value = value else {
-            return "--"
+    static func convert(_ value: Double?, shouldCompose: Bool = true, wholeNumber: Bool = false, fallbackValue: Double? = nil) -> String {
+        // Try to use the primary value first
+        if let value = value {
+            // Apply composition transformation if needed
+            let processedValue = shouldCompose ? value / 10.0 : value
+
+            // Check if the processed value is valid (not NaN, infinite, or unreasonably negative)
+            if !processedValue.isNaN && !processedValue.isInfinite && processedValue >= 0 {
+                // Format the value based on requirements
+                if wholeNumber {
+                    return String(format: "%.0f", processedValue)
+                } else {
+                    return String(format: "%.1f", processedValue)
+                }
+            }
         }
 
-        // If composition not needed, return raw value
-        if !shouldCompose {
-            return String(format: "%.0f", value)
+        // If primary value is invalid, try fallback value
+        if let fallbackValue = fallbackValue {
+            let processedFallback = shouldCompose ? fallbackValue / 10.0 : fallbackValue
+
+            if !processedFallback.isNaN && !processedFallback.isInfinite && processedFallback >= 0 {
+                if wholeNumber {
+                    return String(format: "%.0f", processedFallback)
+                } else {
+                    return String(format: "%.1f", processedFallback)
+                }
+            }
         }
 
-        // Apply composition transformation (divide by 10)
-        let composedValue = value / 10.0
-
-        // Format based on whether whole number is needed
-        if wholeNumber {
-            return String(format: "%.0f", composedValue)
-        } else {
-            return String(format: "%.1f", composedValue)
-        }
+        // If both primary and fallback values are invalid, return placeholder
+        return "--"
     }
 }

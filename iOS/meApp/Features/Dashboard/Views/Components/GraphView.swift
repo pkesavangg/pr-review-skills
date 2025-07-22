@@ -11,8 +11,15 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
+    
+    // Local state variables for chart selection (like WeightGraph)
+    @State private var selectedXValue: Date?
+    
+    // Animation trigger for smooth transitions
+    @State private var animationTrigger = UUID()
+    
+    // Scroll detection state
     @State private var hasDetectedScrollInCurrentGesture = false
-    @State private var animationTrigger = 0
 
     // Check if there are any entries to display
     private var hasEntries: Bool {
@@ -21,11 +28,7 @@ struct GraphView: View {
 
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
-        if dashboardStore.hasEntriesButNoneInCurrentPeriod {
-            return DashboardStrings.noEntriesInPeriodMessage(dashboardStore.state.graph.selectedPeriod.rawValue)
-        } else {
-            return DashboardStrings.noEntriesMessage
-        }
+        return DashboardStrings.noEntriesMessage
     }
 
     var body: some View {
@@ -35,21 +38,24 @@ struct GraphView: View {
                     .foregroundColor(theme.textSubheading)
                     .padding(.leading, .spacingSM)
                     .padding(.vertical, .spacingXS)
-
-            chartView
+            if hasEntries {
+                chartView
+            } else {
+                emptyStateView
+            }
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
             // Trigger animation for period change
             withAnimation(.easeInOut(duration: 0.6)) {
-                animationTrigger += 1
+                animationTrigger = UUID()
             }
         }
         .onChange(of: dashboardStore.state.graph.dataChangeTrigger) { _, _ in
             // Trigger animation for data changes
             withAnimation(.easeInOut(duration: 0.4)) {
-                animationTrigger += 1
+                animationTrigger = UUID()
             }
         }
     }
@@ -91,13 +97,19 @@ struct GraphView: View {
             .chartXAxis { xAxisMarks }
             .chartXSelection(value: Binding(
                 get: {
-                    // Only return selected value if not currently scrolling
-                    dashboardStore.state.graph.isScrolling ? nil : dashboardStore.state.graph.selectedXValue
+                    // Use local state for selection (like WeightGraph)
+                    selectedXValue
                 },
                 set: { newValue in
                     // Only handle selection if not scrolling
                     if !dashboardStore.state.graph.isScrolling {
-                        dashboardStore.handleChartSelection(at: newValue)
+                        selectedXValue = newValue
+                        if let selectedDate = newValue {
+                            // Update the global store for metrics
+                            Task {
+                                await dashboardStore.handleChartSelection(at: selectedDate)
+                            }
+                        }
                     }
                 }
             ))
@@ -124,7 +136,7 @@ struct GraphView: View {
             .animation(.easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
             // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
-            .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture))
+            .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
         // Single chart refresh trigger for better performance
         .id("\(dashboardStore.state.graph.selectedPeriod.rawValue)-\(dashboardStore.currentUnit.rawValue)-\(dashboardStore.state.graph.dataChangeTrigger)")
@@ -157,6 +169,7 @@ struct GraphView: View {
         let yAxisTicks = dashboardStore.yAxisTicks
 
         ForEach(yAxisTicks, id: \.self) { tick in
+            // Only show grid lines for non-goal weight ticks
             if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
                 RuleMark(y: .value("YGrid", tick))
                     .lineStyle(StrokeStyle(lineWidth: 1))
@@ -191,7 +204,8 @@ struct GraphView: View {
 
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = dashboardStore.state.graph.selectedPoint, dashboardStore.state.graph.showCrosshair {
+        if let selectedPoint = dashboardStore.state.graph.selectedPoint, 
+           dashboardStore.state.graph.showCrosshair {
             // Dotted vertical line
             RuleMark(
                 x: .value("Date", selectedPoint.date)
@@ -267,6 +281,7 @@ struct GraphView: View {
 struct ScrollDetectionModifier: ViewModifier {
     let dashboardStore: DashboardStore
     @Binding var hasDetectedScrollInCurrentGesture: Bool
+    @Binding var selectedXValue: Date?
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
@@ -274,6 +289,11 @@ struct ScrollDetectionModifier: ViewModifier {
                 .onScrollPhaseChange { oldPhase, newPhase in
                     Task { @MainActor in
                         await dashboardStore.handleScrollPhaseChange(to: newPhase)
+                        
+                        // Clear local selection state when scrolling starts
+                        if newPhase == .interacting {
+                            selectedXValue = nil
+                        }
                     }
                 }
         } else {
@@ -287,17 +307,14 @@ struct ScrollDetectionModifier: ViewModifier {
                             if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
                                 hasDetectedScrollInCurrentGesture = true
                                 dashboardStore.handleScrollStart()
+                                
+                                // Clear local selection state when scrolling starts
+                                selectedXValue = nil
                             }
                         }
                         .onEnded { value in
                             hasDetectedScrollInCurrentGesture = false
-
-                            let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                            let isSignificantMovement = abs(value.translation.width) > 8
-
-                            if isHorizontalScroll && isSignificantMovement {
-                                dashboardStore.handleScrollEndOptimized()
-                            }
+                            dashboardStore.handleScrollEndOptimized()
                         }
                 )
         }

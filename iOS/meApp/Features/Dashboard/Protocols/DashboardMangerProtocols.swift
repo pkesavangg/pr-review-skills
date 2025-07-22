@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import SwiftUICore
+import SwiftUI
 
 /// Protocol defining data management operations
 protocol DashboardDataManaging {

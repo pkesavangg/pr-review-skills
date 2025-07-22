@@ -132,7 +132,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Navigation Helpers
-    // MARK: - Navigation Helpers
     func moveToNextStep() {
         // Special handling when moving from permissions step
         
@@ -167,7 +166,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Public Configuration
-    func configure(with sku: String,) {
+    func configure(with sku: String) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         resetDiscoveryState()

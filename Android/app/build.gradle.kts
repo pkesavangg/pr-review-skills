@@ -146,6 +146,7 @@ dependencies {
   implementation(project(":app:appsync"))
   implementation(project(":bleWrapper"))
 
+  // implementation(project(":ggBluetoothLibrary"))
   // Play Store Review
   implementation(libs.play.review)
   implementation(libs.play.review.ktx)

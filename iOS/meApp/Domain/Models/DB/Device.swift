@@ -57,7 +57,7 @@ final class Device {
 
     // Relationships
     @Relationship(deleteRule: .cascade) var bathScale: BathScale?
-    @Relationship(deleteRule: .cascade) var r4ScalePreference: R4ScalePreference?
+    @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
     @Relationship(deleteRule: .cascade) var metaData: DeviceMetaData?
 
     init(id: String,
@@ -126,8 +126,16 @@ final class Device {
                      isWifiConfigured: Bool? = nil,
                      scaleType: String? = nil,
                      bodyComp: Bool? = nil) {
+        let id = dto.id ?? UUID().uuidString
+
+        // Create R4ScalePreference first if needed
+        var r4Preference: R4ScalePreference? = nil
+        if let preference = dto.preference {
+            r4Preference = R4ScalePreference(from: preference, scaleId: id)
+        }
+
         self.init(
-            id: dto.id ?? UUID().uuidString,
+            id: id,
             accountId: dto.userId ?? "",
             peripheralIdentifier: dto.peripheralIdentifier,
             nickname: dto.nickname,
@@ -150,9 +158,20 @@ final class Device {
             isWifiConfigured: dto.isWifiConfigured,
             token: dto.scaleToken,
             bathScale: BathScale(scaleType: dto.type, bodyComp: bodyComp),
-            r4ScalePreference: dto.preference.map { R4ScalePreference(from: $0) },
+            r4ScalePreference: r4Preference,
             metaData: dto.metaData.map { DeviceMetaData(from: $0) }
         )
+
+        // Set the device reference after initialization
+        if let preference = self.r4ScalePreference {
+            preference.device = self
+        }
+
+        if let broadcastId = self.broadcastId {
+            let scaleSource = ScaleSourceType(rawValue: self.bathScale?.scaleType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+            self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
+        }
     }
 
     func toDTO() -> ScaleDTO {

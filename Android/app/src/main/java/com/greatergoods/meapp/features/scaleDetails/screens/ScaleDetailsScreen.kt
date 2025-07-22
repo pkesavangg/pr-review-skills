@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.features.scaleDetails.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,17 +11,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.core.navigation.LocalNavBackStack
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
 import com.greatergoods.meapp.features.common.components.AppIcon
 import com.greatergoods.meapp.features.common.components.AppIconButton
 import com.greatergoods.meapp.features.common.components.AppIconType
+import com.greatergoods.meapp.features.common.components.AppNote
 import com.greatergoods.meapp.features.common.components.AppScaffold
 import com.greatergoods.meapp.features.common.components.AppScaleImage
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -27,15 +40,22 @@ import com.greatergoods.meapp.features.common.components.ScaleImageSize
 import com.greatergoods.meapp.features.common.components.SettingsSection
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.ScaleDataHelper
+import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.SettingColorType
 import com.greatergoods.meapp.features.common.model.SettingsItem
 import com.greatergoods.meapp.features.common.model.SettingsItemType
 import com.greatergoods.meapp.features.common.strings.AppListStrings
+import com.greatergoods.meapp.features.scaleDetails.Enums.ScaleSettingSteps
+import com.greatergoods.meapp.features.scaleDetails.components.BluetoothPermissionScreen
+import com.greatergoods.meapp.features.scaleDetails.components.WifiMacAddressScreen
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsIntent.SetSettingsScreenStep
 import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleDetailsState
+import com.greatergoods.meapp.features.scaleDetails.reducer.ScaleNameDialogFormControls
 import com.greatergoods.meapp.features.scaleDetails.strings.ScaleDetailsStrings
 import com.greatergoods.meapp.features.scaleDetails.viewmodel.ScaleDetailsViewModel
 import com.greatergoods.meapp.resources.AppIcons
+import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
 
@@ -59,6 +79,7 @@ fun ScaleDetailsScreen(scaleId: String) {
   ScaleDetailsScreenContent(state, viewModel::handleIntent)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScaleDetailsScreenContent(
   state: ScaleDetailsState,
@@ -71,13 +92,73 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
-  val isConnected = device?.connectionStatus == com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED
+  val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
     if (device?.preferences?.shouldMeasureImpedance == true) {
       ScaleDetailsStrings.AllBodyMetrics
     } else {
       ScaleDetailsStrings.WeightOnly
     }
+
+  var bottomSheetVisible by remember { mutableStateOf(false) }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  if (bottomSheetVisible) {
+    ModalBottomSheet(
+      onDismissRequest = {
+        coroutineScope.launch {
+          sheetState.hide()
+          bottomSheetVisible = false
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+      },
+      containerColor = colorScheme.primaryBackground,
+      modifier = Modifier.fillMaxSize(),
+      dragHandle = null,
+      sheetState = sheetState,
+      sheetGesturesEnabled = false,
+      properties = ModalBottomSheetProperties(
+        shouldDismissOnBackPress = true,
+        isAppearanceLightStatusBars = !isSystemInDarkTheme(),
+        isAppearanceLightNavigationBars = !isSystemInDarkTheme(),
+      )
+    ) {
+      when (state.settingsScreenStep) {
+        ScaleSettingSteps.BLUETOOTH_SETTINGS -> {
+          BluetoothPermissionScreen(
+            state = state,
+            handleIntent = handleIntent,
+            onClose = {
+              coroutineScope.launch {
+                sheetState.hide()
+                bottomSheetVisible = false
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+              }
+            },
+          )
+        }
+
+        ScaleSettingSteps.WIFI_MAC_ADDRESS -> {
+          WifiMacAddressScreen(
+            state = state,
+            handleIntent = handleIntent,
+            onClose = {
+              coroutineScope.launch {
+                sheetState.hide()
+                bottomSheetVisible = false
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+              }
+            },
+          )
+        }
+
+        ScaleSettingSteps.NONE -> {
+          bottomSheetVisible = false
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+      }
+
+    }
+  }
 
   AppScaffold(
     title = scaleName,
@@ -103,6 +184,29 @@ fun ScaleDetailsScreenContent(
         scaleImageSize = ScaleImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
+      Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        if (state.scale?.preferences?.shouldMeasureImpedance == false) {
+          AppNote(
+            message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
+            icon = AppIcons.Default.WeightOnlyMode,
+            buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.UpdateButton,
+            onButtonClick = {
+              handleIntent(ScaleDetailsIntent.OpenScaleMode)
+            },
+          )
+        }
+        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED) {
+          AppNote(
+            message = ScaleDetailsStrings.SetupIncomplete,
+            icon = AppIcons.Default.Exclamation,
+            buttonText = ScaleDetailsStrings.SetupWifi,
+            iconType = AppIconType.Danger,
+            onButtonClick = {},
+          )
+        }
+        Spacer(modifier = Modifier.height(spacing.md))
+      }
+
       // Settings Section - Show different items based on setup type
       SettingsSection(
         title = ScaleDetailsStrings.Settings,
@@ -142,6 +246,9 @@ fun ScaleDetailsScreenContent(
                   SettingsItemType.TextOnly(
                     device?.nickname ?: device?.device?.deviceName ?: "",
                   ),
+                onClick = {
+                  handleIntent(ScaleDetailsIntent.ShowScaleNameModal)
+                },
               ),
             )
             if (isWifiSetup) {
@@ -168,6 +275,10 @@ fun ScaleDetailsScreenContent(
                     SettingsItemType.Action(
                       if (isConnected) ScaleDetailsStrings.Connected else AppListStrings.NotConnected,
                     ),
+                  onClick = {
+                    handleIntent(SetSettingsScreenStep(ScaleSettingSteps.BLUETOOTH_SETTINGS))
+                    bottomSheetVisible = true
+                  },
                 ),
               )
               if (scaleSetupType == ScaleSetupType.BtWifiR4) {
@@ -183,6 +294,10 @@ fun ScaleDetailsScreenContent(
                     title = ScaleDetailsStrings.WiFiMacAddress,
                     type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
                     enabled = device?.device?.isWifiConfigured ?: false,
+                    onClick = {
+                      handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))
+                      bottomSheetVisible = true
+                    },
                   ),
                 )
               }
@@ -250,7 +365,7 @@ fun ScaleDetailsScreenPreview() {
       macAddress = "greatergoods1",
       identifier = "identifier1",
     ),
-    connectionStatus = com.greatergoods.meapp.domain.model.storage.BLEStatus.CONNECTED,
+    connectionStatus = BLEStatus.CONNECTED,
     alreadyPaired = true,
     userNumber = 1,
     preferences = com.greatergoods.meapp.domain.model.storage.Preferences(
@@ -258,6 +373,7 @@ fun ScaleDetailsScreenPreview() {
       shouldMeasurePulse = false,
     ),
   )
-  val dummyState = ScaleDetailsState(scale = dummyDevice)
+  val dummyScaleNameForm = FormGroup(ScaleNameDialogFormControls.create())
+  val dummyState = ScaleDetailsState(scale = dummyDevice, scaleNameForm = dummyScaleNameForm)
   ScaleDetailsScreenContent(state = dummyState, handleIntent = {})
 }

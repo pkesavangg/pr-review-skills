@@ -21,11 +21,14 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       identifier = device.peripheralIdentifier ?: "",
       protocolType = device.protocolType,
       broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
+      broadcastIdString = device.broadcastIdString,
       password = convertIntToHex(device.password, device.deviceType),
       wifiMacAddress = device.wifiMac,
       isWifiConfigured = device.wifiMac != null,
       // Add other fields as needed
     ),
+    nickname = device.nickname ?: device.deviceName ?: "",
+    sku = device.sku,
     isSynced = device.isSynced,
     isDeleted = device.isDeleted,
     createdAt = device.createdAt,
@@ -77,10 +80,13 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       identifier = peripheralIdentifier ?: "",
       protocolType = protocolType,
       broadcastId = convertIntToHex(broadcastId, deviceType),
+      broadcastIdString = broadcastIdString,
       password = convertIntToHex(password, deviceType),
       wifiMacAddress = wifiMac,
       isWifiConfigured = wifiMac != null,
     ),
+    nickname = nickname ?: deviceName ?: "",
+    sku = sku,
     isSynced = isSynced,
     isDeleted = isDeleted,
     createdAt = createdAt,
@@ -100,13 +106,14 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         id = id,
         accountId = accountId, // Not present in GGDevice, set as needed
         peripheralIdentifier = device?.identifier,
-        nickname = device?.deviceName, // No nickname in GGDevice, use deviceName
-        sku = null, // Not present in GGDevice
+        nickname = nickname, // No nickname in GGDevice, use deviceName
+        sku = sku, // Not present in GGDevice
         mac = device?.macAddress,
         password = convertHexToInt(device?.password),
         deviceName = device?.deviceName,
         deviceType = deviceType, // No deviceType in GGDevice, use protocolType
         broadcastId = convertHexToInt(device?.broadcastId),
+        broadcastIdString = device?.broadcastId ?: device?.broadcastIdString,
         userNumber = userNumber?.toString(),
         protocolType = device?.protocolType,
         createdAt = createdAt, // Not present in GGDevice

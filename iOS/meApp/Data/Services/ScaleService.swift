@@ -52,6 +52,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
+    private var isSyncing = false
 
     // MARK: - Published State
     @Published private(set) var scales: [Device] = []
@@ -72,9 +73,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self._apiRepository = ScaleAPIRepository()
         self.localRepository = ScaleRepository()
         self.localKVRepo = ScaleRepositoryLocal()
-
-        // Load initial scales from local storage
-        Task { await refreshScalesFromLocal() }
     }
 
     /// Initializes the scale service with required dependencies.
@@ -86,16 +84,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self._apiRepository = apiRepository
         self.localRepository = localRepository
         self.localKVRepo = localKVRepo
-
-        // Load initial scales from local storage
-        Task { await refreshScalesFromLocal() }
     }
 
     var scalesPublisher: AnyPublisher<[Device], Never> {
         $scales.eraseToAnyPublisher()
     }
-
-
 
     // MARK: - Sync Logic
         /// Syncs all scales with the remote backend using the "replace-all" policy.
@@ -116,15 +109,21 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
             return
         }
+        if isSyncing {
+            logger.log(level: .info, tag: tag, message: "Sync already in progress, skipping")
+            return
+        }
+        isSyncing = true
 
         // Step 1: Push local changes to server
-        await pushLocalChangesToServer(accountId: accountId)
+        await pushLocalChangesToServer()
 
         // Step 2: Fetch fresh server state and replace local storage
         await pullServerStateAndReplace(accountId: accountId)
 
         // Step 3: Refresh published scales
-        await refreshScalesFromLocal()
+
+        isSyncing = false
     }
 
     // MARK: - DeviceServiceProtocol Implementation
@@ -133,35 +132,37 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             throw ScaleError.deviceNotFound(id: deviceId)
         }
 
-        // Update locally first
-        try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
-        
         // Update on server immediately
         do {
             try await remoteRepo.patchScaleMeta(deviceId, metaData: metaData.toDTO())
             logger.log(level: .info, tag: tag, message: "Updated scale meta for device \(deviceId) locally and on server")
+            metaData.isSynced = true // Mark as synced after successful server update
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update scale meta on server: \(error.localizedDescription)")
-            throw error
+            metaData.isSynced = false // Mark as unsynced if server update fails
         }
+
+        // Update locally and mark as synced or unsynced based on server update success
+        try await localRepository.patchScaleMeta(deviceId, metaData: metaData)
+        await pushLocalChangesToServer()
     }
 
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
         guard let _ = try await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
-        
-        // Update locally and mark as unsynced - sync will handle server update
-        try await localRepository.patchScalePreference(deviceId, preference)
-        
         // Update on server immediately
         do {
             try await remoteRepo.patchScalePreference(preference.toDTO())
             logger.log(level: .info, tag: tag, message: "Updated scale preference for device \(deviceId) locally and on server")
+            preference.isSynced = true // Mark as synced after successful server update
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
-            throw error
+            preference.isSynced = false // Mark as unsynced if server update fails
         }
+        // Update locally and mark as synced or unsynced based on server update success
+        try await localRepository.patchScalePreference(deviceId, preference)
+        await pushLocalChangesToServer()
     }
 
     // MARK: - DeviceServiceProtocol Implementation
@@ -174,7 +175,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             device.isDeleted != true
         }
 
-        await MainActor.run { self.scales = activeDevices }
         return activeDevices
     }
 
@@ -209,7 +209,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Try to extract device ID from different possible data formats
             var deviceId: String?
             var broadcastId: String?
-            
+
             if let deviceDict = device as? [String: Any] {
                 deviceId = deviceDict["id"] as? String
                 broadcastId = deviceDict["broadcastId"] as? String
@@ -217,7 +217,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 // GGDeviceDetails doesn't have an 'id' property, use broadcastId instead
                 broadcastId = deviceDetails.broadcastId ?? deviceDetails.broadcastIdString
             }
-            
+
             // If we have a device ID, try to update by ID first
             if let deviceId = deviceId {
                 let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
@@ -236,7 +236,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
                 }
             }
-            
+
             // Fallback: try to update by broadcast ID
             if let broadcastId = broadcastId {
                 let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
@@ -255,7 +255,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
                 }
             }
-            
+
             // If we couldn't find the device, log the error
             logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil")")
         }
@@ -426,6 +426,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - Internal Helpers
     private func refreshScalesFromLocal() async {
+        print("refreshScalesFromLocal")
         do {
             self.scales = try await localRepository.listScales().filter { $0.isDeleted != true }
         } catch {
@@ -451,8 +452,16 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
         /// Pushes all local changes (creates, edits, deletes) to the server.
     /// Follows the sync rules for proper state management.
-    private func pushLocalChangesToServer(accountId: String) async {
+    public func pushLocalChangesToServer() async {
         do {
+            logger.log(level: .info, tag: tag, message: "Pushing local changes to server")
+            let accountId: String
+            do {
+                accountId = try await getAccountId()
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
+                return
+            }
             // Handle deletions first
             let devicesMarkedForDeletion = try await localRepository.getDevicesMarkedForDeletion()
             for device in devicesMarkedForDeletion {
@@ -476,13 +485,15 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 let dto = device.toDTO()
 
                 // Check if this device is purely local (never synced to server) or has a server ID
-                let isPurelyLocal = device.hasServerID == false && device.isSynced == false
+                let isPurelyLocal = device.hasServerID == false
 
                 if !isPurelyLocal {
                     // Edit existing device on server
                     do {
-                        let properties = createPropertiesFromDTO(dto)
-                        _ = try await remoteRepo.editScale(device.id, properties: properties)
+                        if device.isSynced == false {
+                            let properties = createPropertiesFromDTO(dto)
+                            _ = try await remoteRepo.editScale(device.id, properties: properties)
+                        }
                         // Update scale meta data and preference
                         if let metaData = device.metaData, metaData.isSynced == false {
                             try await remoteRepo.patchScaleMeta(device.id, metaData: metaData.toDTO())
@@ -536,6 +547,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private func pullServerStateAndReplace(accountId: String) async {
         do {
             let serverScales = try await remoteRepo.listScales()
+            print("serverScales: \(serverScales)")
             let serverDevices = serverScales.map { Device(from: $0) }
 
             // Get any unsynced local devices to preserve them
@@ -543,7 +555,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
             // Replace synced devices with server state, preserve unsynced local devices
             try await localRepository.replaceAllDevicesForAccount(accountId, with: serverDevices, preserveUnsynced: unsyncedDevices)
-
+            await refreshScalesFromLocal()
             logger.log(level: .info, tag: tag, message: "Successfully replaced local storage with \(serverDevices.count) devices from server, preserved \(unsyncedDevices.count) unsynced local devices")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: \(error.localizedDescription)")
