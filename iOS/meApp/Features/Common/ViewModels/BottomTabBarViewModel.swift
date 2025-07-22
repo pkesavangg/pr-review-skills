@@ -93,16 +93,32 @@ class BottomTabBarViewModel: ObservableObject {
     /// Evaluates whether the *Permission Disabled* alert should be shown and presents it if needed.
     private func evaluateAndShowPermissionAlert() {
         guard !hasShownPermissionAlert else { return }
-        // Show alert only if Bluetooth is a required permission
-        guard permissionsService.requiredCategories.contains(.bluetooth) || permissionsService.requiredCategories.contains(.notifications)  else { return }
-        // Check the current Bluetooth permission states (switch & auth)
-        let btSwitchState = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) ?? .ENABLED
-        let btAuthState   = permissionsService.getPermissionState(.BLUETOOTH) ?? .ENABLED
-        let notificationState = permissionsService.getPermissionState(.NOTIFICATION) ?? .ENABLED
-        // Alert only when either state is disabled
-        guard btSwitchState != .ENABLED || btAuthState != .ENABLED || notificationState != .ENABLED  else { return }
 
-        showPermissionDisabledAlert()
+        let requiredCategories = permissionsService.requiredCategories
+
+        // Early exit if neither Bluetooth nor Notifications are required
+        guard requiredCategories.contains(.bluetooth) || requiredCategories.contains(.notifications) else { return }
+
+        var shouldShowAlert = false
+
+        if requiredCategories.contains(.bluetooth) {
+            let btSwitchState = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) ?? .ENABLED
+            let btAuthState   = permissionsService.getPermissionState(.BLUETOOTH) ?? .ENABLED
+            if btSwitchState != .ENABLED || btAuthState != .ENABLED {
+                shouldShowAlert = true
+            }
+        }
+
+        if requiredCategories.contains(.notifications) {
+            let notificationState = permissionsService.getPermissionState(.NOTIFICATION) ?? .ENABLED
+            if notificationState != .ENABLED {
+                shouldShowAlert = true
+            }
+        }
+
+        if shouldShowAlert {
+            showPermissionDisabledAlert()
+        }
     }
 
     /// Presents the *Permission Disabled* alert and handles navigation when the user taps **APP PERMISSION**.
