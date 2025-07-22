@@ -38,6 +38,7 @@ import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelpe
 import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.helper.StringUtil.cleanCorruptedChars
 import com.greatergoods.meapp.features.common.model.DashboardKey
 import com.greatergoods.meapp.features.common.model.DialogModel
 import dagger.assisted.Assisted
@@ -370,7 +371,6 @@ constructor(
    */
   private fun onRefreshNetworks() {
     AppLog.d(TAG, "Refreshing networks, going back to GATHERING_NETWORK")
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
   }
 
@@ -614,9 +614,16 @@ constructor(
   private fun gatherNetworks() {
     AppLog.d(TAG, "Starting network gathering process")
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-    viewModelScope.launch {
-      try {
-        ggDeviceService.getWifiList(discoveredScale!!.toGGBTDevice()) {
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.GATHERING_NETWORK,
+        ConnectionState.Loading,
+      ),
+    )
+    try {
+      ggDeviceService.getWifiList(discoveredScale!!.toGGBTDevice()) {
+        viewModelScope.launch {
+
           AppLog.d(TAG, "Network gathering successful")
           handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -624,30 +631,32 @@ constructor(
               ConnectionState.Success,
             ),
           )
-          val canRequestNotifPermission = AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
+          val canRequestNotifPermission =
+            AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
           if (canRequestNotifPermission) {
             requestPermission(GGPermissionType.NOTIFICATION)
           }
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
-          ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) {
+          ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) { wifiMac ->
             handleIntent(
-              BtWifiScaleSetupIntent.SetConnectedSSID(it),
+              BtWifiScaleSetupIntent.SetConnectedSSID(wifiMac.cleanCorruptedChars()),
             )
           }
+          delay(1000)
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
         }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during network gathering", e.toString())
-        handleIntent(
-          BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.GATHERING_NETWORK,
-            ConnectionState.Error,
-          ),
-        )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during network gathering", e.toString())
+      handleIntent(
+        BtWifiScaleSetupIntent.SetStepConnectionState(
+          BtWifiSetupStep.GATHERING_NETWORK,
+          ConnectionState.Error,
+        ),
+      )
+      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
+      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
 
