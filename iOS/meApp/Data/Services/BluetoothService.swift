@@ -260,15 +260,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Parameter devices: The devices to sync. Passing an empty array clears the list.
      */
     func syncDevices(_ devices: [Device]) {
-        if bluetoothScales.isEmpty {
+        if (bluetoothScales.isEmpty && devices.isEmpty) {
             clearDevices()
             return
         }
-        let ggDevices = bluetoothScales.map { device in
+
+        let scalesToSync = devices.isEmpty ? bluetoothScales : devices
+        let ggDevices = scalesToSync.map { device in
             GGBTDevice(
                 name: device.deviceName ?? "",
                 broadcastId: device.broadcastIdString ?? "",
-                password: device.password,
+                password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
                 token: device.token,
                 userNumber: Int(device.userNumber ?? "0"),
                 preference: mapToGGPreference(device.r4ScalePreference),
@@ -278,7 +280,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 macAddress: device.mac ?? ""
             )
         }
-        
         ggBleSDK.syncDevices(ggDevices)
     }
     
@@ -295,6 +296,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             scaleToSave.accountId = userId
             scaleToSave.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
             scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
+            scaleToSave.password = scale.password
             var metaData = deviceDetails
             let scaleType = scale.bathScale?.scaleType ?? ""
             if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
@@ -777,8 +779,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         // Parse device data and determine protocol type and if it's new
         guard let deviceDetails = deviceData as? GGDeviceDetails else { return }
         
-        let device = mapDeviceDetailsToDevice(deviceDetails)
         let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(byScaleName: deviceDetails.deviceName)
+        let device = mapDeviceDetailsToDevice(deviceDetails, isA3Device: deviceDetails.protocolType == "A3")
         let protocolType = ProtocolType(rawValue: deviceDetails.protocolType ?? "") ?? .A6
         
         // Check if this is a known device
@@ -798,19 +800,19 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         deviceDiscoveredSubject.send(discoveryEvent)
     }
     
-    private func mapDeviceDetailsToDevice(_ deviceDetails: GGDeviceDetails) -> Device {
+    private func mapDeviceDetailsToDevice(_ deviceDetails: GGDeviceDetails, isA3Device: Bool = false) -> Device {
         return Device(
             id: UUID().uuidString,
             accountId: activeAccount?.accountId ?? "",
             mac: deviceDetails.macAddress,
             deviceName: deviceDetails.deviceName,
-            broadcastId: convertHexToInt(deviceDetails.broadcastId ?? ""),
+            broadcastId: isA3Device ? Int64(deviceDetails.broadcastId ?? "0") : convertHexToInt(deviceDetails.broadcastId ?? ""),
             broadcastIdString: deviceDetails.broadcastIdString,
             isConnected: false,
         )
     }
     
-    private func convertHexToInt(_ hex: String) -> Int64 {
+    func convertHexToInt(_ hex: String) -> Int64 {
         // Ensure even-length hex string
         let evenHex = hex.count % 2 == 0 ? hex : "0" + hex
         
@@ -826,6 +828,36 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // Step 3: Convert to Int64
         return Int64(reversedHex, radix: 16) ?? Int64(0)
+    }
+    
+    func convertIntToHex(_ value: Int64, protocolType: ProtocolType) -> String {
+        // Convert to hex string without leading 0x
+        var hex = String(value, radix: 16)
+
+        switch protocolType {
+        case .R4:
+            // Pad to 12 characters (6 bytes)
+            hex = String(repeating: "0", count: max(0, 12 - hex.count)) + hex
+        default:
+            if hex.count < 8 {
+                hex = String(repeating: "0", count: 8 - hex.count) + hex
+            } else if hex.count > 8 && hex.count < 12 {
+                hex = String(repeating: "0", count: 12 - hex.count) + hex
+            }
+        }
+
+        // Split into 2-character chunks
+        var bytes: [String] = []
+        for i in stride(from: 0, to: hex.count, by: 2) {
+            let start = hex.index(hex.startIndex, offsetBy: i)
+            let end = hex.index(start, offsetBy: 2)
+            bytes.append(String(hex[start..<end]))
+        }
+
+        // Reverse and join to simulate little-endian format
+        let reversedHex = bytes.reversed().joined().uppercased()
+
+        return reversedHex
     }
     
     private func mapProtocolToScaleType(_ protocolType: String) -> ScaleSourceType {
@@ -863,7 +895,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return nil
         }
-        
         // Create timestamp in ISO8601 format
         let entryDate = ggEntry.date != nil ?
         Date(timeIntervalSince1970: TimeInterval(ggEntry.date!) / 1000) :
@@ -889,7 +920,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             bodyFat: roundMetric(ggEntry.bodyFat),
             muscleMass: roundMetric(ggEntry.muscleMass),
             water: roundMetric(ggEntry.water),
-            bmi: roundMetric(ggEntry.bmi) ?? ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
+            bmi: ggEntry.bmi > 0 ? roundMetric(ggEntry.bmi) : ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
             source: sourceType.rawValue
         )
         // Create BathScaleMetric with detailed metrics
@@ -954,11 +985,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     private func calculateHeightCm(height: String?) -> Int {
         let storedHeight: Int = {
-            if let heightStr = height, let h = Int(heightStr) { return h }
+            if let heightStr = height,
+               let h = Double(heightStr) {
+                return Int(round(h)) // not optional, so no need for if-let
+            }
             return 680 // fallback: 68.0 inches (5'8")
         }()
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
+
     
     /// Creates ScanData from Account using proper conversions and types
     func createScanData(from account: Account?) -> ScanData? {
@@ -1030,7 +1065,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Bluetooth (A3) scales have a resolution of .2 lbs, so they require a specific formula to match
             return Int(ConversionTools.convertBluetoothToStored(Double(weightInKg)) * 10)
         case .A6:
-            return Int(ConversionTools.convertKgToStored(Double(weightInKg)) * 10)
+            return Int(ConversionTools.convertKgToStored(Double(weightInKg)))
         case .R4:
             return Int(ConversionTools.convertLbsToStored(Double(weight)))
         }
@@ -1073,7 +1108,7 @@ private extension BluetoothService {
         return GGBTDevice(
             name: device.deviceName ?? "",
             broadcastId: bid,
-            password: device.password,
+            password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
             token: device.token,
             userNumber: Int(device.userNumber ?? "0") ?? 0,
             preference: mapToGGPreference(device.r4ScalePreference),

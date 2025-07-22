@@ -39,6 +39,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func clearAllData() async {
         try? await localRepo.deleteAllEntries()
     }
+    
+    /// Clears the last sync timestamp for the current user.
+    func clearLastSyncTimestamp() async throws {
+        let accountId = try await getAccountId()
+        try await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
+    }
 
     func saveNewEntry(_ entry: Entry) async throws {
         entry.isSynced = false
@@ -243,7 +249,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // 2. Fetch latest from remote and merge, using last sync timestamp
             let lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            print("Last sync timestamp: \(String(describing: lastSyncTimestamp))", "Last sync timestamp")
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            print("Fetched remote operations: \(remoteOps.operations.count) operations", "Remote operations count Last sync timestamp")
             await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
 
             // 5. Update sync timestamp and local state
@@ -348,7 +356,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
         }
-
+        print("Grouped operations by timestamp: \(groupedOps.keys.count) unique timestamps Last sync timestamp", groupedOps.count)
         for (timestamp, ops) in groupedOps {
             guard !timestamp.isEmpty else { continue }
 
