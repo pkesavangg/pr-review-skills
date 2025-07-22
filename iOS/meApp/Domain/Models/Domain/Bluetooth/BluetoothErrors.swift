@@ -129,6 +129,8 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Cannot perform operation while scan is in progress"
         case .deviceAlreadyConnected:
             return "Device is already connected"
+        case .getDeviceLogsFailed(_):
+            return "Get device logs failed"
         }
     }
 }
