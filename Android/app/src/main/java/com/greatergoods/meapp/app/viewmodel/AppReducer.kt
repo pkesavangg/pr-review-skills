@@ -12,7 +12,8 @@ import com.greatergoods.meapp.proto.ThemeMode
 data class AppState(
   val fcmToken: String = "",
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
-  val isScaleDiscovered: Boolean = false
+  val isScaleDiscovered: Boolean = false,
+  val sku: String = "0412",
 ) : IReducer.State
 
 /**
@@ -20,6 +21,7 @@ data class AppState(
  */
 sealed interface AppIntent : IReducer.Intent {
   data class SetScaleDiscovered(val isScaleDiscovered: Boolean) : AppIntent
+  data class SetSku(val sku: String) : AppIntent
 
   data object OnPopUpConnect : AppIntent
   data object OnPopUpDismiss : AppIntent
@@ -37,7 +39,8 @@ class AppReducer() : IReducer<AppState, AppIntent> {
     intent: AppIntent
   ): AppState? {
     return when (intent) {
-      is AppIntent.SetScaleDiscovered -> return state.copy(isScaleDiscovered = intent.isScaleDiscovered)
+      is AppIntent.SetSku -> state.copy(sku = intent.sku)
+      is AppIntent.SetScaleDiscovered -> state.copy(isScaleDiscovered = intent.isScaleDiscovered)
       else -> state
     }
   }

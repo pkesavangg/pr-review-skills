@@ -19,7 +19,6 @@ import com.dmdbrands.library.ggbluetooth.model.GGWifiSetupResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
-import kotlin.collections.toMutableMap
 
 interface GGCacheDevice
 
@@ -37,11 +36,11 @@ class GGDeviceService @Inject constructor(
   val deviceCache: StateFlow<Map<String, GGCacheDevice>> = _deviceCache
 
   // Function to add a device to the cache
-  fun addCacheDevice(broascastId: String?, device: GGCacheDevice) {
-    if (broascastId == null) return
+  fun addCacheDevice(broadcastId: String?, device: GGCacheDevice) {
+    if (broadcastId == null) return
     val currentCache = _deviceCache.value
     val updatedCache = currentCache.toMutableMap()
-    updatedCache[broascastId] = device
+    updatedCache[broadcastId] = device
     _deviceCache.value = updatedCache
   }
 

@@ -28,6 +28,7 @@ import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
@@ -35,7 +36,6 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleUsers.strings.ScaleUsersStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.StringUtil.cleanCorruptedChars

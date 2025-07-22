@@ -67,7 +67,7 @@ enum class BtScaleSetupStep {
 enum class LcbtScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
-  STEP_ON,
+  WAKEUP,
   CONNECTING_BLUETOOTH,
   SETUP_FINISHED
 }

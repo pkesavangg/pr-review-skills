@@ -6,8 +6,8 @@ import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.common.model.DashboardKey

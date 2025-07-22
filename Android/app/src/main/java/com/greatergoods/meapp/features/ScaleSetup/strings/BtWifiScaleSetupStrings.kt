@@ -1,6 +1,6 @@
 package com.greatergoods.meapp.features.ScaleSetup.strings
 
-import com.greatergoods.meapp.features.common.components.ConnectionState
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 
 object BtWifiScaleSetupStrings {
   object WakeupScale {
@@ -92,6 +92,5 @@ object BtWifiScaleSetupStrings {
     const val Title = "User Limit Exceeded!"
     const val Subtitle = "Delete an inactive user to add yourself to the scale."
     const val UsernameLabel = "User name"
-
   }
 }
