@@ -132,6 +132,10 @@ struct ToastStrings {
     static let deleted = "Deleted"
     static let saved = "Saved"
     static let scaleNameUpdated = "Scale name updated."
+    static let logsSent = "Logs sent to Greater Goods"
+    static let synced = "Entries successfully resynced."
+    static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
+    static let resyncErrorTitle = "Not Connected to Wi-Fi"
 }
 
 /// Constants for help modal strings used in the app
@@ -586,6 +590,10 @@ struct LoaderStrings {
     static let syncing = "Syncing..."
     static let deletingScale = "Deleting scale..."
     static let deletingEntry = "Deleting entry..."
+    static let savingScale = "Saving scale..."
+    static let exiting = "Exiting..."
+    static let sendingLogs = "Sending logs..."
+    static let resync = "Resyncing Data..."
 }
 
 struct URLStrings {
@@ -721,8 +729,17 @@ struct AppAssets {
     static let userInfoScreen = "0412UserInfoScreen"
     static let wgLogo = "wgLogo"
     static let stepOnGif = "stepOnGif"
+    static let btStepOnGif = "btStepOnGif"
     static let accuCheck = "accuCheck"
     static let accuCheckTickLarge = "accuCheckTickLarge"
+    
+    // MARK: - Bluetooth Setup
+    static let setupPressUnitButtonGifName: (String) -> String = { sku in
+        "\(sku)-Setup-PressUnitButton"
+    }
+    static let setupSetUserNumberGifName: (String) -> String = { sku in
+        "\(sku)-Setup-SetUserNumber"
+    }
 }
 
 /// Constants used in the AppSync entry result confirmation card

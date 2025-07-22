@@ -13,7 +13,7 @@ struct HistoryListScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var router = Router<HistoryRoute>()
     @StateObject private var store = HistoryStore()
-
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
@@ -30,6 +30,12 @@ struct HistoryListScreen: View {
           .background(theme.backgroundSecondary)
           .onAppear {
               store.loadMonths()
+          }
+          // Re-evaluate modal presentation whenever the selected tab changes.
+          .onChange(of: tabViewModel.selectedTab) {
+              if tabViewModel.selectedTab == .history {
+                  store.loadMonths()
+              }
           }
         }
         .environmentObject(Theme.shared)

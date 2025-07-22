@@ -29,6 +29,11 @@ struct ScaleSetupStrings {
         "Error Code: \(errorCode)"
     }
     
+    struct UserNumberSelectionViewStrings {
+        static let title = "Choose your user number."
+        static let description = "Pick one that no one else is using for this scale."
+    }
+    
     /// Finish view strings
     struct FinishViewStrings {
         static let title = "Your scale is paired and ready to go!"

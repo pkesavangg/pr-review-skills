@@ -13,19 +13,19 @@ struct BluetoothScaleSetupScreen: View {
     @StateObject private var setupStore = BluetoothScaleSetupStore()
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
-
+    
     // MARK: - Input
     let sku: String
-
+    
     private let commonLang = CommonStrings.self
-
+    
     // Custom init so callers can omit optional params.
     init(sku: String) {
         self.sku = sku
     }
-
+    
     private var stepViews: [AnyView] { setupStore.stepViews }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
@@ -46,12 +46,12 @@ struct BluetoothScaleSetupScreen: View {
                 onTrailingTap: {},
                 canShowPresentationIndicator: true
             )
-
+            
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews
-            )
-
+                views: stepViews) { index in
+                    setupStore.steps[index] != .selectUser
+                }
             footerButtons
                 .padding(.spacingSM)
         }
@@ -62,7 +62,7 @@ struct BluetoothScaleSetupScreen: View {
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
     }
-
+    
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
@@ -72,9 +72,9 @@ struct BluetoothScaleSetupScreen: View {
                        action: {
                 withAnimation { setupStore.moveToPreviousStep() }
             })
-
+            
             Spacer()
-
+            
             ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
@@ -89,4 +89,4 @@ struct BluetoothScaleSetupScreen: View {
 #Preview {
     BluetoothScaleSetupScreen(sku: "0375")
         .environmentObject(Theme.shared)
-} 
+}
