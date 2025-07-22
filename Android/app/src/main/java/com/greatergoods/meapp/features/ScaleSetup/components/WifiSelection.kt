@@ -199,7 +199,7 @@ private fun WifiItem(
       textType = TextType.Body,
     )
     Spacer(modifier = Modifier.weight(1f))
-    if (isConfigured || onClick != null) {
+    if (!isConfigured) {
       AppIcon(
         id = AppIcons.Default.RightCaret,
         contentDescription = "Right caret",

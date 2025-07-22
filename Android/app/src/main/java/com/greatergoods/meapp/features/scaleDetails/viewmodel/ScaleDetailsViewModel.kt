@@ -12,6 +12,7 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.helper.StringUtil.cleanCorruptedChars
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.SCALES
@@ -103,6 +104,17 @@ constructor(
     observePermissions()
     val scaleName = state.value.scale?.nickname ?: SCALES.find { it.sku == state.value.scale?.sku }!!.productName
     handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+    configureR4ScaleDetails()
+  }
+
+  private fun configureR4ScaleDetails() {
+    viewModelScope.launch {
+      if (state.value.scale?.device?.wifiMacAddress != null) {
+        ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
+          handleIntent(ScaleDetailsIntent.SetConnectedSSID(ssid.cleanCorruptedChars()))
+        }
+      }
+    }
   }
 
   private fun openWiFiSetup() {

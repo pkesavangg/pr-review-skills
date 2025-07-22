@@ -289,7 +289,7 @@ fun ScaleDetailsScreenContent(
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
-                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    type = SettingsItemType.Action(state.connectedSSID),
                     enabled = device?.device?.isWifiConfigured ?: false,
                     onClick = {
                       handleIntent(
@@ -301,7 +301,7 @@ fun ScaleDetailsScreenContent(
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFiMacAddress,
-                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    type = SettingsItemType.Action(),
                     enabled = device?.device?.isWifiConfigured ?: false,
                     onClick = {
                       handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))

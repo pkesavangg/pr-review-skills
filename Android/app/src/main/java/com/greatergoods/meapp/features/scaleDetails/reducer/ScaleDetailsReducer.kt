@@ -37,6 +37,7 @@ data class ScaleDetailsState(
   val scaleNameForm: FormGroup<ScaleNameDialogFormControls>,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val settingsScreenStep: ScaleSettingSteps = ScaleSettingSteps.NONE,
+  val connectedSSID: String = "",
 ) : IReducer.State
 
 /**
@@ -46,6 +47,8 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   data class SetScaleInfo(
     val scale: Device,
   ) : ScaleDetailsIntent
+
+  data class SetConnectedSSID(val connectedSSID: String) : ScaleDetailsIntent
 
   object EditName : ScaleDetailsIntent
 
@@ -79,6 +82,7 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
     intent: ScaleDetailsIntent,
   ): ScaleDetailsState? =
     when (intent) {
+      is ScaleDetailsIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.connectedSSID)
       is ScaleDetailsIntent.SetScaleInfo -> state.copy(scale = intent.scale)
       ScaleDetailsIntent.EditName -> state.copy()
       ScaleDetailsIntent.DeleteScale -> state.copy()
