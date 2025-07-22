@@ -28,8 +28,10 @@ import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
 import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -73,6 +75,7 @@ constructor(
 
   override fun provideInitialState(): AppState = AppState()
   private var canShowPopUp = true
+  private var sku: String? = null
   private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
   private var deviceSubscribeJob: Job? = null
@@ -114,13 +117,23 @@ constructor(
 
   private fun onPopUpConnect() {
     viewModelScope.launch {
-      navigationService.navigateTo(
-        AppRoute.ScaleSetup.BtWifiScaleSetup(
-          "0412",
-          BtWifiSetupStep.CONNECTING_BLUETOOTH,
-          discoveredBroadcastId,
-        ),
-      )
+      if (sku == "0412") {
+        navigationService.navigateTo(
+          AppRoute.ScaleSetup.BtWifiScaleSetup(
+            "0412",
+            BtWifiSetupStep.CONNECTING_BLUETOOTH,
+            discoveredBroadcastId,
+          ),
+        )
+      } else if (sku != null) {
+        navigationService.navigateTo(
+          AppRoute.ScaleSetup.LcbtScaleSetup(
+            sku!!,
+            discoveredBroadcastId,
+            LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+          ),
+        )
+      }
       onPopUpDismiss()
     }
   }
@@ -337,12 +350,19 @@ constructor(
 
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
-          if (canShowPopUp && data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
+          if (canShowPopUp && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
             if (currentRoute !is AppRoute.ScaleSetup) {
               handleIntent(AppIntent.SetScaleDiscovered(true))
+              handleIntent(AppIntent.SetSku(data.getSKU()))
+              sku = data.getSKU()
               discoveredBroadcastId = data.broadcastId
-              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizeDevice(data))
+              val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
+                device = data,
+                deviceType = ScaleSetupType.Lcbt.value,
+                sku = sku,
+              )
+              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
               canShowPopUp = false
             }
           }

@@ -67,7 +67,7 @@ fun MeApp() {
         onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
         containerColor = MeTheme.colorScheme.primaryBackground,
       ) {
-        ScaleDiscoveredModal("0412") {
+        ScaleDiscoveredModal(sku = uiState.sku) {
           appViewModel.handleIntent(AppIntent.OnPopUpConnect)
         }
       }

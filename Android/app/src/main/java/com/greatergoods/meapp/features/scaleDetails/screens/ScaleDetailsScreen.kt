@@ -194,7 +194,7 @@ fun ScaleDetailsScreenContent(
             },
           )
         }
-        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED) {
+        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,

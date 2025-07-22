@@ -20,6 +20,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupStrings
@@ -30,7 +31,6 @@ import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelpe
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.helper.StringUtil.formatTimestamp
