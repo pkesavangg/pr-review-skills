@@ -213,7 +213,7 @@ constructor(
         startObservingDevices()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
-        handleIntent(LcbtScaleSetupIntent.AlterConnectionState(ConnectionState.ErrorWithMessage("WAKEUP_002")))
+        handleIntent(LcbtScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
       }
     }
   }
@@ -244,7 +244,7 @@ constructor(
         AppLog.e(TAG, "Error during bluetooth connection", e.toString())
         handleIntent(
           LcbtScaleSetupIntent.AlterConnectionState(
-            ConnectionState.ErrorWithMessage("BT_002"),
+            ConnectionState.Failed.ErrorWithMessage("BT_002"),
           ),
         )
       }

@@ -5,17 +5,17 @@ import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 object LcbtScaleSetupStrings {
   object WakeupScale {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Connection Error"
+      if (connectionState is ConnectionState.Failed) "Connection Error"
       else "Wake Your Scale"
 
     fun Subtitle(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) null
+      if (connectionState is ConnectionState.Failed) null
       else "Step on the scale, so your phone can find it."
   }
 
   object ConnectingBluetooth {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Connection Error"
+      if (connectionState is ConnectionState.Failed) "Connection Error"
       else "Connecting to Bluetooth"
   }
 

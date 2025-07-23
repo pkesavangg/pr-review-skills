@@ -131,14 +131,14 @@ fun LcbtScaleSetupScreenContent(
                 connectionState = state.setupState.connectionState,
                 title = LcbtScaleSetupStrings.WakeupScale.Title(state.setupState.connectionState),
                 subtitle = LcbtScaleSetupStrings.WakeupScale.Subtitle(state.setupState.connectionState),
-                errorCode = if (state.setupState.connectionState is ConnectionState.ErrorWithMessage) state.setupState.connectionState.message else null,
-                scaleImageSku = if (state.setupState.connectionState == ConnectionState.Error)
+                errorCode = if (state.setupState.connectionState is ConnectionState.Failed.ErrorWithMessage) state.setupState.connectionState.message else null,
+                scaleImageSku = if (state.setupState.connectionState is ConnectionState.Failed)
                   state.sku else null,
-                showIndicationOnly = state.setupState.connectionState != ConnectionState.Error,
-                primaryButtonClick = if (state.setupState.connectionState == ConnectionState.Error) {
+                showIndicationOnly = state.setupState.connectionState !is ConnectionState.Failed,
+                primaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
                   { onIntent(LcbtScaleSetupIntent.TryAgain) }
                 } else null,
-                secondaryButtonClick = if (state.setupState.connectionState == ConnectionState.Error) {
+                secondaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
                   { onIntent(LcbtScaleSetupIntent.TryAgain) }
                 } else null,
               )
@@ -149,10 +149,10 @@ fun LcbtScaleSetupScreenContent(
                 connectionState = state.setupState.connectionState,
                 title = LcbtScaleSetupStrings.ConnectingBluetooth.Title(state.setupState.connectionState),
                 scaleImageSku = state.sku,
-                primaryButtonClick = if (state.setupState.connectionState == ConnectionState.Error) {
+                primaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
                   { onIntent(LcbtScaleSetupIntent.TryAgain) }
                 } else null,
-                secondaryButtonClick = if (state.setupState.connectionState == ConnectionState.Error) {
+                secondaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
                   { onIntent(LcbtScaleSetupIntent.TryAgain) }
                 } else null,
               )
