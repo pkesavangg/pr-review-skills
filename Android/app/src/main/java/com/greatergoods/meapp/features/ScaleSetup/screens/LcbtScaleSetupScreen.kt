@@ -21,10 +21,10 @@ import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.LCBTScaleSetupState
-import com.greatergoods.meapp.features.ScaleSetup.reducer.LcbtScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.strings.LcbtScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.ScaleSetup.viewmodel.LcbtScaleSetupViewModel
+import com.greatergoods.meapp.features.ScaleSetup.viewmodel.LcbtBLESetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
@@ -38,13 +38,14 @@ fun LcbtScaleSetupScreen(
   broadcastId: String? = null,
   initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
 ) {
-  val viewModel: LcbtScaleSetupViewModel =
-    hiltViewModel<LcbtScaleSetupViewModel, LcbtScaleSetupViewModel.Factory> { factory ->
+  val viewModel: LcbtBLESetupViewModel =
+    hiltViewModel<LcbtBLESetupViewModel, LcbtBLESetupViewModel.Factory> { factory ->
       factory.create(sku, broadcastId, initialStep)
     }
   val state by viewModel.state.collectAsState()
   LcbtScaleSetupScreenContent(
     state = state,
+    sku = sku,
     onIntent = viewModel::handleIntent,
   )
 }
@@ -52,18 +53,20 @@ fun LcbtScaleSetupScreen(
 @Composable
 fun LcbtScaleSetupScreenContent(
   state: LCBTScaleSetupState,
-  onIntent: (LcbtScaleSetupIntent) -> Unit,
+  sku: String,
+  onIntent: (ScaleSetupIntent) -> Unit,
 ) {
+  val setupState = state.scaleSetupState.setupState
   val focusManager = LocalFocusManager.current
-  val pagerState = rememberPagerState { LCBTScaleSetupState.steps.size }
+  val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
 
   // Sync ViewModel state to Pager state
-  LaunchedEffect(state.setupState.step) {
+  LaunchedEffect(setupState.step) {
     if (!isAnimating.value) {
       isAnimating.value = true
       try {
-        pagerState.animateScrollToPage(state.setupState.step.ordinal)
+        pagerState.animateScrollToPage(setupState.step.ordinal)
       } finally {
         delay(100)
         isAnimating.value = false
@@ -73,35 +76,35 @@ fun LcbtScaleSetupScreenContent(
 
 
   ScaleSetupHeader(
-    sku = state.sku,
-    onBack = { onIntent(LcbtScaleSetupIntent.ExitSetup(false)) },
-    onHelp = { onIntent(LcbtScaleSetupIntent.OpenHelp) },
+    sku = sku,
+    onBack = { onIntent(ScaleSetupIntent.ExitSetup(false)) },
+    onHelp = { onIntent(ScaleSetupIntent.OpenHelp) },
   ) {
     HorizontalPagerWithBottomNavigation(
-      steps = LCBTScaleSetupState.steps,
+      steps = state.scaleSetupState.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
       leadingContent = {
-        if (state.isFirstStep || state.setupState.step == LcbtScaleSetupStep.PERMISSIONS) {
+        if (state.scaleSetupState.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.backButton,
             size = ButtonSize.Small,
-            enabled = !state.isFirstStep,
-            onClick = { onIntent(LcbtScaleSetupIntent.Back) },
+            enabled = !state.scaleSetupState.isFirstStep,
+            onClick = { onIntent(ScaleSetupIntent.Back) },
           )
         }
       },
       trailingContent = {
-        if (state.isFirstStep || state.setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.isLastStep) {
+        if (state.scaleSetupState.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.scaleSetupState.isLastStep) {
           AppButton(
             type = ButtonType.PrimaryFilled,
-            label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
+            label = if (state.scaleSetupState.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
-            enabled = state.setupState.connectionState == ConnectionState.Success || state.isFirstStep || state.isLastStep,
+            enabled = setupState.connectionState == ConnectionState.Success || state.scaleSetupState.isFirstStep || state.scaleSetupState.isLastStep,
             onClick = {
               focusManager.clearFocus()
-              onIntent(LcbtScaleSetupIntent.Next)
+              onIntent(ScaleSetupIntent.Next)
             },
           )
         }
@@ -115,45 +118,45 @@ fun LcbtScaleSetupScreenContent(
         ) {
           when (step) {
             LcbtScaleSetupStep.SCALE_INFO -> {
-              ScaleInfo(sku = state.sku)
+              ScaleInfo(sku = sku)
             }
 
             LcbtScaleSetupStep.PERMISSIONS -> {
               ScalePermissions(
-                sku = state.sku,
-                permissions = state.permissions,
-                onRequestPermission = { onIntent(LcbtScaleSetupIntent.RequestPermission(it)) },
+                sku = sku,
+                permissions = state.scaleSetupState.permissions,
+                onRequestPermission = { onIntent(ScaleSetupIntent.RequestPermission(it)) },
               )
             }
 
             LcbtScaleSetupStep.WAKEUP -> {
               ScaleSetupLoader(
-                connectionState = state.setupState.connectionState,
-                title = LcbtScaleSetupStrings.WakeupScale.Title(state.setupState.connectionState),
-                subtitle = LcbtScaleSetupStrings.WakeupScale.Subtitle(state.setupState.connectionState),
-                errorCode = if (state.setupState.connectionState is ConnectionState.Failed.ErrorWithMessage) state.setupState.connectionState.message else null,
-                scaleImageSku = if (state.setupState.connectionState is ConnectionState.Failed)
-                  state.sku else null,
-                showIndicationOnly = state.setupState.connectionState !is ConnectionState.Failed,
-                primaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(LcbtScaleSetupIntent.TryAgain) }
+                connectionState = setupState.connectionState,
+                title = LcbtScaleSetupStrings.WakeupScale.Title(setupState.connectionState),
+                subtitle = LcbtScaleSetupStrings.WakeupScale.Subtitle(setupState.connectionState),
+                errorCode = if (setupState.connectionState is ConnectionState.Failed.ErrorWithMessage) setupState.connectionState.message else null,
+                scaleImageSku = if (setupState.connectionState is ConnectionState.Failed)
+                  sku else null,
+                showIndicationOnly = setupState.connectionState !is ConnectionState.Failed,
+                primaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
+                  { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
-                secondaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(LcbtScaleSetupIntent.TryAgain) }
+                secondaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
+                  { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
               )
             }
 
             LcbtScaleSetupStep.CONNECTING_BLUETOOTH -> {
               ScaleSetupLoader(
-                connectionState = state.setupState.connectionState,
-                title = LcbtScaleSetupStrings.ConnectingBluetooth.Title(state.setupState.connectionState),
-                scaleImageSku = state.sku,
-                primaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(LcbtScaleSetupIntent.TryAgain) }
+                connectionState = setupState.connectionState,
+                title = LcbtScaleSetupStrings.ConnectingBluetooth.Title(setupState.connectionState),
+                scaleImageSku = sku,
+                primaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
+                  { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
-                secondaryButtonClick = if (state.setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(LcbtScaleSetupIntent.TryAgain) }
+                secondaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
+                  { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
               )
             }
@@ -165,6 +168,8 @@ fun LcbtScaleSetupScreenContent(
                 setupFinished = true,
               )
             }
+
+            else -> null
           }
         }
       },
