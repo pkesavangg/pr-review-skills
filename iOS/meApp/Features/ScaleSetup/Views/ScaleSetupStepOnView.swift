@@ -1,5 +1,5 @@
 //
-//  BtSetupStepOnView.swift
+//  ScaleSetupStepOnView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 19/07/25.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-struct BtSetupStepOnView: View {
+struct ScaleSetupStepOnView: View {
     @Environment(\.appTheme) private var theme
-    var isEntrySynced: Bool = false
+    var isEntrySynced: Bool?
     private let lang = BluetoothSetupViewStrings.StepOnViewStrings.self
     private let appAssets = AppAssets.self
     
@@ -34,10 +34,11 @@ struct BtSetupStepOnView: View {
                         .frame(width: 370, height: 211)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                
-                Text(lang.syncingInfo(isEntrySynced))
-                    .fontOpenSans(.body1)
-                    .foregroundColor(theme.textBody)
+                if let isEntrySynced = isEntrySynced {
+                    Text(lang.syncingInfo(isEntrySynced))
+                        .fontOpenSans(.body1)
+                        .foregroundColor(theme.textBody)
+                }
             }
             .padding(.top, .spacingLG)
         }
@@ -45,5 +46,5 @@ struct BtSetupStepOnView: View {
 }
 
 #Preview {
-    BtSetupStepOnView()
+    ScaleSetupStepOnView()
 }

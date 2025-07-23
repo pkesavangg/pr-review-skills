@@ -307,7 +307,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     }
                 )
             case .stepOn:
-                return AnyView(StepOnView())
+                return AnyView(BtWifiSetupStepOnView())
             case .measurement:
                 return AnyView(
                     Group {
