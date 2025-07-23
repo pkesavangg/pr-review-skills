@@ -63,7 +63,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
-                return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType == .espTouchWifi){                                                
+                return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType == .espTouchWifi) {
                     // TODO: Implement on network change logic
                 })
             case .selectUser:

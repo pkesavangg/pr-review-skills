@@ -31,7 +31,6 @@ struct WifiPasswordView: View {
                     .padding(.bottom, .spacingLG)
                     
                     VStack {
-                        // For
                         if allowEditSsid {
                             AppInputField(
                                 config: TextInputConfig(
