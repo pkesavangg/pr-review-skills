@@ -307,8 +307,7 @@ class ScaleStore: ObservableObject {
 
     // MARK: - Scale Operations
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {
-        state.ui.isLoading = true
-        self.isLoading = true
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.deletingScale))
         
         do {
             try await dataManager.deleteScale(scaleId: scaleId)
@@ -324,8 +323,7 @@ class ScaleStore: ObservableObject {
             self.errorMessage = error.localizedDescription
         }
         
-        state.ui.isLoading = false
-        self.isLoading = false
+        notificationService.dismissLoader()
     }
 
     func saveScaleName(_ newName: String) async {
