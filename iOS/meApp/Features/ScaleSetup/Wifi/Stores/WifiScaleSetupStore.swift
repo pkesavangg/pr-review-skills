@@ -42,7 +42,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var isNextEnabled: Bool = true
     
     @Published var selectedUserNumber: Int?
-    @Published var selectedErrorCode: String?
+    @Published var selectedErrorCode: WifiErrorCode?
     @Published var selectedConnectionMode: WifiSetupOption = .none
     @Published var isApModeOnly: Bool = false
     
@@ -88,9 +88,11 @@ final class WifiScaleSetupStore: ObservableObject {
                 })
                 
             case .errorSelect:
-                return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode) { code in
+                return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode, onErrorSelected: { code in
                     self.selectedErrorCode = code
-                })
+                }, onClickButton: {
+                    self.moveToNextStep()
+                }))
             case .errorDetail:
                 return AnyView(WifiErrorCodeDetailView(errorCode: selectedErrorCode))
             case .stepOn:

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct WifiErrorCodeDetailView: View {
     @Environment(\.appTheme) private var theme
-    let errorCode: String?
+    let errorCode: WifiErrorCode?
     
     private let lang = WifiScaleSetupStrings.ErrorDetailViewStrings.self
     private let wifiSetuplang = WifiScaleSetupStrings.self
@@ -31,7 +31,7 @@ struct WifiErrorCodeDetailView: View {
     }
     
     private var titleSection: some View {
-        Text("\(lang.troubleshooting) - \(errorCode ?? "other")")
+        Text("\(lang.troubleshooting) - \(errorCode?.rawValue ?? "other")")
             .fontOpenSans(.heading4)
             .foregroundColor(theme.textHeading)
             .multilineTextAlignment(.leading)
@@ -45,7 +45,7 @@ struct WifiErrorCodeDetailView: View {
                     noteSection(text: detail.note)
                         .padding(.bottom, .spacingXS)
 
-                    let numberedErrorCodes = ["t206", "t163", "t323"]
+                    let numberedErrorCodes: [WifiErrorCode] = [.t206, .t163, .t323]
                     let isNumbered = numberedErrorCodes.contains(code)
 
                     ForEach(Array(detail.messages.enumerated()), id: \.offset) { index, message in
@@ -82,7 +82,7 @@ struct WifiErrorCodeDetailView: View {
 
 #Preview {
     VStack {
-        WifiErrorCodeDetailView(errorCode: "t204")
+        WifiErrorCodeDetailView(errorCode: .t204)
         WifiErrorCodeDetailView(errorCode: nil)
     }
     .environmentObject(Theme.shared)
