@@ -41,6 +41,10 @@ dependencies {
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   implementation(libs.androidx.hilt.navigation.fragment)
+
+  // Google Play Services Location
+  implementation(libs.play.services.location)
+
   api(libs.gg.bluetooth.android)
   // implementation(project(":ggBluetoothLibrary"))
   implementation(libs.androidx.datastore.preferences)
