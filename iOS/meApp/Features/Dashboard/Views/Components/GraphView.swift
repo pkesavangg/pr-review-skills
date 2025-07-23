@@ -28,11 +28,7 @@ struct GraphView: View {
 
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
-        if dashboardStore.hasEntriesButNoneInCurrentPeriod {
-            return DashboardStrings.noEntriesInPeriodMessage(dashboardStore.state.graph.selectedPeriod.rawValue)
-        } else {
-            return DashboardStrings.noEntriesMessage
-        }
+        return DashboardStrings.noEntriesMessage
     }
 
     var body: some View {
@@ -42,8 +38,11 @@ struct GraphView: View {
                     .foregroundColor(theme.textSubheading)
                     .padding(.leading, .spacingSM)
                     .padding(.vertical, .spacingXS)
-
-            chartView
+            if hasEntries {
+                chartView
+            } else {
+                emptyStateView
+            }
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes

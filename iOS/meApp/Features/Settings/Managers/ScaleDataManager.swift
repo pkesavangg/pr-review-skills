@@ -51,7 +51,7 @@ class ScaleDataManager: ObservableObject {
 
     func deleteScale(scaleId: String) async throws {
         try await scaleService.deleteDevice(scaleId, showToast: true)
-        await scaleService.syncAllScalesWithRemote()
+        await scaleService.pushLocalChangesToServer()
         await fetchScales()
     }
 
@@ -73,12 +73,12 @@ class ScaleDataManager: ObservableObject {
         objectWillChange.send()
     }
 
-    var passwordError: String? { 
-        state.wifiPasswordValidationForm.getError(for: state.wifiPasswordValidationForm.password) 
+    var passwordError: String? {
+        state.wifiPasswordValidationForm.getError(for: state.wifiPasswordValidationForm.password)
     }
 
-    var isFormValid: Bool { 
-        state.wifiPasswordValidationForm.isValid 
+    var isFormValid: Bool {
+        state.wifiPasswordValidationForm.isValid
     }
 
     // MARK: - Browser Operations

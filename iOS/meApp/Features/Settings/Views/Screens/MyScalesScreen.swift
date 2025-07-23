@@ -67,7 +67,37 @@ struct MyScalesScreen: View {
     private func determineScaleType(for scale: Device) -> ScaleType {
         return ScaleTypeHelper.determineScaleType(for: scale)
     }
-    
+
+    /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
+    /// - Parameters:
+    ///   - scale: The `ScaleItemInfo` that the user selected / submitted.
+    ///   - clearUI: When `true` the keyboard is dismissed and the add-scale form reset before navigation (used by the submit button path).
+    private func handleScaleSelection(_ scale: ScaleItemInfo, clearUI: Bool = false) {
+        // Closure executed once all pre-flight checks pass.
+        let proceed = {
+            if clearUI {
+                focusedField = nil
+                scaleStore.resetForm()
+            }
+            activeSheet = .setupFlow(scale)
+            hideKeyboard()
+        }
+
+        switch scale.setupType {
+        case .appSync:
+            // Prevent adding duplicate AppSync scales unless the user explicitly confirms.
+            let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
+            if isDuplicate {
+                scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
+            } else {
+                proceed()
+            }
+        default:
+            // For other setup types we can continue immediately.
+            proceed()
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -118,28 +148,7 @@ struct MyScalesScreen: View {
                             // Find the scale matching the entered model number.
                             guard let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) else { return }
                             
-                            // Proceed to setup: clear UI state and show setup flow.
-                            let proceed = {
-                                focusedField = nil
-                                hideKeyboard()
-                                activeSheet = .setupFlow(scale)
-                                scaleStore.resetForm()
-                            }
-                            
-                            switch scale.setupType {
-                            case .appSync:
-                                // If scale is already paired, show alert; else proceed directly.
-                                let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
-                                if isDuplicate {
-                                    scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
-                                } else {
-                                    proceed()
-                                }
-                                
-                            default:
-                                // For other setup types, always proceed without this check it handled in the setup.
-                                proceed()
-                            }
+                            handleScaleSelection(scale, clearUI: true)
                         }
                     )
                     .padding(.bottom, .spacingSM)
@@ -164,15 +173,7 @@ struct MyScalesScreen: View {
                         ChooseYourScaleView { scale in
                             // Delay so the scale list sheet dismisses before presenting the next one
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
-                                let proceed = {
-                                    activeSheet = .setupFlow(scale)
-                                }
-                                if isDuplicate {
-                                    scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
-                                } else {
-                                    proceed()
-                                }
+                                handleScaleSelection(scale)
                             }
                         }
                     case .setupFlow(let scale):
@@ -204,6 +205,9 @@ struct MyScalesScreen: View {
                                         await scaleStore.forceRefreshDeviceData()
                                     }
                                 }
+                        case .bluetooth:
+                            BluetoothScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         default:
                             // TODO: Handle other setup types
                             VStack(spacing: .spacingMD) {

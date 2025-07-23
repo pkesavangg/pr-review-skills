@@ -80,7 +80,7 @@ fun AppsyncScaleSetupScreenContent(
       }
     }
 
-    if(state.currentStep == AppsyncScaleSetupStep.OPEN_CAMERA){
+    if (state.currentStep == AppsyncScaleSetupStep.OPEN_CAMERA) {
       isScanning = true
       coroutineScope.launch {
         try {
@@ -108,7 +108,7 @@ fun AppsyncScaleSetupScreenContent(
       steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
-      leadingContent = when (state.currentStep)  {
+      leadingContent = when (state.currentStep) {
         AppsyncScaleSetupStep.OPEN_CAMERA -> null
         else -> {
           {
@@ -122,7 +122,7 @@ fun AppsyncScaleSetupScreenContent(
           }
         }
       },
-      trailingContent = when (state.currentStep)  {
+      trailingContent = when (state.currentStep) {
         AppsyncScaleSetupStep.OPEN_CAMERA -> null
         else -> {
           {
@@ -133,7 +133,7 @@ fun AppsyncScaleSetupScreenContent(
               enabled = state.isNextEnabled || !isScanning,
               onClick = {
                 focusManager.clearFocus()
-                if(state.isLastStep) {
+                if (state.isLastStep) {
                   onIntent(AppsyncScaleSetupIntent.ExitSetup(true))
                 } else {
                   onIntent(AppsyncScaleSetupIntent.Next)
@@ -179,6 +179,7 @@ fun AppsyncScaleSetupScreenContent(
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.UserNumberMessage,
                   textType = TextType.Body,
+                  canApplyUppercaseStyle = true,
                 )
               }
               Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
@@ -189,6 +190,7 @@ fun AppsyncScaleSetupScreenContent(
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.BodyCompMessage,
                   textType = TextType.Body,
+                  canApplyUppercaseStyle = true,
                 )
               }
               Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
@@ -206,6 +208,7 @@ fun AppsyncScaleSetupScreenContent(
               subtitle = AppsyncSetupStrings.StepOn.Message,
             )
           }
+
           AppsyncScaleSetupStep.SETUP_FINISHED -> {
             SetupContent(
               title = AppsyncSetupStrings.SetupComplete.Title,
@@ -214,6 +217,7 @@ fun AppsyncScaleSetupScreenContent(
               supportingImage = AppIcons.Setup.AppSyncNavBar,
             )
           }
+
           else -> Unit
         }
       },

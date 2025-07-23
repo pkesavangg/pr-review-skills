@@ -1,11 +1,14 @@
 package com.greatergoods.meapp.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.text.style.TextAlign
 import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
@@ -21,16 +24,15 @@ fun ScaleDiscoveredModal(
 
   val scaleName = SCALES.find { it.sku == sku }!!.productName
   Column(
-    modifier = modifier,
+    modifier = modifier.fillMaxWidth().padding(bottom = spacing.x3l),
     verticalArrangement = Arrangement.spacedBy(spacing.md),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     AppScaleImage(
       sku = sku,
       scaleImageSize = ScaleImageSize.Large,
-      modifier = Modifier.padding(top = spacing.md)
+      modifier = Modifier.padding(top = spacing.md),
     )
-    Column {
       AppText(
         text = AppPopupStrings.ScaleDiscoveredPopup.Title,
         textType = TextType.ListTitle2,
@@ -41,7 +43,6 @@ fun ScaleDiscoveredModal(
         textType = TextType.Body,
         textAlign = TextAlign.Center,
       )
-    }
 
     AppButton(
       label = "Connect",

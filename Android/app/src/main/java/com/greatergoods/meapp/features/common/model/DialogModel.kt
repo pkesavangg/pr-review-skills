@@ -46,7 +46,7 @@ sealed class DialogModel(
      * @param delayMillis Delay before next dialog (ms).
      */
     data class Confirm(
-        val title: String,
+        val title: String? = null,
         val message: String,
         val primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
         val confirmText: String = "Yes",

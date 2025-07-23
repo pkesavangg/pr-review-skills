@@ -3,6 +3,8 @@ package com.greatergoods.meapp.core.navigation
 import androidx.navigation3.runtime.NavKey
 import com.example.nav3integration.PublicRoute
 import com.greatergoods.meapp.domain.model.storage.entry.DashboardMetric
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.metricinfo.MetricInfoSource
 import com.greatergoods.meapp.proto.MetricKey
 import kotlinx.serialization.Serializable
@@ -152,6 +154,8 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class BtWifiScaleSetup(
       val sku: String,
+      val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+      val broadcastId: String? = null
     ) : ScaleSetup()
 
     @Serializable
@@ -162,6 +166,8 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class LcbtScaleSetup(
       val sku: String,
+      val broadcastId: String? = null,
+      val initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
     ) : ScaleSetup()
 
     @Serializable

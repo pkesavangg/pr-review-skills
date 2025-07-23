@@ -39,6 +39,7 @@ data class DeviceEntity(
   val deviceName: String?,
   val deviceType: String?,
   val broadcastId: Long?,
+  val broadcastIdString: String?,
   val userNumber: String?,
   val protocolType: String?,
   val createdAt: String?,

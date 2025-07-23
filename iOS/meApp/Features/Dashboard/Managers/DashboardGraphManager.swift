@@ -20,6 +20,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastVisibleOpsScrollPosition: Date?
     private var lastVisibleOpsPeriod: TimePeriod?
     private var lastChartData: [GraphSeries] = []
+    private var lastChartDataWeightRange: ClosedRange<Double>?
+    private var lastChartDataSelectedMetric: String?
+
+    // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
     private var lastYAxisScale: YAxisScale?
     private var lastXAxisValues: [Date] = []
@@ -57,45 +61,45 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleChartSelection(at selectedDate: Date?) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
-        
+
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             state.clearSelection()
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection cleared")
             return
         }
-        
+
         // Hide any existing crosshair first
         state.showCrosshair = false
         state.selectedXValue = selectedDate
-        
+
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
     }
 
     /// Handles complete chart selection including finding closest point and updating metrics
     /// This method should be called from the DashboardStore with the necessary dependencies
-    func handleCompleteChartSelection(at selectedDate: Date, 
+    func handleCompleteChartSelection(at selectedDate: Date,
                                      operations: [BathScaleWeightSummary],
                                      updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
                                      resetMetrics: @escaping () -> Void) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
-        
+
         // Hide any existing crosshair first
         state.showCrosshair = false
-        
+
         guard !operations.isEmpty else { return }
-        
+
         // Find the closest data point to the selected date
         let selectedBin = operations.min { bin1, bin2 in
             abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
         }
-        
+
         guard let selectedBin = selectedBin else { return }
-        
+
         // Set the selected point and show crosshair
         updateSelectedPoint(selectedBin)
-        
+
         // Update metrics with the selected point's values
         do {
             try await updateMetrics(selectedBin)
@@ -131,9 +135,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .idle:
             state.isScrolling = false
             state.hasDetectedScrollInCurrentGesture = false
-            if let finalPosition = self.latestScrollPosition {
-                self.state.xScrollPosition = finalPosition
-                self.latestScrollPosition = nil
+
+            // Clear selection state for better UX
+            state.clearSelection()
+
+            // Clear chart data cache to ensure fresh data for new visible range
+            clearChartDataCache()
+
+             if let finalPosition = self.latestScrollPosition {
+                    self.state.xScrollPosition = finalPosition
+                    self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
+                    self.latestScrollPosition = nil
             }
             state.updateScrollState(isScrolling: false)
         case .tracking:
@@ -156,6 +168,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
+
+                // Clear chart data cache to ensure fresh data for new visible range
+                self.clearChartDataCache()
+
+                // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.latestScrollPosition = nil
@@ -170,10 +187,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
-        if (state.isScrolling) && !lastChartData.isEmpty {
-            return lastChartData
-        }
-        var series: [GraphSeries] = []
+
+        // Get weight values for current normalization check
         let weightValues = operations.map { summary -> Double in
             if isWeightlessMode {
                 guard let anchorWeight = anchorWeight else { return 0 }
@@ -183,13 +198,36 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return convertWeight(Int(summary.weight))
             }
         }
+
+        // Calculate current weight range
         guard let weightMin = weightValues.min(),
               let weightMax = weightValues.max(),
               weightMax > weightMin else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for chart data")
             return []
         }
-        let weightRange = weightMin...weightMax
+
+        let currentWeightRange = weightMin...weightMax
+
+        // Check if we can use cached data during scrolling
+        let canUseCachedData = state.isScrolling &&
+                              !lastChartData.isEmpty &&
+                              shouldUseCachedData(
+                                currentWeightRange: currentWeightRange,
+                                currentSelectedMetric: selectedMetric
+                              )
+
+        if canUseCachedData {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
+            return lastChartData
+        }
+
+        var series: [GraphSeries] = []
+
+        // Use the already calculated weight range
+        let weightRange = currentWeightRange
+
+        // Add weight series (always present)
         for summary in operations {
             let displayWeight: Double
             if isWeightlessMode {
@@ -206,25 +244,373 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             ))
         }
         if let selectedMetric = selectedMetric, selectedMetric != DashboardStrings.weight {
-            for summary in operations {
-                if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
-                    let normalizedValue = normalizeMetricValue(metricValue, for: selectedMetric, toWeightRange: weightRange)
-                    series.append(GraphSeries(
-                        date: summary.date,
-                        value: normalizedValue,
-                        series: selectedMetric
-                    ))
+            // Use dynamic normalization similar to the demo project
+            let normalizedMetricSeries = generateNormalizedMetricSeries(
+                for: selectedMetric,
+                from: operations,
+                toWeightRange: weightRange
+            )
+            series.append(contentsOf: normalizedMetricSeries)
+        }
+
+        // Store the generated data and context for next call
+        lastChartData = series
+        lastChartDataWeightRange = currentWeightRange
+        lastChartDataSelectedMetric = selectedMetric
+
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Generated fresh chart data: \(series.count) points, weightRange: \(currentWeightRange), selectedMetric: \(selectedMetric ?? "none")")
+        return series
+    }
+
+    // MARK: - Backward Compatibility
+    /// This method is kept for any external calls but logs a warning
+    /// The main chart generation should use generateChartDataWithYAxisDomain for consistency
+    func generateChartDataLegacy(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries] {
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Using legacy chart data generation - may cause metric line visibility issues during scroll")
+
+        // Call the original implementation (now moved above)
+        return generateChartData(from: operations, selectedMetric: selectedMetric, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertWeight: convertWeight)
+    }
+
+    // MARK: - Chart Data Generation with Y-Axis Domain Consistency
+
+    /// Generates chart data using the provided Y-axis domain for consistent metric normalization
+    /// This ensures metric lines stay within the visible Y-axis range when scrolling
+    func generateChartDataWithYAxisDomain(
+        from allOperations: [BathScaleWeightSummary],
+        visibleOperations: [BathScaleWeightSummary],
+        selectedMetric: String?,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double,
+        yAxisDomain: ClosedRange<Double>
+    ) -> [GraphSeries] {
+
+        guard !allOperations.isEmpty else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
+            return []
+        }
+
+        var series: [GraphSeries] = []
+
+        // Add weight series (always present) from all operations to show continuous line
+        for summary in allOperations {
+            let displayWeight: Double
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { continue }
+                let currentWeight = convertWeight(Int(summary.weight))
+                displayWeight = currentWeight - anchorWeight
+            } else {
+                displayWeight = convertWeight(Int(summary.weight))
+            }
+
+            series.append(GraphSeries(
+                date: summary.date,
+                value: displayWeight,
+                series: DashboardStrings.weight
+            ))
+        }
+
+        // Add selected metric series using Y-axis domain for normalization
+        if let selectedMetric = selectedMetric, selectedMetric != DashboardStrings.weight {
+            let normalizedMetricSeries = generateNormalizedMetricSeriesWithDomain(
+                for: selectedMetric,
+                from: allOperations,
+                visibleOperations: visibleOperations,
+                toWeightDomain: yAxisDomain,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertWeight: convertWeight
+            )
+            series.append(contentsOf: normalizedMetricSeries)
+        }
+
+        logger.log(level: .info, tag: "DashboardGraphManager",
+                  message: "Generated chart data with Y-axis domain: \(series.count) points, " +
+                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none")")
+        return series
+    }
+
+    // MARK: - Chart Data Caching Validation
+
+    /// Determines if cached chart data can be reused based on weight range and metric selection changes
+    private func shouldUseCachedData(
+        currentWeightRange: ClosedRange<Double>,
+        currentSelectedMetric: String?
+    ) -> Bool {
+        // Check if selected metric changed
+        guard currentSelectedMetric == lastChartDataSelectedMetric else {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: selected metric changed from \(lastChartDataSelectedMetric ?? "none") to \(currentSelectedMetric ?? "none")")
+            return false
+        }
+
+        // Check if weight range changed significantly
+        guard let lastWeightRange = lastChartDataWeightRange else {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: no previous weight range")
+            return false
+        }
+
+        // Calculate range overlap and size changes
+        let currentSpan = currentWeightRange.upperBound - currentWeightRange.lowerBound
+        let lastSpan = lastWeightRange.upperBound - lastWeightRange.lowerBound
+
+        // Check for significant range size change (more than 25%)
+        let spanChangeRatio = abs(currentSpan - lastSpan) / max(lastSpan, 0.1)
+        if spanChangeRatio > 0.25 {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range span changed significantly (\(spanChangeRatio * 100)%)")
+            return false
+        }
+
+        // Check for significant range position change
+        let currentCenter = (currentWeightRange.upperBound + currentWeightRange.lowerBound) / 2
+        let lastCenter = (lastWeightRange.upperBound + lastWeightRange.lowerBound) / 2
+        let centerChange = abs(currentCenter - lastCenter)
+
+        // If center moved more than 50% of the range span, recalculate
+        if centerChange > (max(currentSpan, lastSpan) * 0.5) {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range center moved significantly (\(centerChange))")
+            return false
+        }
+
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Can use cached data: ranges are similar enough")
+        return true
+    }
+
+    /// Clears chart data cache to force regeneration with new parameters
+    func clearChartDataCache() {
+        lastChartData.removeAll()
+        lastChartDataWeightRange = nil
+        lastChartDataSelectedMetric = nil
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart data cache cleared")
+    }
+
+    // MARK: - Dynamic Metric Normalization (inspired by demo project)
+
+    /// Generates normalized metric series using dynamic ranges based on actual data
+    /// This approach ensures the metric line properly utilizes the weight range for better visibility
+    private func generateNormalizedMetricSeries(
+        for selectedMetric: String,
+        from operations: [BathScaleWeightSummary],
+        toWeightRange weightRange: ClosedRange<Double>
+    ) -> [GraphSeries] {
+
+        // Collect all metric values to calculate dynamic range
+        let metricValues = operations.compactMap { summary in
+            getMetricValue(for: selectedMetric, from: summary)
+        }
+
+        guard !metricValues.isEmpty else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
+            return []
+        }
+
+        // Calculate dynamic metric range from actual data
+        guard let metricMin = metricValues.min(),
+              let metricMax = metricValues.max() else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
+            return []
+        }
+
+        // Ensure we have some variation in the data
+        let metricRange = metricMax - metricMin
+        let effectiveMetricMin: Double
+        let effectiveMetricMax: Double
+
+        if metricRange < 0.01 { // Almost no variation
+            // Use fallback static ranges for single data points or minimal variation
+            let (staticMin, staticMax) = getStaticMetricRange(for: selectedMetric)
+            effectiveMetricMin = min(metricMin, staticMin)
+            effectiveMetricMax = max(metricMax, staticMax)
+        } else {
+            // Add small padding to actual range for better visualization
+            let padding = metricRange * 0.05 // 5% padding on each side
+            effectiveMetricMin = metricMin - padding
+            effectiveMetricMax = metricMax + padding
+        }
+
+        let weightMin = weightRange.lowerBound
+        let weightMax = weightRange.upperBound
+
+        var normalizedSeries: [GraphSeries] = []
+
+        // Generate normalized metric series
+        for summary in operations {
+            if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
+
+                // Clamp the metric value to the effective range
+                let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
+
+                // Normalize to weight range using the dynamic approach from demo project
+                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                                    (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+
+                // Ensure normalized value is within weight bounds
+                guard normalizedValue >= weightMin && normalizedValue <= weightMax else {
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                              message: "Normalized value \(normalizedValue) out of weight range for \(selectedMetric)")
+                    continue
                 }
+
+                normalizedSeries.append(GraphSeries(
+                    date: summary.date,
+                    value: normalizedValue,
+                    series: selectedMetric
+                ))
             }
         }
-        lastChartData = series
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Generated fresh chart data: \(series.count) points")
-        return series
+
+        logger.log(level: .info, tag: "DashboardGraphManager",
+                  message: "Generated normalized metric series for \(selectedMetric): \(normalizedSeries.count) points, " +
+                          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+                          "weightRange: \(weightMin)...\(weightMax)")
+
+        return normalizedSeries
+    }
+
+        /// Generates normalized metric series using the provided Y-axis domain for consistency
+    /// This ensures metric normalization matches the visible Y-axis range
+    private func generateNormalizedMetricSeriesWithDomain(
+        for selectedMetric: String,
+        from allOperations: [BathScaleWeightSummary],
+        visibleOperations: [BathScaleWeightSummary],
+        toWeightDomain yAxisDomain: ClosedRange<Double>,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> [GraphSeries] {
+
+        // FIXED: Use ALL operations to determine metric range for consistent trends
+        // Using visible operations was causing metric trends to change with scroll position
+        let operationsToAnalyze = allOperations
+
+        // Collect metric values from ALL operations to calculate consistent dynamic range
+        // This ensures the same metric value always maps to the same relative position
+        let metricValues = operationsToAnalyze.compactMap { summary in
+            getMetricValue(for: selectedMetric, from: summary)
+        }
+
+        guard !metricValues.isEmpty else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
+            return []
+        }
+
+        // Calculate dynamic metric range from visible data
+        guard let metricMin = metricValues.min(),
+              let metricMax = metricValues.max() else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
+            return []
+        }
+
+        // Ensure we have some variation in the data
+        let metricRange = metricMax - metricMin
+        let effectiveMetricMin: Double
+        let effectiveMetricMax: Double
+
+        if metricRange < 0.01 { // Almost no variation
+            // Use fallback static ranges for single data points or minimal variation
+            let (staticMin, staticMax) = getStaticMetricRange(for: selectedMetric)
+            effectiveMetricMin = min(metricMin, staticMin)
+            effectiveMetricMax = max(metricMax, staticMax)
+        } else {
+            // Add small padding to actual range for better visualization
+            let padding = metricRange * 0.05 // 5% padding on each side
+            effectiveMetricMin = metricMin - padding
+            effectiveMetricMax = metricMax + padding
+        }
+
+        // FIXED: Calculate weight range from the same data used for metric range (all operations)
+        // This ensures consistent relative positioning between weight and metric lines
+        let weightValues = allOperations.map { summary -> Double in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return 0 }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+
+        guard let weightMin = weightValues.min(),
+              let weightMax = weightValues.max(),
+              weightMax > weightMin else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for metric normalization")
+            return []
+        }
+
+        var normalizedSeries: [GraphSeries] = []
+
+        // Generate normalized metric series for all operations (to show continuous line)
+        for summary in allOperations {
+            if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
+
+                // Clamp the metric value to the effective range
+                let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
+
+                                // Step 1: Normalize metric to consistent weight range
+                let normalizedToWeightRange = weightMin + (clampedValue - effectiveMetricMin) *
+                                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+
+                // Step 2: Map to Y-axis domain for visibility while preserving relationships
+                let yAxisMin = yAxisDomain.lowerBound
+                let yAxisMax = yAxisDomain.upperBound
+                let yAxisSpan = yAxisMax - yAxisMin
+                let weightSpan = weightMax - weightMin
+
+                // Calculate the relative position within weight range
+                let relativePosition = (normalizedToWeightRange - weightMin) / weightSpan
+
+                // Map this relative position to Y-axis domain
+                let finalValue = yAxisMin + (relativePosition * yAxisSpan)
+
+                // Clamp to Y-axis bounds for safety
+                let clampedFinalValue = max(yAxisMin, min(yAxisMax, finalValue))
+
+                normalizedSeries.append(GraphSeries(
+                    date: summary.date,
+                    value: clampedFinalValue,
+                    series: selectedMetric
+                ))
+            }
+        }
+
+                        logger.log(level: .info, tag: "DashboardGraphManager",
+                  message: "Generated metric series with consistent relative positioning for \(selectedMetric): \(normalizedSeries.count) points, " +
+                          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+                          "weightRange: \(weightMin)...\(weightMax), " +
+                          "yAxisDomain: \(yAxisDomain)")
+
+        return normalizedSeries
+    }
+
+    /// Get static metric ranges as fallback for cases with minimal data variation
+    private func getStaticMetricRange(for metricLabel: String) -> (min: Double, max: Double) {
+        switch metricLabel {
+        case DashboardStrings.bmi:
+            return (DashboardConstants.MetricRanges.bmi.lowerBound, DashboardConstants.MetricRanges.bmi.upperBound)
+        case DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water,
+             DashboardStrings.bone, DashboardStrings.subFat, DashboardStrings.protein,
+             DashboardStrings.skelMuscle:
+            return (DashboardConstants.MetricRanges.percentage.lowerBound, DashboardConstants.MetricRanges.percentage.upperBound)
+        case DashboardStrings.heartBpm:
+            return (DashboardConstants.MetricRanges.heartRate.lowerBound, DashboardConstants.MetricRanges.heartRate.upperBound)
+        case DashboardStrings.visceralFat:
+            return (DashboardConstants.MetricRanges.visceralFat.lowerBound, DashboardConstants.MetricRanges.visceralFat.upperBound)
+        case DashboardStrings.bmrKcal:
+            return (DashboardConstants.MetricRanges.bmr.lowerBound, DashboardConstants.MetricRanges.bmr.upperBound)
+        case DashboardStrings.metAge:
+            return (DashboardConstants.MetricRanges.metabolicAge.lowerBound, DashboardConstants.MetricRanges.metabolicAge.upperBound)
+        default:
+            return (DashboardConstants.MetricRanges.percentage.lowerBound, DashboardConstants.MetricRanges.percentage.upperBound)
+        }
     }
 
     func updateSelectedPeriod(_ period: TimePeriod) async {
         state.selectedPeriod = period
         state.clearSelection()
+
+        // Clear chart data cache since period change means different operations and ranges
+        clearChartDataCache()
+
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
 
@@ -376,34 +762,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    private func normalizeMetricValue(_ value: Double, for metricLabel: String, toWeightRange weightRange: ClosedRange<Double>) -> Double {
-        let weightMin = weightRange.lowerBound
-        let weightMax = weightRange.upperBound
-        let weightSpan = weightMax - weightMin
-        let (metricMin, metricMax): (Double, Double) = {
-            switch metricLabel {
-            case DashboardStrings.bmi:
-                return (DashboardConstants.MetricRanges.bmi.lowerBound, DashboardConstants.MetricRanges.bmi.upperBound)
-            case DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water,
-                 DashboardStrings.bone, DashboardStrings.subFat, DashboardStrings.protein,
-                 DashboardStrings.skelMuscle:
-                return (DashboardConstants.MetricRanges.percentage.lowerBound, DashboardConstants.MetricRanges.percentage.upperBound)
-            case DashboardStrings.heartBpm:
-                return (DashboardConstants.MetricRanges.heartRate.lowerBound, DashboardConstants.MetricRanges.heartRate.upperBound)
-            case DashboardStrings.visceralFat:
-                return (DashboardConstants.MetricRanges.visceralFat.lowerBound, DashboardConstants.MetricRanges.visceralFat.upperBound)
-            case DashboardStrings.bmrKcal:
-                return (DashboardConstants.MetricRanges.bmr.lowerBound, DashboardConstants.MetricRanges.bmr.upperBound)
-            case DashboardStrings.metAge:
-                return (DashboardConstants.MetricRanges.metabolicAge.lowerBound, DashboardConstants.MetricRanges.metabolicAge.upperBound)
-            default:
-                return (DashboardConstants.MetricRanges.percentage.lowerBound, DashboardConstants.MetricRanges.percentage.upperBound)
-            }
-        }()
-        let clampedValue = max(metricMin, min(metricMax, value))
-        let metricSpan = metricMax - metricMin
-        let normalizedValue = weightMin + (clampedValue - metricMin) * weightSpan / metricSpan
-        return normalizedValue
+    // MARK: - Metric Selection Support
+
+    /// Validates if a metric can be displayed on the chart
+    func canDisplayMetric(_ metricLabel: String, from operations: [BathScaleWeightSummary]) -> Bool {
+        let metricValues = operations.compactMap { summary in
+            getMetricValue(for: metricLabel, from: summary)
+        }
+
+        // Need at least 2 data points with some variation
+        guard metricValues.count >= 2 else { return false }
+
+        let metricRange = (metricValues.max() ?? 0) - (metricValues.min() ?? 0)
+        return metricRange > 0.001 // Minimum meaningful variation
+    }
+
+    /// Gets available metrics that can be displayed for the current data
+    func getAvailableMetrics(from operations: [BathScaleWeightSummary]) -> [String] {
+        let allMetrics = [
+            DashboardStrings.bmi,
+            DashboardStrings.bodyFat,
+            DashboardStrings.muscle,
+            DashboardStrings.water,
+            DashboardStrings.heartBpm,
+            DashboardStrings.bone,
+            DashboardStrings.visceralFat,
+            DashboardStrings.subFat,
+            DashboardStrings.protein,
+            DashboardStrings.skelMuscle,
+            DashboardStrings.bmrKcal,
+            DashboardStrings.metAge
+        ]
+
+        return allMetrics.filter { metric in
+            canDisplayMetric(metric, from: operations)
+        }
     }
 
     func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
@@ -846,6 +1239,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 guard let self = self else { return }
                 self.state.isScrolling = false
                 self.state.hasDetectedScrollInCurrentGesture = false
+
+                // Clear chart data cache to ensure fresh data for new visible range
+                self.clearChartDataCache()
+
+                // Update weight display to show average of visible region
                 updateWeightDisplay()
                 recalculateYAxis()
                 updateMetrics()

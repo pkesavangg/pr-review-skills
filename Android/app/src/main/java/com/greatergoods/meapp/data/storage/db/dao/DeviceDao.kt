@@ -85,6 +85,9 @@ interface DeviceDao {
   @Query("SELECT * FROM device WHERE broadcastId = :broadcastId")
   suspend fun getDeviceByBroadcastId(broadcastId: String): DeviceDetails?
 
+  @Query("SELECT * FROM device WHERE broadcastIdString = :broadcastIdString")
+  suspend fun getDeviceByBroadcastIdString(broadcastIdString: String): DeviceDetails?
+
   /**
    * Update device nickname.
    * @param id The device ID

@@ -32,7 +32,7 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    */
   protected abstract fun onScanResponse(response: GGScanResponse.DeviceDetail)
 
-  protected abstract fun onEntryResponse(response: GGScanResponse.Entry)
+  protected open fun onEntryResponse(response: GGScanResponse.Entry) {}
 
   protected var discoveredScale: Device? = null
 
@@ -44,13 +44,12 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
    */
   protected fun startObservingDevices() {
-    if (deviceObservationJob == null) {
-      deviceObservationJob = viewModelScope.launch {
-        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
-          .collect { scanResponse ->
-            onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
-          }
-      }
+    deviceObservationJob?.cancel()
+    deviceObservationJob = viewModelScope.launch {
+      ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
+        .collect { scanResponse ->
+          onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
+        }
     }
   }
 

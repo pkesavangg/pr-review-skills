@@ -42,6 +42,7 @@ dependencies {
   androidTestImplementation(libs.androidx.espresso.core)
   implementation(libs.androidx.hilt.navigation.fragment)
   api(libs.gg.bluetooth.android)
+  // implementation(project(":ggBluetoothLibrary"))
   implementation(libs.androidx.datastore.preferences)
 
 }

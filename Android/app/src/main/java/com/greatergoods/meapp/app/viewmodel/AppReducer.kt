@@ -10,18 +10,21 @@ import com.greatergoods.meapp.proto.ThemeMode
  * @property fcmToken The current FCM token.
  */
 data class AppState(
-    val fcmToken: String = "",
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+  val fcmToken: String = "",
+  val themeMode: ThemeMode = ThemeMode.SYSTEM,
+  val isScaleDiscovered: Boolean = false,
+  val sku: String = "0412",
 ) : IReducer.State
 
 /**
  * Intent for the app, defining actions to change theme mode and FCM token.
  */
 sealed interface AppIntent : IReducer.Intent {
-    data class SetThemeMode(val themeMode: ThemeMode) : AppIntent
-    data class SetFcmToken(val fcmToken: String) : AppIntent
-    object ClearFcmToken : AppIntent
-    object ResetState : AppIntent
+  data class SetScaleDiscovered(val isScaleDiscovered: Boolean) : AppIntent
+  data class SetSku(val sku: String) : AppIntent
+
+  data object OnPopUpConnect : AppIntent
+  data object OnPopUpDismiss : AppIntent
 }
 
 /**
@@ -31,11 +34,15 @@ sealed interface AppIntent : IReducer.Intent {
  */
 class AppReducer() : IReducer<AppState, AppIntent> {
 
-    override fun reduce(
-        state: AppState,
-        intent: AppIntent
-    ): AppState? {
-        TODO("Not yet implemented")
+  override fun reduce(
+    state: AppState,
+    intent: AppIntent
+  ): AppState? {
+    return when (intent) {
+      is AppIntent.SetSku -> state.copy(sku = intent.sku)
+      is AppIntent.SetScaleDiscovered -> state.copy(isScaleDiscovered = intent.isScaleDiscovered)
+      else -> state
     }
+  }
 }
 

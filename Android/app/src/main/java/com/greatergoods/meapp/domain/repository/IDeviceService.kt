@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.greatergoods.meapp.domain.model.api.device.R4ScalePreferenceApiModel
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
 import kotlinx.coroutines.flow.Flow
 
@@ -9,13 +11,10 @@ import kotlinx.coroutines.flow.Flow
  * Provides a centralized way to access and manage scale data with automatic synchronization.
  */
 interface IDeviceService {
-  /**
-   * StateFlow containing the current list of saved scales.
-   * This is the main source of truth for scale data in the app.
-   */
-  val pairedScales: Flow<List<Device>>
 
-  suspend fun getScales(accountId: String? = null): Flow<List<Device>>
+  suspend fun fetchScales(accountId: String? = null)
+
+  val pairedScales: Flow<List<Device>>
 
   /**
    * Set the current account ID and initialize scale data for that account.
@@ -26,8 +25,12 @@ interface IDeviceService {
   suspend fun setAccountId(accountId: String)
 
   suspend fun onDeviceUpdate(
-    device: Device,
+    macAddress: String?, connectionStatus: BLEStatus
   )
+
+  fun getGGBTDevices(): Flow<List<GGBTDevice>>
+
+  suspend fun updateDevice(device: Device)
 
   /**
    * Clear the current account data.
@@ -155,6 +158,11 @@ interface IDeviceService {
   suspend fun updateScalePreferences(
     deviceId: String,
     preferences: R4ScalePreferenceApiModel,
+  ): Boolean
+
+  suspend fun updateScalePreferencesByMac(
+    macAddress: String,
+    preferences: R4ScalePreferenceApiModel
   ): Boolean
 
   /**

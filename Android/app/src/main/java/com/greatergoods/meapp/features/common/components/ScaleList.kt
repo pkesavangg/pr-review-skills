@@ -69,9 +69,9 @@ fun ScaleList(
             data =
                 listOf(
                     ScaleSegmentType.All,
-                    ScaleSegmentType.AppSync,
                     ScaleSegmentType.Bluetooth,
                     ScaleSegmentType.Wifi,
+                    ScaleSegmentType.AppSync,
                 ),
             key = ScaleSegmentType::name,
             selectedData = selectedType,

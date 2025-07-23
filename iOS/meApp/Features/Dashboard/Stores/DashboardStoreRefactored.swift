@@ -209,15 +209,17 @@ class DashboardStore: ObservableObject {
         return graphManager.getVisibleOperations(from: continuousOperations)
     }
 
-    // Delegate chart data generation to GraphManager
+        // Delegate chart data generation to GraphManager
     var chartSeriesData: [GraphSeries] {
-        // Lightweight computed property - logging moved to manager
-        return graphManager.generateChartData(
+        // Pass Y-axis domain to ensure metric normalization uses the same range
+        return graphManager.generateChartDataWithYAxisDomain(
             from: continuousOperations,
+            visibleOperations: visibleOperations,
             selectedMetric: state.ui.selectedMetricLabel,
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay
+            convertWeight: goalManager.convertWeightToDisplay,
+            yAxisDomain: yAxisDomain
         )
     }
 

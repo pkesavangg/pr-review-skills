@@ -50,6 +50,7 @@ fun SetupContent(
         AppText(
           text = subtitle,
           textType = TextType.Body,
+          canApplyUppercaseStyle = true,
           modifier = Modifier.fillMaxWidth(),
         )
       }

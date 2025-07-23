@@ -6,8 +6,8 @@ import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Preferences
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.helper.form.FormControl
 import com.greatergoods.meapp.features.common.helper.form.FormValidations
 import com.greatergoods.meapp.features.common.model.DashboardKey
@@ -84,6 +84,7 @@ data class BtWifiScaleSetupState(
   ),
   val nextButtonText: String = ScaleSetupStrings.SetupButtons.Next,
   val wifiList: List<GGWifiInfo> = emptyList(),
+  val connectedSSID: String? = "",
   val isLoading: Boolean = false,
   val errorCode: String? = null,
   val isSetupFinished: Boolean = false,
@@ -107,6 +108,7 @@ data class BtWifiScaleSetupState(
  * Intents for BtWifiScaleSetupScreen actions.
  */
 sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
+  data class SetConnectedSSID(val ssid: String) : BtWifiScaleSetupIntent
   data class SetUserList(val userList: List<GGBTUser>) : BtWifiScaleSetupIntent
   data class SetDuplicateUser(val duplicateUser: GGBTUser?) : BtWifiScaleSetupIntent
   data class UpdateSettings(
@@ -183,6 +185,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
     intent: BtWifiScaleSetupIntent,
   ): BtWifiScaleSetupState? =
     when (intent) {
+      is BtWifiScaleSetupIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.ssid)
       is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList)
       is BtWifiScaleSetupIntent.SetDuplicateUser -> state.copy(duplicateUser = intent.duplicateUser)
       is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
