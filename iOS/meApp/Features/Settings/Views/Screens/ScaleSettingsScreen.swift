@@ -78,13 +78,13 @@ struct ScaleSettingsScreen: View {
             }
             
             // Set up periodic connection status refresh
-            connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+            connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: SettingsConstants.connectionRefreshInterval, repeats: true) { _ in
                 Task {
                     await scaleStore.refreshConnectionStatus()
                     await scaleStore.refreshWifiStatus()
                     
                     // Periodically check device info and WiFi configuration for scale SKU 0412
-                    if scale.sku == "0412" {
+                    if scale.sku == SettingsConstants.defaultR4Sku {
                         await scaleStore.checkDeviceInfoAndWifiConfiguration()
                     }
                 }
@@ -101,7 +101,7 @@ struct ScaleSettingsScreen: View {
                 await scaleStore.refreshWifiStatus()
                 
                 // Check device info and WiFi configuration for scale SKU 0412 when app becomes active
-                if scale.sku == "0412" {
+                if scale.sku == SettingsConstants.defaultR4Sku {
                     await scaleStore.checkDeviceInfoAndWifiConfiguration()
                 }
             }

@@ -54,9 +54,9 @@ struct WifiScreen: View {
         .environmentObject(setupStore)
         .onAppear {
             // Configure the setup store with the scale's SKU and set the saved scale
-            setupStore.configure(with: scale.sku ?? "0412")
+            setupStore.configure(with: scale.sku ?? SettingsConstants.defaultR4Sku)
             setupStore.savedScale = scale
-            setupStore.currentStepIndex = 4 // Index for .gatheringNetwork
+            setupStore.currentStepIndex = SettingsConstants.gatheringNetworkStepIndex // Index for .gatheringNetwork
         }
     }
     

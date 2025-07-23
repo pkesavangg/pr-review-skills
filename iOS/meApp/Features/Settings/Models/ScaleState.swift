@@ -46,7 +46,7 @@ struct ScaleDeviceState {
     var isBluetoothScale: Bool = false
     var isDeviceConnected: Bool = false
     var scaleTypeValue: String = "Bluetooth/Wi-Fi"
-    var skuValue: String = "0412"
+    var skuValue: String = SettingsConstants.defaultR4Sku
     var modeValue: ScaleModes = .weightOnly
 }
 

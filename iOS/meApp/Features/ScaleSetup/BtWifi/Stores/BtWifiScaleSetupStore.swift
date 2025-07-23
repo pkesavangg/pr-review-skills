@@ -411,7 +411,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Configures the store for the given SKU, optionally injecting a previously-discovered
     /// scale and its discovery event (used when the flow originates from the *Scale Discovered* sheet).
     /// - Parameters:
-    ///   - sku: The model/SKU (e.g. "0412").
+    ///   - sku: The model/SKU (e.g. "\(SettingsConstants.defaultR4Sku)").
     ///   - discoveredScale: The scale object discovered by Bluetooth (optional).
     ///   - discoveryEvent: The raw discovery event emitted by `BluetoothService` (optional).
     func configure(with sku: String,
@@ -1254,7 +1254,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
                 
                 // Check device info and WiFi configuration for scale SKU 0412
-                if scale.sku == "0412" {
+                if scale.sku == SettingsConstants.defaultR4Sku {
                     await checkDeviceInfoAfterWifiSetup(scale: scale)
                 }
                 

@@ -45,7 +45,7 @@ class ScaleStore: ObservableObject {
     
     @Published var modeValue: ScaleModes = .weightOnly
     @Published var scaleTypeValue: String = "Bluetooth/Wi-Fi"
-    @Published var skuValue: String = "0412"
+    @Published var skuValue: String = SettingsConstants.defaultR4Sku
     
     @Published var originalModeValue: ScaleModes = .weightOnly
     @Published var isHeartRateEnabled: Bool = false
@@ -782,7 +782,7 @@ class ScaleStore: ObservableObject {
         onNavigateToWifi?()
         
         // Also refresh WiFi status after a delay to handle when user returns from WiFi setup
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + SettingsConstants.wifiStatusRefreshDelay) {
             Task {
                 await self.refreshWifiStatus()
             }
@@ -813,7 +813,7 @@ class ScaleStore: ObservableObject {
             await modesManager.refreshWifiStatus(for: scale)
             
             // For SKU 0412, also check device info to get accurate WiFi configuration status
-            if scale.sku == "0412" {
+            if scale.sku == SettingsConstants.defaultR4Sku {
                 await checkDeviceInfoAndWifiConfiguration()
             }
         }
@@ -822,7 +822,7 @@ class ScaleStore: ObservableObject {
     /// Checks device info and WiFi configuration for scale SKU 0412
     func checkDeviceInfoAndWifiConfiguration() async {
         guard let scale = state.device.scale,
-              scale.sku == "0412" else { return }
+              scale.sku == SettingsConstants.defaultR4Sku else { return }
         
         do {
             let result = await bluetoothService.getDeviceInfo(for: scale)
@@ -842,7 +842,7 @@ class ScaleStore: ObservableObject {
     func checkDeviceInfoForAllR4Scales() async {
         for scale in scales {
             // Only check device info for connected SKU 0412 scales
-            if scale.sku == "0412" && scale.isConnected == true {
+            if scale.sku == SettingsConstants.defaultR4Sku && scale.isConnected == true {
                 do {
                     let result = await bluetoothService.getDeviceInfo(for: scale)
                     switch result {

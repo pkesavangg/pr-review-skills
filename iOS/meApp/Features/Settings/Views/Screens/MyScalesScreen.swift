@@ -282,8 +282,8 @@ struct MyScalesScreen: View {
                 await scaleStore.checkDeviceInfoForAllR4Scales()
                 
                 // Periodic check every 10 seconds while the screen is visible
-                for _ in 0..<6 { // Check 6 times (60 seconds total)
-                    try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+                for _ in 0..<SettingsConstants.maxCheckIterations { // Check 6 times (60 seconds total)
+                    try? await Task.sleep(nanoseconds: SettingsConstants.checkIntervalNanoseconds) // 10 seconds
                     await scaleStore.checkDeviceInfoForAllR4Scales()
                 }
             }
