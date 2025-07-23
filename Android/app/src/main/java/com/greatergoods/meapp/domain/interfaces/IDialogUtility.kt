@@ -1,5 +1,7 @@
 package com.greatergoods.meapp.domain.interfaces
 
+import com.greatergoods.meapp.domain.model.storage.entry.Entry
+
 /**
  * Interface for dialog utility service that provides common dialog methods.
  */
@@ -28,5 +30,12 @@ interface IDialogUtility {
     permissionType: String,
     onRequest: () -> Unit,
     onDismiss: (() -> Unit)? = null
+  )
+
+  fun showEntrySyncPopup(
+    entry: Entry,
+    apiEntry: com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry,
+    onEdit: () -> Unit,
+    onSave: () -> Unit
   )
 }
