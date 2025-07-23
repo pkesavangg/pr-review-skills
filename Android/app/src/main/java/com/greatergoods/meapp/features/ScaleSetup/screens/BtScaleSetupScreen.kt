@@ -16,30 +16,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
-import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
-import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
+import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
-import com.greatergoods.meapp.features.common.components.PreviewTheme
-import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
 
 @Composable
 fun BtScaleSetupScreen(
   sku: String,
-  viewModel: BtScaleSetupViewModel =
-    hiltViewModel<BtScaleSetupViewModel, BtScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku)
-    },
 ) {
+  val setupInit = SetupInitData(
+    sku = sku,
+    initialStep = BtScaleSetupStep.SCALE_INFO,
+  )
+  val viewModel: BtScaleSetupViewModel =
+    hiltViewModel<BtScaleSetupViewModel, BtScaleSetupViewModel.Factory> { factory ->
+      factory.create(setupInit)
+    }
   val state by viewModel.state.collectAsState()
   BtScaleSetupScreenContent(
     state = state,
@@ -50,18 +52,19 @@ fun BtScaleSetupScreen(
 @Composable
 fun BtScaleSetupScreenContent(
   state: BtScaleSetupState,
-  onIntent: (BtScaleSetupIntent) -> Unit,
+  onIntent: (ScaleSetupIntent) -> Unit,
 ) {
+  val sku = state.scaleSetupState.sku
   val focusManager = LocalFocusManager.current
-  val pagerState = rememberPagerState { state.steps.size }
+  val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
 
   // Sync ViewModel state to Pager state
-  LaunchedEffect(state.currentStep) {
-    if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
+  LaunchedEffect(state.scaleSetupState.setupState.step) {
+    if (!isAnimating.value) {
       isAnimating.value = true
       try {
-        pagerState.animateScrollToPage(state.currentStepIndex)
+        pagerState.animateScrollToPage(state.step.ordinal)
       } finally {
         delay(100)
         isAnimating.value = false
@@ -69,9 +72,9 @@ fun BtScaleSetupScreenContent(
     }
   }
   ScaleSetupHeader(
-    sku = state.sku,
-    onBack = { onIntent(BtScaleSetupIntent.ExitSetup(false)) },
-    onHelp = { onIntent(BtScaleSetupIntent.OpenHelp) },
+    sku = sku,
+    onBack = { onIntent(ScaleSetupIntent.ExitSetup(false)) },
+    onHelp = { onIntent(ScaleSetupIntent.OpenHelp) },
   ) {
     HorizontalPagerWithBottomNavigation(
       steps = state.steps,
@@ -83,7 +86,7 @@ fun BtScaleSetupScreenContent(
           label = ScaleSetupStrings.backButton,
           size = ButtonSize.Small,
           enabled = !state.isFirstStep,
-          onClick = { onIntent(BtScaleSetupIntent.Back) },
+          onClick = { onIntent(ScaleSetupIntent.Back) },
         )
       },
       middleContent = {
@@ -97,7 +100,7 @@ fun BtScaleSetupScreenContent(
           enabled = !state.isLoading,
           onClick = {
             focusManager.clearFocus()
-            onIntent(BtScaleSetupIntent.Next)
+            onIntent(ScaleSetupIntent.Next)
           },
         )
       },
@@ -111,7 +114,7 @@ fun BtScaleSetupScreenContent(
         ) {
           when (step) {
             BtScaleSetupStep.SCALE_INFO -> {
-              ScaleInfo(sku = state.sku)
+              ScaleInfo(sku = sku)
             }
             // TODO: Add other steps as needed
             else -> {
@@ -120,20 +123,6 @@ fun BtScaleSetupScreenContent(
           }
         }
       },
-    )
-  }
-}
-
-@PreviewTheme()
-@Composable
-fun BtScaleSetupPreview() {
-  MeAppTheme {
-    BtScaleSetupScreenContent(
-      state =
-        BtScaleSetupState(
-          sku = "0412",
-        ),
-      onIntent = {},
     )
   }
 }

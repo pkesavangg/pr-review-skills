@@ -29,13 +29,17 @@ data class LCBTScaleSetupState(
 /**
  * Intents for LcbtScaleSetupScreen actions.
  */
-sealed interface LcbtScaleSetupIntent : ScaleSetupIntent {
-  data object Any : LcbtScaleSetupIntent
-}
+sealed interface LcbtScaleSetupIntent : ScaleSetupIntent
 
 /**
  * Reducer for LcbtScaleSetupScreen.
  */
-class LcbtScaleSetupReducer : ScaleSetupReducer<LcbtScaleSetupStep, LCBTScaleSetupState, ScaleSetupIntent>()
+class LcbtScaleSetupReducer : ScaleSetupReducer<LcbtScaleSetupStep, LCBTScaleSetupState>() {
+  override fun reduce(state: LCBTScaleSetupState, intent: ScaleSetupIntent): LCBTScaleSetupState? {
+    return when (intent) {
+      else -> super.reduce(state, intent)
+    }
+  }
+}
 
 

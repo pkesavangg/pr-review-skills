@@ -53,13 +53,12 @@ enum class WifiScaleSetupStep {
 /**
  * Enum for Bluetooth-only scale setup flow steps.
  */
-enum class BtScaleSetupStep {
+enum class BtScaleSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
+  WAKEUP,
   SELECT_USER,
   CONNECTING_BLUETOOTH,
-  FIND_USER,
-  STEP_ON,
   SETUP_FINISHED
 }
 
