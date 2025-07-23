@@ -20,6 +20,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
+import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.LCBTScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.strings.LcbtScaleSetupStrings
@@ -38,9 +39,14 @@ fun LcbtScaleSetupScreen(
   broadcastId: String? = null,
   initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
 ) {
+  val setupInit = SetupInitData(
+    sku = sku,
+    broadcastId = broadcastId,
+    initialStep = initialStep,
+  )
   val viewModel: LcbtBLESetupViewModel =
     hiltViewModel<LcbtBLESetupViewModel, LcbtBLESetupViewModel.Factory> { factory ->
-      factory.create(sku, broadcastId, initialStep)
+      factory.create(setupInit)
     }
   val state by viewModel.state.collectAsState()
   LcbtScaleSetupScreenContent(

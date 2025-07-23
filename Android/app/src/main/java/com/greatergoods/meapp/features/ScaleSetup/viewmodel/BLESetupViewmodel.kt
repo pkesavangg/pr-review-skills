@@ -20,6 +20,7 @@ import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.features.ScaleSetup.enums.ScaleSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BaseState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.SetupState
@@ -50,17 +51,32 @@ class BLESetupDependencies @Inject constructor(
 
 abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, State>>(
   val protocolType: String,
-  open val initialStep: Step,
+  val setupInitData: SetupInitData<Step>,
   val reducer: IReducer<State, ScaleSetupIntent>,
   protected val dependencies: BLESetupDependencies,
 ) : BaseIntentViewModel<State, ScaleSetupIntent>(reducer) {
+
+  private val initialStep = setupInitData.initialStep
+  private val sku = setupInitData.sku
+  private val broadcastId = setupInitData.broadcastId
+
   protected val ggDeviceService get() = dependencies.ggDeviceService
   protected val connectivityObserver get() = dependencies.connectivityObserver
   protected val deviceService get() = dependencies.deviceService
   protected val permissionService get() = dependencies.permissionService
   protected val dialogUtility get() = dependencies.dialogUtility
 
-  protected fun onInit() {
+  private var isInitialized = false
+
+  protected fun lazyInit() {
+    if (!isInitialized) {
+      isInitialized = true
+      onInit()
+    }
+  }
+
+  private fun onInit() {
+    loadScaleInfo()
     observeStepChanges()
     observePermissions()
   }
@@ -290,6 +306,20 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
       permissions.toMutableMap().apply {
         put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
       }
+    }
+  }
+
+  /**
+   * Loads scale information based on the provided SKU.
+   */
+  private fun loadScaleInfo() {
+    AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    viewModelScope.launch {
+      if (broadcastId != null) {
+        discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
+      }
+      handleIntent(ScaleSetupIntent.SetSku(sku))
+      handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
     }
   }
 }

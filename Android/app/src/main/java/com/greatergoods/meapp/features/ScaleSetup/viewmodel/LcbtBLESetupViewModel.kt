@@ -9,10 +9,12 @@ import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.ScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
+import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.LCBTScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.LcbtScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -31,39 +33,29 @@ import kotlinx.coroutines.launch
 class LcbtBLESetupViewModel
 @AssistedInject
 constructor(
-  @Assisted("sku") private val sku: String,
-  @Assisted("broadcastId") private val broadcastId: String? = null,
-  @Assisted("initialStep") override val initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO,
+  @Assisted val setupInit: SetupInitData<LcbtScaleSetupStep>,
   dependencies: BLESetupDependencies
 ) : BLESetupViewmodel<LcbtScaleSetupStep, LCBTScaleSetupState>(
   GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
-  initialStep,
+  setupInit,
   reducer = LcbtScaleSetupReducer(),
   dependencies,
 ) {
   @AssistedFactory
   interface Factory {
     fun create(
-      @Assisted("sku") sku: String,
-      @Assisted("broadcastId") broadcastId: String? = null,
-      @Assisted("initialStep") initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
+      @Assisted setupInit: SetupInitData<LcbtScaleSetupStep>,
     ): LcbtBLESetupViewModel
   }
 
+  private val sku = setupInit.sku
   private val TAG = "LcbtScaleSetupViewModel"
   override fun provideInitialState(): LCBTScaleSetupState {
     return LCBTScaleSetupState()
   }
 
   init {
-    loadScaleInfo()
-    onInit()
-    viewModelScope.launch {
-      if (broadcastId != null) {
-        discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
-      }
-      handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
-    }
+    lazyInit()
   }
 
   override fun onNext() {
@@ -131,17 +123,15 @@ constructor(
 
     viewModelScope.launch {
       try {
-        delay(3000)
-        onNext()
-        // ggDeviceService.scanForPairing()
-        // startObservingDevices { data ->
-        //   discoveredScale = Device(
-        //     device = data,
-        //     deviceType = ScaleSetupType.Lcbt.value,
-        //     sku = sku,
-        //   )
-        //   onNext()
-        // }
+        ggDeviceService.scanForPairing()
+        startObservingDevices { data ->
+          discoveredScale = Device(
+            device = data,
+            deviceType = ScaleSetupType.Lcbt.value,
+            sku = sku,
+          )
+          onNext()
+        }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
@@ -199,13 +189,5 @@ constructor(
         }
       }
     }
-  }
-
-  /**
-   * Loads scale information based on the provided SKU.
-   */
-  private fun loadScaleInfo() {
-    AppLog.d(TAG, "Loading scale info for SKU: $sku")
-    handleIntent(ScaleSetupIntent.SetSku(sku))
   }
 }
