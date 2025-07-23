@@ -8,6 +8,7 @@
 import Foundation
 
 struct WifiScaleSetupStrings {
+    static let seeSomethingElse = "I see something else?"
     struct ActivatePairingModeViewStrings {
         static let title = "Activate Pairing Mode"
         static let description = "On the back of your scale, press and hold the UNIT button. When SET UP 1 appears on the scale’s screen, tap NEXT."
@@ -18,6 +19,6 @@ struct WifiScaleSetupStrings {
         static let title = "Tap the screen you see:"
         static let description = "Select the error message that you see on your scale and then tap NEXT."
         static let boldWords = ["NEXT"]
-        
+        static let err = "Err"
     }
 }

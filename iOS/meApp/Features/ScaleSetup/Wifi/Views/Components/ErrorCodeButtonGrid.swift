@@ -5,7 +5,8 @@ struct ErrorCodeButtonGrid: View {
     let errorCodes: [[String]]
     @Binding var selectedError: String?
     var onErrorSelected: ((String) -> Void)?
-    
+    private let buttonSize = CGFloat(100)
+    private let lang = WifiScaleSetupStrings.ErrorCodeSelectionViewStrings.self
     var body: some View {
         VStack(spacing: .spacingMD) {
             ForEach(errorCodes, id: \.self) { row in
@@ -18,7 +19,7 @@ struct ErrorCodeButtonGrid: View {
                             ZStack {
                                 Circle()
                                     .fill(selectedError == code ? theme.actionPrimary : Color.clear)
-                                    .frame(width: 100, height: 100)
+                                    .frame(width: buttonSize, height: buttonSize)
                                     .overlay(
                                         Circle()
                                             .stroke(theme.actionPrimary, lineWidth: 1)
@@ -30,7 +31,7 @@ struct ErrorCodeButtonGrid: View {
                                         .foregroundColor(selectedError == code ? theme.actionInverse : theme.actionPrimary)
                                         .minimumScaleFactor(0.5)
                                     
-                                    Text("Err")
+                                    Text(lang.err)
                                         .fontOpenSans(.button1)
                                         .foregroundColor(selectedError == code ? theme.actionInverse : theme.actionPrimary)
                                         .minimumScaleFactor(0.5)

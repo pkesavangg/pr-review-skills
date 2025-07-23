@@ -45,7 +45,7 @@ struct WifiScaleSetupScreen: View {
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews,
                 shouldApplyHorizontalPadding: { index in
-                    setupStore.steps[index] == .errorSelect
+                    setupStore.steps[index] != .errorSelect
                 }
             )
             
