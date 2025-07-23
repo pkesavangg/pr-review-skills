@@ -15,10 +15,13 @@ import SwiftData
 final class BathScale {
     var scaleType: String? // Scale setup type (wifi, bluetooth,etc.)
     var bodyComp: Bool? // Supports body composition
+    // Inverse relationship to Device
+    var device: Device?
 
-    init(scaleType: String?, bodyComp: Bool?) {
+    init(scaleType: String?, bodyComp: Bool?, device: Device? = nil) {
         self.scaleType = scaleType
         self.bodyComp = bodyComp
+        self.device = device
     }
 }
 

@@ -11,13 +11,13 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    
+
     // Local state variables for chart selection (like WeightGraph)
     @State private var selectedXValue: Date?
-    
+
     // Animation trigger for smooth transitions
     @State private var animationTrigger = UUID()
-    
+
     // Scroll detection state
     @State private var hasDetectedScrollInCurrentGesture = false
 
@@ -58,6 +58,19 @@ struct GraphView: View {
                 animationTrigger = UUID()
             }
         }
+        .onChange(of: dashboardStore.yAxisDomain) { _, _ in
+            // Trigger animation for chart data changes when y-axis domain changes
+            // but don't animate the y-axis domain itself to prevent "dropping" effect
+            withAnimation(.easeInOut(duration: 0.6)) {
+                animationTrigger = UUID()
+            }
+        }
+        .onChange(of: dashboardStore.chartSeriesData) { _, _ in
+            // Ensure chart data changes are animated smoothly
+            withAnimation(.easeInOut(duration: 0.6)) {
+                animationTrigger = UUID()
+            }
+        }
     }
 
     // MARK: - Chart View
@@ -68,6 +81,7 @@ struct GraphView: View {
                 chartSeries
                 crosshairContent
             }
+            .animation(.easeInOut(duration: 0.6), value: dashboardStore.chartSeriesData)
             .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
             .chartScrollableAxes(.horizontal)
             .chartYScale(domain: dashboardStore.yAxisDomain)
@@ -132,8 +146,9 @@ struct GraphView: View {
                 dashboardStore.initializeChart()
             }
             // Add animation modifier for smooth chart transitions
-            .animation(.easeInOut(duration: 0.5), value: dashboardStore.yAxisDomain)
-            .animation(.easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+            .animation(.easeInOut(duration: 0.6), value: dashboardStore.yAxisTicks)
+            .animation(.easeInOut(duration: 0.8), value: dashboardStore.chartSeriesData)
+            .animation(nil, value: dashboardStore.yAxisDomain)
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
             // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
@@ -204,7 +219,7 @@ struct GraphView: View {
 
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = dashboardStore.state.graph.selectedPoint, 
+        if let selectedPoint = dashboardStore.state.graph.selectedPoint,
            dashboardStore.state.graph.showCrosshair {
             // Dotted vertical line
             RuleMark(
@@ -289,7 +304,7 @@ struct ScrollDetectionModifier: ViewModifier {
                 .onScrollPhaseChange { oldPhase, newPhase in
                     Task { @MainActor in
                         await dashboardStore.handleScrollPhaseChange(to: newPhase)
-                        
+
                         // Clear local selection state when scrolling starts
                         if newPhase == .interacting {
                             selectedXValue = nil
@@ -307,7 +322,7 @@ struct ScrollDetectionModifier: ViewModifier {
                             if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
                                 hasDetectedScrollInCurrentGesture = true
                                 dashboardStore.handleScrollStart()
-                                
+
                                 // Clear local selection state when scrolling starts
                                 selectedXValue = nil
                             }
