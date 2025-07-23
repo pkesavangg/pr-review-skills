@@ -19,8 +19,9 @@ struct WifiConnectionConfirmView: View {
     private let wifiSetuplang = WifiScaleSetupStrings.self
     private let lang = WifiScaleSetupStrings.UserConfirmationViewStrings.self
     private let appAssets = AppAssets.self
+    private let sku0384 = "0384"
+    private let imageSize: CGFloat = 120
     
-
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -80,18 +81,18 @@ struct WifiConnectionConfirmView: View {
     private var setupCompleteOption: some View {
         VStack {
             Button(action: handleCompleteSelection) {
-                if sku != "0384" {
+                if sku != sku0384 {
                     Image(appAssets.wifiSetupComplete)
                         .resizable()
-                        .frame(width: 120, height: 120)
+                        .frame(width: imageSize, height: imageSize)
                 } else {
                     if let userNumber = self.userNumber {
                         GifView(
                             gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
-                            width: 120,
-                            height: 120
+                            width: imageSize,
+                            height: imageSize
                         )
-                        .frame(width: 120, height: 120)
+                        .frame(width: imageSize, height: imageSize)
                     }
                 }
             }
@@ -112,7 +113,7 @@ struct WifiConnectionConfirmView: View {
     private var apModeImage: some View {
         Image(appAssets.wifiApMode(sku))
             .resizable()
-            .frame(width: 120, height: 120)
+            .frame(width: imageSize, height: imageSize)
     }
     
     private func selectionIndicator(for option: WifiSetupOption) -> some View {
