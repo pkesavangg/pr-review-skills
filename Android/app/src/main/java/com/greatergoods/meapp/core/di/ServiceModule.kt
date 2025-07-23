@@ -3,6 +3,7 @@ package com.greatergoods.meapp.core.di
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.AccountService
 import com.greatergoods.meapp.core.service.AppNavigationService
+import com.greatergoods.meapp.core.service.AppSyncService
 import com.greatergoods.meapp.core.service.BodyCompositionService
 import com.greatergoods.meapp.core.service.DashboardService
 import com.greatergoods.meapp.core.service.DeviceInfoService
@@ -41,6 +42,7 @@ import com.greatergoods.meapp.domain.repository.ILogRepository
 import com.greatergoods.meapp.domain.repository.INotificationRepository
 import com.greatergoods.meapp.domain.repository.IUserSettingsRepository
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IAppSyncService
 import com.greatergoods.meapp.domain.services.IBodyCompositionService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IDeviceInfoService
@@ -327,5 +329,23 @@ object ServiceModule {
     appDatabase = appDatabase,
     dataStores = dataStores,
     navigationService = navigationService,
+  )
+
+  /**
+   * Provides the AppSync service implementation.
+   * Handles AppSync data conversion, editing, and saving operations.
+   */
+  @Provides
+  @Singleton
+  fun provideAppSyncService(
+    entryService: IEntryService,
+    accountService: IAccountService,
+    navigationService: IAppNavigationService,
+    dialogQueueService: IDialogQueueService
+  ): IAppSyncService = AppSyncService(
+    entryService = entryService,
+    accountService = accountService,
+    appNavigationService = navigationService,
+    dialogQueueService = dialogQueueService
   )
 }

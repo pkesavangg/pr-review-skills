@@ -125,14 +125,12 @@ constructor(
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
-    Log.d(TAG, "handleAppSyncResult: $result")
-
-    if (result.canceled) {
+    if (result.canceled || !result.manual) {
       handleIntent(AppsyncScaleSetupIntent.Next)
-    } else {
-      Log.d(TAG, "handleAppSyncResult: $result")
     }
   }
+
+
 
   private fun onExitSetup(
     isSetupFinished: Boolean,
