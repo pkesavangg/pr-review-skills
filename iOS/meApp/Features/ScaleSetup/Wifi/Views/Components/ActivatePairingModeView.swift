@@ -28,9 +28,11 @@ struct ActivatePairingModeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                GifView(gifName: appAssets.wifiStepOnGif(sku))
-                    .frame(height: 260)
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .center) {
+                    GifView(gifName: appAssets.wifiStepOnGif(sku), height: 250)
+                        .frame(width: 370, height: 250)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(.top, .spacingLG)
         }

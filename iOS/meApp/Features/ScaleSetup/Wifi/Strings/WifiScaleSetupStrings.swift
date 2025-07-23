@@ -27,4 +27,12 @@ struct WifiScaleSetupStrings {
         static let networkHasNoPassword = "Network has no password"
         static let note = "Your phone should stay connected to the chosen 2GHZ network until setup is complete."
     }
+    struct UserConfirmationViewStrings {
+        static let title: (Bool) -> String = { isApModeAlone in
+            isApModeAlone ? "Wait for the scale to show it is in AP Mode." : "Wait for the screen on your scale to change and tap the image that matches."
+        }
+        static let subtitle = "Once your scale displays that it is in AP mode, tap NEXT."
+        static let boldWords = ["NEXT"]
+        static let note = "It can take up to two minutes for your scale to enter AP mode."
+    }
 }

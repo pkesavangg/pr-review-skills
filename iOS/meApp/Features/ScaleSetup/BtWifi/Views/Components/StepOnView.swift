@@ -22,10 +22,14 @@ struct StepOnView: View {
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textHeading)
             }
-            GifView(gifName: AppAssets.stepOnGif)
-                .frame(height: 211)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+            
+            VStack(alignment: .center) {
+                GifView(gifName: AppAssets.stepOnGif, height: 211)
+                    .frame(width: 370, height: 211)
+                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            
         }
         .padding(.bottom, .spacingLG)
     }

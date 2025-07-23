@@ -43,6 +43,8 @@ final class WifiScaleSetupStore: ObservableObject {
     
     @Published var selectedUserNumber: Int?
     @Published var selectedErrorCode: String?
+    @Published var selectedConnectionMode: WifiSetupOption = .none
+    @Published var isApModeOnly: Bool = false
     
     /// Callback used by the screen to dismiss itself.
     var dismissAction: DismissAction?
@@ -72,10 +74,27 @@ final class WifiScaleSetupStore: ObservableObject {
                 })
             case .activatePairingMode:
                 return AnyView(ActivatePairingModeView(sku: scaleItem.sku))
+            case .connectionConfirm:
+                return AnyView(WifiConnectionConfirmView(
+                    sku: scaleItem.sku,
+                    userNumber: selectedUserNumber,
+                    selectedOption: selectedConnectionMode,
+                    isApModeAlone: isApModeOnly,
+                    
+                ) { selectedMode in
+                    self.selectedConnectionMode = selectedMode
+                } onClickButton: {
+                    // TODO: Implement on see something else button click
+                })
+                
             case .errorSelect:
                 return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode) { code in
                     self.selectedErrorCode = code
                 })
+            case .stepOn:
+                return AnyView(BtSetupStepOnView())
+            case .setupFinish:
+                return AnyView(ScaleSetupFinishView(title: scaleSetupStrings.FinishViewStrings.title, description: scaleSetupStrings.FinishViewStrings.description))
             default:
                 // Empty view placeholder for other steps
                 return AnyView(EmptyView())
@@ -87,8 +106,6 @@ final class WifiScaleSetupStore: ObservableObject {
         switch currentStep {
         case .setupFinish:
             return commonLang.finish
-        case .wifiPassword:
-            return commonLang.connect
         default:
             return commonLang.next
         }

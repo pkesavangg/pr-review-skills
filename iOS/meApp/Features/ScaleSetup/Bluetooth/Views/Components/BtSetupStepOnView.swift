@@ -28,9 +28,12 @@ struct BtSetupStepOnView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                GifView(gifName: appAssets.btStepOnGif)
-                    .frame(height: 260)
-                    .frame(maxWidth: .infinity)
+ 
+                VStack(alignment: .center) {
+                    GifView(gifName: appAssets.btStepOnGif)
+                        .frame(width: 370, height: 211)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
                 
                 Text(lang.syncingInfo(isEntrySynced))
                     .fontOpenSans(.body1)
