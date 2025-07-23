@@ -14,7 +14,7 @@ struct ErrorCodeSelectionView: View {
     @State var selectedError: String? = nil
     
     /// Callback triggered when an error code is tapped.
-    var onErrorSelected: ((String) -> Void)? = nil
+    var onErrorSelected: ((String?) -> Void)? = nil
     var onClickButton: (() -> Void)? = nil
     
     /// All available error codes in a grid format
@@ -47,6 +47,7 @@ struct ErrorCodeSelectionView: View {
                 )
                 
                 ButtonView(text: wifiSetuplang.seeSomethingElse, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                    onErrorSelected?(nil)
                     onClickButton?()
                 }
             }

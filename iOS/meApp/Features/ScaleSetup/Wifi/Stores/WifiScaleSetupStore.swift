@@ -91,6 +91,8 @@ final class WifiScaleSetupStore: ObservableObject {
                 return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode) { code in
                     self.selectedErrorCode = code
                 })
+            case .errorDetail:
+                return AnyView(WifiErrorCodeDetailView(errorCode: selectedErrorCode))
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
             case .setupFinish:
