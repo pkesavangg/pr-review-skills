@@ -21,4 +21,10 @@ struct WifiScaleSetupStrings {
         static let boldWords = ["NEXT"]
         static let err = "Err"
     }
+    struct WifiPasswordViewStrings {
+        static let title = "What network should your scale connect to?"
+        static let description = "If you have multiple Wi-Fi networks, use the 2GHZ network closest to your scale."
+        static let networkHasNoPassword = "Network has no password"
+        static let note = "Your phone should stay connected to the chosen 2GHZ network until setup is complete."
+    }
 }

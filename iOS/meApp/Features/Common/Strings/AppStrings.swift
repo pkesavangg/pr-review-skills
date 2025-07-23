@@ -263,6 +263,7 @@ struct InputFieldLabels {
     static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let networkName = "network name"
     static let confirmPassword = "confirm password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
