@@ -114,6 +114,12 @@ struct BottomTabBarView: View {
         guard viewModel.selectedTab != tab else { return }
         
         Task {
+            // Check camera permission for AppSync tab
+            if tab == .appsync {
+                let permissionState = await viewModel.handleCameraPermission()
+                guard permissionState == .ENABLED else { return }
+            }
+            
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result
             // If it returns true, switch to the new tab

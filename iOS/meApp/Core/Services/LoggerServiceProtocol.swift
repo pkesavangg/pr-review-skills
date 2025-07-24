@@ -61,5 +61,12 @@ protocol LoggerServiceProtocol {
     ///   - version: App version to include in the logs payload
     /// - Throws: Error if no active account found or if sending fails
     func sendLogsToServer(accountId: String?, version: String) async throws
+    
+    /// Sends scale logs to the server
+    /// - Parameters:
+    ///  - deviceLogs: Array of `DeviceLogEntry` objects to send
+    ///  - version: App version to include in the logs payload (defaults to current app version)
+    ///  - Throws: Error if sending fails
+    func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String) async throws
 }
 

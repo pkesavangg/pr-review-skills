@@ -35,4 +35,5 @@ enum FocusField: Hashable {
     case none
     case modelNumber
     case scaleName
+    case networkName
 }

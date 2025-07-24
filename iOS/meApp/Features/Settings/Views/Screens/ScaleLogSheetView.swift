@@ -23,7 +23,7 @@ struct ScaleLogSheetView: View {
                     ForEach(scales) { scale in
                         VStack {
                             Button(action: {
-                                helpStore.sendScaleLogHandler(broadcastId: scale.broadcastIdString)
+                                helpStore.sendScaleLogHandler(device: scale)
                             }) {
                                 ScaleItemView(
                                     scaleIcon: scaleIcon(for: scale.sku),
@@ -31,7 +31,7 @@ struct ScaleLogSheetView: View {
                                     scaleName: scale.nickname ?? scale.deviceName ?? "Unknown Scale",
                                     status: scale.isConnected ?? false ? .connected : .notConnected,
                                     onTap: {
-                                        helpStore.sendScaleLogHandler(broadcastId: scale.broadcastIdString)
+                                        helpStore.sendScaleLogHandler(device: scale)
                                     },
                                     isDisabled: !(scale.isConnected ?? false)
                                 )

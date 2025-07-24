@@ -21,6 +21,7 @@ class HelpStore: ObservableObject {
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
     @Injector var scaleService: ScaleService
+    @Injector var bluetoothService: BluetoothService
     var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     
@@ -200,33 +201,39 @@ class HelpStore: ObservableObject {
     }
     
     /// Sends scale-specific logs.
-    /// Sends scale-specific logs.
-    func sendScaleLogHandler(broadcastId: String? = nil) {
-        let resolvedBroadcastId: String? = {
-            if let id = broadcastId {
+    func sendScaleLogHandler(device: Device? = nil) {
+        let resolvedDevice: Device? = {
+            if let id = device {
                 return id
             } else if scales.count == 1 {
-                return scales.first?.broadcastIdString
+                return scales.first
             } else {
                 return nil
             }
         }()
 
-        if let idToSend = resolvedBroadcastId {
-            sendScaleLogsToServer(broadcastId: idToSend)
+        if let device = resolvedDevice {
+            sendScaleLogsToServer(device: device)
         } else {
             showScaleLogSheet = true
         }
     }
 
-    private func sendScaleLogsToServer(broadcastId: String) {
+    private func sendScaleLogsToServer(device: Device) {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
             
             do {
-                // TODO: Implement actual scale log sending
-                // await exportService.sendScaleLog(broadcastId)
-                try await Task.sleep(for: .seconds(3)) // Simulate API call
+                let result = await bluetoothService.getDeviceLogs(for: device)
+                switch result {
+                case .success(let logs):
+                    try await logger.sendScaleLogsToServer(deviceLogs: logs.logs)
+                    logger.log(level: .info, tag: tag, message: "Scale logs sent for device:", data: device.mac)
+                case .failure(let error):
+                    logger.log(level: .error, tag: tag, message: "Failed to get scale logs: \(error.localizedDescription)")
+                    notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
+                    return
+                }
                 notificationService.showToast(ToastModel(message: toastLang.logsSent))
                 showScaleLogSheet = false // Hide sheet after sending
             } catch {
