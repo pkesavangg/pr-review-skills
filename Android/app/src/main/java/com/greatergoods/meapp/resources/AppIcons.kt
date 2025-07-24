@@ -87,9 +87,9 @@ object AppIcons {
     val My_Fitness_Pal = R.drawable.ic_my_fitnesspal_logo
     val Health_Connect_Logo = R.drawable.health_connect_logo
     val Health_Connect_Off = R.drawable.health_connect_off
-    val No_Permission=R.drawable.no_permission
-    val Full_Permission=R.drawable.full_permission
-    val HC_Homepage=R.drawable.hc_homepage
+    val No_Permission = R.drawable.no_permission
+    val Full_Permission = R.drawable.full_permission
+    val HC_Homepage = R.drawable.hc_homepage
     val User_Conflict = R.drawable.user_conflict
     val Permission_Failed = R.drawable.integration_failed
   }
@@ -104,5 +104,7 @@ object AppIcons {
     val UserNameScale = R.drawable.scale_0412_user_name
     val AppSyncNavBar = R.drawable.app_bottom_bar
     val SetupCompleteCheck = R.drawable.setup_complete_check
+    val WifiAPMode = R.drawable.wifi_ap_mode
+    val WifiSmartConnect = R.drawable.wifi_smart_connect
   }
 }
