@@ -40,11 +40,13 @@ enum class WifiScaleSetupStep {
   // WifiPassword step data (ssid) should be stored in state, not here
   WIFI_PASSWORD,
   SELECT_USER,
+  WIFI_MODE,
   ACTIVATE_SCALE,
   CONNECTING_SCALE,
   ERROR_GUIDE,
   TROUBLE_SHOOTING,
   SWITCH_WIFI,
+  MAC_ADDRESS,
   SCALE_COUNTS,
   STEP_ON,
   SETUP_FINISHED

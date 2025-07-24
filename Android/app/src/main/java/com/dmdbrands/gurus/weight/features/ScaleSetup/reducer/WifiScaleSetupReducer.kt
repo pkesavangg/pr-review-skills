@@ -52,6 +52,9 @@ data class WifiScaleSetupState(
   val isSetupFinished: Boolean = false,
   val isConnected: Boolean = false,
   val shouldGetMacAddress: Boolean = false,
+  val selectedUser: Int? = null,
+  val selectedWifiMode: String? = null,
+  val selectedErrorCode: String? = null,
   val permissions: GGPermissionStatusMap = mutableMapOf(
     "LOCATION_SWITCH" to PermissionState.ENABLED,
     "LOCATION" to PermissionState.DISABLED,
@@ -87,6 +90,18 @@ sealed interface WifiScaleSetupIntent : IReducer.Intent {
 
   data class OnGetScaleMacAddress(
     val shouldGetMacAddress: Boolean,
+  ) : WifiScaleSetupIntent
+
+  data class SelectUser(
+    val userNumber: Int,
+  ) : WifiScaleSetupIntent
+
+  data class SelectWifiMode(
+    val wifiMode: String,
+  ) : WifiScaleSetupIntent
+
+  data class SelectErrorCode(
+    val errorCode: String,
   ) : WifiScaleSetupIntent
 
   object Next : WifiScaleSetupIntent
@@ -143,6 +158,12 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         )
 
       is WifiScaleSetupIntent.OnGetScaleMacAddress -> state.copy(shouldGetMacAddress = intent.shouldGetMacAddress)
+
+      is WifiScaleSetupIntent.SelectUser -> state.copy(selectedUser = intent.userNumber)
+
+      is WifiScaleSetupIntent.SelectWifiMode -> state.copy(selectedWifiMode = intent.wifiMode)
+
+      is WifiScaleSetupIntent.SelectErrorCode -> state.copy(selectedErrorCode = intent.errorCode)
 
       else -> state.copy()
     }

@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SelectButtonGrid
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
@@ -62,19 +63,12 @@ fun SelectButton(
     }
 
     // Select Buttons Grid
-    SelectButtonGrid(
-      items = selectButtonItems,
-      isSelectable = isSelectable,
-      onItemSelected = onItemSelected,
-      modifier = Modifier.fillMaxWidth()
-    )
-
-    if(supportingButtonLabel != null && onSupportingButtonClick != null) {
-      AppButton(
-        label = supportingButtonLabel,
-        type = ButtonType.InlineTextPrimary,
-        onClick = onSupportingButtonClick,
-        modifier = Modifier.align(Alignment.CenterHorizontally)
+    selectButtonItems.let { items ->
+      SelectButtonGrid(
+        items = items,
+        isSelectable = isSelectable,
+        onItemSelected = onItemSelected,
+        modifier = Modifier.fillMaxWidth(),
       )
     }
 
@@ -85,6 +79,14 @@ fun SelectButton(
       )
     }
 
+    if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+      AppButton(
+        label = supportingButtonLabel,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onSupportingButtonClick,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+      )
+    }
     content?.let {
       content()
     }
@@ -92,47 +94,48 @@ fun SelectButton(
   }
 }
 
-
-@PreviewTheme
-@Composable
-private fun SelectButtonWithUserNumbersPreview() {
-  MeAppTheme {
-    val userNumbers = (1..8).toList()
-    var selectedUser by remember { mutableStateOf<Int?>(0) }
-    val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = selectedUser)
-
-    SelectButton(
-      title = WifiSetupStrings.ChooseUser.Title,
-      subtitle = WifiSetupStrings.ChooseUser.Message,
-      selectButtonItems = userButtons,
-      isSelectable = true,
-      onItemSelected = { value ->
-        // Handle user selection
-        selectedUser = value.toInt()
-      }
-    )
-  }
-}
-
 // @PreviewTheme
 // @Composable
-// private fun SelectButtonWithWifiModesPreview() {
+// private fun SelectButtonWithUserNumbersPreview() {
 //   MeAppTheme {
-//     var selectedMode by remember { mutableStateOf<String?>(null) }
-//     val wifiButtons = SelectButtonHelper.createWifiModeButtons(selectedMode = selectedMode)
+//     val userNumbers = (1..8).toList()
+//     var selectedUser by remember { mutableStateOf<Int?>(0) }
+//     val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = selectedUser)
 //
 //     SelectButton(
-//       title = WifiSetupStrings.WifiMode.Title,
-//       selectButtonItems = wifiButtons,
+//       title = WifiScaleSetupStrings.ChooseUser.Title,
+//       subtitle = WifiScaleSetupStrings.ChooseUser.Message,
+//       selectButtonItems = userButtons,
 //       isSelectable = true,
 //       onItemSelected = { value ->
-//         selectedMode = value
-//         // Handle wifi mode selection
+//         // Handle user selection
+//         selectedUser = value.toInt()
 //       },
-//       noteMessage = WifiSetupStrings.WifiMode.Note
 //     )
 //   }
 // }
+
+@PreviewTheme
+@Composable
+private fun SelectButtonWithWifiModesPreview() {
+  MeAppTheme {
+    var selectedMode by remember { mutableStateOf<String?>(null) }
+    val wifiButtons = SelectButtonHelper.createWifiModeButtons(selectedMode = selectedMode)
+
+    SelectButton(
+      title = WifiScaleSetupStrings.WifiMode.Title,
+      selectButtonItems = wifiButtons,
+      isSelectable = true,
+      onItemSelected = { value ->
+        selectedMode = value
+        // Handle wifi mode selection
+      },
+      noteMessage = WifiScaleSetupStrings.WifiMode.Note,
+      supportingButtonLabel = "hello",
+      onSupportingButtonClick = {}
+    )
+  }
+}
 
 // @PreviewTheme
 // @Composable
