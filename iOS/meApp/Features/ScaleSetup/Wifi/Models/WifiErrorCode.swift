@@ -10,4 +10,14 @@ enum WifiErrorCode: String, CaseIterable, Identifiable, Hashable {
     case t325 = "t325"
 
     public var id: String { rawValue }
-} 
+    
+    /// Indicates whether this error code should display its messages in numbered format.
+    var shouldUseNumberedMessages: Bool {
+        switch self {
+        case .t206, .t163, .t323:
+            return true
+        default:
+            return false
+        }
+    }
+}

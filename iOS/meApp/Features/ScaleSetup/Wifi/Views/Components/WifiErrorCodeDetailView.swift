@@ -45,11 +45,9 @@ struct WifiErrorCodeDetailView: View {
                     noteSection(text: detail.note)
                         .padding(.bottom, .spacingXS)
 
-                    let numberedErrorCodes: [WifiErrorCode] = [.t206, .t163, .t323]
-                    let isNumbered = numberedErrorCodes.contains(code)
 
                     ForEach(Array(detail.messages.enumerated()), id: \.offset) { index, message in
-                        if isNumbered && index < maxNumberedMessages {
+                        if code.shouldUseNumberedMessages && index < maxNumberedMessages {
                             textView(text: "\(index + 1). \(message)")
                         } else {
                             textView(text: message)
