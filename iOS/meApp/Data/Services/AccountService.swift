@@ -143,6 +143,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Deletes all accounts locally.
+    func deleteAllAccounts() async throws {
+        do {
+            try await localRepo.deleteAllAccounts()
+            try await updatePublishedState()
+        } catch {
+            throw error // Handle any errors that occur during deletion
+        }
+    }
+    
     // MARK: - Account Switching
     /// Switches to a different account by setting it as the active account.
     func switchAccount(to account: Account) async throws {

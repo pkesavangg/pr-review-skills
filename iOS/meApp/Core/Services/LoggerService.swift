@@ -118,9 +118,15 @@ final class LoggerService: LoggerServiceProtocol {
         
         // Clear logs for the account after successful upload
         try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
-
+    }
+    
+    /// Sends scale logs to the server
+    public func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String = AppInfo.appVersion) async throws {
+        // Format logs for API
+        let logsPayload = formatScaleLogsForAPI(deviceLogs, version: version)
         
-        systemLogger.log(level: .info, tag: "LoggerService", message: "Successfully sent \(logs.count) logs to server for account \(resolvedAccountId) and cleared local logs")
+        // Send to API using LoggerApiRepository
+        try await loggerApiRepository.sendLogs(logsPayload)
     }
     
     /// Helper method to parse additional data as string array
@@ -190,6 +196,37 @@ final class LoggerService: LoggerServiceProtocol {
             }
             
             return LogEntryPayload(time: timeString, data: data)
+        }
+        
+        return LogsPayload(version: version, logs: formattedLogs)
+    }
+    
+    /// Formats device logs for API submission
+    private func formatScaleLogsForAPI(_ deviceLogs: [DeviceLogEntry], version: String = AppInfo.appVersion) -> LogsPayload {
+        var formattedLogs: [LogEntryPayload] = []
+        
+        // Add MAC address entry if available
+        if let macAddress = deviceLogs.first?.macAddress {
+            formattedLogs.append(LogEntryPayload(
+                time: ISO8601DateFormatter().string(from: Date()),
+                data: .string("Mac Address: \(macAddress)")
+            ))
+        }
+        
+        // Process each log entry
+        for deviceLog in deviceLogs {
+            guard let logText = deviceLog.log else { continue }
+            
+            // Split log text into lines
+            let logLines = logText.components(separatedBy: "\n")
+            
+            // Process each line
+            for line in logLines where !line.isEmpty {
+                formattedLogs.append(LogEntryPayload(
+                    time: ISO8601DateFormatter().string(from: Date()),
+                    data: .string(line)
+                ))
+            }
         }
         
         return LogsPayload(version: version, logs: formattedLogs)

@@ -5,6 +5,9 @@ import Foundation
 /// This protocol defines the contract for interacting with paired-scale data, including listing, creating,
 /// editing, deleting, and updating scale meta and preferences. Implementations may use local storage or remote API.
 protocol ScaleRepositoryProtocol {
+    /// Deletes all scales from local storage.
+    func clearAllData() async throws
+
     /// Fetches the list of paired scales for the current user. (GET /paired-scale)
     /// - Returns: An array of Scale.
     func listScales() async throws -> [Device]

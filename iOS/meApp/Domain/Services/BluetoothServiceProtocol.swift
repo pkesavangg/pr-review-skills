@@ -125,6 +125,9 @@ protocol BluetoothServiceProtocol {
     /// Retrieves the list of users stored on the scale (R4 only).
     /// - Returns: Result<[DeviceUser], BluetoothServiceError>
     func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError>
+    /// Retrieves device logs from the scale.
+    /// - Returns: Result<DeviceLogs, BluetoothServiceError>
+    func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError>
 
     // MARK: - Alerts & Utility
     /// Triggers the in-app alert required when weight-only mode is enabled by another user.
