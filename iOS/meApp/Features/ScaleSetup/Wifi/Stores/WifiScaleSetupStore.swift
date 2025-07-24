@@ -20,6 +20,9 @@ final class WifiScaleSetupStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let commonLang = CommonStrings.self
     
+    /// Active subscription to the network form changes
+    private var networkFormCancellable: AnyCancellable? = nil
+    
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -47,6 +50,9 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     
+    // MARK: - Forms
+    @Published var networkForm = NetworkForm()
+    
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
         guard let scaleItem else { return [] }
@@ -56,6 +62,10 @@ final class WifiScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
+            case .wifiPassword:
+                return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType == .espTouchWifi) {
+                    // TODO: Implement on network change logic
+                })
             case .selectUser:
                 return AnyView(UserNumberSelectionView(selectedNumber: selectedUserNumber) { number in
                     self.selectedUserNumber = number
@@ -100,6 +110,8 @@ final class WifiScaleSetupStore: ObservableObject {
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)
+        
+        subscribeToNetworkForm()
     }
     
     // MARK: - Configuration
@@ -191,6 +203,18 @@ final class WifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Starts observing the network form changes to update the next button state.
+    private func subscribeToNetworkForm() {
+        // Cancel previous subscription to avoid redundant updates
+        networkFormCancellable?.cancel()
+        
+        networkFormCancellable = networkForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextEnabled()
+            }
+    }
+    
     private func navigateToStep(_ step: WifiScaleSetupStep, delay: TimeInterval = 0) {
         if let stepIndex = steps.firstIndex(of: step) {
             self.currentStepIndex = stepIndex
@@ -221,6 +245,13 @@ final class WifiScaleSetupStore: ObservableObject {
             
             // Enable Next button only when all permissions are granted
             isNextEnabled = locationEnabled && locationSwitchEnabled && wifiSwitchEnabled
+        case .wifiPassword:
+            // Enable connect button only when password is valid (unless no password required)
+            if networkForm.networkHasNoPassword {
+                isNextEnabled = networkForm.ssid.isValid
+            } else {
+                isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
+            }
         default:
             isNextEnabled = true
         }
