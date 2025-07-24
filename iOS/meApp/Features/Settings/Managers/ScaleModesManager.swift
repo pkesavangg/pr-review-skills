@@ -20,28 +20,46 @@ class ScaleModesManager: ObservableObject {
 
     // MARK: - Mode Management
     func loadScaleModePreferences(for scale: Device) {
-        guard let r4Preference = scale.r4ScalePreference else {
-            state.originalModeValue = ScaleModes.weightOnly
-            state.originalHeartRateEnabled = false
-            state.modeValue = ScaleModes.weightOnly
-            state.isHeartRateEnabled = false
-            updateModeChangeTracking()
-            return
+       
+        if let r4Preference = scale.r4ScalePreference {
+            let shouldMeasureImpedance = r4Preference.shouldMeasureImpedance
+            let shouldMeasurePulse = r4Preference.shouldMeasurePulse
+           
+            state.originalModeValue = shouldMeasureImpedance ? ScaleModes.allBodyMetrics : ScaleModes.weightOnly
+            state.originalHeartRateEnabled = shouldMeasurePulse
+            state.modeValue = state.originalModeValue
+            state.isHeartRateEnabled = state.originalHeartRateEnabled
+        } else {
+            
+            // Create default R4ScalePreference if it doesn't exist
+            let defaultPreference = R4ScalePreference(
+                scaleId: scale.id,
+                displayName: scale.nickname ?? scale.deviceName ?? "Unknown Device",
+                displayMetrics: ScaleMetrics.defaultMetricsKeys,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: true,
+                shouldMeasurePulse: true,
+                timeFormat: "12",
+                tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: Int(Date().timeIntervalSince1970),
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+            )
+            scale.r4ScalePreference = defaultPreference
+            
+            state.originalModeValue = ScaleModes.allBodyMetrics
+            state.originalHeartRateEnabled = true
+            state.modeValue = state.originalModeValue
+            state.isHeartRateEnabled = state.originalHeartRateEnabled
         }
         
-        state.originalModeValue = r4Preference.shouldMeasureImpedance ? ScaleModes.allBodyMetrics : ScaleModes.weightOnly
-        state.originalHeartRateEnabled = r4Preference.shouldMeasurePulse
-        state.modeValue = state.originalModeValue
-        state.isHeartRateEnabled = state.originalHeartRateEnabled
         updateModeChangeTracking()
-        
-        logger.log(level: .debug, tag: "ScaleModesManager", message: "Loaded preferences - mode: \(state.modeValue.rawValue), heart rate: \(state.isHeartRateEnabled)")
     }
 
     func saveScaleModePreferences(for scale: Device) async throws {
         let shouldMeasureImpedance = state.modeValue == ScaleModes.allBodyMetrics
         let shouldMeasurePulse = state.isHeartRateEnabled && shouldMeasureImpedance
         
+        // Get existing display metrics or use defaults
         var existingDisplayMetrics = scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys
         if existingDisplayMetrics.isEmpty {
             existingDisplayMetrics = ScaleMetrics.defaultMetricsKeys
@@ -58,34 +76,49 @@ class ScaleModesManager: ObservableObject {
             displayName = "Unknown Device"
         }
         
-        let preference = R4ScalePreference(
+        // Create or update R4ScalePreference with proper defaults
+        let updatedPreference = R4ScalePreference(
             scaleId: scaleId,
             displayName: displayName,
             displayMetrics: existingDisplayMetrics,
-            shouldFactoryReset: false,
+            shouldFactoryReset: scale.r4ScalePreference?.shouldFactoryReset ?? false,
             shouldMeasureImpedance: shouldMeasureImpedance,
             shouldMeasurePulse: shouldMeasurePulse,
-            timeFormat: "12",
-            tzOffset: DateTimeTools.getTimeZoneInMinutes(),
-            wifiFotaScheduleTime: Int(Date().timeIntervalSince1970),
+            timeFormat: scale.r4ScalePreference?.timeFormat ?? "12",
+            tzOffset: scale.r4ScalePreference?.tzOffset ?? DateTimeTools.getTimeZoneInMinutes(),
+            wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
             updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
         )
         
-        try await scaleService.updateScalePreference(scaleId, preference)
+        // Save to database
+        try await scaleService.updateScalePreference(scaleId, updatedPreference)
         
+        // Update the scale's R4ScalePreference in memory
+        scale.r4ScalePreference = updatedPreference
+        
+        // Update on connected scale if available
         if scale.isConnected == true {
-            let result = await bluetoothService.updateWeightOnlyMode(on: scale)
+            let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
             switch result {
-            case .success:
-                logger.log(level: .info, tag: "ScaleModesManager", message: "Updated scale preferences successfully")
+            case .success(let response):
+                // Treat both creationCompleted and userSelectionInProgress as success
+                // userSelectionInProgress means the scale is waiting for user selection, which is normal
+                if response == .creationCompleted || response == .userSelectionInProgress {
+                    logger.log(level: .info, tag: "ScaleModesManager", message: "Scale mode preferences updated on scale successfully (response: \(response))")
+                } else {
+                    logger.log(level: .info, tag: "ScaleModesManager", message: "Scale update returned unexpected response: \(response)")
+                }
             case .failure(let error):
                 logger.log(level: .error, tag: "ScaleModesManager", message: "Failed to update scale: \(error)")
             }
         }
         
+        // Update state tracking
         state.originalModeValue = state.modeValue
         state.originalHeartRateEnabled = state.isHeartRateEnabled
         updateModeChangeTracking()
+        
+        logger.log(level: .info, tag: "ScaleModesManager", message: "Scale mode preferences saved successfully")
     }
 
     func resetModeSettings() {
@@ -101,33 +134,60 @@ class ScaleModesManager: ObservableObject {
     // MARK: - Banner Logic
     func shouldShowWeightOnlyBanner(for scale: Device) -> Bool {
         guard scale.isConnected == true else { return false }
-        return isWeightOnlyModeEnabledByOthers(for: scale)
+        
+        // Check if scale is in weight-only mode (set by other users)
+        let isScaleInWeightOnlyMode = isWeightOnlyModeEnabledByOthers(for: scale)
+        
+        // Check if current user's mode is set to "All Body Metrics"
+        let isCurrentUserInAllBodyMetricsMode = state.modeValue == ScaleModes.allBodyMetrics
+        
+        // Show banner only if scale is in weight-only mode AND current user wants all body metrics
+        let shouldShow = isScaleInWeightOnlyMode && isCurrentUserInAllBodyMetricsMode
+           
+        return shouldShow
     }
 
-    func shouldShowSetupIncompleteBanner(for scale: Device) -> Bool {
+    func shouldShowSetupIncompleteBanner(for scale: Device, connectedWifiSSID: String? = nil) -> Bool {
         let isR4Scale = ScaleTypeHelper.determineScaleType(for: scale) == .bluetoothR4
         let isConnected = scale.isConnected == true
         let isWifiConfigured = scale.isWifiConfigured == true
+        let hasConnectedWifi = connectedWifiSSID != nil && !connectedWifiSSID!.isEmpty
         let isInWeightOnlyMode = isWeightOnlyModeEnabledByOthers(for: scale)
         
-        return isR4Scale && isConnected && !isWifiConfigured && !isInWeightOnlyMode
+        // Don't show banner if WiFi is configured OR if there's a connected WiFi network
+        let wifiIsWorking = isWifiConfigured || hasConnectedWifi
+        
+        let shouldShow = isR4Scale && isConnected && !wifiIsWorking && !isInWeightOnlyMode
+        
+        return shouldShow
+    }
+
+    /// Refreshes the WiFi status for the given scale
+    func refreshWifiStatus(for scale: Device) async {
+        guard scale.isConnected == true else { return }
+        
+        do {
+            let result = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+            switch result {
+            case .success(let ssid):
+                if !ssid.isEmpty {
+                    logger.log(level: .info, tag: "ScaleModesManager", message: "Found connected WiFi SSID: \(ssid)")
+                } else {
+                    logger.log(level: .info, tag: "ScaleModesManager", message: "No connected WiFi SSID found")
+                }
+            case .failure(let error):
+                logger.log(level: .error, tag: "ScaleModesManager", message: "Failed to get connected WiFi SSID: \(error)")
+            }
+        }
     }
 
     func handleWeightOnlyBannerAction(for scale: Device) async {
-        guard scale.isConnected == true else {
-            logger.log(level: .debug, tag: "ScaleModesManager", message: "Scale not connected, skipping weight-only mode update")
-            return
-        }
+        // This method is now called when the weight-only banner is tapped
+        // The action should navigate to the scale modes screen where the user can change their mode
+        logger.log(level: .info, tag: "ScaleModesManager", message: "Weight-only banner tapped - should navigate to scale modes screen")
         
-        do {
-            let result = await bluetoothService.updateWeightOnlyMode(on: scale)
-            switch result {
-            case .success:
-                logger.log(level: .info, tag: "ScaleModesManager", message: "Weight-only mode updated successfully")
-            case .failure(let error):
-                logger.log(level: .error, tag: "ScaleModesManager", message: "Failed to update weight-only mode: \(error)")
-            }
-        }
+        // Note: The actual navigation will be handled by the calling view/screen
+        // This method is kept for logging and potential future functionality
     }
 
     // MARK: - Private Methods

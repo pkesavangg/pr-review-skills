@@ -134,8 +134,8 @@ struct DisplayMetricsScreen: View {
                 .fontWeight(.regular)
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    scaleStore.handleWeightOnlyBannerAction()
-                    
+                    // Navigate to scale modes screen where user can change their mode
+                    router.navigate(to: .scaleModes(scale: scale))
                 })
             }
         }

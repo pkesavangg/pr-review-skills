@@ -93,6 +93,9 @@ struct ScaleItemView: View {
         }
         .padding(.horizontal, .spacingSM)
         .padding(.vertical, .spacingLG)
+        .onTapGesture {
+           onTap()
+        }
         .contentShape(Rectangle())
     }
 }

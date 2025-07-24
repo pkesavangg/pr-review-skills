@@ -20,7 +20,28 @@ class ScaleMetricsManager: ObservableObject {
 
     // MARK: - Metrics Management
     func loadDisplayMetrics(for scale: Device) {
-        let displayMetrics = scale.r4ScalePreference?.displayMetrics ?? ScaleMetrics.defaultMetricsKeys
+        // Create or get display metrics from R4ScalePreference
+        let displayMetrics: [String]
+        
+        if let r4Preference = scale.r4ScalePreference {
+            displayMetrics = r4Preference.displayMetrics
+        } else {
+            // Create default R4ScalePreference if it doesn't exist
+            let defaultPreference = R4ScalePreference(
+                scaleId: scale.id,
+                displayName: scale.nickname ?? scale.deviceName ?? "Unknown Device",
+                displayMetrics: ScaleMetrics.defaultMetricsKeys,
+                shouldFactoryReset: false,
+                shouldMeasureImpedance: true,
+                shouldMeasurePulse: true,
+                timeFormat: "12",
+                tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+                wifiFotaScheduleTime: Int(Date().timeIntervalSince1970),
+                updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+            )
+            scale.r4ScalePreference = defaultPreference
+            displayMetrics = ScaleMetrics.defaultMetricsKeys
+        }
         
         let bodyMetricsConfig = ScaleMetrics.bodyMetrics
         let bodyMetricsWithState = bodyMetricsConfig.map { config in
@@ -49,8 +70,7 @@ class ScaleMetricsManager: ObservableObject {
         state.progressMetrics = sortMetrics(progressMetricsWithState, displayMetrics: displayMetrics, originalConfig: progressMetricsConfig)
         
         updateDisplayMetricsValue()
-        
-        logger.log(level: .debug, tag: "ScaleMetricsManager", message: "Loaded display metrics: \(displayMetrics)")
+
     }
 
     func saveDisplayMetrics(for scale: Device) async throws {
@@ -58,6 +78,7 @@ class ScaleMetricsManager: ObservableObject {
         let progressMetricsKeys = extractDisplayMetrics(from: state.progressMetrics)
         let displayMetrics = bodyMetrics + progressMetricsKeys
         
+        // Create or update R4ScalePreference with proper defaults
         let updatedPreference = R4ScalePreference(
             scaleId: scale.id,
             displayName: scale.r4ScalePreference?.displayName ?? scale.nickname ?? scale.deviceName ?? "Unknown Device",
@@ -73,14 +94,19 @@ class ScaleMetricsManager: ObservableObject {
         
         try await scaleService.updateScalePreference(scale.id, updatedPreference)
         
+        // Update the scale's R4ScalePreference in memory
+        scale.r4ScalePreference = updatedPreference
+        
         if scale.isConnected == true {
             let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
             switch result {
             case .success(let response):
-                if response == .creationCompleted {
-                    logger.log(level: .info, tag: "ScaleMetricsManager", message: "Display metrics updated on scale successfully")
+                // Treat both creationCompleted and userSelectionInProgress as success
+                // userSelectionInProgress means the scale is waiting for user selection, which is normal
+                if response == .creationCompleted || response == .userSelectionInProgress {
+                    logger.log(level: .info, tag: "ScaleMetricsManager", message: "Display metrics updated on scale successfully (response: \(response))")
                 } else {
-                    logger.log(level: .error, tag: "ScaleMetricsManager", message: "Scale update returned: \(response)")
+                    logger.log(level: .info, tag: "ScaleMetricsManager", message: "Scale update returned unexpected response: \(response)")
                 }
             case .failure(let error):
                 logger.log(level: .error, tag: "ScaleMetricsManager", message: "Failed to update scale: \(error)")

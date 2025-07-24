@@ -53,13 +53,16 @@ struct ScaleModesSelectionView: View {
         }
         .background(theme.backgroundSecondary)
         .onAppear {
+            // Ensure internal state matches external state when view appears
             internalSelectedMode = selectedMode
             internalIsHeartRateEnabled = isHeartRateEnabled
         }
         .onChange(of: selectedMode) { oldValue, newValue in
+            // Update internal state when external state changes
             internalSelectedMode = newValue
         }
         .onChange(of: isHeartRateEnabled) { oldValue, newValue in
+            // Update internal state when external state changes
             internalIsHeartRateEnabled = newValue
         }
     }
