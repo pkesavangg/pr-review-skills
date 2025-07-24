@@ -31,6 +31,7 @@ enum BluetoothServiceError: Error, LocalizedError {
     case firmwareUpdateFailed(Error)
     case clearDataFailed(Error)
     case updateProfileFailed(Error)
+    case getDeviceLogsFailed(Error)
     case getScaleUserListFailed(Error)
     case getDeviceInfoFailed(Error)
     case getMeasurementLiveDataFailed(Error)
@@ -128,6 +129,8 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Cannot perform operation while scan is in progress"
         case .deviceAlreadyConnected:
             return "Device is already connected"
+        case .getDeviceLogsFailed(_):
+            return "Get device logs failed"
         }
     }
 }

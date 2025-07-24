@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		10575C022E15116D0093651D /* GGBluetoothSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 10575C012E15116D0093651D /* GGBluetoothSwiftPackage */; };
+		10D170682E30E20D00D18116 /* gWifiScalePackage in Frameworks */ = {isa = PBXBuildFile; productRef = 10D170672E30E20D00D18116 /* gWifiScalePackage */; };
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
 		D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D05336252E17C72500FFF083 /* AppSyncPackage */; };
@@ -84,6 +85,7 @@
 				D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 				D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */,
+				10D170682E30E20D00D18116 /* gWifiScalePackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,6 +159,7 @@
 				D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */,
 				10575C012E15116D0093651D /* GGBluetoothSwiftPackage */,
 				D05336252E17C72500FFF083 /* AppSyncPackage */,
+				10D170672E30E20D00D18116 /* gWifiScalePackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -245,6 +248,7 @@
 				D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 				10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */,
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
+				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -959,6 +963,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/dmdbrands/ggWifiScalePackage";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -990,6 +1002,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */;
 			productName = GGBluetoothSwiftPackage;
+		};
+		10D170672E30E20D00D18116 /* gWifiScalePackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */;
+			productName = gWifiScalePackage;
 		};
 		481F096C2DF05C8D00799EAA /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;

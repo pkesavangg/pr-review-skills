@@ -46,7 +46,7 @@ struct WifiMacAddressScreen: View {
                             size: .large,
                             isDisabled: false,
                             action: {
-                                UIPasteboard.general.string = scaleStore.getWifiMacAddressString()
+                                scaleStore.copyWifiMacAddress()
                             }
                         )
                     }

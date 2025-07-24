@@ -67,7 +67,7 @@ struct MyScalesScreen: View {
     private func determineScaleType(for scale: Device) -> ScaleType {
         return ScaleTypeHelper.determineScaleType(for: scale)
     }
-
+    
     /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
     /// - Parameters:
     ///   - scale: The `ScaleItemInfo` that the user selected / submitted.
@@ -82,7 +82,7 @@ struct MyScalesScreen: View {
             activeSheet = .setupFlow(scale)
             hideKeyboard()
         }
-
+        
         switch scale.setupType {
         case .appSync:
             // Prevent adding duplicate AppSync scales unless the user explicitly confirms.
@@ -97,7 +97,7 @@ struct MyScalesScreen: View {
             proceed()
         }
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
@@ -181,28 +181,40 @@ struct MyScalesScreen: View {
                         case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
+                                .onDisappear {
+                                    // Refresh scales when setup flow is dismissed
+                                    Task {
+                                        await scaleStore.forceRefreshDeviceData()
+                                    }
+                                }
                         case .lcbt:
                             A6ScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
+                                .onDisappear {
+                                    // Refresh scales when setup flow is dismissed
+                                    Task {
+                                        await scaleStore.forceRefreshDeviceData()
+                                    }
+                                }
                         case .btWifiR4:
                             BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil)
                                 .interactiveDismissDisabled(true)
+                                .onDisappear {
+                                    // Refresh scales when setup flow is dismissed
+                                    Task {
+                                        await scaleStore.forceRefreshDeviceData()
+                                    }
+                                }
                         case .bluetooth:
                             BluetoothScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                        default:
-                            // TODO: Handle other setup types
-                            VStack(spacing: .spacingMD) {
-                                Text("Setup flow coming soon")
-                                    .fontOpenSans(.heading4)
-                                Text("Selected scale: \(scale.productName)")
-                                    .fontOpenSans(.body2)
-                            }
-                            .padding()
+                        case .espTouchWifi, .wifi:
+                            WifiScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         }
                     }
                 }
-                .onChange(of: activeSheet) { _, newSheet in
+                .onChange(of: activeSheet) { oldSheet, newSheet in
                     // Observe changes to the activeSheet state.
                     // This is used to track whether a setup flow is being shown,
                     // and toggle the Bluetooth setup in-progress flag accordingly.
@@ -216,6 +228,13 @@ struct MyScalesScreen: View {
                         scaleStore.bluetoothService.resumeSmartScan(clearOnlyPairing: false)
                         Task {
                             await scaleStore.bluetoothService.resyncAndScan()
+                        }
+                        
+                        // If a setup flow was just dismissed, refresh the scales list
+                        if case .setupFlow = oldSheet {
+                            Task {
+                                await scaleStore.forceRefreshDeviceData()
+                            }
                         }
                     }
                 }
@@ -250,9 +269,44 @@ struct MyScalesScreen: View {
         }
         .onAppear(perform: {
             scaleStore.fetchScales()
+            
+            // Set up periodic device info check for SKU 0412 scales
+            Task {
+                // Initial check
+                await scaleStore.checkDeviceInfoForAllR4Scales()
+                
+                // Periodic check every 10 seconds while the screen is visible
+                for _ in 0..<SettingsConstants.maxCheckIterations { // Check 6 times (60 seconds total)
+                    try? await Task.sleep(nanoseconds: SettingsConstants.checkIntervalNanoseconds) // 10 seconds
+                    await scaleStore.checkDeviceInfoForAllR4Scales()
+                }
+            }
         })
         .onDisappear {
             scaleStore.resetForm()
+        }
+        .task {
+            // Refresh scales when view appears (including after setup flow dismissal)
+            await scaleStore.forceRefreshDeviceData()
+            
+            // Check device info for SKU 0412 scales to properly determine setup incomplete status
+            await scaleStore.checkDeviceInfoForAllR4Scales()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Refresh scales when app becomes active (e.g., returning from setup flow)
+            scaleStore.fetchScales()
+            
+            // Check device info for SKU 0412 scales when app becomes active
+            Task {
+                await scaleStore.checkDeviceInfoForAllR4Scales()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .scaleAddedOrUpdated)) { _ in
+            // Refresh scales when a scale is added or updated
+            Task {
+                await scaleStore.forceRefreshDeviceData()
+                await scaleStore.checkDeviceInfoForAllR4Scales()
+            }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
@@ -261,6 +315,9 @@ struct MyScalesScreen: View {
             hideKeyboard()
         }
     }
+    
+    // MARK: - Private Methods
+    
 }
 
 #Preview {

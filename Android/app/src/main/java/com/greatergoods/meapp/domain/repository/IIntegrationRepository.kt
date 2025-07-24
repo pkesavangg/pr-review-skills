@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface IIntegrationRepository {
   val integrations: Flow<Integrations?>
-    suspend fun getAccount(accountId: String): AccountInfo
-    suspend fun removeIntegration(provider: String)
-    suspend fun updateLocalAccount()
+  suspend fun getAccount(accountId: String): AccountInfo
+  suspend fun removeIntegration(provider: String, suggestion: Map<String, String>)
+  suspend fun updateLocalAccount()
 }

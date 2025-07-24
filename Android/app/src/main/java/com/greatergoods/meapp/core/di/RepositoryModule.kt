@@ -69,7 +69,7 @@ object RepositoryModule {
     fun provideHealthConnectRepository(
       accountRepository: IAccountRepository,
       healthConnectDataStore: HealthConnectDataStore,
-      healthConnectAPI: IHealthConnectAPI
+      healthConnectAPI: IHealthConnectAPI,
     ): IHealthConnectRepository =
         HealthConnectRepository(accountRepository, healthConnectAPI, healthConnectDataStore)
 

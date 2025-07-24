@@ -343,7 +343,19 @@ public struct FirmwareUpdateStatus: Sendable, Equatable {
     }
 }
 
+/// Represents a collection of device logs
+public struct DeviceLogs {
+    /// Array of individual log entries
+    let logs: [DeviceLogEntry]
+}
 
+/// Represents a single device log entry
+public struct DeviceLogEntry {
+    /// The MAC address of the device that generated the log
+    let macAddress: String?
+    /// The log content
+    let log: String?
+}
 
 
 

@@ -15,6 +15,7 @@ struct ScaleItemView: View {
     let status: ScaleConnectionStatus
     let onTap: () -> Void
     let hideChevron: Bool
+    let isDisabled: Bool
     
     init(
         scaleIcon: Image,
@@ -22,7 +23,8 @@ struct ScaleItemView: View {
         scaleName: String,
         status: ScaleConnectionStatus,
         onTap: @escaping () -> Void,
-        hideChevron: Bool = false
+        hideChevron: Bool = false,
+        isDisabled: Bool = false
     ) {
         self.scaleIcon = scaleIcon
         self.modelNumber = modelNumber
@@ -30,8 +32,9 @@ struct ScaleItemView: View {
         self.status = status
         self.onTap = onTap
         self.hideChevron = hideChevron
+        self.isDisabled = isDisabled
     }
-
+    
     private var statusIconDetails: (icon: String, color: Color) {
         switch status {
         case .setupIncomplete:
@@ -44,26 +47,28 @@ struct ScaleItemView: View {
             return ("", .clear) // Not used since status row is hidden
         }
     }
-
+    
     var body: some View {
         HStack(spacing: .spacingSM) {
             scaleIcon
                 .resizable()
                 .scaledToFit()
                 .frame(width: 75, height: 75)
-
+                .opacity(isDisabled ? 0.5 : 1)
+            
             VStack(alignment: .leading) {
                 Text(modelNumber)
                     .fontOpenSans(.heading5)
                     .fontWeight(.bold)
                     .foregroundColor(theme.textHeading)
-
+                    .opacity(isDisabled ? 0.7 : 1)
                 Text(scaleName)
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
                     .lineLimit(1)
                     .padding(.bottom, status == .noStatus ? 0 : .spacingXS)
-
+                    .opacity(isDisabled ? 0.7 : 1)
+                
                 if status != .noStatus {
                     HStack(spacing: .spacingXS) {
                         AppIconView(
@@ -71,17 +76,19 @@ struct ScaleItemView: View {
                             size: IconSize(width: 24, height: 24)
                         )
                         .foregroundColor(statusIconDetails.color)
-
+                        .opacity(isDisabled ? 0.5 : 1)
+                        
                         Text(status.displayText)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
+                            .opacity(isDisabled ? 0.7 : 1)
                     }
                 }
             }
             
             Spacer()
-
-            if !hideChevron {
+            
+            if !hideChevron && !isDisabled {
                 Button(action: {
                     onTap()
                 }) {
@@ -92,7 +99,10 @@ struct ScaleItemView: View {
             }
         }
         .padding(.horizontal, .spacingSM)
-        .padding(.vertical, .spacingLG)
+        .padding(.vertical, .spacingSM)
+        .onTapGesture {
+           onTap()
+        }
         .contentShape(Rectangle())
     }
 }

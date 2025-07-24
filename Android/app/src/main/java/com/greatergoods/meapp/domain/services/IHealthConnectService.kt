@@ -1,12 +1,12 @@
 package com.greatergoods.meapp.domain.services
 
-import android.content.Intent
 import androidx.activity.ComponentActivity
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import kotlinx.coroutines.flow.Flow
+import android.content.Intent
 
 /**
  * Interface for Health Connect service operations.
@@ -55,7 +55,7 @@ interface IHealthConnectService {
     /**
      * Opens the Health Connect app or settings.
      */
-    suspend fun openHealthConnect(): Boolean
+    suspend fun openHealthConnect(isFromSetup: Boolean = false): Boolean
 
     /**
      * Checks the current permission status.
@@ -107,7 +107,7 @@ interface IHealthConnectService {
     /**
      * Checks for multiple device connections.
      */
-    suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean = false): Boolean
+    suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean = false, isIntegrated: Boolean = false): Boolean
 
     /**
      * Handles Health Connect out of sync scenarios.
@@ -115,4 +115,5 @@ interface IHealthConnectService {
     suspend fun healthConnectOutOfSync(): Boolean
     fun syncWeightHistory()
     suspend fun checkHealthConnectPermissionDisabled()
+
 }
