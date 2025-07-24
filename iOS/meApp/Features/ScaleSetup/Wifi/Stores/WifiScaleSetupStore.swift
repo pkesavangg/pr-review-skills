@@ -332,12 +332,29 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     private func getWifiStatus() {
-        Task {
-            self.wifiStatus = await wifiScaleService.getConnectedWifiInfo()
+        Task { @MainActor in
+            let kvStorage = KvStorageService.shared
+            let tempKey = "ssidTemp"
+
+            let status = await wifiScaleService.getConnectedWifiInfo()
+
+            if let ssid = status.ssid, !ssid.isEmpty {
+                let localStatus = kvStorage.getCodable(forKey: tempKey, as: WifiStatus.self)
+                if let wifiStatus = localStatus {
+                    if ssid != wifiStatus.ssid {
+                        kvStorage.setCodable(status, forKey: tempKey)
+                    }
+                } else {
+                    kvStorage.setCodable(status, forKey: tempKey)
+                }
+            }
+
+            let wifiStatus = kvStorage.getCodable(forKey: tempKey, as: WifiStatus.self)
+            self.wifiStatus = wifiStatus
             self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
         }
     }
-    
+
     private func handleStepChange() {
         switch currentStep {
         case .connectionConfirm:
