@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.data.repository
 
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.IAuthAPI
 import com.greatergoods.meapp.data.api.IIntegrationAPI
 import com.greatergoods.meapp.data.storage.db.dao.AccountDao
@@ -28,7 +29,7 @@ class IntegrationRepository @Inject constructor(
 
   init {
     CoroutineScope(Dispatchers.IO).launch {
-      updateLocalAccount();
+      updateLocalAccount()
     }
   }
 
@@ -43,8 +44,9 @@ class IntegrationRepository @Inject constructor(
     isMFPValid = false,
     isUAValid = false,
     healthkit = false,
-    isHealthConnectOn = false
+    isHealthConnectOn = false,
   )
+
   // StateFlow for integrations (like BehaviorSubject)
   private val _integrations = MutableStateFlow<Integrations?>(defaultIntegrations)
   override val integrations: StateFlow<Integrations?> = _integrations.asStateFlow()
@@ -58,32 +60,36 @@ class IntegrationRepository @Inject constructor(
   }
 
   override suspend fun updateLocalAccount() {
-    val remoteAccount = accountRepository.getActiveAccount().first()
-    if (remoteAccount == null) {
-      _integrations.value = defaultIntegrations
-      return
+    try {
+      val remoteAccount = accountRepository.getActiveAccount().first()
+      if (remoteAccount == null) {
+        _integrations.value = defaultIntegrations
+        return
+      }
+      val account = accountRepository.getAccountFromAPI(remoteAccount.id)
+      accountRepository.updateAccountInfo(account.id, account)
+      // Convert to IntegrationsSettingsEntity
+      val integrationsSettings = IntegrationsSettingsEntity(
+        accountId = account.id,
+        isFitbitOn = account.isFitbitOn,
+        isFitbitValid = account.isFitbitValid,
+        isHealthConnectOn = account.isHealthConnectOn,
+        isHealthKitOn = account.isHealthKitOn,
+        isMFPOn = account.isMFPOn,
+        isMFPValid = account.isMFPValid,
+        isSynced = true,
+      )
+      accountDao.updateIntegrationsSettings(integrationsSettings)
+      // Update the integrations flow
+      _integrations.value = Integrations(
+        isFitbitOn = account.isFitbitOn,
+        isMFPOn = account.isMFPOn,
+        isFitbitValid = account.isFitbitValid,
+        isMFPValid = account.isMFPValid,
+        isHealthConnectOn = account.isHealthConnectOn,
+      )
+    } catch (e: Exception) {
+      AppLog.d("IntegrationRepository", "Failed to update local account")
     }
-    val account = accountRepository.getAccountFromAPI(remoteAccount.id)
-    accountRepository.updateAccountInfo(account.id, account)
-    // Convert to IntegrationsSettingsEntity
-    val integrationsSettings = IntegrationsSettingsEntity(
-      accountId = account.id,
-      isFitbitOn = account.isFitbitOn,
-      isFitbitValid = account.isFitbitValid,
-      isHealthConnectOn = account.isHealthConnectOn,
-      isHealthKitOn = account.isHealthKitOn,
-      isMFPOn  = account.isMFPOn,
-      isMFPValid = account.isMFPValid,
-      isSynced = true,
-    )
-    accountDao.updateIntegrationsSettings(integrationsSettings)
-    // Update the integrations flow
-    _integrations.value = Integrations(
-      isFitbitOn = account.isFitbitOn,
-      isMFPOn = account.isMFPOn,
-      isFitbitValid = account.isFitbitValid,
-      isMFPValid = account.isMFPValid,
-      isHealthConnectOn = account.isHealthConnectOn
-    )
   }
 }
