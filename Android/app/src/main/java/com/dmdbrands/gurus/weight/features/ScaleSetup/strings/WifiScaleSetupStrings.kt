@@ -55,4 +55,10 @@ object WifiScaleSetupStrings {
         const val Title = "Tap the screen you see:"
         const val Message = "Select the error message that you see on your scale and then tap NEXT."
     }
+
+    object setupFinished {
+    const val Title = "Your scale is paired and ready to go!"
+    const val Message = "Next time you weigh in, the results will automatically be sent to Weight Gurus."
+    const val MacTitle = "The MAC address of your scale is:"
+  }
 }
