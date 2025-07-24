@@ -22,9 +22,8 @@ import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
-import com.greatergoods.meapp.features.ScaleSetup.strings.LcbtScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.BtScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.ScaleSetup.strings.WifiSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
@@ -125,8 +124,8 @@ fun BtScaleSetupScreenContent(
               val userNumbers = (1..8).toList()
               val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.user)
               SelectButton(
-                title = WifiSetupStrings.ChooseUser.Title,
-                subtitle = WifiSetupStrings.ChooseUser.Message,
+                title = BtScaleSetupStrings.ChooseUser.Title,
+                subtitle = BtScaleSetupStrings.ChooseUser.Message,
                 selectButtonItems = userButtons,
                 isSelectable = true,
                 onItemSelected = { value ->
@@ -137,18 +136,18 @@ fun BtScaleSetupScreenContent(
 
             BtScaleSetupStep.PAIRING_MODE -> {
               SetupContent(
-                title = "Press and hold the UNIT on the back of your scale",
-                subtitle = "Release the button when the animation on your scales's screen begins. It will then show brackets, and the scale will fall asleep.",
+                title = BtScaleSetupStrings.PairingMode.Title,
+                subtitle = BtScaleSetupStrings.PairingMode.Subtitle,
                 isGifImage = true,
                 supportingImage = AppIcons.Setup.PairMode_0376,
-                loaderText = "Pairing",
+                loaderText = BtScaleSetupStrings.PairingMode.LoaderText,
               )
             }
 
             BtScaleSetupStep.SET_DEVICE_USER -> {
               SetupContent(
-                title = "Set your user number on the scale",
-                subtitle = "Press the SET button on the front of the scale and then use the arrow buttons to find your user number(${state.userString})",
+                title = BtScaleSetupStrings.SetDeviceUser.Title(state.userString),
+                subtitle = BtScaleSetupStrings.SetDeviceUser.Subtitle(state.userString),
                 isGifImage = true,
                 supportingImage = AppIcons.Setup.DeviceSetUser_0376,
               )
@@ -156,18 +155,18 @@ fun BtScaleSetupScreenContent(
 
             BtScaleSetupStep.STEP_ON -> {
               SetupContent(
-                title = "Time to weigh in!",
-                subtitle = "Set your scale on a hard, flat surface, step on, and wait for your results.",
+                title = BtScaleSetupStrings.StepOn.Title,
+                subtitle = BtScaleSetupStrings.StepOn.Subtitle,
                 isGifImage = true,
                 supportingImage = AppIcons.Setup.StepOn_0376,
-                loaderText = "Syncing",
+                loaderText = BtScaleSetupStrings.StepOn.LoaderText,
               )
             }
 
             BtScaleSetupStep.SETUP_FINISHED -> {
               SetupContent(
-                title = LcbtScaleSetupStrings.SetupFinished.Title,
-                subtitle = LcbtScaleSetupStrings.SetupFinished.Subtitle,
+                title = BtScaleSetupStrings.SetupFinished.Title,
+                subtitle = BtScaleSetupStrings.SetupFinished.Subtitle,
                 setupFinished = true,
               )
             }
