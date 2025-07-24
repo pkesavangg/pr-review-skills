@@ -13,7 +13,7 @@ struct WifiErrorCodeDetailView: View {
     
     private let lang = WifiScaleSetupStrings.ErrorDetailViewStrings.self
     private let wifiSetuplang = WifiScaleSetupStrings.self
-    
+    private let maxNumberedMessages = 3
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -49,7 +49,7 @@ struct WifiErrorCodeDetailView: View {
                     let isNumbered = numberedErrorCodes.contains(code)
 
                     ForEach(Array(detail.messages.enumerated()), id: \.offset) { index, message in
-                        if isNumbered && index < 3 {
+                        if isNumbered && index < maxNumberedMessages {
                             textView(text: "\(index + 1). \(message)")
                         } else {
                             textView(text: message)
