@@ -33,10 +33,6 @@ sealed class IntegrationIntent : IReducer.Intent {
     val integrations: IntegrationItem,
   ) : IntegrationIntent()
 
-
-  /** Confirm disconnect action. */
-  object ConfirmDisconnect : IntegrationIntent()
-
   /** Navigate back. */
   object OnBack : IntegrationIntent()
 
@@ -123,10 +119,6 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
 
       is IntegrationIntent.RemoveIntegration -> {
         state.copy(selectedIntegrationForDisconnect = intent.integrations)
-      }
-
-      is IntegrationIntent.ConfirmDisconnect -> {
-        state.copy(selectedIntegrationForDisconnect = null)
       }
 
       is IntegrationIntent.OnBack -> {

@@ -10,7 +10,9 @@ import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.common.components.DialogType
+import com.greatergoods.meapp.features.common.helper.StringUtil.cleanCorruptedChars
 import com.greatergoods.meapp.features.common.helper.form.FormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.model.SCALES
@@ -84,6 +86,8 @@ constructor(
 
       ScaleDetailsIntent.OpenScaleUsers -> openScaleUsers()
 
+      ScaleDetailsIntent.OpenWiFiSetup -> openWiFiSetup()
+
       ScaleDetailsIntent.ShowScaleNameModal -> openScaleNameModal()
       ScaleDetailsIntent.UpdateScaleName -> updateScaleName()
       is ScaleDetailsIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
@@ -100,6 +104,33 @@ constructor(
     observePermissions()
     val scaleName = state.value.scale?.nickname ?: SCALES.find { it.sku == state.value.scale?.sku }!!.productName
     handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+    configureR4ScaleDetails()
+  }
+
+  private fun configureR4ScaleDetails() {
+    viewModelScope.launch {
+      if (state.value.scale?.device?.wifiMacAddress != null) {
+        ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
+          handleIntent(ScaleDetailsIntent.SetConnectedSSID(ssid.cleanCorruptedChars()))
+        }
+      }
+    }
+  }
+
+  private fun openWiFiSetup() {
+    viewModelScope.launch {
+      val scale = state.value.scale
+      if (scale != null) {
+        ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
+        navigationService.navigateTo(
+          AppRoute.ScaleSetup.BtWifiScaleSetup(
+            scale.sku ?: "0412",
+            BtWifiSetupStep.GATHERING_NETWORK,
+            scale.device?.broadcastId,
+          ),
+        )
+      }
+    }
   }
 
   private fun observePermissions() {

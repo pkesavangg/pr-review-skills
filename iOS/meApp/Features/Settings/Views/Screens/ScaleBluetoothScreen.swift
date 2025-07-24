@@ -49,7 +49,6 @@ struct ScaleBluetoothScreen: View {
         .onAppear {
             Task {
                 await scaleStore.loadScale(scale)
-                permissionsStore.updateBluetoothPermissions()
             }
         }
     }
@@ -146,7 +145,7 @@ struct ScaleBluetoothScreen_Previews: PreviewProvider {
         let mockDevice = Device(
             id: "1",
             accountId: "demo-account",
-            sku: "0412",
+            sku: SettingsConstants.defaultR4Sku,
             deviceName: "AccuCheck Verve Smart Scale"
         )
         ScaleBluetoothScreen(scale: mockDevice)

@@ -35,6 +35,7 @@ object IntegrationStrings {
     const val pleaseWait ="Please wait..."
     const val done ="Done!"
     const val ok = "ok"
+    const val openIntegrations = "Open Integrations"
     const val loading = "Loading..."
 
     // Reintegrate Alert Strings

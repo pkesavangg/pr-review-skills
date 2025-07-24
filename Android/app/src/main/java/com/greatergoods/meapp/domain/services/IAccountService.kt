@@ -7,6 +7,7 @@ import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Interface for account service. Provides authentication, account management, and profile operations.
@@ -31,6 +32,12 @@ interface IAccountService {
      * Flow emitting the list of all logged-in accounts, with the active account first.
      */
     val loggedInAccountsFlow: Flow<List<Account>>
+
+    /**
+     * Flow for triggering integration checks, similar to Angular BehaviorSubject.
+     * Emits true when login or checkLoginStatusForLoggedInAccounts is called.
+     */
+    val checkIntegrations: StateFlow<Boolean>
 
     /**
      * Logs in a user with the provided email and password.
