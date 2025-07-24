@@ -89,6 +89,7 @@ constructor(
         ),
       )
     }
+  }
 
   /**
    * Handles moving to the next step in the setup process.
