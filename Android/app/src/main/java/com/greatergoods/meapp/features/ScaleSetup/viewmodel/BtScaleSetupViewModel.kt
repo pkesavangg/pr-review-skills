@@ -133,7 +133,7 @@ constructor(
 
   override fun handleButtonChanges(step: BtScaleSetupStep) {
     val backEnabled = when (step) {
-      BtScaleSetupStep.SETUP_FINISHED, BtScaleSetupStep.SET_DEVICE_USER -> false
+      BtScaleSetupStep.SETUP_FINISHED, BtScaleSetupStep.SET_DEVICE_USER, BtScaleSetupStep.SCALE_INFO -> false
       else -> true
     }
     val nextEnabled = when (step) {
