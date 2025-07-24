@@ -263,6 +263,7 @@ struct InputFieldLabels {
     static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let networkName = "network name"
     static let confirmPassword = "confirm password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
@@ -755,6 +756,11 @@ struct AppAssets {
     }
     static let setupSetUserNumberGifName: (String) -> String = { sku in
         "\(sku)-Setup-SetUserNumber"
+    }
+    
+    // MARK: - WiFi Setup
+    static let wifiStepOnGif: (String) -> String = { sku in
+        sku == "0384" ? "0384-Sync" : "0396-Sync"
     }
 }
 

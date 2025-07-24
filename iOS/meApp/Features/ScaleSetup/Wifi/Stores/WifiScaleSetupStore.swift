@@ -20,6 +20,9 @@ final class WifiScaleSetupStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let commonLang = CommonStrings.self
     
+    /// Active subscription to the network form changes
+    private var networkFormCancellable: AnyCancellable? = nil
+    
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -38,11 +41,17 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
     
+    @Published var selectedUserNumber: Int?
+    @Published var selectedErrorCode: String?
+    
     /// Callback used by the screen to dismiss itself.
     var dismissAction: DismissAction?
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
+    
+    // MARK: - Forms
+    @Published var networkForm = NetworkForm()
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -53,6 +62,20 @@ final class WifiScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
+            case .wifiPassword:
+                return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType == .espTouchWifi) {
+                    // TODO: Implement on network change logic
+                })
+            case .selectUser:
+                return AnyView(UserNumberSelectionView(selectedNumber: selectedUserNumber) { number in
+                    self.selectedUserNumber = number
+                })
+            case .activatePairingMode:
+                return AnyView(ActivatePairingModeView(sku: scaleItem.sku))
+            case .errorSelect:
+                return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode) { code in
+                    self.selectedErrorCode = code
+                })
             default:
                 // Empty view placeholder for other steps
                 return AnyView(EmptyView())
@@ -87,6 +110,8 @@ final class WifiScaleSetupStore: ObservableObject {
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)
+        
+        subscribeToNetworkForm()
     }
     
     // MARK: - Configuration
@@ -178,6 +203,18 @@ final class WifiScaleSetupStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    /// Starts observing the network form changes to update the next button state.
+    private func subscribeToNetworkForm() {
+        // Cancel previous subscription to avoid redundant updates
+        networkFormCancellable?.cancel()
+        
+        networkFormCancellable = networkForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.updateNextEnabled()
+            }
+    }
+    
     private func navigateToStep(_ step: WifiScaleSetupStep, delay: TimeInterval = 0) {
         if let stepIndex = steps.firstIndex(of: step) {
             self.currentStepIndex = stepIndex
@@ -187,8 +224,8 @@ final class WifiScaleSetupStore: ObservableObject {
     private func arePermissionsEnabled() -> Bool {
         // For WiFi setup, we need Location permission and switches enabled
         return permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
-               permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
-               permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
+        permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
+        permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
     }
     
     private func updateNextEnabled() {
@@ -208,6 +245,13 @@ final class WifiScaleSetupStore: ObservableObject {
             
             // Enable Next button only when all permissions are granted
             isNextEnabled = locationEnabled && locationSwitchEnabled && wifiSwitchEnabled
+        case .wifiPassword:
+            // Enable connect button only when password is valid (unless no password required)
+            if networkForm.networkHasNoPassword {
+                isNextEnabled = networkForm.ssid.isValid
+            } else {
+                isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
+            }
         default:
             isNextEnabled = true
         }
@@ -227,4 +271,4 @@ final class WifiScaleSetupStore: ObservableObject {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} 
+}

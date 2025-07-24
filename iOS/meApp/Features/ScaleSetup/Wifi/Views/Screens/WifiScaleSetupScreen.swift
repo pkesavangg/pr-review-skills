@@ -44,7 +44,9 @@ struct WifiScaleSetupScreen: View {
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews,
-                shouldApplyHorizontalPadding: { _ in true }
+                shouldApplyHorizontalPadding: { index in
+                    setupStore.steps[index] != .errorSelect
+                }
             )
             
             // Footer Buttons
