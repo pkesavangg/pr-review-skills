@@ -2,12 +2,46 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+
+/**
+ * Controls for WiFi-Password form.
+ */
+data class WifiScalePasswordFormControls(
+  val ssid: FormControl<String>,
+  val password: FormControl<String>,
+  val noPasswordNetwork: FormControl<Boolean>,
+) {
+  companion object {
+    fun create() = WifiScalePasswordFormControls(
+      ssid = FormControl.create(
+        initialValue = "",
+        validators = listOf(
+          FormValidations.required(),
+        ),
+      ),
+      password = FormControl.create(
+        initialValue = "",
+        validators = listOf(
+          FormValidations.required(),
+          FormValidations.minLength(6, LoginStrings.PasswordLabel),
+          FormValidations.maxLength(50, LoginStrings.PasswordLabel),
+        ),
+      ),
+      noPasswordNetwork = FormControl.create(initialValue = false),
+    )
+  }
+}
 
 /**
  * State for WifiScaleSetupScreen.
  */
 data class WifiScaleSetupState(
-  val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.SCALE_INFO,
+  val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.PERMISSIONS,
   val sku: String = "0384",
   val steps: List<WifiScaleSetupStep> = listOf(
     WifiScaleSetupStep.SCALE_INFO,
@@ -18,6 +52,12 @@ data class WifiScaleSetupState(
   val isSetupFinished: Boolean = false,
   val isConnected: Boolean = false,
   val shouldGetMacAddress: Boolean = false,
+  val permissions: GGPermissionStatusMap = mutableMapOf(
+    "LOCATION_SWITCH" to PermissionState.ENABLED,
+    "LOCATION" to PermissionState.DISABLED,
+    "NETWORK" to PermissionState.ENABLED,
+  ),
+  val wifiPasswordForm: WifiScalePasswordFormControls = WifiScalePasswordFormControls.create(),
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0

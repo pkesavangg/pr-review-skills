@@ -16,11 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
@@ -54,10 +57,9 @@ fun WifiScaleSetupScreenContent(
   state: WifiScaleSetupState,
   onIntent: (WifiScaleSetupIntent) -> Unit,
 ) {
-  val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-
+  val focusManager = LocalFocusManager.current
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
     if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
@@ -136,6 +138,30 @@ fun WifiScaleSetupScreenContent(
                   setupFinished = true
                 )
               }
+            WifiScaleSetupStep.PERMISSIONS -> {
+              ScalePermissions(
+                sku = state.sku,
+                permissions = state.permissions,
+                onRequestPermission = { },
+              )
+            }
+
+            WifiScaleSetupStep.WIFI_PASSWORD -> {
+              SetupForm(
+                formControl = state.wifiPasswordForm.password,
+                title = WifiScaleSetupStrings.NetworkFormSlide.Title,
+                label = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
+                subtitle = BtWifiScaleSetupStrings.WifiPassword.Subtitle,
+                subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
+                hasToggle = true,
+                toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
+                toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
+                onToggleChanged = {
+                  state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
+                  state.wifiPasswordForm.password.reset()
+                },
+                noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
+              )
             }
             // TODO: Add other steps as needed
             else -> {

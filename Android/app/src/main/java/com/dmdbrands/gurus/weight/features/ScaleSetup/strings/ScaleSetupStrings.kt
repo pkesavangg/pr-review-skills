@@ -64,4 +64,11 @@ object ScaleSetupStrings {
     const val AvailableNetworks = "Available Networks"
     const val NoNetworks = "Unable to gather networks.."
   }
+
+  object SkipWifiPermissions {
+    const val Title = "Are you sure you want to skip?"
+    const val Message = "Doing so makes necessary a more in-depth, time consuming setup process."
+    const val Skip = "Skip"
+    const val Goback = "Go Back"
+  }
 }
