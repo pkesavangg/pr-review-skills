@@ -44,7 +44,6 @@ fun SelectButton(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .padding(vertical = spacing.md, horizontal = spacing.sm)
       .verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {

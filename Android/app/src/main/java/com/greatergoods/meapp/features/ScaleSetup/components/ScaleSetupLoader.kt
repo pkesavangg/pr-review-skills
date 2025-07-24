@@ -260,7 +260,7 @@ private fun PreviewScaleSetupLoaderConnectionError() {
       title = "Connection Error",
       subtitle = "Something went wrong during setup",
       errorCode = "ERR_001",
-      connectionState = ConnectionState.Error,
+      connectionState = ConnectionState.Failed.Error,
       indicatorIcon = LoaderIconType.Error,
       primaryButtonText = SetupLoaderStrings.TryAgainButton,
       secondaryButtonText = SetupLoaderStrings.SupportButton,

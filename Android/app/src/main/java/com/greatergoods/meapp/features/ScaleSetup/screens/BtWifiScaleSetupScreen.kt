@@ -198,13 +198,13 @@ fun BtWifiScaleSetupScreenContent(
               title = BtWifiScaleSetupStrings.WakeupScale.Title(state.currentStepConnectionState),
               subtitle = BtWifiScaleSetupStrings.WakeupScale.Subtitle(state.currentStepConnectionState),
               errorCode = state.errorCode,
-              scaleImageSku = if (state.currentStepConnectionState == ConnectionState.Error)
+              scaleImageSku = if (state.currentStepConnectionState is ConnectionState.Failed)
                 state.sku else null,
-              showIndicationOnly = state.currentStepConnectionState != ConnectionState.Error,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              showIndicationOnly = state.currentStepConnectionState !is ConnectionState.Failed,
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -215,10 +215,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingBluetooth.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -259,10 +259,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -308,10 +308,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingWifi.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -331,10 +331,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.UpdateSettings.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -354,10 +354,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.CollectingMeasurement.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )

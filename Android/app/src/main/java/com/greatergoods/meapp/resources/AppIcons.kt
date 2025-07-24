@@ -98,6 +98,9 @@ object AppIcons {
     val Accuchecked = R.drawable.accuchecked
     val AccucheckLogo = R.drawable.accucheck_logo
     val StepOnGif = R.raw.step_on
+    val PairMode_0376 = R.raw.pair_mode_0376
+    val DeviceSetUser_0376 = R.raw.device_set_user_0376
+    val StepOn_0376 = R.raw.step_on_0376
     val MetricCard = R.drawable.ic_card_grid
     val Graph = R.drawable.ic_graph_bar
     val Scale = R.drawable.ic_scale

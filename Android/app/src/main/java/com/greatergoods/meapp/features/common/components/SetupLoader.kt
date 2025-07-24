@@ -51,7 +51,7 @@ fun SetupLoader(
     verticalArrangement = Arrangement.spacedBy(spacing.md),
   ) {
     repeat(5) { index ->
-      if ((connectionState == ConnectionState.Success || connectionState == ConnectionState.Error) && index == 2) {
+      if ((connectionState == ConnectionState.Success || connectionState is ConnectionState.Failed) && index == 2) {
         // Show icon for middle dot on success/error
         AppIcon(
           id = if (connectionState == ConnectionState.Success) {
@@ -152,7 +152,7 @@ private fun PreviewSetupLoaderError() {
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(spacing.xl),
     ) {
-      SetupLoader(connectionState = ConnectionState.Error)
+      SetupLoader(connectionState = ConnectionState.Failed.Error)
     }
   }
 }

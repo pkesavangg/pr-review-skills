@@ -496,7 +496,12 @@ constructor(
         startObservingDevices()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
-        handleIntent(BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.WAKEUP, ConnectionState.Error))
+        handleIntent(
+          BtWifiScaleSetupIntent.SetStepConnectionState(
+            BtWifiSetupStep.WAKEUP,
+            ConnectionState.Failed.Error,
+          ),
+        )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_002"))
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
@@ -543,7 +548,7 @@ constructor(
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
                   BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                  ConnectionState.Error,
+                  ConnectionState.Failed.Error,
                 ),
               )
               handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
@@ -579,7 +584,7 @@ constructor(
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.CONNECTING_BLUETOOTH,
-            ConnectionState.Error,
+            ConnectionState.Failed.Error,
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
@@ -651,7 +656,7 @@ constructor(
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.GATHERING_NETWORK,
-          ConnectionState.Error,
+          ConnectionState.Failed.Error,
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
@@ -698,7 +703,7 @@ constructor(
             handleIntent(
               BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.CONNECTING_WIFI,
-                ConnectionState.Error,
+                ConnectionState.Failed.Error,
               ),
             )
             handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
@@ -711,7 +716,7 @@ constructor(
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.CONNECTING_WIFI,
-          ConnectionState.Error,
+          ConnectionState.Failed.Error,
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
@@ -758,7 +763,7 @@ constructor(
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.STEP_ON,
-          ConnectionState.Error,
+          ConnectionState.Failed.Error,
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("STEP_ON_002"))
@@ -784,7 +789,7 @@ constructor(
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.MEASUREMENT,
-            ConnectionState.Error,
+            ConnectionState.Failed.Error,
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_002"))
@@ -847,7 +852,7 @@ constructor(
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.UPDATE_SETTINGS,
-            ConnectionState.Error,
+            ConnectionState.Failed.Error,
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_002"))
