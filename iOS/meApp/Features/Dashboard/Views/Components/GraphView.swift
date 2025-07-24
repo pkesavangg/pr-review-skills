@@ -49,23 +49,10 @@ struct GraphView: View {
             dashboardStore.clearSelection()
 
         }
-        .onChange(of: dashboardStore.state.graph.dataChangeTrigger) { _, _ in
-            // Trigger animation for data changes
-            withAnimation(.easeInOut(duration: 0.4)) {
-                animationTrigger = UUID()
-            }
-        }
-        .onChange(of: dashboardStore.yAxisDomain) { _, _ in
-            // Trigger animation for chart data changes when y-axis domain changes
-            // but don't animate the y-axis domain itself to prevent "dropping" effect
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animationTrigger = UUID()
-            }
-        }
+
         .onChange(of: dashboardStore.chartSeriesData) { _, _ in
             // Ensure chart data changes are animated smoothly
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animationTrigger = UUID()
+            withAnimation(.easeOut(duration: 0.6)) {
             }
         }
     }
@@ -157,16 +144,12 @@ struct GraphView: View {
                 dashboardStore.initializeChart()
             }
             // Restore animations for data changes and scrolling, but keep period switching instant
-            .animation(.easeInOut(duration: 0.6), value: dashboardStore.yAxisTicks)
-            .animation(.easeInOut(duration: 0.8), value: dashboardStore.chartSeriesData)
-            .animation(nil, value: dashboardStore.yAxisDomain)
-            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
+            .animation(.easeOut(duration: 0.6), value: dashboardStore.yAxisTicks)
             // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
             // Only apply scroll detection for non-TOTAL periods
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
-        // Single chart refresh trigger for better performance
-        .id("\(dashboardStore.state.graph.selectedPeriod.rawValue)-\(dashboardStore.currentUnit.rawValue)-\(dashboardStore.state.graph.dataChangeTrigger)")
+
     }
 
     // MARK: - Empty State View
