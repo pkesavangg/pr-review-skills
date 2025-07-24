@@ -3,13 +3,7 @@ package com.greatergoods.meapp.features.ScaleSetup.screens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -17,11 +11,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
+import com.greatergoods.meapp.features.ScaleSetup.components.SelectButton
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
@@ -30,11 +24,13 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.strings.LcbtScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.WifiSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
+import com.greatergoods.meapp.features.common.helper.SelectButtonHelper
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
@@ -126,34 +122,17 @@ fun BtScaleSetupScreenContent(
             }
 
             BtScaleSetupStep.SELECT_USER -> {
-              LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-              ) {
-                items(7) { index ->
-                  Card(
-                    modifier = Modifier.clip(CircleShape),
-                    colors = CardDefaults.cardColors(
-                      containerColor = if (index + 1 == state.user) {
-                        MeTheme.colorScheme.primaryAction
-                      } else {
-                        MeTheme.colorScheme.primaryBackground
-                      },
-                    ),
-                    onClick = { onIntent(BtScaleSetupIntent.SetUser(index + 1)) },
-                  ) {
-                    Text(
-                      text = "U ${index + 1}",
-                      modifier = Modifier.padding(MeTheme.spacing.sm),
-                      style = MeTheme.typography.body1,
-                      color = if (index + 1 == state.user) {
-                        MeTheme.colorScheme.inverseAction
-                      } else {
-                        MeTheme.colorScheme.secondaryAction
-                      },
-                    )
-                  }
-                }
-              }
+              val userNumbers = (1..8).toList()
+              val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.user)
+              SelectButton(
+                title = WifiSetupStrings.ChooseUser.Title,
+                subtitle = WifiSetupStrings.ChooseUser.Message,
+                selectButtonItems = userButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(BtScaleSetupIntent.SetUser(value.toInt()))
+                },
+              )
             }
 
             BtScaleSetupStep.PAIRING_MODE -> {
