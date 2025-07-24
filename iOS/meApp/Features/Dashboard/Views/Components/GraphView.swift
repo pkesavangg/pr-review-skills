@@ -47,10 +47,7 @@ struct GraphView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
-            // Trigger animation for period change
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animationTrigger = UUID()
-            }
+
         }
         .onChange(of: dashboardStore.state.graph.dataChangeTrigger) { _, _ in
             // Trigger animation for data changes
@@ -81,9 +78,8 @@ struct GraphView: View {
                 chartSeries
                 crosshairContent
             }
-            .animation(.easeInOut(duration: 0.6), value: dashboardStore.chartSeriesData)
-            .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
-            .chartScrollableAxes(.horizontal)
+            .chartXVisibleDomain(length: getVisibleDomainLength() ?? 0)
+            .chartScrollableAxes(getScrollableAxes())
             .chartYScale(domain: dashboardStore.yAxisDomain)
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.state.graph.xScrollPosition },
@@ -108,7 +104,22 @@ struct GraphView: View {
             ])
             .chartYAxis { yAxisMarks }
             .chartLegend(.hidden)
-            .chartXAxis { xAxisMarks }
+            .chartXAxis {
+                if dashboardStore.state.graph.selectedPeriod != .total {
+                    AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let date = value.as(Date.self),
+                               let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
+                                Text(labelString)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                }
+            }
             .chartXSelection(value: Binding(
                 get: {
                     // Use local state for selection (like WeightGraph)
@@ -145,12 +156,13 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
-            // Add animation modifier for smooth chart transitions
+            // Restore animations for data changes and scrolling, but keep period switching instant
             .animation(.easeInOut(duration: 0.6), value: dashboardStore.yAxisTicks)
             .animation(.easeInOut(duration: 0.8), value: dashboardStore.chartSeriesData)
             .animation(nil, value: dashboardStore.yAxisDomain)
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
             // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
+            // Only apply scroll detection for non-TOTAL periods
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
         // Single chart refresh trigger for better performance
@@ -212,7 +224,7 @@ struct GraphView: View {
                 x: .value("Date", series.date),
                 y: .value(series.series, series.value)
             )
-            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : 64)
+            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
             .foregroundStyle(by: .value("Series", series.series))
         }
     }
@@ -254,20 +266,41 @@ struct GraphView: View {
         }
     }
 
-    private var xAxisMarks: some AxisContent {
-        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
-            AxisGridLine()
-            AxisTick()
-            AxisValueLabel {
-                if let date = value.as(Date.self),
-                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
-                    Text(labelString)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
+
+
+        // MARK: - Helper Functions
+
+    /// Returns appropriate point size based on the selected period
+    private func getPointSizeForPeriod() -> CGFloat {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return 64  // Larger points for week view (fewer data points)
+        case .total:
+            return 16  // Very small points for total view (many data points)
         }
     }
+
+    /// Returns visible domain length - for TOTAL, show all data without domain restriction
+    private func getVisibleDomainLength() -> TimeInterval? {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
+        case .total:
+            return nil // Show all data points without domain restriction
+        }
+    }
+
+    /// Returns scrollable axes - disable scrolling for TOTAL
+    private func getScrollableAxes() -> Axis.Set {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return .horizontal
+        case .total:
+            return [] // No scrolling for total view
+        }
+    }
+
+
 
     // MARK: - Axis Label Helpers
     @ViewBuilder
@@ -335,6 +368,28 @@ struct ScrollDetectionModifier: ViewModifier {
         }
     }
 }
+
+// MARK: - Scroll Position Modifier
+
+/// ViewModifier that conditionally applies scroll position based on period
+struct ScrollPositionModifier: ViewModifier {
+    let dashboardStore: DashboardStore
+
+    func body(content: Content) -> some View {
+        if dashboardStore.state.graph.selectedPeriod != .total {
+            content.chartScrollPosition(x: Binding(
+                get: { dashboardStore.state.graph.xScrollPosition },
+                set: { newPosition in
+                    dashboardStore.handleScrollPositionChange(newPosition)
+                }
+            ))
+        } else {
+            content
+        }
+    }
+}
+
+
 
 #Preview {
     GraphView(dashboardStore: DashboardStore())

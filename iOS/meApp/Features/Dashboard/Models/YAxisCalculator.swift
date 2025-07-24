@@ -44,6 +44,18 @@ struct YAxisCalculator {
             }
         }
 
+        // Handle small datasets (1-2 entries) with special logic
+        if operations.count <= 2 {
+            return handleSmallDataset(
+                operations: operations,
+                goalWeight: goalWeight,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertStoredWeightToDisplay: convertStoredWeightToDisplay,
+                lastScale: lastScale
+            )
+        }
+
         let average = calculateAverage(
             operations: operations,
             isWeightlessMode: isWeightlessMode,
@@ -58,17 +70,18 @@ struct YAxisCalculator {
             convertStoredWeightToDisplay: convertStoredWeightToDisplay
         )
 
+
         guard let minValue = weightValues.min(),
               let maxValue = weightValues.max() else {
             return createFallbackScale(goalWeight: goalWeight, lastScale: lastScale)
         }
 
-        // Generate nice Y-axis scale using best practices
-        let scale = NiceScaleCalculator.generateNiceScale(
+        // Generate nice Y-axis scale using improved algorithm for gradual changes
+        let scale = ImprovedNiceScaleCalculator.generateNiceScale(
             minValue: minValue,
             maxValue: maxValue,
             goalWeight: goalWeight,
-            targetTickCount: 6 // Optimal number of ticks for readability
+            targetTickCount: 4 // Reduced tick count for cleaner graphs
         )
 
         return YAxisScale(
@@ -116,18 +129,95 @@ struct YAxisCalculator {
         }
     }
 
+        /// Handle small datasets (1-2 entries) with special Y-axis logic
+    private static func handleSmallDataset(
+        operations: [BathScaleWeightSummary],
+        goalWeight: Double,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertStoredWeightToDisplay: (Int) -> Double,
+        lastScale: YAxisScale? = nil
+    ) -> YAxisScale {
+        let weightValues = extractWeightValues(
+            operations: operations,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertStoredWeightToDisplay: convertStoredWeightToDisplay
+        )
+
+        guard let minValue = weightValues.min(),
+              let maxValue = weightValues.max() else {
+            return createFallbackScale(goalWeight: goalWeight, lastScale: lastScale)
+        }
+
+        let average = weightValues.reduce(0, +) / Double(weightValues.count)
+
+        // For small datasets, create a simple scale with reasonable padding
+        let range = maxValue - minValue
+        let padding = max(range * 0.3, 2.0) // 30% padding or minimum 2 units
+
+        let scaleMin = floor(minValue - padding)
+        let scaleMax = ceil(maxValue + padding)
+
+        // Only include goal weight if it's within a reasonable range of the actual data
+        let dataCenter = (minValue + maxValue) / 2
+        let dataRange = maxValue - minValue
+        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
+
+        let finalMin: Double
+        let finalMax: Double
+
+        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
+            // Goal weight is reasonable, include it
+            finalMin = Swift.min(scaleMin, floor(goalWeight - 2))
+            finalMax = Swift.max(scaleMax, ceil(goalWeight + 2))
+        } else {
+            // Goal weight is too far from data, ignore it
+            finalMin = scaleMin
+            finalMax = scaleMax
+        }
+
+        // Debug logging for small datasets
+        print("Small dataset Y-axis calculation:")
+        print("  - Data values: \(weightValues)")
+        print("  - Data range: \(minValue) to \(maxValue)")
+        print("  - Goal weight: \(goalWeight)")
+        print("  - Data center: \(dataCenter)")
+        print("  - Reasonable range: \(reasonableGoalRange)")
+        print("  - Final range: \(finalMin) to \(finalMax)")
+        print("  - Including goal: \(abs(goalWeight - dataCenter) <= reasonableGoalRange)")
+
+        // Create simple ticks with 1-unit steps for small datasets
+        var ticks: [Double] = []
+        let step = 1.0
+        var currentTick = finalMin
+        while currentTick <= finalMax {
+            ticks.append(currentTick)
+            currentTick += step
+        }
+
+        return YAxisScale(
+            min: finalMin,
+            max: finalMax,
+            step: step,
+            ticks: ticks,
+            domain: finalMin...finalMax,
+            average: average
+        )
+    }
+
     /// Create fallback scale when no data is available
     private static func createFallbackScale(goalWeight: Double, lastScale: YAxisScale? = nil) -> YAxisScale {
         if let last = lastScale {
             return last
         } else {
-            // Use nice scale for fallback too
-            let scale = NiceScaleCalculator.generateNiceScale(
-                minValue: goalWeight - 5,
-                maxValue: goalWeight + 5,
-                goalWeight: goalWeight,
-                targetTickCount: 5
-            )
+                    // Use improved scale for fallback too
+        let scale = ImprovedNiceScaleCalculator.generateNiceScale(
+            minValue: goalWeight - 5,
+            maxValue: goalWeight + 5,
+            goalWeight: goalWeight,
+            targetTickCount: 3
+        )
             return YAxisScale(
                 min: scale.min,
                 max: scale.max,
@@ -140,64 +230,204 @@ struct YAxisCalculator {
     }
 }
 
-// MARK: - NiceScaleCalculator
+// MARK: - ImprovedNiceScaleCalculator
 
-/// Implements the "nice numbers" algorithm for Y-axis tick calculation
-/// Based on data visualization best practices and research
-fileprivate struct NiceScaleCalculator {
-    
-    /// Nice numbers that are easy to read and understand
-    /// Following the sequence: 1, 2, 5, 10, 15, 20, 25, 40, 50, 100, etc.
+/// Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
+/// Handles small ranges better and ensures unique, non-decimal tick values
+fileprivate struct ImprovedNiceScaleCalculator {
+
+    /// Nice numbers optimized for weight display (avoiding decimals)
     private static let niceNumbers: [Double] = [1, 2, 5, 10, 15, 20, 25, 40, 50, 100]
-    
-    /// Generate a nice Y-axis scale with optimal tick values
+
+    /// Generate a nice Y-axis scale with optimal tick values for gradual changes
     static func generateNiceScale(
         minValue: Double,
         maxValue: Double,
         goalWeight: Double,
         targetTickCount: Int = 6
     ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
-        
-        // Include goal weight in the data range
-        let dataMin = min(minValue, goalWeight)
-        let dataMax = max(maxValue, goalWeight)
-        
+
+        // Ensure we include the full range of actual data values
+        let actualMin = floor(minValue) // Include the full range of data
+        let actualMax = ceil(maxValue)  // Include the full range of data
+
+        // Calculate the raw range of actual data
+        let rawRange = actualMax - actualMin
+
+        // Handle very small ranges (gradual weight changes)
+        if rawRange < 5.0 {
+            return handleSmallRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight)
+        }
+
+        // Handle small ranges (5-15 units)
+        if rawRange < 15.0 {
+            return handleMediumRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight)
+        }
+
+        // Handle normal ranges
+        return handleNormalRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight, targetTickCount: targetTickCount)
+    }
+
+            /// Handle very small ranges (gradual weight changes)
+    private static func handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+        // For very small ranges, use 1-unit steps and ensure we show the trend
+        let center = (dataMin + dataMax) / 2
+        let range = max(dataMax - dataMin, 2.0) // Minimum 2-unit range for visibility
+
+        // Calculate bounds with padding, but ensure we include all actual data
+        let padding = range * 0.2
+        let min = floor(dataMin - padding) // Start from actual data minimum
+        let max = ceil(dataMax + padding)  // End at actual data maximum
+
+        // Only include goal weight if it's within a reasonable range of the actual data
+        let dataCenter = (dataMin + dataMax) / 2
+        let dataRange = dataMax - dataMin
+        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
+
+        let finalMin: Double
+        let finalMax: Double
+
+        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
+            // Goal weight is reasonable, include it
+            finalMin = Swift.min(min, floor(goalWeight))
+            finalMax = Swift.max(max, ceil(goalWeight))
+        } else {
+            // Goal weight is too far from data, ignore it
+            finalMin = min
+            finalMax = max
+        }
+
+                // Check if we can use even numbers for cleaner display
+        let actualRange = finalMax - finalMin
+        if actualRange == 2.0 {
+            // For exactly 2-unit ranges, use even numbers
+            let evenMin = finalMin.truncatingRemainder(dividingBy: 2) == 0 ? finalMin : finalMin - 1
+            let evenMax = finalMax.truncatingRemainder(dividingBy: 2) == 0 ? finalMax : finalMax + 1
+
+            // Generate ticks with 2-unit steps for even numbers
+            var ticks: [Double] = []
+            var current = evenMin
+            while current <= evenMax {
+                ticks.append(current)
+                current += 2
+            }
+
+            // Ensure unique ticks
+            ticks = Array(Set(ticks)).sorted()
+
+            return (evenMin, evenMax, 2.0, ticks, evenMin...evenMax)
+        } else {
+            // For other ranges, use 1-unit steps
+            var ticks: [Double] = []
+            var current = finalMin
+            while current <= finalMax {
+                ticks.append(current)
+                current += 1
+            }
+
+            // Ensure unique ticks
+            ticks = Array(Set(ticks)).sorted()
+
+            return (finalMin, finalMax, 1.0, ticks, finalMin...finalMax)
+        }
+    }
+
+        /// Handle medium ranges (5-15 units)
+    private static func handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+        // For medium ranges, use 2-unit steps
+        let range = dataMax - dataMin
+        let padding = range * 0.15
+
+        let min = floor(dataMin - padding)
+        let max = ceil(dataMax + padding)
+
+        // Only include goal weight if it's within a reasonable range of the actual data
+        let dataCenter = (dataMin + dataMax) / 2
+        let dataRange = dataMax - dataMin
+        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
+
+        let finalMin: Double
+        let finalMax: Double
+
+        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
+            // Goal weight is reasonable, include it
+            finalMin = Swift.min(min, floor(goalWeight / 2) * 2, floor(dataMin))
+            finalMax = Swift.max(max, ceil(goalWeight / 2) * 2, ceil(dataMax))
+        } else {
+            // Goal weight is too far from data, ignore it
+            finalMin = min
+            finalMax = max
+        }
+
+        // Generate ticks with 2-unit steps
+        var ticks: [Double] = []
+        var current = finalMin
+        while current <= finalMax {
+            ticks.append(current)
+            current += 2
+        }
+
+        // Ensure unique ticks
+        ticks = Array(Set(ticks)).sorted()
+
+        return (finalMin, finalMax, 2.0, ticks, finalMin...finalMax)
+    }
+
+    /// Handle normal ranges (15+ units)
+    private static func handleNormalRange(dataMin: Double, dataMax: Double, goalWeight: Double, targetTickCount: Int) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
         // Calculate the raw range
         let rawRange = dataMax - dataMin
-        
+
         // Ensure minimum range for visual clarity
         let minimumRange = max(rawRange, 10.0)
-        
+
         // Add padding for visual breathing room (10% on each side)
         let padding = minimumRange * 0.1
         let paddedMin = dataMin - padding
         let paddedMax = dataMax + padding
-        
+
         // Calculate the optimal step size
         let step = calculateOptimalStep(
             range: paddedMax - paddedMin,
             targetTickCount: targetTickCount
         )
-        
-        // Generate nice min and max values
+
+                // Generate nice min and max values
         let niceMin = floor(paddedMin / step) * step
         let niceMax = ceil(paddedMax / step) * step
-        
-        // Ensure goal weight is included in the range
-        let finalMin = min(niceMin, floor(goalWeight / step) * step)
-        let finalMax = max(niceMax, ceil(goalWeight / step) * step)
-        
+
+        // Only include goal weight if it's within a reasonable range of the actual data
+        let dataCenter = (dataMin + dataMax) / 2
+        let dataRange = dataMax - dataMin
+        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
+
+        let finalMin: Double
+        let finalMax: Double
+
+        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
+            // Goal weight is reasonable, include it
+            finalMin = min(niceMin, floor(goalWeight / step) * step, floor(dataMin))
+            finalMax = max(niceMax, ceil(goalWeight / step) * step, ceil(dataMax))
+        } else {
+            // Goal weight is too far from data, ignore it
+            finalMin = niceMin
+            finalMax = niceMax
+        }
+
         // Generate ticks
         var ticks: [Double] = []
         var currentTick = finalMin
-        
+
         while currentTick <= finalMax + 0.001 { // Small epsilon for floating point comparison
             ticks.append(currentTick)
             currentTick += step
         }
-        
-        // Ensure we have a reasonable number of ticks (4-8)
-        if ticks.count < 4 {
+
+                // Ensure unique ticks and reasonable count
+        ticks = Array(Set(ticks)).sorted()
+
+        // Adjust tick count if needed - reduced ranges for cleaner graphs
+        if ticks.count < 3 {
             // Add more ticks by reducing step
             let smallerStep = step / 2
             ticks = []
@@ -206,7 +436,8 @@ fileprivate struct NiceScaleCalculator {
                 ticks.append(currentTick)
                 currentTick += smallerStep
             }
-        } else if ticks.count > 8 {
+            ticks = Array(Set(ticks)).sorted()
+        } else if ticks.count > 6 {
             // Reduce ticks by increasing step
             let largerStep = step * 2
             ticks = []
@@ -215,8 +446,9 @@ fileprivate struct NiceScaleCalculator {
                 ticks.append(currentTick)
                 currentTick += largerStep
             }
+            ticks = Array(Set(ticks)).sorted()
         }
-        
+
         return (
             min: finalMin,
             max: finalMax,
@@ -225,24 +457,24 @@ fileprivate struct NiceScaleCalculator {
             domain: finalMin...finalMax
         )
     }
-    
+
     /// Calculate optimal step size using nice numbers
     private static func calculateOptimalStep(range: Double, targetTickCount: Int) -> Double {
         // Calculate rough step
         let roughStep = range / Double(targetTickCount - 1)
-        
+
         // Find the magnitude (power of 10)
         let magnitude = pow(10.0, floor(log10(roughStep)))
-        
+
         // Normalize the rough step to 0-1 range
         let normalizedStep = roughStep / magnitude
-        
+
         // Find the closest nice number
         let closestNiceNumber = niceNumbers.min { abs($0 - normalizedStep) < abs($1 - normalizedStep) } ?? 1.0
-        
+
         // Calculate the final step
         let step = closestNiceNumber * magnitude
-        
+
         return step
     }
 }
