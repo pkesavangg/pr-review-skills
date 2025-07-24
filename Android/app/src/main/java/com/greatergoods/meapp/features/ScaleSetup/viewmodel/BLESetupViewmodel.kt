@@ -156,7 +156,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   protected open fun onEntryResponse(response: GGScanResponse.Entry, onEntryFound: (List<GGEntry>) -> Unit) {
     when (response.type) {
-      GGScanResponseType.SINGLE_ENTRY -> {
+      GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
         onEntryFound(response.data)
       }
 

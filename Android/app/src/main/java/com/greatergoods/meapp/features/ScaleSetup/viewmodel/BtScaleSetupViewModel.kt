@@ -53,9 +53,12 @@ constructor(
   }
 
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
+
   override suspend fun onSetupFinished() {
-    if (discoveredScale != null && discoveredScale!!.connectionStatus == BLEStatus.CONNECTED) {
+    if (discoveredScale != null) {
+      dialogQueueService.showLoader(message = "Saving scale...")
       deviceService.saveScale(discoveredScale!!)
+      dialogQueueService.dismissLoader()
     }
   }
 
