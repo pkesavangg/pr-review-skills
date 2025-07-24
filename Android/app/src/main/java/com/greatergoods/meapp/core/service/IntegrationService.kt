@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.model.api.integration.IntegrationProvider
+import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.domain.repository.IIntegrationRepository
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IIntegrationService
@@ -36,6 +37,7 @@ class IntegrationService @Inject constructor(
   appNavigationService: IAppNavigationService,
   private val accountService: IAccountService,
   private val integrationRepository: IIntegrationRepository,
+  private val healthConnectRepository: IHealthConnectRepository,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IIntegrationService {
   companion object {
     private const val TAG = "IntegrationService"
@@ -74,6 +76,7 @@ class IntegrationService @Inject constructor(
       }
     }
   }
+
   /**
    * Gets all available integrations with their connection status.
    * @return Flow of integration items with current status
@@ -87,6 +90,7 @@ class IntegrationService @Inject constructor(
         emit(emptyList())
         return@flow
       }
+      val isHealthConnectIntegrated = healthConnectRepository.getAccountByID(currentAccount.id)
       val integrations = mutableListOf<IntegrationItem>()
       // Create Fitbit integration safely
       val fitbitIntegration = IntegrationItem(
@@ -112,7 +116,7 @@ class IntegrationService @Inject constructor(
       val healthConnectIntegration = IntegrationItem(
         provider = IntegrationProvider.HealthConnect,
         name = IntegrationStrings.HealthConnectProvider,
-        isConnected = currentAccount.isHealthConnectOn,
+        isConnected = isHealthConnectIntegrated?.integrated == true,
         isValid = true, // Health Connect validity is handled differently
         iconRes = AppIcons.Integrations.Health_Connect_Logo,
         platformRequirement = IntegrationProvider.HealthConnect.getPlatformRequirement(),

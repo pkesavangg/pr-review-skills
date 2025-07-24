@@ -190,13 +190,15 @@ object ServiceModule {
     dialogQueueService: IDialogQueueService,
     accountService: IAccountService,
     integrationRepository: IIntegrationRepository,
-    appNavigationService: IAppNavigationService
+    appNavigationService: IAppNavigationService,
+    healthConnectRepository: IHealthConnectRepository
   ): IIntegrationService = IntegrationService(
     connectivityObserver,
     dialogQueueService,
     appNavigationService,
     accountService,
     integrationRepository,
+    healthConnectRepository,
   )
 
   /**

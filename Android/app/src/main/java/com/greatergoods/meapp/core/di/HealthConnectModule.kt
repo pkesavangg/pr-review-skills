@@ -25,30 +25,29 @@ import android.content.Context
 @InstallIn(SingletonComponent::class)
 object HealthConnectModule {
 
-    /**
-     * Binds the Health Connect service implementation to its interface.
-     */
-    @Provides
-    @Singleton
-     fun provideHealthConnectService(
-      @ApplicationContext context: Context,
-      healthConnectRepository: IHealthConnectRepository,
-      accountRepository: IAccountRepository,
-      integrationRepository: IIntegrationRepository,
-      dialogQueueService: IDialogQueueService,
-      appNavigationService: IAppNavigationService,
-      entryRepository: IEntryRepository,
-      integrationService: IIntegrationService,
-      entryService: IEntryService
-    ): IHealthConnectService = HealthConnectService(
-      context,
-      healthConnectRepository,
-      accountRepository,
-      dialogQueueService,
-      appNavigationService,
-      entryRepository,
-      integrationRepository,
-      integrationService,
-      entryService
-    )
+  /**
+   * Binds the Health Connect service implementation to its interface.
+   */
+  @Provides
+  @Singleton
+  fun provideHealthConnectService(
+    @ApplicationContext context: Context,
+    healthConnectRepository: IHealthConnectRepository,
+    accountRepository: IAccountRepository,
+    integrationRepository: IIntegrationRepository,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+    entryRepository: IEntryRepository,
+    integrationService: IIntegrationService,
+    entryService: IEntryService
+  ): IHealthConnectService = HealthConnectService(
+    context,
+    healthConnectRepository,
+    accountRepository,
+    dialogQueueService,
+    appNavigationService,
+    entryRepository,
+    integrationRepository,
+    entryService,
+  )
 }
