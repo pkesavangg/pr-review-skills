@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import UIKit
 
 /// Store responsible for orchestrating the WiFi scale setup multi-step flow.
 @MainActor
@@ -110,7 +111,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .apMode:
-                return AnyView(ApModeConnectionView(connectedSSID: wifiStatus?.ssid ?? "") {
+                return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "") {
                     self.openWifiSettings()
                 })
             case .apModeConfirm:
@@ -167,6 +168,15 @@ final class WifiScaleSetupStore: ObservableObject {
             .sink { [weak self] isConnected in
                 self?.updateNextEnabled()
                 self?.getWifiStatus()
+            }
+            .store(in: &cancellables)
+        // Observe app coming to foreground to refresh Wi-Fi status
+        NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self?.getWifiStatus()
+                }
             }
             .store(in: &cancellables)
         getWifiStatus()
