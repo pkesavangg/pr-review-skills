@@ -11,24 +11,28 @@ data class BtScaleSetupState(
     steps = listOf(
       BtScaleSetupStep.SCALE_INFO,
       BtScaleSetupStep.PERMISSIONS,
-      BtScaleSetupStep.WAKEUP,
       BtScaleSetupStep.SELECT_USER,
-      BtScaleSetupStep.CONNECTING_BLUETOOTH,
+      BtScaleSetupStep.PAIRING_MODE,
+      BtScaleSetupStep.SET_DEVICE_USER,
+      BtScaleSetupStep.STEP_ON,
       BtScaleSetupStep.SETUP_FINISHED,
     ),
   ),
-  val user: String = "",
+  val user: Int? = null,
 ) : BaseState<BtScaleSetupStep, BtScaleSetupState> {
   override fun copyBaseState(scaleSetupState: ScaleSetupState<BtScaleSetupStep>): BtScaleSetupState {
     return this.copy(scaleSetupState = scaleSetupState)
   }
+
+  val userString: String?
+    get() = "U" + user?.toString()
 }
 
 /**
  * Intents for BtScaleSetupScreen actions.
  */
 sealed interface BtScaleSetupIntent : ScaleSetupIntent {
-  data class SetUser(val user: String) : BtScaleSetupIntent
+  data class SetUser(val user: Int) : BtScaleSetupIntent
 }
 
 /**

@@ -56,9 +56,10 @@ enum class WifiScaleSetupStep {
 enum class BtScaleSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
-  WAKEUP,
   SELECT_USER,
-  CONNECTING_BLUETOOTH,
+  PAIRING_MODE,
+  SET_DEVICE_USER,
+  STEP_ON,
   SETUP_FINISHED
 }
 

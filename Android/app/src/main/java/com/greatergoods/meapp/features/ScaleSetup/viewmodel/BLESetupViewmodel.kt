@@ -5,11 +5,11 @@ import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -88,6 +88,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   abstract fun onNext()
   abstract fun onBack()
   abstract fun onSkip()
+  abstract suspend fun onSetupFinished()
 
   private var deviceObservationJob: Job? = null
 
@@ -140,12 +141,12 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
                   },
                 ),
               )
+            } else {
+              AppLog.d(TAG, "Wake up successful, proceeding to next step")
+              stopObservingDevices()
+              onDeviceFound(ggDeviceDetail)
             }
           }
-        } else {
-          AppLog.d(TAG, "Wake up successful, proceeding to next step")
-          stopObservingDevices()
-          onDeviceFound(ggDeviceDetail)
         }
       }
 
@@ -153,14 +154,22 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     }
   }
 
-  protected open fun onEntryResponse(response: GGScanResponse.Entry) {}
+  protected open fun onEntryResponse(response: GGScanResponse.Entry, onEntryFound: (List<GGEntry>) -> Unit) {
+    when (response.type) {
+      GGScanResponseType.SINGLE_ENTRY -> {
+        onEntryFound(response.data)
+      }
+
+      else -> null
+    }
+  }
 
   protected var discoveredScale: Device? = null
 
   /**
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
    */
-  protected fun startObservingDevices(onDeviceFound: (GGDeviceDetail) -> Unit) {
+  protected fun startObservingDevices(onDeviceFound: (GGDeviceDetail) -> Unit = {}) {
     deviceObservationJob?.cancel()
     deviceObservationJob = viewModelScope.launch {
       ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
@@ -180,17 +189,18 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     entryObservationJob = null
   }
 
-  protected fun startObservingEntries() {
+  protected fun startObservingEntries(onEntryFound: (List<GGEntry>) -> Unit = {}) {
     if (entryObservationJob == null) {
       entryObservationJob = viewModelScope.launch {
         ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
           .collect { scanResponse ->
-            onEntryResponse(scanResponse as GGScanResponse.Entry)
+            onEntryResponse(scanResponse as GGScanResponse.Entry, onEntryFound)
           }
       }
     }
   }
 
+  protected open fun handleButtonChanges(step: Step) {}
   private fun observeStepChanges() {
     viewModelScope.launch {
       state.map { it.scaleSetupState.setupState.step }.collect { newStep ->
@@ -198,6 +208,11 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           currentSetupState = _state.value.scaleSetupState.setupState
           onStepChange(newStep)
         }
+      }
+    }
+    viewModelScope.launch {
+      state.collect {
+        handleButtonChanges(state.value.step)
       }
     }
   }
@@ -245,7 +260,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     isSetupFinished: Boolean,
   ) {
     if (isSetupFinished) {
-      onExit()
+      onExit(isSetupFinished)
     } else {
       dialogQueueService.enqueue(
         DialogModel.Confirm(
@@ -254,20 +269,19 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
           cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
           onConfirm = {
-            onExit()
+            onExit(isSetupFinished)
           },
         ),
       )
     }
   }
 
-  private fun onExit() {
+  private fun onExit(isSetupFinished: Boolean) {
     viewModelScope.launch {
-      if (discoveredScale != null && discoveredScale!!.device?.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
-        deviceService.updateDevice(discoveredScale!!)
-        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+      if (isSetupFinished) {
+        onSetupFinished()
       }
-      ggDeviceService.resumeScan(true)
+      ggDeviceService.resumeScan(false)
       val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
       ggDeviceService.syncDevices(pairedDevices)
       navigateBack()

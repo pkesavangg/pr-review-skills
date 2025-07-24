@@ -4,8 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
-import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.ScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
@@ -20,7 +20,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -59,9 +58,8 @@ constructor(
   }
 
   override fun onNext() {
-    val currentState = state.value.scaleSetupState
-    val currentSetupState = currentState.setupState
-    AppLog.d(TAG, "Moving to next step from: ${currentState.setupState.step}")
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to next step from: ${currentState.step}")
 
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
@@ -69,21 +67,25 @@ constructor(
     } else if (currentSetupState.step == LcbtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
       handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.WAKEUP))
     } else {
-      AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.setupState.step}")
+      AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
       if (currentState.nextStep != null)
         handleIntent(ScaleSetupIntent.SetNewStep(currentState.nextStep!!))
     }
   }
 
+  override suspend fun onSetupFinished() {
+    deviceService.saveScale(discoveredScale!!)
+  }
+
   override fun onBack() {
-    val currentState = state.value.scaleSetupState
-    AppLog.d(TAG, "Moving to previous step from: ${currentState.setupState.step}")
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
 
     if (currentState.isFirstStep) {
       AppLog.d(TAG, "At first step, navigating back")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
     } else {
-      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.setupState.step}")
+      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
     }
   }
 
@@ -149,16 +151,15 @@ constructor(
     }
     viewModelScope.launch {
       try {
-        val ggBtDevice = discoveredScale!!.toGGBTDevice()
-        ggDeviceService.pairDevice(device = ggBtDevice) {}
-        deviceService.saveScale(discoveredScale!!)
+        deviceService.onDeviceUpdate(
+          macAddress = discoveredScale!!.device?.macAddress,
+          connectionStatus = BLEStatus.CONNECTED,
+        )
         handleIntent(
           ScaleSetupIntent.AlterConnectionState(
             ConnectionState.Success,
           ),
         )
-        val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-        ggDeviceService.syncDevices(pairedDevices)
         delay(1000)
         onNext()
       } catch (e: Exception) {

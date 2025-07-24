@@ -400,7 +400,7 @@ constructor(
    */
   override suspend fun scaleExistsByMac(mac: String): Boolean =
     try {
-      _pairedScales.value.any { it.device?.macAddress == mac } || deviceRepository.deviceExistsByMac(mac).first()
+      _pairedScales.value.any { it.device?.macAddress == mac }
     } catch (e: Exception) {
       AppLog.e(tag, "Error checking scale existence by MAC", e.toString())
       false

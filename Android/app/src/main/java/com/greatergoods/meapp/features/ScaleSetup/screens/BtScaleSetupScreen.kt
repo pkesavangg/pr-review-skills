@@ -3,9 +3,13 @@ package com.greatergoods.meapp.features.ScaleSetup.screens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -13,20 +17,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
+import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
+import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.strings.LcbtScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.BtScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
+import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
 
@@ -73,7 +82,7 @@ fun BtScaleSetupScreenContent(
   }
   ScaleSetupHeader(
     sku = sku,
-    onBack = { onIntent(ScaleSetupIntent.ExitSetup(false)) },
+    onBack = { onIntent(ScaleSetupIntent.ExitSetup(state.isLastStep)) },
     onHelp = { onIntent(ScaleSetupIntent.OpenHelp) },
   ) {
     HorizontalPagerWithBottomNavigation(
@@ -85,7 +94,7 @@ fun BtScaleSetupScreenContent(
           type = ButtonType.TextPrimary,
           label = ScaleSetupStrings.backButton,
           size = ButtonSize.Small,
-          enabled = !state.isFirstStep,
+          enabled = state.backEnabled,
           onClick = { onIntent(ScaleSetupIntent.Back) },
         )
       },
@@ -97,7 +106,7 @@ fun BtScaleSetupScreenContent(
           type = ButtonType.PrimaryFilled,
           label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
           size = ButtonSize.Small,
-          enabled = !state.isLoading,
+          enabled = state.nextEnabled,
           onClick = {
             focusManager.clearFocus()
             onIntent(ScaleSetupIntent.Next)
@@ -109,14 +118,81 @@ fun BtScaleSetupScreenContent(
           modifier =
             Modifier
               .fillMaxSize()
-              .verticalScroll(rememberScrollState())
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
             BtScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = sku)
             }
-            // TODO: Add other steps as needed
+
+            BtScaleSetupStep.SELECT_USER -> {
+              LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+              ) {
+                items(7) { index ->
+                  Card(
+                    modifier = Modifier.clip(CircleShape),
+                    colors = CardDefaults.cardColors(
+                      containerColor = if (index + 1 == state.user) {
+                        MeTheme.colorScheme.primaryAction
+                      } else {
+                        MeTheme.colorScheme.primaryBackground
+                      },
+                    ),
+                    onClick = { onIntent(BtScaleSetupIntent.SetUser(index + 1)) },
+                  ) {
+                    Text(
+                      text = "U ${index + 1}",
+                      modifier = Modifier.padding(MeTheme.spacing.sm),
+                      style = MeTheme.typography.body1,
+                      color = if (index + 1 == state.user) {
+                        MeTheme.colorScheme.inverseAction
+                      } else {
+                        MeTheme.colorScheme.secondaryAction
+                      },
+                    )
+                  }
+                }
+              }
+            }
+
+            BtScaleSetupStep.PAIRING_MODE -> {
+              SetupContent(
+                title = "Press and hold the UNIT on the back of your scale",
+                subtitle = "Release the button when the animation on your scales's screen begins. It will then show brackets, and the scale will fall asleep.",
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.PairMode_0376,
+                loaderText = "Pairing",
+              )
+            }
+
+            BtScaleSetupStep.SET_DEVICE_USER -> {
+              SetupContent(
+                title = "Set your user number on the scale",
+                subtitle = "Press the SET button on the front of the scale and then use the arrow buttons to find your user number(${state.userString})",
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.DeviceSetUser_0376,
+              )
+            }
+
+            BtScaleSetupStep.STEP_ON -> {
+              SetupContent(
+                title = "Time to weigh in!",
+                subtitle = "Set your scale on a hard, flat surface, step on, and wait for your results.",
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.StepOn_0376,
+                loaderText = "Syncing",
+              )
+            }
+
+            BtScaleSetupStep.SETUP_FINISHED -> {
+              SetupContent(
+                title = LcbtScaleSetupStrings.SetupFinished.Title,
+                subtitle = LcbtScaleSetupStrings.SetupFinished.Subtitle,
+                setupFinished = true,
+              )
+            }
+
             else -> {
               // Placeholder for other steps
             }

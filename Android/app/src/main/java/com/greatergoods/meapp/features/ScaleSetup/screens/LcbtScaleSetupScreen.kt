@@ -83,31 +83,31 @@ fun LcbtScaleSetupScreenContent(
 
   ScaleSetupHeader(
     sku = sku,
-    onBack = { onIntent(ScaleSetupIntent.ExitSetup(false)) },
+    onBack = { onIntent(ScaleSetupIntent.ExitSetup(state.isFirstStep)) },
     onHelp = { onIntent(ScaleSetupIntent.OpenHelp) },
   ) {
     HorizontalPagerWithBottomNavigation(
-      steps = state.scaleSetupState.steps,
+      steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
       leadingContent = {
-        if (state.scaleSetupState.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS) {
+        if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.backButton,
             size = ButtonSize.Small,
-            enabled = !state.scaleSetupState.isFirstStep,
+            enabled = !state.isFirstStep,
             onClick = { onIntent(ScaleSetupIntent.Back) },
           )
         }
       },
       trailingContent = {
-        if (state.scaleSetupState.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.scaleSetupState.isLastStep) {
+        if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.isLastStep) {
           AppButton(
             type = ButtonType.PrimaryFilled,
-            label = if (state.scaleSetupState.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
+            label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
-            enabled = setupState.connectionState == ConnectionState.Success || state.scaleSetupState.isFirstStep || state.scaleSetupState.isLastStep,
+            enabled = setupState.connectionState == ConnectionState.Success || state.isFirstStep || state.isLastStep,
             onClick = {
               focusManager.clearFocus()
               onIntent(ScaleSetupIntent.Next)
