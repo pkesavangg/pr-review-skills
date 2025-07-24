@@ -29,6 +29,10 @@ class NetworkForm: ObservableForm {
         self.ssid.value = ssid
     }
     
+    func isValidApModeSSID() -> Bool {
+        return !ssid.value.isEmpty && ssid.value.contains("gg_SmartScaleSetup")
+    }
+    
     /// Set the password value
     func setPassword(_ password: String) {
         self.password.value = password

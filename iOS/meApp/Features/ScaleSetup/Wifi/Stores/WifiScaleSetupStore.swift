@@ -32,6 +32,10 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Active subscription to the network form changes
     private var networkFormCancellable: AnyCancellable? = nil
     
+    /// Tracks the step that presented `.errorSelect` so we can navigate back correctly.
+    private var errorSelectSourceStep: WifiScaleSetupStep? = nil
+    /// Tracks the step that presented `.stepOn` so we can navigate back correctly.
+    private var stepOnSourceStep: WifiScaleSetupStep? = nil
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -57,7 +61,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var selectedErrorCode: WifiErrorCode?
     @Published var selectedConnectionMode: WifiSetupOption = .none
     @Published var isApModeOnly: Bool = false
-
+    
     /// Flag indicating that the permissions step was skipped by the user. Used
     /// to short-circuit smart-connect if prerequisites are missing – mirrors the
     /// `permissionsSkipped` flag in the Ionic implementation.
@@ -83,11 +87,12 @@ final class WifiScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
                 return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType != .espTouchWifi) {
-                    self.handleWifiSwitchPermission()
+                    self.openWifiSettings()
                 })
             case .selectUser:
                 return AnyView(UserNumberSelectionView(selectedNumber: selectedUserNumber) { number in
                     self.selectedUserNumber = number
+                    self.updateNextEnabled()
                 })
             case .activatePairingMode:
                 return AnyView(ActivatePairingModeView(sku: scaleItem.sku))
@@ -96,8 +101,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     sku: scaleItem.sku,
                     userNumber: selectedUserNumber,
                     selectedOption: selectedConnectionMode,
-                    isApModeAlone: isApModeOnly,
-                    
+                    mode: isApModeOnly ? .apModeOnly : .optionSelection
                 ) { selectedMode in
                     self.selectedConnectionMode = selectedMode
                     self.updateNextEnabled()
@@ -105,11 +109,21 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.selectedConnectionMode = .none
                     self.navigateToStep(.errorSelect)
                 })
-                
             case .apMode:
-                return AnyView(Text("AP Mode View Placeholder")) // Placeholder for AP mode view
+                return AnyView(ApModeConnectionView(connectedSSID: wifiStatus?.ssid ?? "") {
+                    self.openWifiSettings()
+                })
             case .apModeConfirm:
-                return AnyView(Text("AP Mode apModeConfirm View Placeholder")) // Placeholder for AP mode view
+                return AnyView(WifiConnectionConfirmView(
+                    sku: scaleItem.sku,
+                    userNumber: selectedUserNumber,
+                    selectedOption: selectedConnectionMode,
+                    mode: .apModeConfirmation
+                ) { selectedMode in
+                    self.updateNextEnabled()
+                } onClickButton: {
+                    self.navigateToStep(.errorSelect)
+                })
             case .errorSelect:
                 return AnyView(ErrorCodeSelectionView(selectedError: selectedErrorCode, onErrorSelected: { code in
                     self.selectedErrorCode = code
@@ -224,8 +238,14 @@ final class WifiScaleSetupStore: ObservableObject {
     func handleNextButtonClick() {
         switch currentStep {
         case .connectionConfirm:
-            self.navigateToStep(.stepOn)
+            if selectedConnectionMode == .complete {
+                self.navigateToStep(.stepOn)
+            } else {
+                self.navigateToStep(.apMode)
+            }
             break
+        case .apModeConfirm:
+            self.navigateToStep(.stepOn)
         case .errorDetail:
             exitSetup()
             break
@@ -240,8 +260,17 @@ final class WifiScaleSetupStore: ObservableObject {
     func handleBackButtonClick() {
         switch currentStep {
         case .errorSelect:
-            // Navigate back to the previous step
-            navigateToStep(.connectionConfirm)
+            if let origin = errorSelectSourceStep {
+                navigateToStep(origin)
+            } else {
+                navigateToStep(.connectionConfirm)
+            }
+        case .stepOn:
+            if let origin = stepOnSourceStep {
+                navigateToStep(origin)
+            } else {
+                moveToPreviousStep()
+            }
         default:
             moveToPreviousStep()
             break
@@ -281,6 +310,12 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     private func navigateToStep(_ step: WifiScaleSetupStep, delay: TimeInterval = 0) {
+        // Track source steps for back-navigation.
+        if step == .errorSelect {
+            errorSelectSourceStep = currentStep
+        } else if step == .stepOn {
+            stepOnSourceStep = currentStep
+        }
         if let stepIndex = steps.firstIndex(of: step) {
             self.currentStepIndex = stepIndex
         }
@@ -297,15 +332,15 @@ final class WifiScaleSetupStore: ObservableObject {
         switch currentStep {
         case .connectionConfirm:
             Task { await startSmartConnect() }
+        case .apModeConfirm:
+            Task { await startApMode() }
         default:
             break
         }
     }
     
-    private func handleWifiSwitchPermission() {
-        Task {
-            await permissionsService.handlePermission(.wifiSwitch)
-        }
+    private func openWifiSettings() {
+        permissionsService.navigateToWifiSettings()
     }
     
     private func arePermissionsEnabled() -> Bool {
@@ -339,8 +374,12 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
             }
+        case .selectUser:
+            isNextEnabled = selectedUserNumber != nil
         case .connectionConfirm:
             isNextEnabled = selectedConnectionMode != .none
+        case .apMode:
+            isNextEnabled = networkForm.isValidApModeSSID()
         default:
             isNextEnabled = true
         }
@@ -365,12 +404,12 @@ final class WifiScaleSetupStore: ObservableObject {
     
     private func saveScale() {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
-
+        
         guard let scaleItem, let userNumber = selectedUserNumber else {
             notificationService.dismissLoader()
             return
         }
-
+        
         guard let accountId = self.accountService.activeAccount?.accountId else {
             return
         }
@@ -401,34 +440,34 @@ final class WifiScaleSetupStore: ObservableObject {
             }
         }
     }
-
+    
     // MARK: - Smart-Connect
     /// Initiates the Wi-Fi smart-connect flow once the user confirms the
     /// connection screen.
     private func startSmartConnect() async {
         LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: self.WifiSetupType))")
-
+        
         // If permissions were skipped, do NOT try to configure the scale.
         if permissionsSkipped { return }
-
+        
         guard let setupType = self.WifiSetupType else {
             LoggerService.shared.log(level: .error, tag: tag, message: "startSmartConnect aborted – WifiSetupType not set")
             return
         }
-
+        
         // Build the setup payload.
         let setupInfo = getSetupInfo(for: setupType)
-
+        
         do {
             // Ensure any previous smart-connect sessions are stopped.
             await wifiScaleService.stop()
-
+            
             // Cache SSID / BSSID for later use if required.
             // self.connectedSsid = setupInfo.ssid // This line was removed from the original file, so it's removed here.
             // self.connectedBssid = setupInfo.bssid // This line was removed from the original file, so it's removed here.
             if scaleItem?.setupType == .espTouchWifi {
                 // TODO: Enable once ESP-Touch support lands.
-                 try await wifiScaleService.espSmartConnect(setupInfo, setupType)
+                try await wifiScaleService.espSmartConnect(setupInfo, setupType)
             } else {
                 try await wifiScaleService.smartConnect(setupInfo, setupType)
             }
@@ -436,12 +475,12 @@ final class WifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "startSmartConnect error: \(error.localizedDescription)")
         }
     }
-
+    
     /// Constructs the `WifiSetupInfo` payload depending on the selected
     /// `WifiSetupType`.
     private func getSetupInfo(for setupType: WifiSetupType) -> WifiSetupInfo {
         let hasPassword = !networkForm.networkHasNoPassword
-
+        
         switch setupType {
         case .join:
             return WifiSetupInfo(ssid: nil,
@@ -449,14 +488,14 @@ final class WifiScaleSetupStore: ObservableObject {
                                  password: nil,
                                  userNumber: selectedUserNumber,
                                  token: scaleToken)
-
+            
         case .change:
             return WifiSetupInfo(ssid: networkForm.ssid.value,
                                  bssid: nil,
                                  password: hasPassword ? networkForm.password.value : nil,
                                  userNumber: nil,
                                  token: nil)
-
+            
         default:
             return WifiSetupInfo(ssid: networkForm.ssid.value,
                                  bssid: wifiStatus?.bssid,
@@ -480,6 +519,49 @@ final class WifiScaleSetupStore: ObservableObject {
         Task {
             await self.wifiScaleService.stop()
             dismissAction?()
+        }
+    }
+    
+    // MARK: - AP-Mode
+    /// Initiates the AP-Mode Wi-Fi configuration once the user reaches the
+    /// confirmation step (mirrors the Angular implementation).
+    ///
+    /// Retries up to five times when the operation throws, waiting five seconds
+    /// between attempts – matching the behaviour in the legacy TS code.
+    private func startApMode(retryCount: Int = 0) async {
+        logger.log(level: .info, tag: tag, message: "startApMode triggered – attempt #\(retryCount)")
+
+        // If the permission step was skipped we bail out, same as the original.
+        if permissionsSkipped { return }
+
+        guard let setupType = self.WifiSetupType else {
+            logger.log(level: .error, tag: tag, message: "startApMode aborted – WifiSetupType not set")
+            return
+        }
+
+        // Prepare the payload (mutating SSID/BSSID when available).
+        let baseInfo = getSetupInfo(for: setupType)
+        let info = WifiSetupInfo(
+            ssid: wifiStatus?.ssid ?? baseInfo.ssid,
+            bssid: wifiStatus?.bssid ?? baseInfo.bssid,
+            password: baseInfo.password,
+            userNumber: baseInfo.userNumber,
+            token: baseInfo.token
+        )
+
+        do {
+            // Stop any previous sessions before starting AP-mode.
+            await wifiScaleService.stop()
+            print("Starting AP mode with info: \(info)")
+            try await wifiScaleService.apMode(info, setupType)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "startApMode error: \(error.localizedDescription)")
+
+            // Retry up to 5 times, matching the JS logic.
+            if retryCount < 5 {
+                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+                await startApMode(retryCount: retryCount + 1)
+            }
         }
     }
     

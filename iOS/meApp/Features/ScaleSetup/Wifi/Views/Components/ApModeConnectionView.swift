@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ApModeConnectionView: View {
     @Environment(\.appTheme) private var theme
-    var connectedSSID: String?
+    var connectedSSID: String
     var onClickNetworkChange: (() -> Void)?
     private let lang = WifiScaleSetupStrings.ApModeConnectionViewStrings.self
     
@@ -29,12 +29,10 @@ struct ApModeConnectionView: View {
                 
                 VStack(spacing: .spacingSM) {
                     ActionListItemView(config: ActionListItemConfig(
-                        title: connectedSSID ?? lang.changeNetwork,
-                        chevronType: connectedSSID == nil ? .right : .none,
+                        title: connectedSSID.isEmpty ? lang.changeNetwork :  connectedSSID,
+                        chevronType: .right,
                         onTap: {
-                            if connectedSSID != nil {
-                                onClickNetworkChange?()
-                            }
+                            onClickNetworkChange?()
                         }
                     ))
                     .padding(.horizontal, .spacingSM)
@@ -48,5 +46,5 @@ struct ApModeConnectionView: View {
 }
 
 #Preview {
-    ApModeConnectionView()
+    ApModeConnectionView(connectedSSID: "connectedSSID")
 }
