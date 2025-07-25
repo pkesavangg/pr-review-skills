@@ -144,7 +144,7 @@ final class WifiScaleSetupStore: ObservableObject {
                 }))
             case .errorDetail:
                 return AnyView(WifiErrorCodeDetailView(errorCode: selectedErrorCode))
-            case  .copyMacAddress:
+            case .copyMacAddress:
                 return AnyView(CopyMacAddressView(macAddress: retrievedMacAddress ?? ""))
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
@@ -156,7 +156,7 @@ final class WifiScaleSetupStore: ObservableObject {
     
     var nextButtonText: String {
         switch currentStep {
-        case .setupFinish,.errorDetail,.copyMacAddress:
+        case .setupFinish, .errorDetail, .copyMacAddress:
             return commonLang.finish
         default:
             return commonLang.next
@@ -401,10 +401,11 @@ final class WifiScaleSetupStore: ObservableObject {
                     kvStorage.setCodable(status, forKey: ssidTempKey)
                 }
             }
-
+            
             let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
             self.wifiStatus = wifiStatus
             self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
+            logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
         }
     }
     
