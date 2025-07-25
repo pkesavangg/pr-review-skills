@@ -1103,7 +1103,7 @@ class DashboardStore: ObservableObject {
             return
         }
 
-        hasInitializedChart = true
+
 
         // Explicitly set scroll position to latest entry date for initial load
         if let latestEntryDate = continuousOperations.map(\.date).max() {
@@ -1121,6 +1121,7 @@ class DashboardStore: ObservableObject {
             objectWillChange.send()
         }
         updateWeightDisplayForCurrentView()
+        hasInitializedChart = true
     }
 
     /// Handle scroll position changes - delegate to graph manager
