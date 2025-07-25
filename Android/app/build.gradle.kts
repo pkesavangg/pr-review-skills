@@ -145,6 +145,7 @@ dependencies {
   implementation(project(":app:healthconnect"))
   implementation(project(":app:appsync"))
   implementation(project(":bleWrapper"))
+  implementation(project(":app:wificonnect"))
 
   // implementation(project(":ggBluetoothLibrary"))
   // Play Store Review

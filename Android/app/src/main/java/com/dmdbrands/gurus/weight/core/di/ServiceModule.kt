@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.di
 
+import com.dmdbrands.lib.wificonnect.WifiSmartConnectManager
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
@@ -101,6 +102,21 @@ object ServiceModule {
   fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
 
   /**
+   * Provides a singleton instance of [IWifiscaleService].
+   * @return [AppEventService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideWifiScaleService(
+    @ApplicationContext context: Context,
+    wifiSmartConnectManager: WifiSmartConnectManager,
+    deviceService: IDeviceService
+  ) = WifiScaleService(
+    wifiSmartConnectManager, deviceService,
+    context = context,
+  )
+
+  /**
    * Provides a singleton instance of [GGNotificationManager] for notification operations.
    * @param context The application context.
    * @param notificationService The notification service dependency.
@@ -125,7 +141,7 @@ object ServiceModule {
     logRepository: ILogRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
+    appNavigationService: IAppNavigationService
   ): LogManager = LogManager(
     logRepository, connectivityObserver, dialogQueueService, appNavigationService,
   )
@@ -193,15 +209,16 @@ object ServiceModule {
     accountService: IAccountService,
     integrationRepository: IIntegrationRepository,
     appNavigationService: IAppNavigationService,
-    healthConnectRepository: IHealthConnectRepository
-  ): IIntegrationService = IntegrationService(
-    connectivityObserver,
-    dialogQueueService,
-    appNavigationService,
-    accountService,
-    integrationRepository,
-    healthConnectRepository,
-  )
+    healthConnectRepository: IHealthConnectRepository,
+  ): IIntegrationService =
+    IntegrationService(
+      connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
+      accountService,
+      integrationRepository,
+      healthConnectRepository,
+    )
 
   /**
    * Provides the export service implementation.
