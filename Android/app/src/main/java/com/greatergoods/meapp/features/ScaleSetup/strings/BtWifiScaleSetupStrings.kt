@@ -1,45 +1,45 @@
 package com.greatergoods.meapp.features.ScaleSetup.strings
 
-import com.greatergoods.meapp.features.common.components.ConnectionState
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 
 object BtWifiScaleSetupStrings {
   object WakeupScale {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Connection Error"
+      if (connectionState is ConnectionState.Failed) "Connection Error"
       else "Wake Your Scale"
 
     fun Subtitle(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) null
+      if (connectionState is ConnectionState.Failed) null
       else "Give it a little tap, so your phone can find it."
   }
 
   object ConnectingBluetooth {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Connection Error"
+      if (connectionState is ConnectionState.Failed) "Connection Error"
       else "Connecting to Bluetooth"
   }
 
   object GatheringNetwork {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "No Networks Found"
+      if (connectionState is ConnectionState.Failed) "No Networks Found"
       else "Gathering Networks"
   }
 
   object ConnectingWifi {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Connection Error"
+      if (connectionState is ConnectionState.Failed) "Connection Error"
       else "Connecting to Wi-Fi"
   }
 
   object UpdateSettings {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Update Failed"
+      if (connectionState is ConnectionState.Failed) "Update Failed"
       else "Updating Settings"
   }
 
   object CollectingMeasurement {
     fun Title(connectionState: ConnectionState) =
-      if (connectionState == ConnectionState.Error) "Error Collecting Measurement"
+      if (connectionState is ConnectionState.Failed) "Error Collecting Measurement"
       else "Collecting Measurement"
   }
 
@@ -75,7 +75,7 @@ object BtWifiScaleSetupStrings {
     const val Subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
     const val UsernameLabel = "User name"
     const val RestoreAccountButton = "Restore Account"
-    fun LastActive(date: String) = "last active $date"
+    fun LastActive(date: String?) = "last active $date"
   }
 
   object CustomizeSettings {
@@ -92,6 +92,5 @@ object BtWifiScaleSetupStrings {
     const val Title = "User Limit Exceeded!"
     const val Subtitle = "Delete an inactive user to add yourself to the scale."
     const val UsernameLabel = "User name"
-
   }
 }

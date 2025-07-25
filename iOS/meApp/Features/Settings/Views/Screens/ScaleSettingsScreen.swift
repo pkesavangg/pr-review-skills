@@ -15,6 +15,9 @@ struct ScaleSettingsScreen: View {
     var scaleType: ScaleType
     let lang = ScaleSettingsStrings.self
     
+    // Timer for periodic connection status refresh
+    @State private var connectionRefreshTimer: Timer?
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -54,13 +57,53 @@ struct ScaleSettingsScreen: View {
         .onAppear {
             // Set up navigation callback for WiFi setup
             scaleStore.onNavigateToWifi = {
-                router.navigate(to: .wifi)
+                router.navigate(to: .wifi(scale: scale))
             }
             
             Task {
                 await scaleStore.loadScale(scale)
                 // Force refresh to ensure we have the latest data
                 await scaleStore.forceRefreshDeviceData()
+                
+                // Refresh connection status specifically
+                await scaleStore.refreshConnectionStatus()
+                
+                // Refresh WiFi status to ensure banner logic is correct
+                await scaleStore.refreshWifiStatus()
+                
+                // Check device info and WiFi configuration for scale SKU 0412
+                await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                
+                // Note: Users will be fetched when the users button is tapped
+            }
+            
+            // Set up periodic connection status refresh
+            connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: SettingsConstants.connectionRefreshInterval, repeats: true) { _ in
+                Task {
+                    await scaleStore.refreshConnectionStatus()
+                    await scaleStore.refreshWifiStatus()
+                    
+                    // Periodically check device info and WiFi configuration for scale SKU 0412
+                    if scale.sku == SettingsConstants.defaultR4Sku {
+                        await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up timer
+            connectionRefreshTimer?.invalidate()
+            connectionRefreshTimer = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Refresh WiFi status when app becomes active (e.g., returning from WiFi setup)
+            Task {
+                await scaleStore.refreshWifiStatus()
+                
+                // Check device info and WiFi configuration for scale SKU 0412 when app becomes active
+                if scale.sku == SettingsConstants.defaultR4Sku {
+                    await scaleStore.checkDeviceInfoAndWifiConfiguration()
+                }
             }
         }
     }
@@ -80,8 +123,8 @@ struct ScaleSettingsScreen: View {
         Section {
             if scaleStore.shouldShowWeightOnlyBanner {
                 ScaleStatusBanner(type: .weightOnly {
-                    scaleStore.handleWeightOnlyBannerAction()
-                    
+                    // Navigate to scale modes screen where user can change their mode
+                    router.navigate(to: .scaleModes(scale: scale))
                 })
             } else if scaleStore.shouldShowSetupIncompleteBanner {
                 ScaleStatusBanner(type: .setupIncomplete {
@@ -137,7 +180,16 @@ struct ScaleSettingsScreen: View {
                         title: lang.users,
                         value: scaleStore.usersValue,
                         isDisabled: !scaleStore.isDeviceConnected,
-                        onTap: { router.navigate(to: .users(scale: scale)) }
+                        onTap: { 
+                            Task {
+                                // Show loader while fetching users
+                                scaleStore.showUsersLoader()
+                                await scaleStore.fetchUserList()
+                                // Hide loader and navigate
+                                scaleStore.hideUsersLoader()
+                                router.navigate(to: .users(scale: scale))
+                            }
+                        }
                     )
                 )
             }
@@ -168,7 +220,7 @@ struct ScaleSettingsScreen: View {
                     title: lang.wifi,
                     value: scaleStore.wifiValue,
                     isDisabled: !scaleStore.isDeviceConnected,
-                    onTap: { router.navigate(to: .wifi) }
+                    onTap: { router.navigate(to: .wifi(scale: scale)) }
                 )
             )
             ActionListItemView(
@@ -202,6 +254,7 @@ struct ScaleSettingsScreen: View {
                     chevronType: .none
                 )
             )
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.datePaired,
@@ -212,7 +265,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.productGuide,
-                    onTap: { scaleStore.openProductGuide(for: scaleStore.skuValue) }
+                    onTap: { scaleStore.openProductGuide(for: scale.sku ?? "") }
                 )
             )
         }

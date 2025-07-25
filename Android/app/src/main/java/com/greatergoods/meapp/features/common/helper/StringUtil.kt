@@ -17,4 +17,8 @@ object StringUtil {
     val formatter = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
     return formatter.format(date)
   }
+
+  fun String.cleanCorruptedChars(): String {
+    return this.replace(Regex("[^\\p{Print}]"), "")
+  }
 }

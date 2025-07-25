@@ -18,68 +18,63 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun NavigationObserver(
-    navigationIntentFlow: Flow<NavigationIntent>?,
-    backStack: TopLevelBackStack<NavKey>,
+  navigationIntentFlow: Flow<NavigationIntent>?,
+  backStack: TopLevelBackStack<NavKey>,
 ) {
-    val activity = LocalActivity.current
-    val coroutineScope = rememberCoroutineScope()
+  val activity = LocalActivity.current
+  val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(activity) {
-        navigationIntentFlow
-            ?.collect { intent ->
-                when (intent) {
-                    is NavigationIntent.NavigateTo -> {
-                        coroutineScope.launch {
-                            backStack.addRoute(
-                                intent.route,
-                                intent.topLevel,
-                                intent.popUpTo,
-                            )
-                        }
-                    }
+  LaunchedEffect(activity) {
+    navigationIntentFlow
+      ?.collect { intent ->
+        coroutineScope.launch {
 
-                    is NavigationIntent.NavigateBack -> {
-                        coroutineScope.launch {
-                            backStack.removeLast(intent.topLevel)
-                        }
-                    }
-
-                    is NavigationIntent.Login -> {
-                        backStack.login()
-                    }
-
-                    is NavigationIntent.ReInitialize -> {
-                        backStack.reInitialize()
-                    }
-
-                    is NavigationIntent.AutoLogin -> {
-                        backStack.autoLogin()
-                    }
-
-                    is NavigationIntent.ReplaceStack -> {
-                        coroutineScope.launch {
-                            backStack.replaceStack(intent.route, intent.topLevel)
-                        }
-                    }
-
-                    is NavigationIntent.ReplaceStackSingle -> {
-                        coroutineScope.launch {
-                            backStack.replaceStack(listOf(intent.route), intent.topLevel)
-                        }
-                    }
-
-                    is NavigationIntent.RegisterOnDeactivate -> {
-                        coroutineScope.launch {
-                            backStack.registerCanDeactivate(intent.route, intent.callback)
-                        }
-                    }
-
-                    is NavigationIntent.UnregisterOnDeactivate -> {
-                        coroutineScope.launch {
-                            backStack.unregisterCanDeactivate(intent.route)
-                        }
-                    }
-                }
+          when (intent) {
+            is NavigationIntent.NavigateTo -> {
+              backStack.addRoute(
+                intent.route,
+                intent.topLevel,
+                intent.popUpTo,
+              )
             }
-    }
+
+            is NavigationIntent.NavigateBack -> {
+              backStack.removeLast(intent.topLevel)
+            }
+
+            is NavigationIntent.GetCurrentRoute -> {
+              intent.response.complete(backStack.currentRoute)
+            }
+
+            is NavigationIntent.Login -> {
+              backStack.login()
+            }
+
+            is NavigationIntent.ReInitialize -> {
+              backStack.reInitialize()
+            }
+
+            is NavigationIntent.AutoLogin -> {
+              backStack.autoLogin()
+            }
+
+            is NavigationIntent.ReplaceStack -> {
+              backStack.replaceStack(intent.route, intent.topLevel)
+            }
+
+            is NavigationIntent.ReplaceStackSingle -> {
+              backStack.replaceStack(listOf(intent.route), intent.topLevel)
+            }
+
+            is NavigationIntent.RegisterOnDeactivate -> {
+              backStack.registerCanDeactivate(intent.route, intent.callback)
+            }
+
+            is NavigationIntent.UnregisterOnDeactivate -> {
+              backStack.unregisterCanDeactivate(intent.route)
+            }
+          }
+        }
+      }
+  }
 }

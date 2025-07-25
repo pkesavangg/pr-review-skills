@@ -89,7 +89,8 @@ fun AppScaleCard(
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
           Row(verticalAlignment = Alignment.CenterVertically) {
-            val showExclamation = scale.isWifiConfigured == false && scale.isConnected == true
+            val showExclamation =
+              scale.isWifiConfigured == false && scale.isConnected == true && scale.setupType == ScaleSetupType.BtWifiR4
             val setupIndicationIcon =
               if (showExclamation) {
                 AppIcons.Default.Exclamation

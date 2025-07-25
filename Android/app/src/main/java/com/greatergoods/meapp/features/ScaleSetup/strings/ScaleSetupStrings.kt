@@ -41,6 +41,7 @@ object ScaleSetupStrings {
     const val Refresh = "Refresh"
     const val Connect = "Connect"
     const val Next = "next"
+    const val SomethingElse = "I see something else?"
   }
 
   object ScalePermissions {

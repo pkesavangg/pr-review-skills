@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.features.scaleDetails.reducer
 
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.meapp.domain.interfaces.IReducer
 import com.greatergoods.meapp.domain.model.storage.Device
@@ -36,6 +37,7 @@ data class ScaleDetailsState(
   val scaleNameForm: FormGroup<ScaleNameDialogFormControls>,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val settingsScreenStep: ScaleSettingSteps = ScaleSettingSteps.NONE,
+  val connectedSSID: String = "",
 ) : IReducer.State
 
 /**
@@ -45,6 +47,8 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   data class SetScaleInfo(
     val scale: Device,
   ) : ScaleDetailsIntent
+
+  data class SetConnectedSSID(val connectedSSID: String) : ScaleDetailsIntent
 
   object EditName : ScaleDetailsIntent
 
@@ -56,14 +60,16 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
 
   object OpenScaleUsers : ScaleDetailsIntent
   object OpenScaleDisplayMetrics : ScaleDetailsIntent
+  object OpenWiFiSetup : ScaleDetailsIntent
 
   object Back : ScaleDetailsIntent
   object ShowScaleNameModal : ScaleDetailsIntent
   object UpdateScaleName : ScaleDetailsIntent
-  data class OnCopyMacAddress(val isCopied: Boolean): ScaleDetailsIntent
+  data class OnCopyMacAddress(val isCopied: Boolean) : ScaleDetailsIntent
   data class SetScaleName(val name: String) : ScaleDetailsIntent
   data class SetPermissions(val permissions: GGPermissionStatusMap) : ScaleDetailsIntent
   data class SetSettingsScreenStep(val step: ScaleSettingSteps) : ScaleDetailsIntent
+  data class SetScaleUsers(val users: List<GGBTUser>) : ScaleDetailsIntent
   data class RequestPermission(val permissionType: String) : ScaleDetailsIntent
 }
 
@@ -76,6 +82,7 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
     intent: ScaleDetailsIntent,
   ): ScaleDetailsState? =
     when (intent) {
+      is ScaleDetailsIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.connectedSSID)
       is ScaleDetailsIntent.SetScaleInfo -> state.copy(scale = intent.scale)
       ScaleDetailsIntent.EditName -> state.copy()
       ScaleDetailsIntent.DeleteScale -> state.copy()

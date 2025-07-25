@@ -3,18 +3,29 @@ package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.interfaces.IReducer
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
 import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
+import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Intent>(
@@ -32,7 +43,7 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    */
   protected abstract fun onScanResponse(response: GGScanResponse.DeviceDetail)
 
-  protected abstract fun onEntryResponse(response: GGScanResponse.Entry)
+  protected open fun onEntryResponse(response: GGScanResponse.Entry) {}
 
   protected var discoveredScale: Device? = null
 
@@ -44,13 +55,12 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
    */
   protected fun startObservingDevices() {
-    if (deviceObservationJob == null) {
-      deviceObservationJob = viewModelScope.launch {
-        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
-          .collect { scanResponse ->
-            onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
-          }
-      }
+    deviceObservationJob?.cancel()
+    deviceObservationJob = viewModelScope.launch {
+      ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
+        .collect { scanResponse ->
+          onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
+        }
     }
   }
 
