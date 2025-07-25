@@ -9,7 +9,10 @@ import com.greatergoods.meapp.features.ScaleSetup.enums.WifiScaleSetupStep
 data class WifiScaleSetupState(
   val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.SCALE_INFO,
   val sku: String = "0384",
-  val steps: List<WifiScaleSetupStep> = listOf(WifiScaleSetupStep.SCALE_INFO),
+  val steps: List<WifiScaleSetupStep> = listOf(
+    WifiScaleSetupStep.SCALE_INFO,
+    WifiScaleSetupStep.SETUP_FINISHED),
+  val isApMode: Boolean = false,
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,
@@ -58,6 +61,7 @@ sealed interface WifiScaleSetupIntent : IReducer.Intent {
   ) : WifiScaleSetupIntent
 
   object OpenHelp : WifiScaleSetupIntent
+  data class OnCopyMacAddress(val isCopied: Boolean) : WifiScaleSetupIntent
 }
 
 /**

@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.greatergoods.meapp.features.ScaleSetup.model.SelectButtonDisplayValue
-import com.greatergoods.meapp.features.ScaleSetup.model.SelectButtonItem
+import com.greatergoods.meapp.features.common.model.SelectButtonDisplayValue
+import com.greatergoods.meapp.features.common.model.SelectButtonItem
 import com.greatergoods.meapp.features.common.helper.ErrorImageHelper
 import com.greatergoods.meapp.features.common.helper.SelectButtonHelper
 import com.greatergoods.meapp.theme.MeAppTheme
