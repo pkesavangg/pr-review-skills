@@ -1,8 +1,8 @@
 package com.greatergoods.meapp.features.scaleDetails.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -120,7 +119,7 @@ fun ScaleDetailsScreenContent(
         shouldDismissOnBackPress = true,
         isAppearanceLightStatusBars = !isSystemInDarkTheme(),
         isAppearanceLightNavigationBars = !isSystemInDarkTheme(),
-      )
+      ),
     ) {
       when (state.settingsScreenStep) {
         ScaleSettingSteps.BLUETOOTH_SETTINGS -> {
@@ -195,13 +194,15 @@ fun ScaleDetailsScreenContent(
             },
           )
         }
-        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED) {
+        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,
             buttonText = ScaleDetailsStrings.SetupWifi,
             iconType = AppIconType.Danger,
-            onButtonClick = {},
+            onButtonClick = {
+              handleIntent(ScaleDetailsIntent.OpenWiFiSetup)
+            },
           )
         }
         Spacer(modifier = Modifier.height(spacing.md))
@@ -236,6 +237,9 @@ fun ScaleDetailsScreenContent(
                   title = ScaleDetailsStrings.Users,
                   type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
                   enabled = isConnected,
+                  onClick = {
+                    handleIntent(ScaleDetailsIntent.OpenScaleUsers)
+                  },
                 ),
               )
             }
@@ -251,7 +255,7 @@ fun ScaleDetailsScreenContent(
                 },
               ),
             )
-            if (isWifiSetup) {
+            if (isWifiSetup || state.scale?.userNumber != null) {
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.UserNumber,
@@ -285,14 +289,19 @@ fun ScaleDetailsScreenContent(
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
-                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    type = SettingsItemType.Action(state.connectedSSID),
                     enabled = device?.device?.isWifiConfigured ?: false,
+                    onClick = {
+                      handleIntent(
+                        ScaleDetailsIntent.OpenWiFiSetup,
+                      )
+                    },
                   ),
                 )
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFiMacAddress,
-                    type = SettingsItemType.Action(device?.device?.wifiMacAddress ?: ""),
+                    type = SettingsItemType.Action(),
                     enabled = device?.device?.isWifiConfigured ?: false,
                     onClick = {
                       handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))

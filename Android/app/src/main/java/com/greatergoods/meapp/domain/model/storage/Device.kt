@@ -2,6 +2,7 @@ package com.greatergoods.meapp.domain.model.storage
 
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -23,13 +24,13 @@ data class Device(
   val userNumber: Int? = 0,
   val hasServerID: Boolean = false,
   val createdAt: String? = Calendar.getInstance().timeInMillis.toString(),
-    val sku: String? = null,
+  val sku: String? = null,
   val isWeighOnlyModeEnabledByOthers: Boolean = false,
   val token: String? = null,
   val preferences: Preferences? = null,
   val isDeleted: Boolean = false,
   val isSynced: Boolean = false
-) {
+) : GGCacheDevice {
 
   fun getAppType(): String {
     return GGAppType.WEIGHT_GURUS

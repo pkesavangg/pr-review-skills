@@ -29,7 +29,6 @@ import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.TextType
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
-import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.borderRadius
 import com.greatergoods.meapp.theme.MeTheme.colorScheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
@@ -137,24 +136,32 @@ fun WifiSelection(
               )
               if (availableNetworks.size > 1 && availableNetworks.indexOf(wifi) < availableNetworks.size - 1) {
                 HorizontalDivider(
-                  color = MeTheme.colorScheme.utility,
+                  color = colorScheme.utility,
                   thickness = .5.dp,
                 )
               }
             }
           }
+          item {
+            Column(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+              Spacer(Modifier.height(spacing.md))
+              AppButton(
+                label = ScaleSetupStrings.SetupButtons.Refresh,
+                type = ButtonType.InlineTextPrimary,
+                onClick = { onRefresh() },
+              )
+            }
+          }
         }
       }
       Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        Spacer(Modifier.height(spacing.md))
-        AppButton(
-          label = ScaleSetupStrings.SetupButtons.Refresh,
-          type = ButtonType.InlineTextPrimary,
-          onClick = { onRefresh() },
-        )
+
       }
     }
   }
@@ -192,7 +199,7 @@ private fun WifiItem(
       textType = TextType.Body,
     )
     Spacer(modifier = Modifier.weight(1f))
-    if (isConfigured || onClick != null) {
+    if (!isConfigured) {
       AppIcon(
         id = AppIcons.Default.RightCaret,
         contentDescription = "Right caret",
@@ -208,7 +215,16 @@ private fun WifiItem(
 private fun WifiSelectionPreview() {
   MeAppTheme {
     WifiSelection(
-      wifiList = emptyList(),
+      wifiList = listOf(
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+        GGWifiInfo(),
+      ),
       title = "Select WiFi Network",
       subtitle = "Choose a WiFi network to configure your scale",
       configuredSSID = "greatergoods1",

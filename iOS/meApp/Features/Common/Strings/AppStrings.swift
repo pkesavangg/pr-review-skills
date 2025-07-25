@@ -132,6 +132,7 @@ struct ToastStrings {
     static let deleted = "Deleted"
     static let saved = "Saved"
     static let scaleNameUpdated = "Scale name updated."
+    static let copiedToClipboard = "Copied to clipboard"
     static let logsSent = "Logs sent to Greater Goods"
     static let synced = "Entries successfully resynced."
     static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
@@ -139,7 +140,6 @@ struct ToastStrings {
     static let copiedToClipboard = "Copied to clipboard"
     static let internetRequiredTitle = "Internet Required"
     static let internetRequiredMessage = "Internet required to connect Wi-Fi-scales"
-    // Generic error used when an operation fails without a specific message.
     static let genericError = "Sorry, something went wrong. Please try again later."
 }
 

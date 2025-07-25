@@ -17,6 +17,7 @@ struct DeviceUserListView: View {
         VStack(spacing: 2) {
             ForEach(Array(users.enumerated()), id: \.element.name) { idx, user in
                 ListItemView(
+                    leadingImage: !user.isBodyMetricsEnabled ? AppAssets.weightOnlyMode : nil,
                     title: user.name,
                     subtitle: "last active on \(formatLastActive(user.lastActive))",
                     trailing: Button(action: {

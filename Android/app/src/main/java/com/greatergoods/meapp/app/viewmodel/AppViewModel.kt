@@ -7,8 +7,10 @@ import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.network.ITokenManager
 import com.greatergoods.meapp.core.service.IAppNavigationService
@@ -17,14 +19,20 @@ import com.greatergoods.meapp.core.shared.utilities.logging.LogManager
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.model.storage.Account.Account
 import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.Device
 import com.greatergoods.meapp.domain.repository.IAppRepository
 import com.greatergoods.meapp.domain.repository.IDeviceService
 import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
 import com.greatergoods.meapp.features.common.model.SCALES
 import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
@@ -32,6 +40,7 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -56,19 +65,28 @@ constructor(
   private val dialogUtility: IDialogUtility,
   private val deviceService: IDeviceService,
   private val ggPermissionService: GGPermissionService,
-  private val ggDeviceService: GGDeviceService
+  private val ggDeviceService: GGDeviceService,
+  private val healthConnectService: IHealthConnectService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
   companion object {
-    private const val TAG = "AppLoaderView"
+    private const val TAG = "AppViewModel"
     private var currentAccountId: String? = null
+
+    // Delay constants for Health Connect permission check
+    private const val INITIAL_DELAY = 1L // 1 second
+    private const val DELAYED_ALERT = 3000L // 3 seconds
   }
 
   override fun provideInitialState(): AppState = AppState()
+  private var canShowPopUp = true
+  private var sku: String? = null
+  private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
+  private var isPermissionAlertShown = false
 
   init {
     viewModelScope.launch {
@@ -90,6 +108,50 @@ constructor(
       val account = accountService.getCurrentAccount()
       initLoadingData(account)
       initEvents()
+    }
+  }
+
+  override fun handleIntent(intent: AppIntent) {
+    when (intent) {
+      is AppIntent.OnPopUpConnect -> onPopUpConnect()
+
+      is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
+
+      else -> {}
+    }
+    super.handleIntent(intent)
+  }
+
+  private fun onPopUpConnect() {
+    viewModelScope.launch {
+      if (sku == "0412") {
+        navigationService.navigateTo(
+          AppRoute.ScaleSetup.BtWifiScaleSetup(
+            "0412",
+            BtWifiSetupStep.CONNECTING_BLUETOOTH,
+            discoveredBroadcastId,
+          ),
+        )
+      } else if (sku != null) {
+        navigationService.navigateTo(
+          AppRoute.ScaleSetup.LcbtScaleSetup(
+            sku!!,
+            discoveredBroadcastId,
+            LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+          ),
+        )
+      }
+      onPopUpDismiss()
+    }
+  }
+
+  private fun onPopUpDismiss() {
+    viewModelScope.launch {
+      handleIntent(AppIntent.SetScaleDiscovered(false))
+      if (discoveredBroadcastId != null)
+        ggDeviceService.skipDevice(discoveredBroadcastId!!)
+      delay(30 * 1000)
+      canShowPopUp = true
     }
   }
 
@@ -259,6 +321,7 @@ constructor(
         }
       }
     }
+    checkHealthConnectPermissionWithDelay()
   }
 
   private fun subscribeDeviceCallback() {
@@ -291,23 +354,59 @@ constructor(
 
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
-    when (deviceResponse.type) {
-      GGScanResponseType.DEVICE_CONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.CONNECTED,
-        )
-      }
+    viewModelScope.launch {
 
-      GGScanResponseType.DEVICE_DISCONNECTED -> {
-        onDeviceUpdate(
-          deviceDetail = data,
-          connectionStatus = BLEStatus.DISCONNECTED,
-        )
-      }
+      when (deviceResponse.type) {
+        GGScanResponseType.NEW_DEVICE -> {
+          if (canShowPopUp && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+            val currentRoute = navigationService.getCurrentRoute()
+            if (currentRoute !is AppRoute.ScaleSetup) {
+              handleIntent(AppIntent.SetScaleDiscovered(true))
+              handleIntent(AppIntent.SetSku(data.getSKU()))
+              sku = data.getSKU()
+              discoveredBroadcastId = data.broadcastId
+              val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
+                device = data,
+                deviceType = ScaleSetupType.Lcbt.value,
+                sku = sku,
+              )
+              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
+              canShowPopUp = false
+            }
+          }
+        }
 
-      else -> null
+        GGScanResponseType.DEVICE_CONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.CONNECTED,
+          )
+        }
+
+        GGScanResponseType.DEVICE_DISCONNECTED -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.DISCONNECTED,
+          )
+        }
+
+        else -> null
+      }
     }
+  }
+
+  private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail): GGCacheDevice {
+    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    val token = deviceService.getScaleToken()
+    val device = Device(
+      device = ggDeviceDetail,
+      token = token,
+    )
+    return device.copy(
+      deviceType = ScaleSetupType.BtWifiR4.value,
+      sku = "0412",
+      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+    )
   }
 
   private fun saveEntry(ggEntry: List<GGScaleEntry>) {
@@ -349,6 +448,7 @@ constructor(
 
   private fun requestPermissions(permissionType: String) {
     viewModelScope.launch {
+      isPermissionAlertShown = true
       dialogUtility.permissionAlert(
         permissionType = permissionType,
         onRequest = {
@@ -359,7 +459,25 @@ constructor(
             ggPermissionService.requestPermission(permissionType)
           }
         },
+        onDismiss = {
+        }
       )
+    }
+  }
+
+  /**
+   * Checks Health Connect permission with appropriate delay based on whether permission alert was shown.
+   */
+  private fun checkHealthConnectPermissionWithDelay() {
+    viewModelScope.launch {
+      try {
+        val delayTime = if (isPermissionAlertShown) DELAYED_ALERT else INITIAL_DELAY
+        delay(delayTime)
+        healthConnectService.checkHealthConnectPermissionDisabled()
+        AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check Health Connect permission", e.toString())
+      }
     }
   }
 

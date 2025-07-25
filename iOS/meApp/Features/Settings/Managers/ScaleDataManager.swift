@@ -83,11 +83,16 @@ class ScaleDataManager: ObservableObject {
 
     // MARK: - Browser Operations
     func productGuideURL(for sku: String) -> URL {
-        guard !sku.isEmpty else { return AppConstants.LegalURLs.notFound }
-        return AppConstants.LegalURLs.serviceBase.appendingPathComponent(sku)
+        guard !sku.isEmpty else {
+            return AppConstants.LegalURLs.notFound
+        }
+        
+        let url = AppConstants.LegalURLs.serviceBase.appendingPathComponent(sku)
+        return url
     }
 
     func openProductGuide(for sku: String) {
-        state.browserURL = productGuideURL(for: sku)
+        let url = productGuideURL(for: sku)
+        state.browserURL = url
     }
-}
+} 

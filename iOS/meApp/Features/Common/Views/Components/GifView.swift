@@ -32,8 +32,8 @@ struct GifView: UIViewRepresentable {
     private func loadGif(in webView: WKWebView) {
         if let gifPath = Bundle.main.path(forResource: gifName, ofType: "gif") {
             let url = URL(fileURLWithPath: gifPath)
-            let base64Data = try? Data(contentsOf: url).base64EncodedString()
-            if let base64Data = base64Data {
+            do {
+                let base64Data = try Data(contentsOf: url).base64EncodedString()
                 let html = """
                 <html>
                     <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -43,6 +43,8 @@ struct GifView: UIViewRepresentable {
                 </html>
                 """
                 webView.loadHTMLString(html, baseURL: nil)
+            } catch {
+                LoggerService.shared.log(level: .error, tag: "GifView", message: "Failed to load GIF: \(error.localizedDescription)")
             }
         }
     }

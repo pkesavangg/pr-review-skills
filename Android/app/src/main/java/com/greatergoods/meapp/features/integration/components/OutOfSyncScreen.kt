@@ -38,7 +38,7 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
  */
 @Composable
 fun OutOfSyncScreen(
-  onClose: () -> Unit,
+    onClose: () -> Unit,
     onPrimaryAction: () -> Unit,
     onSecondaryAction: () -> Unit,
     modifier: Modifier = Modifier
