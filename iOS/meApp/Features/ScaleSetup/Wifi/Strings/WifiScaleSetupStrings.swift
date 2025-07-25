@@ -45,8 +45,9 @@ struct WifiScaleSetupStrings {
     
     struct ApModeConnectionViewStrings {
         static let title = "Switch your wi-fi network"
-        static let description = "In your phone's wi-fi settings change the connected network to: gg_SmartScale_33."
+        static let description = "In your phone's wi-fi settings change the connected network to: gg_SmartScale_##."
         static let changeNetwork = "Change your Network"
+        static let gotoSettings = "GO TO WIFI SETTINGS"
     }
 
     struct ErrorDetailViewStrings {

@@ -32,13 +32,14 @@ struct CopyMacAddressView: View {
                 .multilineTextAlignment(.leading)
             
             VStack(spacing: .spacingSM) {
-                ActionListItemView(config: ActionListItemConfig(
-                    title: macAddress,
-                    chevronType: .none,
-                ))
-                .padding(.horizontal, .spacingSM)
-                .background(theme.backgroundPrimary)
-                .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                Text(macAddress)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 48)
+                    .padding(.horizontal, .spacingSM)
+                    .background(theme.backgroundPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
                 
                 ButtonView(
                     text: lang.copyMacAddress,

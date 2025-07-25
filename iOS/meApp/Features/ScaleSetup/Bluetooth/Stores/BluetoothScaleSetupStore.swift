@@ -49,11 +49,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
     /// Flag that indicates if the scale is currently synced the first entry.
     @Published var isEntrySynced: Bool = false
     
-    /// Computed helper mirroring the `backDisabled()` logic from the legacy Angular flow.
+    /// Computed helper mirroring the `backDisabled()` logic
     var isBackDisabled: Bool {
         switch currentStep {
         case .intro:
-            return true // Same as scaleInfo in Angular
+            return true
         case .stepOn:
             return isEntrySynced
         case .setupFinished:
@@ -321,7 +321,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             dismissAction?()
             return
         }
-        // Check if user numbers match (same as TypeScript logic)
+        // Check if user numbers match
         if Int(scaleToDelete.userNumber ?? "0") == selectedUserNumber {
             LoggerService.shared.log(level: .info, tag: tag, message: "User numbers match, assigning old nickname and saving scale")
             // Assign the old scale's nickname to the discovered scale
@@ -429,7 +429,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         let loaderText = isExiting ? loaderLang.exiting : loaderLang.savingScale
         notificationService.showLoader(LoaderModel(text: loaderText))
         
-        // Delete the existing scale if there's a duplicate (matching the Angular logic)
+        // Delete the existing scale if there's a duplicate
         if let scaleToDelete = scaleToDelete {
             LoggerService.shared.log(level: .info, tag: tag, message: "Deleting existing scale with ID: \(scaleToDelete.id)")
             do {

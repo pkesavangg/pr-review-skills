@@ -53,6 +53,7 @@ final class WifiScaleSetupStore: ObservableObject {
     /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [WifiScaleSetupStep] = WifiScaleSetupStep.allCases
     
+    @Published var isForGetMac: Bool = false
     @Published var wifiStatus: WifiStatus?
     @Published var WifiSetupType: WifiSetupType?
     
@@ -64,9 +65,11 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var selectedConnectionMode: WifiSetupOption = .none
     @Published var isApModeOnly: Bool = false
     
+    /// Captured MAC address once retrieved (Get-MAC flow).
+    @Published var retrievedMacAddress: String? = nil
+    
     /// Flag indicating that the permissions step was skipped by the user. Used
-    /// to short-circuit smart-connect if prerequisites are missing – mirrors the
-    /// `permissionsSkipped` flag in the Ionic implementation.
+    /// to short-circuit smart-connect if prerequisites are missing
     @Published var permissionsSkipped: Bool = false
     
     /// Callback used by the screen to dismiss itself.
@@ -84,7 +87,15 @@ final class WifiScaleSetupStore: ObservableObject {
         return steps.map { step in
             switch step {
             case .intro:
-                return AnyView(ScaleSetupIntroView(scale: scaleItem))
+                return AnyView(ScaleSetupIntroView(scale: scaleItem) {
+                    self.isForGetMac = true
+                    self.permissionsSkipped = false
+                    if self.arePermissionsEnabled() {
+                        self.navigateToStep(.activatePairingMode)
+                    } else {
+                        self.moveToNextStep()
+                    }
+                })
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
@@ -103,7 +114,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     sku: scaleItem.sku,
                     userNumber: selectedUserNumber,
                     selectedOption: selectedConnectionMode,
-                    mode: isApModeOnly ? .apModeOnly : .optionSelection
+                    mode: (permissionsSkipped || isForGetMac) ? .apModeOnly : .optionSelection
                 ) { selectedMode in
                     self.selectedConnectionMode = selectedMode
                     self.updateNextEnabled()
@@ -112,7 +123,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .apMode:
-                return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "") {
+                return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "", permissionsSkipped: permissionsSkipped) {
                     self.openWifiSettings()
                 })
             case .apModeConfirm:
@@ -134,6 +145,8 @@ final class WifiScaleSetupStore: ObservableObject {
                 }))
             case .errorDetail:
                 return AnyView(WifiErrorCodeDetailView(errorCode: selectedErrorCode))
+            case .copyMacAddress:
+                return AnyView(CopyMacAddressView(macAddress: retrievedMacAddress ?? ""))
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
             case .setupFinish:
@@ -144,9 +157,7 @@ final class WifiScaleSetupStore: ObservableObject {
     
     var nextButtonText: String {
         switch currentStep {
-        case .setupFinish:
-            return commonLang.finish
-        case .errorDetail:
+        case .setupFinish, .errorDetail, .copyMacAddress:
             return commonLang.finish
         default:
             return commonLang.next
@@ -169,6 +180,9 @@ final class WifiScaleSetupStore: ObservableObject {
             .sink { [weak self] isConnected in
                 self?.updateNextEnabled()
                 self?.getWifiStatus()
+                if isConnected {
+                    self?.fetchWifiScaleToken()
+                }
             }
             .store(in: &cancellables)
         // Observe app coming to foreground to refresh Wi-Fi status
@@ -248,11 +262,39 @@ final class WifiScaleSetupStore: ObservableObject {
     
     func handleNextButtonClick() {
         switch currentStep {
+        case .intro:
+            isForGetMac = false
+            moveToNextStep()
+            break
+        case .permissions:
+            if checkScaleToken() == nil {
+                return
+            }
+            if isForGetMac {
+                navigateToStep(.activatePairingMode)
+            } else {
+                moveToNextStep()
+            }
         case .connectionConfirm:
+            if permissionsSkipped || isForGetMac {
+                selectedConnectionMode = .apMode
+            }
             if selectedConnectionMode == .complete {
                 self.navigateToStep(.stepOn)
             } else {
                 self.navigateToStep(.apMode)
+            }
+            break
+        case .apMode:
+            if isForGetMac {
+                Task {
+                    await self.getMacAddress()
+                    if retrievedMacAddress != nil {
+                        self.navigateToStep(.copyMacAddress)
+                    }
+                }
+            } else {
+                moveToNextStep()
             }
             break
         case .apModeConfirm:
@@ -270,12 +312,22 @@ final class WifiScaleSetupStore: ObservableObject {
     
     func handleBackButtonClick() {
         switch currentStep {
+        case .activatePairingMode:
+            if isForGetMac {
+                arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
+            } else {
+                moveToPreviousStep()
+            }
+            break
         case .errorSelect:
             if let origin = errorSelectSourceStep {
                 navigateToStep(origin)
             } else {
                 navigateToStep(.connectionConfirm)
             }
+        case .copyMacAddress:
+            navigateToStep(.apMode)
+            break
         case .stepOn:
             if let origin = stepOnSourceStep {
                 navigateToStep(origin)
@@ -290,6 +342,9 @@ final class WifiScaleSetupStore: ObservableObject {
     
     /// Handles the skip WiFi step action
     func handleSkipWifiStep() {
+        if checkScaleToken() == nil {
+            return
+        }
         let alertStrings = alertLang.SkipPermissionsAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
@@ -299,7 +354,7 @@ final class WifiScaleSetupStore: ObservableObject {
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
                     // User chose to skip – flag this so smart-connect can bail.
                     self?.permissionsSkipped = true
-                    // Continue to next step, mirroring the Ionic behaviour.
+                    // Continue to next step.
                     self?.moveToNextStep()
                 }
             ]
@@ -335,9 +390,8 @@ final class WifiScaleSetupStore: ObservableObject {
     private func getWifiStatus() {
         Task { @MainActor in
             let kvStorage = KvStorageService.shared
-
             let status = await wifiScaleService.getConnectedWifiInfo()
-
+            
             if let ssid = status.ssid, !ssid.isEmpty {
                 let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 if let wifiStatus = localStatus {
@@ -348,13 +402,14 @@ final class WifiScaleSetupStore: ObservableObject {
                     kvStorage.setCodable(status, forKey: ssidTempKey)
                 }
             }
-
+            
             let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
             self.wifiStatus = wifiStatus
             self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
+            logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
         }
     }
-
+    
     private func handleStepChange() {
         switch currentStep {
         case .connectionConfirm:
@@ -404,9 +459,9 @@ final class WifiScaleSetupStore: ObservableObject {
         case .selectUser:
             isNextEnabled = selectedUserNumber != nil
         case .connectionConfirm:
-            isNextEnabled = selectedConnectionMode != .none
+            isNextEnabled = (permissionsSkipped || isForGetMac) ? true : selectedConnectionMode != .none
         case .apMode:
-            isNextEnabled = networkForm.isValidApModeSSID()
+            isNextEnabled = permissionsSkipped ? true : networkForm.isValidApModeSSID()
         default:
             isNextEnabled = true
         }
@@ -429,7 +484,23 @@ final class WifiScaleSetupStore: ObservableObject {
         }
     }
     
+    /// Returns the cached Wi-Fi scale token or shows a toast if none is available.
+    private func checkScaleToken() -> String? {
+        if scaleToken == nil {
+            notificationService.showToast(
+                ToastModel(
+                    title: toastLang.internetRequiredTitle,
+                    message: toastLang.internetRequiredMessage
+                )
+            )
+        }
+        return scaleToken
+    }
+    
     private func saveScale() {
+        if checkScaleToken() == nil {
+            return
+        }
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
         guard let scaleItem, let userNumber = selectedUserNumber else {
@@ -551,21 +622,21 @@ final class WifiScaleSetupStore: ObservableObject {
     
     // MARK: - AP-Mode
     /// Initiates the AP-Mode Wi-Fi configuration once the user reaches the
-    /// confirmation step (mirrors the Angular implementation).
+    /// confirmation step
     ///
     /// Retries up to five times when the operation throws, waiting five seconds
     /// between attempts – matching the behaviour in the legacy TS code.
     private func startApMode(retryCount: Int = 0) async {
         logger.log(level: .info, tag: tag, message: "startApMode triggered – attempt #\(retryCount)")
-
+        
         // If the permission step was skipped we bail out, same as the original.
         if permissionsSkipped { return }
-
+        
         guard let setupType = self.WifiSetupType else {
             logger.log(level: .error, tag: tag, message: "startApMode aborted – WifiSetupType not set")
             return
         }
-
+        
         // Prepare the payload (mutating SSID/BSSID when available).
         let baseInfo = getSetupInfo(for: setupType)
         let info = WifiSetupInfo(
@@ -575,20 +646,68 @@ final class WifiScaleSetupStore: ObservableObject {
             userNumber: baseInfo.userNumber,
             token: baseInfo.token
         )
-
+        
         do {
             // Stop any previous sessions before starting AP-mode.
             await wifiScaleService.stop()
             try await wifiScaleService.apMode(info, setupType)
         } catch {
             logger.log(level: .error, tag: tag, message: "startApMode error: \(error.localizedDescription)")
-
+            
             // Retry up to 5 times, matching the JS logic.
             if retryCount < 5 {
                 try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
                 await startApMode(retryCount: retryCount + 1)
             }
         }
+    }
+    
+    // MARK: - MAC Address Retrieval
+    /// Attempts to retrieve the currently-connected Wi-Fi BSSID (MAC address)
+    /// within ~30 seconds, polling every second
+    /// - Returns: `true` if a MAC address was obtained, `false` on timeout.
+    @discardableResult
+    private func getMacAddress() async -> Bool {
+        self.retrievedMacAddress = nil
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.gettingMacAddress))
+        defer { notificationService.dismissLoader() }
+        
+        let timeout: TimeInterval = 29.5
+        let startDate = Date()
+        
+        do {
+            // Initial delay to allow the Wi-Fi service to stabilize.
+            try await Task.sleep(nanoseconds: 3 * 1_000_000_000) // Initial delay of 3 seconds
+        } catch {}
+        
+        while Date().timeIntervalSince(startDate) < timeout {
+            if let bssid = self.wifiStatus?.bssid, !bssid.isEmpty {
+                // Normalize segments to two-character hex values.
+                let formatted = bssid
+                    .split(separator: ":")
+                    .map { segment -> String in
+                        segment.count == 1 ? "0\(segment)" : String(segment)
+                    }
+                    .joined(separator: ":")
+                
+                self.retrievedMacAddress = formatted
+                self.logger.log(level: .info, tag: tag, message: "MAC address retrieved: \(formatted)")
+                return true
+            }
+            
+            // Wait 1 second before next attempt.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        
+        // Timed-out – show alert
+        let alert = AlertModel(
+            title: ToastStrings.genericError,
+            buttons: [
+                AlertButtonModel(title: CommonStrings.ok, type: .primary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+        return false
     }
     
     deinit {
