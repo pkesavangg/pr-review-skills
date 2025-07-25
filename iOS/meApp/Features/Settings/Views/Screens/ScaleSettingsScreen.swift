@@ -200,6 +200,10 @@ struct ScaleSettingsScreen: View {
                     onTap: { router.navigate(to: .scaleNameScreen(scale: scale)) }
                 )
             )
+            
+            if scaleType == .bluetoothA3 || scaleType == .bluetoothA6 {
+                ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: scale.userNumber))
+            }
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
