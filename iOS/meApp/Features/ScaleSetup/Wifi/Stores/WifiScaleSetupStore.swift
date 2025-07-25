@@ -89,6 +89,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .intro:
                 return AnyView(ScaleSetupIntroView(scale: scaleItem) {
                     self.isForGetMac = true
+                    self.permissionsSkipped = false
                     if self.arePermissionsEnabled() {
                         self.navigateToStep(.activatePairingMode)
                     } else {
