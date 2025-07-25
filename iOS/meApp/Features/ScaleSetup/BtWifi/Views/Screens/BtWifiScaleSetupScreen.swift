@@ -132,6 +132,6 @@ struct BtWifiScaleSetupScreen: View {
 }
 
 #Preview {
-    BtWifiScaleSetupScreen(sku: "0412", discoveredScale: nil, discoveryEvent: nil)
+    BtWifiScaleSetupScreen(sku: SettingsConstants.defaultR4Sku, discoveredScale: nil, discoveryEvent: nil)
         .environmentObject(Theme.shared)
 }

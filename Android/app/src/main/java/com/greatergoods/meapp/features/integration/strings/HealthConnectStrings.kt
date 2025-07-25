@@ -118,5 +118,11 @@ object HealthConnectStrings  {
     const val title = "Health Connect is Out of Sync"
     const val description = "Enable app permissions in Health Connect or remove the integration in Weight Gurus."
   }
+
+  object NotAvailable {
+    const val header = "Health connect not available"
+    const val message =
+    "Sorry, Health Connect is not available, Install Heath connect from play store and try again"
+  }
 }
 

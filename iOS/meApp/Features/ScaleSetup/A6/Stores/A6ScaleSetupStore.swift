@@ -290,6 +290,10 @@ final class A6ScaleSetupStore: ObservableObject {
             switch result {
             case .success(let savedScale):
                 LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+                
+                // Post notification that scale was added
+                NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+                
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))

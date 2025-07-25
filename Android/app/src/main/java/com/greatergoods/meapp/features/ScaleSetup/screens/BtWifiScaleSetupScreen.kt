@@ -12,7 +12,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.meapp.features.ScaleCustomization.screens.CustomizeScaleSettings
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
@@ -21,6 +20,7 @@ import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupLoader
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupForm
 import com.greatergoods.meapp.features.ScaleSetup.components.WifiSelection
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtWifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.BtWifiScaleSetupStrings
@@ -31,7 +31,6 @@ import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelpe
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.helper.StringUtil.formatTimestamp
@@ -43,14 +42,17 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 @Composable
 fun BtWifiScaleSetupScreen(
   sku: String,
-  viewModel: BtWifiScaleSetupViewModel =
-    hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku)
-    },
+  initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+  broadcastId: String? = null
 ) {
+  val viewModel: BtWifiScaleSetupViewModel =
+    hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
+      factory.create(sku, broadcastId, initialStep)
+    }
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(
     state = state,
+    initialStep == BtWifiSetupStep.GATHERING_NETWORK,
     onIntent = viewModel::handleIntent,
   )
 }
@@ -58,18 +60,12 @@ fun BtWifiScaleSetupScreen(
 @Composable
 fun BtWifiScaleSetupScreenContent(
   state: BtWifiScaleSetupState,
+  isFromWiFiSetup: Boolean = false,
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-  val dummyDuplicateUser = GGBTUser(
-    name = "Poongs 1",
-    token = "424443432323424324",
-    lastActive = 1656720000, // July 02, 2022
-    isBodyMetricsEnabled = true,
-  )
-  BtWifiScaleSetupStrings
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
@@ -130,8 +126,8 @@ fun BtWifiScaleSetupScreenContent(
 
         else -> null
       },
-      middleContent = when (state.currentStep) {
-        BtWifiSetupStep.SETUP_FINISHED -> {
+      middleContent = when {
+        state.currentStep == BtWifiSetupStep.SETUP_FINISHED -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -145,7 +141,7 @@ fun BtWifiScaleSetupScreenContent(
           }
         }
 
-        BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !isFromWiFiSetup -> {
           {
             AppButton(
               type = ButtonType.TextTertiary,
@@ -202,13 +198,13 @@ fun BtWifiScaleSetupScreenContent(
               title = BtWifiScaleSetupStrings.WakeupScale.Title(state.currentStepConnectionState),
               subtitle = BtWifiScaleSetupStrings.WakeupScale.Subtitle(state.currentStepConnectionState),
               errorCode = state.errorCode,
-              scaleImageSku = if (state.currentStepConnectionState == ConnectionState.Error)
+              scaleImageSku = if (state.currentStepConnectionState is ConnectionState.Failed)
                 state.sku else null,
-              showIndicationOnly = state.currentStepConnectionState != ConnectionState.Error,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              showIndicationOnly = state.currentStepConnectionState !is ConnectionState.Failed,
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -219,10 +215,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingBluetooth.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -237,7 +233,7 @@ fun BtWifiScaleSetupScreenContent(
               supportingImage = AppIcons.Setup.UserNameScale,
               supportingButtonLabel = BtWifiScaleSetupStrings.DuplicateUser.RestoreAccountButton,
               supportText = BtWifiScaleSetupStrings.DuplicateUser
-                .LastActive(dummyDuplicateUser.lastActive.formatTimestamp()).lowercase(),
+                .LastActive(state.duplicateUser?.lastActive?.formatTimestamp()).lowercase(),
               onSupportingButtonClick = {
                 onIntent(BtWifiScaleSetupIntent.ReplaceAccount())
               },
@@ -263,10 +259,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -277,7 +273,7 @@ fun BtWifiScaleSetupScreenContent(
               wifiList = state.wifiList,
               title = BtWifiScaleSetupStrings.WifiList.Title,
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
-              configuredSSID = null,
+              configuredSSID = state.connectedSSID,
               onSelect = {
                 state.wifiPasswordForm.ssid.onValueChange(it)
                 onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
@@ -312,10 +308,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingWifi.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -335,10 +331,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.UpdateSettings.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )
@@ -358,10 +354,10 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.CollectingMeasurement.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              primaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
-              secondaryButtonClick = if (state.currentStepConnectionState == ConnectionState.Error) {
+              secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
             )

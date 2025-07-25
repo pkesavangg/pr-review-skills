@@ -1,9 +1,11 @@
 package com.greatergoods.meapp.features.ScaleSetup.enums
 
+sealed interface ScaleSetupStep
+
 /**
  * Enum for Bluetooth + WiFi scale setup flow steps.
  */
-enum class BtWifiSetupStep {
+enum class BtWifiSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
   WAKEUP,
@@ -51,12 +53,12 @@ enum class WifiScaleSetupStep {
 /**
  * Enum for Bluetooth-only scale setup flow steps.
  */
-enum class BtScaleSetupStep {
+enum class BtScaleSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
   SELECT_USER,
-  CONNECTING_BLUETOOTH,
-  FIND_USER,
+  PAIRING_MODE,
+  SET_DEVICE_USER,
   STEP_ON,
   SETUP_FINISHED
 }
@@ -64,10 +66,10 @@ enum class BtScaleSetupStep {
 /**
  * Enum for LCBT scale setup flow steps.
  */
-enum class LcbtScaleSetupStep {
+enum class LcbtScaleSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
-  STEP_ON,
+  WAKEUP,
   CONNECTING_BLUETOOTH,
   SETUP_FINISHED
 }

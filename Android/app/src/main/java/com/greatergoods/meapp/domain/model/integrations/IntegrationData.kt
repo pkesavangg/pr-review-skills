@@ -26,7 +26,7 @@ data class IntegrationPreferences(
 data class IntegratedDeviceInfo(
     val operationType: String,
     val scopes: IntegrationData,
-    val isCurrentDeviceDeleted: Boolean = false
+    var isCurrentDeviceDeleted: Boolean = false
 )
 
 /**

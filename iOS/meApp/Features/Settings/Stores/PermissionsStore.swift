@@ -42,6 +42,16 @@ final class PermissionsStore: ObservableObject {
                 self?.updatePermissionSets(with: devices)
             }
             .store(in: &cancellables)
+            
+        // Subscribe to real-time permission changes from PermissionsService
+        // This ensures Bluetooth permissions are updated immediately when the user changes them
+        // while already on the ScaleBluetoothScreen
+        permissionsService.$permissions
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateBluetoothPermissions()
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods

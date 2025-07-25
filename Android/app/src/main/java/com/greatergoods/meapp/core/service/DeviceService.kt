@@ -230,7 +230,20 @@ constructor(
     // 6. Get fresh data from API and merge with unsynced
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
-      apiDevices.map { it.copy(isSynced = true) } + unsyncedDevices.map { it.copy(isSynced = false) }
+      apiDevices.map {
+        val device = deviceRepository.getDevice(it.id).first()
+        if (device != null) {
+          it.copy(
+            isSynced = true,
+            device = device.device?.copy(
+              macAddress = device.device.macAddress,
+              isWifiConfigured = device.device.isWifiConfigured,
+            ),
+          )
+        } else {
+          it.copy(isSynced = true)
+        }
+      } + unsyncedDevices.map { it.copy(isSynced = false) }
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API", e.toString())
       syncedDevicesToStore.map { it.copy(isSynced = true) } + unsyncedDevices.map { it.copy(isSynced = false) }
@@ -387,7 +400,7 @@ constructor(
    */
   override suspend fun scaleExistsByMac(mac: String): Boolean =
     try {
-      deviceRepository.deviceExistsByMac(mac).first()
+      _pairedScales.value.any { it.device?.macAddress == mac }
     } catch (e: Exception) {
       AppLog.e(tag, "Error checking scale existence by MAC", e.toString())
       false

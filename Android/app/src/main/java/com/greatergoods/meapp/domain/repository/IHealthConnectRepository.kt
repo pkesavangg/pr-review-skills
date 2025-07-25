@@ -1,5 +1,6 @@
 package com.greatergoods.meapp.domain.repository
 
+import com.greatergoods.meapp.data.api.HealthConnectSyncEntry
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectData
 import com.greatergoods.meapp.domain.model.integrations.IntegratedDeviceInfo
 import com.greatergoods.meapp.domain.model.integrations.IntegrationData
@@ -10,11 +11,7 @@ import kotlinx.coroutines.flow.Flow
  * Repository interface for Health Connect data operations, abstracting HealthConnectDataStore.
  */
 interface IHealthConnectRepository {
-  /** Emits a Flow of the current map of account data. */
-  val accountDataFlow: Flow<Map<String, HealthConnectData>>
   val integrationState: Flow<IntegrationState>
-  /** Returns a Flow of the current active account ID. */
-  val activeAccountIdFlow: Flow<String?>
 
   /** Gets the current map of account data. */
   suspend fun getAccountDataMap(): Map<String, HealthConnectData>
@@ -45,6 +42,28 @@ interface IHealthConnectRepository {
 
   /** Updates the out of sync status for an account. */
   suspend fun updateOutOfSync(accountId: String, outOfSync: Boolean)
+
+  /** Updates the open status for an account. */
+  suspend fun setOpen(accountId: String, open: Boolean)
+
+  /** Gets the open status for an account. */
+  suspend fun getOpen(accountId: String): Boolean
+
+  /** Sets the assignedTo field for an account. */
+  suspend fun setAssignedTo(accountId: String, assignedTo: String)
+
+  /** Gets the assignedTo field for an account. */
+  suspend fun getAssignedTo(accountId: String): String?
+
+  /** Clears the assignedTo field for an account. */
+  suspend fun clearAssignedTo(accountId: String)
+
+  /**
+   * Checks if Health Connect is already assigned to another account.
+   * @return true if Health Connect can be used by current account
+   * @throws Exception if Health Connect is assigned to a different account
+   */
+  suspend fun checkIfHealthConnectIsAlreadyAssigned(): Boolean
 
   /** Updates the modal state for an account. */
   suspend fun updateModalState(accountId: String, state: Boolean)
@@ -90,4 +109,27 @@ interface IHealthConnectRepository {
    * Sets the Health Connect integration status for the current account.
    */
   suspend fun setHealthConnectIntegrationStatus(accountId: String, integrated: Boolean)
+
+  /**
+   * Updates the integration state and optionally persists to local storage.
+   * This method should be called whenever the integration state changes.
+   */
+  fun updateIntegrationState(newState: IntegrationState)
+
+  /**
+   * Updates the Health Connect integration status in local storage and syncs the state.
+   */
+  suspend fun updateHealthConnectIntegrationStatus(accountId: String, integrated: Boolean)
+
+  /**
+   * Updates the out of sync status in local storage and syncs the state.
+   */
+  suspend fun updateOutOfSyncStatus(accountId: String, outOfSync: Boolean)
+
+  /**
+   * Observes account changes and automatically updates integration state from local storage.
+   * This method should be called to start automatic state synchronization.
+   */
+  suspend fun observeAccountChanges()
+  suspend fun syncEntry(entry: HealthConnectSyncEntry)
 }

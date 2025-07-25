@@ -2,6 +2,7 @@ package com.greatergoods.meapp.data.repository
 
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.data.api.HealthConnectIntegrationRequest
+import com.greatergoods.meapp.data.api.HealthConnectSyncEntry
 import com.greatergoods.meapp.data.api.IHealthConnectAPI
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectData
 import com.greatergoods.meapp.data.storage.datastore.HealthConnectDataStore
@@ -15,10 +16,13 @@ import com.greatergoods.meapp.domain.model.integrations.IntegrationType
 import com.greatergoods.meapp.domain.repository.IAccountRepository
 import com.greatergoods.meapp.domain.repository.IHealthConnectRepository
 import com.greatergoods.meapp.features.integration.model.IntegrationState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,7 +30,7 @@ import javax.inject.Singleton
 class HealthConnectRepository @Inject constructor(
   private val accountRepository: IAccountRepository,
   private val healthConnectAPI: IHealthConnectAPI,
-  private val healthConnectDataStore: HealthConnectDataStore
+  private val healthConnectDataStore: HealthConnectDataStore,
 ) : IHealthConnectRepository {
 
   private val tag = "HealthConnectRepository"
@@ -34,18 +38,63 @@ class HealthConnectRepository @Inject constructor(
   // Initial state (replace with your actual model)
   private val _integrationState = MutableStateFlow(IntegrationState())
   override val integrationState: StateFlow<IntegrationState> = _integrationState
-
-  // Call this whenever the integration state changes
-  fun updateIntegrationState(newState: IntegrationState) {
+init {
+  CoroutineScope(Dispatchers.IO).launch{
+    observeAccountChanges()
+  }
+}
+  /**
+   * Updates the integration state and optionally persists to local storage.
+   * This method should be called whenever the integration state changes.
+   */
+  override fun updateIntegrationState(newState: IntegrationState) {
     _integrationState.value = newState
-    // Optionally persist to DB or server
+    AppLog.d(tag, "Integration state updated: ${newState.integrations.size} integrations")
   }
 
-  override val accountDataFlow: Flow<Map<String, HealthConnectData>> =
-    healthConnectDataStore.healthConnectDataFlow
+  /**
+   * Updates the Health Connect integration status in local storage and syncs the state.
+   */
+  override suspend fun updateHealthConnectIntegrationStatus(accountId: String, integrated: Boolean) {
+    try {
+      setHcIntegrationStatus(accountId, integrated)
+      AppLog.d(tag, "Health Connect integration status updated: $integrated for account: $accountId")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to update Health Connect integration status", e.toString())
+    }
+  }
 
-  override val activeAccountIdFlow: Flow<String?> =
-    healthConnectDataStore.activeAccountIdFlow
+  /**
+   * Updates the out of sync status in local storage and syncs the state.
+   */
+  override suspend fun updateOutOfSyncStatus(accountId: String, outOfSync: Boolean) {
+    try {
+      updateOutOfSync(accountId, outOfSync)
+      AppLog.d(tag, "Out of sync status updated: $outOfSync for account: $accountId")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to update out of sync status", e.toString())
+    }
+  }
+
+  /**
+   * Observes account changes and automatically updates integration state from local storage.
+   * This method should be called to start automatic state synchronization.
+   */
+  override suspend fun observeAccountChanges() {
+    try {
+      accountRepository.getActiveAccount().collect { account ->
+        if (account != null) {
+          AppLog.d(tag, "Account changed, updated integration state for account: ${account.id}")
+        }
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to observe account changes", e.toString())
+    }
+  }
+
+  override suspend fun syncEntry(entry: HealthConnectSyncEntry) {
+    healthConnectAPI.sync(entry)
+  }
 
   override suspend fun getAccountDataMap(): Map<String, HealthConnectData> =
     healthConnectDataStore.healthConnectData()
@@ -79,10 +128,83 @@ class HealthConnectRepository @Inject constructor(
     healthConnectDataStore.updateAlertSeen(accountId, seen)
   }
 
+  /**
+   * Updates the out of sync status for an account.
+   */
   override suspend fun updateOutOfSync(accountId: String, outOfSync: Boolean) {
     healthConnectDataStore.updateOutOfSync(accountId, outOfSync)
   }
 
+  /**
+   * Updates the open status for an account.
+   */
+  override suspend fun setOpen(accountId: String, open: Boolean) {
+    healthConnectDataStore.setOpen(accountId, open)
+  }
+
+  /**
+   * Gets the open status for an account.
+   */
+  override suspend fun getOpen(accountId: String): Boolean {
+    return healthConnectDataStore.getOpen(accountId)
+  }
+
+  /**
+   * Sets the assignedTo field for an account.
+   */
+  override suspend fun setAssignedTo(accountId: String, assignedTo: String) {
+    healthConnectDataStore.setAssignedTo(accountId, assignedTo)
+  }
+
+  /**
+   * Gets the assignedTo field for an account.
+   */
+  override suspend fun getAssignedTo(accountId: String): String? {
+    return healthConnectDataStore.getAssignedTo(accountId)
+  }
+
+  /**
+   * Clears the assignedTo field for an account.
+   */
+  override suspend fun clearAssignedTo(accountId: String) {
+    healthConnectDataStore.clearAssignedTo(accountId)
+  }
+
+  /**
+   * Checks if Health Connect is already assigned to another account.
+   * Similar to Angular's checkIfAppleHealthIsAlreadyUsed method.
+   * @return true if Health Connect can be used by current account, false if assigned to different account
+   * @throws Exception if Health Connect is assigned to a different account
+   */
+  override suspend fun checkIfHealthConnectIsAlreadyAssigned(): Boolean {
+    try {
+      val currentAccount = accountRepository.getActiveAccount().first()
+      if (currentAccount == null) {
+        AppLog.w(tag, "No active account found for Health Connect assignment check")
+        return true
+      }
+
+      val allAccountData = getAccountDataMap()
+      val assignedToAccountId = allAccountData.values
+        .firstOrNull { it.hasAssignedTo() }
+        ?.assignedTo
+
+      if (assignedToAccountId.isNullOrEmpty() || assignedToAccountId == currentAccount.id) {
+        AppLog.d(tag, "Health Connect is available for account: ${currentAccount.id}")
+        return true
+      } else {
+        AppLog.w(tag, "Health Connect is already assigned to account: $assignedToAccountId")
+        throw Exception("Integration Conflict: Health Connect is already assigned to another account")
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to check Health Connect assignment", e.toString())
+      throw e
+    }
+  }
+
+  /**
+   * Updates the modal state for an account.
+   */
   override suspend fun updateModalState(accountId: String, state: Boolean) {
     healthConnectDataStore.updateModalState(accountId, state)
   }
@@ -125,19 +247,21 @@ class HealthConnectRepository @Inject constructor(
         IntegratedDeviceInfo(
           operationType = IntegrationOperationType.SAVE.value,
           scopes = integrationData,
+          isCurrentDeviceDeleted = false
         ),
       )
     } catch (e: Exception) {
       syncIntegration(IntegratedDeviceInfo(
         operationType = IntegrationOperationType.SAVE.value,
         scopes = integrationData,
+        isCurrentDeviceDeleted = false
       ))
       AppLog.e(tag, "Failed to save integration: ${e.message}")
     }
   }
 
   /**
-   * Syncs integration data between local storage and server.
+   * Syncs integration data between local storage and server
    */
   override suspend fun syncIntegration(integrationInfo: IntegratedDeviceInfo?) {
     val accountId = try {
@@ -160,15 +284,15 @@ class HealthConnectRepository @Inject constructor(
               type = storedIntegrationInfo.scopes.type,
             )
             healthConnectAPI.saveIntegration(request)
-            healthConnectDataStore.setHcIntegrationStatus(accountId, true)
             AppLog.d(tag, "Integration synced successfully for account: $accountId")
           }
 
           IntegrationOperationType.REMOVE.value -> {
             healthConnectAPI.removeIntegration(accountId)
-            healthConnectDataStore.updateOutOfSync(accountId, false)
-            healthConnectDataStore.setHcIntegrationStatus(accountId, false)
-            healthConnectDataStore.setIntegrationInfo(accountId, null)
+            if (!storedIntegrationInfo.isCurrentDeviceDeleted) {
+              storedIntegrationInfo.isCurrentDeviceDeleted = true;
+            }
+            healthConnectDataStore.setIntegrationInfo(accountId, storedIntegrationInfo)
             AppLog.d(tag, "Integration removal synced successfully for account: $accountId")
           }
         }
@@ -205,7 +329,7 @@ class HealthConnectRepository @Inject constructor(
     }
     val currentData = getAccountByID(account.id)
     if(currentData?.integrationInfo == null){
-        return
+      return
     }
     val domainInfo = currentData.integrationInfo.toDomain()
     try {
@@ -213,7 +337,6 @@ class HealthConnectRepository @Inject constructor(
       if (isCurrentDeviceIntegrated !== null) {
         healthConnectAPI.removeIntegration(deviceId)
         if (currentData.integrationInfo != null) {
-          healthConnectDataStore.updateOutOfSync(account.id, true)
           healthConnectDataStore.setIntegrationInfo(
             account.id,
             IntegratedDeviceInfo(
@@ -271,25 +394,19 @@ class HealthConnectRepository @Inject constructor(
   override suspend fun getStoredIntegrationData(accountId: String): IntegratedDeviceInfo? {
     return try {
       val healthConnectData = getAccountByID(accountId)
-      if (healthConnectData?.integrated == true) {
         // Reconstruct IntegratedDeviceInfo from stored data
         val currentAccount = accountRepository.getActiveAccount().first()
-        val deviceId = currentAccount?.id ?: ""
-
         IntegratedDeviceInfo(
-          operationType = IntegrationOperationType.SAVE.value,
+          operationType = healthConnectData?.integrationInfo?.toDomain()?.operationType ?: "",
           scopes = IntegrationData(
-            deviceId = deviceId,
+            deviceId = healthConnectData?.integrationInfo?.toDomain()?.scopes?.deviceId ?: "",
             type = IntegrationType.HEALTH_CONNECT.value,
             preferences = IntegrationPreferences(
-              scopes = healthConnectData.grantedPermissionList,
+              scopes = healthConnectData?.grantedPermissionList ?: emptyList(),
             ),
           ),
           isCurrentDeviceDeleted = false,
         )
-      } else {
-        null
-      }
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to get stored integration data", e.toString())
       null
@@ -305,10 +422,14 @@ class HealthConnectRepository @Inject constructor(
       AppLog.i(tag, "Setting Health Connect integration status: $integrated for account: $accountId")
       if (integrated) {
         setHcIntegrationStatus(accountId, true)
+        // Set assignedTo to current account ID when integrating
+        setAssignedTo(accountId, accountId)
       } else {
         val healthConnectData = getAccountByID(accountId)
         if (healthConnectData?.integrated == true) {
           setHcIntegrationStatus(accountId, false)
+          // Clear assignedTo when disintegrating
+          clearAssignedTo(accountId)
         }
       }
     } catch (e: Exception) {

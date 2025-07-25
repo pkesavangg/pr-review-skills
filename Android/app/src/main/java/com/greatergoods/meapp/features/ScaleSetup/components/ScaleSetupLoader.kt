@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -20,9 +19,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIcon
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupLoaderDefaults.getIndicationStatus
-import com.greatergoods.meapp.features.ScaleSetup.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.ScaleSetup.enums.LoaderIconType
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.SetupLoaderStrings
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppGifImage
 import com.greatergoods.meapp.features.common.components.AppScaleImage
@@ -30,7 +30,6 @@ import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.ConnectionIndicator
 import com.greatergoods.meapp.features.common.components.ConnectionIndicatorState
-import com.greatergoods.meapp.features.common.components.ConnectionState
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.ScaleImageSize
 import com.greatergoods.meapp.features.common.components.SetupLoader
@@ -60,7 +59,7 @@ object SetupLoaderDefaults {
       ConnectionState.Loading,
       ConnectionState.Success -> ConnectionIndicatorState.Connecting
 
-      ConnectionState.Error -> ConnectionIndicatorState.Failed
+      else -> ConnectionIndicatorState.Failed
     }
 }
 
@@ -261,7 +260,7 @@ private fun PreviewScaleSetupLoaderConnectionError() {
       title = "Connection Error",
       subtitle = "Something went wrong during setup",
       errorCode = "ERR_001",
-      connectionState = ConnectionState.Error,
+      connectionState = ConnectionState.Failed.Error,
       indicatorIcon = LoaderIconType.Error,
       primaryButtonText = SetupLoaderStrings.TryAgainButton,
       secondaryButtonText = SetupLoaderStrings.SupportButton,

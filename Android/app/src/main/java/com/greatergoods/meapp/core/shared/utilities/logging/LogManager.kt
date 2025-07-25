@@ -2,6 +2,7 @@ package com.greatergoods.meapp.core.shared.utilities.logging
 
 import com.greatergoods.meapp.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.meapp.core.service.BaseService
+import com.greatergoods.meapp.core.service.IAppNavigationService
 import com.greatergoods.meapp.data.storage.db.entity.log.LogEntity
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.repository.ILogRepository
@@ -13,10 +14,11 @@ import javax.inject.Singleton
 class LogManager
     @Inject
     constructor(
-        private val logRepository: ILogRepository,
-        connectivityObserver: IConnectivityObserver,
-        dialogQueueService: IDialogQueueService,
-    ) : BaseService(connectivityObserver, dialogQueueService){
+      private val logRepository: ILogRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ) : BaseService(connectivityObserver, dialogQueueService,appNavigationService){
         /**
          * Get logs for the last specified days
          * @param days Number of days to look back

@@ -93,13 +93,13 @@ fun EntryProviderBuilder<NavKey>.integrationEntries() {
 
 fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
   entry<AppRoute.ScaleSetup.BtWifiScaleSetup> { scaleInfo ->
-    BtWifiScaleSetupScreen(scaleInfo.sku)
+    BtWifiScaleSetupScreen(scaleInfo.sku, scaleInfo.initialStep, scaleInfo.broadcastId)
   }
   entry<AppRoute.ScaleSetup.BtScaleSetup> { scaleInfo ->
     BtScaleSetupScreen(scaleInfo.sku)
   }
   entry<AppRoute.ScaleSetup.LcbtScaleSetup> { scaleInfo ->
-    LcbtScaleSetupScreen(scaleInfo.sku)
+    LcbtScaleSetupScreen(scaleInfo.sku, scaleInfo.broadcastId, scaleInfo.initialStep)
   }
   entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
     WifiScaleSetupScreen(scaleInfo.sku)

@@ -1,6 +1,5 @@
 package com.greatergoods.meapp.features.integration.viewmodel
 
-import android.content.Intent
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.content.Intent
 
 /**
  * ViewModel for managing Health Connect integration state and handling user intents.
@@ -316,7 +316,7 @@ class HealthConnectViewModel @Inject constructor(
     fun openHealthConnect() {
         viewModelScope.launch {
             try {
-                healthConnectService.openHealthConnect()
+                healthConnectService.openHealthConnect(true)
             } catch (e: Exception) {
                 _state.update { currentState ->
                     currentState.copy(errorMessage = "Failed to open Health Connect: ${e.message}")

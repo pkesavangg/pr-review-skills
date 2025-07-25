@@ -8,6 +8,12 @@ import kotlinx.coroutines.flow.Flow
  * Service interface for managing third-party integrations.
  */
 interface IIntegrationService {
+
+    /**
+     * Gets the current list of integration items.
+     * @return List of integration items
+     */
+    val integrationState: Flow<IntegrationItem>
     /**
      * Gets all available integrations with their connection status.
      * @return Flow of integration items with current status
@@ -39,7 +45,20 @@ interface IIntegrationService {
      * Gets the OAuth URL for a provider.
      * @param provider The integration provider
      * @param accountId The account ID
-     * @return The OAuth URL
+     * @return The OAuth URL or null if provider doesn't use OAuth
      */
-    fun getOAuthUrl(provider: IntegrationProvider, accountId: String): String
+    fun getOAuthUrl(provider: IntegrationProvider, accountId: String): String?
+
+    /**
+     * Checks for inactive integrations by verifying connection and validity status.
+     * @return List of inactive integration providers
+     */
+    suspend fun checkForInactiveIntegrations(): List<IntegrationProvider>
+
+    /**
+     * Gets the display names for invalid integration providers.
+     * @param providers List of integration providers
+     * @return Formatted string of provider names
+     */
+    fun getInvalidIntegrationNames(providers: List<IntegrationProvider>): String
 }
