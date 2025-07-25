@@ -763,6 +763,14 @@ struct AppAssets {
     static let wifiStepOnGif: (String) -> String = { sku in
         sku == "0384" ? "0384-Sync" : "0396-Sync"
     }
+    static let wifiApMode: (String) -> String = { sku in
+        sku == "0384" ? "0384-Setup-Ap" : "0396-Setup-Ap"
+    }
+    static let wifiSetupComplete = "0396-Setup-Complete"
+    static func wifiSetupCompleteGifName(user: Int) -> String {
+        return "0384-Setup-u\(user)Complete"
+    }
+
 }
 
 /// Constants used in the AppSync entry result confirmation card

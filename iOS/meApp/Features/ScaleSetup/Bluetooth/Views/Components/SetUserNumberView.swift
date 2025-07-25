@@ -30,9 +30,11 @@ struct SetUserNumberView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                GifView(gifName: appAssets.setupSetUserNumberGifName(sku))
-                    .frame(height: 211)
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .center) {
+                    GifView(gifName: appAssets.setupSetUserNumberGifName(sku), height: 250)
+                        .frame(width: 370, height: 250)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
                 
             }
             .padding(.top, .spacingLG)
