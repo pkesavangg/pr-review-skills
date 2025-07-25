@@ -92,8 +92,73 @@ struct DashboardScreen: View {
 
     // MARK: - Metric Grid Section
     private func metricGridSection() -> some View {
-        DashboardMetricsGrid(store: store)
-            .padding(.horizontal, Spacing.sm)
+           LazyVGrid(columns: store.metricGridColumns, spacing: 16) {
+               ForEach(store.metricsToShow) { item in
+                   metricCardView(for: item)
+               }
+           }
+           .padding(.horizontal, .spacingSM)
+           .id(store.state.ui.gridLayoutId)
+           .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+       }
+
+       // MARK: - Metric Card View Helper
+    private func metricCardView(for item: MetricItem) -> some View {
+        let index = store.metricsToShow.firstIndex(of: item) ?? 0
+        let isRemoved = store.isMetricRemovedInReorderedArray(at: index)
+        let isSelected = store.state.ui.selectedMetricLabel == item.label
+        let verticalPadding = store.state.metrics.dashboardType == .dashboard12 ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
+        
+        let card = MetricCardView(
+            value: store.formattedMetricValue(for: (item.preLabel, item.value)),
+            label: item.label,
+            dashboardType: store.state.metrics.dashboardType,
+            isEditMode: store.state.ui.isEditMode,
+            isRemoved: isRemoved,
+            isSelected: isSelected,
+            onToggleRemoval: {
+                if let idx = store.metricsToShow.firstIndex(of: item) {
+                    store.toggleMetricRemovalInReorderedArray(at: idx)
+                }
+            },
+            onTap: {
+                store.selectMetric(item.label)
+            },
+            isDropTarget: store.state.ui.dropHoverId == item.label,
+            onDrop: { _, _ in true },
+            onDropTargetChanged: { isTargeted in
+                store.updateDropTarget(isTargeted ? item.label : nil)
+            },
+            verticalPadding: verticalPadding
+        )
+        
+        return card
+            .editModeOverlay(
+                isEditMode: store.state.ui.isEditMode,
+                isRemoved: isRemoved,
+                onToggleRemoval: {
+                    if let idx = store.metricsToShow.firstIndex(of: item) {
+                        store.toggleMetricRemovalInReorderedArray(at: idx)
+                    }
+                },
+                isBeingDragged: store.state.ui.draggingMetric?.id == item.id,
+                isDropTarget: store.state.ui.dropHoverId == item.label
+            )
+            .draggableReorder(
+                item: item,
+                draggingItem: store.draggingMetricBinding,
+                items: store.metricsBinding,
+                isDraggable: store.state.ui.isEditMode && !isRemoved,
+                onDropTargetChanged: { isTargeted in
+                    store.updateDropTarget(isTargeted ? item.label : nil)
+                },
+                onDragEnd: {
+                    store.handleMetricDragEnd()
+                }
+            )
+            .longPressGesture(isEditMode: store.state.ui.isEditMode) {
+                store.handleMetricLongPress(for: item.label, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
+            }
     }
 
     // MARK: - Streak and Loss Grid
