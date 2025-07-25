@@ -79,12 +79,11 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// Performs a SmartConfig Wi-Fi setup sequence.
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
-    ///   - setupType: High-level setup flow variant (first / join / change).
-    func smartConnect(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
-        logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info), setupType: \(setupType)")
+    func smartConnect(_ info: WifiSetupInfo) async throws {
+        
 
         let config = makeConfig(from: info)
-
+        logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info)", data: config)
         do {
             try await wifiScale.connect(config: config, mode: .smartConfig, timeout: 120)
             logger.log(level: .info, tag: tag, message: "Scale connected successfully via SmartConfig")
@@ -97,11 +96,10 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// Performs an ESP-Touch Wi-Fi setup sequence.
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
-    ///   - setupType: High-level setup flow variant (espTouchWifi).
-    func espSmartConnect(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
+    func espSmartConnect(_ info: WifiSetupInfo) async throws {
 
         let config = makeConfig(from: info)
-        logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info), setupType: \(setupType)", data: config)
+        logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info)", data: config)
         do {
             try await wifiScale.connect(config: config, mode: .esptouch, timeout: 60)
             logger.log(level: .info, tag: tag, message: "Scale connected successfully via ESPTouch")
@@ -114,12 +112,11 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// Performs an AP-Mode Wi-Fi configuration sequence.
     /// - Parameters:
     ///   - info:       The setup parameters (SSID, password, token, etc.).
-    ///   - setupType:  Which high-level setup flow is running (first / join / change / espTouchWifi).
-    func apMode(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
+    func apMode(_ info: WifiSetupInfo) async throws {
         
 
         let config = makeConfig(from: info)
-        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info), setupType: \(setupType)", data: config)
+        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info)", data: config)
         do {
             try await wifiScale.connect(config: config, mode: .apMode, timeout: 90)
             logger.log(level: .info, tag: tag, message: "Scale connected successfully via AP-Mode")
