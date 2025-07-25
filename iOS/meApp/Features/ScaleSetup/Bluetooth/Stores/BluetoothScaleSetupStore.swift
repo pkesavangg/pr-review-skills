@@ -107,7 +107,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 )
             case .stepOn:
                 return AnyView(
-                    BtSetupStepOnView(isEntrySynced: isEntrySynced)
+                    ScaleSetupStepOnView(isEntrySynced: isEntrySynced)
                 )
             case .setupFinished:
                 let lang = scaleSetupStrings.FinishViewStrings.self

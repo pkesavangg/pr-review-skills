@@ -1,5 +1,5 @@
 //
-//  StepOnView.swift
+//  BtWifiSetupStepOnView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 15/07/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct StepOnView: View {
+struct BtWifiSetupStepOnView: View {
     @Environment(\.appTheme) private var theme
     private let lang = BtWifiScaleSetupStrings.StepOnStrings.self
     
@@ -36,5 +36,5 @@ struct StepOnView: View {
 }
 
 #Preview {
-    StepOnView()
+    BtWifiSetupStepOnView()
 }
