@@ -2,9 +2,9 @@ import SwiftUI
 
 struct ErrorCodeButtonGrid: View {
     @Environment(\.appTheme) private var theme
-    let errorCodes: [[String]]
-    @Binding var selectedError: String?
-    var onErrorSelected: ((String) -> Void)?
+    let errorCodes: [[WifiErrorCode]]
+    @Binding var selectedError: WifiErrorCode?
+    var onErrorSelected: ((WifiErrorCode) -> Void)?
     private let buttonSize = CGFloat(100)
     private let lang = WifiScaleSetupStrings.ErrorCodeSelectionViewStrings.self
     var body: some View {
@@ -26,7 +26,7 @@ struct ErrorCodeButtonGrid: View {
                                     )
                                 
                                 VStack(spacing: 2) {
-                                    Text(code)
+                                    Text(code.rawValue)
                                         .fontOpenSans(.heading3)
                                         .foregroundColor(selectedError == code ? theme.actionInverse : theme.actionPrimary)
                                         .minimumScaleFactor(0.5)
@@ -51,11 +51,11 @@ struct ErrorCodeButtonGrid: View {
 #Preview {
     ErrorCodeButtonGrid(
         errorCodes: [
-            ["t163", "t164", "t165"],
-            ["t204", "t205", "t206"],
-            ["t315", "t323", "t325"]
+            [.t163, .t164, .t165],
+            [.t204, .t205, .t206],
+            [.t315, .t323, .t325]
         ],
-        selectedError: .constant("t164")
+        selectedError: .constant(Optional(.t164))
     ) { code in
         print("Selected error: \(code)")
     }

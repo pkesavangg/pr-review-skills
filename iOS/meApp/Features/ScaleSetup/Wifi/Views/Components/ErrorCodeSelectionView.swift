@@ -11,17 +11,17 @@ struct ErrorCodeSelectionView: View {
     @Environment(\.appTheme) private var theme
     private let lang = WifiScaleSetupStrings.ErrorCodeSelectionViewStrings.self
     private let wifiSetuplang = WifiScaleSetupStrings.self
-    @State var selectedError: String? = nil
+    @State var selectedError: WifiErrorCode? = nil
     
     /// Callback triggered when an error code is tapped.
-    var onErrorSelected: ((String) -> Void)? = nil
+    var onErrorSelected: ((WifiErrorCode?) -> Void)? = nil
     var onClickButton: (() -> Void)? = nil
     
     /// All available error codes in a grid format
-    private let errorCodes = [
-        ["t163", "t164", "t165"],
-        ["t204", "t205", "t206"],
-        ["t315", "t323", "t325"]
+    private let errorCodes: [[WifiErrorCode]] = [
+        [.t163, .t164, .t165],
+        [.t204, .t205, .t206],
+        [.t315, .t323, .t325]
     ]
     
     var body: some View {
@@ -47,6 +47,8 @@ struct ErrorCodeSelectionView: View {
                 )
                 
                 ButtonView(text: wifiSetuplang.seeSomethingElse, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                    selectedError = nil
+                    onErrorSelected?(nil)
                     onClickButton?()
                 }
             }
@@ -57,7 +59,7 @@ struct ErrorCodeSelectionView: View {
 
 #Preview {
     ErrorCodeSelectionView() { errorCode in
-        print("Selected error: \(errorCode)")
+        print("Selected error: \(String(describing: errorCode))")
     }
     .environmentObject(Theme.shared)
 }
