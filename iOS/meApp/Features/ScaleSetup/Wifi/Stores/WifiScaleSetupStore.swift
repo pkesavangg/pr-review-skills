@@ -20,6 +20,7 @@ final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     private let tag = "WifiScaleSetupStore"
+    private let ssidTempKey = "ssidTemp"
     // Strings
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let alertLang = AlertStrings.self
@@ -388,22 +389,20 @@ final class WifiScaleSetupStore: ObservableObject {
     private func getWifiStatus() {
         Task { @MainActor in
             let kvStorage = KvStorageService.shared
-            let tempKey = "ssidTemp"
-            
             let status = await wifiScaleService.getConnectedWifiInfo()
             
             if let ssid = status.ssid, !ssid.isEmpty {
-                let localStatus = kvStorage.getCodable(forKey: tempKey, as: WifiStatus.self)
+                let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 if let wifiStatus = localStatus {
                     if ssid != wifiStatus.ssid {
-                        kvStorage.setCodable(status, forKey: tempKey)
+                        kvStorage.setCodable(status, forKey: ssidTempKey)
                     }
                 } else {
-                    kvStorage.setCodable(status, forKey: tempKey)
+                    kvStorage.setCodable(status, forKey: ssidTempKey)
                 }
             }
-            
-            let wifiStatus = kvStorage.getCodable(forKey: tempKey, as: WifiStatus.self)
+
+            let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
             self.wifiStatus = wifiStatus
             self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
         }
