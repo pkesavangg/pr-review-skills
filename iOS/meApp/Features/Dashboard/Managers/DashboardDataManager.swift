@@ -64,25 +64,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
     }
 
-    func refreshData() async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Refreshing dashboard data")
-
-            // Clear existing caches
-            state.dailyCache.removeAll()
-            state.monthlyCache.removeAll()
-
-            // Reload all data
-            try await loadInitialData()
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Data refreshed successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to refresh data: \(error)")
-            throw DashboardError.dataLoadingFailed(error)
-        }
-    }
-
     // MARK: - Entry Management
     func handleEntryAdded(_ entry: Entry) async throws {
         guard let accountId = accountService.activeAccount?.accountId else {
@@ -272,43 +253,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         state.monthlySummaries = Array(state.monthlyCache.values).sorted { $0.period < $1.period }
     }
 
-    private func limitToYearlyData(_ monthlyData: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
-        var result: [BathScaleWeightSummary] = []
-        var currentYear: Int?
-        var yearCount = 0
 
-        for summary in monthlyData {
-            let year = calendar.component(.year, from: summary.date)
-
-            if currentYear != year {
-                currentYear = year
-                yearCount = 0
-            }
-
-            if yearCount < 12 {
-                result.append(summary)
-                yearCount += 1
-            }
-        }
-
-        return result
-    }
-
-    private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
-        guard !summaries.isEmpty else { return true }
-
-        // Validate that all summaries have valid dates
-        let validSummaries = summaries.filter { summary in
-            // Ensure the date is not in the distant past or future (basic validation)
-            let year = calendar.component(.year, from: summary.date)
-            return year >= 1900 && year <= 2100
-        }
-
-        guard !validSummaries.isEmpty else { return true }
-
-        let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
-        return years.count == 1
-    }
 
     private func fetchEntriesForPeriod(_ periodKey: String, _ type: PeriodType) async throws -> [Entry] {
         do {
@@ -347,40 +292,5 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         return dailySize + monthlySize
     }
 
-    // MARK: - Cache Optimization
-    func optimizeCache() async throws {
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Optimizing cache")
 
-        // Remove old entries beyond a certain threshold (e.g., 1 year)
-        let cutoffDate = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
-
-        // Filter out old daily entries
-        let filteredDailyCache = state.dailyCache.filter { _, summary in
-            summary.date >= cutoffDate
-        }
-
-        // Filter out old monthly entries (keep longer for monthly view)
-        let monthlyCutoffDate = Calendar.current.date(byAdding: .year, value: -2, to: Date()) ?? Date()
-        let filteredMonthlyCache = state.monthlyCache.filter { _, summary in
-            summary.date >= monthlyCutoffDate
-        }
-
-        // Update caches if optimization removed entries
-        if filteredDailyCache.count < state.dailyCache.count {
-            state.dailyCache = filteredDailyCache
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized daily cache: removed \(state.dailyCache.count - filteredDailyCache.count) old entries")
-        }
-
-        if filteredMonthlyCache.count < state.monthlyCache.count {
-            state.monthlyCache = filteredMonthlyCache
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Optimized monthly cache: removed \(state.monthlyCache.count - filteredMonthlyCache.count) old entries")
-        }
-
-        // Update published arrays
-        updatePublishedArrays()
-
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Cache optimization completed")
-    }
-
-    
 }
