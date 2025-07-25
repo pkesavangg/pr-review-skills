@@ -65,6 +65,9 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var selectedConnectionMode: WifiSetupOption = .none
     @Published var isApModeOnly: Bool = false
     
+    @Published var connectedSsid:String? = nil
+    @Published var connectedBssid:String? = nil
+    
     /// Captured MAC address once retrieved (Get-MAC flow).
     @Published var retrievedMacAddress: String? = nil
     
@@ -189,8 +192,15 @@ final class WifiScaleSetupStore: ObservableObject {
         NotificationCenter.default
             .publisher(for: UIApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in
+                guard let self else { return }
+                // Refresh Wi-Fi status after slight delay so underlying services are ready.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self?.getWifiStatus()
+                    self.getWifiStatus()
+                }
+                if self.currentStepIndex > 1 && !self.permissionsSkipped {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        Task { await self.showPermissionRevokedAlert() }
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -435,20 +445,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private func updateNextEnabled() {
         switch currentStep {
         case .permissions:
-            // Evaluate location permissions
-            let locationEnabled = permissionsService.getPermissionState(.LOCATION) == .ENABLED
-            let locationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
-            let wifiSwitchEnabled = permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
-            
-            // Automatically request missing permissions
-            if !locationEnabled {
-                Task { await permissionsService.handlePermission(.location) }
-            } else if !locationSwitchEnabled {
-                Task { await permissionsService.handlePermission(.locationSwitch) }
-            }
-            
-            // Enable Next button only when all permissions are granted
-            isNextEnabled = locationEnabled && locationSwitchEnabled && wifiSwitchEnabled
+            isNextEnabled = arePermissionsEnabled()
         case .wifiPassword:
             // Enable connect button only when password is valid (unless no password required)
             if networkForm.networkHasNoPassword {
@@ -563,6 +560,8 @@ final class WifiScaleSetupStore: ObservableObject {
             // Cache SSID / BSSID for later use if required.
             // self.connectedSsid = setupInfo.ssid // This line was removed from the original file, so it's removed here.
             // self.connectedBssid = setupInfo.bssid // This line was removed from the original file, so it's removed here.
+            self.connectedSsid = setupInfo.ssid
+            self.connectedBssid = setupInfo.bssid
             if scaleItem?.setupType == .espTouchWifi {
                 // TODO: Enable once ESP-Touch support lands.
                 try await wifiScaleService.espSmartConnect(setupInfo, setupType)
@@ -629,9 +628,6 @@ final class WifiScaleSetupStore: ObservableObject {
     private func startApMode(retryCount: Int = 0) async {
         logger.log(level: .info, tag: tag, message: "startApMode triggered – attempt #\(retryCount)")
         
-        // If the permission step was skipped we bail out, same as the original.
-        if permissionsSkipped { return }
-        
         guard let setupType = self.WifiSetupType else {
             logger.log(level: .error, tag: tag, message: "startApMode aborted – WifiSetupType not set")
             return
@@ -640,8 +636,8 @@ final class WifiScaleSetupStore: ObservableObject {
         // Prepare the payload (mutating SSID/BSSID when available).
         let baseInfo = getSetupInfo(for: setupType)
         let info = WifiSetupInfo(
-            ssid: wifiStatus?.ssid ?? baseInfo.ssid,
-            bssid: wifiStatus?.bssid ?? baseInfo.bssid,
+            ssid: self.connectedSsid != nil ? self.connectedSsid : wifiStatus?.ssid ?? baseInfo.ssid,
+            bssid: self.connectedBssid != nil ? self.connectedBssid :  wifiStatus?.bssid ?? baseInfo.bssid,
             password: baseInfo.password,
             userNumber: baseInfo.userNumber,
             token: baseInfo.token
@@ -708,6 +704,16 @@ final class WifiScaleSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
         return false
+    }
+    
+    private func showPermissionRevokedAlert() async {
+        let isLocationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
+        let isLocationAuthorized = permissionsService.getPermissionState(.LOCATION) == .ENABLED
+        if !isLocationSwitchEnabled {
+            _ = await permissionsService.handlePermission(.locationSwitch)
+        } else if !isLocationAuthorized {
+            _ = await permissionsService.handlePermission(.location)
+        }
     }
     
     deinit {

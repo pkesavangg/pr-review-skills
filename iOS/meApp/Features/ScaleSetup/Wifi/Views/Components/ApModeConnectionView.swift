@@ -18,7 +18,7 @@ struct ApModeConnectionView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: .spacingLG) {
                 VStack(alignment: .leading, spacing: .spacingSM) {
-                    Text(lang.title)
+                    Text(lang.title.asAttributed(withBoldWords: lang.boldWords))
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.leading)
