@@ -40,6 +40,7 @@ enum class TextType {
   Title,
   Subtitle,
   Body,
+  Message,
   Link,
   SubHeading,
   ListTitle1,
@@ -72,6 +73,12 @@ object TextTypeDefaults {
       TextType.Body ->
         TextAppearance(
           style = typography.body2,
+          color = if (enabled) colorScheme.textBody else colorScheme.utility,
+        )
+
+      TextType.Message ->
+        TextAppearance(
+          style = typography.body1,
           color = if (enabled) colorScheme.textBody else colorScheme.utility,
         )
 
