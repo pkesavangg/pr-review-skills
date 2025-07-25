@@ -24,7 +24,7 @@ struct WifiErrorCodeDetailView: View {
     }
     
     private var contentView: some View {
-        VStack(alignment: .leading, spacing: .spacingXS) {
+        VStack(alignment: .leading, spacing: .spacingLG) {
             titleSection
             errorDetailSection
         }
@@ -58,10 +58,7 @@ struct WifiErrorCodeDetailView: View {
                 textView(text: lang.other)
             }
         }
-        .padding(.top, .spacingMD)
     }
-
-
     
     private func textView(text: String) -> some View {
         Text(text)
