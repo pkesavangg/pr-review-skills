@@ -22,6 +22,8 @@ enum WifiScaleSetupStep: Int, CaseIterable {
     case errorSelect
     /// Error details.
     case errorDetail
+    ///  Copy MAC address to clipboard.
+    case copyMacAddress
     /// Step on scale.
     case stepOn
     /// Setup finished.

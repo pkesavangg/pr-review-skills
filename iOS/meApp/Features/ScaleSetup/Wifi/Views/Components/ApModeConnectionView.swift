@@ -10,6 +10,7 @@ import SwiftUI
 struct ApModeConnectionView: View {
     @Environment(\.appTheme) private var theme
     var connectedSSID: String
+    var permissionsSkipped: Bool = false
     var onClickNetworkChange: (() -> Void)?
     private let lang = WifiScaleSetupStrings.ApModeConnectionViewStrings.self
     
@@ -28,16 +29,29 @@ struct ApModeConnectionView: View {
                 }
                 
                 VStack(spacing: .spacingSM) {
-                    ActionListItemView(config: ActionListItemConfig(
-                        title: connectedSSID.isEmpty ? lang.changeNetwork :  connectedSSID,
-                        chevronType: .right,
-                        onTap: {
-                            onClickNetworkChange?()
-                        }
-                    ))
-                    .padding(.horizontal, .spacingSM)
-                    .background(theme.backgroundPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                    if permissionsSkipped {
+                        ButtonView(
+                            text: lang.gotoSettings,
+                            type: .filledPrimary,
+                            size: .large,
+                            isDisabled: false,
+                            action: {
+                                onClickNetworkChange?()
+                            }
+                        )
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    } else {
+                        ActionListItemView(config: ActionListItemConfig(
+                            title: connectedSSID.isEmpty ? lang.changeNetwork :  connectedSSID,
+                            chevronType: .right,
+                            onTap: {
+                                onClickNetworkChange?()
+                            }
+                        ))
+                        .padding(.horizontal, .spacingSM)
+                        .background(theme.backgroundPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                    }
                 }
             }
             .padding(.top, .spacingLG)

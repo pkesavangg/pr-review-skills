@@ -32,7 +32,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
 
     // MARK: Connected Wi-Fi Info
     /// Returns information about the currently connected Wi-Fi network, closely matching
-    /// the `getConnectedWifiInfo()` implementation from the Ionic/TS codebase.
+    /// the `getConnectedWifiInfo()` implementation
     /// - Returns: `WifiStatus` describing connection + permission state.
     func getConnectedWifiInfo() async -> WifiStatus {
         var ssid = ""
