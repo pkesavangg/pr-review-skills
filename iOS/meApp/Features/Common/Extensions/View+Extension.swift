@@ -206,6 +206,39 @@ extension View {
         modifier(WiggleModifier(shouldWiggle: shouldWiggle))
     }
     
+    /// Applies a conditional wiggle animation to the view with row-based timing.
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the wiggle animation.
+    ///   - rowIndex: The row index to determine alternating animation timing.
+    /// - Returns: A view that conditionally wiggles with row-based timing.
+    func wiggling(_ shouldWiggle: Bool, rowIndex: Int) -> some View {
+        modifier(WiggleModifier(shouldWiggle: shouldWiggle, rowIndex: rowIndex))
+    }
+    
+    /// Applies a conditional wiggle animation to the view with custom parameters.
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the wiggle animation.
+    ///   - rowIndex: The row index to determine alternating animation timing.
+    ///   - evenRowDuration: Custom duration for even rows (optional).
+    ///   - oddRowDuration: Custom duration for odd rows (optional).
+    ///   - wiggleAngle: Custom rotation angle in degrees (optional).
+    /// - Returns: A view that conditionally wiggles with custom parameters.
+    func wiggling(
+        _ shouldWiggle: Bool,
+        rowIndex: Int = 0,
+        evenRowDuration: Double? = nil,
+        oddRowDuration: Double? = nil,
+        wiggleAngle: Double? = nil
+    ) -> some View {
+        modifier(WiggleModifier(
+            shouldWiggle: shouldWiggle,
+            rowIndex: rowIndex,
+            evenRowDuration: evenRowDuration,
+            oddRowDuration: oddRowDuration,
+            wiggleAngle: wiggleAngle
+        ))
+    }
+    
     /// Applies edit mode overlay with plus/minus circles
     func editModeOverlay(
         isEditMode: Bool,
