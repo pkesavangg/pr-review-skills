@@ -6,6 +6,7 @@ import SwiftUI
 class NetworkForm: ObservableForm {
     var ssid = FormControl("", validators: [.required])
     var password = FormControl("", validators: [.required])
+    private let apModeSSIDPrefix = "gg_SmartScaleSetup"
     @Published var networkHasNoPassword: Bool = false {
         didSet {
             updatePasswordValidation()
@@ -30,7 +31,7 @@ class NetworkForm: ObservableForm {
     }
     
     func isValidApModeSSID() -> Bool {
-        return !ssid.value.isEmpty && (ssid.value.contains("gg_SmartScaleSetup"))
+        return !ssid.value.isEmpty && (ssid.value.contains(apModeSSIDPrefix))
     }
     
     /// Set the password value
