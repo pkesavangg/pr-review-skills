@@ -53,9 +53,18 @@ final class WifiScaleSetupStore: ObservableObject {
     /// All steps in the setup flow. Exposed as read-only so views can iterate.
     @Published private(set) var steps: [WifiScaleSetupStep] = WifiScaleSetupStep.allCases
     
+    /// Indicates that the user initiated the dedicated *Get-MAC* flow from the intro screen.
+    ///
+    /// When `true` the wizard bypasses the normal password/user selection flow and forces
+    /// AP-mode so that the scale’s MAC (BSSID) can be fetched and copied by the user.
     @Published var isForGetMac: Bool = false
+    
+    /// Live Wi-Fi information for the **phone** – cached in `KvStorageService` so we can
+    /// still access the SSID/BSSID after the user navigates away from iOS Settings.
+    /// Used for:
+    /// • pre-filling the SSID text field
+    /// • polling the BSSID during *Get-MAC* flow
     @Published var wifiStatus: WifiStatus?
-    @Published var WifiSetupType: WifiSetupType?
     
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
@@ -65,11 +74,17 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var selectedConnectionMode: WifiSetupOption = .none
     @Published var isApModeOnly: Bool = false
     
+    /// Connected network identifiers captured right before switching the phone to the
+    /// scale’s `gg_SmartScale_##` access point.  Required because iOS APIs stop returning
+    /// the original SSID/BSSID once the phone moves to the AP.
+    @Published var connectedSsid: String? = nil
+    @Published var connectedBssid: String? = nil
+    
     /// Captured MAC address once retrieved (Get-MAC flow).
     @Published var retrievedMacAddress: String? = nil
     
-    /// Flag indicating that the permissions step was skipped by the user. Used
-    /// to short-circuit smart-connect if prerequisites are missing
+    /// Set to *true* when the user taps **Skip** on the permissions page.  Smart-connect
+    /// is skipped completely in this case and only AP-mode UI is shown.
     @Published var permissionsSkipped: Bool = false
     
     /// Callback used by the screen to dismiss itself.
@@ -88,6 +103,7 @@ final class WifiScaleSetupStore: ObservableObject {
             switch step {
             case .intro:
                 return AnyView(ScaleSetupIntroView(scale: scaleItem) {
+                    /// For Get-MAC flow, we need to skip the permissions step and navigate to the activate pairing mode step
                     self.isForGetMac = true
                     self.permissionsSkipped = false
                     if self.arePermissionsEnabled() {
@@ -185,12 +201,22 @@ final class WifiScaleSetupStore: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        // Observe app coming to foreground to refresh Wi-Fi status
+        // Observe app coming to foreground to refresh Wi-Fi status and check if location permissions are revoked
         NotificationCenter.default
             .publisher(for: UIApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in
+                guard let self else { return }
+                // Refresh Wi-Fi status after slight delay so underlying services are ready.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self?.getWifiStatus()
+                    self.getWifiStatus()
+                }
+                /// Check if location permissions are revoked and show alert if they are
+                /// If the user has revoked location permissions, this method will show an alert
+                /// prompting the user to enable location permissions
+                if self.currentStepIndex > 1 && !self.permissionsSkipped {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        Task { await self.showPermissionRevokedAlert() }
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -203,7 +229,6 @@ final class WifiScaleSetupStore: ObservableObject {
     func configure(with sku: String) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
-        self.WifiSetupType = self.scaleItem?.setupType == .espTouchWifi ? .espTouchWifi : .first
         // Start at intro
         currentStepIndex = 0
         
@@ -263,22 +288,27 @@ final class WifiScaleSetupStore: ObservableObject {
     func handleNextButtonClick() {
         switch currentStep {
         case .intro:
+            // User is following the normal wizard path – clear any previously-set "Get-MAC" flag.
             isForGetMac = false
             moveToNextStep()
             break
         case .permissions:
+            // A valid scale token is mandatory beyond this point; bail out (and show a toast) if we don't have one yet.
             if checkScaleToken() == nil {
                 return
             }
+            // When the user launched the dedicated "Get-MAC" flow we bypass the regular password & user-selection steps.
             if isForGetMac {
                 navigateToStep(.activatePairingMode)
             } else {
                 moveToNextStep()
             }
         case .connectionConfirm:
+            // If permissions were skipped or we're in the Get-MAC flow we must force AP-mode – smart-connect isn't possible.
             if permissionsSkipped || isForGetMac {
                 selectedConnectionMode = .apMode
             }
+            // Branch based on the user's choice: go straight to Step-On for a full smart-connect, otherwise continue to AP-mode.
             if selectedConnectionMode == .complete {
                 self.navigateToStep(.stepOn)
             } else {
@@ -286,10 +316,12 @@ final class WifiScaleSetupStore: ObservableObject {
             }
             break
         case .apMode:
+            // In Get-MAC flow we poll the scale's AP for its MAC address, otherwise we just proceed to the next wizard step.
             if isForGetMac {
                 Task {
                     await self.getMacAddress()
                     if retrievedMacAddress != nil {
+                        // MAC obtained – show copy screen.
                         self.navigateToStep(.copyMacAddress)
                     }
                 }
@@ -298,11 +330,14 @@ final class WifiScaleSetupStore: ObservableObject {
             }
             break
         case .apModeConfirm:
+            // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
         case .errorDetail:
+            // After showing detailed troubleshooting information we exit the setup entirely.
             exitSetup()
             break
         case .stepOn:
+            // Persist the newly configured scale to the backend & local storage.
             saveScale()
         default:
             moveToNextStep()
@@ -313,22 +348,29 @@ final class WifiScaleSetupStore: ObservableObject {
     func handleBackButtonClick() {
         switch currentStep {
         case .activatePairingMode:
+            // "Back" from pairing mode behaves differently when in the Get-MAC flow:
+            //   • If required permissions are now granted we can return to the intro.
+            //   • Otherwise we must guide the user back to the permissions screen.
             if isForGetMac {
+                // Ternary chooses the appropriate destination based on current permission state.
                 arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
             } else {
                 moveToPreviousStep()
             }
             break
         case .errorSelect:
+            // Return to whichever screen originally presented the error selection list.
             if let origin = errorSelectSourceStep {
                 navigateToStep(origin)
             } else {
                 navigateToStep(.connectionConfirm)
             }
         case .copyMacAddress:
+            // Simply rewind to the AP-mode instructions when the user taps "Back" from the copy screen.
             navigateToStep(.apMode)
             break
         case .stepOn:
+            // Allow the user to return to the screen that led to Step-On (e.g. Connection Confirm) when possible.
             if let origin = stepOnSourceStep {
                 navigateToStep(origin)
             } else {
@@ -435,20 +477,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private func updateNextEnabled() {
         switch currentStep {
         case .permissions:
-            // Evaluate location permissions
-            let locationEnabled = permissionsService.getPermissionState(.LOCATION) == .ENABLED
-            let locationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
-            let wifiSwitchEnabled = permissionsService.getPermissionState(.WIFI_SWITCH) == .ENABLED
-            
-            // Automatically request missing permissions
-            if !locationEnabled {
-                Task { await permissionsService.handlePermission(.location) }
-            } else if !locationSwitchEnabled {
-                Task { await permissionsService.handlePermission(.locationSwitch) }
-            }
-            
-            // Enable Next button only when all permissions are granted
-            isNextEnabled = locationEnabled && locationSwitchEnabled && wifiSwitchEnabled
+            isNextEnabled = arePermissionsEnabled()
         case .wifiPassword:
             // Enable connect button only when password is valid (unless no password required)
             if networkForm.networkHasNoPassword {
@@ -540,21 +569,25 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Smart-Connect
-    /// Initiates the Wi-Fi smart-connect flow once the user confirms the
-    /// connection screen.
+    /// Initiates the Wi-Fi smart-connect flow once the user confirms the connection screen.
+    ///
+    /// Behaviour:
+    /// 1. Early-returns when `permissionsSkipped` is `true` – we cannot obtain the data
+    ///    required for smart-connect without Location permission.
+    /// 2. Builds a `WifiSetupInfo` payload.
+    /// 3. Stops any previous session, caches `connectedSsid/Bssid`, and invokes either
+    ///    `espSmartConnect` or `smartConnect` on `WifiScaleService`.
+    ///
+    /// On error the method simply logs via `LoggerService`; UI feedback is handled by
+    /// observers of `LoggerService` elsewhere in the app.
     private func startSmartConnect() async {
-        LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: self.WifiSetupType))")
+        LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))")
         
         // If permissions were skipped, do NOT try to configure the scale.
         if permissionsSkipped { return }
         
-        guard let setupType = self.WifiSetupType else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "startSmartConnect aborted – WifiSetupType not set")
-            return
-        }
-        
         // Build the setup payload.
-        let setupInfo = getSetupInfo(for: setupType)
+        let setupInfo = getSetupInfo()
         
         do {
             // Ensure any previous smart-connect sessions are stopped.
@@ -563,44 +596,28 @@ final class WifiScaleSetupStore: ObservableObject {
             // Cache SSID / BSSID for later use if required.
             // self.connectedSsid = setupInfo.ssid // This line was removed from the original file, so it's removed here.
             // self.connectedBssid = setupInfo.bssid // This line was removed from the original file, so it's removed here.
+            self.connectedSsid = setupInfo.ssid
+            self.connectedBssid = setupInfo.bssid
             if scaleItem?.setupType == .espTouchWifi {
                 // TODO: Enable once ESP-Touch support lands.
-                try await wifiScaleService.espSmartConnect(setupInfo, setupType)
+                try await wifiScaleService.espSmartConnect(setupInfo)
             } else {
-                try await wifiScaleService.smartConnect(setupInfo, setupType)
+                try await wifiScaleService.smartConnect(setupInfo)
             }
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "startSmartConnect error: \(error.localizedDescription)")
         }
     }
     
-    /// Constructs the `WifiSetupInfo` payload depending on the selected
-    /// `WifiSetupType`.
-    private func getSetupInfo(for setupType: WifiSetupType) -> WifiSetupInfo {
+    /// Constructs the `WifiSetupInfo` payload
+    private func getSetupInfo() -> WifiSetupInfo {
         let hasPassword = !networkForm.networkHasNoPassword
         
-        switch setupType {
-        case .join:
-            return WifiSetupInfo(ssid: nil,
-                                 bssid: nil,
-                                 password: nil,
-                                 userNumber: selectedUserNumber,
-                                 token: scaleToken)
-            
-        case .change:
-            return WifiSetupInfo(ssid: networkForm.ssid.value,
-                                 bssid: nil,
-                                 password: hasPassword ? networkForm.password.value : nil,
-                                 userNumber: nil,
-                                 token: nil)
-            
-        default:
-            return WifiSetupInfo(ssid: networkForm.ssid.value,
-                                 bssid: wifiStatus?.bssid,
-                                 password: hasPassword ? networkForm.password.value : nil,
-                                 userNumber: selectedUserNumber,
-                                 token: scaleToken)
-        }
+        return WifiSetupInfo(ssid: networkForm.ssid.value,
+                             bssid: wifiStatus?.bssid,
+                             password: hasPassword ? networkForm.password.value : nil,
+                             userNumber: selectedUserNumber,
+                             token: scaleToken)
     }
     
     private func adjustedIndex(from index: Int, direction: Int) -> Int {
@@ -629,19 +646,11 @@ final class WifiScaleSetupStore: ObservableObject {
     private func startApMode(retryCount: Int = 0) async {
         logger.log(level: .info, tag: tag, message: "startApMode triggered – attempt #\(retryCount)")
         
-        // If the permission step was skipped we bail out, same as the original.
-        if permissionsSkipped { return }
-        
-        guard let setupType = self.WifiSetupType else {
-            logger.log(level: .error, tag: tag, message: "startApMode aborted – WifiSetupType not set")
-            return
-        }
-        
         // Prepare the payload (mutating SSID/BSSID when available).
-        let baseInfo = getSetupInfo(for: setupType)
+        let baseInfo = getSetupInfo()
         let info = WifiSetupInfo(
-            ssid: wifiStatus?.ssid ?? baseInfo.ssid,
-            bssid: wifiStatus?.bssid ?? baseInfo.bssid,
+            ssid:  self.connectedSsid ?? wifiStatus?.ssid ?? baseInfo.ssid,
+            bssid: self.connectedBssid ??  wifiStatus?.bssid ?? baseInfo.bssid,
             password: baseInfo.password,
             userNumber: baseInfo.userNumber,
             token: baseInfo.token
@@ -650,7 +659,7 @@ final class WifiScaleSetupStore: ObservableObject {
         do {
             // Stop any previous sessions before starting AP-mode.
             await wifiScaleService.stop()
-            try await wifiScaleService.apMode(info, setupType)
+            try await wifiScaleService.apMode(info)
         } catch {
             logger.log(level: .error, tag: tag, message: "startApMode error: \(error.localizedDescription)")
             
@@ -708,6 +717,19 @@ final class WifiScaleSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
         return false
+    }
+    
+    /// Shows an alert if the user has revoked location permissions.
+    /// If the user has revoked location permissions, this method will show an alert
+    /// prompting the user to enable location permissions
+    private func showPermissionRevokedAlert() async {
+        let isLocationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
+        let isLocationAuthorized = permissionsService.getPermissionState(.LOCATION) == .ENABLED
+        if !isLocationSwitchEnabled {
+            _ = await permissionsService.handlePermission(.locationSwitch)
+        } else if !isLocationAuthorized {
+            _ = await permissionsService.handlePermission(.location)
+        }
     }
     
     deinit {

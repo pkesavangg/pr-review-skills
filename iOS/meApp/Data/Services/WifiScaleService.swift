@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import GGBluetoothSwiftPackage
+import ggWifiScalePackage
 
 @MainActor
 final class WifiScaleService: WifiScaleServiceProtocol {
@@ -9,7 +10,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     private let apiRepo: WifiScaleRepositoryAPIProtocol = WifiScaleRepositoryAPI()
     private let logger = LoggerService.shared
     private let tag = "WifiScaleService"
-    
+    private let wifiScale = BasicWifiScale()
     @Injector private var permissionsService: PermissionsService
 
     init() {}
@@ -69,40 +70,72 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     }
 
     // MARK: - Smart-Connect Placeholders
-    /// Stops any ongoing Wi-Fi smart-connect session. Stub implementation – to be
-    /// filled in once the underlying SDK integration is available.
+    /// Stops any ongoing Wi-Fi smart-connect session.
     func stop() async {
-        logger.log(level: .debug, tag: tag, message: "WifiScaleService.stop() called – stub implementation")
-        // TODO: Implement actual teardown logic once available.
+        logger.log(level: .info, tag: tag, message: "Cancelling any ongoing Wi-Fi scale operations")
+        wifiScale.cancel()
     }
 
-    /// Performs a Wi-Fi smart-connect operation. This is a stub so that call-sites
-    /// compile; real implementation will be added in a follow-up task.
-    ///
+    /// Performs a SmartConfig Wi-Fi setup sequence.
     /// - Parameters:
-    ///   - info:     Parameters required for the smart-connect sequence.
-    ///   - setupType: High-level setup flow variant (first / join / change / espTouchWifi).
-    func smartConnect(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
-        logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info), setupType: \(setupType)")
-        // TODO: Integrate with WifiSmartConnect wrapper / SDK.
+    ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
+    func smartConnect(_ info: WifiSetupInfo) async throws {
+        
+
+        let config = makeConfig(from: info)
+        logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info)", data: config)
+        do {
+            try await wifiScale.connect(config: config, mode: .smartConfig, timeout: 120)
+            logger.log(level: .info, tag: tag, message: "Scale connected successfully via SmartConfig")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "SmartConfig connection failed: \(error.localizedDescription)")
+            throw error
+        }
     }
 
-    /// ESP-Touch dedicated smart-connect. Currently **unused** as per interim
-    /// requirements – left here for future work.
-    func espSmartConnect(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
-        logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info), setupType: \(setupType)")
-        // TODO: Integrate with WifiSmartConnect ESP-Touch once available.
+    /// Performs an ESP-Touch Wi-Fi setup sequence.
+    /// - Parameters:
+    ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
+    func espSmartConnect(_ info: WifiSetupInfo) async throws {
+
+        let config = makeConfig(from: info)
+        logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info)", data: config)
+        do {
+            try await wifiScale.connect(config: config, mode: .esptouch, timeout: 60)
+            logger.log(level: .info, tag: tag, message: "Scale connected successfully via ESPTouch")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "ESPTouch connection failed: \(error.localizedDescription)")
+            throw error
+        }
     }
 
     /// Performs an AP-Mode Wi-Fi configuration sequence.
-    /// Currently a stub awaiting SDK integration so that call-sites compile and
-    /// the flow can be exercised end-to-end.
-    ///
     /// - Parameters:
     ///   - info:       The setup parameters (SSID, password, token, etc.).
-    ///   - setupType:  Which high-level setup flow is running (first / join / change / espTouchWifi).
-    func apMode(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
-        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info), setupType: \(setupType)")
-        // TODO: Integrate with WifiSmartConnect AP-Mode once available.
+    func apMode(_ info: WifiSetupInfo) async throws {
+        
+
+        let config = makeConfig(from: info)
+        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info)", data: config)
+        do {
+            try await wifiScale.connect(config: config, mode: .apMode, timeout: 90)
+            logger.log(level: .info, tag: tag, message: "Scale connected successfully via AP-Mode")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "AP-Mode connection failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    // MARK: - Helpers
+    /// Builds a `WifiScaleConfig` from the provided `WifiSetupInfo`, supplying sensible defaults
+    /// for missing optional parameters (empty string / zero).
+    private func makeConfig(from info: WifiSetupInfo) -> WifiScaleConfig {
+        WifiScaleConfig(
+            ssid: info.ssid ?? "",
+            bssid: info.bssid ?? "", // Optional
+            password: info.password ?? "", // Optional
+            token: info.token ?? "", // Optional
+            userNumber: info.userNumber ?? 0
+        )
     }
 } 
