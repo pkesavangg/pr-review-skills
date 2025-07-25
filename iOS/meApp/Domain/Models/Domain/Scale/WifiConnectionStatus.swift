@@ -19,6 +19,22 @@ public enum WifiConnectionStatus: String {
 public struct WifiStatus {
     let status: WifiConnectionStatus
     let locationStatus: GGPermissionState
-    let ssid: String
-    let bssid: String
+    let ssid: String?
+    let bssid: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case locationStatus
+        case ssid
+        case bssid
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(status, forKey: .status)
+        // Encode GGPermissionState using its raw value to avoid requiring it to conform to Codable
+        try container.encode(locationStatus.rawValue, forKey: .locationStatus)
+        try container.encodeIfPresent(ssid, forKey: .ssid)
+        try container.encodeIfPresent(bssid, forKey: .bssid)
+    }
 }

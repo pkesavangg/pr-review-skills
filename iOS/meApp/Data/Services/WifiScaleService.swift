@@ -32,7 +32,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
 
     // MARK: Connected Wi-Fi Info
     /// Returns information about the currently connected Wi-Fi network, closely matching
-    /// the `getConnectedWifiInfo()` implementation from the Ionic/TS codebase.
+    /// the `getConnectedWifiInfo()` implementation
     /// - Returns: `WifiStatus` describing connection + permission state.
     func getConnectedWifiInfo() async -> WifiStatus {
         var ssid = ""
@@ -92,5 +92,17 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     func espSmartConnect(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
         logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info), setupType: \(setupType)")
         // TODO: Integrate with WifiSmartConnect ESP-Touch once available.
+    }
+
+    /// Performs an AP-Mode Wi-Fi configuration sequence.
+    /// Currently a stub awaiting SDK integration so that call-sites compile and
+    /// the flow can be exercised end-to-end.
+    ///
+    /// - Parameters:
+    ///   - info:       The setup parameters (SSID, password, token, etc.).
+    ///   - setupType:  Which high-level setup flow is running (first / join / change / espTouchWifi).
+    func apMode(_ info: WifiSetupInfo, _ setupType: WifiSetupType) async throws {
+        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info), setupType: \(setupType)")
+        // TODO: Integrate with WifiSmartConnect AP-Mode once available.
     }
 } 

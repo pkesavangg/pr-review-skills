@@ -11,7 +11,7 @@ enum WifiInfoService {
     static func currentSSID() async -> String? {
         // iOS 14+: Use the modern NetworkExtension API when possible.
         if #available(iOS 14.0, *) {
-            if let hotspotNetwork = try? await NEHotspotNetwork.fetchCurrent()
+            if let hotspotNetwork =  await NEHotspotNetwork.fetchCurrent()
                 {
                 return hotspotNetwork.ssid
             }
@@ -32,7 +32,7 @@ enum WifiInfoService {
     static func currentBSSID() async -> String? {
         // iOS 14+: Use the modern NetworkExtension API when possible.
         if #available(iOS 14.0, *) {
-            if let hotspotNetwork = try? await NEHotspotNetwork.fetchCurrent() {
+            if let hotspotNetwork = await NEHotspotNetwork.fetchCurrent() {
                 return hotspotNetwork.bssid
             }
         }

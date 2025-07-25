@@ -137,6 +137,10 @@ struct ToastStrings {
     static let synced = "Entries successfully resynced."
     static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
     static let resyncErrorTitle = "Not Connected to Wi-Fi"
+    static let copiedToClipboard = "Copied to clipboard"
+    static let internetRequiredTitle = "Internet Required"
+    static let internetRequiredMessage = "Internet required to connect Wi-Fi-scales"
+    static let genericError = "Sorry, something went wrong. Please try again later."
 }
 
 /// Constants for help modal strings used in the app
@@ -612,6 +616,8 @@ struct LoaderStrings {
     static let sendingLogs = "Sending logs..."
     static let resync = "Resyncing Data..."
     static let pleaseWait = "Please wait..."
+    /// Loader shown while retrieving the scale's MAC address.
+    static let gettingMacAddress = "Getting MAC address..."
 }
 
 struct URLStrings {

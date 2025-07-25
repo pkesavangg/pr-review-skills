@@ -12,7 +12,7 @@ struct WifiConnectionConfirmView: View {
     let sku: String
     let userNumber: Int?
     let selectedOption: WifiSetupOption
-    let isApModeAlone: Bool
+    let mode: WifiConnectionConfirmMode
     let onOptionSelected: ((WifiSetupOption) -> Void)?
     let onClickButton: (() -> Void)?
     
@@ -36,7 +36,9 @@ struct WifiConnectionConfirmView: View {
     private var contentView: some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             titleSection
-            if isApModeAlone {
+            if mode == .apModeConfirmation {
+                apModeConnectionView
+            } else if mode == .apModeOnly {
                 apModeOnlyView
             } else {
                 optionSelectionView
@@ -46,13 +48,13 @@ struct WifiConnectionConfirmView: View {
     
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
-            Text(lang.title(isApModeAlone))
+            Text(mode == .apModeConfirmation ? lang.apModeConfirmationTitle : lang.title(mode == .apModeOnly))
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
                 .multilineTextAlignment(.leading)
                 .lineLimit(nil)
             
-            if isApModeAlone {
+            if mode == .apModeOnly {
                 Text(lang.subtitle.asAttributed(withBoldWords: lang.boldWords))
                     .foregroundColor(theme.textBody)
             }
@@ -61,8 +63,20 @@ struct WifiConnectionConfirmView: View {
     
     private var apModeOnlyView: some View {
         VStack(alignment: .center) {
-            Button(action: handleApModeSelection) {
-                apModeImage
+            apModeImage
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+    
+    private var apModeConnectionView: some View {
+        VStack(alignment: .center) {
+            if let userNumber = self.userNumber {
+                GifView(
+                    gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
+                    width: 120,
+                    height: 120
+                )
+                .frame(width: 120, height: 120)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)

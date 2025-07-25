@@ -1,7 +1,7 @@
 import Foundation
 
 /// Container describing Wi-Fi setup parameters used by smart-connect operations.
-/// This is a Swift counterpart of the `WifiSetupInfo` type from the Ionic / TS codebase.
+/// This is a Swift counterpart of the `WifiSetupInfo` 
 /// All properties are optional to allow flexible construction depending on the
 /// current `WifiSetupType` (first / join / change / espTouchWifi).
 public struct WifiSetupInfo: Sendable, Equatable {
