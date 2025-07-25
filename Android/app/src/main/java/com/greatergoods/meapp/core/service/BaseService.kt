@@ -11,6 +11,7 @@ import com.greatergoods.meapp.features.common.strings.ToastStrings
 abstract class BaseService(
   protected val connectivityObserver: IConnectivityObserver,
   protected val dialogQueueService: IDialogQueueService,
+  protected val appNavigationService: IAppNavigationService
 ) {
   /**
    * Checks if network is available using the connectivity observer.

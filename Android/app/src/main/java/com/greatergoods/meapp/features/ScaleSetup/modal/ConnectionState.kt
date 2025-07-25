@@ -10,8 +10,11 @@ sealed class ConnectionState {
   /** Success state with check icon */
   data object Success : ConnectionState()
 
-  /** Error state with error icon */
-  data object Error : ConnectionState()
+  sealed class Failed : ConnectionState() {
 
-  data class ErrorWithMessage(val message: String) : ConnectionState()
+    data object Error : Failed()
+
+    data class ErrorWithMessage(val message: String) : Failed()
+  }
 }
+

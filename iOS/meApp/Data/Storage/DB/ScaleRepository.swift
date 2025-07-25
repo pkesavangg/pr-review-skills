@@ -10,6 +10,16 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     let context: ModelContext = PersistenceController.shared.context
     let logger = LoggerService.shared
 
+    /// Deletes all scales from local storage.
+    func clearAllData() async throws {
+        let descriptor = FetchDescriptor<Device>()
+        let allDevices = try context.fetch(descriptor)
+        for device in allDevices {
+            context.delete(device)
+        }
+        try context.save()
+    }
+
     /// Fetches all scales stored locally.
     /// - Returns: An array of all Device objects.
     func listScales() async throws -> [Device] {

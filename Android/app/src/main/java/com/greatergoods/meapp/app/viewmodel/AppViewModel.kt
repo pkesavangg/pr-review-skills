@@ -29,6 +29,7 @@ import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
@@ -64,13 +65,18 @@ constructor(
   private val dialogUtility: IDialogUtility,
   private val deviceService: IDeviceService,
   private val ggPermissionService: GGPermissionService,
-  private val ggDeviceService: GGDeviceService
+  private val ggDeviceService: GGDeviceService,
+  private val healthConnectService: IHealthConnectService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
   companion object {
     private const val TAG = "AppViewModel"
     private var currentAccountId: String? = null
+
+    // Delay constants for Health Connect permission check
+    private const val INITIAL_DELAY = 1L // 1 second
+    private const val DELAYED_ALERT = 3000L // 3 seconds
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -80,6 +86,7 @@ constructor(
   private var permissionSubscribeJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
+  private var isPermissionAlertShown = false
 
   init {
     viewModelScope.launch {
@@ -314,6 +321,7 @@ constructor(
         }
       }
     }
+    checkHealthConnectPermissionWithDelay()
   }
 
   private fun subscribeDeviceCallback() {
@@ -440,6 +448,7 @@ constructor(
 
   private fun requestPermissions(permissionType: String) {
     viewModelScope.launch {
+      isPermissionAlertShown = true
       dialogUtility.permissionAlert(
         permissionType = permissionType,
         onRequest = {
@@ -450,7 +459,25 @@ constructor(
             ggPermissionService.requestPermission(permissionType)
           }
         },
+        onDismiss = {
+        }
       )
+    }
+  }
+
+  /**
+   * Checks Health Connect permission with appropriate delay based on whether permission alert was shown.
+   */
+  private fun checkHealthConnectPermissionWithDelay() {
+    viewModelScope.launch {
+      try {
+        val delayTime = if (isPermissionAlertShown) DELAYED_ALERT else INITIAL_DELAY
+        delay(delayTime)
+        healthConnectService.checkHealthConnectPermissionDisabled()
+        AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check Health Connect permission", e.toString())
+      }
     }
   }
 

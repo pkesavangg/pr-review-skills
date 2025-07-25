@@ -264,6 +264,7 @@ struct InputFieldLabels {
     static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let networkName = "network name"
     static let confirmPassword = "confirm password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
@@ -575,6 +576,21 @@ struct AlertStrings {
         static let dismissButton = "DISMISS"
         static let appPermissionButton = "APP PERMISSION"
     }
+    
+    struct DataClearingAlert {
+        static let successHeader = "Your data has been cleared."
+        static let successMessage = "To complete this, you will need to close your app."
+        static let errorHeader = "Something may have gone wrong."
+        static let errorMessage = "Please restart your app and try again. If the problem continues, you can clear your data by deleting the app."
+        static let okButton = "OK"
+    }
+    
+    struct SkipPermissionsAlert {
+        static let title = "Are you sure you want to skip?"
+        static let message = "Doing so makes necessary a more in-depth, time consuming setup process."
+        static let skipButton = "YES, SKIP"
+        static let goBackButton = "GO BACK"
+    }
 }
 
 struct LoaderStrings {
@@ -595,6 +611,7 @@ struct LoaderStrings {
     static let exiting = "Exiting..."
     static let sendingLogs = "Sending logs..."
     static let resync = "Resyncing Data..."
+    static let pleaseWait = "Please wait..."
 }
 
 struct URLStrings {
@@ -740,6 +757,11 @@ struct AppAssets {
     }
     static let setupSetUserNumberGifName: (String) -> String = { sku in
         "\(sku)-Setup-SetUserNumber"
+    }
+    
+    // MARK: - WiFi Setup
+    static let wifiStepOnGif: (String) -> String = { sku in
+        sku == "0384" ? "0384-Sync" : "0396-Sync"
     }
 }
 

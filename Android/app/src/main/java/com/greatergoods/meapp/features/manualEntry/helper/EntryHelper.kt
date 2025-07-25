@@ -243,7 +243,7 @@ object EntryHelper {
 
     val bodyScaleEntryEntity = BodyScaleEntryEntity(
       id = 0, // Will be auto-generated in DB
-      weight = weight.toDouble(),
+      weight = if (unit.lowercase() == "kg") weightInKg.toDouble() else weight.toDouble(),
       bodyFat = bodyFat.toDouble(),
       muscleMass = muscleMass.toDouble(),
       water = water.toDouble(),

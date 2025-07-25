@@ -1,15 +1,22 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupIntent
+import com.greatergoods.meapp.domain.model.storage.BLEStatus
+import com.greatergoods.meapp.domain.model.storage.Device
+import com.greatergoods.meapp.domain.model.storage.toGGBTDevice
+import com.greatergoods.meapp.features.ScaleSetup.enums.BtScaleSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.enums.ScaleSetupStep
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
+import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
-import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
-import com.greatergoods.meapp.features.common.components.DialogType
-import com.greatergoods.meapp.features.common.model.DialogModel
-import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
+import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -24,138 +31,168 @@ import kotlinx.coroutines.launch
   assistedFactory = BtScaleSetupViewModel.Factory::class,
 )
 class BtScaleSetupViewModel
-  @AssistedInject
-  constructor(
-    @Assisted private val sku: String,
-  ) : BaseIntentViewModel<BtScaleSetupState, BtScaleSetupIntent>(
-      reducer = BtScaleSetupReducer(),
-    ) {
-    @AssistedFactory
-    interface Factory {
-      fun create(sku: String): BtScaleSetupViewModel
+@AssistedInject
+constructor(
+  @Assisted private val scaleInit: SetupInitData<BtScaleSetupStep>,
+  dependencies: BLESetupDependencies
+) : BLESetupViewmodel<BtScaleSetupStep, BtScaleSetupState>(
+  GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value,
+  scaleInit,
+  reducer = BtScaleSetupReducer(),
+  dependencies,
+) {
+  @AssistedFactory
+  interface Factory {
+    fun create(scaleInit: SetupInitData<BtScaleSetupStep>): BtScaleSetupViewModel
+  }
+
+  private val TAG = "BtScaleSetupViewModel"
+
+  init {
+    lazyInit()
+  }
+
+  override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
+
+  override suspend fun onSetupFinished() {
+    if (discoveredScale != null) {
+      dialogQueueService.showLoader(message = "Saving scale...")
+      deviceService.saveScale(discoveredScale!!)
+      dialogQueueService.dismissLoader()
     }
+  }
 
-    private val TAG = "BtScaleSetupViewModel"
-
-    override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
-
-    override fun handleIntent(intent: BtScaleSetupIntent) {
-      super.handleIntent(intent)
-      when (intent) {
-        BtScaleSetupIntent.Next -> onNext()
-        BtScaleSetupIntent.Back -> onBack()
-        BtScaleSetupIntent.Skip -> onSkip()
-        is BtScaleSetupIntent.ExitSetup ->
-          onExitSetup(
-            intent.isSetupFinished,
-            intent.isConnected,
-          )
-
-        BtScaleSetupIntent.OpenHelp -> openHelpModal()
-        else -> {}
-      }
-    }
-
-    init {
-      loadScaleInfo()
-    }
-
-    /**
-     * Loads scale information based on the provided SKU.
-     */
-    private fun loadScaleInfo() {
-      AppLog.d(TAG, "Loading scale info for SKU: $sku")
-      handleIntent(BtScaleSetupIntent.SetScaleSku(sku))
-    }
-
-    /**
-     * Handles moving to the next step in the setup process.
-     */
-    private fun onNext() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
-
-      if (currentState.isLastStep) {
-        AppLog.d(TAG, "Reached last step, completing setup")
-        handleIntent(BtScaleSetupIntent.ExitSetup(true, true))
-      } else {
-        AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles moving to the previous step in the setup process.
-     */
-    private fun onBack() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
-
-      if (currentState.isFirstStep) {
-        AppLog.d(TAG, "At first step, navigating back")
-        navigateTo(AppRoute.AccountSettings.AddEditScales)
-      } else {
-        AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles skipping the current step.
-     */
-    private fun onSkip() {
-      AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
-      // For now, treat skip as next
-      onNext()
-    }
-
-    private fun onExitSetup(
-      isSetupFinished: Boolean,
-      isConnected: Boolean,
-    ) {
-      if (isSetupFinished) {
-        navigateBack()
-      } else {
-        dialogQueueService.enqueue(
-          DialogModel.Confirm(
-            title = ScaleSetupStrings.ExitSetupAlert.Title,
-            message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
-            confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-            cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-            onConfirm = {
-              navigateBack()
-            },
-          ),
-        )
-      }
-    }
-
-    /**
-     * Opens the Help modal.
-     */
-    private fun openHelpModal() {
-      dialogQueueService.enqueue(
-        DialogModel.Custom(
-          contentKey = DialogType.HelpPopup,
-        ),
-      )
-    }
-
-    private fun navigateTo(route: AppRoute) {
-      viewModelScope.launch {
-        navigationService.navigateTo(route)
-      }
-    }
-
-    /**
-     * Navigates back from the setup screen.
-     */
-    private fun navigateBack() {
-      viewModelScope.launch {
-        try {
-          navigationService.navigateBack()
-          AppLog.d(TAG, "Successfully navigated back from scale setup")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
+  override fun observePermissions() {
+    viewModelScope.launch {
+      subscribePermissions().collect { newPermissions ->
+        viewModelScope.launch {
+          val areRequiredPermissionsEnabled =
+            AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, scaleInit.sku)
+          ScaleSetupIntent.SetPermissions(newPermissions)
+          if (isPermissionGranted != areRequiredPermissionsEnabled) {
+            isPermissionGranted = areRequiredPermissionsEnabled
+          }
+          if (!areRequiredPermissionsEnabled) {
+            if (currentSetupState.step != BtScaleSetupStep.PERMISSIONS && currentSetupState.step != BtScaleSetupStep.SCALE_INFO) {
+              handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.PERMISSIONS))
+            }
+          }
         }
       }
     }
-  } 
+  }
+
+  override fun onNext() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to next step from: ${currentState.step}")
+
+    if (currentState.isLastStep) {
+      AppLog.d(TAG, "Reached last step, completing setup")
+      this.handleIntent(ScaleSetupIntent.ExitSetup(true))
+    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
+      handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
+    } else {
+      AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
+      if (currentState.nextStep != null)
+        handleIntent(ScaleSetupIntent.SetNewStep(currentState.nextStep!!))
+    }
+  }
+
+  override fun onBack() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
+
+    if (currentState.isFirstStep) {
+      AppLog.d(TAG, "At first step, navigating back")
+      navigateTo(AppRoute.AccountSettings.AddEditScales)
+    } else if (currentState.step == BtScaleSetupStep.SELECT_USER && isPermissionGranted) {
+      handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SCALE_INFO))
+    } else {
+      if (currentState.previousStep != null)
+        handleIntent(ScaleSetupIntent.SetNewStep(currentState.previousStep!!))
+      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
+    }
+  }
+
+  override fun onSkip() {
+    AppLog.d(TAG, "Skipping current step: ${state.value.scaleSetupState.setupState.step}")
+    // For now, treat skip as next
+    onNext()
+  }
+
+  override fun onStepChange(step: ScaleSetupStep) {
+    when (step) {
+      BtScaleSetupStep.PAIRING_MODE -> {
+        connectToBluetooth()
+      }
+
+      BtScaleSetupStep.STEP_ON -> {
+        collectMeasurement()
+      }
+
+      else -> null
+    }
+  }
+
+  override fun handleButtonChanges(step: BtScaleSetupStep) {
+    val backEnabled = when (step) {
+      BtScaleSetupStep.SETUP_FINISHED, BtScaleSetupStep.SET_DEVICE_USER, BtScaleSetupStep.SCALE_INFO -> false
+      else -> true
+    }
+    val nextEnabled = when (step) {
+      BtScaleSetupStep.PAIRING_MODE, BtScaleSetupStep.STEP_ON -> false
+      BtScaleSetupStep.SELECT_USER -> _state.value.user != null
+      else -> true
+    }
+    handleIntent(ScaleSetupIntent.BackEnabled(backEnabled))
+    handleIntent(ScaleSetupIntent.NextEnabled(nextEnabled))
+  }
+
+  private fun connectToBluetooth() {
+    AppLog.d(TAG, "Connecting to bluetooth")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    try {
+      startObservingDevices { data ->
+        discoveredScale = Device(
+          device = data,
+          deviceType = ScaleSetupType.Bluetooth.value,
+          sku = scaleInit.sku,
+          userNumber = _state.value.user,
+        )
+        ggDeviceService.pairDevice(discoveredScale!!.toGGBTDevice()) {
+          when (it) {
+            GGUserActionResponseType.CREATION_COMPLETED -> {
+              ggDeviceService.getDeviceInfo(discoveredScale!!.toGGBTDevice()) { deviceDetails ->
+                discoveredScale = discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED, device = deviceDetails)
+                handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+                ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
+                onNext()
+              }
+            }
+
+            else -> {
+              handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
+            }
+          }
+        }
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during wake up process", e.toString())
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
+    }
+  }
+
+  private fun collectMeasurement() {
+    AppLog.d(TAG, "Collecting measurement")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    try {
+      startObservingEntries { entries ->
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        onNext()
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during measurement", e.toString())
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("MEASUREMENT_002")))
+    }
+  }
+}

@@ -255,7 +255,7 @@ fun ScaleDetailsScreenContent(
                 },
               ),
             )
-            if (isWifiSetup) {
+            if (isWifiSetup || state.scale?.userNumber != null) {
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.UserNumber,

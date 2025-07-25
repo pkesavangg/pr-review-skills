@@ -33,6 +33,7 @@ message HealthConnectData {
     optional string integratedAt = 8;
     repeated string grantedPermission = 9;
     optional ProtoIntegratedDeviceInfo integrationInfo = 10;
+    optional string assignedTo = 11;
 }
 
 // Represents a map of string to HealthConnectData.

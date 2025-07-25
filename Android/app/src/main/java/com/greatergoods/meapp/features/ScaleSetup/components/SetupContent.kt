@@ -3,8 +3,10 @@ package com.greatergoods.meapp.features.ScaleSetup.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -13,15 +15,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.greatergoods.meapp.features.ScaleSetup.strings.AppsyncSetupStrings
+import com.greatergoods.meapp.features.common.components.AppGifImage
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
 import com.greatergoods.meapp.features.common.components.ScaleImageDefaults
 import com.greatergoods.meapp.features.common.components.ScaleImageSize
 import com.greatergoods.meapp.features.common.components.TextType
+import com.greatergoods.meapp.features.loading.LoadingTextWithDots
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeAppTheme
+import com.greatergoods.meapp.theme.MeTheme
 import com.greatergoods.meapp.theme.MeTheme.spacing
 
 @Composable
@@ -30,7 +35,9 @@ fun SetupContent(
   modifier: Modifier = Modifier,
   subtitle: String? = null,
   setupFinished: Boolean = false,
+  isGifImage: Boolean = false,
   supportingImage: Int? = null,
+  loaderText: String? = null,
   content: (@Composable () -> Unit)? = null
 ) {
   Column(
@@ -66,12 +73,31 @@ fun SetupContent(
       )
     }
 
-    supportingImage?.let {
-      Image(
-        painter = painterResource(id = supportingImage),
-        contentDescription = null,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-      )
+    if (supportingImage != null) {
+      Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        if (isGifImage) {
+          AppGifImage(
+            id = supportingImage,
+            modifier = Modifier.size(370.dp, 211.dp),
+          )
+        } else {
+          Image(
+            painter = painterResource(id = supportingImage),
+            contentDescription = null,
+          )
+        }
+
+        Spacer(modifier = Modifier.height(spacing.xs))
+        if (loaderText != null) {
+          LoadingTextWithDots(
+            baseText = loaderText,
+            textColor = MeTheme.colorScheme.secondaryAction,
+          )
+        }
+      }
     }
 
     content?.let {
