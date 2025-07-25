@@ -31,7 +31,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Weight Gurus uses camera and photo access to sync with AppSync scales.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Required to connect to that network</string>
+	<string>Weight Gurus needs local network access to connect and configure Wi-Fi scales on your network.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

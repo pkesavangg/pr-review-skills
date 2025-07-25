@@ -8,7 +8,7 @@ import GGBluetoothSwiftPackage
 
 // MARK: - Wifi Connection Models
 /// Enum describing the current Wi-Fi connection state.
- enum WifiConnectionStatus: String {
+public enum WifiConnectionStatus: String {
     case unknown
     case enabled       // Wi-Fi switch ON but not connected to an AP
     case connected     // Connected to an AP
@@ -16,7 +16,7 @@ import GGBluetoothSwiftPackage
 }
 
 /// Container returned by `getConnectedWifiInfo()` mirroring the TS implementation.
-struct WifiStatus {
+public struct WifiStatus {
     let status: WifiConnectionStatus
     let locationStatus: GGPermissionState
     let ssid: String
