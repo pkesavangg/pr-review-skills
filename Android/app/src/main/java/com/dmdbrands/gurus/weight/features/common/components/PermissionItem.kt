@@ -63,7 +63,7 @@ fun PermissionItem(
     modifier = Modifier
       .fillMaxWidth()
       .clickable(enabled = !disabled, onClick = onClick)
-      .padding(MeTheme.spacing.md),
+      .padding(MeTheme.spacing.sm),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {

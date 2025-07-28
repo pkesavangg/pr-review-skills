@@ -65,7 +65,7 @@ object BtWifiScaleSetupStrings {
 
   object WifiPassword {
     const val Title = "Enter Wi-Fi Password"
-    const val Subtitle = "Add the password for"
+    const val Subtitle = "Add the password for "
     const val PasswordLabel = "Password"
     const val NetworkPasswordToggleLabel = "Network has no password"
   }

@@ -158,7 +158,7 @@ constructor(
 
   private fun observePermissions() {
     viewModelScope.launch {
-      permissionService.permissionCallBackFlow.collect {
+      subscribePermissions().collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
         if (!areRequiredPermissionsEnabled) {
