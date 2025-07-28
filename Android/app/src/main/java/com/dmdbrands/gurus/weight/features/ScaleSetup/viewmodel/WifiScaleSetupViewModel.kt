@@ -49,8 +49,9 @@ constructor(
       WifiScaleSetupIntent.Skip -> onSkip(
         { },
       )
+
       is WifiScaleSetupIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
-        is WifiScaleSetupIntent.OpenHelp -> openHelpModal()
+      is WifiScaleSetupIntent.OpenHelp -> openHelpModal()
       is WifiScaleSetupIntent.ExitSetup ->
         onExitSetup(
           intent.isSetupFinished,
@@ -74,21 +75,21 @@ constructor(
     handleIntent(WifiScaleSetupIntent.SetScaleSku(sku))
   }
 
-   private fun onCopyMacAddress(isCopied: Boolean) {
-      showToast(
-        message = if (isCopied) WifiMacAddressStrings.Toast.Success
-        else WifiMacAddressStrings.Toast.Error,
-      )
-    }
-    private fun showToast(message: String) {
-      dialogQueueService.showToast(
-        Toast(
-          title = null,
-          message = message,
-          action = null,
-        ),
-      )
-    }
+  private fun onCopyMacAddress(isCopied: Boolean) {
+    showToast(
+      message = if (isCopied) WifiMacAddressStrings.Toast.Success
+      else WifiMacAddressStrings.Toast.Error,
+    )
+  }
+
+  private fun showToast(message: String) {
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = message,
+        action = null,
+      ),
+    )
   }
 
   /**
