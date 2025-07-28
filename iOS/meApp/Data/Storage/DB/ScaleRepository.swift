@@ -66,6 +66,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         managedDevice.token = device.token
         managedDevice.metaData = device.metaData
         managedDevice.r4ScalePreference = device.r4ScalePreference
+        managedDevice.bathScale = device.bathScale
         // Add more fields as needed
         try context.save()
     }
