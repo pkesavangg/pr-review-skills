@@ -102,7 +102,7 @@ class PushNotificationService: NSObject {
         fetchDeviceDetails()
         // Prepare payload
         let payload = DeviceInfoRequest(
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+            appVersion: AppInfo.appVersion,
             deviceManufacturer: deviceInfo["manufacturer"] ?? "Apple",
             deviceOSName: deviceInfo["deviceOSName"] ?? UIDevice.current.systemName,
             deviceOSVersion: deviceInfo["osVersion"] ?? UIDevice.current.systemVersion,
