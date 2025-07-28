@@ -9,7 +9,7 @@
 import Foundation
 
 enum API {
-    static let baseURL = AppEnvironment.apiBaseURL
+    static let baseURL = "https://api.weightgurus.com/v3"
 }
 
 enum Endpoint {
@@ -115,7 +115,7 @@ enum Endpoint {
         case .clearFlag(let flagId):
             return request(path: "/account/flag/\(flagId)")
         case .feed:
-            return request(path: "/feed/iam")
+            return request(path: "/feed")
         case .markFeedAs(let elementId):
             guard let url = URL(string: "\(API.baseURL)/feed/iam/\(elementId)") else { return nil }
             return URLRequest(url: url)

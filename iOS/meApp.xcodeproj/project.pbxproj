@@ -11,6 +11,8 @@
 		10D170682E30E20D00D18116 /* gWifiScalePackage in Frameworks */ = {isa = PBXBuildFile; productRef = 10D170672E30E20D00D18116 /* gWifiScalePackage */; };
 		481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096C2DF05C8D00799EAA /* FirebaseCore */; };
 		481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 481F096E2DF05C8D00799EAA /* FirebaseMessaging */; };
+		D01B21902E374CD6005D1CA2 /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */; };
+		D01B21932E37534F005D1CA2 /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D01B21922E37534F005D1CA2 /* ggInAppMessagingPackage */; };
 		D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D05336252E17C72500FFF083 /* AppSyncPackage */; };
 		D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */; };
 /* End PBXBuildFile section */
@@ -83,9 +85,11 @@
 				10575C022E15116D0093651D /* GGBluetoothSwiftPackage in Frameworks */,
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
 				D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */,
+				D01B21902E374CD6005D1CA2 /* ggInAppMessagingPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 				D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */,
 				10D170682E30E20D00D18116 /* gWifiScalePackage in Frameworks */,
+				D01B21932E37534F005D1CA2 /* ggInAppMessagingPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +164,8 @@
 				10575C012E15116D0093651D /* GGBluetoothSwiftPackage */,
 				D05336252E17C72500FFF083 /* AppSyncPackage */,
 				10D170672E30E20D00D18116 /* gWifiScalePackage */,
+				D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */,
+				D01B21922E37534F005D1CA2 /* ggInAppMessagingPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -249,6 +255,7 @@
 				10575C002E1511500093651D /* XCLocalSwiftPackageReference "../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage" */,
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
+				D01B21912E37534F005D1CA2 /* XCLocalSwiftPackageReference "../../ggInAppMessagingPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -960,6 +967,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../ggBluetoothNativeLibrary/ios/GGBluetoothSwiftPackage;
 		};
+		D01B21912E37534F005D1CA2 /* XCLocalSwiftPackageReference "../../ggInAppMessagingPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../ggInAppMessagingPackage;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1017,6 +1028,14 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ggInAppMessagingPackage;
+		};
+		D01B21922E37534F005D1CA2 /* ggInAppMessagingPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ggInAppMessagingPackage;
 		};
 		D05336252E17C72500FFF083 /* AppSyncPackage */ = {
 			isa = XCSwiftPackageProductDependency;

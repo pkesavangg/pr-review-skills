@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import ggInAppMessagingPackage
 
 struct ContentView: View {
     @EnvironmentObject var themeManager: Theme

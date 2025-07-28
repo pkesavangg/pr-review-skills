@@ -53,7 +53,7 @@ enum SettingsRoute: Routable {
         case .weightless:
             WeightlessScreen()
         case .messages:
-            EmptyView() // TODO: Implement MessagesScreen
+            IAMScreen()
         case .appPermissions:
             AppPermissionsScreen()
         case .help:

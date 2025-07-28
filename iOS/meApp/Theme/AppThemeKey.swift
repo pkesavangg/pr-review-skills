@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(ggInAppMessagingPackage)
+import ggInAppMessagingPackage
+#endif
 
 /// Defines a custom environment key to inject the current app theme palette into the view hierarchy.
 private struct AppThemeKey: EnvironmentKey {
@@ -26,7 +29,13 @@ struct ThemeableModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         let theme = themeFrom(themeManager.currentColorScheme)
-        content.environment(\.appTheme, theme.palette)
+        var modified = content
+            .environment(\.appTheme, theme.palette)
+#if canImport(ggInAppMessagingPackage)
+            .environment(\.iamColorPalette, theme.palette)
+            .environment(\.iamTypography, AppTypographyTokens())
+#endif
+        return modified
     }
     
     private func themeFrom(_ scheme: AppColorScheme) -> AppColors.Theme {
