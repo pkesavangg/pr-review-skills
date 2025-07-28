@@ -28,9 +28,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             // Initialize ServiceRegistry to register all services
             _ = ServiceRegistry.shared
             
-            
-            // TODO: Remove this code once the permission service is implemented.
-            
             // Initialize Firebase and notifications
             FirebaseApp.configure()
             Messaging.messaging().delegate = self

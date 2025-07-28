@@ -63,15 +63,10 @@ class PushNotificationService: NSObject {
             do {
                 await fetchEntries(showToast: true)
                 await syncDevices()
-                // Show a local banner both when the app is **backgrounded** (to ensure notification
-                // appears even for silent/data-only pushes) **and** when it is **active** so the user
-                // sees something while using the app. iOS suppresses remote-push banners in the
-                // foreground unless `willPresent` returns the presentation options, but that path
-                // won’t fire for silent pushes. Replicating the banner ensures we always surface a
-                // message to the user.
-                if UIApplication.shared.applicationState == .background ||
-                    UIApplication.shared.applicationState == .active {
-                    let aps = userInfo["aps"] as? [String: Any]
+                // Always show a local banner to ensure the user sees the notification, regardless of
+                // the app state. This handles silent/data-only pushes and ensures visibility even when
+                // iOS suppresses remote-push banners in the foreground.
+                let aps = userInfo["aps"] as? [String: Any]
                     let alert = aps?["alert"] as? [String: Any]
                     let title = alert?["title"] as? String ?? "New Notification"
                     let body = alert?["body"] as? String ?? "You have a new message"
@@ -87,8 +82,8 @@ class PushNotificationService: NSObject {
                         trigger: nil
                     )
                     try await UNUserNotificationCenter.current().add(request)
-                }
             } catch {
+                logger.log(level: .error, tag: "PushNotificationService", message: "Failed to handle notification: \(error.localizedDescription)")
             }
             isProcessingNotification = false
             completion()
@@ -132,7 +127,7 @@ class PushNotificationService: NSObject {
             return
         }
         
-        guard permissionsService.requiredCategories.contains(where: {$0 == .notifications}) else {
+        guard permissionsService.requiredCategories.contains(.notifications) else {
             return
         }
         // Determine current permission state
