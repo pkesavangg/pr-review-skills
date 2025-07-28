@@ -115,7 +115,6 @@ fun WifiScaleSetupScreenContent(
           modifier =
             Modifier
               .fillMaxSize()
-              .verticalScroll(rememberScrollState())
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
@@ -128,21 +127,23 @@ fun WifiScaleSetupScreenContent(
             }
 
             WifiScaleSetupStep.SETUP_FINISHED -> {
-              if(state.isApMode) {
+              if (state.isApMode) {
                 WifiMacAddress(
-                  title = WifiSetupStrings.setupFinished.MacTitle,
-                  macAddress = "",
+                  title = WifiScaleSetupStrings.setupFinished.MacTitle,
+                  macAddress = state.macAddress,
                   onCopyMacAddress = {
                     onIntent(WifiScaleSetupIntent.OnCopyMacAddress(it))
                   },
                 )
               } else {
                 SetupContent(
-                  title = WifiSetupStrings.setupFinished.Title,
-                  subtitle = WifiSetupStrings.setupFinished.Message,
-                  setupFinished = true
+                  title = WifiScaleSetupStrings.setupFinished.Title,
+                  subtitle = WifiScaleSetupStrings.setupFinished.Message,
+                  setupFinished = true,
                 )
               }
+            }
+
             WifiScaleSetupStep.PERMISSIONS -> {
               ScalePermissions(
                 sku = state.sku,

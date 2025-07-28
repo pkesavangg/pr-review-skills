@@ -14,7 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppNote

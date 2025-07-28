@@ -66,6 +66,7 @@ data class WifiScaleSetupState(
   val isFirstStep: Boolean = currentStepIndex == 0
   val isLastStep: Boolean = currentStepIndex == steps.lastIndex
   val progress: Float = if (steps.isEmpty()) 0f else (currentStepIndex + 1).toFloat() / steps.size.toFloat()
+  val macAddress: String = "AA:BB:CC:DD:EE:FF"
 }
 
 /**
