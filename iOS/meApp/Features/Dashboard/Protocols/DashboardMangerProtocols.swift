@@ -11,9 +11,6 @@ import SwiftUI
 /// Protocol defining data management operations
 protocol DashboardDataManaging {
     func loadInitialData() async throws
-    func handleEntryAdded(_ entry: Entry) async throws
-    func handleEntryUpdated(_ entry: Entry) async throws
-    func handleEntryDeleted(_ entry: Entry) async throws
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary]
     func getLatestEntry() async throws -> Entry?
     func clearCache() async throws

@@ -14,6 +14,7 @@ struct DashboardState {
 // MARK: - UI State
 struct UIState {
     var isLoading: Bool = false
+    var hasInitializedChart: Bool = false
     var loaderOverride: LoaderModel? = nil
     var alertData: AlertModel? = nil
     var isEditMode: Bool = false
@@ -48,13 +49,13 @@ struct MetricsState {
         // Show only active metrics based on activeMetricsCount
         return Array(metrics.prefix(activeMetricsCount))
     }
-    
+
     /// Returns grid columns configuration based on dashboard type
     var gridColumns: [GridItem] {
-        let columnCount = dashboardType == .dashboard4 ? 
-            DashboardConstants.UI.fourMetricGridColumns : 
+        let columnCount = dashboardType == .dashboard4 ?
+            DashboardConstants.UI.fourMetricGridColumns :
             DashboardConstants.UI.twelveMetricGridColumns
-        
+
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 }

@@ -688,6 +688,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let allDates = operations.map { $0.date }
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
+        print("Visible operations: x scroll position: \(state.xScrollPosition), min date: \(minDate), max date: \(maxDate)")
         let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 4)
         let calculatedEnd = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
         let visibleStart = max(calculatedStart, minDate)
