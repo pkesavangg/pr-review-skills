@@ -15,12 +15,15 @@ import com.greatergoods.meapp.features.ScaleSetup.modal.SetupInitData
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupReducer
 import com.greatergoods.meapp.features.ScaleSetup.reducer.BtScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.greatergoods.meapp.features.ScaleSetup.strings.BtScaleSetupStrings
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
+import com.greatergoods.meapp.features.common.model.Toast
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -68,7 +71,8 @@ constructor(
         viewModelScope.launch {
           val areRequiredPermissionsEnabled =
             AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, scaleInit.sku)
-          ScaleSetupIntent.SetPermissions(newPermissions)
+          handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
+          handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
           if (isPermissionGranted != areRequiredPermissionsEnabled) {
             isPermissionGranted = areRequiredPermissionsEnabled
           }
@@ -148,7 +152,26 @@ constructor(
     handleIntent(ScaleSetupIntent.NextEnabled(nextEnabled))
   }
 
+  override fun onTryAgain() {
+    val currentStep = state.value.step
+
+    when (currentStep) {
+      BtScaleSetupStep.PAIRING_MODE -> {
+        connectToBluetooth()
+      }
+
+      BtScaleSetupStep.STEP_ON -> {
+        collectMeasurement()
+      }
+
+      else -> null
+    }
+  }
+
   private fun connectToBluetooth() {
+    // Clear any existing timeout
+    clearBluetoothTimeout()
+
     AppLog.d(TAG, "Connecting to bluetooth")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
@@ -159,6 +182,9 @@ constructor(
           sku = scaleInit.sku,
           userNumber = _state.value.user,
         )
+        // Clear timeout when device is found
+        clearBluetoothTimeout()
+
         ggDeviceService.pairDevice(discoveredScale!!.toGGBTDevice()) {
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
@@ -171,13 +197,26 @@ constructor(
             }
 
             else -> {
+              showRetryToast()
               handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
             }
           }
         }
       }
+
+      // Set timeout for bluetooth scanning
+      bluetoothTimeoutJob = viewModelScope.launch {
+        delay(bluetoothTimeout)
+        // Check if we're still in the pairing mode step and no device was found
+        if (currentSetupState.step == BtScaleSetupStep.PAIRING_MODE && discoveredScale == null) {
+          AppLog.d(TAG, "Bluetooth scan timeout reached")
+          showRetryToast()
+          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
+        }
+      }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during wake up process", e.toString())
+      clearBluetoothTimeout()
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
     }
   }
@@ -194,5 +233,15 @@ constructor(
       AppLog.e(TAG, "Error during measurement", e.toString())
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("MEASUREMENT_002")))
     }
+  }
+
+  private fun showRetryToast() {
+    dialogQueueService.showToast(
+      Toast(
+        title = BtScaleSetupStrings.PairingMode.RetryToast.Title,
+        message = BtScaleSetupStrings.PairingMode.RetryToast.Message,
+        action = null,
+      ),
+    )
   }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
+import com.greatergoods.meapp.features.ScaleSetup.components.ScalePermissions
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
 import com.greatergoods.meapp.features.ScaleSetup.components.SelectButton
 import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
@@ -32,6 +33,7 @@ import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBott
 import com.greatergoods.meapp.features.common.helper.SelectButtonHelper
 import com.greatergoods.meapp.resources.AppIcons
 import com.greatergoods.meapp.theme.MeTheme
+import com.greatergoods.meapp.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -112,12 +114,19 @@ fun BtScaleSetupScreenContent(
         Column(
           modifier =
             Modifier
-              .fillMaxSize()
-              .padding(MeTheme.spacing.md),
+              .fillMaxSize(),
         ) {
           when (step) {
             BtScaleSetupStep.SCALE_INFO -> {
               ScaleInfo(sku = sku)
+            }
+
+            BtScaleSetupStep.PERMISSIONS -> {
+              ScalePermissions(
+                sku = sku,
+                permissions = state.scaleSetupState.permissions,
+                onRequestPermission = { onIntent(ScaleSetupIntent.RequestPermission(it)) },
+              )
             }
 
             BtScaleSetupStep.SELECT_USER -> {
@@ -128,6 +137,7 @@ fun BtScaleSetupScreenContent(
                 subtitle = BtScaleSetupStrings.ChooseUser.Message,
                 selectButtonItems = userButtons,
                 isSelectable = true,
+                modifier = Modifier.padding(vertical = spacing.sm, horizontal = spacing.md),
                 onItemSelected = { value ->
                   onIntent(BtScaleSetupIntent.SetUser(value.toInt()))
                 },
@@ -139,17 +149,21 @@ fun BtScaleSetupScreenContent(
                 title = BtScaleSetupStrings.PairingMode.Title,
                 subtitle = BtScaleSetupStrings.PairingMode.Subtitle,
                 isGifImage = true,
-                supportingImage = AppIcons.Setup.PairMode_0376,
-                loaderText = BtScaleSetupStrings.PairingMode.LoaderText,
+                supportingImage = AppIcons.Setup.PairModeGif(sku),
+                loaderText = BtScaleSetupStrings.PairingMode.PairModeText(state.scaleSetupState.setupState.connectionState),
+                connectionState = state.scaleSetupState.setupState.connectionState,
+                loaderClick = {
+                  onIntent(ScaleSetupIntent.TryAgain)
+                },
               )
             }
 
             BtScaleSetupStep.SET_DEVICE_USER -> {
               SetupContent(
-                title = BtScaleSetupStrings.SetDeviceUser.Title(state.userString),
-                subtitle = BtScaleSetupStrings.SetDeviceUser.Subtitle(state.userString),
+                title = BtScaleSetupStrings.SetDeviceUser.Title,
+                subtitle = BtScaleSetupStrings.SetDeviceUser.Subtitle(sku, state.userString),
                 isGifImage = true,
-                supportingImage = AppIcons.Setup.DeviceSetUser_0376,
+                supportingImage = AppIcons.Setup.SetUserGif(sku),
               )
             }
 
@@ -158,8 +172,9 @@ fun BtScaleSetupScreenContent(
                 title = BtScaleSetupStrings.StepOn.Title,
                 subtitle = BtScaleSetupStrings.StepOn.Subtitle,
                 isGifImage = true,
-                supportingImage = AppIcons.Setup.StepOn_0376,
-                loaderText = BtScaleSetupStrings.StepOn.LoaderText,
+                supportingImage = AppIcons.Setup.StepOnGif(sku),
+                loaderText = BtScaleSetupStrings.StepOn.StepOnText(state.scaleSetupState.setupState.connectionState),
+                connectionState = state.scaleSetupState.setupState.connectionState,
               )
             }
 
@@ -169,10 +184,6 @@ fun BtScaleSetupScreenContent(
                 subtitle = BtScaleSetupStrings.SetupFinished.Subtitle,
                 setupFinished = true,
               )
-            }
-
-            else -> {
-              // Placeholder for other steps
             }
           }
         }
