@@ -39,6 +39,7 @@ fun AppNote(
   title: String? = null,
   icon: Int? = null,
   iconType: AppIconType = AppIconType.Primary,
+  messageType: TextType = TextType.SubHeading,
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
 ) {
@@ -85,7 +86,7 @@ fun AppNote(
               annotatedText = if (showNote) "Note: " else null,
               annotationPosition = AnnotationPosition.Start,
               spanStyle = if (showNote) SpanStyle(fontWeight = FontWeight.Bold) else null,
-              textType = TextType.SubHeading,
+              textType = messageType,
             )
           }
         }

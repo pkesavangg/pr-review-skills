@@ -47,7 +47,7 @@ enum class WifiScaleSetupStep {
   SWITCH_WIFI,
   SCALE_COUNTS,
   STEP_ON,
-  SCALE_CONNECTED
+  SETUP_FINISHED
 }
 
 /**

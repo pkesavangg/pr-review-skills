@@ -17,16 +17,19 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleInfo
 import com.greatergoods.meapp.features.ScaleSetup.components.ScaleSetupHeader
+import com.greatergoods.meapp.features.ScaleSetup.components.SetupContent
 import com.greatergoods.meapp.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.greatergoods.meapp.features.ScaleSetup.reducer.WifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.WifiSetupStrings
 import com.greatergoods.meapp.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
 import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.ButtonSize
 import com.greatergoods.meapp.features.common.components.ButtonType
 import com.greatergoods.meapp.features.common.components.HorizontalPagerWithBottomNavigation
 import com.greatergoods.meapp.features.common.components.PreviewTheme
+import com.greatergoods.meapp.features.common.components.WifiMacAddress
 import com.greatergoods.meapp.theme.MeAppTheme
 import com.greatergoods.meapp.theme.MeTheme
 import kotlinx.coroutines.delay
@@ -115,6 +118,24 @@ fun WifiScaleSetupScreenContent(
                 buttonText = ScaleSetupStrings.ScaleInfo.WifiScaleButtonText,
                 onButtonClick = { onIntent(WifiScaleSetupIntent.OnGetScaleMacAddress(true)) },
               )
+            }
+
+            WifiScaleSetupStep.SETUP_FINISHED -> {
+              if(state.isApMode) {
+                WifiMacAddress(
+                  title = WifiSetupStrings.setupFinished.MacTitle,
+                  macAddress = "",
+                  onCopyMacAddress = {
+                    onIntent(WifiScaleSetupIntent.OnCopyMacAddress(it))
+                  },
+                )
+              } else {
+                SetupContent(
+                  title = WifiSetupStrings.setupFinished.Title,
+                  subtitle = WifiSetupStrings.setupFinished.Message,
+                  setupFinished = true
+                )
+              }
             }
             // TODO: Add other steps as needed
             else -> {
