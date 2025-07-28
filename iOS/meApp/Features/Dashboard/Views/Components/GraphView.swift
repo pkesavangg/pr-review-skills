@@ -356,7 +356,7 @@ struct DecisionWindowModifier: ViewModifier {
             )
     }
 
-            private func handleTouchChange(_ value: DragGesture.Value) {
+    private func handleTouchChange(_ value: DragGesture.Value) {
         let translation = value.translation
 
         switch touchInteractionMode {
@@ -387,7 +387,7 @@ struct DecisionWindowModifier: ViewModifier {
         }
     }
 
-            private func handleTouchEnd(_ value: DragGesture.Value) {
+    private func handleTouchEnd(_ value: DragGesture.Value) {
         cancelDecisionTimer()
 
         switch touchInteractionMode {
@@ -491,25 +491,6 @@ struct ScrollDetectionModifier: ViewModifier {
     }
 }
 
-// MARK: - Scroll Position Modifier
-
-/// ViewModifier that conditionally applies scroll position based on period
-struct ScrollPositionModifier: ViewModifier {
-    let dashboardStore: DashboardStore
-
-    func body(content: Content) -> some View {
-        if dashboardStore.state.graph.selectedPeriod != .total {
-            content.chartScrollPosition(x: Binding(
-                get: { dashboardStore.state.graph.xScrollPosition },
-                set: { newPosition in
-                    dashboardStore.handleScrollPositionChange(newPosition)
-                }
-            ))
-        } else {
-            content
-        }
-    }
-}
 
 
 
