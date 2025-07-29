@@ -319,6 +319,7 @@ constructor(
     AppLog.d(TAG, "Skipping current step: ${currentState.currentStep}")
 
     when (currentState.currentStep) {
+      BtWifiSetupStep.GATHERING_NETWORK,
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Skip to CUSTOMIZE_SETTINGS
         ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
