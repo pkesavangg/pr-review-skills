@@ -86,6 +86,7 @@ final class ContentViewModel: ObservableObject {
             entries = []
         }
         await feedService.fetchFeedItems()
+        await feedService.showFeedModal()
     }
     
     // MARK: - View State Management
