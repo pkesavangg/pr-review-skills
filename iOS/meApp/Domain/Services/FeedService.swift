@@ -1,56 +1,58 @@
 import Foundation
+import ggInAppMessagingPackage
+import Combine
 
 @MainActor
-final class FeedService: FeedServiceProtocol, ObservableObject {
+final class FeedService: ObservableObject {
     static let shared = FeedService()
     
     @Injector var logger: LoggerService
     
     private let apiRepo: FeedRepositoryAPIProtocol = FeedRepositoryAPI()
-    private let localRepo = FeedRepositoryLocal()
     private let networkMonitor = NetworkMonitor.shared
     private let accountService = AccountService.shared
+    private let ggIAMService = GGInAppMessagingService.shared
     
     @Published private(set) var feedItems: [FeedItem] = []
-    @Published private(set) var feedSettings: FeedSetting?
     
     private let tag = "FeedService"
-    
+    private var cancellables = Set<AnyCancellable>()
     init() {
         Task {
             do {
-               try await getFeedSettings()
+                try await getFeedSettings()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to get feed settings during init", data: error)
             }
+            
+            ggIAMService
+                .feedsUpdated
+                .sink { [weak self] feedInfo in
+                    Task {
+                        let feedActionType: FeedActionType = FeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
+                        await self?.updateFeedItem(feedInfo.feedItem, actionType: feedActionType, variationId: feedInfo.variationId)
+                    }
+                }
+                .store(in: &cancellables)
         }
     }
     
     // MARK: - Feed Items Management
-    
-    func fetchFeedItems() async throws {
-        guard networkMonitor.isConnected else {
-            logger.log(level: .error, tag: tag, message: "No internet connection while fetching feed items")
-            throw HTTPError.noInternet
-        }
-        
+    func fetchFeedItems() async {
         do {
+            ggIAMService.setAccountId(accountService.activeAccount?.accountId ?? "")
             let items = try await apiRepo.fetchFeedItems()
             self.feedItems = items
+            ggIAMService.load(feeds: self.feedItems)
             logger.log(level: .info, tag: tag, message: "Successfully fetched feed items", data: ["count": items.count])
         } catch {
-            if HTTPError.isNetworkError(error) {
-                logger.log(level: .error, tag: tag, message: "Network error while fetching feed items", data: error)
-                throw HTTPError.noInternet
-            }
             logger.log(level: .error, tag: tag, message: "Failed to fetch feed items", data: error)
-            throw FeedError.networkError(error)
+            ggIAMService.load(feeds: [])
         }
     }
     
-    func updateFeedItem(_ feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) async throws {
+    func updateFeedItem(_ feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) async {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
-        
         do {
             try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
             logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
@@ -62,124 +64,44 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                     updatedItem.isUnread = false
                     self.feedItems[index] = updatedItem
                 }
+                ggIAMService.load(feeds: self.feedItems)
             }
         } catch {
-            if HTTPError.isNetworkError(error) {
-                logger.log(level: .error, tag: tag, message: "Network error while updating feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
-                throw HTTPError.noInternet
-            }
             logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
-            throw FeedError.networkError(error)
         }
     }
     
     func getUnreadFeedCount() -> Int {
-        return feedItems.filter { $0.isUnread == true }.count
+        return ggIAMService.getUnreadFeedCount()
     }
     
     // MARK: - Feed Settings Management
-    
-    func initializeFeedSettings() async throws {
-        if try await getFeedSettings() == nil {
-            let defaultSettings = FeedSetting(showPopupMessage: true, showNotificationBadge: true)
-            try await storeFeedSettings(defaultSettings)
-        }
-    }
-    
-    func storeFeedSettings(_ settings: FeedSetting) async throws {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            logger.log(level: .error, tag: tag, message: "No active account while storing feed settings")
-            throw AccountError.noActiveAccount
-        }
-        
-        try await localRepo.storeFeedSettings(accountId: accountId, settings: settings)
-        self.feedSettings = settings
-        logger.log(level: .info, tag: tag, message: "Successfully stored feed settings", data: ["accountId": accountId])
-    }
-    
     @discardableResult
-    func getFeedSettings() async throws -> FeedSetting? {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            logger.log(level: .error, tag: tag, message: "No active account while getting feed settings")
-            throw AccountError.noActiveAccount
+    func getFeedSettings() async throws -> GGFeedSetting? {
+        if let result = ggIAMService.getStoredFeedNotificationSetting() {
+            return GGFeedSetting(
+                showPopupMessage: result.showPopupMessage,
+                showNotificationBadge: result.showNotificationBadge
+            )
         }
-        
-        let settings = try await localRepo.getFeedSettings(accountId: accountId)
-        self.feedSettings = settings
-        logger.log(level: .info, tag: tag, message: "Successfully retrieved feed settings", data: ["accountId": accountId])
-        return settings
+        return nil
     }
     
     // MARK: - Feed Modal Management
-    
-    func checkAndShowFeedModal() async throws -> Bool {
-        guard let settings = try await getFeedSettings(),
-              settings.showPopupMessage else {
-            return false
-        }
-        
-        if let loginFeedItem = feedItems.first(where: { $0.trigger == .login }) {
-            return try await showFeedModal(loginFeedItem)
-        }
-        
-        return false
-    }
-    
-    func getLastTriggeredTimestamp() async throws -> String? {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            throw AccountError.noActiveAccount
-        }
-        
-        return try await localRepo.getLastTriggeredTimestamp(accountId: accountId)
-    }
-    
-    func setLastTriggeredTimestamp(_ timestamp: String) async throws {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            throw AccountError.noActiveAccount
-        }
-        
-        try await localRepo.setLastTriggeredTimestamp(accountId: accountId, timestamp: timestamp)
-    }
-    
-    func showFeedModal(_ feedItem: FeedItem) async throws -> Bool {
-        let currentTime = Date().timeIntervalSince1970 * 1000 // Convert to milliseconds
-        
-        if let lastTriggeredTime = try await getLastTriggeredTimestamp(),
-           let lastTriggeredTimeDouble = Double(lastTriggeredTime) {
-            let oneWeek: Double = 7 * 24 * 60 * 60 * 1000 // One week in milliseconds
-            let cooldownTime = lastTriggeredTimeDouble + oneWeek
-            
-            if cooldownTime < currentTime {
-                return await handleFeedModal(feedItem, currentTime: currentTime)
-            }
-            return false
-        } else {
-            return await handleFeedModal(feedItem, currentTime: currentTime)
-        }
+    func showFeedModal() async throws -> Bool {
+        return true
     }
     
     // MARK: - Cleanup
     
-    func clearFeedData() async {
-        guard let accountId = accountService.activeAccount?.accountId else {
-           logger.log(level: .error, tag: tag, message: "No active account while clearing feed data")
-           return
-        }
-        do {
-            try await localRepo.clearFeedData(accountId: accountId)
-            self.feedItems = []
-            self.feedSettings = nil
-            logger.log(level: .info, tag: tag, message: "Successfully cleared feed data", data: ["accountId": accountId])
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to clear feed data", data: ["accountId": accountId, "error": error])
-        }
+    func clearFeedData() {
+        ggIAMService.clearFeedData()
     }
     
     // MARK: - Private Helpers
     
     private func buildFeedAction(actionType: FeedActionType, variationId: Int?) -> FeedAction {
         let requiresMeta = !(actionType == .click || actionType == .read || actionType == .trigger)
-        
         return FeedAction(
             action: actionType,
             osType: requiresMeta ? "ios" : nil,
@@ -187,18 +109,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         )
     }
     
-    private func handleFeedModal(_ feedItem: FeedItem, currentTime: Double) async -> Bool {
-        do {
-            // Set last triggered timestamp
-            try await setLastTriggeredTimestamp(String(Int(currentTime)))
-            // Mark as triggered
-            try await updateFeedItem(feedItem, actionType: .trigger, variationId: nil)
-            // Show modal using your preferred UI framework
-            // This is where you'd implement the actual modal presentation
-            // For example, using SwiftUI or UIKit
-            return true
-        } catch {
-            return false
-        }
+    deinit {
+        cancellables.forEach { $0.cancel() }
     }
-} 
+}

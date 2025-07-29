@@ -85,11 +85,7 @@ final class ContentViewModel: ObservableObject {
         } catch {
             entries = []
         }
-        do {
-            try await feedService.fetchFeedItems()
-        } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Failed to fetch feed items: \(error)")
-        }
+        await feedService.fetchFeedItems()
     }
     
     // MARK: - View State Management
