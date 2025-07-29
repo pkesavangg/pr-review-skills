@@ -205,7 +205,9 @@ class DashboardStore: ObservableObject {
 
     var visibleOperations: [BathScaleWeightSummary] {
         // Use cached operations with improved caching logic in graph manager
-        return graphManager.getVisibleOperations(from: continuousOperations)
+        let visible = graphManager.getVisibleOperations(from: continuousOperations)
+        print("DashboardStore.visibleOperations: \(visible.count) operations, scroll position: \(state.graph.xScrollPosition)")
+        return visible
     }
 
         // Delegate chart data generation to GraphManager
@@ -803,43 +805,19 @@ class DashboardStore: ObservableObject {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
-        // Store the previous period to detect TOTAL → other transition
-        let previousPeriod = state.graph.selectedPeriod
-
-        // Explicitly set scroll position to latest entry date for segment change
-        if let latestEntryDate = continuousOperations.map(\.date).max() {
-            // subtract a 7 day buffer to the latest entry date
-            state.graph.xScrollPosition = latestEntryDate.addingTimeInterval(-7 * 24 * 60 * 60)
-
-        }
-
+        // Calculate optimal scroll position based on X-axis computation logic for segment change
+        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
+            for: period,
+            from: continuousOperations,
+            showingLatest: true
+        )
+        graphManager.updateScrollPosition(to: optimalScrollPosition)
         // Delegate period update to graph manager
-        Task {
-            await graphManager.updateSelectedPeriod(period)
+        graphManager.updateSelectedPeriod(period)
 
-            // Clear all selection states
-            clearSelection()
-
-            // If switching from TOTAL to other periods, ensure latest entries are visible
-            if previousPeriod == .total && period != .total {
-                // Force scroll position to latest entry
-                if let latestEntryDate = continuousOperations.map(\.date).max() {
-                    state.graph.xScrollPosition = latestEntryDate
-                }
-            } else {
-                // For other transitions, use normal logic
-                ensureLatestEntriesVisible()
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-              // Update weight display for new period
-              self.updateWeightDisplayForCurrentView()
-
-              // Force Y-axis recalculation for new period
-              self.recalculateYAxisForVisibleData()
-              self.objectWillChange.send()
-            }
-        }
+        self.forceCompleteRecalculationAfterScrollPosition()
+        state.ui.hasInitializedChart = true
     }
 
     // Delegate chart selection to GraphManager
@@ -1118,41 +1096,22 @@ class DashboardStore: ObservableObject {
             return
         }
 
-        // Explicitly set scroll position to latest entry date for initial load
-        if let latestEntryDate = continuousOperations.map(\.date).max() {
-
-            // subtract a 7 day buffer to the latest entry date
-            state.graph.xScrollPosition = latestEntryDate.addingTimeInterval(-10 * 24 * 60 * 60)
-        }
-
-        // Ensure positioning (this will apply boundary enforcement)
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-
-            // Force UI update after scroll position is set
-            objectWillChange.send()
-        }
-
-        // Delay Y-axis cache initialization to allow visible operations to be calculated properly
-        // This ensures visibleOperations is populated before Y-axis domain is calculated
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            // Initialize Y-axis cache after visible operations are calculated
-            self.updateYAxisCache()
-
-            // Update weight display and force UI refresh
-            self.updateWeightDisplayForCurrentView()
-            self.objectWillChange.send()
-        }
-
+        // Calculate optimal scroll position based on X-axis computation logic
+        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
+            for: state.graph.selectedPeriod,
+            from: continuousOperations,
+            showingLatest: true
+        )
+        self.graphManager.updateScrollPosition(to: optimalScrollPosition)
+        self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
     }
 
     /// Handle scroll position changes - delegate to graph manager
     @MainActor
     func handleScrollPositionChange(_ newPosition: Date?) {
-        Task {
-            await graphManager.handleScrollPositionChange(newPosition)
-        }
+      graphManager.handleScrollPositionChange(newPosition)
     }
 
     /// Handle scroll start - clear selection and update state
@@ -1160,11 +1119,7 @@ class DashboardStore: ObservableObject {
     func handleScrollStart() {
         // Track user scroll time to prevent repositioning shortly after
         lastUserScrollTime = Date()
-
-        // Delegate to graph manager - do not manipulate graph state directly
-        Task {
-            await graphManager.handleScrollStart()
-        }
+        graphManager.handleScrollStart()
     }
 
     /// Enhanced scroll end handling with proper Y-axis recalculation and weight display update
@@ -1284,6 +1239,25 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Lifecycle Methods
 
+    /// Forces complete recalculation after programmatic scroll position changes
+    /// This ensures visible operations, Y-axis, and other dependent calculations are updated
+    @MainActor
+    private func forceCompleteRecalculationAfterScrollPosition() {
+        // Force recalculation of visible operations
+        graphManager.forceVisibleOperationsRecalculation()
+
+        // Force Y-axis cache update with new visible operations
+        updateYAxisCache()
+
+        // Update weight display for current view
+        updateWeightDisplayForCurrentView()
+
+        // Force UI update
+        objectWillChange.send()
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
+    }
+
     /// Perform actions when dashboard appears
     /// Loads latest data, goal card, and ensures proper initialization
     func onAppearActions() {
@@ -1291,15 +1265,10 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
-        // Ensure chart shows the latest entries by default
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-
-            // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.updateYAxisCache()
-                self.objectWillChange.send()
-            }
+       // After positioning is complete, update Y-axis cache to ensure proper domain calculation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.updateYAxisCache()
+            self.objectWillChange.send()
         }
 
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")

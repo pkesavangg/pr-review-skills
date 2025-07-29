@@ -204,24 +204,63 @@ struct GraphView: View {
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         let seriesData = dashboardStore.chartSeriesData
+        let groupedSeries = Dictionary(grouping: seriesData) { $0.series }
 
-        ForEach(seriesData) { series in
-
-            LineMark(
-                x: .value("Date", series.date),
-                y: .value(series.series, series.value)
-            )
-            .foregroundStyle(by: .value("Series", series.series))
-            .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: 3))
-
-            PointMark(
-                x: .value("Date", series.date),
-                y: .value(series.series, series.value)
-            )
-            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
-            .foregroundStyle(by: .value("Series", series.series))
+        ForEach(Array(groupedSeries.keys.sorted()), id: \.self) { seriesName in
+            if let seriesPoints = groupedSeries[seriesName] {
+                chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
+            }
         }
+    }
+
+    @ChartContentBuilder
+    private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
+        let segments = getConnectedSegments(from: seriesPoints, for: dashboardStore.state.graph.selectedPeriod)
+
+        ForEach(Array(segments.enumerated()), id: \.offset) { segmentIndex, segment in
+            chartContentForSegment(segment: segment, seriesName: seriesName, segmentIndex: segmentIndex)
+        }
+    }
+
+    @ChartContentBuilder
+    private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
+        ForEach(segment) { point in
+            invisibleTapTarget(for: point)
+            lineMarkForPoint(point: point, seriesName: seriesName, segmentIndex: segmentIndex)
+            visiblePointMark(for: point)
+        }
+    }
+
+    @ChartContentBuilder
+    private func invisibleTapTarget(for point: GraphSeries) -> some ChartContent {
+        PointMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value)
+        )
+        .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
+        .foregroundStyle(.clear)
+    }
+
+    @ChartContentBuilder
+    private func lineMarkForPoint(point: GraphSeries, seriesName: String, segmentIndex: Int) -> some ChartContent {
+        LineMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value),
+            series: .value("Series", "\(point.series)-\(segmentIndex)")
+        )
+        .foregroundStyle(by: .value("Series", point.series))
+        .interpolationMethod(.catmullRom)
+        .lineStyle(StrokeStyle(lineWidth: 3))
+    }
+
+    @ChartContentBuilder
+    private func visiblePointMark(for point: GraphSeries) -> some ChartContent {
+        PointMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value)
+        )
+        .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
+        .foregroundStyle(by: .value("Series", point.series))
     }
 
     @ChartContentBuilder
@@ -235,6 +274,63 @@ struct GraphView: View {
             .zIndex(-100)
             .foregroundStyle(theme.actionSecondary)
             .lineStyle(StrokeStyle(lineWidth: 2))
+        }
+    }
+
+    // MARK: - Smart Line Connection Logic
+
+    /// Groups chart data points into connected segments based on time gaps
+    /// Prevents lines from connecting across missing data periods
+    private func getConnectedSegments(from dataPoints: [GraphSeries], for period: TimePeriod) -> [[GraphSeries]] {
+        guard !dataPoints.isEmpty else { return [] }
+
+        var segments: [[GraphSeries]] = []
+        var currentSegment: [GraphSeries] = []
+
+        let sortedPoints = dataPoints.sorted { $0.date < $1.date }
+
+        for point in sortedPoints {
+            if currentSegment.isEmpty {
+                currentSegment.append(point)
+            } else {
+                let lastPoint = currentSegment.last!
+                let timeDifference = point.date.timeIntervalSince(lastPoint.date)
+
+                // Define maximum gap based on time period
+                let maxGap: TimeInterval = getMaximumGap(for: period)
+
+                if timeDifference <= maxGap {
+                    // Continue current segment
+                    currentSegment.append(point)
+                } else {
+                    // Start new segment due to gap
+                    if !currentSegment.isEmpty {
+                        segments.append(currentSegment)
+                    }
+                    currentSegment = [point]
+                }
+            }
+        }
+
+        // Add the last segment
+        if !currentSegment.isEmpty {
+            segments.append(currentSegment)
+        }
+
+        return segments
+    }
+
+    /// Determines the maximum time gap allowed before starting a new segment
+    private func getMaximumGap(for period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week:
+            return 14 * DashboardConstants.TimeInterval.day  // 14 days - don't connect if more than 3 days gap
+        case .month:
+            return 60 * DashboardConstants.TimeInterval.day  // 60 days - don't connect if more than 1 week gap
+        case .year:
+            return 365 * DashboardConstants.TimeInterval.day // 1 year - don't connect if more than 1 year gap
+        case .total:
+            return 365 * DashboardConstants.TimeInterval.day // 1 year - don't connect if more than 1 year gap
         }
     }
 

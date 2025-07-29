@@ -34,14 +34,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         self.state = initialState
     }
 
-    func updateScrollPosition(to date: Date) async {
+    func updateScrollPosition(to date: Date) {
         guard !state.isScrolling else {
             return
         }
         state.xScrollPosition = date
     }
 
-    func handleScrollPositionChange(_ newPosition: Date?) async {
+    func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else { return }
         if state.isScrolling {
             latestScrollPosition = newPosition
@@ -50,7 +50,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    func handleScrollStart() async {
+    func handleScrollStart() {
         state.scrollEndTimer?.invalidate()
         if !state.isScrolling {
             state.isScrolling = true
@@ -595,7 +595,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    func updateSelectedPeriod(_ period: TimePeriod) async {
+    func updateSelectedPeriod(_ period: TimePeriod) {
         state.selectedPeriod = period
         state.clearSelection()
 
@@ -699,10 +699,31 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCalculatedVisibleOps = visibleOps
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
+
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
+
         return visibleOps
     }
 
-    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async {
+    /// Forces recalculation of visible operations and clears cache
+    /// Use this after programmatically setting scroll position
+    func forceVisibleOperationsRecalculation() {
+        lastCalculatedVisibleOps = []
+        lastVisibleOpsScrollPosition = nil
+        lastVisibleOpsPeriod = nil
+        clearChartDataCache()
+        clearXAxisCache()
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Forced recalculation of visible operations after programmatic scroll position change")
+    }
+
+    /// Clear X-axis cache to force regeneration
+    private func clearXAxisCache() {
+        lastXAxisValues = []
+        lastXAxisScrollPosition = nil
+        lastXAxisPeriod = nil
+    }
+
+    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
         guard let latestDate = operations.map(\.date).max() else {
             return
         }
@@ -710,7 +731,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return
         }
         let boundedPosition = enforceScrollBoundaries(latestDate, from: operations)
-        await updateScrollPosition(to: boundedPosition)
+        updateScrollPosition(to: boundedPosition)
     }
 
 
@@ -943,7 +964,91 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastXAxisValues = xAxisValues
         lastXAxisScrollPosition = scrollPosition
         lastXAxisPeriod = period
+
         return xAxisValues
+    }
+
+    /// Calculates the proper scroll position for chart initialization or segment changes
+    /// This ensures the scroll position aligns with the computed X-axis values
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
+        let allDates = operations.map(\.date)
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
+            return Date()
+        }
+
+        let domainLength = visibleDomainLength(for: period)
+
+        if showingLatest {
+            // For showing latest entries, start from the end and work backwards
+            // Calculate what the leftmost position should be to show recent data properly aligned
+            let targetEndDate = overallMaxDate
+            let targetStartDate = targetEndDate.addingTimeInterval(-domainLength * 0.75) // Show recent 75% of the domain
+
+            // Generate X-axis values for this range to find proper alignment
+            let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
+            let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
+
+            //Find the right most date and subract the period visisble length
+            let rightMostDate = xAxisValues.max()
+            let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
+            if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
+                return rightMostDateMinusPeriod
+            }
+            // Fallback to calculated position
+            return max(overallMinDate, targetStartDate)
+        } else {
+            // For other cases, use the beginning of data
+            return overallMinDate
+        }
+    }
+
+    /// Generates X-axis values for alignment calculation (internal helper)
+    private func generateXAxisValuesForAlignment(for period: TimePeriod, from operations: [BathScaleWeightSummary], centerPosition: Date) -> [Date] {
+        let allDates = operations.map(\.date)
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
+
+        let domainLength = visibleDomainLength(for: period)
+        let buffer = domainLength * 2
+        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2 - buffer))
+        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let entryCount = operations.count
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+
+        switch period {
+        case .week:
+            return generateVisibleWeeklyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .month:
+            return generateVisibleMonthlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .year:
+            return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .total:
+            return generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
+        }
+    }
+
+    /// Finds the optimal leftmost date from X-axis values
+    private func findOptimalLeftmostDate(from xAxisValues: [Date], targetStart: Date, domainLength: TimeInterval) -> Date? {
+        let targetEnd = targetStart.addingTimeInterval(domainLength)
+
+        // Find X-axis values that would be visible in our target range
+        let visibleXAxisValues = xAxisValues.filter { date in
+            date >= targetStart && date <= targetEnd
+        }
+
+        // If we have visible X-axis values, use the first one as our leftmost position
+        // This ensures the scroll position aligns with an actual X-axis tick
+        if let firstVisibleXAxis = visibleXAxisValues.first {
+            return firstVisibleXAxis
+        }
+
+        // If no X-axis values are in the target range, find the closest one before the target start
+        let beforeTarget = xAxisValues.filter { $0 <= targetStart }
+        if let closestBefore = beforeTarget.max() {
+            return closestBefore
+        }
+
+        // Fallback to the first available X-axis value
+        return xAxisValues.first
     }
 
     private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
