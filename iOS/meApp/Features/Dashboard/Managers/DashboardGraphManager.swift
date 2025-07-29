@@ -1401,10 +1401,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return average
     }
 
-    func handleScrollStart() {
-        guard !state.isScrolling else { return }
-        state.isScrolling = true
-    }
 
     func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
         state.scrollEndTimer?.invalidate()
