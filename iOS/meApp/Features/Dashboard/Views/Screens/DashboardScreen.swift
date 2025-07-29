@@ -4,6 +4,13 @@
 //
 //  Created by Lakshmi Priya on 30/06/25.
 //
+//  Wiggle Animation Implementation:
+//  - Metric grid uses app icon-style wiggle (0.135s/0.125s duration, 0.04 radians)
+//  - Goal card uses medium-speed wiggle (0.18s duration, 0.045 radians)
+//  - Streak grid uses medium-speed wiggle with alternating timing (0.18s/0.16s duration, 0.045 radians)
+//  - Widget wiggle uses alternating timing (0.35s/0.33s duration, 0.045 radians)
+//  - This provides a balanced wiggle that's faster than widgets but gentler than app icons
+//
 
 import SwiftUI
 
@@ -109,6 +116,9 @@ struct DashboardScreen: View {
         let isSelected = store.state.ui.selectedMetricLabel == item.label
         let verticalPadding = store.state.metrics.dashboardType == .dashboard12 ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
         
+        // Calculate row index for alternating wiggle timing (matching movingGridsLearning exactly)
+        let rowIndex = index / store.metricGridColumns.count
+        
         let card = MetricCardView(
             value: store.formattedMetricValue(for: (item.preLabel, item.value)),
             label: item.label,
@@ -142,7 +152,13 @@ struct DashboardScreen: View {
                     }
                 },
                 isBeingDragged: store.state.ui.draggingMetric?.id == item.id,
-                isDropTarget: store.state.ui.dropHoverId == item.label
+                isDropTarget: store.state.ui.dropHoverId == item.label,
+                rowIndex: rowIndex // Pass row index for alternating wiggle timing
+            )
+            // Apply row-based wiggle animation with app icon parameters (matching movingGridsLearning exactly)
+            .wiggling(
+                store.state.ui.isEditMode && !isRemoved && store.state.ui.draggingMetric?.id != item.id,
+                rowIndex: rowIndex
             )
             .draggableReorder(
                 item: item,
@@ -161,68 +177,7 @@ struct DashboardScreen: View {
             }
     }
 
-    // MARK: - Streak and Loss Grid
-    private func streakAndLossGrid() -> some View {
-        LazyVGrid(columns: store.streakColumns, spacing: 16) {
-            ForEach(store.streakItemsToShow) { item in
-                streakCardView(for: item)
-            }
-        }
-        .id("\(store.state.ui.gridLayoutId)-\(store.currentUnitText)") // Force refresh when unit changes
-        .padding(.bottom, .spacingSM)
-        .padding(.top, (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : .spacingSM)
-        .padding(.horizontal, .spacingSM)
-        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-    }
 
-    // MARK: - Streak Card View Helper
-    private func streakCardView(for item: MetricItem) -> some View {
-        let index = store.streakItemsToShow.firstIndex(of: item) ?? 0
-        let isRemoved = store.isStreakRemovedInReorderedArray(at: index)
-
-        let card = StreakCardView(
-            value: item.value,
-            label: item.label,
-            icon: item.icon,
-            isEditMode: store.state.ui.isEditMode,
-            isRemoved: isRemoved,
-            isDropTarget: store.state.ui.dropHoverId == item.label,
-            onToggleRemoval: {
-                if let idx = store.streakItemsToShow.firstIndex(of: item) {
-                    store.toggleStreakRemovalInReorderedArray(at: idx)
-                }
-            },
-            onDrop: { _, _ in true },
-            onDropTargetChanged: { isTargeted in
-                store.updateDropTarget(isTargeted ? item.label : nil)
-            }
-        )
-
-        return card
-            .editModeOverlay(
-                isEditMode: store.state.ui.isEditMode,
-                isRemoved: isRemoved,
-                onToggleRemoval: {
-                    if let idx = store.streakItemsToShow.firstIndex(of: item) {
-                        store.toggleStreakRemovalInReorderedArray(at: idx)
-                    }
-                },
-                isBeingDragged: store.state.ui.draggingStreak?.id == item.id,
-                isDropTarget: store.state.ui.dropHoverId == item.label
-            )
-            .draggableReorder(
-                item: item,
-                draggingItem: store.draggingStreakBinding,
-                items: store.streakItemsBinding,
-                isDraggable: store.state.ui.isEditMode && !isRemoved,
-                onDropTargetChanged: { isTargeted in
-                    store.updateDropTarget(isTargeted ? item.label : nil)
-                },
-                onDragEnd: {
-                    store.handleStreakDragEnd()
-                }
-            )
-    }
 
     // MARK: - Goal Progress Section
     private func goalCardSection() -> some View {
@@ -245,14 +200,100 @@ struct DashboardScreen: View {
             isWeightlessMode: store.isWeightlessModeEnabled
         )
         .id(store.currentUnitText) // Force refresh when unit changes
+        .mediumWiggling(
+            store.state.ui.isEditMode && !store.state.ui.isGoalCardRemoved,
+            rowIndex: 0 // Goal card is always in the first row
+        )
         .editModeOverlay(
             isEditMode: store.state.ui.isEditMode,
             isRemoved: store.state.ui.isGoalCardRemoved,
-            onToggleRemoval: { store.toggleGoalCardRemoval() },
-            isBeingDragged: false,
-            isDropTarget: false
+            onToggleRemoval: {
+                store.toggleGoalCardRemoval()
+            },
+            isBeingDragged: false, // Goal card doesn't support drag
+            isDropTarget: false,
+            rowIndex: 0,
+            disableWiggle: true // Disable internal wiggle to use custom widget wiggle
         )
         .padding(.horizontal, .spacingSM)
+        .padding(.top, .spacingSM)
+    }
+
+    // MARK: - Streak and Loss Grid
+    private func streakAndLossGrid() -> some View {
+        LazyVGrid(columns: store.streakColumns, spacing: 16) {
+            ForEach(store.streakItemsToShow) { item in
+                streakCardView(for: item)
+            }
+        }
+        .id("\(store.state.ui.gridLayoutId)-\(store.currentUnitText)") // Force refresh when unit changes
+        .padding(.bottom, .spacingSM)
+        .padding(.top, (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : .spacingSM)
+        .padding(.horizontal, .spacingSM)
+        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+    }
+
+    // MARK: - Streak Card View Helper
+    private func streakCardView(for item: MetricItem) -> some View {
+        let index = store.streakItemsToShow.firstIndex(of: item) ?? 0
+        let isRemoved = store.isStreakRemovedInReorderedArray(at: index)
+        let isSelected = store.state.ui.selectedMetricLabel == item.label
+        
+        // Calculate row index for alternating wiggle timing (matching movingGridsLearning exactly)
+        let rowIndex = index / store.streakColumns.count
+        
+        let card = StreakCardView(
+            value: store.formattedMetricValue(for: (item.preLabel, item.value)),
+            label: item.label,
+            icon: item.icon,
+            isEditMode: store.state.ui.isEditMode,
+            isRemoved: isRemoved,
+            isDropTarget: store.state.ui.dropHoverId == item.label,
+            onToggleRemoval: {
+                if let idx = store.streakItemsToShow.firstIndex(of: item) {
+                    store.toggleStreakRemovalInReorderedArray(at: idx)
+                }
+            },           
+            onDrop: { _, _ in true },
+            onDropTargetChanged: { isTargeted in
+                store.updateDropTarget(isTargeted ? item.label : nil)
+            }
+        )
+        
+        return card
+            .editModeOverlay(
+                isEditMode: store.state.ui.isEditMode,
+                isRemoved: isRemoved,
+                onToggleRemoval: {
+                    if let idx = store.streakItemsToShow.firstIndex(of: item) {
+                        store.toggleStreakRemovalInReorderedArray(at: idx)
+                    }
+                },
+                isBeingDragged: store.state.ui.draggingStreak?.id == item.id,
+                isDropTarget: store.state.ui.dropHoverId == item.label,
+                rowIndex: rowIndex, // Pass row index for alternating wiggle timing
+                disableWiggle: true // Disable internal wiggle to use custom widget wiggle
+            )
+            // Apply medium-speed wiggle animation (faster than widget, gentler than app icon)
+            .mediumWiggling(
+                store.state.ui.isEditMode && !isRemoved && store.state.ui.draggingStreak?.id != item.id,
+                rowIndex: rowIndex
+            )
+            .draggableReorder(
+                item: item,
+                draggingItem: store.draggingStreakBinding,
+                items: store.streakItemsBinding,
+                isDraggable: store.state.ui.isEditMode && !isRemoved,
+                onDropTargetChanged: { isTargeted in
+                    store.updateDropTarget(isTargeted ? item.label : nil)
+                },
+                onDragEnd: {
+                    store.handleStreakDragEnd()
+                }
+            )
+            .longPressGesture(isEditMode: store.state.ui.isEditMode) {
+                store.handleMetricLongPress(for: item.label, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
+            }
     }
 
     // MARK: - Action Buttons

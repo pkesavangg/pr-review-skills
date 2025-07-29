@@ -19,6 +19,8 @@ class DashboardStore: ObservableObject {
     // MARK: - Centralized State
     @Published var state: DashboardState = DashboardState()
 
+
+
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var hasInitializedChart = false
@@ -88,6 +90,8 @@ class DashboardStore: ObservableObject {
                 self?.state.data = dataState
             }
             .store(in: &cancellables)
+        
+
     }
 
     private func setupSubscriptions() {
@@ -1234,6 +1238,8 @@ class DashboardStore: ObservableObject {
         }
     }
 
+
+
     // MARK: - Lifecycle Methods
 
     /// Perform actions when dashboard appears
@@ -1243,6 +1249,7 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
+
         // Ensure chart shows the latest entries by default
         Task {
             await graphManager.ensureLatestEntriesVisible(from: continuousOperations)

@@ -10,14 +10,23 @@ import SwiftUI
 // MARK: - Animation Constants
 
 private struct WiggleAnimationConstants {
-    /// Wiggle animation duration for even rows (perfect middle ground)
-    static let wiggleDurationEven: Double = 0.095
+    /// Wiggle animation duration for even rows (app icons - matching movingGridsLearning exactly)
+    static let wiggleDurationEven: Double = 0.135
     
-    /// Wiggle animation duration for odd rows (perfect middle ground)
-    static let wiggleDurationOdd: Double = 0.085
+    /// Wiggle animation duration for odd rows (app icons - matching movingGridsLearning exactly)
+    static let wiggleDurationOdd: Double = 0.125
     
-    /// Wiggle rotation angle in degrees (perfect middle ground)
-    static let wiggleRotationAngle: Double = 3.7 // Perfect balance between 3.0 and 4.2
+    /// Wiggle rotation angle in radians (app icons - matching movingGridsLearning exactly)
+    static let wiggleRotationAngle: Double = 0.04 // Radians, not degrees
+    
+    /// Widget wiggle animation duration for even rows (more gentle - matching iOS home screen exactly)
+    static let widgetWiggleDurationEven: Double = 0.35
+    
+    /// Widget wiggle animation duration for odd rows (more gentle - matching iOS home screen exactly)
+    static let widgetWiggleDurationOdd: Double = 0.33
+    
+    /// Widget wiggle rotation angle (more subtle - matching iOS home screen exactly)
+    static let widgetWiggleRotationAngle: Double = 0.045 // Radians, not degrees
 }
 
 struct WiggleModifier: ViewModifier {
@@ -44,7 +53,7 @@ struct WiggleModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .rotationEffect(.degrees(currentRotation))
+            .rotationEffect(.radians(currentRotation))
             .onAppear {
                 if shouldWiggle {
                     startWiggleAnimation()
@@ -63,7 +72,7 @@ struct WiggleModifier: ViewModifier {
     }
 
     private func startWiggleAnimation() {
-        // Calculate duration based on row index for alternating timing
+        // Calculate duration based on row index for alternating timing (matching movingGridsLearning exactly)
         let finalEvenRowDuration = evenRowDuration ?? WiggleAnimationConstants.wiggleDurationEven
         let finalOddRowDuration = oddRowDuration ?? WiggleAnimationConstants.wiggleDurationOdd
         let animationDuration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
@@ -93,15 +102,16 @@ struct WiggleModifier: ViewModifier {
 
 extension UIView {
     /// Starts the iOS home screen-style wiggle animation using CAKeyframeAnimation
+    /// Matches the movingGridsLearning implementation exactly
     func startWiggle() {
         let animation = createWiggleAnimation(
             duration: WiggleAnimationConstants.wiggleDurationEven,
-            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle * .pi / 180 // Convert to radians
+            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle // Already in radians
         )
         layer.add(animation, forKey: "wiggle")
     }
     
-    /// Starts wiggle animation with alternating durations based on row index
+    /// Starts wiggle animation with alternating durations based on row index (app icons)
     /// - Parameter rowIndex: The row index to determine animation timing
     func startWiggleWithRowIndex(_ rowIndex: Int) {
         let duration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
@@ -110,7 +120,21 @@ extension UIView {
         
         let animation = createWiggleAnimation(
             duration: duration,
-            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle * .pi / 180 // Convert to radians
+            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle // Already in radians
+        )
+        layer.add(animation, forKey: "wiggle")
+    }
+    
+    /// Starts widget wiggle animation with alternating durations based on row index (widgets)
+    /// - Parameter rowIndex: The row index to determine animation timing
+    func startWidgetWiggleWithRowIndex(_ rowIndex: Int) {
+        let duration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
+            ? WiggleAnimationConstants.widgetWiggleDurationEven 
+            : WiggleAnimationConstants.widgetWiggleDurationOdd
+        
+        let animation = createWiggleAnimation(
+            duration: duration,
+            rotationAngle: WiggleAnimationConstants.widgetWiggleRotationAngle // Already in radians
         )
         layer.add(animation, forKey: "wiggle")
     }
@@ -120,7 +144,7 @@ extension UIView {
         layer.removeAnimation(forKey: "wiggle")
     }
     
-    /// Creates a wiggle animation with specified parameters (optimized for tight spacing)
+    /// Creates a wiggle animation with specified parameters (matching movingGridsLearning exactly)
     /// - Parameters:
     ///   - duration: Animation duration
     ///   - rotationAngle: Rotation angle in radians
@@ -128,31 +152,15 @@ extension UIView {
     private func createWiggleAnimation(duration: Double, rotationAngle: Double) -> CAKeyframeAnimation {
         let transformAnim = CAKeyframeAnimation(keyPath: "transform")
         
+        // Use the exact same values as movingGridsLearning for consistency
         transformAnim.values = [
             NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle, 0.0, 0.0, 1.0)),
             NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle, 0.0, 0.0, 1.0))
         ]
         
-        // Use more pronounced keyframes for better visibility in tight spacing
-//        transformAnim.values = [
-//            NSValue(caTransform3D: CATransform3DMakeRotation(0, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle * 0.8, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(0, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle * 0.8, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle, 0.0, 0.0, 1.0)),
-//            NSValue(caTransform3D: CATransform3DMakeRotation(0, 0.0, 0.0, 1.0))
-//        ]
-//        
-//        // Use more detailed keyTimes for smoother animation
-//        transformAnim.keyTimes = [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0]
-        
-        transformAnim.autoreverses = false // We handle the full cycle manually
+        transformAnim.autoreverses = true
         transformAnim.duration = duration
         transformAnim.repeatCount = Float.infinity
-        
-        // Use easeInEaseOut timing function for smooth but pronounced animation
-        transformAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         
         return transformAnim
     }
