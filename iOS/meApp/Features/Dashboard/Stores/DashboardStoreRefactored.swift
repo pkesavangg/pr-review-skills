@@ -276,9 +276,6 @@ class DashboardStore: ObservableObject {
     }
 
     var weightLabel: String {
-        guard !visibleOperations.isEmpty else {
-            return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
-        }
 
         // If a point is selected, show its date
         if let selectedPoint = state.graph.selectedPoint {
@@ -294,12 +291,18 @@ class DashboardStore: ObservableObject {
             }
         }
 
-        // Otherwise show the period range for visible data
-        let opsToUse = visibleOperations
-        guard let minDate = opsToUse.map(\.date).min(),
-              let maxDate = opsToUse.map(\.date).max() else {
+        if state.graph.selectedPeriod == .total {
+            let minDate = continuousOperations.min(by: { $0.date < $1.date })?.date
+            let maxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
+            if let minDate = minDate, let maxDate = maxDate {
+                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
+            }
             return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
         }
+
+        let lastScrollPosition = graphManager.state.xScrollPosition
+        let minDate = lastScrollPosition
+        let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: state.graph.selectedPeriod))
 
         return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
     }
@@ -437,19 +440,19 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Dashboard Type Management
-    
+
     /// Forces the dashboard type to be 12 metrics (3 columns) by updating the account settings
     private func forceUpdateDashboardTypeTo12() async {
         do {
             logger.log(level: .info, tag: "DashboardStore", message: "Forcing dashboard type to 12 metrics")
-            
+
             // Update the account settings to use 12 metrics
             _ = try await accountService.updateDashboardType(type: .dashboard12)
-            
+
             // Update the local state
             state.metrics.dashboardType = .dashboard12
             metricsManager.updateDashboardType(.dashboard12)
-            
+
             logger.log(level: .info, tag: "DashboardStore", message: "Successfully updated dashboard type to 12 metrics")
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to update dashboard type to 12 metrics: \(error)")
@@ -460,7 +463,7 @@ class DashboardStore: ObservableObject {
     func switchTo12MetricsDashboard() {
         Task {
             await forceUpdateDashboardTypeTo12()
-            
+
             // Force UI update
             await MainActor.run {
                 self.objectWillChange.send()
@@ -477,12 +480,12 @@ class DashboardStore: ObservableObject {
             logger.log(level: .info, tag: "DashboardStore", message: "No dashboard type found in account, defaulting to 4 metrics")
             return .dashboard4
         }
-        
+
         // Convert string to DashboardType enum
         guard let dashboardType = DashboardType(rawValue: dashboardTypeString) else {
             return .dashboard4
         }
-        
+
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to \(dashboardType.rawValue) (from account dashboardType)")
         return dashboardType
     }
@@ -664,10 +667,10 @@ class DashboardStore: ObservableObject {
         let newDashboardType = determineDashboardTypeFromAccount()
         state.metrics.dashboardType = newDashboardType
         metricsManager.updateDashboardType(newDashboardType)
-        
+
         // Force UI update to reflect the new metric type
         objectWillChange.send()
-        
+
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
     }
 
@@ -796,6 +799,9 @@ class DashboardStore: ObservableObject {
         // Reset chart initialization for new period
         hasInitializedChart = false
 
+        // Store the previous period to detect TOTAL → other transition
+        let previousPeriod = state.graph.selectedPeriod
+
         // Explicitly set scroll position to latest entry date for segment change
         if let latestEntryDate = continuousOperations.map(\.date).max() {
             state.graph.xScrollPosition = latestEntryDate
@@ -808,8 +814,16 @@ class DashboardStore: ObservableObject {
             // Clear all selection states
             clearSelection()
 
-            // Always ensure chart shows the latest entries when switching periods (not previous position)
-            ensureLatestEntriesVisible()
+            // If switching from TOTAL to other periods, ensure latest entries are visible
+            if previousPeriod == .total && period != .total {
+                // Force scroll position to latest entry
+                if let latestEntryDate = continuousOperations.map(\.date).max() {
+                    state.graph.xScrollPosition = latestEntryDate
+                }
+            } else {
+                // For other transitions, use normal logic
+                ensureLatestEntriesVisible()
+            }
 
             // Update weight display for new period
             updateWeightDisplayForCurrentView()
@@ -838,7 +852,7 @@ class DashboardStore: ObservableObject {
                 self.resetMetricsToLatestEntry()
             }
         )
-        
+
         // Force UI update
         await MainActor.run {
             self.objectWillChange.send()
@@ -851,8 +865,11 @@ class DashboardStore: ObservableObject {
 
     // Delegate Y-axis calculations to GraphManager
     func getYAxisScale() -> YAxisScale {
+        // For TOTAL period, use all data to ensure Y-axis reflects complete range
+        let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
+
         return graphManager.getYAxisScale(
-            from: visibleOperations,
+            from: operationsForYAxis,
             goalWeight: goalWeightForDisplay,
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
@@ -886,8 +903,11 @@ class DashboardStore: ObservableObject {
     // Method to update Y-axis cache (called after domain recalculation)
     @MainActor
     func updateYAxisCache() {
+        // For TOTAL period, use all data to ensure Y-axis reflects complete range
+        let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
+
         graphManager.calculateAndCacheYAxisDomain(
-            from: visibleOperations,
+            from: operationsForYAxis,
             goalWeight: goalWeightForDisplay,
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
@@ -1077,7 +1097,7 @@ class DashboardStore: ObservableObject {
         }
     }
 
-            // Delegate chart initialization to GraphManager
+    // Delegate chart initialization to GraphManager
     @MainActor
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
@@ -1085,8 +1105,6 @@ class DashboardStore: ObservableObject {
             updateWeightDisplayForCurrentView()
             return
         }
-
-        hasInitializedChart = true
 
         // Explicitly set scroll position to latest entry date for initial load
         if let latestEntryDate = continuousOperations.map(\.date).max() {
@@ -1104,6 +1122,7 @@ class DashboardStore: ObservableObject {
             objectWillChange.send()
         }
         updateWeightDisplayForCurrentView()
+        hasInitializedChart = true
     }
 
     /// Handle scroll position changes - delegate to graph manager

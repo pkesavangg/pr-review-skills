@@ -9,7 +9,9 @@ import com.greatergoods.meapp.features.ScaleSetup.reducer.WifiScaleSetupState
 import com.greatergoods.meapp.features.ScaleSetup.strings.ScaleSetupStrings
 import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
+import com.greatergoods.meapp.features.scaleDetails.strings.WifiMacAddressStrings
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -50,7 +52,7 @@ class WifiScaleSetupViewModel
             intent.isSetupFinished,
             intent.isConnected,
           )
-
+        is WifiScaleSetupIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
         WifiScaleSetupIntent.OpenHelp -> openHelpModal()
         else -> {}
       }
@@ -128,6 +130,22 @@ class WifiScaleSetupViewModel
       }
     }
 
+    private fun onCopyMacAddress(isCopied: Boolean) {
+      showToast(
+        message = if (isCopied) WifiMacAddressStrings.Toast.Success
+        else WifiMacAddressStrings.Toast.Error,
+      )
+    }
+    private fun showToast(message: String) {
+      dialogQueueService.showToast(
+        Toast(
+          title = null,
+          message = message,
+          action = null,
+        ),
+      )
+    }
+
     /**
      * Opens the Help modal.
      */
@@ -158,4 +176,4 @@ class WifiScaleSetupViewModel
         }
       }
     }
-  } 
+  }

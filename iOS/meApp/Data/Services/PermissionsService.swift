@@ -85,6 +85,12 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         return permissions?[type]
     }
+    
+    func navigateToWifiSettings() {
+        Task {
+            await GGBluetoothSwiftPackage.shared.navigateToSettings(permissionType: .WIFI_SWITCH)
+        }
+    }
 
     // MARK: - Required Permission Helpers
     /// Updates `requiredCategories` based on the provided devices.

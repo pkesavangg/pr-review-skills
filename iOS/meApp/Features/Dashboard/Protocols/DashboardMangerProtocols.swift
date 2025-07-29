@@ -11,7 +11,6 @@ import SwiftUI
 /// Protocol defining data management operations
 protocol DashboardDataManaging {
     func loadInitialData() async throws
-    func refreshData() async throws
     func handleEntryAdded(_ entry: Entry) async throws
     func handleEntryUpdated(_ entry: Entry) async throws
     func handleEntryDeleted(_ entry: Entry) async throws

@@ -1,5 +1,5 @@
 //
-//  BtSetupStepOnView.swift
+//  ScaleSetupStepOnView.swift
 //  meApp
 //
 //  Created by Kesavan Panchabakesan on 19/07/25.
@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-struct BtSetupStepOnView: View {
+struct ScaleSetupStepOnView: View {
     @Environment(\.appTheme) private var theme
-    var isEntrySynced: Bool = false
+    var isEntrySynced: Bool?
     private let lang = BluetoothSetupViewStrings.StepOnViewStrings.self
     private let appAssets = AppAssets.self
     
@@ -28,13 +28,17 @@ struct BtSetupStepOnView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                GifView(gifName: appAssets.btStepOnGif)
-                    .frame(height: 260)
-                    .frame(maxWidth: .infinity)
-                
-                Text(lang.syncingInfo(isEntrySynced))
-                    .fontOpenSans(.body1)
-                    .foregroundColor(theme.textBody)
+ 
+                VStack(alignment: .center) {
+                    GifView(gifName: appAssets.btStepOnGif)
+                        .frame(width: 370, height: 211)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                if let isEntrySynced = isEntrySynced {
+                    Text(lang.syncingInfo(isEntrySynced))
+                        .fontOpenSans(.body1)
+                        .foregroundColor(theme.textBody)
+                }
             }
             .padding(.top, .spacingLG)
         }
@@ -42,5 +46,5 @@ struct BtSetupStepOnView: View {
 }
 
 #Preview {
-    BtSetupStepOnView()
+    ScaleSetupStepOnView()
 }

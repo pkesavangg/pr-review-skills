@@ -11,15 +11,20 @@ import Charts
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    
+
     // Local state variables for chart selection (like WeightGraph)
     @State private var selectedXValue: Date?
-    
+
     // Animation trigger for smooth transitions
     @State private var animationTrigger = UUID()
-    
+
     // Scroll detection state
     @State private var hasDetectedScrollInCurrentGesture = false
+
+    // Decision window state
+    @State private var touchInteractionMode: TouchInteractionMode = .none
+    @State private var initialTouchPoint: CGPoint = .zero
+    @State private var decisionTimer: Timer?
 
     // Check if there are any entries to display
     private var hasEntries: Bool {
@@ -47,15 +52,12 @@ struct GraphView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
-            // Trigger animation for period change
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animationTrigger = UUID()
-            }
+
         }
-        .onChange(of: dashboardStore.state.graph.dataChangeTrigger) { _, _ in
-            // Trigger animation for data changes
-            withAnimation(.easeInOut(duration: 0.4)) {
-                animationTrigger = UUID()
+
+        .onChange(of: dashboardStore.chartSeriesData) { _, _ in
+            // Ensure chart data changes are animated smoothly
+            withAnimation(.easeOut(duration: 0.6)) {
             }
         }
     }
@@ -68,8 +70,8 @@ struct GraphView: View {
                 chartSeries
                 crosshairContent
             }
-            .chartXVisibleDomain(length: dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod))
-            .chartScrollableAxes(.horizontal)
+            .chartXVisibleDomain(length: getVisibleDomainLength() ?? 0)
+            .chartScrollableAxes(getScrollableAxes())
             .chartYScale(domain: dashboardStore.yAxisDomain)
             .chartScrollPosition(x: Binding(
                 get: { dashboardStore.state.graph.xScrollPosition },
@@ -94,15 +96,30 @@ struct GraphView: View {
             ])
             .chartYAxis { yAxisMarks }
             .chartLegend(.hidden)
-            .chartXAxis { xAxisMarks }
+            .chartXAxis {
+                if dashboardStore.state.graph.selectedPeriod != .total {
+                    AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel {
+                            if let date = value.as(Date.self),
+                               let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
+                                Text(labelString)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                }
+            }
             .chartXSelection(value: Binding(
                 get: {
                     // Use local state for selection (like WeightGraph)
                     selectedXValue
                 },
                 set: { newValue in
-                    // Only handle selection if not scrolling
-                    if !dashboardStore.state.graph.isScrolling {
+                    // Only handle selection if not in scroll mode and not actively scrolling
+                    if touchInteractionMode != .scrolling && !dashboardStore.state.graph.isScrolling {
                         selectedXValue = newValue
                         if let selectedDate = newValue {
                             // Update the global store for metrics
@@ -131,15 +148,20 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
-            // Add animation modifier for smooth chart transitions
-            .animation(.easeInOut(duration: 0.5), value: dashboardStore.yAxisDomain)
-            .animation(.easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
-            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: animationTrigger)
-            // Use iOS 18+ scroll phase change when available, fallback to drag gesture for older iOS
+            // Restore animations for data changes and scrolling, but keep period switching instant
+            .animation(.easeOut(duration: 0.6), value: dashboardStore.yAxisTicks)
+            // Apply decision window modifier first, then scroll detection
+            .modifier(DecisionWindowModifier(
+                touchInteractionMode: $touchInteractionMode,
+                initialTouchPoint: $initialTouchPoint,
+                decisionTimer: $decisionTimer,
+                selectedXValue: $selectedXValue,
+                dashboardStore: dashboardStore
+            ))
+            // Keep existing scroll detection modifier
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
-        // Single chart refresh trigger for better performance
-        .id("\(dashboardStore.state.graph.selectedPeriod.rawValue)-\(dashboardStore.currentUnit.rawValue)-\(dashboardStore.state.graph.dataChangeTrigger)")
+
     }
 
     // MARK: - Empty State View
@@ -197,14 +219,14 @@ struct GraphView: View {
                 x: .value("Date", series.date),
                 y: .value(series.series, series.value)
             )
-            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : 64)
+            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
             .foregroundStyle(by: .value("Series", series.series))
         }
     }
 
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = dashboardStore.state.graph.selectedPoint, 
+        if let selectedPoint = dashboardStore.state.graph.selectedPoint,
            dashboardStore.state.graph.showCrosshair {
             // Dotted vertical line
             RuleMark(
@@ -239,20 +261,41 @@ struct GraphView: View {
         }
     }
 
-    private var xAxisMarks: some AxisContent {
-        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
-            AxisGridLine()
-            AxisTick()
-            AxisValueLabel {
-                if let date = value.as(Date.self),
-                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
-                    Text(labelString)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-            }
+
+
+        // MARK: - Helper Functions
+
+    /// Returns appropriate point size based on the selected period
+    private func getPointSizeForPeriod() -> CGFloat {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return 64  // Larger points for week view (fewer data points)
+        case .total:
+            return 16  // Very small points for total view (many data points)
         }
     }
+
+    /// Returns visible domain length - for TOTAL, show all data without domain restriction
+    private func getVisibleDomainLength() -> TimeInterval? {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
+        case .total:
+            return nil // Show all data points without domain restriction
+        }
+    }
+
+    /// Returns scrollable axes - disable scrolling for TOTAL
+    private func getScrollableAxes() -> Axis.Set {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week, .month, .year:
+            return .horizontal
+        case .total:
+            return [] // No scrolling for total view
+        }
+    }
+
+
 
     // MARK: - Axis Label Helpers
     @ViewBuilder
@@ -274,6 +317,133 @@ struct GraphView: View {
     }
 }
 
+// MARK: - Touch Interaction Mode
+
+/// Enum to track the current touch interaction mode
+enum TouchInteractionMode {
+    case none
+    case deciding
+    case scrubbing
+    case scrolling
+}
+
+// MARK: - Decision Window Modifier
+
+/// ViewModifier that implements a decision window to determine touch interaction mode
+struct DecisionWindowModifier: ViewModifier {
+    @Binding var touchInteractionMode: TouchInteractionMode
+    @Binding var initialTouchPoint: CGPoint
+    @Binding var decisionTimer: Timer?
+    @Binding var selectedXValue: Date?
+    let dashboardStore: DashboardStore
+
+    // Constants for decision logic
+    private let decisionWindowDuration: TimeInterval = 0.15 // 150ms
+    private let movementThreshold: CGFloat = 12 // 10-12 points
+    private let scrollThreshold: CGFloat = 10 // 8-10 points
+    private let horizontalScrollRatio: CGFloat = 1.5 // abs(dx) > 1.5 * abs(dy)
+
+    func body(content: Content) -> some View {
+        content
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        handleTouchChange(value)
+                    }
+                    .onEnded { value in
+                        handleTouchEnd(value)
+                    }
+            )
+    }
+
+    private func handleTouchChange(_ value: DragGesture.Value) {
+        let translation = value.translation
+
+        switch touchInteractionMode {
+        case .none:
+            // Start decision window
+            touchInteractionMode = .deciding
+            initialTouchPoint = value.location
+            startDecisionTimer()
+
+        case .deciding:
+            // Check if we should enter scroll mode early
+            let dx = abs(translation.width)
+            let dy = abs(translation.height)
+            let isHorizontalMovement = dx > horizontalScrollRatio * dy && dx > scrollThreshold
+
+            if isHorizontalMovement {
+                enterScrollMode()
+            }
+            // If not horizontal scrolling, let timer decide
+
+        case .scrubbing:
+            // Continue scrubbing - chartXSelection will handle this
+            break
+
+        case .scrolling:
+            // Let existing scroll detection handle it
+            break
+        }
+    }
+
+    private func handleTouchEnd(_ value: DragGesture.Value) {
+        cancelDecisionTimer()
+
+        switch touchInteractionMode {
+        case .scrubbing:
+            // Clear selection when user lifts finger
+            selectedXValue = nil
+
+        case .scrolling:
+            // Let existing scroll detection handle scroll end
+            break
+
+        case .deciding, .none:
+            // For quick taps, let the chart's natural selection work
+            break
+        }
+
+        // Reset interaction mode
+        touchInteractionMode = .none
+    }
+
+    private func startDecisionTimer() {
+        cancelDecisionTimer()
+
+        decisionTimer = Timer.scheduledTimer(withTimeInterval: decisionWindowDuration, repeats: false) { _ in
+            Task { @MainActor in
+                // Timer fired - if still in deciding mode, enter scrub mode
+                if touchInteractionMode == .deciding {
+                    enterScrubMode()
+                }
+            }
+        }
+    }
+
+    private func cancelDecisionTimer() {
+        decisionTimer?.invalidate()
+        decisionTimer = nil
+    }
+
+    private func enterScrubMode() {
+        guard touchInteractionMode == .deciding else { return }
+
+        touchInteractionMode = .scrubbing
+        cancelDecisionTimer()
+    }
+
+        private func enterScrollMode() {
+        guard touchInteractionMode == .deciding else { return }
+
+        touchInteractionMode = .scrolling
+        cancelDecisionTimer()
+
+        // Clear active selection so crosshair disappears
+        selectedXValue = nil
+    }
+}
+
 // MARK: - Scroll Detection Modifier
 
 /// ViewModifier that handles scroll detection using iOS 18+ onScrollPhaseChange when available,
@@ -289,7 +459,7 @@ struct ScrollDetectionModifier: ViewModifier {
                 .onScrollPhaseChange { oldPhase, newPhase in
                     Task { @MainActor in
                         await dashboardStore.handleScrollPhaseChange(to: newPhase)
-                        
+
                         // Clear local selection state when scrolling starts
                         if newPhase == .interacting {
                             selectedXValue = nil
@@ -307,7 +477,7 @@ struct ScrollDetectionModifier: ViewModifier {
                             if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
                                 hasDetectedScrollInCurrentGesture = true
                                 dashboardStore.handleScrollStart()
-                                
+
                                 // Clear local selection state when scrolling starts
                                 selectedXValue = nil
                             }
@@ -320,6 +490,9 @@ struct ScrollDetectionModifier: ViewModifier {
         }
     }
 }
+
+
+
 
 #Preview {
     GraphView(dashboardStore: DashboardStore())

@@ -26,7 +26,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
     private var lastYAxisScale: YAxisScale?
-    private var lastXAxisValues: [Date] = []
+    public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
 
@@ -262,15 +262,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return series
     }
 
-    // MARK: - Backward Compatibility
-    /// This method is kept for any external calls but logs a warning
-    /// The main chart generation should use generateChartDataWithYAxisDomain for consistency
-    func generateChartDataLegacy(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries] {
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Using legacy chart data generation - may cause metric line visibility issues during scroll")
-
-        // Call the original implementation (now moved above)
-        return generateChartData(from: operations, selectedMetric: selectedMetric, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertWeight: convertWeight)
-    }
 
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
 
@@ -721,11 +712,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         await updateScrollPosition(to: boundedPosition)
     }
 
-    func generateXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> [Date] {
-        let entryCount = operations.count
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
-        return DateTimeTools.generateXAxisValues(for: period, from: operations, shouldRepeat: shouldRepeat, entryCount: entryCount)
-    }
+
 
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
@@ -959,15 +946,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
+        // Handle very small date ranges (less than 2 days) with special logic
+        let daysDifference = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 0
+        if daysDifference < DashboardConstants.Thresholds.weekRepeatThreshold {
+            // For very small ranges, generate daily ticks with padding
+            var dates: [Date] = []
+            // set padding start to start of week of startDate
+            let paddingStart = calendar.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
+            // set padding end to end of week of endDate
+            let paddingEnd = calendar.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
+
+            var currentDate = paddingStart
+            while currentDate <= paddingEnd {
+                dates.append(currentDate)
+                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+            }
+            return dates
+        }
+
         var dates: [Date] = []
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .day, value: -1, to: visibleStart) ?? visibleStart
-        let totalWeeks = Int(ceil(visibleEnd.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week)) + 1
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
+        let bufferStart = calendar.date(byAdding: .day, value: -1, to: startDate) ?? startDate
+
+        // Calculate total weeks safely
+        let timeInterval = endDate.timeIntervalSince(weekStart)
+        let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)) + 1)
+
         for weekOffset in 0..<totalWeeks {
             if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
                 for dayOffset in 0..<7 {
                     if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
-                        if dayDate >= bufferStart && dayDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.day) {
+                        if dayDate >= bufferStart && dayDate <= endDate.addingTimeInterval(DashboardConstants.TimeInterval.day) {
                             dates.append(dayDate)
                         }
                     }
@@ -978,15 +991,44 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleMonthlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
+        // Handle very small date ranges (less than 1 week) with special logic
+        let daysDifference = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 0
+        if daysDifference < DashboardConstants.Thresholds.monthRepeatThreshold {
+            // For very small ranges, generate daily ticks with padding
+            var dates: [Date] = []
+            // set padding start to start of month of startDate
+            let paddingStart = calendar.dateInterval(of: .month, for: startDate)?.start ?? startDate
+            // set padding end to end of month of endDate
+            let paddingEnd = calendar.dateInterval(of: .month, for: endDate)?.end ?? endDate
+
+            var currentDate = paddingStart
+            while currentDate <= paddingEnd {
+                //append only weekdate like done below
+                if let weekDate = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) {
+                    dates.append(weekDate)
+                }
+                currentDate = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) ?? currentDate
+            }
+            return dates
+        }
+
         var dates: [Date] = []
-        let monthStart = calendar.dateInterval(of: .month, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .weekOfYear, value: -1, to: visibleStart) ?? visibleStart
-        let totalMonths = Int(ceil(visibleEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)) + 1
+        let monthStart = calendar.dateInterval(of: .month, for: startDate)?.start ?? startDate
+        let bufferStart = calendar.date(byAdding: .weekOfYear, value: -1, to: startDate) ?? startDate
+
+        // Calculate total months safely
+        let timeInterval = endDate.timeIntervalSince(monthStart)
+        let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)) + 1)
+
         for monthOffset in 0..<totalMonths {
             if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
                 for weekOffset in 0..<5 {
                     if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= bufferStart && weekDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.week) {
+                        if weekDate >= bufferStart && weekDate <= endDate.addingTimeInterval(DashboardConstants.TimeInterval.week) {
                             dates.append(weekDate)
                         }
                     }
@@ -997,15 +1039,44 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleYearlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
+        // Handle very small date ranges (less than 1 month) with special logic
+        let daysDifference = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 0
+        if daysDifference < 365 {
+            // For very small ranges, generate weekly ticks with padding
+            var dates: [Date] = []
+            // set padding start to start of the year of startDate
+            let paddingStart = calendar.dateInterval(of: .year, for: startDate)?.start ?? startDate
+            // set padding end to end of the year of endDate
+            let paddingEnd = calendar.dateInterval(of: .year, for: endDate)?.end ?? endDate
+
+            var currentDate = paddingStart
+            while currentDate <= paddingEnd {
+                //append only monthdate like done below
+                if let monthDate = calendar.date(byAdding: .month, value: 1, to: currentDate) {
+                    dates.append(monthDate)
+                }
+                currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate) ?? currentDate
+            }
+            return dates
+        }
+
         var dates: [Date] = []
-        let yearStart = calendar.dateInterval(of: .year, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
-        let totalYears = Int(ceil(visibleEnd.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year)) + 1
+        let yearStart = calendar.dateInterval(of: .year, for: startDate)?.start ?? startDate
+        let bufferStart = calendar.date(byAdding: .month, value: -1, to: startDate) ?? startDate
+
+        // Calculate total years safely
+        let timeInterval = endDate.timeIntervalSince(yearStart)
+        let totalYears = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.year)) + 1)
+
         for yearOffset in 0..<totalYears {
             if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
                 for monthOffset in 0..<12 {
                     if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
-                        if monthDate >= bufferStart && monthDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                        if monthDate >= bufferStart && monthDate <= endDate.addingTimeInterval(DashboardConstants.TimeInterval.month) {
                             dates.append(monthDate)
                         }
                     }
@@ -1016,16 +1087,48 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleTotalXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
+        // Handle small datasets (1-2 entries) with special logic
+        if operations.count <= 2 {
+            // For small datasets, just return the actual entry dates with some padding
+            var dates: [Date] = []
+            let allDates = operations.map(\.date).sorted()
+
+            if let firstDate = allDates.first, let lastDate = allDates.last {
+                // Add padding before and after the data range
+                let paddingInterval: TimeInterval = 24 * 60 * 60 // 1 day
+                let paddedStart = firstDate.addingTimeInterval(-paddingInterval)
+                let paddedEnd = lastDate.addingTimeInterval(paddingInterval)
+
+                // Generate daily ticks for the padded range
+                var currentDate = paddedStart
+                while currentDate <= paddedEnd {
+                    dates.append(currentDate)
+                    currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+                }
+            }
+
+            return dates
+        }
+
+        // For larger datasets, use existing logic
         if areEntriesInSameEra(operations) {
             return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
         } else {
+            // Ensure dates are in correct order to prevent range errors
+            let startDate = min(visibleStart, visibleEnd)
+            let endDate = max(visibleStart, visibleEnd)
+
             var dates: [Date] = []
-            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: visibleStart)) ?? visibleStart
-            let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
-            let totalQuarters = Int(ceil(visibleEnd.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter)) + 1
+            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: startDate)) ?? startDate
+            let bufferStart = calendar.date(byAdding: .month, value: -1, to: startDate) ?? startDate
+
+            // Calculate total quarters safely
+            let timeInterval = endDate.timeIntervalSince(quarterStart)
+            let totalQuarters = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.quarter)) + 1)
+
             for quarterOffset in 0..<totalQuarters {
                 if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                    if quarterDate >= bufferStart && quarterDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                    if quarterDate >= bufferStart && quarterDate <= endDate.addingTimeInterval(DashboardConstants.TimeInterval.month) {
                         dates.append(quarterDate)
                     }
                 }
@@ -1110,31 +1213,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
     }
 
-    func pastBufferFor(period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return DashboardConstants.TimeInterval.day * 1
-        case .month:
-            return DashboardConstants.TimeInterval.week * 1
-        case .year:
-            return DashboardConstants.TimeInterval.month * 1
-        case .total:
-            return DashboardConstants.TimeInterval.month * 2
-        }
-    }
-
-    func centeringBufferFor(period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return DashboardConstants.TimeInterval.day * 3.5
-        case .month:
-            return DashboardConstants.TimeInterval.week * 2
-        case .year:
-            return DashboardConstants.TimeInterval.month * 2
-        case .total:
-            return DashboardConstants.TimeInterval.month * 3
-        }
-    }
 
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         let formatter = DateFormatter()
@@ -1149,21 +1227,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+        let startDay = calendar.component(.day, from: minDate)
+        let endDay = calendar.component(.day, from: maxDate)
+        let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
+        let endMonth = DateTimeTools.formatter("LLL").string(from: maxDate).lowercased()
+        let startYear = calendar.component(.year, from: minDate)
+        let endYear = calendar.component(.year, from: maxDate)
         switch period {
-        case .week:
-            let month = DateTimeTools.formatter("LLL").string(from: minDate)
-            let startDay = calendar.component(.day, from: minDate)
-            let endDay = calendar.component(.day, from: maxDate)
-            let year = calendar.component(.year, from: maxDate)
-            return "\(month) \(startDay)-\(endDay), \(year)"
-        case .month:
-            return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
+        case .week, .month:
+            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         case .year:
-            return DateTimeTools.formatter("yyyy").string(from: minDate)
+            return "\(startMonth) \(startDay) \(startYear) - \(endMonth) \(endDay), \(endYear)"
         case .total:
-            let minYear = calendar.component(.year, from: minDate)
-            let maxYear = calendar.component(.year, from: maxDate)
-            return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         }
     }
 
@@ -1217,14 +1293,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard !weightValues.isEmpty else { return 0 }
         let average = weightValues.reduce(0, +) / Double(weightValues.count)
         return average
-    }
-
-    func handleScrollPositionChange(_ newPosition: Date?, isScrolling: Bool, updateWeightDisplay: @escaping () -> Void) {
-        guard let newPosition = newPosition else { return }
-        state.xScrollPosition = newPosition
-        if !isScrolling {
-            updateWeightDisplay()
-        }
     }
 
     func handleScrollStart() {

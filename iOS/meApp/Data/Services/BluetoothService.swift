@@ -1079,7 +1079,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     
     
-    /// Returns the weight value for a GGEntry based on protocol type, matching conversion logic from TypeScript
+    /// Returns the weight value for a GGEntry based on protocol type
     private func getWeightByProtocolType(protocolType: ProtocolType, weightInKg: Float, weight: Float) -> Int? {
         switch protocolType {
         case .A3:
