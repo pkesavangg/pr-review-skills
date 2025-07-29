@@ -26,7 +26,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
     private var lastYAxisScale: YAxisScale?
-    private var lastXAxisValues: [Date] = []
+    public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
 
@@ -1227,21 +1227,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+        let startDay = calendar.component(.day, from: minDate)
+        let endDay = calendar.component(.day, from: maxDate)
+        let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
+        let endMonth = DateTimeTools.formatter("LLL").string(from: maxDate).lowercased()
+        let startYear = calendar.component(.year, from: minDate)
+        let endYear = calendar.component(.year, from: maxDate)
         switch period {
-        case .week:
-            let month = DateTimeTools.formatter("LLL").string(from: minDate)
-            let startDay = calendar.component(.day, from: minDate)
-            let endDay = calendar.component(.day, from: maxDate)
-            let year = calendar.component(.year, from: maxDate)
-            return "\(month) \(startDay)-\(endDay), \(year)"
-        case .month:
-            return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
+        case .week, .month:
+            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         case .year:
-            return DateTimeTools.formatter("yyyy").string(from: minDate)
+            return "\(startMonth) \(startDay) \(startYear) - \(endMonth) \(endDay), \(endYear)"
         case .total:
-            let minYear = calendar.component(.year, from: minDate)
-            let maxYear = calendar.component(.year, from: maxDate)
-            return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         }
     }
 
@@ -1295,14 +1293,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard !weightValues.isEmpty else { return 0 }
         let average = weightValues.reduce(0, +) / Double(weightValues.count)
         return average
-    }
-
-    func handleScrollPositionChange(_ newPosition: Date?, isScrolling: Bool, updateWeightDisplay: @escaping () -> Void) {
-        guard let newPosition = newPosition else { return }
-        state.xScrollPosition = newPosition
-        if !isScrolling {
-            updateWeightDisplay()
-        }
     }
 
     func handleScrollStart() {
