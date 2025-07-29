@@ -16,39 +16,39 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 
 @Composable
 internal fun bottomAxis(
-    segment: GraphSegment,
-    horizontalItemPlacer: HorizontalAxis.ItemPlacer
+  segment: GraphSegment,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer
 ): Axis<Axis.Position.Horizontal.Bottom> {
-    return if (segment != GraphSegment.TOTAL)
-        HorizontalAxis.rememberBottom(
-            valueFormatter =
-                CartesianValueFormatter { _, value, _ ->
-                    if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
-                        value.toLong(),
-                        segment,
-                    ) else " "
-                },
-            itemPlacer = horizontalItemPlacer,
-            guideline = rememberAxisGuidelineComponent(
-                fill = fill(MeTheme.colorScheme.utility),
-                thickness = 1.dp,
-            ),
-            label = rememberTextComponent(color = MeTheme.colorScheme.textSubheading),
-            tickLength = 0.dp,
-            line = rememberAxisLineComponent(
-                fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-                thickness = 1.dp,
-            ),
-        )
-    else
-        HorizontalAxis.rememberBottom(
-            guideline = null,
-            itemPlacer = horizontalItemPlacer,
-            label = null,
-            tickLength = 0.dp,
-            line = rememberAxisLineComponent(
-                fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-                thickness = 1.dp,
-            ),
-        )
+  return if (segment != GraphSegment.TOTAL)
+    HorizontalAxis.rememberBottom(
+      valueFormatter =
+        CartesianValueFormatter { _, value, _ ->
+          if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
+            value.toLong(),
+            segment,
+          ) else " "
+        },
+      itemPlacer = horizontalItemPlacer,
+      guideline = rememberAxisGuidelineComponent(
+        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+        thickness = 1.dp,
+      ),
+      label = rememberTextComponent(color = MeTheme.colorScheme.textSubheading),
+      tickLength = 0.dp,
+      line = rememberAxisLineComponent(
+        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+        thickness = 1.dp,
+      ),
+    )
+  else
+    HorizontalAxis.rememberBottom(
+      guideline = null,
+      itemPlacer = horizontalItemPlacer,
+      label = null,
+      tickLength = 0.dp,
+      line = rememberAxisLineComponent(
+        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+        thickness = 1.dp,
+      ),
+    )
 }
