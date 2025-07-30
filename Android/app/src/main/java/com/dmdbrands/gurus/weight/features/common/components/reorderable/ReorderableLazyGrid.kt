@@ -207,16 +207,19 @@ fun LazyGridItemScope.ReorderableItem(
         Modifier
             .onGloballyPositioned { itemSize = it.size }
             .zIndex(1f)
-            .graphicsLayer {
+                                    .graphicsLayer {
                 // Clamp translation so the item cannot be dragged outside the grid (all sides)
                 val originX = draggingOrigin?.x?.toFloat() ?: 0f
                 val originY = draggingOrigin?.y?.toFloat() ?: 0f
                 val maxX = (viewportSize.width - draggingSize.width).toFloat()
                 val maxY = (viewportSize.height - draggingSize.height).toFloat()
+                // Ensure bounds are valid (non-negative)
+                val clampedMaxX = maxX.coerceAtLeast(0f)
+                val clampedMaxY = maxY.coerceAtLeast(0f)
                 val minTranslationX = -originX
-                val maxTranslationX = maxX - originX
+                val maxTranslationX = clampedMaxX - originX
                 val minTranslationY = -originY
-                val maxTranslationY = maxY - originY
+                val maxTranslationY = clampedMaxY - originY
                 translationX = state.draggingItemOffset.x.coerceIn(minTranslationX, maxTranslationX)
                 translationY = state.draggingItemOffset.y.coerceIn(minTranslationY, maxTranslationY)
             }
@@ -229,10 +232,13 @@ fun LazyGridItemScope.ReorderableItem(
                 val originY = draggingOrigin?.y?.toFloat() ?: 0f
                 val maxX = (viewportSize.width - draggingSize.width).toFloat()
                 val maxY = (viewportSize.height - draggingSize.height).toFloat()
+                // Ensure bounds are valid (non-negative)
+                val clampedMaxX = maxX.coerceAtLeast(0f)
+                val clampedMaxY = maxY.coerceAtLeast(0f)
                 val minTranslationX = -originX
-                val maxTranslationX = maxX - originX
+                val maxTranslationX = clampedMaxX - originX
                 val minTranslationY = -originY
-                val maxTranslationY = maxY - originY
+                val maxTranslationY = clampedMaxY - originY
                 translationX = state.previousDraggingItemOffset.value.x.coerceIn(minTranslationX, maxTranslationX)
                 translationY = state.previousDraggingItemOffset.value.y.coerceIn(minTranslationY, maxTranslationY)
             }

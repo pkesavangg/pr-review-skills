@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -51,7 +52,7 @@ fun DashboardMilestoneGrid(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
       // Calculate adjusted index for proper reordering
-      val adjustedToIndex = calculateAdjustedIndex(
+      calculateAdjustedIndex(
         milestones = localVisibleMilestones,
         fromIndex = from.index,
         toIndex = to.index,
@@ -60,7 +61,7 @@ fun DashboardMilestoneGrid(
       // Direct reordering with adjusted index
       localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
         val item = removeAt(from.index)
-        add(adjustedToIndex, item)
+        add(to.index, item)
       }
 
       hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
@@ -70,15 +71,15 @@ fun DashboardMilestoneGrid(
     },
   )
 
-  val minCellSize = 160.dp // Adjust as needed for design
   LazyVerticalGrid(
-    columns = GridCells.Adaptive(minSize = minCellSize),
+    columns = GridCells.Fixed(2),
     state = lazyGridState,
-    contentPadding = PaddingValues(MeTheme.spacing.sm),
+    contentPadding = PaddingValues(vertical = MeTheme.spacing.sm),
     userScrollEnabled = false,
     modifier = Modifier
       .fillMaxWidth()
-      .heightIn(max = 500.dp),
+      .padding(horizontal = MeTheme.spacing.sm)
+      .heightIn(max = 460.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
   ) {
