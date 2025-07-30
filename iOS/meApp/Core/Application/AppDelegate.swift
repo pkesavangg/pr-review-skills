@@ -28,19 +28,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             // Initialize ServiceRegistry to register all services
             _ = ServiceRegistry.shared
             
-            
-            // TODO: Remove this code once the permission service is implemented.
-            
             // Initialize Firebase and notifications
             FirebaseApp.configure()
             Messaging.messaging().delegate = self
             UNUserNotificationCenter.current().delegate = self
-            
-            // Request notification permissions (async/await version)
-            let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-            Task {
-                 try? await UNUserNotificationCenter.current().requestAuthorization(options: authOptions)
-            }
             
             application.registerForRemoteNotifications()
         }
@@ -70,7 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         // Let PushNotificationService handle the notification
         Task { @MainActor in
            PushNotificationService.shared.handleNotification(userInfo) {
-                completionHandler([[.banner, .badge, .sound]])
+                completionHandler([.banner, .badge, .sound])
             }
         }
     }
