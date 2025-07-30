@@ -427,7 +427,7 @@ class DashboardStore: ObservableObject {
         loadLatestEntryData()
 
         // Initialize chart - data will be available from ContentView loading
-        await initializeChart()
+        initializeChart()
 
     }
 
@@ -628,17 +628,14 @@ class DashboardStore: ObservableObject {
             return
         }
 
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-        }
+        graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+
     }
 
     func handleSettingsChange() {
         loadGoalCardData()
         objectWillChange.send()
-        Task {
-            await self.updateYAxisCache()
-        }
+        self.updateYAxisCache()
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
@@ -1140,9 +1137,7 @@ class DashboardStore: ObservableObject {
     /// This should only be called on scroll end or segment load
     @MainActor
     private func recalculateYAxisForVisibleData() {
-        Task {
-            await self.updateYAxisCache()
-        }
+        self.updateYAxisCache()
     }
 
     /// Update metrics to show values for current view (visible region or selected point)
