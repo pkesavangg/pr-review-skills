@@ -139,9 +139,13 @@ final class Device {
             metaData = DeviceMetaData(from: metaDataDto)
         }
 
+        // Resolve scale type:
+        // • Prefer the explicit `scaleType` parameter when provided (e.g. during new-device pairing)
+        // • Fallback to `dto.type` coming from the backend when syncing existing devices
         var bathScale: BathScale? = nil
-        if let scaleType = scaleType {
-            bathScale = BathScale(scaleType: scaleType, bodyComp: bodyComp)
+        let resolvedScaleType = scaleType ?? dto.type
+        if let resolvedScaleType {
+            bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
         }
 
         self.init(

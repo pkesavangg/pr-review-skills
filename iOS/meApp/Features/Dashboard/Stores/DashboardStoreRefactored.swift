@@ -94,11 +94,7 @@ class DashboardStore: ObservableObject {
         entryService.entrySaved
             .sink { [weak self] entry in
                 Task {
-                    do {
-                        try await self?.onEntryAdded(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle added entry: \(error)")
-                    }
+                    await self?.onEntryAdded(entry)
                 }
             }
             .store(in: &cancellables)
@@ -106,11 +102,7 @@ class DashboardStore: ObservableObject {
         entryService.entryDeleted
             .sink { [weak self] entry in
                 Task {
-                    do {
-                        try await self?.onEntryDeleted(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle deleted entry: \(error)")
-                    }
+                    await self?.onEntryDeleted(entry)
                 }
             }
             .store(in: &cancellables)
@@ -436,7 +428,7 @@ class DashboardStore: ObservableObject {
         await loadInitialData()
 
         // Initialize chart after data is loaded
-        await initializeChart()
+        initializeChart()
     }
 
     // MARK: - Dashboard Type Management
@@ -553,7 +545,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryAdded(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry added: \(error)")
         }
@@ -564,7 +556,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryUpdated(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry updated: \(error)")
         }
@@ -575,7 +567,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryDeleted(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry deleted: \(error)")
         }
@@ -639,6 +631,11 @@ class DashboardStore: ObservableObject {
             state.ui.selectedMetricLabel = label
         }
     }
+    
+    /// Toggles the edit mode state
+    func toggleEditMode() {
+        state.ui.isEditMode.toggle()
+    }
 
     // Delegate graph operations to GraphManager
     func ensureLatestEntriesVisible() {
@@ -657,9 +654,7 @@ class DashboardStore: ObservableObject {
     func handleSettingsChange() {
         loadGoalCardData()
         objectWillChange.send()
-        Task {
-            await self.updateYAxisCache()
-        }
+        updateYAxisCache()
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
@@ -1190,9 +1185,7 @@ class DashboardStore: ObservableObject {
     /// This should only be called on scroll end or segment load
     @MainActor
     private func recalculateYAxisForVisibleData() {
-        Task {
-            await self.updateYAxisCache()
-        }
+        updateYAxisCache()
     }
 
     /// Update metrics to show values for current view (visible region or selected point)

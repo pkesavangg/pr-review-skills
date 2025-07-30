@@ -4,41 +4,55 @@
 
 import SwiftUI
 
+/// A view that displays an animated three-dot loading effect
 struct LoadingDotsView: View {
-    let dotCount: Int = 3
-    var jumpHeight: CGFloat = .spacingXS
-    var animationDuration: Double = 1.5
-    var color: Color = .primary
-    var dotSize: CGFloat = 4
+    // MARK: - Properties
+    @StateObject private var viewModel: LoadingDotsViewModel
     
+    // MARK: - Initialization
+    init(
+        jumpUpHeight: CGFloat = 6,
+        jumpDownHeight: CGFloat = 2.5,
+        dotSize: CGFloat = .spacingXS / 2,
+        spacing: CGFloat = 4,
+        animationDuration: Double = 1.5,
+        color: Color = .primary
+    ) {
+        self._viewModel = StateObject(wrappedValue: LoadingDotsViewModel(
+            jumpUpHeight: jumpUpHeight,
+            jumpDownHeight: jumpDownHeight,
+            dotSize: dotSize,
+            spacing: spacing,
+            animationDuration: animationDuration,
+            color: color
+        ))
+    }
+    
+    // MARK: - Body
     var body: some View {
-        TimelineView(.animation) { timeline in
-            let now = timeline.date.timeIntervalSinceReferenceDate
-            let progress = now.truncatingRemainder(dividingBy: animationDuration) / animationDuration
+        TimelineView(.animation) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
             
-            HStack(spacing: .spacingXS) {
-                ForEach(0..<dotCount, id: \.self) { index in
-                    let phase = (progress - Double(index) * 0.16 + 1.0).truncatingRemainder(dividingBy: 1.0)
-                    let y = -sin(phase * .pi) * jumpHeight
+            HStack(spacing: viewModel.spacing) {
+                ForEach(0..<viewModel.dotCount, id: \.self) { index in
+                    let phase = viewModel.phaseFor(index: index, currentTime: time)
+                    let (offsetY, scale) = viewModel.interpolatedAnimationState(for: phase)
                     
                     Circle()
-                        .frame(width: dotSize, height: dotSize)
-                        .foregroundColor(color)
-                        .offset(y: y)
+                        .frame(width: viewModel.dotSize, height: viewModel.dotSize)
+                        .foregroundColor(viewModel.color)
+                        .scaleEffect(scale)
+                        .offset(y: offsetY)
                 }
             }
         }
     }
 }
 
+// MARK: - Preview
 #Preview {
     ZStack {
         Color.black.ignoresSafeArea()
-        LoadingDotsView(
-            jumpHeight: 8,
-            animationDuration: 1.5,
-            color: .blue,
-            dotSize: 8
-        )
+        LoadingDotsView()
     }
 }

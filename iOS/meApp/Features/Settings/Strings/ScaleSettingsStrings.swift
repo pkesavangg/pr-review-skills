@@ -31,4 +31,5 @@ struct ScaleSettingsStrings {
     static let sku = "SKU"
     static let datePaired = "Date Paired"
     static let productGuide = "Product Guide"
+    static let userNumber  = "User Number"
 }
