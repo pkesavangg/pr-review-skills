@@ -1,0 +1,24 @@
+package com.dmdbrands.gurus.weight.data.storage.db.entity.account
+
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
+
+@Entity(
+    tableName = "streaks_settings",
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["accountId"],
+            childColumns = ["accountId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class StreaksSettingsEntity(
+    @PrimaryKey
+    val accountId: String,
+    val isStreakOn: Boolean,
+    val streakTimestamp: String,
+    val isSynced: Boolean
+)

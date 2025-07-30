@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package com.greatergoods.meapp.proto;
+package com.dmdbrands.gurus.weight.proto;
 
 option java_multiple_files = true;
-option java_package = "com.greatergoods.meapp.proto";
+option java_package = "com.dmdbrands.gurus.weight.proto";
 
 // Theme preferences
 enum ThemeMode {

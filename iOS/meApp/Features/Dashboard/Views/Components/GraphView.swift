@@ -132,7 +132,8 @@ struct GraphView: View {
             ))
             .frame(height: 265)
             .frame(maxWidth: .infinity, minHeight: 240)
-            .padding(.horizontal)
+            .padding(.leading, isAtLeftBoundary ? .spacingXS : 0)
+            .padding(.trailing, .spacingXS)
             .background(
                 GeometryReader { geo in
                     theme.textInverse
@@ -148,8 +149,11 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
-            // Restore animations for data changes and scrolling, but keep period switching instant
-            .animation(.easeOut(duration: 0.6), value: dashboardStore.yAxisTicks)
+            // Synchronized animations for chart components
+            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
+            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+            .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
+            .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
             // Apply decision window modifier first, then scroll detection
             .modifier(DecisionWindowModifier(
                 touchInteractionMode: $touchInteractionMode,
@@ -162,6 +166,29 @@ struct GraphView: View {
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
 
+    }
+
+    // MARK: - Computed Properties
+
+        /// Determines if the chart is scrolled to the leftmost boundary of the data
+    private var isAtLeftBoundary: Bool {
+        //if total period, return true
+        if dashboardStore.state.graph.selectedPeriod == .total { return true }
+
+        guard !dashboardStore.continuousOperations.isEmpty else { return true }
+
+        let operations = dashboardStore.continuousOperations
+        let allDates = operations.map { $0.date }
+        guard let minDate = allDates.min() else { return true }
+
+        let currentScrollPosition = dashboardStore.state.graph.xScrollPosition
+        let domainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
+        let visibleStart = currentScrollPosition.addingTimeInterval(-domainLength / 2)
+
+        // Consider at boundary if visible start is at or before the minimum data date
+        // Add small buffer (1 day) to account for minor scroll position variations
+        let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
+        return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
     }
 
     // MARK: - Empty State View
@@ -204,24 +231,63 @@ struct GraphView: View {
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         let seriesData = dashboardStore.chartSeriesData
+        let groupedSeries = Dictionary(grouping: seriesData) { $0.series }
 
-        ForEach(seriesData) { series in
-
-            LineMark(
-                x: .value("Date", series.date),
-                y: .value(series.series, series.value)
-            )
-            .foregroundStyle(by: .value("Series", series.series))
-            .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: 3))
-
-            PointMark(
-                x: .value("Date", series.date),
-                y: .value(series.series, series.value)
-            )
-            .symbolSize(series.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
-            .foregroundStyle(by: .value("Series", series.series))
+        ForEach(Array(groupedSeries.keys.sorted()), id: \.self) { seriesName in
+            if let seriesPoints = groupedSeries[seriesName] {
+                chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
+            }
         }
+    }
+
+    @ChartContentBuilder
+    private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
+        let segments = getConnectedSegments(from: seriesPoints, for: dashboardStore.state.graph.selectedPeriod)
+
+        ForEach(Array(segments.enumerated()), id: \.offset) { segmentIndex, segment in
+            chartContentForSegment(segment: segment, seriesName: seriesName, segmentIndex: segmentIndex)
+        }
+    }
+
+    @ChartContentBuilder
+    private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
+        ForEach(segment) { point in
+            invisibleTapTarget(for: point)
+            lineMarkForPoint(point: point, seriesName: seriesName, segmentIndex: segmentIndex)
+            visiblePointMark(for: point)
+        }
+    }
+
+    @ChartContentBuilder
+    private func invisibleTapTarget(for point: GraphSeries) -> some ChartContent {
+        PointMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value)
+        )
+        .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
+        .foregroundStyle(.clear)
+    }
+
+    @ChartContentBuilder
+    private func lineMarkForPoint(point: GraphSeries, seriesName: String, segmentIndex: Int) -> some ChartContent {
+        LineMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value),
+            series: .value("Series", "\(point.series)-\(segmentIndex)")
+        )
+        .foregroundStyle(by: .value("Series", point.series))
+        .interpolationMethod(.catmullRom)
+        .lineStyle(StrokeStyle(lineWidth: 3))
+    }
+
+    @ChartContentBuilder
+    private func visiblePointMark(for point: GraphSeries) -> some ChartContent {
+        PointMark(
+            x: .value("Date", point.date),
+            y: .value(point.series, point.value)
+        )
+        .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
+        .foregroundStyle(by: .value("Series", point.series))
     }
 
     @ChartContentBuilder
@@ -235,6 +301,63 @@ struct GraphView: View {
             .zIndex(-100)
             .foregroundStyle(theme.actionSecondary)
             .lineStyle(StrokeStyle(lineWidth: 2))
+        }
+    }
+
+    // MARK: - Smart Line Connection Logic
+
+    /// Groups chart data points into connected segments based on time gaps
+    /// Prevents lines from connecting across missing data periods
+    private func getConnectedSegments(from dataPoints: [GraphSeries], for period: TimePeriod) -> [[GraphSeries]] {
+        guard !dataPoints.isEmpty else { return [] }
+
+        var segments: [[GraphSeries]] = []
+        var currentSegment: [GraphSeries] = []
+
+        let sortedPoints = dataPoints.sorted { $0.date < $1.date }
+
+        for point in sortedPoints {
+            if currentSegment.isEmpty {
+                currentSegment.append(point)
+            } else {
+                let lastPoint = currentSegment.last!
+                let timeDifference = point.date.timeIntervalSince(lastPoint.date)
+
+                // Define maximum gap based on time period
+                let maxGap: TimeInterval = getMaximumGap(for: period)
+
+                if timeDifference <= maxGap {
+                    // Continue current segment
+                    currentSegment.append(point)
+                } else {
+                    // Start new segment due to gap
+                    if !currentSegment.isEmpty {
+                        segments.append(currentSegment)
+                    }
+                    currentSegment = [point]
+                }
+            }
+        }
+
+        // Add the last segment
+        if !currentSegment.isEmpty {
+            segments.append(currentSegment)
+        }
+
+        return segments
+    }
+
+    /// Determines the maximum time gap allowed before starting a new segment
+    private func getMaximumGap(for period: TimePeriod) -> TimeInterval {
+        switch period {
+        case .week:
+            return 14 * DashboardConstants.TimeInterval.day  // 14 days - don't connect if more than 3 days gap
+        case .month:
+            return 60 * DashboardConstants.TimeInterval.day  // 60 days - don't connect if more than 1 week gap
+        case .year:
+            return 365 * DashboardConstants.TimeInterval.day // 1 year - don't connect if more than 1 year gap
+        case .total:
+            return 365 * DashboardConstants.TimeInterval.day // 1 year - don't connect if more than 1 year gap
         }
     }
 

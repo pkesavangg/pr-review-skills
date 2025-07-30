@@ -24,6 +24,14 @@ dependencyResolutionManagement {
         password = System.getenv("GPR_API_KEY") ?: "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"
       }
     }
+    maven {
+      url =
+        uri("https://maven.pkg.github.com/dmdbrands/vico")
+      credentials {
+        username = System.getenv("GPR_USER") ?: "VivekGG"
+        password = System.getenv("GPR_API_KEY") ?: "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"
+      }
+    }
   }
 }
 
