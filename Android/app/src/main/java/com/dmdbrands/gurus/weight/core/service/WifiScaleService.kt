@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.core.service
 import androidx.activity.ComponentActivity
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
+import com.greatergoods.lib.wificonnect.model.ApConnectParams
 import com.greatergoods.lib.wificonnect.model.EsptouchParams
 import com.greatergoods.lib.wificonnect.model.EsptouchResult
 import com.greatergoods.lib.wificonnect.model.SmartConfigParams
@@ -17,6 +19,59 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
+import android.util.Log
+
+/**
+ * Represents the status of WiFi connection.
+ */
+enum class WifiConnectionStatus {
+  UNKNOWN,
+  ENABLED,
+  DISABLED,
+  CONNECTED
+}
+
+/**
+ * Represents the type of WiFi setup operation.
+ */
+enum class WifiSetupType {
+  FIRST,
+  JOIN,
+  CHANGE,
+  ESP_TOUCH_WIFI
+}
+
+/**
+ * Data class representing WiFi information.
+ */
+data class WifiInfo(
+  val ssid: String? = null,
+  val bssid: String? = null
+)
+
+/**
+ * Data class representing WiFi setup information.
+ * Equivalent to TypeScript WifiSetupInfo interface.
+ */
+data class WifiSetupInfo(
+  var ssid: String? = null,
+  var bssid: String? = null,
+  val password: String? = null,
+  val userNumber: Int? = null,
+  val token: String? = null
+)
+
+/**
+ * Data class representing WiFi status information.
+ */
+data class WifiStatus(
+  val status: WifiConnectionStatus,
+  val locationStatus: String,
+  val ssid: String,
+  val bssid: String
+)
 
 /**
  * Android service for WiFi scale operations, implementing functionality from WifiSmartConfigWrapper.
@@ -36,99 +91,58 @@ class WifiScaleService @Inject constructor(
   }
 
   /**
-   * SmartConnect functionality - equivalent to WifiSmartConfigWrapper.smartConnect()
-   *
-   * @param ssid WiFi network SSID
-   * @param password WiFi network password
-   * @param userNumber User number for the scale
-   * @param tokenHexString Token in hex string format
-   * @param onSuccess Callback for successful connection
-   * @param onError Callback for connection errors
+   * Unified connect function that chooses the correct connection method based on WifiSetupType.
+   * Calls the appropriate WifiConnectRequest and handles the result.
    */
-  fun smartConnect(
-    ssid: String,
-    password: String,
-    userNumber: Int,
-    tokenHexString: String,
+  fun connect(
+    setupInfo: WifiSetupInfo,
+    setupType: WifiSetupType,
     onSuccess: () -> Unit,
     onError: (String) -> Unit
   ) {
+    AppLog.d("WifiScaleService", "connect - Starting with setup type: $setupType")
+    Log.d("connectwifi3", setupInfo.toString())
+    Log.d("connectwifi4", setupType.toString())
     CoroutineScope(Dispatchers.IO).launch {
       try {
-        val params = SmartConfigParams(
-          ssid = ssid,
-          password = password,
-          userNumber = userNumber,
-          tokenHexString = tokenHexString,
-        )
+        // Validate setup data
+        validateSetupDataOrThrow(setupInfo, setupType)
 
-        val result = wifiSmartConnectManager.connect(
-          WifiConnectRequest.SmartConfig(params),
-          currentActivity,
-        )
-
-        when (result) {
-          is WifiConnectResult.SmartConfig -> {
-            when (result.result) {
-              is SmartConfigResult.Success -> {
-                onSuccess()
-              }
-
-              is SmartConfigResult.Failure -> {
-                onError("result.result.errorMessage")
-              }
-            }
+        val request = when (setupType) {
+         WifiSetupType.ESP_TOUCH_WIFI -> {
+            val params = EsptouchParams(
+              ssid = setupInfo.ssid ?: "",
+              bssid = setupInfo.bssid ?: "",
+              password = setupInfo.password ?: "",
+              userNumber = setupInfo.userNumber ?: 0,
+              token = setupInfo.token ?: "",
+            )
+            WifiConnectRequest.Esptouch(params)
           }
 
-          else -> {
-            onError("Unexpected result type: ${result::class.simpleName}")
+          WifiSetupType.FIRST, WifiSetupType.JOIN -> {
+            val params = SmartConfigParams(
+              ssid = setupInfo.ssid ?: "",
+              password = setupInfo.password ?: "",
+              userNumber = setupInfo.userNumber ?: 0,
+              tokenHexString = setupInfo.token ?: "",
+            )
+            WifiConnectRequest.SmartConfig(params)
+          }
+
+          WifiSetupType.CHANGE -> {
+            // CHANGE is AP Mode
+            val params = ApConnectParams(
+              ssid = setupInfo.ssid ?: "",
+              password = setupInfo.password ?: "",
+              userNumber = setupInfo.userNumber ?: 1,
+              tokenHexString = setupInfo.token ?: "",
+            )
+            WifiConnectRequest.ApMode(params)
           }
         }
-      } catch (e: Exception) {
-        onError("SmartConnect failed: ${e.message}")
-      }
-    }
-  }
 
-  /**
-   * Esptouch functionality - equivalent to WifiSmartConfigWrapper.espSmartConnect()
-   *
-   * @param ssid WiFi network SSID
-   * @param bssid WiFi network BSSID (MAC address)
-   * @param password WiFi network password
-   * @param userNumber User number for the scale
-   * @param tokenHexString Token in hex string format
-   * @param onSuccess Callback for successful connection
-   * @param onError Callback for connection errors
-   */
-  fun esptouch(
-    ssid: String,
-    bssid: String,
-    password: String,
-    userNumber: Int,
-    tokenHexString: String,
-    onSuccess: () -> Unit,
-    onError: (String) -> Unit
-  ) {
-    CoroutineScope(Dispatchers.IO).launch {
-      try {
-        AppLog.d(
-          "WifiScaleService",
-          "Starting Esptouch connection with SSID: $ssid, BSSID: $bssid",
-        )
-
-        val params = EsptouchParams(
-          ssid = ssid,
-          bssid = bssid,
-          password = password,
-          userNumber = userNumber,
-          token = tokenHexString,
-        )
-
-        val result = wifiSmartConnectManager.connect(
-          WifiConnectRequest.Esptouch(params),
-          currentActivity,
-        )
+        val result = wifiSmartConnectManager.connect(request, currentActivity)
 
         when (result) {
           is WifiConnectResult.Esptouch -> {
@@ -139,20 +153,41 @@ class WifiScaleService @Inject constructor(
               }
 
               is EsptouchResult.Failure -> {
-                AppLog.e("WifiScaleService", "Esptouch connection failed: $")
-                onError("something went wrong")
+                val errorMsg = "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}"
+                AppLog.e("WifiScaleService", errorMsg)
+                onError(errorMsg)
               }
             }
           }
 
+          is WifiConnectResult.SmartConfig -> {
+            when (result.result) {
+              is SmartConfigResult.Success -> {
+                AppLog.d("WifiScaleService", "SmartConfig connection successful")
+                onSuccess()
+              }
+
+              is SmartConfigResult.Failure -> {
+                val errorMsg =
+                  "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}"
+                AppLog.e("WifiScaleService", errorMsg)
+                onError(errorMsg)
+              }
+            }
+          }
+
+          is WifiConnectResult.ApMode -> {
+            // You may want to handle ApMode result here if needed
+            AppLog.d("WifiScaleService", "AP Mode connection result: $result")
+            onSuccess() // Or handle error if needed
+          }
+
           else -> {
-            val errorMsg = "Unexpected result type: ${result::class.simpleName}"
-            AppLog.e("WifiScaleService", errorMsg)
-            onError(errorMsg)
           }
         }
       } catch (e: Exception) {
-        val errorMsg = "Esptouch failed: ${e.message}"
+        Log.d("connectwifiexception", e.toString())
+        val errorMsg = "Connect failed: ${e.message}"
         AppLog.e("WifiScaleService", errorMsg, e.toString())
         onError(errorMsg)
       }
@@ -169,7 +204,7 @@ class WifiScaleService @Inject constructor(
   suspend fun getScaleToken(r: String? = null): String {
     AppLog.d("WifiScaleService", "getScaleToken - Getting scale token from API")
     return try {
-      val token = deviceService.getScaleToken()
+      val token = deviceService.getScaleToken(false)
       AppLog.d("WifiScaleService", "getScaleToken - Scale token retrieved successfully")
       token
     } catch (e: Exception) {
@@ -186,23 +221,182 @@ class WifiScaleService @Inject constructor(
   }
 
   /**
-   * Stops only SmartConfig operations
+   * Get WiFi scan results, checking for location permission first.
+   * Equivalent to device.service.ts getScanResults()
+   *
+   * @return List of WiFi scan results, or empty list if permission is not granted
    */
-  fun stopSmartConfig() {
-    wifiSmartConnectManager.stopSmartConfig()
+  suspend fun getScanResults(): List<android.net.wifi.ScanResult> {
+    // Check location permission
+    val hasLocationPermission =
+      context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    if (!hasLocationPermission) {
+      AppLog.w("WifiScaleService", "Location permission not granted. Returning empty scan results.")
+      return emptyList()
+    }
+    return try {
+      val wifiManager = currentActivity.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+      wifiManager.scanResults ?: emptyList()
+    } catch (e: Exception) {
+      AppLog.e("WifiScaleService", "Error getting WiFi scan results", e.toString())
+      emptyList()
+    }
   }
 
   /**
-   * Stops only Esptouch operations
+   * Get the SSID of the currently connected WiFi network.
+   * Equivalent to device.service.ts getConnectedSsid()
+   *
+   * @return The SSID of the connected network, or empty string if not connected
    */
-  fun stopEsptouch() {
-    wifiSmartConnectManager.stopEsptouch()
+  fun getConnectedSsid(): String {
+    AppLog.d("WifiScaleService", "Getting connected SSID")
+    return try {
+      val ssid = wifiSmartConnectManager.getConnectedSsid(currentActivity)
+      AppLog.d("WifiScaleService", "Connected SSID: $ssid")
+      ssid
+    } catch (e: Exception) {
+      AppLog.e("WifiScaleService", "Error getting connected SSID", e.toString())
+      ""
+    }
   }
 
   /**
-   * Stops only AP Mode operations
+   * Get the BSSID (MAC address) of the currently connected WiFi network.
+   * Equivalent to device.service.ts getConnectedBssid()
+   *
+   * @return The BSSID of the connected network, or empty string if not connected
    */
-  fun stopApMode() {
-    wifiSmartConnectManager.stopApMode()
+  fun getConnectedBssid(): String {
+    AppLog.d("WifiScaleService", "Getting connected BSSID")
+    return try {
+      val bssid = wifiSmartConnectManager.getConnectedBssid(currentActivity)
+      AppLog.d("WifiScaleService", "Connected BSSID: $bssid")
+      bssid
+    } catch (e: Exception) {
+      AppLog.e("WifiScaleService", "Error getting connected BSSID", e.toString())
+      ""
+    }
+  }
+
+  /**
+   * Opens the WiFi settings screen.
+   * This allows users to manually change their WiFi network.
+   */
+  fun openWifiSettings() {
+    try {
+      val wifiSettingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
+      wifiSettingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(wifiSettingsIntent)
+      AppLog.d("WifiScaleService", "Opened WiFi settings")
+    } catch (e: Exception) {
+      AppLog.e("WifiScaleService", "Failed to open WiFi settings: ${e.message}")
+    }
+  }
+
+  /**
+   * Gets the current WiFi connection information including SSID, BSSID, and connection status.
+   * Equivalent to WifiSmartConfigWrapper.getConnectedWifiInfo()
+   *
+   * @param hasLocationPermission Whether location permissions are granted
+   * @return WifiStatus object containing connection information
+   */
+  suspend fun getConnectedWifiInfo(hasLocationPermission: Boolean = false): WifiStatus {
+    var ssid = ""
+    var bssid = ""
+    var status: WifiConnectionStatus = WifiConnectionStatus.UNKNOWN
+    var locationStatus: String = GGPermissionState.NOT_DETERMINED
+
+    try {
+      val isWifiEnabled = wifiSmartConnectManager.isWifiEnabled(currentActivity)
+      if (isWifiEnabled) {
+        status = WifiConnectionStatus.ENABLED
+
+        if (hasLocationPermission) {
+          ssid = wifiSmartConnectManager.getConnectedSsid(currentActivity)
+          if (ssid == "<unknown ssid>") {
+            ssid = ""
+          }
+          bssid = wifiSmartConnectManager.getConnectedBssid(currentActivity)
+
+          if (ssid.isNotEmpty()) {
+            status = WifiConnectionStatus.CONNECTED
+          }
+        }
+      } else {
+        status = WifiConnectionStatus.DISABLED
+      }
+
+      AppLog.d(
+        "WifiScaleService",
+        "getConnectedWifiInfo - Status: $status, SSID: $ssid, BSSID: $bssid, hasLocationPermission: $hasLocationPermission",
+      )
+
+      return WifiStatus(status, locationStatus, ssid, bssid)
+    } catch (e: Exception) {
+      AppLog.e(
+        "WifiScaleService",
+        "getConnectedWifiInfo - Error getting wifi connection status",
+        e.toString(),
+      )
+      return WifiStatus(status, locationStatus, ssid, bssid)
+    }
+  }
+
+  /**
+   * Validates the setup data based on the setup type.
+   * Equivalent to TypeScript validateSetupData() method.
+   *
+   * @param setupInfo The WiFi setup information to validate
+   * @param setupType The type of setup operation
+   * @return true if the setup data is valid for the given setup type, false otherwise
+   * @throws IllegalArgumentException if no setup type is provided
+   */
+  private fun validateSetupData(setupInfo: WifiSetupInfo, setupType: WifiSetupType): Boolean {
+    AppLog.d("WifiScaleService", "Validating setup data for type: $setupType")
+
+    val isValid = when (setupType) {
+     WifiSetupType.FIRST -> {
+        setupInfo.ssid != null &&
+          setupInfo.userNumber != null &&
+          setupInfo.token != null
+      }
+
+      WifiSetupType.JOIN -> {
+        setupInfo.userNumber != null &&
+          setupInfo.token != null
+      }
+
+     WifiSetupType.CHANGE -> {
+        setupInfo.ssid != null
+      }
+
+      WifiSetupType.ESP_TOUCH_WIFI -> {
+        setupInfo.ssid != null &&
+          setupInfo.bssid != null &&
+          setupInfo.userNumber != null &&
+          setupInfo.token != null
+      }
+    }
+
+    AppLog.d("WifiScaleService", "Setup data validation result: $isValid for type: $setupType")
+    return isValid
+  }
+
+  /**
+   * Validates setup data and throws an exception if invalid.
+   * Helper method for public setup methods.
+   *
+   * @param setupInfo The WiFi setup information to validate
+   * @param setupType The type of setup operation
+   * @throws IllegalArgumentException if the setup data is invalid
+   */
+  private fun validateSetupDataOrThrow(setupInfo: WifiSetupInfo, setupType: WifiSetupType) {
+    if (!validateSetupData(setupInfo, setupType)) {
+      val errorMessage =
+        "Data for ${setupType.name.lowercase()} setup type '$setupType' is invalid: $setupInfo"
+      AppLog.e("WifiScaleService", errorMessage)
+      throw IllegalArgumentException(errorMessage)
+    }
   }
 }

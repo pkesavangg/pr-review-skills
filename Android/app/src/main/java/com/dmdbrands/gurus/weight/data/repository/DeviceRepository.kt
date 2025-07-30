@@ -181,8 +181,9 @@ constructor(
     }
   }
 
-  override suspend fun getScaleTokenFromApi(): String {
-    val response = deviceApi.getScaleToken()
+  override suspend fun getScaleTokenFromApi(isR4: Boolean): String {
+    val param = if (isR4) "4" else null
+    val response = deviceApi.getScaleToken(param)
     if (response.isSuccessful) {
       val tokenResponse = response.body()
       return tokenResponse?.token ?: throw Exception("Token response is null")

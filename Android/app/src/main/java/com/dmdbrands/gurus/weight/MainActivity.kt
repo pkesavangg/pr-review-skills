@@ -11,7 +11,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dmdbrands.gurus.weight.app.MeApp
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
-import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
@@ -19,6 +18,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.greatergoods.blewrapper.GGBLEService
+import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first

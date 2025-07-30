@@ -83,5 +83,5 @@ interface IDeviceRepository {
    * Get scale token from the API.
    * @return The scale token as a string.
    */
-  suspend fun getScaleTokenFromApi(): String
+  suspend fun getScaleTokenFromApi(isR4: Boolean): String
 }

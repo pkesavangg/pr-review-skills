@@ -18,8 +18,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.AppsyncSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -40,7 +38,7 @@ fun SetupContent(
   setupFinished: Boolean = false,
   isGifImage: Boolean = false,
   supportingImage: Int? = null,
-  loaderText: String? = null,
+  loaderText: String? = null ,
   loaderClick: (() -> Unit)? = null,
   connectionState: ConnectionState? = null,
   content: (@Composable () -> Unit)? = null
@@ -95,18 +93,12 @@ fun SetupContent(
           )
         }
 
-        Spacer(modifier = Modifier.height(spacing.lg))
+        Spacer(modifier = Modifier.height(spacing.xs))
         if (loaderText != null &&
-          (connectionState == ConnectionState.Loading || connectionState == ConnectionState.Success)
-        ) {
+          (connectionState == ConnectionState.Loading || connectionState == ConnectionState.Success)) {
           LoadingTextWithDots(
             baseText = loaderText,
             textColor = MeTheme.colorScheme.secondaryAction,
-          )
-        } else if (loaderText != null && loaderClick != null) {
-          AppButton(
-            label = loaderText,
-            onClick = loaderClick,
           )
         }
       }
@@ -115,7 +107,6 @@ fun SetupContent(
     content?.let {
       content()
     }
-
   }
 }
 
@@ -126,11 +117,8 @@ private fun SetupContentPreview() {
     SetupContent(
       title = AppsyncSetupStrings.SetupComplete.Title,
       subtitle = AppsyncSetupStrings.SetupComplete.Message,
-      supportingImage = AppIcons.Setup.PairModeGif("0382"),
-      isGifImage = true,
-      loaderText = BtScaleSetupStrings.PairingMode.PairModeText(ConnectionState.Failed.Error),
-      loaderClick = {},
-      connectionState = ConnectionState.Failed.Error,
+      setupFinished = true,
+      supportingImage = AppIcons.Setup.AppSyncNavBar,
     )
   }
 }

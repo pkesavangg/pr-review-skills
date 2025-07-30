@@ -192,7 +192,7 @@ object AppPermissionsHelper {
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
-    val items = getPermissionItems(requiredPermissionTypes, permissionMap)
+    val items = getPermissionItems(requiredPermissionTypes, permissionMap, sku)
 
     // Group items by their group header
     val groupedItems = items.groupBy { it.group }
@@ -322,7 +322,8 @@ object AppPermissionsHelper {
 
   private fun getPermissionItems(
     requiredPermissionTypes: List<String>,
-    permissionMap: GGPermissionStatusMap
+    permissionMap: GGPermissionStatusMap,
+    sku: String? = null
   ): List<PermissionItem> {
     // Build PermissionItems for only the required types
     val items = requiredPermissionTypes.mapNotNull { type ->
@@ -334,14 +335,39 @@ object AppPermissionsHelper {
         PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
         else -> PermissionItemStatus.NotRequested
       }
+
+      // Custom descriptions for SKU 0384
+      val (enabledDescription, disabledDescription) = if (sku == "0384") {
+        getCustomDescriptionsForSku0384(type, meta.enabledDescription ?: "", meta.disabledDescription ?: "")
+      } else {
+        meta.enabledDescription to meta.disabledDescription
+      }
+
       PermissionItem(
         key = type,
         status = status,
-        enabledDescription = meta.enabledDescription,
-        disabledDescription = meta.disabledDescription,
+        enabledDescription = enabledDescription,
+        disabledDescription = disabledDescription,
         group = meta.group,
       )
     }
     return items
+  }
+
+  /**
+   * Returns custom permission descriptions for SKU 0384.
+   */
+  private fun getCustomDescriptionsForSku0384(
+    permissionType: String,
+    defaultEnabled: String,
+    defaultDisabled: String
+  ): Pair<String, String> {
+    return when (permissionType) {
+      GGPermissionType.WIFI_SWITCH -> {
+        AppPermissionsScreenStrings.EnabledWifiDescription to AppPermissionsScreenStrings.DisabledWifiDescription
+      }
+
+      else -> defaultEnabled to defaultDisabled
+    }
   }
 }

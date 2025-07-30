@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.shared.utilities
 
 import com.dmdbrands.gurus.weight.BuildConfig
 import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
 
@@ -43,4 +44,20 @@ object DeviceInfoUtil {
             context.contentResolver,
             Settings.Secure.ANDROID_ID,
         ) ?: ""
+
+    /**
+     * Check if WiFi is enabled on the device.
+     * Equivalent to device.service.ts isWifiEnabled()
+     *
+     * @param context The application context.
+     * @return true if WiFi is enabled, false otherwise
+     */
+    fun isWifiEnabled(context: Context): Boolean {
+        return try {
+            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            wifiManager.isWifiEnabled
+        } catch (e: Exception) {
+            false
+        }
+    }
 }

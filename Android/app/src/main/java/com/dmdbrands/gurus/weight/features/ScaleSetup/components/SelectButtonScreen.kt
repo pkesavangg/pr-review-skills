@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -24,7 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.components.SelectButtonGrid
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import com.greatergoods.meapp.features.ScaleSetup.strings.WifiScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 
 @Composable
 fun SelectButton(
@@ -34,6 +35,7 @@ fun SelectButton(
   subtitle: String? = null,
   noteMessage: String? = null,
   isSelectable: Boolean = false,
+  isAPMode: Boolean = false,
   supportingButtonLabel: String? = null,
   onItemSelected: ((String) -> Unit)? = null,
   content: (@Composable () -> Unit)? = null,
@@ -42,6 +44,7 @@ fun SelectButton(
   Column(
     modifier = modifier
       .fillMaxSize()
+      .padding(vertical = spacing.md, horizontal = spacing.sm)
       .verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
@@ -129,7 +132,7 @@ private fun SelectButtonWithWifiModesPreview() {
         selectedMode = value
         // Handle wifi mode selection
       },
-      noteMessage = WifiScaleSetupStrings.WifiMode.Note,
+      noteMessage = WifiScaleSetupStrings.WifiMode.ApNote,
       supportingButtonLabel = "hello",
       onSupportingButtonClick = {}
     )

@@ -16,7 +16,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoader
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
@@ -30,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
 import kotlinx.coroutines.delay
 
 @Composable

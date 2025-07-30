@@ -39,10 +39,12 @@ fun WifiMacAddress(
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+      // Display the actual MAC address
       AppNote(
-        message = WifiMacAddressStrings.MacEncryption,
+        message = macAddress,
         messageType = TextType.Message
       )
+
       AppButton(
         label = WifiMacAddressStrings.CopyMacButton,
         type = ButtonType.TextPrimary,

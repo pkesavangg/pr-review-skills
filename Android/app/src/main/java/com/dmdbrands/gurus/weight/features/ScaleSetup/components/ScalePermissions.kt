@@ -33,7 +33,7 @@ fun ScalePermissions(
   ) {
     AppText(
       text = ScaleSetupStrings.ScalePermissions.Title,
-      textType = TextType.ListTitle1,
+      textType = TextType.Title,
       modifier = Modifier.padding(bottom = spacing.xs),
     )
     AppText(

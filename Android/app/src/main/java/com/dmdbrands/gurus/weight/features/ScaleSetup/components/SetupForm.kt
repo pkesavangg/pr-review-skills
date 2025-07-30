@@ -89,6 +89,7 @@ fun <T> SetupForm(
     modifier = modifier
       .fillMaxSize()
       .padding(horizontal = spacing.sm, vertical = spacing.md)
+      .verticalScroll(rememberScrollState())
       .clickable(
         interactionSource = interactionSource,
         indication = null,
@@ -125,7 +126,7 @@ fun <T> SetupForm(
 
     wifiNameFormControl?.let {
       AppInput(
-        formControl = formControl,
+        formControl = it,
         label = secondaryLabel,
         type = inputType,
         imeAction = ImeAction.Done,
