@@ -62,14 +62,12 @@ fun SelectButton(
     }
 
     // Select Buttons Grid
-    selectButtonItems?.let { items ->
-      SelectButtonGrid(
-        items = items,
-        isSelectable = isSelectable,
-        onItemSelected = onItemSelected,
-        modifier = Modifier.fillMaxWidth()
-      )
-    }
+    SelectButtonGrid(
+      items = selectButtonItems,
+      isSelectable = isSelectable,
+      onItemSelected = onItemSelected,
+      modifier = Modifier.fillMaxWidth()
+    )
 
     if(supportingButtonLabel != null && onSupportingButtonClick != null) {
       AppButton(
