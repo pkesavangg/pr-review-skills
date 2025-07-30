@@ -1,0 +1,12 @@
+package com.dmdbrands.gurus.weight.core.config
+
+object NetworkConfig {
+    val PUBLIC_ENDPOINTS =
+        setOf(
+            "account/login",
+            "refresh-token",
+            "account/forgot-password",
+        )
+
+    fun isPublicEndpoint(path: String): Boolean = PUBLIC_ENDPOINTS.any { path.endsWith(it, ignoreCase = true) }
+}
