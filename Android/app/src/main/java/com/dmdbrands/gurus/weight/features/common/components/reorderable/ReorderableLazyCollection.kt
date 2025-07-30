@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package sh.calvin.reorderable
+package com.dmdbrands.gurus.weight.features.common.components.reorderable
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
@@ -62,6 +62,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import sh.calvin.reorderable.DragGestureDetector
+import sh.calvin.reorderable.Scroller
+import sh.calvin.reorderable.draggable
+import sh.calvin.reorderable.fromAxis
+import sh.calvin.reorderable.getAxis
+import sh.calvin.reorderable.minus
+import sh.calvin.reorderable.opposite
+import sh.calvin.reorderable.plus
+import sh.calvin.reorderable.reverseAxis
 
 object ReorderableLazyCollectionDefaults {
   val ScrollThreshold = 48.dp
@@ -433,7 +442,7 @@ open class ReorderableLazyCollectionState<out T> internal constructor(
           orientation == Orientation.Horizontal)) {
         true -> endOffset - draggingItemHandleOffset
         false -> startOffset + draggingItemHandleOffset
-      } + IntOffset.fromAxis(
+      } + IntOffset.Companion.fromAxis(
         orientation,
         state.layoutInfo.beforeContentPadding,
       ).toOffset()
@@ -667,13 +676,13 @@ interface ReorderableCollectionItemScope {
   /**
    * Make the UI element the draggable handle for the reorderable item.
    *
-   * This modifier can only be used on the UI element that is a child of [com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem].
+   * This modifier can only be used on the UI element that is a child of [ReorderableItem].
    *
    * @param enabled Whether or not drag is enabled
    * @param interactionSource [MutableInteractionSource] that will be used to emit [DragInteraction.Start] when this draggable is being dragged.
    * @param onDragStarted The function that is called when the item starts being dragged
    * @param onDragStopped The function that is called when the item stops being dragged
-   * @param dragGestureDetector [DragGestureDetector] that will be used to detect drag gestures
+   * @param dragGestureDetector [sh.calvin.reorderable.DragGestureDetector] that will be used to detect drag gestures
    */
   fun Modifier.draggableHandle(
     enabled: Boolean = true,
@@ -686,7 +695,7 @@ interface ReorderableCollectionItemScope {
   /**
    * Make the UI element the draggable handle for the reorderable item. Drag will start only after a long press.
    *
-   * This modifier can only be used on the UI element that is a child of [com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem].
+   * This modifier can only be used on the UI element that is a child of [ReorderableItem].
    *
    * @param enabled Whether or not drag is enabled
    * @param interactionSource [MutableInteractionSource] that will be used to emit [DragInteraction.Start] when this draggable is being dragged.
@@ -783,7 +792,7 @@ internal class ReorderableCollectionItemScopeImpl(
 /**
  * A composable that allows items to be reordered by dragging.
  *
- * @param state The return value of [rememberReorderableLazyListState], [com.dmdbrands.gurus.weight.features.common.components.reorderable.rememberReorderableLazyGridState], or [rememberReorderableLazyStaggeredGridState]
+ * @param state The return value of [sh.calvin.reorderable.rememberReorderableLazyListState], [rememberReorderableLazyGridState], or [sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState]
  * @param key The key of the item, must be the same as the key passed to the parent composable
  * @param enabled Whether or this item is reorderable. If true, the item will not move for other items but may still be draggable. To make an item not draggable, set `enable = false` in [Modifier.draggable] or [Modifier.longPressDraggable] instead.
  * @param dragging Whether or not this item is currently being dragged
