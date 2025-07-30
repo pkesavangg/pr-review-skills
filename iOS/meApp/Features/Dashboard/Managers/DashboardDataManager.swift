@@ -1,159 +1,50 @@
 import Foundation
 import SwiftUI
+import Combine
 
-/// Manages all data caching and API synchronization for the dashboard
+/// Manages UI state and coordinates with EntryService for dashboard data operations
 @MainActor
 class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Dependencies
-    @Injector private var accountService: AccountService
     @Injector private var entryService: EntryService
     @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
 
     // MARK: - Published Properties
     @Published var state: DataState
 
     // MARK: - Private Properties
-    private let calendar = Calendar.current
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
     init(initialState: DataState = DataState()) {
         self.state = initialState
+        setupEntryServiceBindings()
+    }
+
+    // MARK: - Setup Bindings
+    private func setupEntryServiceBindings() {
+        // Directly bind to EntryService's published properties
+        entryService.$dailySummaries
+            .sink { [weak self] dailySummaries in
+                self?.updateStateFromDailySummaries(dailySummaries)
+            }
+            .store(in: &cancellables)
+
+        entryService.$monthlySummaries
+            .sink { [weak self] monthlySummaries in
+                self?.updateStateFromMonthlySummaries(monthlySummaries)
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            throw DashboardError.noActiveAccount
-        }
-
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Loading initial dashboard data")
-
-            // Get all entries for the account
-            let entries = try await entryService.getAllEntries()
-
-            // Aggregate data by day and month
-            let dailyData = entryService.aggregateByDay(entries: entries, accountId: accountId)
-            let monthlyData = entryService.aggregateByMonth(entries: entries, accountId: accountId)
-
-            // Update caches
-            state.dailyCache = Dictionary(
-                uniqueKeysWithValues: dailyData.compactMap { summary in
-                    guard let summary = summary else { return nil }
-                    return (summary.period, summary)
-                }
-            )
-
-            state.monthlyCache = Dictionary(
-                uniqueKeysWithValues: monthlyData.compactMap { summary in
-                    guard let summary = summary else { return nil }
-                    return (summary.period, summary)
-                }
-            )
-
-            // Update published arrays
-            updatePublishedArrays()
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Initial data loaded successfully - Daily: \(state.dailyCache.count), Monthly: \(state.monthlyCache.count)")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to load initial data: \(error)")
-            throw DashboardError.dataLoadingFailed(error)
-        }
+        logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
+        // No need to load data here - ContentView handles data loading
+        // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
 
-    // MARK: - Entry Management
-    func handleEntryAdded(_ entry: Entry) async throws {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            throw DashboardError.noActiveAccount
-        }
-
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry addition: \(entry.id)")
-
-            let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
-            let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
-
-            // Fetch all entries for the affected day and month
-            let dayEntries = try await fetchEntriesForPeriod(dayKey, .day)
-            let monthEntries = try await fetchEntriesForPeriod(monthKey, .month)
-
-            // Update caches with aggregated data
-            if let daySummary = entryService.aggregateByDay(entries: dayEntries, accountId: accountId).first {
-                state.dailyCache[dayKey] = daySummary
-            }
-
-            if let monthSummary = entryService.aggregateByMonth(entries: monthEntries, accountId: accountId).first {
-                state.monthlyCache[monthKey] = monthSummary
-            }
-
-            // Update published arrays
-            updatePublishedArrays()
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry addition handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry addition: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry addition")
-        }
-    }
-
-    func handleEntryUpdated(_ entry: Entry) async throws {
-        // For updates, we can treat as delete + add for simplicity
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry update: \(entry.id)")
-
-            try await handleEntryDeleted(entry)
-            try await handleEntryAdded(entry)
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry update handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry update: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry update")
-        }
-    }
-
-    func handleEntryDeleted(_ entry: Entry) async throws {
-        guard let accountId = accountService.activeAccount?.accountId else {
-            throw DashboardError.noActiveAccount
-        }
-
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry deletion: \(entry.id)")
-
-            let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
-            let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
-
-            // Fetch remaining entries for the affected day and month
-            let dayEntries = try await fetchEntriesForPeriod(dayKey, .day)
-            let monthEntries = try await fetchEntriesForPeriod(monthKey, .month)
-
-            // Update or remove cache entries
-            if let daySummary = entryService.aggregateByDay(entries: dayEntries, accountId: accountId).first {
-                state.dailyCache[dayKey] = daySummary
-            } else {
-                state.dailyCache.removeValue(forKey: dayKey)
-            }
-
-            if let monthSummary = entryService.aggregateByMonth(entries: monthEntries, accountId: accountId).first {
-                state.monthlyCache[monthKey] = monthSummary
-            } else {
-                state.monthlyCache.removeValue(forKey: monthKey)
-            }
-
-            // Update published arrays
-            updatePublishedArrays()
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry deletion handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry deletion: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry deletion")
-        }
-    }
 
     // MARK: - Data Retrieval
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary] {
@@ -195,32 +86,34 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Cache Management
     func clearCache() async throws {
-      logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
+        logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
 
-      state.dailyCache.removeAll()
-      state.monthlyCache.removeAll()
-      state.dailySummaries.removeAll()
-      state.monthlySummaries.removeAll()
-      state.latestWeightStored = 0
 
-      logger.log(level: .info, tag: "DashboardDataManager", message: "Cache cleared successfully")
+        // Clear local state
+        state.dailyCache.removeAll()
+        state.monthlyCache.removeAll()
+        state.dailySummaries.removeAll()
+        state.monthlySummaries.removeAll()
+        state.latestWeightStored = 0
+
+        logger.log(level: .info, tag: "DashboardDataManager", message: "Cache cleared successfully")
     }
 
     // MARK: - Data Validation
     func validateCacheConsistency() throws {
-        // Check that published arrays match cache data
-        let dailyCacheCount = state.dailyCache.count
-        let dailySummariesCount = state.dailySummaries.compactMap { $0 }.count
+        // Check that published arrays match EntryService data
+        let entryServiceDailyCount = entryService.dailySummaries.count
+        let stateDailyCount = state.dailySummaries.compactMap { $0 }.count
 
-        let monthlyCacheCount = state.monthlyCache.count
-        let monthlySummariesCount = state.monthlySummaries.compactMap { $0 }.count
+        let entryServiceMonthlyCount = entryService.monthlySummaries.count
+        let stateMonthlyCount = state.monthlySummaries.compactMap { $0 }.count
 
-        guard dailyCacheCount == dailySummariesCount else {
-            throw DashboardError.cacheUpdateFailed("Daily cache inconsistency: cache=\(dailyCacheCount), summaries=\(dailySummariesCount)")
+        guard entryServiceDailyCount == stateDailyCount else {
+            throw DashboardError.cacheUpdateFailed("Daily cache inconsistency: EntryService=\(entryServiceDailyCount), state=\(stateDailyCount)")
         }
 
-        guard monthlyCacheCount == monthlySummariesCount else {
-            throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: cache=\(monthlyCacheCount), summaries=\(monthlySummariesCount)")
+        guard entryServiceMonthlyCount == stateMonthlyCount else {
+            throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 
         logger.log(level: .info, tag: "DashboardDataManager", message: "Cache consistency validation passed")
@@ -247,26 +140,24 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     }
 
     // MARK: - Private Methods
-    private func updatePublishedArrays() {
-        // Update published arrays from cache
-        state.dailySummaries = Array(state.dailyCache.values).sorted { $0.period < $1.period }
-        state.monthlySummaries = Array(state.monthlyCache.values).sorted { $0.period < $1.period }
+    private func updateStateFromDailySummaries(_ dailySummaries: [BathScaleWeightSummary]) {
+        // Update state from EntryService published properties
+        state.dailySummaries = dailySummaries.map { $0 }
+
+        // Update cache for backward compatibility
+        state.dailyCache = Dictionary(
+            uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
+        )
     }
 
+    private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
+        // Update state from EntryService published properties
+        state.monthlySummaries = monthlySummaries.map { $0 }
 
-
-    private func fetchEntriesForPeriod(_ periodKey: String, _ type: PeriodType) async throws -> [Entry] {
-        do {
-            switch type {
-            case .day:
-                return try await entryService.getEntries(forDay: periodKey)
-            case .month:
-                return try await entryService.getEntries(forMonth: periodKey)
-            }
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to fetch entries for period \(periodKey): \(error)")
-            return []
-        }
+        // Update cache for backward compatibility
+        state.monthlyCache = Dictionary(
+            uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
+        )
     }
 
     private func calculateDateRange() -> DateRange? {
@@ -291,6 +182,4 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         let monthlySize = state.monthlyCache.count * 200 // Approximate size per monthly summary
         return dailySize + monthlySize
     }
-
-
 }

@@ -177,33 +177,63 @@ struct YAxisCalculator {
             finalMax = scaleMax
         }
 
-        // Debug logging for small datasets
-        print("Small dataset Y-axis calculation:")
-        print("  - Data values: \(weightValues)")
-        print("  - Data range: \(minValue) to \(maxValue)")
-        print("  - Goal weight: \(goalWeight)")
-        print("  - Data center: \(dataCenter)")
-        print("  - Reasonable range: \(reasonableGoalRange)")
-        print("  - Final range: \(finalMin) to \(finalMax)")
-        print("  - Including goal: \(abs(goalWeight - dataCenter) <= reasonableGoalRange)")
 
-        // Create simple ticks with 1-unit steps for small datasets
-        var ticks: [Double] = []
-        let step = 1.0
-        var currentTick = finalMin
-        while currentTick <= finalMax {
-            ticks.append(currentTick)
-            currentTick += step
-        }
+        // Create simple ticks with appropriate steps for small datasets
+        let (adjustedStep, adjustedTicks) = enforceTickLimits(
+            min: finalMin,
+            max: finalMax,
+            initialStep: 1.0
+        )
 
         return YAxisScale(
             min: finalMin,
             max: finalMax,
-            step: step,
-            ticks: ticks,
+            step: adjustedStep,
+            ticks: adjustedTicks,
             domain: finalMin...finalMax,
             average: average
         )
+    }
+
+    /// Enforce tick limits (min 3, max 8) by adjusting step size
+    internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) {
+        let range = max - min
+        var step = initialStep
+        var ticks: [Double] = []
+
+        // Generate initial ticks
+        var currentTick = min
+        while currentTick <= max + 0.001 {
+            ticks.append(currentTick)
+            currentTick += step
+        }
+
+        // Adjust if too many ticks (> 8)
+        while ticks.count > 8 {
+            step *= 2 // Double the step size
+            ticks = []
+            currentTick = min
+            while currentTick <= max + 0.001 {
+                ticks.append(currentTick)
+                currentTick += step
+            }
+        }
+
+        // Adjust if too few ticks (< 3)
+        while ticks.count < 3 && step > 0.1 {
+            step /= 2 // Halve the step size
+            ticks = []
+            currentTick = min
+            while currentTick <= max + 0.001 {
+                ticks.append(currentTick)
+                currentTick += step
+            }
+        }
+
+        // Ensure unique ticks and sort
+        ticks = Array(Set(ticks)).sorted()
+
+        return (step, ticks)
     }
 
     /// Create fallback scale when no data is available
@@ -297,39 +327,15 @@ fileprivate struct ImprovedNiceScaleCalculator {
             finalMax = max
         }
 
-                // Check if we can use even numbers for cleaner display
-        let actualRange = finalMax - finalMin
-        if actualRange == 2.0 {
-            // For exactly 2-unit ranges, use even numbers
-            let evenMin = finalMin.truncatingRemainder(dividingBy: 2) == 0 ? finalMin : finalMin - 1
-            let evenMax = finalMax.truncatingRemainder(dividingBy: 2) == 0 ? finalMax : finalMax + 1
+                // Generate ticks with appropriate step size while enforcing limits
+        let initialStep = 1.0
+        let (adjustedStep, adjustedTicks) = YAxisCalculator.enforceTickLimits(
+            min: finalMin,
+            max: finalMax,
+            initialStep: initialStep
+        )
 
-            // Generate ticks with 2-unit steps for even numbers
-            var ticks: [Double] = []
-            var current = evenMin
-            while current <= evenMax {
-                ticks.append(current)
-                current += 2
-            }
-
-            // Ensure unique ticks
-            ticks = Array(Set(ticks)).sorted()
-
-            return (evenMin, evenMax, 2.0, ticks, evenMin...evenMax)
-        } else {
-            // For other ranges, use 1-unit steps
-            var ticks: [Double] = []
-            var current = finalMin
-            while current <= finalMax {
-                ticks.append(current)
-                current += 1
-            }
-
-            // Ensure unique ticks
-            ticks = Array(Set(ticks)).sorted()
-
-            return (finalMin, finalMax, 1.0, ticks, finalMin...finalMax)
-        }
+        return (finalMin, finalMax, adjustedStep, adjustedTicks, finalMin...finalMax)
     }
 
         /// Handle medium ranges (5-15 units)
@@ -359,18 +365,14 @@ fileprivate struct ImprovedNiceScaleCalculator {
             finalMax = max
         }
 
-        // Generate ticks with 2-unit steps
-        var ticks: [Double] = []
-        var current = finalMin
-        while current <= finalMax {
-            ticks.append(current)
-            current += 2
-        }
+        // Generate ticks with appropriate step size while enforcing limits
+        let (adjustedStep, adjustedTicks) = YAxisCalculator.enforceTickLimits(
+            min: finalMin,
+            max: finalMax,
+            initialStep: 2.0
+        )
 
-        // Ensure unique ticks
-        ticks = Array(Set(ticks)).sorted()
-
-        return (finalMin, finalMax, 2.0, ticks, finalMin...finalMax)
+        return (finalMin, finalMax, adjustedStep, adjustedTicks, finalMin...finalMax)
     }
 
     /// Handle normal ranges (15+ units)
@@ -414,46 +416,18 @@ fileprivate struct ImprovedNiceScaleCalculator {
             finalMax = niceMax
         }
 
-        // Generate ticks
-        var ticks: [Double] = []
-        var currentTick = finalMin
-
-        while currentTick <= finalMax + 0.001 { // Small epsilon for floating point comparison
-            ticks.append(currentTick)
-            currentTick += step
-        }
-
-                // Ensure unique ticks and reasonable count
-        ticks = Array(Set(ticks)).sorted()
-
-        // Adjust tick count if needed - reduced ranges for cleaner graphs
-        if ticks.count < 3 {
-            // Add more ticks by reducing step
-            let smallerStep = step / 2
-            ticks = []
-            currentTick = finalMin
-            while currentTick <= finalMax + 0.001 {
-                ticks.append(currentTick)
-                currentTick += smallerStep
-            }
-            ticks = Array(Set(ticks)).sorted()
-        } else if ticks.count > 6 {
-            // Reduce ticks by increasing step
-            let largerStep = step * 2
-            ticks = []
-            currentTick = finalMin
-            while currentTick <= finalMax + 0.001 {
-                ticks.append(currentTick)
-                currentTick += largerStep
-            }
-            ticks = Array(Set(ticks)).sorted()
-        }
+        // Generate ticks with appropriate step size while enforcing limits
+        let (adjustedStep, adjustedTicks) = YAxisCalculator.enforceTickLimits(
+            min: finalMin,
+            max: finalMax,
+            initialStep: step
+        )
 
         return (
             min: finalMin,
             max: finalMax,
-            step: step,
-            ticks: ticks,
+            step: adjustedStep,
+            ticks: adjustedTicks,
             domain: finalMin...finalMax
         )
     }

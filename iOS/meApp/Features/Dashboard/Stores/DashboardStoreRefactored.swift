@@ -21,7 +21,6 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
-    private var hasInitializedChart = false
     private var lastUserScrollTime: Date?
 
     // MARK: - Constants
@@ -93,17 +92,13 @@ class DashboardStore: ObservableObject {
     private func setupSubscriptions() {
         entryService.entrySaved
             .sink { [weak self] entry in
-                Task {
-                    await self?.onEntryAdded(entry)
-                }
+              self?.onEntryAdded(entry)
             }
             .store(in: &cancellables)
 
         entryService.entryDeleted
             .sink { [weak self] entry in
-                Task {
-                    await self?.onEntryDeleted(entry)
-                }
+              self?.onEntryDeleted(entry)
             }
             .store(in: &cancellables)
 
@@ -198,7 +193,8 @@ class DashboardStore: ObservableObject {
 
     var visibleOperations: [BathScaleWeightSummary] {
         // Use cached operations with improved caching logic in graph manager
-        return graphManager.getVisibleOperations(from: continuousOperations)
+        let visible = graphManager.getVisibleOperations(from: continuousOperations)
+        return visible
     }
 
         // Delegate chart data generation to GraphManager
@@ -420,15 +416,18 @@ class DashboardStore: ObservableObject {
             await forceUpdateDashboardTypeTo12()
         }
 
-        // Load dashboard configuration from API first
+        // Initialize data manager to set up bindings
+        await initializeDataManager()
+
+        // Load dashboard configuration from API
         await loadDashboardConfigurationFromAPI()
 
-        // Then load other data
+        // Load other data
         loadLatestEntryData()
-        await loadInitialData()
 
-        // Initialize chart after data is loaded
+        // Initialize chart - data will be available from ContentView loading
         initializeChart()
+
     }
 
     // MARK: - Dashboard Type Management
@@ -513,13 +512,13 @@ class DashboardStore: ObservableObject {
         }
     }
 
-    // Delegate data loading to DataManager
-    private func loadInitialData() async {
+    // Initialize data manager (no actual data loading - handled by ContentView)
+    private func initializeDataManager() async {
         do {
             try await dataManager.loadInitialData()
-            logger.log(level: .info, tag: "DashboardStore", message: "Initial data loaded successfully")
+            logger.log(level: .info, tag: "DashboardStore", message: "Data manager initialized successfully")
         } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to load initial data: \(error)")
+            logger.log(level: .error, tag: "DashboardStore", message: "Failed to initialize data manager: \(error)")
         }
     }
 
@@ -538,40 +537,27 @@ class DashboardStore: ObservableObject {
         }
     }
 
-    // Delegate entry lifecycle to DataManager
-    // MARK: - Entry Lifecycle Management
-    internal func onEntryAdded(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryAdded(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry added: \(error)")
-        }
-    }
+        // Delegate entry lifecycle to DataManager
+        // MARK: - Entry Lifecycle Management
+      internal func onEntryAdded(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
 
-    internal func onEntryUpdated(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryUpdated(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry updated: \(error)")
-        }
-    }
+      internal func onEntryUpdated(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
 
-    internal func onEntryDeleted(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryDeleted(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry deleted: \(error)")
-        }
-    }
+      internal func onEntryDeleted(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
+
+
 
     // MARK: - UI Action Methods
 
@@ -631,7 +617,7 @@ class DashboardStore: ObservableObject {
             state.ui.selectedMetricLabel = label
         }
     }
-    
+
     /// Toggles the edit mode state
     func toggleEditMode() {
         state.ui.isEditMode.toggle()
@@ -646,15 +632,14 @@ class DashboardStore: ObservableObject {
             return
         }
 
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-        }
+        graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+
     }
 
     func handleSettingsChange() {
         loadGoalCardData()
         objectWillChange.send()
-        updateYAxisCache()
+        self.updateYAxisCache()
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
@@ -792,40 +777,21 @@ class DashboardStore: ObservableObject {
 
     func updateSelectedPeriod(_ period: TimePeriod) {
         // Reset chart initialization for new period
-        hasInitializedChart = false
+        state.ui.hasInitializedChart = false
 
-        // Store the previous period to detect TOTAL → other transition
-        let previousPeriod = state.graph.selectedPeriod
-
-        // Explicitly set scroll position to latest entry date for segment change
-        if let latestEntryDate = continuousOperations.map(\.date).max() {
-            state.graph.xScrollPosition = latestEntryDate
-        }
-
+        // Calculate optimal scroll position based on X-axis computation logic for segment change
+        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
+            for: period,
+            from: continuousOperations,
+            showingLatest: true
+        )
+        graphManager.updateScrollPosition(to: optimalScrollPosition)
         // Delegate period update to graph manager
-        Task {
-            await graphManager.updateSelectedPeriod(period)
+        graphManager.updateSelectedPeriod(period)
 
-            // Clear all selection states
-            clearSelection()
-
-            // If switching from TOTAL to other periods, ensure latest entries are visible
-            if previousPeriod == .total && period != .total {
-                // Force scroll position to latest entry
-                if let latestEntryDate = continuousOperations.map(\.date).max() {
-                    state.graph.xScrollPosition = latestEntryDate
-                }
-            } else {
-                // For other transitions, use normal logic
-                ensureLatestEntriesVisible()
-            }
-
-            // Update weight display for new period
-            updateWeightDisplayForCurrentView()
-
-            // Force Y-axis recalculation for new period
-            recalculateYAxisForVisibleData()
-        }
+        self.forceCompleteRecalculationAfterScrollPosition()
+        state.ui.hasInitializedChart = true
     }
 
     // Delegate chart selection to GraphManager
@@ -895,9 +861,15 @@ class DashboardStore: ObservableObject {
         return [0.0, 25.0, 50.0, 75.0, 100.0]
     }
 
-    // Method to update Y-axis cache (called after domain recalculation)
+        // Method to update Y-axis cache (called after domain recalculation)
     @MainActor
     func updateYAxisCache() {
+        // NEVER update Y-axis domain during active scrolling - this is the root cause of axis jumping
+        guard !state.graph.isScrolling else {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll to prevent jumping")
+            return
+        }
+
         // For TOTAL period, use all data to ensure Y-axis reflects complete range
         let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
 
@@ -909,6 +881,8 @@ class DashboardStore: ObservableObject {
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
+
+        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
 
 
@@ -1096,36 +1070,27 @@ class DashboardStore: ObservableObject {
     @MainActor
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
-        guard !hasInitializedChart && !state.graph.isScrolling else {
+        guard !state.ui.hasInitializedChart && !state.graph.isScrolling else {
             updateWeightDisplayForCurrentView()
             return
         }
 
-        // Explicitly set scroll position to latest entry date for initial load
-        if let latestEntryDate = continuousOperations.map(\.date).max() {
-            state.graph.xScrollPosition = latestEntryDate
-        }
-
-        // Initialize Y-axis cache
-        updateYAxisCache()
-
-        // Ensure positioning (this will apply boundary enforcement)
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-
-            // Force UI update after scroll position is set
-            objectWillChange.send()
-        }
-        updateWeightDisplayForCurrentView()
-        hasInitializedChart = true
+        // Calculate optimal scroll position based on X-axis computation logic
+        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
+            for: state.graph.selectedPeriod,
+            from: continuousOperations,
+            showingLatest: true
+        )
+        self.graphManager.updateScrollPosition(to: optimalScrollPosition)
+        self.forceCompleteRecalculationAfterScrollPosition()
+        state.ui.hasInitializedChart = true
     }
 
     /// Handle scroll position changes - delegate to graph manager
     @MainActor
     func handleScrollPositionChange(_ newPosition: Date?) {
-        Task {
-            await graphManager.handleScrollPositionChange(newPosition)
-        }
+      graphManager.handleScrollPositionChange(newPosition)
     }
 
     /// Handle scroll start - clear selection and update state
@@ -1133,11 +1098,7 @@ class DashboardStore: ObservableObject {
     func handleScrollStart() {
         // Track user scroll time to prevent repositioning shortly after
         lastUserScrollTime = Date()
-
-        // Delegate to graph manager - do not manipulate graph state directly
-        Task {
-            await graphManager.handleScrollStart()
-        }
+        graphManager.handleScrollStart()
     }
 
     /// Enhanced scroll end handling with proper Y-axis recalculation and weight display update
@@ -1185,7 +1146,7 @@ class DashboardStore: ObservableObject {
     /// This should only be called on scroll end or segment load
     @MainActor
     private func recalculateYAxisForVisibleData() {
-        updateYAxisCache()
+        self.updateYAxisCache()
     }
 
     /// Update metrics to show values for current view (visible region or selected point)
@@ -1255,6 +1216,25 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Lifecycle Methods
 
+    /// Forces complete recalculation after programmatic scroll position changes
+    /// This ensures visible operations, Y-axis, and other dependent calculations are updated
+    @MainActor
+    private func forceCompleteRecalculationAfterScrollPosition() {
+        // Force recalculation of visible operations
+        graphManager.forceVisibleOperationsRecalculation()
+
+        // Force Y-axis cache update with new visible operations
+        updateYAxisCache()
+
+        // Update weight display for current view
+        updateWeightDisplayForCurrentView()
+
+        // Force UI update
+        objectWillChange.send()
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
+    }
+
     /// Perform actions when dashboard appears
     /// Loads latest data, goal card, and ensures proper initialization
     func onAppearActions() {
@@ -1262,9 +1242,10 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
-        // Ensure chart shows the latest entries by default
-        Task {
-            await graphManager.ensureLatestEntriesVisible(from: continuousOperations)
+       // After positioning is complete, update Y-axis cache to ensure proper domain calculation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.updateYAxisCache()
+            self.objectWillChange.send()
         }
 
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
