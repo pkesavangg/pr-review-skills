@@ -99,7 +99,7 @@ final class FeedService: ObservableObject {
     }
     
     // MARK: - Feed Modal Management
-    func showFeedModal() -> IAMFeedItem? {
+    func checkAndTriggerFeedModal() {
         let result = ggIAMService.checkFeedModalTrigger()
         if let feedItem = result {
             notificationService.showModal(ModalData(
@@ -109,8 +109,6 @@ final class FeedService: ObservableObject {
                 backdropDismiss: false
             ))
         }
-        
-        return result
     }
     
     // MARK: - Cleanup
