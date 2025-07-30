@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.average
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
+import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -36,7 +37,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
-import android.util.Log
 
 @Composable
 inline fun <T> rememberStable(
@@ -252,7 +252,6 @@ fun GraphView(
             minYTarget = graphMeta.min
             maxYTarget = graphMeta.max
             stepSize = graphMeta.step
-            Log.d("GraphView", graphMeta.toString())
           }
 
           // Clear the job reference when done
