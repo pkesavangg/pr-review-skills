@@ -60,7 +60,7 @@ class SettingsStore: ObservableObject {
     @Published var latestWeight: Int = 0
     
     // MARK: - Message Indicators
-    @Published var showSettingsBadge: Bool = true
+    @Published var canShowFeedNotificationBadge: Bool = true
     
     // MARK: - Log Out All Accounts
     @Published var canShowLogOutAllItems = false
@@ -126,7 +126,7 @@ class SettingsStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        self.startSubscribingToFeeds()
+        self.observeNotificationBadgeChanges()
     }
     
     func handleLogout() {
@@ -1154,10 +1154,10 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    private func startSubscribingToFeeds() {
+    private func observeNotificationBadgeChanges() {
         feedService.notificationBadgeUpdated
             .receive(on: DispatchQueue.main)
-            .assign(to: \.showSettingsBadge, on: self)
+            .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
     }
 }
