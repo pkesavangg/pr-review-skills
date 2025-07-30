@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,17 +16,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SelectButton
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SelectButton
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiItem
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -40,6 +36,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.model.BorderRadius
+import com.greatergoods.meapp.features.ScaleSetup.strings.WifiScaleSetupStrings
 import kotlinx.coroutines.delay
 
 @Composable
@@ -243,6 +241,8 @@ fun WifiScaleSetupScreenContent(
                   WifiItem(
                     ssid = WifiScaleSetupStrings.SwitchWifi.ChangeNetwork,
                     isConfigured = false,
+                    index = 0,
+                    total = 1
                   )
                 },
               )

@@ -1,6 +1,8 @@
 package com.greatergoods.meapp.core.service
 
 import androidx.activity.ComponentActivity
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.lib.wificonnect.model.EsptouchParams
 import com.greatergoods.lib.wificonnect.model.EsptouchResult
@@ -8,8 +10,6 @@ import com.greatergoods.lib.wificonnect.model.SmartConfigParams
 import com.greatergoods.lib.wificonnect.model.SmartConfigResult
 import com.greatergoods.lib.wificonnect.model.WifiConnectRequest
 import com.greatergoods.lib.wificonnect.model.WifiConnectResult
-import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
-import com.greatergoods.meapp.domain.repository.IDeviceService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

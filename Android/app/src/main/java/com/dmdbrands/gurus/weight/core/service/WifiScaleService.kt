@@ -1,4 +1,4 @@
-package com.greatergoods.meapp.core.service
+package com.dmdbrands.gurus.weight.core.service
 
 import androidx.activity.ComponentActivity
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog

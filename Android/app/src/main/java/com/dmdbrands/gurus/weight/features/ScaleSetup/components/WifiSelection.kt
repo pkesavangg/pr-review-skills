@@ -19,8 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -30,9 +30,10 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
+import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 
 /**
  * Data class representing a WiFi network.
@@ -165,12 +166,13 @@ fun WifiItem(
   isConfigured: Boolean,
   index: Int,
   total: Int,
+  borderRadius: Dp = 0.dp ,
   onClick: (() -> Unit)? = null,
 ) {
   val shape = when {
-    total == 1 -> RoundedCornerShape(borderRadius.sm)
-    index == 0 -> RoundedCornerShape(topStart = borderRadius.sm, topEnd = borderRadius.sm)
-    index == total - 1 -> RoundedCornerShape(bottomStart = borderRadius.sm, bottomEnd = borderRadius.sm)
+    total == 1 -> RoundedCornerShape(MeTheme.borderRadius.sm)
+    index == 0 -> RoundedCornerShape(topStart = MeTheme.borderRadius.sm, topEnd = MeTheme.borderRadius.sm)
+    index == total - 1 -> RoundedCornerShape(bottomStart = MeTheme.borderRadius.sm, bottomEnd = MeTheme.borderRadius.sm)
     else -> RoundedCornerShape(0.dp)
   }
 
