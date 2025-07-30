@@ -1,0 +1,234 @@
+package com.dmdbrands.gurus.weight.features.integration
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
+import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.integration.components.CompleteReconnectionScreen
+import com.dmdbrands.gurus.weight.features.integration.components.FinishConnect
+import com.dmdbrands.gurus.weight.features.integration.components.IncompleteReconnectionScreen
+import com.dmdbrands.gurus.weight.features.integration.components.PermissionLimitScreen
+import com.dmdbrands.gurus.weight.features.integration.components.StartConnect
+import com.dmdbrands.gurus.weight.features.integration.components.UserConflictScreen
+import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectAction
+import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectIntent
+import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectSetup
+import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectUiState
+import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStrings
+import com.dmdbrands.gurus.weight.features.integration.viewmodel.HealthConnectViewModel
+import com.dmdbrands.gurus.weight.resources.AppIcons
+import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.launch
+
+/**
+ * Main Health Connect integration screen that manages the integration flow.
+ */
+@Composable
+fun HealthConnectIntegrationScreen(
+    viewModel: HealthConnectViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+  val lifecycleOwner = LocalLifecycleOwner.current
+
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) {
+        viewModel.onResume(lifecycleOwner)
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose {
+      lifecycleOwner.lifecycle.removeObserver(observer)
+    }
+  }
+
+    HealthConnectIntegrationContent(
+        state = state,
+        handleIntent = viewModel::handleIntent,
+        onBack = {
+            coroutineScope.launch {
+                viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
+            }
+        },
+        onDismiss = {}
+    )
+}
+
+/**
+ * Content composable for the Health Connect integration screen.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun HealthConnectIntegrationContent(
+    state: HealthConnectUiState,
+    handleIntent: (HealthConnectIntent) -> Unit,
+    onBack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val pagerState = rememberPagerState(
+        initialPage = state.currentSlide,
+        pageCount = { HealthConnectSetup.entries.size }
+    )
+    val scrollState = rememberScrollState()
+
+    // Update pager when state changes
+    LaunchedEffect(state.healthConnectSetupState) {
+        val targetPage = state.healthConnectSetupState.code
+        if (targetPage >= 0 && targetPage < HealthConnectSetup.entries.size) {
+            pagerState.animateScrollToPage(targetPage)
+            handleIntent(HealthConnectIntent.UpdateSlide(targetPage))
+        }
+    }
+
+    // Handle back button
+    BackHandler(enabled = !state.alertPresented) {
+        handleIntent.invoke(HealthConnectIntent.ConfirmExitSetup)
+    }
+
+    AppScaffold(
+        title = "",
+        containerColor = MeTheme.colorScheme.secondaryBackground,
+        appBarColor = MeTheme.colorScheme.secondaryBackground,
+        navigationIcon = {
+            AppIconButton(AppIcons.Default.Close) {
+              handleIntent.invoke(HealthConnectIntent.ConfirmExitSetup)
+            }
+        },
+        borderColor = Color.Transparent
+    ) { paddingModifier ->
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = false,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(vertical = MeTheme.spacing.md)
+            ) {
+                when (state.healthConnectSetupState) {
+                    HealthConnectSetup.START_CONNECT -> {
+                        StartConnect(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+                            },
+                        )
+                    }
+                    HealthConnectSetup.FINISH_CONNECT -> {
+                        FinishConnect(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                                onDismiss()
+                            }
+                        )
+                    }
+
+                    HealthConnectSetup.CANCEL_CONNECT -> {
+                        PermissionLimitScreen(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+                                onDismiss()
+                            },
+                            onSecondaryAction = {
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.FINISH))
+                            }
+                        )
+                    }
+                    HealthConnectSetup.PERMISSION_LIMIT -> {
+                        PermissionLimitScreen(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+                            },
+                            onSecondaryAction = {
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.EXIT))
+                            }
+                        )
+                    }
+                    HealthConnectSetup.USER_CONFLICT -> {
+                        UserConflictScreen(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
+                            },
+                        )
+                    }
+
+                    HealthConnectSetup.COMPLETE_RECONNECTION -> {
+                        CompleteReconnectionScreen(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                            },
+                        )
+                    }
+
+                    HealthConnectSetup.INCOMPLETE_RECONNECTION -> {
+                        IncompleteReconnectionScreen(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
+                            },
+                            onSecondaryAction = {
+                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.SKIP))
+                            }
+                        )
+                    }
+
+                    HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION -> {
+                        FinishConnect (
+                          title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
+                          image = AppIcons.Integrations.HC_Homepage,
+                          onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                            },
+                        )
+                    }
+                    else -> {
+                        // Default to start connect for any other state
+                        StartConnect(
+                            onPrimaryAction = {
+                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HealthConnectIntegrationScreenPreview() {
+    MeAppTheme {
+        Surface {
+            HealthConnectIntegrationContent(
+                state = HealthConnectUiState(),
+                handleIntent = {},
+                onBack = {},
+                onDismiss = {}
+            )
+        }
+    }
+}

@@ -16,11 +16,11 @@ plugins {
 }
 
 android {
-  namespace = "com.greatergoods.meapp"
+  namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.greatergoods.meapp"
+    applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
