@@ -152,8 +152,10 @@ dependencies {
   implementation(libs.play.review.ktx)
 
   // Vico charts
-  implementation(libs.vico.compose)
-  implementation(libs.vico.compose.m3)
+
+  implementation("com.dmdbrands.lib:vico-core:1.1.0-alpha8")
+  implementation("com.dmdbrands.lib:vico-compose:1.1.0-alpha8")
+  implementation("com.dmdbrands.lib:vico-compose-m3:1.1.0-alpha8")
 
   // Gif Image
   implementation(libs.coil.compose)       // For Jetpack Compose

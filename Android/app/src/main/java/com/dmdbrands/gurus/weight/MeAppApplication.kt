@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight
 
 import com.dmdbrands.gurus.weight.core.di.AppEntryPoint
+import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import android.app.Application
 
 /**
@@ -11,19 +13,23 @@ import android.app.Application
  */
 @HiltAndroidApp
 class MeAppApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
 
-        // Initialize services needed for the app
-        initService()
-    }
+  @Inject
+  lateinit var notificationManager: NotificationManager
+  override fun onCreate() {
+    super.onCreate()
 
-    /**
-     * Initialize services needed for the app at app startup
-     */
-    private fun initService() {
-        val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
-        val initializer = entryPoint.appInitializer()
-        initializer.initialize()
-    }
+    // Initialize services needed for the app
+    initService()
+    notificationManager.createChannels()
+  }
+
+  /**
+   * Initialize services needed for the app at app startup
+   */
+  private fun initService() {
+    val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
+    val initializer = entryPoint.appInitializer()
+    initializer.initialize()
+  }
 }

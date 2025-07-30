@@ -9,41 +9,73 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineWithConnectionCondition
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.axis.Axis
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
 /**
  * Internal helper to remember the primary layer for the graph.
  */
 @Composable
-internal fun primaryLayer(segment: GraphSegment): LineCartesianLayer {
-    return rememberLineCartesianLayer(
-        lineProvider = LineCartesianLayer.LineProvider.series(
-            listOf(MeTheme.colorScheme.primaryAction).map {
-                LineCartesianLayer.rememberLine(
-                    fill = LineCartesianLayer.LineFill.single(fill(it)),
-                    stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
-                    pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-                    pointProvider = LineCartesianLayer.PointProvider.single(
-                        point = LineCartesianLayer.Point(
-                            rememberShapeComponent(
-                                fill(it),
-                                CorneredShape.Pill,
-                                strokeThickness = 2.dp,
-                            ),
-                        ),
-                    ),
-                )
-            },
-        ),
-        verticalAxisPosition = Axis.Position.Vertical.End,
-        pointSpacing = pointSpacing(segment, 10.dp),
-    )
+internal fun primaryLayer(segment: GraphSegment, minYTarget: Int, maxYTarget: Int): LineCartesianLayer {
+
+  val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
+    if (maxXTarget == null) {
+      false
+    } else {
+      val diffInDays = (maxXTarget - minXTarget) / (1000 * 60 * 60 * 24)
+      val disconnectionCriteria = when (segment) {
+        GraphSegment.WEEK -> diffInDays < 7
+        GraphSegment.MONTH -> diffInDays < 30
+        GraphSegment.YEAR -> diffInDays < 365
+        else -> true
+      }
+
+      disconnectionCriteria
+    }
+  }
+
+  return rememberLineCartesianLayer(
+    lineProvider = LineCartesianLayer.LineProvider.series(
+      listOf(MeTheme.colorScheme.primaryAction).map {
+        LineCartesianLayer.rememberLineWithConnectionCondition(
+          fill = LineCartesianLayer.LineFill.single(fill(it)),
+          stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
+          pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
+          pointProvider = LineCartesianLayer.PointProvider.single(
+            point = LineCartesianLayer.Point(
+              rememberShapeComponent(
+                fill(it),
+                CorneredShape.Pill,
+                strokeThickness = 2.dp,
+              ),
+            ),
+          ),
+          connectionCondition = { minXTarget, maxXTarget ->
+
+            connectionCondition(minXTarget.x.toLong(), maxXTarget?.x?.toLong())
+          },
+        )
+      },
+    ),
+    verticalAxisPosition = Axis.Position.Vertical.End,
+    rangeProvider = object : CartesianLayerRangeProvider {
+      override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+        return minYTarget.toDouble()
+      }
+
+      override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+        return maxYTarget.toDouble()
+      }
+    },
+    pointSpacing = pointSpacing(segment, 10.dp),
+  )
 }
 
 /**
@@ -52,21 +84,21 @@ internal fun primaryLayer(segment: GraphSegment): LineCartesianLayer {
  */
 @Composable
 fun pointSpacing(
-    segment: GraphSegment,
-    axisPadding: Dp = 0.dp
+  segment: GraphSegment,
+  axisPadding: Dp = 0.dp
 ): Dp {
-    val windowInfo = LocalWindowInfo.current
-    val screenWidthPx = windowInfo.containerSize.width
-    val density = LocalDensity.current
-    val intervalCount = remember(segment) {
-        when (segment) {
-            GraphSegment.WEEK -> 7
-            GraphSegment.MONTH -> 6
-            GraphSegment.YEAR -> 12
-            else -> 32
-        }
+  val windowInfo = LocalWindowInfo.current
+  val screenWidthPx = windowInfo.containerSize.width
+  val density = LocalDensity.current
+  val intervalCount = remember(segment) {
+    when (segment) {
+      GraphSegment.WEEK -> 7
+      GraphSegment.MONTH -> 6
+      GraphSegment.YEAR -> 12
+      else -> 32
     }
-    return remember(segment, screenWidthPx, intervalCount, axisPadding) {
-        with(density) { (screenWidthPx / intervalCount).toDp() - axisPadding }
-    }
+  }
+  return remember(segment, screenWidthPx, intervalCount, axisPadding) {
+    with(density) { (screenWidthPx / intervalCount).toDp() - axisPadding }
+  }
 }
