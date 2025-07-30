@@ -20,19 +20,24 @@ struct UIState {
     var selectedMetricLabel: String? = nil
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
+    
+    // Goal card position management (like large widget)
+    var goalCardPosition: Int = 0 // Position after divider (0 = first position)
 
     // Drag & Drop State
     var draggingMetric: MetricItem? = nil
     var draggingStreak: MetricItem? = nil
+    var isGoalCardBeingDragged: Bool = false
     var dropHoverId: String? = nil
 
     var isAnyItemBeingDragged: Bool {
-        draggingMetric != nil || draggingStreak != nil
+        draggingMetric != nil || draggingStreak != nil || isGoalCardBeingDragged
     }
 
     mutating func resetDragState() {
         draggingMetric = nil
         draggingStreak = nil
+        isGoalCardBeingDragged = false
         dropHoverId = nil
         gridLayoutId = UUID()
     }

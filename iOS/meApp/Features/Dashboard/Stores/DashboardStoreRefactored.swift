@@ -30,10 +30,10 @@ class DashboardStore: ObservableObject {
     let lang = LoaderStrings.self
 
     // MARK: - Managers (Business Logic)
-    private let metricsManager: DashboardMetricsManager
+    public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
     private let goalManager: DashboardGoalManager
-    private let streakManager: DashboardStreakManager
+    public let streakManager: DashboardStreakManager
     private let dataManager: DashboardDataManager
 
     // MARK: - Initialization
@@ -617,6 +617,18 @@ class DashboardStore: ObservableObject {
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
     }
+    
+    /// Updates the goal card position in the grid (like a large widget)
+    /// - Parameter newPosition: The new position after the divider (0 = first position)
+    func updateGoalCardPosition(_ newPosition: Int) {
+        let maxPosition = streakItemsToShow.count // Goal card can be at the end
+        let clampedPosition = max(0, min(newPosition, maxPosition))
+        
+        if state.ui.goalCardPosition != clampedPosition {
+            state.ui.goalCardPosition = clampedPosition
+            logger.log(level: .info, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
+        }
+    }
 
     func resetDragState() {
         state.ui.draggingMetric = nil
@@ -1018,7 +1030,12 @@ class DashboardStore: ObservableObject {
     func startDraggingStreak(_ streak: MetricItem) {
         state.ui.draggingStreak = streak
     }
-
+    
+    /// Start dragging the goal card
+    func startDraggingGoalCard() {
+        state.ui.isGoalCardBeingDragged = true
+    }
+    
     /// Update drop target during drag
     func updateDropTarget(_ targetId: String?) {
         state.ui.dropHoverId = targetId
@@ -1028,6 +1045,7 @@ class DashboardStore: ObservableObject {
     func endDragging() {
         state.ui.draggingMetric = nil
         state.ui.draggingStreak = nil
+        state.ui.isGoalCardBeingDragged = false
         state.ui.dropHoverId = nil
     }
 
@@ -1059,6 +1077,33 @@ class DashboardStore: ObservableObject {
         streakManager.state.streakItems.move(fromOffsets: source, toOffset: destination)
 
         logger.log(level: .info, tag: "DashboardStore", message: "Reordered streak items from \(source) to \(destination)")
+    }
+
+    /// Move a metric from source index to destination index (for UIKit drag and drop)
+    /// - Parameters:
+    ///   - from: The source index
+    ///   - to: The destination index
+    func moveMetric(from sourceIndex: Int, to destinationIndex: Int) {
+        // Validate indices before performing the move
+        guard sourceIndex != destinationIndex,
+              sourceIndex >= 0 && sourceIndex < metricsManager.state.metrics.count,
+              destinationIndex >= 0 && destinationIndex < metricsManager.state.metrics.count else {
+           // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
+            return
+        }
+        
+        // Move the metric in the data source
+        let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
+        metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
+        
+        // Update active metrics count if needed
+        let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
+        metricsManager.state.activeMetricsCount = currentActiveCount
+        
+        // Provide haptic feedback for successful move
+        HapticFeedbackService.light()
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
     }
 
     // MARK: - Graph State Management

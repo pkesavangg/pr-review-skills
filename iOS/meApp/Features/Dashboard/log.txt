@@ -1,0 +1,191 @@
+[INFO] HealthKit is available. Class: AppleHealthHandler Function: init() Line: 35
+[INFO] Observer added for app entering foreground to update metric authorization statuses. Class: AppleHealthHandler Function: init() Line: 49
+[INFO] Setting app type to WEIGHT_GURUS. Class: AppleHealthHandler Function: setAppType(appType:) Line: 69
+[INFO] Initializing HealthKit types and metrics. Class: AppleHealthHandler Function: initMethod() Line: 55
+[INFO] HealthKit types set. Class: AppleHealthHandler Function: initMethod() Line: 58
+[INFO] HealthKit metrics set. Class: AppleHealthHandler Function: initMethod() Line: 61
+[INFO] Checking if HealthKit data is available: true Class: AppleHealthHandler Function: available() Line: 77
+[INFO] Updating metric authorization statuses. Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 479
+[INFO] Updated status for metric: Weight to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: LeanBodyMass to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BodyFat to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BMI to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: HeartRate to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Metric authorization statuses updated. Class: AppleHealthHandler Function: initMethod() Line: 64
+[INFO] Checking if HealthKit data is available: true Class: AppleHealthHandler Function: available() Line: 77
+[INFO] Updating metric authorization statuses. Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 479
+[INFO] Updated status for metric: Weight to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: LeanBodyMass to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BodyFat to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BMI to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: HeartRate to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+Last sync timestamp: Optional("2025-07-30T11:59:28.903Z") Last sync timestamp
+[INFO] Successfully retrieved feed settings Class: FeedService Function: getFeedSettings() Line: 109 Data: ["accountId": "1pCsk80zXONCxuybiQ9Cy9"]
+[INFO] Pushing local changes to server Class: ScaleService Function: pushLocalChangesToServer() Line: 456 Data: none
+🔍 HTTPClient Raw Response: {"operations":[],"timestamp":"2025-07-30T12:05:09.158Z"}
+🔍 HTTPClient Raw Response: {"id":"1pCsk80zXONCxuybiQ9Cy9","email":"alakshmipriya@greatergoods.com","firstName":"lakshmi priya","lastName":"A","gender":"male","zipcode":"11111","weightUnit":"kg","isWeightlessOn":false,"preferredInputMethod":null,"height":646,"activityLevel":"normal","dob":"2000-01-01T00:00:00.000Z","weightlessBodyFat":null,"weightlessMuscle":null,"weightlessTimestamp":null,"weightlessWeight":null,"isStreakOn":false,"dashboardType":"dashboard_12_metrics","dashboardMetrics":["visceralFatLevel","bodyFat","muscleMass","water","metabolicAge","proteinPercent","bmr","pulse","bmi","boneMass"],"goalType":"maintain","goalWeight":680,"initialWeight":279,"shouldSendEntryNotifications":false,"shouldSendWeightInEntryNotifications":false,"isGoogleFitOn":false,"isGoogleFitValid":null,"isFitbitOn":false,"isFitbitValid":null,"isMFPOn":false,"isMFPValid":null,"isUAOn":false,"isUAValid":null,"isHealthConnectOn":false,"isHealthKitOn":false}
+🔍 HTTPClient Raw Response: [{"id":"15VrimMLDYVKlh2cnEGw8p","nickname":"AccuCheck Verve Smart Scale","type":"btWifiR4","createdAt":"2025-07-21T09:25:52.491Z","userNumber":0,"scaleToken":"070314f743586bc21f6b1e8e1f920070f9f06568651160c48ed765833a42830b","mac":"CF:E7:04:0C:00:1F","broadcastId":34085062109135,"password":null,"sku":"0412","name":"AccuCheck Verve Smart Scale","peripheralIdentifier":"CFE7040C001F","preference":{"tzOffset":330,"timeFormat":"12","displayName":"AccuCheck Verve Smart Scale","displayMetrics":["bmi","heartRate"],"shouldMeasurePulse":false,"shouldMeasureImpedance":true,"shouldFactoryReset":false,"wifiFotaScheduleTime":1753099913},"latestVersion":"000.000.000.000"}]
+Fetched remote operations: 0 operations Remote operations count Last sync timestamp
+Grouped operations by timestamp: 0 unique timestamps Last sync timestamp 0
+[DEBUG] Progress and streak updated: total=22, streak=1 Class: EntryService Function: updateProgressAndStreakInternal() Line: 542 Data: none
+[DEBUG] Goal alerts checked for account: 1pCsk80zXONCxuybiQ9Cy9 Class: EntryService Function: checkGoalAlerts() Line: 558 Data: none
+[INFO] Full sync completed successfully Class: EntryService Function: syncAllEntriesWithRemote() Line: 265 Data: none
+[INFO] Sync already in progress, skipping Class: ScaleService Function: syncAllScalesWithRemote() Line: 113 Data: none
+serverScales: [meApp.ScaleDTO(broadcastId: Optional(34085062109135), broadcastIdString: nil, createdAt: Optional("2025-07-21T09:25:52.491Z"), id: Optional("15VrimMLDYVKlh2cnEGw8p"), isConnected: nil, isDeleted: nil, isTemporary: nil, isWeighOnlyModeEnabledByOthers: nil, isWifiConfigured: nil, latestVersion: Optional("000.000.000.000"), mac: Optional("CF:E7:04:0C:00:1F"), metaData: nil, name: Optional("AccuCheck Verve Smart Scale"), nickname: Optional("AccuCheck Verve Smart Scale"), password: nil, peripheralIdentifier: Optional("CFE7040C001F"), preference: Optional(meApp.R4ScalePreferenceDTO(scaleId: nil, displayName: "AccuCheck Verve Smart Scale", displayMetrics: ["bmi", "heartRate"], shouldFactoryReset: false, shouldMeasureImpedance: true, shouldMeasurePulse: false, timeFormat: "12", tzOffset: 330, wifiFotaScheduleTime: Optional(1753099913), updatedAt: nil, isTemporary: nil)), scaleToken: Optional("070314f743586bc21f6b1e8e1f920070f9f06568651160c48ed765833a42830b"), sku: Optional("0412"), type: Optional("btWifiR4"), userId: nil, userNumber: Optional(0))]
+CoreData: fault: Could not materialize Objective-C class named "Array" from declared attribute value type "Array<String>" of attribute named displayMetrics
+CoreData: Could not materialize Objective-C class named "Array" from declared attribute value type "Array<String>" of attribute named displayMetrics
+[INFO] Successfully replaced local storage with 1 devices from server, preserved 0 unsynced local devices Class: ScaleService Function: pullServerStateAndReplace(accountId:) Line: 558 Data: none
+Last sync timestamp: Optional("2025-07-30T12:05:09.158Z") Last sync timestamp
+🔍 HTTPClient Raw Response: {"operations":[],"timestamp":"2025-07-30T12:05:09.509Z"}
+Fetched remote operations: 0 operations Remote operations count Last sync timestamp
+Grouped operations by timestamp: 0 unique timestamps Last sync timestamp 0
+[DEBUG] Progress and streak updated: total=22, streak=1 Class: EntryService Function: updateProgressAndStreakInternal() Line: 542 Data: none
+[DEBUG] Goal alerts checked for account: 1pCsk80zXONCxuybiQ9Cy9 Class: EntryService Function: checkGoalAlerts() Line: 558 Data: none
+[INFO] Full sync completed successfully Class: EntryService Function: syncAllEntriesWithRemote() Line: 265 Data: none
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+Stop scanning
+Clearing skip devices
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+Stop scanning
+Clearing skip devices
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+[DEBUG] Permission status updated: [GGBluetoothSwiftPackage.GGPermissionType.LOCATION_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.NOTIFICATION: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.CAMERA: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.WIFI_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.BLUETOOTH_SWITCH: GGBluetoothSwiftPackage.GGPermissionState.ENABLED, GGBluetoothSwiftPackage.GGPermissionType.LOCATION: GGBluetoothSwiftPackage.GGPermissionState.NOT_REQUESTED] Class: BluetoothService Function: handlePermissionStatus(_:) Line: 795 Data: none
+CentralManager is initialized
+Bluetooth is currently powered on and available to use.
+false
+Bluetooth is currently powered on and available to use.
+Ble adapter state changed - GG_BLUETOOTH_ADAPTER_ON
+[ERROR] Failed to fetch feed items Class: FeedService Function: fetchFeedItems() Line: 46 Data: badRequest
+[ERROR] Failed to fetch feed items: networkError(meApp.HTTPError.badRequest) Class: ContentViewModel Function: loadData() Line: 99 Data: none
+[INFO] Dashboard onAppear actions completed Class: DashboardStore Function: onAppearActions() Line: 1303 Data: none
+Update NavigationRequestObserver tried to update multiple times per frame.
+[INFO] Checking if HealthKit data is available: true Class: AppleHealthHandler Function: available() Line: 77
+[INFO] Updating metric authorization statuses. Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 479
+[INFO] Updated status for metric: Weight to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: LeanBodyMass to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BodyFat to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BMI to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: HeartRate to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Approved HealthKit metrics:  Class: AppleHealthHandler Function: getApprovedPermissionList() Line: 448
+[INFO] Checking if HealthKit data is available: true Class: AppleHealthHandler Function: available() Line: 77
+[INFO] Updating metric authorization statuses. Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 479
+[INFO] Updated status for metric: Weight to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: LeanBodyMass to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BodyFat to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: BMI to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Updated status for metric: HeartRate to Not Authorized Class: AppleHealthHandler Function: updateMetricAuthorizationStatuses() Line: 487
+[INFO] Approved HealthKit metrics:  Class: AppleHealthHandler Function: getApprovedPermissionList() Line: 448
+[INFO] Updated dashboard type to dashboard_4_metrics with activeMetricsCount: 4 Class: DashboardMetricsManager Function: updateDashboardType(_:) Line: 98 Data: none
+[INFO] Forcing dashboard type to 12 metrics Class: DashboardStore Function: forceUpdateDashboardTypeTo12() Line: 440 Data: none
+[INFO] Updated dashboard type to dashboard_12_metrics with activeMetricsCount: 12 Class: DashboardMetricsManager Function: updateDashboardType(_:) Line: 98 Data: none
+[INFO] Successfully updated dashboard type to 12 metrics Class: DashboardStore Function: forceUpdateDashboardTypeTo12() Line: 449 Data: none
+[INFO] Updated metrics order from API: ["visceral fat", "body fat %", "muscle %", "water %", "met age", "protein %", "bmr kcal", "heart bpm", "bmi", "bone %"], activeMetricsCount: 10 Class: DashboardMetricsManager Function: updateMetricsOrder(from:) Line: 502 Data: none
+[INFO] Loaded metrics from API: ["visceralFatLevel", "bodyFat", "muscleMass", "water", "metabolicAge", "proteinPercent", "bmr", "pulse", "bmi", "boneMass"] Class: DashboardMetricsManager Function: loadMetricsFromAPI() Line: 81 Data: none
+[INFO] Updated streak items with progress data: currentStreak=1, longestStreak=3, week=56, month=-145, year=-145, total=-145.0 Class: DashboardStreakManager Function: updateStreakItems(with:) Line: 121 Data: none
+[INFO] Refreshed streak data successfully Class: DashboardStreakManager Function: refreshStreakData() Line: 48 Data: none
+[INFO] Dashboard configuration loaded from API successfully Class: DashboardStore Function: loadDashboardConfigurationFromAPI() Line: 536 Data: none
+[INFO] Loading initial dashboard data Class: DashboardDataManager Function: loadInitialData() Line: 32 Data: none
+[INFO] Initial data loaded successfully - Daily: 4, Monthly: 1 Class: DashboardDataManager Function: loadInitialData() Line: 59 Data: none
+[INFO] Initial data loaded successfully Class: DashboardStore Function: loadInitialData() Line: 521 Data: none
+[INFO] Goal data loaded successfully - Start: 12.7, Goal: 30.8, Progress: 0.3038674033149171 Class: DashboardGoalManager Function: loadGoalData() Line: 66 Data: none
+[INFO] Goal card data loaded successfully Class: DashboardStore Function: loadGoalCardData() Line: 510 Data: none
+[INFO] Goal data loaded successfully - Start: 12.7, Goal: 30.8, Progress: 0.3038674033149171 Class: DashboardGoalManager Function: loadGoalData() Line: 66 Data: none
+[INFO] Goal card data loaded successfully Class: DashboardStore Function: loadGoalCardData() Line: 510 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: -6.0...6.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: -6.0...6.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Unable to open mach-O at path: /Library/Caches/com.apple.xbs/Binaries/RenderBox/install/Root/System/Library/PrivateFrameworks/RenderBox.framework/default.metallib  Error:2
+[DEBUG] Chart data cache cleared Class: DashboardGraphManager Function: clearChartDataCache() Line: 384 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Hello: DRAG START - IndexPath: 13, Total items: 20
+Hello: Metrics count: 12, Goal card count: 1, Streak items: 6
+Hello: CURRENT POSITIONS - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: CURRENT POSITIONS - Goal card: present
+Hello: CURRENT POSITIONS - Streak items: ["current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)"]
+Hello: GOAL CARD DRAG START - Index: 13, Position: 0
+Hello: GOAL CARD DRAG ALLOWED
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Hello: DROP ATTEMPT - Source: 13, Destination: 15
+Hello: DROP CONTEXT - Metrics: 12, Divider: 1, GoalCard: 1, Total: 20
+Hello: BEFORE DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: BEFORE DROP - Goal card: present
+Hello: BEFORE DROP - Streak items: ["current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)"]
+Hello: GOAL CARD DROP - Source: 13, Dest: 15
+Hello: GOAL CARD DROP EXECUTING - Goal card not removed, moving from position 0 to 2
+[INFO] Goal card position updated to: 2 Class: DashboardStore Function: updateGoalCardPosition(_:) Line: 629 Data: none
+Hello: GOAL CARD DROP SUCCESS - Moved to position 2
+Hello: AFTER DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: AFTER DROP - Goal card: present
+Hello: AFTER DROP - Streak items: ["current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)"]
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Hello: DRAG START - IndexPath: 14, Total items: 20
+Hello: Metrics count: 12, Goal card count: 1, Streak items: 6
+Hello: CURRENT POSITIONS - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: CURRENT POSITIONS - Goal card: present
+Hello: CURRENT POSITIONS - Streak items: ["current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)"]
+Hello: STREAK DRAG START - Item: longest streak, Index: 1, IsRemoved: false
+Hello: STREAK DRAG ALLOWED - Item: longest streak, ID: A8DD25A0-0281-4105-B2DF-84CAA3DA0B18
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Hello: DROP ATTEMPT - Source: 14, Destination: 19
+Hello: DROP CONTEXT - Metrics: 12, Divider: 1, GoalCard: 1, Total: 20
+Hello: BEFORE DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: BEFORE DROP - Goal card: present
+Hello: BEFORE DROP - Streak items: ["current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)"]
+Hello: STREAK DROP - Item: longest streak, Source: 14, Dest: 19
+Hello: STREAK DROP CALCULATION - SourceStreakIndex: 0, DestStreakIndex: 5
+Hello: STREAK DROP CHECK - SourceRemoved: false, DestRemoved: false
+Hello: STREAK DROP EXECUTING - Moving from 0 to 5
+Hello: STREAK DROP SUCCESS
+Hello: AFTER DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: AFTER DROP - Goal card: present
+Hello: AFTER DROP - Streak items: ["longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)", "current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)"]
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Stop scanning
+Clearing skip devices
+Stop scanning
+Clearing skip devices
+tcp_input [C1.1.1.1:3] flags=[R] seq=2684059482, ack=0, win=0 state=LAST_ACK rcv_nxt=2684059482, snd_una=2830070645
+tcp_input [C1.1.1.1:3] flags=[R] seq=2684059482, ack=0, win=0 state=CLOSED rcv_nxt=2684059482, snd_una=2830070645
+tcp_input [C1.1.1.1:3] flags=[R] seq=2684059482, ack=0, win=0 state=CLOSED rcv_nxt=2684059482, snd_una=2830070645
+Hello: DRAG START - IndexPath: 16, Total items: 20
+Hello: Metrics count: 12, Goal card count: 1, Streak items: 6
+Hello: CURRENT POSITIONS - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: CURRENT POSITIONS - Goal card: present
+Hello: CURRENT POSITIONS - Streak items: ["longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)", "current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)"]
+Hello: STREAK DRAG START - Item: kg/month, Index: 2, IsRemoved: false
+Hello: STREAK DRAG ALLOWED - Item: kg/month, ID: 6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Hello: DROP ATTEMPT - Source: 16, Destination: 19
+Hello: DROP CONTEXT - Metrics: 12, Divider: 1, GoalCard: 1, Total: 20
+Hello: BEFORE DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: BEFORE DROP - Goal card: present
+Hello: BEFORE DROP - Streak items: ["longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)", "current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)"]
+Hello: STREAK DROP - Item: kg/month, Source: 16, Dest: 19
+Hello: STREAK DROP CALCULATION - SourceStreakIndex: 2, DestStreakIndex: 5
+Hello: STREAK DROP CHECK - SourceRemoved: false, DestRemoved: false
+Hello: STREAK DROP EXECUTING - Moving from 2 to 5
+Hello: STREAK DROP SUCCESS
+Hello: AFTER DROP - Metrics: ["visceral fat(5EBE1D0A-7224-4056-A040-60CAA9E9B16A)", "body fat %(38115CA7-249C-44F0-8505-366057A2AFAD)", "muscle %(D92A285C-E957-45F3-9E54-FDE95683D52B)", "water %(4BF57EE3-9900-40D6-B9B9-4BE530739D09)", "met age(95462C20-0369-4DC4-846F-24C2543176F0)", "protein %(0759DBFC-49FA-4C22-8020-F3E9BFB441C4)", "bmr kcal(1C9E2F97-C567-47E8-98B4-B6D19B3B0D0C)", "heart bpm(B5B891CD-977C-4243-A6C5-31B47C99B92C)", "bmi(B841A4F6-32ED-48EA-8741-16D991044724)", "bone %(FAB175D1-2CA1-41E1-BC4A-1AFFC097D151)", "sub fat %(CC164176-1A9A-41DA-82DC-30A43DD2886E)", "skel muscle(D7FCC7A2-2A27-4F4D-A439-4EBCCEBC07A5)"]
+Hello: AFTER DROP - Goal card: present
+Hello: AFTER DROP - Streak items: ["longest streak(A8DD25A0-0281-4105-B2DF-84CAA3DA0B18)", "kg/week(E8ABAA9A-6FC8-4B26-8196-2D228FF2D88E)", "kg/year(645F1330-336B-47C5-9E7E-98957A94D4E7)", "kg/total(A0B04705-3F77-46F3-87B2-1A36478E882C)", "current streak(F9EB8B46-75F9-4DC8-9C76-81568BE78F6C)", "kg/month(6CABB6E0-64E4-4BF5-9888-8ED1B65EC8DF)"]
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Stop scanning
+Clearing skip devices
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+🔍 HTTPClient Raw Response: {"account":{"id":"1pCsk80zXONCxuybiQ9Cy9","email":"alakshmipriya@greatergoods.com","firstName":"lakshmi priya","lastName":"A","gender":"male","zipcode":"11111","weightUnit":"kg","isWeightlessOn":false,"preferredInputMethod":null,"height":646,"activityLevel":"normal","dob":"2000-01-01T00:00:00.000Z","weightlessBodyFat":null,"weightlessMuscle":null,"weightlessTimestamp":null,"weightlessWeight":null,"isStreakOn":false,"dashboardType":"dashboard_12_metrics","dashboardMetrics":["visceralFatLevel","bodyFat","muscleMass","water","metabolicAge","proteinPercent","bmr","pulse","bmi","boneMass"],"shouldSendEntryNotifications":false,"shouldSendWeightInEntryNotifications":false,"goalType":"maintain","goalWeight":680,"initialWeight":279}}
+[INFO] Saved metrics to API: ["visceralFatLevel", "bodyFat", "muscleMass", "water", "metabolicAge", "proteinPercent", "bmr", "pulse", "bmi", "boneMass"] Class: DashboardMetricsManager Function: saveMetricsToAPI() Line: 347 Data: none
+[INFO] Dashboard changes saved to API successfully Class: DashboardStore Function: saveChanges() Line: 719 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+[INFO] Generated chart data with Y-axis domain: 4 points, yAxisDomain: 5.0...35.0, selectedMetric: none Class: DashboardGraphManager Function: generateChartDataWithYAxisDomain(from:visibleOperations:selectedMetric:isWeightlessMode:anchorWeight:convertWeight:yAxisDomain:) Line: 328 Data: none
+Stop scanning
+Clearing skip devices
