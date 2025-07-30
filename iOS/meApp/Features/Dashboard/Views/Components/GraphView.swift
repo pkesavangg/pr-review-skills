@@ -132,7 +132,8 @@ struct GraphView: View {
             ))
             .frame(height: 265)
             .frame(maxWidth: .infinity, minHeight: 240)
-            .padding(.horizontal)
+            .padding(.leading, isAtLeftBoundary ? .spacingXS : 0)
+            .padding(.trailing, .spacingXS)
             .background(
                 GeometryReader { geo in
                     theme.textInverse
@@ -148,8 +149,11 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
-            // Restore animations for data changes and scrolling, but keep period switching instant
-            .animation(.easeOut(duration: 0.6), value: dashboardStore.yAxisTicks)
+            // Synchronized animations for chart components
+            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
+            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+            .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
+            .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
             // Apply decision window modifier first, then scroll detection
             .modifier(DecisionWindowModifier(
                 touchInteractionMode: $touchInteractionMode,
@@ -162,6 +166,29 @@ struct GraphView: View {
             .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
 
+    }
+
+    // MARK: - Computed Properties
+
+        /// Determines if the chart is scrolled to the leftmost boundary of the data
+    private var isAtLeftBoundary: Bool {
+        //if total period, return true
+        if dashboardStore.state.graph.selectedPeriod == .total { return true }
+
+        guard !dashboardStore.continuousOperations.isEmpty else { return true }
+
+        let operations = dashboardStore.continuousOperations
+        let allDates = operations.map { $0.date }
+        guard let minDate = allDates.min() else { return true }
+
+        let currentScrollPosition = dashboardStore.state.graph.xScrollPosition
+        let domainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
+        let visibleStart = currentScrollPosition.addingTimeInterval(-domainLength / 2)
+
+        // Consider at boundary if visible start is at or before the minimum data date
+        // Add small buffer (1 day) to account for minor scroll position variations
+        let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
+        return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
     }
 
     // MARK: - Empty State View

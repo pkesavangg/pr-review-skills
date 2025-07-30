@@ -194,7 +194,6 @@ class DashboardStore: ObservableObject {
     var visibleOperations: [BathScaleWeightSummary] {
         // Use cached operations with improved caching logic in graph manager
         let visible = graphManager.getVisibleOperations(from: continuousOperations)
-        print("DashboardStore.visibleOperations: \(visible.count) operations, scroll position: \(state.graph.xScrollPosition)")
         return visible
     }
 
@@ -857,14 +856,17 @@ class DashboardStore: ObservableObject {
         return [0.0, 25.0, 50.0, 75.0, 100.0]
     }
 
-    // Method to update Y-axis cache (called after domain recalculation)
+        // Method to update Y-axis cache (called after domain recalculation)
     @MainActor
     func updateYAxisCache() {
+        // NEVER update Y-axis domain during active scrolling - this is the root cause of axis jumping
+        guard !state.graph.isScrolling else {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll to prevent jumping")
+            return
+        }
+
         // For TOTAL period, use all data to ensure Y-axis reflects complete range
         let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
-        print("Visible Operations: \(visibleOperations.count), Operations for Y-Axis: \(operationsForYAxis.count)")
-        print("Daily Summaries: \(state.data.dailySummaries.count), Monthly Summaries: \(state.data.monthlySummaries.count)")
-        print("EntryService Daily: \(entryService.dailySummaries.count), EntryService Monthly: \(entryService.monthlySummaries.count)")
 
         graphManager.calculateAndCacheYAxisDomain(
             from: operationsForYAxis,
@@ -874,6 +876,8 @@ class DashboardStore: ObservableObject {
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
+
+        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
 
 

@@ -139,8 +139,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Clear selection state for better UX
             state.clearSelection()
 
-            // Clear chart data cache to ensure fresh data for new visible range
+            // Clear all caches to ensure fresh data for new visible range
             clearChartDataCache()
+            clearXAxisCache()
 
              if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
@@ -169,8 +170,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             Task { @MainActor in
                 guard let self = self else { return }
 
-                // Clear chart data cache to ensure fresh data for new visible range
+                // Clear all caches to ensure fresh data for new visible range
                 self.clearChartDataCache()
+                self.clearXAxisCache()
 
                 // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
@@ -178,6 +180,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
+
+                self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
     }
@@ -688,7 +692,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let allDates = operations.map { $0.date }
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
-        print("Visible operations: x scroll position: \(state.xScrollPosition), min date: \(minDate), max date: \(maxDate)")
+
         let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 4)
         let calculatedEnd = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
         let visibleStart = max(calculatedStart, minDate)
@@ -721,6 +725,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastXAxisValues = []
         lastXAxisScrollPosition = nil
         lastXAxisPeriod = nil
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "X-axis cache cleared")
     }
 
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
@@ -932,17 +937,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        let domainLength = visibleDomainLength(for: period)
+        // NEVER recalculate X-axis values during scrolling to prevent axis jumping
         if state.isScrolling {
-            if !lastXAxisValues.isEmpty,
-               let lastPosition = lastXAxisScrollPosition,
-               lastXAxisPeriod == period {
-                let positionChange = abs(scrollPosition.timeIntervalSince(lastPosition))
-                if positionChange < domainLength / 4 {
-                    return lastXAxisValues
-                }
+            if !lastXAxisValues.isEmpty && lastXAxisPeriod == period {
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll to prevent jumping")
+                return lastXAxisValues
             }
         }
+
+        let domainLength = visibleDomainLength(for: period)
         let allDates = operations.map(\.date)
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
         let buffer = domainLength * 2
@@ -1273,8 +1276,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 self.state.isScrolling = false
                 self.state.hasDetectedScrollInCurrentGesture = false
 
-                // Clear chart data cache to ensure fresh data for new visible range
+                // Clear all caches to ensure fresh data for new visible range
                 self.clearChartDataCache()
+                self.clearXAxisCache()
 
                 // Update weight display to show average of visible region
                 updateWeightDisplay()

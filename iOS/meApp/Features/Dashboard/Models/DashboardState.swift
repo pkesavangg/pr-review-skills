@@ -96,6 +96,9 @@ struct GraphState {
     // Cached Y-axis ticks to prevent recalculation during scroll
     var cachedYAxisTicks: [Double]?
 
+    // Cached X-axis values to prevent recalculation during scroll
+    var cachedXAxisValues: [Date]?
+
     mutating func clearSelection() {
         selectedEntry = nil
         selectedPoint = nil

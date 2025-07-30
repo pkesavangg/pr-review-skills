@@ -86,7 +86,7 @@ final class ContentViewModel: ObservableObject {
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
-        await try entryService.loadDashboardData()
+        try await entryService.loadDashboardData()
         bluetoothService.initialize()
 
         do {

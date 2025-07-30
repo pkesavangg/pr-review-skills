@@ -613,7 +613,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Loads and aggregates all entry data for dashboard display
     func loadDashboardData() async {
-        do {
+       do {
           let accountId = try await getAccountId()
           logger.log(level: .info, tag: tag, message: "Loading dashboard data")
           // Get all entries for the account
@@ -687,9 +687,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
         let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
 
-        // Update published arrays
-      
-      
         if let dailySummary = dailySummary {
             updateDailySummary(dayKey: dayKey, summary: dailySummary)
         } else {
@@ -702,7 +699,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
           // If no entries left for the month, remove summary
           updateMonthlySummary(monthKey: monthKey, summary: nil)
         }
-  
+
         entryDeleted.send(entry)
         logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
     }
