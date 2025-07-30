@@ -51,13 +51,6 @@ fun DashboardMilestoneGrid(
   val reorderableState = rememberReorderableLazyGridState(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
-      // Calculate adjusted index for proper reordering
-      calculateAdjustedIndex(
-        milestones = localVisibleMilestones,
-        fromIndex = from.index,
-        toIndex = to.index,
-      )
-
       // Direct reordering with adjusted index
       localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
         val item = removeAt(from.index)
@@ -138,56 +131,28 @@ fun DashboardMilestoneGrid(
 }
 
 /**
- * Calculates the adjusted target index for reordering based on grid layout and item spans.
- * This function ensures proper positioning when items have different spans (1 or 2 columns).
+ * Reorders the grid to ensure the goal progress milestone (span-2 item) is positioned
+ * at an even cell index in the 2-column grid layout for optimal visual alignment.
  *
- * @param milestones The list of milestones to reorder
- * @param fromIndex The source index of the item being moved
- * @param toIndex The raw target index from the reorderable library
- * @return The adjusted target index (Int) that accounts for grid spans and ensures proper visual positioning
+ * @return A new list with the goal progress milestone repositioned if necessary
  */
-private fun calculateAdjustedIndex(
-  milestones: List<Stat>,
-  fromIndex: Int,
-  toIndex: Int,
-): Int {
-  if (fromIndex == toIndex || fromIndex !in milestones.indices || toIndex !in milestones.indices) {
-    return toIndex
+fun List<Stat>.reorderGrid(): List<Stat> {
+  // Find the goal progress milestone that spans 2 columns
+  val goalMilestoneIndex = indexOfFirst { isGoalProgressMilestone(it) }
+
+  // Early exit if no goal milestone found or it's already at the end
+  if (goalMilestoneIndex == -1 || goalMilestoneIndex == lastIndex) {
+    return this
   }
 
-  // Precompute spans for all items
-  val spans = milestones.map { if (isGoalProgressMilestone(it)) 2 else 1 }
-
-  // Compute visual positions in a single pass
-  val visualPositions = IntArray(milestones.size)
-  var position = 0
-  for (i in milestones.indices) {
-    visualPositions[i] = position
-    position += spans[i]
-  }
-
-  visualPositions[fromIndex]
-  val toVisual = visualPositions[toIndex]
-
-  // Calculate the target visual position based on movement direction
-  val targetVisualPosition = if (fromIndex < toIndex) {
-    toVisual + spans[toIndex] // Move after target item
-  } else {
-    toVisual // Move before target item
-  }
-
-  // Find the target index that matches the target visual position
-  var accumulated = 0
-  for (i in milestones.indices) {
-    if (accumulated == targetVisualPosition) {
-      return i.coerceAtMost(milestones.size - 1)
+  // If goal milestone is at odd index, move it to next position for proper alignment
+  return if (goalMilestoneIndex % 2 != 0) {
+    toMutableList().apply {
+      val goalMilestone = removeAt(goalMilestoneIndex)
+      add(goalMilestoneIndex + 1, goalMilestone)
     }
-    accumulated += spans[i]
+  } else {
+    this
   }
-
-  // If we reach the end, place at the end
-  return milestones.size - 1
 }
-
-
 

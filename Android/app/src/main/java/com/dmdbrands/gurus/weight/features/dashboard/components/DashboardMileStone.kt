@@ -58,7 +58,7 @@ fun DashboardMilestone(
       // Moving from hidden to visible
       visibleMilestones + milestone
     }
-    localVisibleKeys = newStats.map { stat ->
+    localVisibleKeys = newStats.reorderGrid().map { stat ->
       stat.key
     }
     onMilestonesChanged(localVisibleKeys)
