@@ -27,7 +27,7 @@ final class FeedService: ObservableObject {
             .feedsUpdated
             .sink { [weak self] feedInfo in
                 Task {
-                    let feedActionType: FeedActionType = FeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
+                    let feedActionType: GGFeedActionType = GGFeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
                     await self?.updateFeedItem(feedInfo.feedItem, actionType: feedActionType, variationId: feedInfo.variationId)
                 }
             }
@@ -72,10 +72,10 @@ final class FeedService: ObservableObject {
         }
     }
     
-    func updateFeedItem(_ feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) async {
+    func updateFeedItem(_ feedItem: FeedItem, actionType: GGFeedActionType, variationId: Int?) async {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
         do {
-            //try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
+            try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
             logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
@@ -121,7 +121,7 @@ final class FeedService: ObservableObject {
     
     // MARK: - Private Helpers
     
-    private func buildFeedAction(actionType: FeedActionType, variationId: Int?) -> FeedAction {
+    private func buildFeedAction(actionType: GGFeedActionType, variationId: Int?) -> FeedAction {
         let requiresMeta = !(actionType == .click || actionType == .read || actionType == .trigger)
         return FeedAction(
             action: actionType,

@@ -18,7 +18,7 @@ protocol FeedServiceProtocol {
     ///   - feedItem: The feed item to update
     ///   - actionType: The type of action (read, trigger, click, etc.)
     ///   - variationId: Optional variation ID for certain action types
-    func updateFeedItem(_ feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) async throws
+    func updateFeedItem(_ feedItem: FeedItem, actionType: GGFeedActionType, variationId: Int?) async throws
 
     /// Gets the count of unread feed items.
     /// - Returns: Number of unread feed items

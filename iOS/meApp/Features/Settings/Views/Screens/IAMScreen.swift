@@ -21,7 +21,6 @@ struct IAMScreen: View {
             }, onClickRefresh: {
                 viewModel.refreshFeed()
             })
-                
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -29,15 +28,4 @@ struct IAMScreen: View {
 
 #Preview {
     IAMScreen()
-}
-
-
-class IAMScreenViewModel: ObservableObject {
-    @Injector var feedService: FeedService
-    
-    func refreshFeed() {
-        Task {
-            await feedService.fetchFeedItems()
-        }
-    }
 }
