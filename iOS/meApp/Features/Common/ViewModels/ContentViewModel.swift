@@ -20,7 +20,6 @@ final class ContentViewModel: ObservableObject {
     @Injector var feedService : FeedService
     @Injector var entryService : EntryService
     @Injector var logger : LoggerService
-    @Injector var pushNotificationService : PushNotificationService
     @Injector var bluetoothService: BluetoothService
 
     /// A set to hold Combine cancellables for this view model.
@@ -55,13 +54,6 @@ final class ContentViewModel: ObservableObject {
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
             if loggedIn {
-                // Check if notifications are required for the current account/scales
-                let notificationsRequired = await areNotificationsRequired()
-                if notificationsRequired {
-                    await pushNotificationService.setupPushNotifications()
-                } else {
-                    await pushNotificationService.updateDeviceInfo()
-                }
                 await loadData()
             }
             let afterUpdate = await checkLoginStatus()

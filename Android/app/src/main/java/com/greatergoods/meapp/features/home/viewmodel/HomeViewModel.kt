@@ -6,19 +6,26 @@ import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.meapp.core.navigation.AppRoute
+import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
+import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
 import com.greatergoods.meapp.domain.repository.IDeviceService
+import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IAppSyncService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.model.SCALES
+import com.greatergoods.meapp.features.common.model.Toast
 import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.home.reducer.HomeIntent
 import com.greatergoods.meapp.features.home.reducer.HomeReducer
 import com.greatergoods.meapp.features.home.reducer.HomeState
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleApiEntry
+import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 @HiltViewModel
 class HomeViewModel
@@ -26,7 +33,11 @@ class HomeViewModel
 constructor(
   private val deviceService: IDeviceService,
   private val ggPermissionService: GGPermissionService,
-  private val dialogUtility: IDialogUtility
+  private val dialogUtility: IDialogUtility,
+  private val entryService: com.greatergoods.meapp.domain.services.IEntryService,
+  private val appSyncService: IAppSyncService,
+  private val accountService: IAccountService,
+  dialogQueueService: IDialogQueueService
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   override fun provideInitialState(): HomeState = HomeState()
 
@@ -102,12 +113,46 @@ constructor(
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
-    Log.d("HomeViewModel 1", "handleAppSyncResult: $result")
-
-    if (result.manual) {
+    if(result.weight != null && !result.canceled){
+      handleNewEntry(result)
+    }
+    else if (result.manual) {
       navigateToManualEntry()
     } else {
-      Log.d("HomeViewModel", "handleAppSyncResult: $result")
+    }
+  }
+
+  private fun handleNewEntry(result: AppSyncResult){
+    viewModelScope.launch {
+      try {
+        val currentAccount = accountService.activeAccountFlow.first()
+        val accountId = currentAccount?.id ?: return@launch
+        val storedEntry = result.toScaleApiEntry(accountId)
+        // Create ScaleEntry directly from AppSyncResult with calculated BMI
+        val scaleEntry = result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
+        appSyncService.setAppSyncDataForEditing(scaleEntry)
+        appSyncService.setAppSyncData(storedEntry)
+        dialogUtility.showEntrySyncPopup(
+          entry = scaleEntry,
+          apiEntry = scaleEntry.toScaleApiEntry(),
+          onEdit = {
+            viewModelScope.launch {
+              appSyncService.handleEditAppSyncData(scaleEntry)
+            }
+          },
+          onSave = {
+            viewModelScope.launch {
+              val saveEntry = result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height, true)
+              appSyncService.handleSaveAppSyncData(saveEntry)
+            }
+          }
+        )
+      } catch (e: Exception) {
+        AppLog.e("HomeViewModel", "Error handling new entry: ${e.message}", e)
+        dialogQueueService.showToast(
+          Toast(message = "Failed to process AppSync data: ${e.message}")
+        )
+      }
     }
   }
 

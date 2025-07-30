@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.service
 
 import com.greatergoods.meapp.domain.interfaces.IDialogQueueService
 import com.greatergoods.meapp.domain.interfaces.IDialogUtility
+import com.greatergoods.meapp.features.common.components.DialogType
 import com.greatergoods.meapp.features.common.model.DialogModel
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import javax.inject.Inject
@@ -15,6 +16,7 @@ import javax.inject.Singleton
 class DialogUtility @Inject constructor(
   private val dialogQueueService: IDialogQueueService
 ) : IDialogUtility {
+
   /**
    * Shows a max account reached alert dialog.
    *
@@ -70,7 +72,7 @@ class DialogUtility @Inject constructor(
     onDismiss: (() -> Unit)?
   ) {
     val dialog = DialogModel.Custom(
-      contentKey = com.greatergoods.meapp.features.common.components.DialogType.ModelNumberHelp,
+      contentKey = DialogType.ModelNumberHelp,
       params = emptyMap(),
       onDismiss = {
         onDismiss?.let { it() }
@@ -106,4 +108,31 @@ class DialogUtility @Inject constructor(
       )
     dialogQueueService.enqueue(confirmDialog)
   }
+
+  override fun showEntrySyncPopup(
+    entry: com.greatergoods.meapp.domain.model.storage.entry.Entry,
+    apiEntry: com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry,
+    onEdit: () -> Unit,
+    onSave: () -> Unit
+  ) {
+      dialogQueueService.enqueue(
+        DialogModel.Custom(
+          contentKey = DialogType.AppsyncEntryPopup,
+          params = mapOf(
+            "entry" to entry,
+            "apiEntry" to apiEntry,
+            "onEdit" to {
+              dialogQueueService.dismissCurrent()
+              onEdit()
+            },
+            "onSave" to {
+              dialogQueueService.dismissCurrent()
+              onSave()
+            },
+          ),
+        ),
+      )
+    }
+
+
 }

@@ -205,7 +205,7 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
             )
           }
@@ -219,7 +219,7 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
             )
           }
@@ -259,11 +259,12 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
+              secondaryButtonText = ScaleSetupStrings.SetupButtons.SetupWifiLater,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.Skip) }
               } else null,
             )
           }
@@ -312,7 +313,7 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
             )
           }
@@ -335,7 +336,7 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
             )
           }
@@ -358,7 +359,7 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
-                { onIntent(BtWifiScaleSetupIntent.TryAgain) }
+                { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
             )
           }

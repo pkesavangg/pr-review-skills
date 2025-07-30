@@ -42,6 +42,7 @@ object ScaleSetupStrings {
     const val Connect = "Connect"
     const val Next = "next"
     const val SomethingElse = "I see something else?"
+    const val SetupWifiLater = "Setup Wifi Later"
   }
 
   object ScalePermissions {

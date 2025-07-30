@@ -1,7 +1,7 @@
 package com.greatergoods.meapp.features.common.helper
 
-import com.greatergoods.meapp.features.ScaleSetup.model.SelectButtonItem
-import com.greatergoods.meapp.features.ScaleSetup.model.SelectButtonDisplayValue
+import com.greatergoods.meapp.features.common.model.SelectButtonItem
+import com.greatergoods.meapp.features.common.model.SelectButtonDisplayValue
 import com.greatergoods.meapp.resources.AppIcons
 
 /**

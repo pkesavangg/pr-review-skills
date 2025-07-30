@@ -539,23 +539,23 @@ class DashboardStore: ObservableObject {
 
         // Delegate entry lifecycle to DataManager
         // MARK: - Entry Lifecycle Management
-    internal func onEntryAdded(_ entry: Entry) {
-      loadLatestEntryData()
-      loadGoalCardData()
-      self.updateYAxisCache()
-    }
+      internal func onEntryAdded(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
 
-    internal func onEntryUpdated(_ entry: Entry) {
-      loadLatestEntryData()
-      loadGoalCardData()
-      self.updateYAxisCache()
-    }
+      internal func onEntryUpdated(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
 
-    internal func onEntryDeleted(_ entry: Entry) {
-      loadLatestEntryData()
-      loadGoalCardData()
-      self.updateYAxisCache()
-    }
+      internal func onEntryDeleted(_ entry: Entry) {
+        loadLatestEntryData()
+        loadGoalCardData()
+        self.updateYAxisCache()
+      }
 
 
 
@@ -616,6 +616,11 @@ class DashboardStore: ObservableObject {
         } else {
             state.ui.selectedMetricLabel = label
         }
+    }
+
+    /// Toggles the edit mode state
+    func toggleEditMode() {
+        state.ui.isEditMode.toggle()
     }
 
     // Delegate graph operations to GraphManager

@@ -2,7 +2,6 @@ package com.greatergoods.meapp.features.ScaleSetup.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -119,8 +118,7 @@ fun LcbtScaleSetupScreenContent(
         Column(
           modifier =
             Modifier
-              .fillMaxSize()
-              .padding(MeTheme.spacing.md),
+              .fillMaxSize(),
         ) {
           when (step) {
             LcbtScaleSetupStep.SCALE_INFO -> {
@@ -130,7 +128,7 @@ fun LcbtScaleSetupScreenContent(
             LcbtScaleSetupStep.PERMISSIONS -> {
               ScalePermissions(
                 sku = sku,
-                permissions = state.scaleSetupState.permissions,
+                permissions = state.permissions,
                 onRequestPermission = { onIntent(ScaleSetupIntent.RequestPermission(it)) },
               )
             }
@@ -148,7 +146,7 @@ fun LcbtScaleSetupScreenContent(
                   { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
                 secondaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(ScaleSetupIntent.TryAgain) }
+                  { onIntent(ScaleSetupIntent.OpenHelp) }
                 } else null,
               )
             }
@@ -162,7 +160,7 @@ fun LcbtScaleSetupScreenContent(
                   { onIntent(ScaleSetupIntent.TryAgain) }
                 } else null,
                 secondaryButtonClick = if (setupState.connectionState is ConnectionState.Failed) {
-                  { onIntent(ScaleSetupIntent.TryAgain) }
+                  { onIntent(ScaleSetupIntent.OpenHelp) }
                 } else null,
               )
             }

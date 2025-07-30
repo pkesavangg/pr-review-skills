@@ -1,6 +1,7 @@
 package com.greatergoods.meapp.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
@@ -19,6 +20,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -49,6 +51,7 @@ constructor(
 
   private val sku = setupInit.sku
   private val TAG = "LcbtScaleSetupViewModel"
+
   override fun provideInitialState(): LCBTScaleSetupState {
     return LCBTScaleSetupState()
   }
@@ -95,6 +98,21 @@ constructor(
     onNext()
   }
 
+  override fun onTryAgain() {
+    val currentStep = state.value.step
+    when (currentStep) {
+      LcbtScaleSetupStep.WAKEUP -> {
+        wakeUpScale()
+      }
+
+      LcbtScaleSetupStep.CONNECTING_BLUETOOTH -> {
+        connectToBluetooth()
+      }
+
+      else -> null
+    }
+  }
+
   override fun onStepChange(step: ScaleSetupStep) {
     viewModelScope.launch {
       when (step) {
@@ -116,6 +134,8 @@ constructor(
    * Handles waking up the scale. Sets loading state and controls when to proceed.
    */
   private fun wakeUpScale() {
+    // Clear any existing timeout
+    clearBluetoothTimeout()
 
     // Start collecting device scan responses only now
     AppLog.d(TAG, "Starting wake up scale process")
@@ -132,10 +152,23 @@ constructor(
             deviceType = ScaleSetupType.Lcbt.value,
             sku = sku,
           )
+          // Clear timeout when device is found
+          clearBluetoothTimeout()
           onNext()
+        }
+        
+        // Set timeout for bluetooth scanning
+        bluetoothTimeoutJob = viewModelScope.launch {
+          delay(bluetoothTimeout)
+          // Check if we're still in the wakeup step and no device was found
+          if (currentSetupState.step == LcbtScaleSetupStep.WAKEUP && discoveredScale == null) {
+            AppLog.d(TAG, "Bluetooth scan timeout reached")
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
+          }
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during wake up process", e.toString())
+        clearBluetoothTimeout()
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
       }
     }
@@ -175,19 +208,20 @@ constructor(
 
   override fun observePermissions() {
     viewModelScope.launch {
-      subscribePermissions().collect { newPermissions ->
-        viewModelScope.launch {
-          val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
-          ScaleSetupIntent.SetPermissions(newPermissions)
-          if (isPermissionGranted != areRequiredPermissionsEnabled) {
-            isPermissionGranted = areRequiredPermissionsEnabled
-          }
-          if (!areRequiredPermissionsEnabled) {
-            if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
-              handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
-            }
+      subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
+        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
+        handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
+        if (isPermissionGranted != areRequiredPermissionsEnabled) {
+          isPermissionGranted = areRequiredPermissionsEnabled
+        }
+
+        if (!areRequiredPermissionsEnabled) {
+          if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
+            handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
           }
         }
+        handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
+
       }
     }
   }

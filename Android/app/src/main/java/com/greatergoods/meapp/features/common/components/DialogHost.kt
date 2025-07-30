@@ -2,6 +2,7 @@ package com.greatergoods.meapp.features.common.components
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry
 import com.greatergoods.meapp.features.ScaleModeSettings.screens.BiaModal
 import com.greatergoods.meapp.features.ScaleSetup.components.AccucheckModal
 import com.greatergoods.meapp.features.addScale.screens.ModelNumberHelpDialog
@@ -26,7 +27,8 @@ enum class DialogType {
   OutOfSyncModal,
   MultipleDeviceConnection,
   FinishConnect,
-  ScaleName
+  ScaleName,
+  AppsyncEntryPopup
 }
 
 @Composable
@@ -201,6 +203,19 @@ fun DialogHost() {
             dialog.onDismiss?.let { it() }
             dialogQueueViewModel.dismissCurrent()
           },
+        )
+      }
+
+      DialogType.AppsyncEntryPopup -> {
+        val entry = dialog.params["entry"] as ScaleEntry
+        val apiEntry = dialog.params["apiEntry"] as com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
+        val onEdit = dialog.params["onEdit"] as (() -> Unit)
+        val onSave = dialog.params["onSave"] as (() -> Unit)
+        AppsyncEntryPopup(
+          entry = entry,
+          apiEntry,
+          onEdit = onEdit,
+          onSave = onSave,
         )
       }
     }
