@@ -1,15 +1,15 @@
 package com.greatergoods.meapp.core.service
 
 import androidx.activity.ComponentActivity
-import com.dmdbrands.lib.wificonnect.WifiSmartConnectManager
-import com.dmdbrands.lib.wificonnect.model.EsptouchParams
-import com.dmdbrands.lib.wificonnect.model.EsptouchResult
-import com.dmdbrands.lib.wificonnect.model.SmartConfigParams
-import com.dmdbrands.lib.wificonnect.model.SmartConfigResult
-import com.dmdbrands.lib.wificonnect.model.WifiConnectRequest
-import com.dmdbrands.lib.wificonnect.model.WifiConnectResult
-import com.dmdbrands.meapp.core.shared.utilities.logging.AppLog
-import com.dmdbrands.meapp.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
+import com.greatergoods.lib.wificonnect.model.EsptouchParams
+import com.greatergoods.lib.wificonnect.model.EsptouchResult
+import com.greatergoods.lib.wificonnect.model.SmartConfigParams
+import com.greatergoods.lib.wificonnect.model.SmartConfigResult
+import com.greatergoods.lib.wificonnect.model.WifiConnectRequest
+import com.greatergoods.lib.wificonnect.model.WifiConnectResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -169,7 +169,7 @@ class WifiScaleService @Inject constructor(
   suspend fun getScaleToken(r: String? = null): String {
     AppLog.d("WifiScaleService", "getScaleToken - Getting scale token from API")
     return try {
-      val token = deviceService.getScaleToken(false)
+      val token = deviceService.getScaleToken()
       AppLog.d("WifiScaleService", "getScaleToken - Scale token retrieved successfully")
       token
     } catch (e: Exception) {
