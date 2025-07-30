@@ -4,7 +4,7 @@ import Combine
 import SwiftUI
 
 @MainActor
-final class FeedService: ObservableObject {
+final class FeedService: FeedServiceProtocol, ObservableObject {
     static let shared = FeedService()
     @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
