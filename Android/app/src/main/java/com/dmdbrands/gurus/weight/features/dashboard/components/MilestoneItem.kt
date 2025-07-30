@@ -27,7 +27,7 @@ fun MilestoneItem(
   inEditMode: Boolean,
   isDragging: Boolean = false,
   isVisible: Boolean = true,
-  onMilestoneMoved: (fromVisible: Boolean, toVisible: Boolean, milestone: Stat) -> Unit,
+  onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   reorderableScope: ReorderableCollectionItemScope? = null
 ) {
   val hapticFeedback = LocalHapticFeedback.current
@@ -55,9 +55,7 @@ fun MilestoneItem(
       isVisible = isVisible,
       modifier = modifier,
       onBadgeClick = {
-        val fromVisible = isVisible
-        val toVisible = !isVisible
-        onMilestoneMoved(fromVisible, toVisible, milestone)
+        onMilestoneMoved(!isVisible, milestone)
       },
     )
   } else {
@@ -69,9 +67,7 @@ fun MilestoneItem(
       isVisible = isVisible,
       modifier = modifier,
       onBadgeClick = {
-        val fromVisible = isVisible
-        val toVisible = !isVisible
-        onMilestoneMoved(fromVisible, toVisible, milestone)
+        onMilestoneMoved(!isVisible, milestone)
       },
     )
   }
