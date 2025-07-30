@@ -1,10 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,17 +47,17 @@ fun SetupLoader(
     else -> colorScheme.danger
   }
 
-  // Single animation value that drives the entire wave
-  val infiniteTransition = rememberInfiniteTransition(label = "WaveAnimation")
-  val animationProgress by infiniteTransition.animateFloat(
-    initialValue = 0f,
-    targetValue = 1f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(durationMillis = 2000),
-      repeatMode = RepeatMode.Restart,
-    ),
-    label = "WaveProgress",
-  )
+  // Custom animation state for uniform timing
+  var animationProgress by remember { mutableStateOf(0f) }
+
+  LaunchedEffect(connectionState) {
+    if (connectionState == ConnectionState.Loading) {
+      while (true) {
+        animationProgress = (animationProgress + 0.06f) % 5f
+        delay(20) // 20ms per frame = 50fps, 1.67 seconds total cycle
+      }
+    }
+  }
 
   Column(
     modifier = modifier,
@@ -82,7 +81,7 @@ fun SetupLoader(
           tintColor = dotColor,
         )
       } else {
-        // Show animated dot with uniform speed smooth transitions
+        // Show animated dot with custom uniform timing
         AnimatedDot(
           color = dotColor,
           shouldAnimate = connectionState == ConnectionState.Loading,
@@ -95,12 +94,18 @@ fun SetupLoader(
 }
 
 /**
- * Individual animated dot component with uniform speed smooth transitions.
+ * Individual animated dot component with smooth 5-state animation pattern.
+ * Each state represents a different arrangement of dot sizes:
+ * State 1: big, bigger, biggest, bigger, big
+ * State 2: big, big, bigger, biggest, bigger
+ * State 3: bigger, big, big, bigger, biggest
+ * State 4: biggest, bigger, big, big, bigger
+ * State 5: bigger, biggest, bigger, big, big
  *
  * @param color The color of the dot
  * @param shouldAnimate Whether the dot should animate
- * @param dotIndex The index of the dot (0-4) for wave pattern calculation
- * @param animationProgress The shared animation progress (0f to 1f)
+ * @param dotIndex The index of the dot (0-4)
+ * @param animationProgress The shared animation progress (0f to 5f)
  */
 @Composable
 private fun AnimatedDot(
@@ -109,39 +114,52 @@ private fun AnimatedDot(
   dotIndex: Int,
   animationProgress: Float
 ) {
-  // Create a uniform speed wave with seamless transitions
-  // Use a continuous wave that flows smoothly without sudden jumps
-  val waveCenter = if (shouldAnimate) {
-    // Create a smooth, continuous wave that flows at uniform speed
-    val progress = animationProgress * 4f
-    // Use modulo for seamless wrapping without sudden jumps
-    progress % 4f
-  } else {
-    2f // Default to middle dot being largest when not animating
-  }
-
-  // Calculate distance with smooth wrapping for seamless transitions
-  val distance = if (shouldAnimate) {
-    val directDistance = abs(dotIndex - waveCenter)
-    // Handle wrapping for seamless transitions
-    val wrappedDistance = abs(dotIndex - waveCenter + 4f)
-    val wrappedDistance2 = abs(dotIndex - waveCenter - 4f)
-    minOf(directDistance, wrappedDistance, wrappedDistance2)
-  } else {
-    abs(dotIndex - 2f) // Distance from middle dot when not animating
-  }
-
-  // Create a smooth wave effect where dots closer to the center are larger
   val scale = if (shouldAnimate) {
-    // Use a smooth falloff: dots at the center are largest, dots further away are smaller
-    val waveIntensity = max(0f, 1f - (distance * 0.6f)) // 0.6f for smooth wave width
-    // Map wave intensity to scale: 1.0 (10dp) to 2.5 (25dp)
-    1.0f + (waveIntensity * 1.5f)
+    // Use custom animation for perfectly uniform timing
+    val stateProgress = animationProgress % 5f
+
+    // Calculate exact state boundaries
+    val currentState = when {
+      stateProgress < 1f -> 0
+      stateProgress < 2f -> 1
+      stateProgress < 3f -> 2
+      stateProgress < 4f -> 3
+      else -> 4
+    }
+
+    val nextState = (currentState + 1) % 5
+
+    // Calculate interpolation within the current state
+    val interpolationProgress = when {
+      stateProgress < 1f -> stateProgress
+      stateProgress < 2f -> stateProgress - 1f
+      stateProgress < 3f -> stateProgress - 2f
+      stateProgress < 4f -> stateProgress - 3f
+      else -> stateProgress - 4f
+    }
+
+    // Define the exact pattern for each state
+    val statePatterns = arrayOf(
+      // State 0: big, bigger, biggest, bigger, big
+      floatArrayOf(1.0f, 1.5f, 2.0f, 1.5f, 1.0f),
+      // State 1: big, big, bigger, biggest, bigger
+      floatArrayOf(1.0f, 1.0f, 1.5f, 2.0f, 1.5f),
+      // State 2: bigger, big, big, bigger, biggest
+      floatArrayOf(1.5f, 1.0f, 1.0f, 1.5f, 2.0f),
+      // State 3: biggest, bigger, big, big, bigger
+      floatArrayOf(2.0f, 1.5f, 1.0f, 1.0f, 1.5f),
+      // State 4: bigger, biggest, bigger, big, big
+      floatArrayOf(1.5f, 2.0f, 1.5f, 1.0f, 1.0f),
+    )
+
+    val currentScale = statePatterns[currentState][dotIndex]
+    val nextScale = statePatterns[nextState][dotIndex]
+
+    // Linear interpolation for uniform speed
+    currentScale + (nextScale - currentScale) * interpolationProgress
   } else {
     // When not animating, show the middle-focused pattern
-    val staticDistance = abs(dotIndex - 2f)
-    val staticIntensity = max(0f, 1f - (staticDistance * 0.6f))
-    1.0f + (staticIntensity * 1.5f)
+    1.0f + (0.2f * 1.5f)
   }
 
   Box(
@@ -158,11 +176,13 @@ private fun AnimatedDot(
 private fun PreviewSetupLoaderLoading() {
   MeAppTheme {
     Column(
-      modifier = Modifier.fillMaxWidth().padding(spacing.xl),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(spacing.xl),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(spacing.xl),
     ) {
-      SetupLoader(connectionState = ConnectionState.Loading)
+      SetupLoader(connectionState = ConnectionState.Success)
     }
   }
 }

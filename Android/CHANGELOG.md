@@ -7,7 +7,7 @@
 
 ### Changed
 
--
+- Refactored setup loader. (MA-796)
 
 ### Fixed
 

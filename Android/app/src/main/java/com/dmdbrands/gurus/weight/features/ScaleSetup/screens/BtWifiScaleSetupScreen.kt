@@ -309,6 +309,9 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingWifi.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
+              errorCode = if (state.currentStepConnectionState is ConnectionState.Failed)
+                state.errorCode
+              else null,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,

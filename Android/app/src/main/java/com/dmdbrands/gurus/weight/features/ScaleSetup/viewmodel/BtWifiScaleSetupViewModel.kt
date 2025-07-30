@@ -276,9 +276,9 @@ constructor(
         }
 
         else -> {
-          if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST) {
-            // TODO: IF wifi configured move to BtWifiSetupStep.CUSTOMIZE_SETTINGS else
-            //  move to BtWifiSetupStep.WIFI_PASSWORD
+          if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.value.connectedSSID != null) {
+            ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+            handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
           }
           // For other steps (like SCALE_INFO, AVAILABLE_WIFI_LIST), let the normal flow continue
           // The base class will handle the intent and call the reducer
@@ -660,7 +660,6 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
       handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
@@ -699,15 +698,16 @@ constructor(
             }
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode(null))
           } else {
             AppLog.w(TAG, "Wifi connection failed")
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode(it.errorCode))
             handleIntent(
               BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.CONNECTING_WIFI,
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           }
         }
