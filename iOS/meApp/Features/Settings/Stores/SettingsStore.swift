@@ -60,7 +60,7 @@ class SettingsStore: ObservableObject {
     @Published var latestWeight: Int = 0
     
     // MARK: - Message Indicators
-    @Published var hasUnreadMessages: Bool = true
+    @Published var showSettingsBadge: Bool = true
     
     // MARK: - Log Out All Accounts
     @Published var canShowLogOutAllItems = false
@@ -106,7 +106,6 @@ class SettingsStore: ObservableObject {
                 self?.populateEditFormIfNeeded()
                 self?.populateWeightlessFormIfNeeded()
                 self?.syncHeightPickers()
-                self?.syncSettingsStates()
             }
             .store(in: &cancellables)
         
@@ -126,14 +125,8 @@ class SettingsStore: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
-    }
-    
-    /// Syncs local settings states with account data
-    private func syncSettingsStates() {
-        guard let account = activeAccount else { return }
         
-        // TODO: Sync hasUnreadMessages from message service
-        hasUnreadMessages = feedService.getUnreadFeedCount() > 0
+        self.startSubscribingToFeeds()
     }
     
     func handleLogout() {
@@ -1159,5 +1152,12 @@ class SettingsStore: ObservableObject {
                 ModalData(presentedView: AnyView(modalView), backdropDismiss: false)
             )
         }
+    }
+    
+    private func startSubscribingToFeeds() {
+        feedService.notificationBadgeUpdated
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.showSettingsBadge, on: self)
+            .store(in: &cancellables)
     }
 }

@@ -1,11 +1,12 @@
 import Foundation
 import ggInAppMessagingPackage
 import Combine
+import SwiftUI
 
 @MainActor
 final class FeedService: ObservableObject {
     static let shared = FeedService()
-    
+    @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
     
     private let apiRepo: FeedRepositoryAPIProtocol = FeedRepositoryAPI()
@@ -13,59 +14,69 @@ final class FeedService: ObservableObject {
     private let accountService = AccountService.shared
     private let ggIAMService = GGInAppMessagingService.shared
     
-    @Published private(set) var feedItems: [FeedItem] = []
+    /// Emits whenever `feedItems` changes. Consumers can subscribe without needing GG IAM package.
+    let feedsChanged = PassthroughSubject<[FeedItem], Never>()
+    let feedSettingsChanged = PassthroughSubject<GGFeedSetting?, Never>()
+    let notificationBadgeUpdated = PassthroughSubject<Bool, Never>()
     
     private let tag = "FeedService"
     private var cancellables = Set<AnyCancellable>()
     init() {
-        Task {
-            do {
-                try await getFeedSettings()
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to get feed settings during init", data: error)
-            }
-            
-            ggIAMService
-                .feedsUpdated
-                .sink { [weak self] feedInfo in
-                    Task {
-                        let feedActionType: FeedActionType = FeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
-                        await self?.updateFeedItem(feedInfo.feedItem, actionType: feedActionType, variationId: feedInfo.variationId)
-                    }
+        getFeedSettings()
+        ggIAMService
+            .feedsUpdated
+            .sink { [weak self] feedInfo in
+                Task {
+                    let feedActionType: FeedActionType = FeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
+                    await self?.updateFeedItem(feedInfo.feedItem, actionType: feedActionType, variationId: feedInfo.variationId)
                 }
-                .store(in: &cancellables)
-        }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for full-feed changes from the GG IAM service and propagate them internally
+        ggIAMService
+            .feedsChanged
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newFeeds in
+                guard let self = self else { return }
+                self.feedsChanged.send(newFeeds)
+                self.updateNotificationBadge()
+            }
+            .store(in: &cancellables)
+        
+        ggIAMService
+            .feedNotificationChanged
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] feedSettings in
+                guard let self = self else { return }
+                let result = getFeedSettings()
+                self.feedSettingsChanged.send(result)
+                self.updateNotificationBadge()
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Feed Items Management
-    func fetchFeedItems() async {
+    func fetchFeedItems(isFromRefresh: Bool = false) async {
         do {
             ggIAMService.setAccountId(accountService.activeAccount?.accountId ?? "")
             let items = try await apiRepo.fetchFeedItems()
-            self.feedItems = items
-            ggIAMService.load(feeds: self.feedItems)
+            ggIAMService.load(feeds: items)
+            feedsChanged.send(items)
+            updateNotificationBadge()
             logger.log(level: .info, tag: tag, message: "Successfully fetched feed items", data: ["count": items.count])
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch feed items", data: error)
             ggIAMService.load(feeds: [])
+            updateNotificationBadge()
         }
     }
     
     func updateFeedItem(_ feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) async {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
         do {
-            try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
+            //try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
             logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
-            
-            // Update local state if item is marked as read
-            if actionType == .read {
-                if let index = self.feedItems.firstIndex(where: { $0.elementId == feedItem.elementId }) {
-                    var updatedItem = self.feedItems[index]
-                    updatedItem.isUnread = false
-                    self.feedItems[index] = updatedItem
-                }
-                ggIAMService.load(feeds: self.feedItems)
-            }
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
         }
@@ -77,7 +88,7 @@ final class FeedService: ObservableObject {
     
     // MARK: - Feed Settings Management
     @discardableResult
-    func getFeedSettings() async throws -> GGFeedSetting? {
+    func getFeedSettings() -> GGFeedSetting? {
         if let result = ggIAMService.getStoredFeedNotificationSetting() {
             return GGFeedSetting(
                 showPopupMessage: result.showPopupMessage,
@@ -88,14 +99,24 @@ final class FeedService: ObservableObject {
     }
     
     // MARK: - Feed Modal Management
-    func showFeedModal() async throws -> Bool {
-        return true
+    func showFeedModal() -> IAMFeedItem? {
+        let result = ggIAMService.checkFeedModalTrigger()
+        if let feedItem = result {
+            notificationService.showModal(ModalData(
+                presentedView: AnyView(IAMFeedModalView(feedItem: feedItem, onClose: {
+                    self.notificationService.dismissModal()
+                })),
+                backdropDismiss: false
+            ))
+        }
+        
+        return result
     }
     
     // MARK: - Cleanup
-    
     func clearFeedData() {
         ggIAMService.clearFeedData()
+        updateNotificationBadge()
     }
     
     // MARK: - Private Helpers
@@ -107,6 +128,13 @@ final class FeedService: ObservableObject {
             osType: requiresMeta ? "ios" : nil,
             meta: requiresMeta ? FeedActionMeta(variationId: variationId) : nil
         )
+    }
+    
+    // MARK: - Notification Badge Helper
+    private func updateNotificationBadge() {
+        let feedSettings = getFeedSettings()
+        let badgeShouldShow = getUnreadFeedCount() > 0 && (feedSettings?.showNotificationBadge ?? true)
+        notificationBadgeUpdated.send(badgeShouldShow)
     }
     
     deinit {

@@ -52,7 +52,7 @@ struct BottomTabBarView: View {
                             TabBarItemView(
                                 tab: tab,
                                 isSelected: viewModel.selectedTab == tab,
-                                showSettingsBadge: viewModel.showSettingsBadge
+                                showSettingsBadge: viewModel.canShowNotificationBadge
                             )
                         }
                         .padding(.leading, index == 0 ? .spacingSM : 0)

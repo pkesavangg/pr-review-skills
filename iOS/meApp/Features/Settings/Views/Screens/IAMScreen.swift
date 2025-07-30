@@ -12,12 +12,16 @@ import ggInAppMessagingPackage
 struct IAMScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
+    @StateObject private var viewModel = IAMScreenViewModel()
     
     var body: some View {
         VStack(spacing: 0) {
-            FeedListView() {
+            FeedListView(onClickBack: {
                 router.navigateBack()
-            }
+            }, onClickRefresh: {
+                viewModel.refreshFeed()
+            })
+                
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -25,4 +29,15 @@ struct IAMScreen: View {
 
 #Preview {
     IAMScreen()
+}
+
+
+class IAMScreenViewModel: ObservableObject {
+    @Injector var feedService: FeedService
+    
+    func refreshFeed() {
+        Task {
+            await feedService.fetchFeedItems()
+        }
+    }
 }

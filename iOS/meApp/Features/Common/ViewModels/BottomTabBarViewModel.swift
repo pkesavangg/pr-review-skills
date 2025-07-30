@@ -21,7 +21,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
     @Published var discoveryEvent: DeviceDiscoveryEvent? = nil
     @Published var selectedTab: BottomTab = .dash
-    @Published var showSettingsBadge: Bool = false
+    @Published var canShowNotificationBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
     /// Holds the body-composition metrics captured by AppSync when the user taps **Edit** on the confirmation card.
@@ -57,7 +57,7 @@ class BottomTabBarViewModel: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     
     init() {
-        self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
+        self.canShowNotificationBadge = feedService.getUnreadFeedCount() > 0
         // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
         bluetoothService.deviceDiscoveredPublisher
             .receive(on: DispatchQueue.main)
@@ -92,6 +92,11 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .receive(on: DispatchQueue.main)
             .assign(to: \.showAppSync, on: self)
+            .store(in: &cancellables)
+        
+        feedService.notificationBadgeUpdated
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.canShowNotificationBadge, on: self)
             .store(in: &cancellables)
         
         // Observe permission/state changes to decide when to show the *Permission Disabled* alert.

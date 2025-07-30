@@ -274,7 +274,7 @@ struct SettingsScreen: View {
                 chevronType: .upDown,
                 onTap: { showNotificationPicker = true }))
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.hasUnreadMessages, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.showSettingsBadge, onTap: {
                 router.navigate(to: .messages)
             }))
                 .listRowInsets()
