@@ -584,7 +584,7 @@ open class ReorderableLazyCollectionState<out T> internal constructor(
     }
   }
 
-  private fun findTargetItem(
+        private fun findTargetItem(
     draggingItemRect: Rect,
     items: List<LazyCollectionItemInfo<T>> = state.layoutInfo.getItemsInContentArea(),
     direction: Scroller.Direction = Scroller.Direction.FORWARD,
@@ -597,9 +597,19 @@ open class ReorderableLazyCollectionState<out T> internal constructor(
         && item.key in reorderableKeys
         && additionalPredicate(item)
     }
-    val targetItem = when (direction) {
-      Scroller.Direction.FORWARD -> items.find(targetItemFunc)
-      Scroller.Direction.BACKWARD -> items.findLast(targetItemFunc)
+
+    // Determine actual drag direction by comparing current position with original position
+    val draggingItem = draggingItemLayoutInfo ?: return null
+    val originalCenterY = draggingItem.offset.y + draggingItem.size.height / 2
+    val currentCenterY = draggingItemRect.center.y
+
+    val isDraggingDown = currentCenterY > originalCenterY
+
+    val targetItem = when {
+      // For downward drag, use findLast to get the bottom-most item
+      isDraggingDown -> items.findLast(targetItemFunc)
+      // For upward drag, use find to get the top-most item
+      else -> items.find(targetItemFunc)
     }
     return targetItem
   }
