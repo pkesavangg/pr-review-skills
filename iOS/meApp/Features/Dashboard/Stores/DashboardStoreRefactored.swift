@@ -94,11 +94,7 @@ class DashboardStore: ObservableObject {
         entryService.entrySaved
             .sink { [weak self] entry in
                 Task {
-                    do {
-                        try await self?.onEntryAdded(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle added entry: \(error)")
-                    }
+                    await self?.onEntryAdded(entry)
                 }
             }
             .store(in: &cancellables)
@@ -106,11 +102,7 @@ class DashboardStore: ObservableObject {
         entryService.entryDeleted
             .sink { [weak self] entry in
                 Task {
-                    do {
-                        try await self?.onEntryDeleted(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle deleted entry: \(error)")
-                    }
+                    await self?.onEntryDeleted(entry)
                 }
             }
             .store(in: &cancellables)
@@ -276,9 +268,6 @@ class DashboardStore: ObservableObject {
     }
 
     var weightLabel: String {
-        guard !visibleOperations.isEmpty else {
-            return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
-        }
 
         // If a point is selected, show its date
         if let selectedPoint = state.graph.selectedPoint {
@@ -294,12 +283,18 @@ class DashboardStore: ObservableObject {
             }
         }
 
-        // Otherwise show the period range for visible data
-        let opsToUse = visibleOperations
-        guard let minDate = opsToUse.map(\.date).min(),
-              let maxDate = opsToUse.map(\.date).max() else {
+        if state.graph.selectedPeriod == .total {
+            let minDate = continuousOperations.min(by: { $0.date < $1.date })?.date
+            let maxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
+            if let minDate = minDate, let maxDate = maxDate {
+                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
+            }
             return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
         }
+
+        let lastScrollPosition = graphManager.state.xScrollPosition
+        let minDate = lastScrollPosition
+        let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: state.graph.selectedPeriod))
 
         return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
     }
@@ -433,7 +428,7 @@ class DashboardStore: ObservableObject {
         await loadInitialData()
 
         // Initialize chart after data is loaded
-        await initializeChart()
+        initializeChart()
     }
 
     // MARK: - Dashboard Type Management
@@ -550,7 +545,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryAdded(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry added: \(error)")
         }
@@ -561,7 +556,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryUpdated(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry updated: \(error)")
         }
@@ -572,7 +567,7 @@ class DashboardStore: ObservableObject {
             try await dataManager.handleEntryDeleted(entry)
             loadLatestEntryData()
             loadGoalCardData()
-            await self.updateYAxisCache()
+            updateYAxisCache()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry deleted: \(error)")
         }
@@ -636,6 +631,11 @@ class DashboardStore: ObservableObject {
             state.ui.selectedMetricLabel = label
         }
     }
+    
+    /// Toggles the edit mode state
+    func toggleEditMode() {
+        state.ui.isEditMode.toggle()
+    }
 
     // Delegate graph operations to GraphManager
     func ensureLatestEntriesVisible() {
@@ -654,9 +654,7 @@ class DashboardStore: ObservableObject {
     func handleSettingsChange() {
         loadGoalCardData()
         objectWillChange.send()
-        Task {
-            await self.updateYAxisCache()
-        }
+        updateYAxisCache()
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
@@ -1094,7 +1092,7 @@ class DashboardStore: ObservableObject {
         }
     }
 
-            // Delegate chart initialization to GraphManager
+    // Delegate chart initialization to GraphManager
     @MainActor
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
@@ -1102,8 +1100,6 @@ class DashboardStore: ObservableObject {
             updateWeightDisplayForCurrentView()
             return
         }
-
-
 
         // Explicitly set scroll position to latest entry date for initial load
         if let latestEntryDate = continuousOperations.map(\.date).max() {
@@ -1189,9 +1185,7 @@ class DashboardStore: ObservableObject {
     /// This should only be called on scroll end or segment load
     @MainActor
     private func recalculateYAxisForVisibleData() {
-        Task {
-            await self.updateYAxisCache()
-        }
+        updateYAxisCache()
     }
 
     /// Update metrics to show values for current view (visible region or selected point)

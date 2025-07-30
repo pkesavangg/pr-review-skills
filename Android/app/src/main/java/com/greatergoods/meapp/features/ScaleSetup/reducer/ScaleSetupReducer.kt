@@ -39,6 +39,9 @@ sealed interface BaseState<Step : ScaleSetupStep, S : BaseState<Step, S>> : IRed
     get() = scaleSetupState.nextEnabled
   val previousStep: Step?
     get() = steps.getOrNull(steps.indexOf(step) - 1)
+
+  val permissions: GGPermissionStatusMap
+    get() = scaleSetupState.permissions
 }
 
 data class ScaleSetupState<T>(

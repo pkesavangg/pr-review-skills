@@ -2,11 +2,14 @@ package com.greatergoods.meapp.features.manualEntry.helper
 
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
+import com.greatergoods.meapp.core.service.AppStatusService.isMetric
+import com.greatergoods.meapp.core.shared.utilities.ConversionTools
 import com.greatergoods.meapp.core.shared.utilities.DateTimeConverter
 import com.greatergoods.meapp.data.services.OperationType
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.greatergoods.meapp.data.storage.db.entity.entry.EntryEntity
+import com.greatergoods.meapp.domain.model.api.entry.ScaleApiEntry
 import com.greatergoods.meapp.domain.model.common.HistoryMonth
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.model.storage.entry.BpmEntry
@@ -21,6 +24,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.round
+import kotlin.math.roundToInt
+import android.util.Log
 
 object EntryHelper {
   private val dateFormatter: DateTimeFormatter =
@@ -279,5 +284,101 @@ object EntryHelper {
     GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.BtWifiR4
     else -> ScaleSetupType.Bluetooth
 
+  }
+
+  /**
+   * Converts AppSyncResult to ScaleEntry format
+   */
+  fun com.greatergoods.libs.appsync.model.AppSyncResult.toScaleEntry(accountId: String, unit: String, userHeight: Int? = null, isSaving: Boolean = false): ScaleEntry {
+    val currentTime = System.currentTimeMillis()
+    val entryEntity = EntryEntity(
+      id = 0L, // Let Room auto-generate
+      accountId = accountId,
+      entryTimestamp = DateTimeConverter.timestampToIso(currentTime),
+      serverTimestamp = null,
+      opTimestamp = null,
+      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB ,
+      operationType = OperationType.CREATE.name,
+      deviceType = "appsync",
+      deviceId = "appsync_scale",
+      attempts = 0,
+      isSynced = false,
+    )
+
+    // Calculate BMI if weight and height are available
+    val calculatedBmi = if (weight != null && userHeight != null) {
+      val weightKg = when (mode?.lowercase()) {
+        "kg" -> weight!!.toDouble()
+        else -> ConversionTools.convertStoredToKg(weight!!.toDouble() * 10) // Convert lbs to kg
+      }
+      val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
+      ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+    } else {
+      null
+    }
+    val rawWeight = ConversionTools.convertAppSyncDisplayToStored(weight?.toDouble() ?: 0.0)
+    val convertedWeight = ConversionTools.convertStoredToDisplay(rawWeight,isMetric )
+
+    val scaleEntry = BodyScaleEntryEntity(
+      id = 0L, // Will be set by DB
+      weight = if(isSaving) convertedWeight else rawWeight,
+      bodyFat = fat?.toDouble(),
+      muscleMass = muscle?.toDouble(),
+      water = water?.toDouble(),
+      bmi = calculatedBmi,
+      source = "Appsync scale",
+    )
+
+    val scaleEntryWithMetrics = ScaleEntryWithMetrics(
+      scaleEntry = scaleEntry,
+      scaleEntryMetric = null, // AppSync doesn't provide R4 metrics
+    )
+
+    return ScaleEntry(
+      entry = entryEntity,
+      scale = scaleEntryWithMetrics,
+    )
+  }
+
+  /**
+   * Converts AppSyncResult to ScaleApiEntry format
+   */
+  fun com.greatergoods.libs.appsync.model.AppSyncResult.toScaleApiEntry(accountId: String): ScaleApiEntry {
+    val currentTime = System.currentTimeMillis()
+
+    // Process body composition data with proper conversion
+    val processedBodyFat = fat?.let {
+      round(it * 10) / 10.0
+    }?.roundToInt()
+
+    val processedMuscleMass = muscle?.let {
+      round(it * 10) / 10.0
+    }?.roundToInt()
+
+    val processedWater = water?.let {
+      round(it * 10) / 10.0
+    }?.roundToInt()
+
+    return ScaleApiEntry(
+      operationType = OperationType.CREATE.name.lowercase(),
+      entryTimestamp = DateTimeConverter.timestampToIso(currentTime),
+      weight = weight?.toInt() ?: 0,
+      bodyFat = fat?.toInt(),
+      muscleMass = processedMuscleMass,
+      boneMass = null, // AppSync doesn't provide bone mass
+      water = processedWater,
+      bmi = null, // BMI calculated separately
+      source = "Appsync scale",
+      unit = if (mode?.lowercase() == "kg") "kg" else "lb",
+      impedance = null, // AppSync doesn't provide impedance
+      pulse = null, // AppSync doesn't provide pulse
+      visceralFatLevel = null, // AppSync doesn't provide visceral fat
+      subcutaneousFatPercent = null, // AppSync doesn't provide subcutaneous fat
+      proteinPercent = null, // AppSync doesn't provide protein
+      skeletalMusclePercent = null, // AppSync doesn't provide skeletal muscle
+      bmr = null, // AppSync doesn't provide BMR
+      metabolicAge = null, // AppSync doesn't provide metabolic age
+      serverTimestamp = null,
+    )
   }
 }

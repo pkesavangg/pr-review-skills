@@ -85,12 +85,15 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   abstract override fun provideInitialState(): State
   abstract fun observePermissions()
   abstract fun onStepChange(step: ScaleSetupStep)
+  abstract fun onTryAgain()
   abstract fun onNext()
   abstract fun onBack()
   abstract fun onSkip()
   abstract suspend fun onSetupFinished()
 
   private var deviceObservationJob: Job? = null
+  protected val bluetoothTimeout: Long = 5 * 60 * 1000L
+  protected var bluetoothTimeoutJob: Job? = null
 
   private var entryObservationJob: Job? = null
 
@@ -106,6 +109,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
       ScaleSetupIntent.Next -> onNext()
       ScaleSetupIntent.Back -> onBack()
       ScaleSetupIntent.Skip -> onSkip()
+      ScaleSetupIntent.TryAgain -> onTryAgain()
       is ScaleSetupIntent.ExitSetup ->
         onExitSetup(
           intent.isSetupFinished,
@@ -165,6 +169,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   }
 
   protected var discoveredScale: Device? = null
+
+  /**
+   * Clears the bluetooth timeout job.
+   */
+  protected fun clearBluetoothTimeout() {
+    bluetoothTimeoutJob?.cancel()
+    bluetoothTimeoutJob = null
+  }
 
   /**
    * Starts observing device scan responses. Call this when you want to begin collecting devices.

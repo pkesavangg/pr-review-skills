@@ -92,23 +92,23 @@ struct DashboardScreen: View {
 
     // MARK: - Metric Grid Section
     private func metricGridSection() -> some View {
-        LazyVGrid(columns: store.metricGridColumns, spacing: 16) {
-            ForEach(store.metricsToShow) { item in
-                metricCardView(for: item)
-            }
-        }
-        .padding(.horizontal, .spacingSM)
-        .id(store.state.ui.gridLayoutId)
-        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-    }
+           LazyVGrid(columns: store.metricGridColumns, spacing: 16) {
+               ForEach(store.metricsToShow) { item in
+                   metricCardView(for: item)
+               }
+           }
+           .padding(.horizontal, .spacingSM)
+           .id(store.state.ui.gridLayoutId)
+           .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+       }
 
-    // MARK: - Metric Card View Helper
+       // MARK: - Metric Card View Helper
     private func metricCardView(for item: MetricItem) -> some View {
         let index = store.metricsToShow.firstIndex(of: item) ?? 0
         let isRemoved = store.isMetricRemovedInReorderedArray(at: index)
         let isSelected = store.state.ui.selectedMetricLabel == item.label
         let verticalPadding = store.state.metrics.dashboardType == .dashboard12 ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
-
+        
         let card = MetricCardView(
             value: store.formattedMetricValue(for: (item.preLabel, item.value)),
             label: item.label,
@@ -131,7 +131,7 @@ struct DashboardScreen: View {
             },
             verticalPadding: verticalPadding
         )
-
+        
         return card
             .editModeOverlay(
                 isEditMode: store.state.ui.isEditMode,

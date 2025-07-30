@@ -5,6 +5,7 @@ import com.greatergoods.meapp.core.navigation.AppRoute
 import com.greatergoods.meapp.core.shared.utilities.logging.AppLog
 import com.greatergoods.meapp.domain.model.common.WeightUnit
 import com.greatergoods.meapp.domain.services.IAccountService
+import com.greatergoods.meapp.domain.services.IAppSyncService
 import com.greatergoods.meapp.domain.services.IEntryService
 import com.greatergoods.meapp.features.common.helper.form.MultiFormGroup
 import com.greatergoods.meapp.features.common.model.DialogModel
@@ -13,6 +14,7 @@ import com.greatergoods.meapp.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.strings.AppPopupStrings
 import com.greatergoods.meapp.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
+import android.util.Log
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -32,6 +35,7 @@ class EntryViewModel
 constructor(
     private val entryService: IEntryService,
     private val accountService: IAccountService,
+    private val appSyncService: IAppSyncService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
     reducer = EntryReducer(),
 ) {
@@ -67,6 +71,15 @@ constructor(
                 )
             }
         }
+
+        // Check if there's AppSync data to load
+        viewModelScope.launch {
+            appSyncService.appSyncDataForEditing.collectLatest { scaleEntry ->
+                if (scaleEntry != null) {
+                    loadAppSyncData(scaleEntry)
+                }
+            }
+        }
     }
 
     override fun handleIntent(intent: EntryIntent) {
@@ -75,7 +88,6 @@ constructor(
             is EntryIntent.Save -> {
                 saveEntry()
             }
-
             else -> null
         }
     }
@@ -88,10 +100,10 @@ constructor(
                         var isResumed = false
 
                         dialogQueueService.enqueue(
-                            DialogModel.Confirm(
-                                title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                                message = AppPopupStrings.UnsavedChanges.Message,
-                                onConfirm = {
+                          DialogModel.Confirm(
+                            title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                            message = AppPopupStrings.UnsavedChanges.Message,
+                            onConfirm = {
                                     if (!isResumed) {
                                         isResumed = true
                                         onConfirm()
@@ -100,7 +112,7 @@ constructor(
                                         cont.resume(true)
                                     }
                                 },
-                                onCancel = {
+                            onCancel = {
                                     if (!isResumed) {
                                         isResumed = true
                                         cont.resume(false)
@@ -148,6 +160,32 @@ constructor(
                 )
             } finally {
                 dialogQueueService.dismissLoader()
+            }
+        }
+    }
+
+        /**
+     * Loads AppSync data into the form for editing, following ProfileViewModel pattern.
+     */
+    private fun loadAppSyncData(scaleEntry: com.greatergoods.meapp.domain.model.storage.entry.ScaleEntry, height: Int? = null) {
+        viewModelScope.launch {
+            try {
+                val currentAccount = accountService.activeAccountFlow.first()
+                val finalHeight = height ?: currentAccount?.height
+
+                // Dispatch intent with height parameter, following Profile pattern exactly
+                handleIntent(
+                    EntryIntent.LoadAppSyncData(
+                        scaleEntry = scaleEntry,
+                        height = finalHeight
+                    )
+                )
+                AppLog.i("EntryViewModel", "AppSync data loading intent dispatched with height: $finalHeight")
+            } catch (e: Exception) {
+                AppLog.e("EntryViewModel", "Failed to load AppSync data", e.toString())
+                dialogQueueService.showToast(
+                    Toast(message = "Failed to load AppSync data: ${e.message}")
+                )
             }
         }
     }

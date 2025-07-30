@@ -26,10 +26,10 @@ import com.greatergoods.meapp.domain.services.AuthState
 import com.greatergoods.meapp.domain.services.IAccountService
 import com.greatergoods.meapp.domain.services.IDashboardService
 import com.greatergoods.meapp.domain.services.IEntryService
+import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.greatergoods.meapp.features.ScaleSetup.enums.BtWifiSetupStep
 import com.greatergoods.meapp.features.ScaleSetup.enums.LcbtScaleSetupStep
-import com.greatergoods.meapp.domain.services.IHealthConnectService
 import com.greatergoods.meapp.features.appPermissions.helper.AppPermissionsHelper
 import com.greatergoods.meapp.features.common.enums.ScaleSetupType
 import com.greatergoods.meapp.features.common.helper.DeviceHelper.getSKU
@@ -299,6 +299,7 @@ constructor(
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
             startScan()
+            initialized = true
           } else {
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
@@ -460,7 +461,7 @@ constructor(
           }
         },
         onDismiss = {
-        }
+        },
       )
     }
   }

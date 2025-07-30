@@ -28,7 +28,7 @@ object AppIcons {
     val WifiIndicator = R.drawable.wifi_indicator
     val BluetoothIndicator = R.drawable.bluetooth_indicator
     val ModalNumber = R.drawable.modal_number
-    val ScalePlaceholder = R.drawable.placeholder_scale
+    val ScalePlaceholder = R.raw.placeholder_scale
     val WeightOnlyMode = R.drawable.ic_weight_only
     val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
   }
@@ -98,9 +98,36 @@ object AppIcons {
     val Accuchecked = R.drawable.accuchecked
     val AccucheckLogo = R.drawable.accucheck_logo
     val StepOnGif = R.raw.step_on
-    val PairMode_0376 = R.raw.pair_mode_0376
-    val DeviceSetUser_0376 = R.raw.device_set_user_0376
-    val StepOn_0376 = R.raw.step_on_0376
+    fun StepOnGif(sku: String): Int {
+      return when (sku) {
+        "0375" -> R.raw.step_on_0375
+        "0376" -> R.raw.step_on_0376
+        "0380" -> R.raw.step_on_0380
+        "0382" -> R.raw.step_on_0382
+        else -> R.raw.step_on_0375
+      }
+    }
+
+    fun PairModeGif(sku: String): Int {
+      return when (sku) {
+        "0375" -> R.raw.start_pair_mode_0375
+        "0376" -> R.raw.start_pair_mode_0376
+        "0380" -> R.raw.start_pair_mode_0380
+        "0382" -> R.raw.start_pair_mode_0382
+        else -> R.raw.start_pair_mode_0375
+      }
+    }
+
+    fun SetUserGif(sku: String): Int {
+      return when (sku) {
+        "0375" -> R.raw.set_user_number_0375
+        "0376" -> R.raw.set_user_number_0376
+        "0380" -> R.raw.set_user_number_0380
+        "0382" -> R.raw.set_user_number_0382
+        else -> R.raw.set_user_number_0375
+      }
+    }
+
     val MetricCard = R.drawable.ic_card_grid
     val Graph = R.drawable.ic_graph_bar
     val Scale = R.drawable.ic_scale

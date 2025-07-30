@@ -811,7 +811,8 @@ class ScaleStore: ObservableObject {
             await modesManager.refreshWifiStatus(for: scale)
             
             // For SKU 0412, also check device info to get accurate WiFi configuration status
-            if scale.sku == SettingsConstants.defaultR4Sku {
+            // Only when the scale is connected to avoid Bluetooth library errors
+            if scale.sku == SettingsConstants.defaultR4Sku && scale.isConnected == true {
                 await checkDeviceInfoAndWifiConfiguration()
             }
         }
@@ -820,7 +821,8 @@ class ScaleStore: ObservableObject {
     /// Checks device info and WiFi configuration for scale SKU 0412
     func checkDeviceInfoAndWifiConfiguration() async {
         guard let scale = state.device.scale,
-              scale.sku == SettingsConstants.defaultR4Sku else { return }
+              scale.sku == SettingsConstants.defaultR4Sku,
+              scale.isConnected == true else { return }
         
         do {
             let result = await bluetoothService.getDeviceInfo(for: scale)
@@ -833,6 +835,9 @@ class ScaleStore: ObservableObject {
             case .failure(let error):
                 logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info: \(error)")
             }
+        } catch {
+            // Handle any unexpected errors (including the String casting crash)
+            logger.log(level: .error, tag: "ScaleStore", message: "Unexpected error getting device info: \(error)")
         }
     }
     
@@ -852,6 +857,9 @@ class ScaleStore: ObservableObject {
                     case .failure(let error):
                         logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info for \(scale.id): \(error)")
                     }
+                } catch {
+                    // Handle any unexpected errors (including the String casting crash)
+                    logger.log(level: .error, tag: "ScaleStore", message: "Unexpected error getting device info for \(scale.id): \(error)")
                 }
             }
         }

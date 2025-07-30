@@ -16,7 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.greatergoods.meapp.features.ScaleSetup.modal.ConnectionState
 import com.greatergoods.meapp.features.ScaleSetup.strings.AppsyncSetupStrings
+import com.greatergoods.meapp.features.ScaleSetup.strings.BtScaleSetupStrings
+import com.greatergoods.meapp.features.common.components.AppButton
 import com.greatergoods.meapp.features.common.components.AppGifImage
 import com.greatergoods.meapp.features.common.components.AppText
 import com.greatergoods.meapp.features.common.components.PreviewTheme
@@ -38,6 +41,8 @@ fun SetupContent(
   isGifImage: Boolean = false,
   supportingImage: Int? = null,
   loaderText: String? = null,
+  loaderClick: (() -> Unit)? = null,
+  connectionState: ConnectionState? = null,
   content: (@Composable () -> Unit)? = null
 ) {
   Column(
@@ -90,11 +95,18 @@ fun SetupContent(
           )
         }
 
-        Spacer(modifier = Modifier.height(spacing.xs))
-        if (loaderText != null) {
+        Spacer(modifier = Modifier.height(spacing.lg))
+        if (loaderText != null &&
+          (connectionState == ConnectionState.Loading || connectionState == ConnectionState.Success)
+        ) {
           LoadingTextWithDots(
             baseText = loaderText,
             textColor = MeTheme.colorScheme.secondaryAction,
+          )
+        } else if (loaderText != null && loaderClick != null) {
+          AppButton(
+            label = loaderText,
+            onClick = loaderClick,
           )
         }
       }
@@ -114,8 +126,11 @@ private fun SetupContentPreview() {
     SetupContent(
       title = AppsyncSetupStrings.SetupComplete.Title,
       subtitle = AppsyncSetupStrings.SetupComplete.Message,
-      setupFinished = true,
-      supportingImage = AppIcons.Setup.AppSyncNavBar,
+      supportingImage = AppIcons.Setup.PairModeGif("0382"),
+      isGifImage = true,
+      loaderText = BtScaleSetupStrings.PairingMode.PairModeText(ConnectionState.Failed.Error),
+      loaderClick = {},
+      connectionState = ConnectionState.Failed.Error,
     )
   }
 }

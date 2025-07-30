@@ -20,13 +20,14 @@ import com.greatergoods.meapp.theme.MeTheme.spacing
 @Composable
 fun ScalePermissions(
   sku: String,
+  modifier: Modifier = Modifier,
   permissions: GGPermissionStatusMap,
   onRequestPermission: (String) -> Unit,
 ) {
   val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
   val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions)
   Column(
-    modifier = Modifier
+    modifier = modifier
       .fillMaxSize()
       .padding(vertical = spacing.sm, horizontal = spacing.md),
   ) {

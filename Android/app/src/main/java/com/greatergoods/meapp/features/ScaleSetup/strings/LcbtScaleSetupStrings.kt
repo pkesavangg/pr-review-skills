@@ -21,7 +21,7 @@ object LcbtScaleSetupStrings {
 
   object SetupFinished {
     val Title = "Your scale is paired and ready to go!"
-    val Subtitle = "Next time you weigh in , just open Weight Gurus and step on the scale."
+    val Subtitle = "Next time you weigh in, just open Weight Gurus and step on the scale."
   }
 }
 
