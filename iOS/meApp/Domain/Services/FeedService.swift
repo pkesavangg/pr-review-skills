@@ -22,7 +22,8 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     private let tag = "FeedService"
     private var cancellables = Set<AnyCancellable>()
     init() {
-        getFeedSettings()
+        let initialFeedSettings = getFeedSettings()
+        feedSettingsChanged.send(initialFeedSettings)
         ggIAMService
             .feedsUpdated
             .sink { [weak self] feedInfo in
@@ -57,7 +58,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     }
     
     // MARK: - Feed Items Management
-    func fetchFeedItems(isFromRefresh: Bool = false) async {
+    func fetchFeedItems() async {
         do {
             ggIAMService.setAccountId(accountService.activeAccount?.accountId ?? "")
             let items = try await apiRepo.fetchFeedItems()

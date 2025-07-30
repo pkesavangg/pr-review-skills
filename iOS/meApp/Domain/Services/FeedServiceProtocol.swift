@@ -20,8 +20,7 @@ protocol FeedServiceProtocol: AnyObject {
     // MARK: - Feed Items Management
 
     /// Fetches all feed items from the backend and updates local state.
-    /// - Parameter isFromRefresh: Optional flag to indicate if fetch is from pull-to-refresh
-    func fetchFeedItems(isFromRefresh: Bool) async
+    func fetchFeedItems() async
 
     /// Updates a feed item's state with the given action.
     /// - Parameters:
