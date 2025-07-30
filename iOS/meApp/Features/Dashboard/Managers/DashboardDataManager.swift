@@ -45,51 +45,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
 
-    // MARK: - Entry Management
-    func handleEntryAdded(_ entry: Entry) async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry addition: \(entry.id)")
-
-            // Use EntryService to handle entry addition
-            try await entryService.handleEntryAdded(entry)
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry addition handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry addition: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry addition")
-        }
-    }
-
-    func handleEntryUpdated(_ entry: Entry) async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry update: \(entry.id)")
-
-            // Use EntryService to handle entry update
-            try await entryService.handleEntryUpdated(entry)
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry update handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry update: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry update")
-        }
-    }
-
-    func handleEntryDeleted(_ entry: Entry) async throws {
-        do {
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Handling entry deletion: \(entry.id)")
-
-            // Use EntryService to handle entry deletion
-            try await entryService.handleEntryDeleted(entry)
-
-            logger.log(level: .info, tag: "DashboardDataManager", message: "Entry deletion handled successfully")
-
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle entry deletion: \(error)")
-            throw DashboardError.cacheUpdateFailed("Failed to update cache for entry deletion")
-        }
-    }
 
     // MARK: - Data Retrieval
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary] {

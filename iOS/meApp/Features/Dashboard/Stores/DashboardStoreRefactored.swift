@@ -92,25 +92,13 @@ class DashboardStore: ObservableObject {
     private func setupSubscriptions() {
         entryService.entrySaved
             .sink { [weak self] entry in
-                Task {
-                    do {
-                        try await self?.onEntryAdded(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle added entry: \(error)")
-                    }
-                }
+              self?.onEntryAdded(entry)
             }
             .store(in: &cancellables)
 
         entryService.entryDeleted
             .sink { [weak self] entry in
-                Task {
-                    do {
-                        try await self?.onEntryDeleted(entry)
-                    } catch {
-                        self?.logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to handle deleted entry: \(error)")
-                    }
-                }
+              self?.onEntryDeleted(entry)
             }
             .store(in: &cancellables)
 
@@ -552,37 +540,22 @@ class DashboardStore: ObservableObject {
 
         // Delegate entry lifecycle to DataManager
         // MARK: - Entry Lifecycle Management
-    internal func onEntryAdded(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryAdded(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            await self.updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry added: \(error)")
-        }
+    internal func onEntryAdded(_ entry: Entry) {
+      loadLatestEntryData()
+      loadGoalCardData()
+      self.updateYAxisCache()
     }
 
-    internal func onEntryUpdated(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryUpdated(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            await self.updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry updated: \(error)")
-        }
+    internal func onEntryUpdated(_ entry: Entry) {
+      loadLatestEntryData()
+      loadGoalCardData()
+      self.updateYAxisCache()
     }
 
-    internal func onEntryDeleted(_ entry: Entry) async {
-        do {
-            try await dataManager.handleEntryDeleted(entry)
-            loadLatestEntryData()
-            loadGoalCardData()
-            await self.updateYAxisCache()
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to handle entry deleted: \(error)")
-        }
+    internal func onEntryDeleted(_ entry: Entry) {
+      loadLatestEntryData()
+      loadGoalCardData()
+      self.updateYAxisCache()
     }
 
 
