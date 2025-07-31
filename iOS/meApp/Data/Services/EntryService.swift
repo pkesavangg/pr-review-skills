@@ -23,6 +23,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Published var progress: ProgressSummary = .empty
     @Published var streak: Int = 0
 
+    // MARK: - Dashboard Data
+    @Published var dailySummaries: [BathScaleWeightSummary] = []
+    @Published var monthlySummaries: [BathScaleWeightSummary] = []
+
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
     }
@@ -39,7 +43,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func clearAllData() async {
         try? await localRepo.deleteAllEntries()
     }
-    
+
     /// Clears the last sync timestamp for the current user.
     func clearLastSyncTimestamp() async throws {
         let accountId = try await getAccountId()
@@ -51,8 +55,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         entry.operationType = OperationType.create.rawValue
         entry.attempts = 0
         try await localRepo.saveEntry(entry)
+        try await handleEntryAdded(entry)
         // Broadcast change
-        entrySaved.send(entry)
+
         await syncUnsyncedEntries()
     }
 
@@ -60,7 +65,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         for entry in entries {
             entry.isSynced = false
             try await localRepo.saveEntry(entry)
-            entrySaved.send(entry)
+            try await handleEntryAdded(entry)
         }
         await syncUnsyncedEntries()
     }
@@ -288,7 +293,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                       logger.log(level: .info, tag: tag, message: "Entry create/update synced: \(operation.id)")
                   } else {
                     try await localRepo.deleteEntry(byId: operation.id.uuidString)
-                    entryDeleted.send(operation)
+                    try await handleEntryDeleted(operation)
                       // Log based on operation type
                       logger.log(level: .info, tag: tag, message: "Entry deleted: \(operation.id)")
                   }
@@ -382,7 +387,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     if finalOp.operationType == OperationType.delete.rawValue {
                         // Final state is deleted - remove from local storage
                         try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
-                        entryDeleted.send(localEntry)
+                        try? await handleEntryDeleted(localEntry)
                     } else {
                         // Final state is create - update local with remote
                         let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
@@ -603,5 +608,136 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             max: maxWeight
         )
     }
+
+    // MARK: - Entry Management (Moved from DashboardDataManager)
+
+    /// Loads and aggregates all entry data for dashboard display
+    func loadDashboardData() async {
+       do {
+          let accountId = try await getAccountId()
+          logger.log(level: .info, tag: tag, message: "Loading dashboard data")
+          // Get all entries for the account
+          let entries = try await getAllEntries()
+          // Aggregate data by day and month
+          let dailyData = aggregateByDay(entries: entries, accountId: accountId)
+          let monthlyData = aggregateByMonth(entries: entries, accountId: accountId)
+
+          // Update published arrays
+          dailySummaries = dailyData.compactMap { $0 }.sorted { $0.period < $1.period }
+          monthlySummaries = monthlyData.compactMap { $0 }.sorted { $0.period < $1.period }
+
+          logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
+        } catch {
+          logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
+        }
+    }
+
+    /// Handles entry addition by updating affected day and month summaries
+    func handleEntryAdded(_ entry: Entry) async throws {
+        let accountId = try await getAccountId()
+
+        logger.log(level: .info, tag: tag, message: "Handling entry addition: \(entry.id)")
+
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch all entries for the affected day and month
+        let dayEntries = try await getEntries(forDay: dayKey)
+        let monthEntries = try await getEntries(forMonth: monthKey)
+
+        // Update summaries with aggregated data
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
+
+        if let dailySummary = dailySummary {
+            updateDailySummary(dayKey: dayKey, summary: dailySummary)
+        }
+        if let monthlySummary = monthlySummary {
+            updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+        }
+        entrySaved.send(entry)
+        logger.log(level: .info, tag: tag, message: "Entry addition handled successfully")
+    }
+
+    /// Handles entry update by treating as delete + add
+    func handleEntryUpdated(_ entry: Entry) async throws {
+        logger.log(level: .info, tag: tag, message: "Handling entry update: \(entry.id)")
+
+        // For updates, we can treat as delete + add for simplicity
+        try await handleEntryDeleted(entry)
+        try await handleEntryAdded(entry)
+
+        logger.log(level: .info, tag: tag, message: "Entry update handled successfully")
+    }
+
+    /// Handles entry deletion by updating affected day and month summaries
+    func handleEntryDeleted(_ entry: Entry) async throws {
+        let accountId = try await getAccountId()
+
+        logger.log(level: .info, tag: tag, message: "Handling entry deletion: \(entry.id)")
+
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch remaining entries for the affected day and month
+        let dayEntries = try await getEntries(forDay: dayKey)
+        let monthEntries = try await getEntries(forMonth: monthKey)
+
+        // Update summaries with aggregated data
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
+
+        if let dailySummary = dailySummary {
+            updateDailySummary(dayKey: dayKey, summary: dailySummary)
+        } else {
+          // If no entries left for the day, remove summary
+          updateDailySummary(dayKey: dayKey, summary: nil)
+        }
+        if let monthlySummary = monthlySummary {
+          updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+        } else {
+          // If no entries left for the month, remove summary
+          updateMonthlySummary(monthKey: monthKey, summary: nil)
+        }
+
+        entryDeleted.send(entry)
+        logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
+    }
+
+    // MARK: - Private Helper Methods
+
+    /// Updates the daily summary for a specific day key
+    private func updateDailySummary(dayKey: String, summary: BathScaleWeightSummary?) {
+        if let summary = summary {
+            // Update existing or add new
+            if let index = dailySummaries.firstIndex(where: { $0.period == dayKey }) {
+                dailySummaries[index] = summary
+            } else {
+                dailySummaries.append(summary)
+                dailySummaries.sort { $0.period < $1.period }
+            }
+        } else {
+            // Remove if no summary (empty day)
+            dailySummaries.removeAll { $0.period == dayKey }
+        }
+    }
+
+    /// Updates the monthly summary for a specific month key
+    private func updateMonthlySummary(monthKey: String, summary: BathScaleWeightSummary?) {
+        if let summary = summary {
+            // Update existing or add new
+            if let index = monthlySummaries.firstIndex(where: { $0.period == monthKey }) {
+                monthlySummaries[index] = summary
+            } else {
+                monthlySummaries.append(summary)
+                monthlySummaries.sort { $0.period < $1.period }
+            }
+        } else {
+            // Remove if no summary (empty month)
+            monthlySummaries.removeAll { $0.period == monthKey }
+        }
+    }
+
+
 
 }

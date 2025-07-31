@@ -1,5 +1,6 @@
 package com.greatergoods.lib.wificonnect
 
+import androidx.activity.ComponentActivity
 import com.greatergoods.lib.wificonnect.model.WifiConnectRequest
 import com.greatergoods.lib.wificonnect.model.WifiConnectResult
 import com.greatergoods.lib.wificonnect.utilities.WifiApConnector
@@ -15,49 +16,55 @@ import javax.inject.Inject
  * @property smartConfigConnector Connector for SmartConfig.
  */
 class WifiSmartConnectManager
-    @Inject
-    constructor(
-        val esptouchConnector: WifiEsptouchConnector,
-        val apConnector: WifiApConnector,
-        val smartConfigConnector: WifiSmartConfigConnector,
-    ) {
-        /**
-         * Runs a WiFi smart connect operation based on the request type.
-         * @param request The WiFi connect request (Esptouch, SmartConfig, or AP mode).
-         * @return The result of the operation, wrapped in [WifiConnectResult].
-         */
-        suspend fun connect(request: WifiConnectRequest): WifiConnectResult =
-            when (request) {
-                is WifiConnectRequest.Esptouch -> WifiConnectResult.Esptouch(esptouchConnector.connect(request.params))
-                is WifiConnectRequest.SmartConfig ->
-                    WifiConnectResult.SmartConfig(
-                        smartConfigConnector.connect(request.params),
-                    )
+@Inject
+constructor(
+  private val esptouchConnector: WifiEsptouchConnector,
+  private val apConnector: WifiApConnector,
+  private val smartConfigConnector: WifiSmartConfigConnector,
+) {
+  private lateinit var currentActivity: ComponentActivity
+  fun initialise(activity: ComponentActivity) {
+    currentActivity = activity
+  }
 
-                is WifiConnectRequest.ApMode -> WifiConnectResult.ApMode(apConnector.connect(request.params))
-            }
+  /**
+   * Runs a WiFi smart connect operation based on the request type.
+   * @param request The WiFi connect request (Esptouch, SmartConfig, or AP mode).
+   * @param activity Activity context required for Esptouch operations.
+   * @return The result of the operation, wrapped in [WifiConnectResult].
+   */
+  suspend fun connect(request: WifiConnectRequest, activity: ComponentActivity): WifiConnectResult =
+    when (request) {
+      is WifiConnectRequest.Esptouch -> WifiConnectResult.Esptouch(esptouchConnector.connect(request.params, activity))
+      is WifiConnectRequest.SmartConfig ->
+        WifiConnectResult.SmartConfig(
+          smartConfigConnector.connect(request.params),
+        )
 
-        /**
-         * Stops any ongoing Esptouch operation.
-         */
-        fun stopEsptouch() = esptouchConnector.stop()
-
-        /**
-         * Stops any ongoing SmartConfig operation.
-         */
-        fun stopSmartConfig() = smartConfigConnector.stop()
-
-        /**
-         * Stops any ongoing AP mode operation.
-         */
-        fun stopApMode() = apConnector.stop()
-
-        /**
-         * Stops all ongoing operations (Esptouch, SmartConfig, AP mode).
-         */
-        fun stopAll() {
-            esptouchConnector.stop()
-            smartConfigConnector.stop()
-            apConnector.stop()
-        }
+      is WifiConnectRequest.ApMode -> WifiConnectResult.ApMode(apConnector.connect(request.params))
     }
+
+  /**
+   * Stops any ongoing Esptouch operation.
+   */
+  fun stopEsptouch() = esptouchConnector.stop()
+
+  /**
+   * Stops any ongoing SmartConfig operation.
+   */
+  fun stopSmartConfig() = smartConfigConnector.stop()
+
+  /**
+   * Stops any ongoing AP mode operation.
+   */
+  fun stopApMode() = apConnector.stop()
+
+  /**
+   * Stops all ongoing operations (Esptouch, SmartConfig, AP mode).
+   */
+  fun stopAll() {
+    esptouchConnector.stop()
+    smartConfigConnector.stop()
+    apConnector.stop()
+  }
+}

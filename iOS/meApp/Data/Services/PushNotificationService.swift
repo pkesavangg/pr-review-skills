@@ -4,6 +4,7 @@ import Network
 import CoreBluetooth
 import UIKit
 import UserNotifications
+import GGBluetoothSwiftPackage
 
 /// Manages FCM token operations and notifications
 @MainActor
@@ -12,6 +13,10 @@ class PushNotificationService: NSObject {
     static let shared = PushNotificationService()
     static let fcmTokenDidRefresh = Notification.Name("FCMToken")
     @Injector var entryService: EntryService
+    @Injector private var permissionsService: PermissionsService
+    @Injector private var accountService: AccountService
+    // API repository for push-notification related network calls
+    private let apiRepo: PushNotificationRepositoryAPIProtocol = PushNotificationRepositoryAPI()
     
     // MARK: - Properties
     private var fcmToken: String?
@@ -26,9 +31,6 @@ class PushNotificationService: NSObject {
     private let logger = LoggerService.shared
     
     // MARK: - Notification Settings
-    private var notificationSettings = Notifications(
-        shouldSendEntryNotifications: false,
-        shouldSendWeightInEntryNotifications: false)
     
     /// Private initializer to enforce singleton pattern
     private override init() {
@@ -36,6 +38,115 @@ class PushNotificationService: NSObject {
         fetchDeviceDetails()
         setupTokenRefresh()
         setupNetworkMonitoring()
+    }
+    
+    // MARK: - Notification Handling
+    func handleNotification(_ userInfo: [AnyHashable: Any], completion: @escaping () -> Void) {
+        guard !isProcessingNotification else {
+            completion()
+            return
+        }
+        
+        if let messageId = userInfo["gcm.message_id"] as? String {
+            if processedMessageIds.contains(messageId) {
+                completion()
+                return
+            }
+            processedMessageIds.append(messageId)
+            if processedMessageIds.count > 100 {
+                processedMessageIds.removeFirst()
+            }
+        }
+        
+        isProcessingNotification = true
+        Task {
+            do {
+                await fetchEntries(showToast: true)
+                await syncDevices()
+                // Always show a local banner to ensure the user sees the notification, regardless of
+                // the app state. This handles silent/data-only pushes and ensures visibility even when
+                // iOS suppresses remote-push banners in the foreground.
+                let aps = userInfo["aps"] as? [String: Any]
+                    let alert = aps?["alert"] as? [String: Any]
+                    let title = alert?["title"] as? String ?? "New Notification"
+                    let body = alert?["body"] as? String ?? "You have a new message"
+                    let content = UNMutableNotificationContent()
+                    content.title = title
+                    content.body = body
+                    content.userInfo = userInfo
+                    content.sound = .default
+                    // Create notification request
+                    let request = UNNotificationRequest(
+                        identifier: UUID().uuidString,
+                        content: content,
+                        trigger: nil
+                    )
+                    try await UNUserNotificationCenter.current().add(request)
+            } catch {
+                logger.log(level: .error, tag: "PushNotificationService", message: "Failed to handle notification: \(error.localizedDescription)")
+            }
+            isProcessingNotification = false
+            completion()
+        }
+    }
+    
+    func updateDeviceInfo() async {
+        // Skip if the user hasn’t granted notification permission yet – don’t send an
+        // FCM token or any push-notification related info to the backend until allowed.
+        guard isNotificationAuthorized() else { return }
+        
+        guard !isDeviceInfoUpdating else { return }
+        isDeviceInfoUpdating = true
+        defer { isDeviceInfoUpdating = false }
+        // Refresh local snapshot
+        fetchDeviceDetails()
+        // Prepare payload
+        let payload = DeviceInfoRequest(
+            appVersion: AppInfo.appVersion,
+            deviceManufacturer: deviceInfo["manufacturer"] ?? "Apple",
+            deviceOSName: deviceInfo["deviceOSName"] ?? UIDevice.current.systemName,
+            deviceOSVersion: deviceInfo["osVersion"] ?? UIDevice.current.systemVersion,
+            deviceUUID: deviceInfo["deviceUuid"] ?? UIDevice.current.identifierForVendor?.uuidString ?? "",
+            deviceModel: deviceInfo["model"] ?? UIDevice.current.model,
+            fcmToken: fcmToken ?? ""
+        )
+        do {
+            try await apiRepo.updateDeviceInfo(payload)
+            logger.log(level: .info, tag: "PushNotificationService", message: "Device info updated", data: payload)
+        } catch {
+            logger.log(level: .error, tag: "PushNotificationService", message: "Failed to update device info: \(error.localizedDescription)")
+            // Silently ignore network errors – will retry on next connectivity change
+        }
+    }
+    
+    // MARK: - Push Notification Registration
+    func setupPushNotifications(isFromScaleSetup: Bool = false) async {
+        // If token already exists, simply update device info
+        if fcmToken != nil {
+            await updateDeviceInfo()
+            return
+        }
+        
+        guard permissionsService.requiredCategories.contains(.notifications) else {
+            return
+        }
+        // Determine current permission state
+        var permissionResult = permissionsService.getPermissionState(.NOTIFICATION) ?? .DISABLED
+        
+        // If permission is not enabled, optionally present the disabled alert
+        if permissionResult != .ENABLED {
+            let viewedKey = key(for: "hasViewedNotificationAlert")
+            let hasViewedAlert = (KvStorageService.shared.getValue(forKey: viewedKey) as? Bool) ?? false
+            if !hasViewedAlert || isFromScaleSetup {
+                permissionResult = await permissionsService.handlePermission(.notification)
+                KvStorageService.shared.setValue(true, forKey: viewedKey)
+            }
+        }
+        
+        // Register only when permission has been granted and system notification authorization is allowed
+        if permissionResult == .ENABLED && isNotificationAuthorized() {
+            await registerForPushNotifications()
+        }
     }
     
     // MARK: - Notification Settings
@@ -72,21 +183,18 @@ class PushNotificationService: NSObject {
         ]
     }
     
-    func getAllDeviceInfo() -> [String: String] {
-        return deviceInfo
-    }
-    
     // MARK: - FCM Token & Device Info Update
     /// Handles FCM token refresh notifications
     /// - Parameter notification: The notification containing the new token
     @objc private func tokenRefreshNotification(_ notification: Notification) {
-        Task {
-            do {
-                if let token = notification.userInfo?["token"] as? String {
-                    fcmToken = token
-                    saveFCMTokenIfNeeded(token)
-                    await updateDeviceInfo()
-                }
+        // Ignore token updates until the user grants notification permission so that `fcmToken`
+        // stays `nil` prior to consent (behaviour parity with DeviceService in Angular app).
+        guard isNotificationAuthorized() else { return }
+        
+        Task { @MainActor [weak self] in
+            if let token = notification.userInfo?["token"] as? String {
+                self?.fcmToken = token
+                await self?.updateDeviceInfo()
             }
         }
     }
@@ -94,7 +202,7 @@ class PushNotificationService: NSObject {
     /// Retrieves the current FCM token
     /// - Returns: The current FCM token as a string
     /// - Throws: Error if token retrieval fails
-    func getFCMToken() async throws -> String {
+    private func getFCMToken() async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             Messaging.messaging().token { token, error in
                 if let error = error {
@@ -106,24 +214,6 @@ class PushNotificationService: NSObject {
                     continuation.resume(throwing: NSError(domain: "PushNotificationService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get FCM token"]))
                 }
             }
-        }
-    }
-    
-    func updateDeviceInfo() async {
-        guard !isDeviceInfoUpdating else { return }
-        isDeviceInfoUpdating = true
-        defer { isDeviceInfoUpdating = false }
-        fetchDeviceDetails()
-    }
-    
-    // MARK: - Push Notification Registration
-    func setupPushNotifications(isFromScaleSetup: Bool = false) async {
-        if fcmToken != nil {
-            await updateDeviceInfo()
-            return
-        }
-        if await isNotificationAuthorized() {
-            await registerForPushNotifications()
         }
     }
     
@@ -143,10 +233,11 @@ class PushNotificationService: NSObject {
         }
         await fetchEntries()
         await syncDevices()
+        await updateDeviceInfo()
     }
     
     // MARK: - Entry/Operation Syncing
-    func fetchEntries(showToast: Bool = false) async {
+    private func fetchEntries(showToast: Bool = false) async {
         guard !isFetchingEntries else { return }
         isFetchingEntries = true
         defer { isFetchingEntries = false }
@@ -158,65 +249,8 @@ class PushNotificationService: NSObject {
         await ScaleService.shared.syncAllScalesWithRemote()
     }
     
-    // MARK: - Notification Settings Management
-    func updateNotificationSettings(_ settings: Notifications) async throws {
-        guard isNetworkConnected else {
-            UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: "pendingNotificationSettings")
-            return
-        }
-        notificationSettings = settings
-    }
-    
-    // MARK: - Notification Handling
-    func handleNotification(_ userInfo: [AnyHashable: Any], completion: @escaping () -> Void) {
-        guard !isProcessingNotification else {
-            completion()
-            return
-        }
-        
-        if let messageId = userInfo["gcm.message_id"] as? String {
-            if processedMessageIds.contains(messageId) {
-                completion()
-                return
-            }
-            processedMessageIds.append(messageId)
-            if processedMessageIds.count > 100 {
-                processedMessageIds.removeFirst()
-            }
-        }
-        
-        isProcessingNotification = true
-        Task {
-            do {
-                await fetchEntries(showToast: true)
-                await syncDevices()
-                if UIApplication.shared.applicationState == .background {
-                    let aps = userInfo["aps"] as? [String: Any]
-                    let alert = aps?["alert"] as? [String: Any]
-                    let title = alert?["title"] as? String ?? "New Notification"
-                    let body = alert?["body"] as? String ?? "You have a new message"
-                    let content = UNMutableNotificationContent()
-                    content.title = title
-                    content.body = body
-                    content.userInfo = userInfo
-                    content.sound = .default
-                    // Create notification request
-                    let request = UNNotificationRequest(
-                        identifier: UUID().uuidString,
-                        content: content,
-                        trigger: nil
-                    )
-                    try await UNUserNotificationCenter.current().add(request)
-                }
-            } catch {
-            }
-            isProcessingNotification = false
-            completion()
-        }
-    }
-    
     // MARK: - Notification Tap Handling
-    private func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
+    func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
         if let destination = userInfo["destination"] as? String {
             NotificationCenter.default.post(
                 name: .didReceiveNotification,
@@ -231,22 +265,17 @@ class PushNotificationService: NSObject {
         networkMonitor.cancel()
     }
     
-    /// Saves the FCM token to UserDefaults if it has changed
-    func saveFCMTokenIfNeeded(_ token: String) {
-        let defaults = UserDefaults.standard
-        let key = "fcmToken"
-        if let existingToken = defaults.string(forKey: key) {
-            if existingToken == token {
-                return
-            }
-        }
-        defaults.set(token, forKey: key)
+    // MARK: - Notification Authorization Helper
+    private func isNotificationAuthorized() -> Bool {
+        let response = permissionsService.getPermissionState(.NOTIFICATION)
+        return response == .ENABLED
     }
     
-    // MARK: - Notification Authorization Helper
-    func isNotificationAuthorized() async -> Bool {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        return settings.authorizationStatus == .authorized
+    private func key(for baseKey: String) -> String {
+        if let accountId = accountService.activeAccount?.accountId {
+            return "\(accountId)_\(baseKey)"
+        }
+        return baseKey
     }
 }
 

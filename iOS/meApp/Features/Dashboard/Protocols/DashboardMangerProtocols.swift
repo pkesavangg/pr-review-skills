@@ -11,10 +11,6 @@ import SwiftUI
 /// Protocol defining data management operations
 protocol DashboardDataManaging {
     func loadInitialData() async throws
-    func refreshData() async throws
-    func handleEntryAdded(_ entry: Entry) async throws
-    func handleEntryUpdated(_ entry: Entry) async throws
-    func handleEntryDeleted(_ entry: Entry) async throws
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary]
     func getLatestEntry() async throws -> Entry?
     func clearCache() async throws
@@ -33,21 +29,23 @@ protocol DashboardGoalManaging {
 
 /// Protocol defining graph management operations
 protocol DashboardGraphManaging {
-  func updateScrollPosition(to date: Date) async
-  func handleScrollPositionChange(_ newPosition: Date?) async
+  func updateScrollPosition(to date: Date)
+  func handleScrollPositionChange(_ newPosition: Date?)
   func handleChartSelection(at selectedDate: Date?) async
   @available(iOS 18.0, *)
   func handleScrollPhaseChange(_ phase: ScrollPhase) async
 func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) async -> [GraphSeries]
-  func updateSelectedPeriod(_ period: TimePeriod) async
+  func updateSelectedPeriod(_ period: TimePeriod)
   func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async -> YAxisScale
 func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async
 func getVisibleOperations(from operations: [BathScaleWeightSummary]) async -> [BathScaleWeightSummary]
   func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async
 
-  func handleScrollStart() async
+  func handleScrollStart()
   func handleScrollEnd() async
   func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date]
+  func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool) -> Date
+  func forceVisibleOperationsRecalculation()
 }
 
 

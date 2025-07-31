@@ -31,6 +31,7 @@ enum Endpoint {
     case updateDashboardType
     case updateDashboardMetrics
     case updateNotifications
+    case updateDeviceInfo
     case operations(startTimestamp: String?)
     case operationsR4(startTimestamp: String?)
     case submitOperation
@@ -87,6 +88,8 @@ enum Endpoint {
             return request(path: "/account/dashboard-metrics")
         case .updateNotifications:
             return request(path: "/account/notification")
+        case .updateDeviceInfo:
+            return request(path: "/account/device/")
         case .operations(let startTimestamp):
             var components = URLComponents(string: "\(API.baseURL)/operation")
             if let timestamp = startTimestamp {

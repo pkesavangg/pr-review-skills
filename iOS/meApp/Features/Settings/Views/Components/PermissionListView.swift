@@ -116,13 +116,13 @@ struct PermissionListView: View {
         // For Wi-Fi–only setup flows add an extra Wi-Fi status row
         if setupType == .wifi {
             let wifiRowTitle: String
-            if let ssid = viewModel.wifiNetworkName, !ssid.isEmpty {
+            let ssid = viewModel.wifiNetworkName ?? ""
+            if !ssid.isEmpty {
                 wifiRowTitle = "Connected to \(ssid)"
             } else {
                 wifiRowTitle = PermissionsStrings.wifiEnablePrompt
             }
-            
-            rows.append((wifiRowTitle, viewModel.wifiNetworkName != nil, .wifiSwitch))
+            rows.append((wifiRowTitle, viewModel.wifiSwitchEnabled && !ssid.isEmpty, .wifiSwitch))
         }
         
         return sectionView(

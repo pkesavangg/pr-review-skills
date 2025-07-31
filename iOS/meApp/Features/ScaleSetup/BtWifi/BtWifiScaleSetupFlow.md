@@ -5,15 +5,24 @@ The **BtWifiScaleSetup** module orchestrates the end-to-end onboarding flow for 
 It’s implemented in pure SwiftUI + Combine and follows the same Clean-Architecture layering rules used throughout *meApp*.
 
 ## Entry Points
-The wizard can be launched from **two** places:
+The wizard can be launched from **three** distinct contexts:
 
-1. **Scale Discovered** half-sheet (automatic)  
+1. **Scale *Discovered* half-sheet** (automatic)  
    - `BottomTabBarViewModel` listens to `BluetoothService.deviceDiscoveredPublisher`.  
-   - When `shouldShowDiscoveredScale(for:)` returns *true*, it stores the `Device` + `DeviceDiscoveryEvent` and lifts them into `BottomTabBarView.discoveredScale`.
-   - `BottomTabBarView` presents `ScaleDiscoveredSheetView` via `.sheet(item:)`.  On *Connect* tap it calls `openScaleSetup(...)` which sets `setupPayload` and immediately shows `BtWifiScaleSetupScreen` (or A6 depending on `setupType`).
+   - When `shouldShowDiscoveredScale(for:)` returns *true* it lifts the `Device` + `DeviceDiscoveryEvent` into `BottomTabBarView.discoveredScale`.  
+   - `BottomTabBarView` presents `ScaleDiscoveredSheetView` via `.sheet(item:)`. On **Connect** it calls `openScaleSetup(...)` which stores a `setupPayload` and immediately shows `BtWifiScaleSetupScreen`.
 
-2. **Manual navigation** (e.g. Settings → My Scales → *Add Scale*)  
-   - Simply pushes `BtWifiScaleSetupScreen` with just the SKU.
+2. **Add Scale → enter SKU manually**  
+   - Settings → **My Scales** → *Add Scale* form.  
+   - The user enters the 4-digit model number **or** picks a scale in the list. Both paths call  
+     `handleScaleSelection(_:clearUI:)` in `MyScalesScreen` which sets `activeSheet = .setupFlow(scale)` and presents  
+     `BtWifiScaleSetupScreen(sku: scale.sku)`.
+
+3. **Wi-Fi re-configuration for an already paired scale**  
+   - Settings → **My Scales** → *Scale Settings* → *Wi-Fi*.  
+   - `SettingsRoute.wifi(scale:)` pushes  
+     `BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil, savedScale: scale)`  
+     with `isWifiSetupOnly = true` so the flow skips pairing and jumps straight to the **Gathering Network** step.
 
 Regardless of origin the screen receives:
 ```swift
@@ -154,4 +163,4 @@ These pipelines automatically toggle `isNextEnabled` and drive step transitions,
 
 ---
 
-_Last updated: {{14 July 2025}}_ 
+_Last updated: {{31 July 2025}}_ 
