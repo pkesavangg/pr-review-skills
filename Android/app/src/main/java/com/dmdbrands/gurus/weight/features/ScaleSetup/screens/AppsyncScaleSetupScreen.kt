@@ -14,7 +14,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.libs.appsync.startAppSyncScan
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
@@ -36,6 +35,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.greatergoods.libs.appsync.startAppSyncScan
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

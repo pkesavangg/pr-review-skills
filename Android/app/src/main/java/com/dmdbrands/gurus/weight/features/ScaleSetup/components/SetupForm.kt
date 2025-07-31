@@ -89,43 +89,30 @@ fun <T> SetupForm(
     modifier = modifier
       .fillMaxSize()
       .padding(horizontal = spacing.sm, vertical = spacing.md)
+      .verticalScroll(rememberScrollState())
       .clickable(
         interactionSource = interactionSource,
         indication = null,
         onClick = { focusManager.clearFocus() },
       ),
   ) {
-    // Title and Subtitle Section
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = spacing.sm, vertical = spacing.md)
-            .clickable(
-              interactionSource = interactionSource,
-              indication = null,
-              onClick = { focusManager.clearFocus() }
-            ),
-      verticalArrangement = Arrangement.spacedBy(spacing.xs),
-    ) {
-      AppText(
-        text = title,
-        textType = TextType.ListTitle2,
-      )
+    AppText(
+      text = title,
+      textType = TextType.ListTitle2,
+    )
 
-      AppText(
-        text = subtitle,
-        textType = TextType.Body,
-        modifier = Modifier.padding(bottom = spacing.lg),
-        annotatedText = subtitleAnnotatedText,
-        annotationPosition = AnnotationPosition.End,
-        spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
-      )
-    }
+    AppText(
+      text = subtitle,
+      textType = TextType.Body,
+      modifier = Modifier.padding(bottom = spacing.lg),
+      annotatedText = subtitleAnnotatedText,
+      annotationPosition = AnnotationPosition.End,
+      spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
+    )
 
     wifiNameFormControl?.let {
       AppInput(
-        formControl = formControl,
+        formControl = it,
         label = secondaryLabel,
         type = inputType,
         imeAction = ImeAction.Done,
@@ -146,7 +133,7 @@ fun <T> SetupForm(
         total = 1,
         onClick = {},
 
-      )
+        )
       Spacer(modifier = Modifier.padding(bottom = spacing.sm))
     }
     // Input Field Section

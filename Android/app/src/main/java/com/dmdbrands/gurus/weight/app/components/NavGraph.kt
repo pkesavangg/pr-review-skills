@@ -102,7 +102,7 @@ fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
     LcbtScaleSetupScreen(scaleInfo.sku, scaleInfo.broadcastId, scaleInfo.initialStep)
   }
   entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
-    WifiScaleSetupScreen(scaleInfo.sku)
+    WifiScaleSetupScreen(scaleInfo.sku, scaleInfo.wifiSetupType, scaleInfo.scaleInfo)
   }
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)

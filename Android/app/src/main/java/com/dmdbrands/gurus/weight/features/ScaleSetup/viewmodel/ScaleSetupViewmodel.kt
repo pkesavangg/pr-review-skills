@@ -1,31 +1,21 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
-import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
-import com.dmdbrands.gurus.weight.domain.model.storage.Device
-import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
-import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Intent>(
@@ -94,25 +84,36 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    *
    * @return Flow emitting updated permission status map
    */
-  protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
-    return combine(
-      permissionService.permissionCallBackFlow,
-      connectivityObserver.observe(),
-    ) { permissions, networkState ->
-      val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-      val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
-
-      // WiFi switch is enabled if either network is available OR WiFi switch is enabled
-      val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-        wifiSwitchStatus == GGPermissionState.ENABLED
-      ) {
-        GGPermissionState.ENABLED
-      } else {
-        GGPermissionState.DISABLED
+  protected fun subscribePermissions(isSkipNetworkCheck: Boolean = false): Flow<GGPermissionStatusMap> {
+    return if (isSkipNetworkCheck) {
+      // When skipping network check, return just the WiFi switch status from permissions
+      permissionService.permissionCallBackFlow.map { permissions ->
+        permissions.toMutableMap().apply {
+          // Keep the original WiFi switch status without network connectivity consideration
+          put(GGPermissionType.WIFI_SWITCH, permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED)
+        }
       }
+    } else {
+      // Original logic with network connectivity check
+      combine(
+        permissionService.permissionCallBackFlow,
+        connectivityObserver.observe(),
+      ) { permissions, networkState ->
+        val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
+        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
 
-      permissions.toMutableMap().apply {
-        put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        // WiFi switch is enabled if either network is available OR WiFi switch is enabled
+        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+          wifiSwitchStatus == GGPermissionState.ENABLED
+        ) {
+          GGPermissionState.ENABLED
+        } else {
+          GGPermissionState.DISABLED
+        }
+
+        permissions.toMutableMap().apply {
+          put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        }
       }
     }
   }

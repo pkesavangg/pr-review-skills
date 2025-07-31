@@ -66,8 +66,8 @@ interface DeviceDao {
    * @param mac The MAC address
    * @return The device entity if found, null otherwise
    */
-  @Query("SELECT * FROM device WHERE mac = :mac")
-  suspend fun getDeviceByMac(mac: String): DeviceDetails?
+  @Query("SELECT * FROM device WHERE mac = :mac AND accountId = :accountId")
+  suspend fun getDeviceByMac(mac: String, accountId: String): DeviceDetails?
 
   /**
    * Get device by peripheral identifier.

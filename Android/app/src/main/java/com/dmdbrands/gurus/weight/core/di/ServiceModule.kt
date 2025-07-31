@@ -104,7 +104,10 @@ object ServiceModule {
 
   /**
    * Provides a singleton instance of [IWifiscaleService].
-   * @return [AppEventService] instance.
+   * @param context The application context.
+   * @param wifiSmartConnectManager The WiFi smart connect manager.
+   * @param deviceService The device service.
+   * @return [WifiScaleService] instance.
    */
   @Provides
   @Singleton
@@ -113,8 +116,9 @@ object ServiceModule {
     wifiSmartConnectManager: WifiSmartConnectManager,
     deviceService: IDeviceService
   ) = WifiScaleService(
-    wifiSmartConnectManager, deviceService,
-    context = context,
+    wifiSmartConnectManager,
+    deviceService,
+    context,
   )
 
   /**
@@ -129,7 +133,8 @@ object ServiceModule {
     @ApplicationContext context: Context,
     notificationService: GGNotificationService,
     appRepository: IAppRepository,
-  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
+    entryService: IEntryService
+  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository, entryService)
 
   /**
    * Provides a singleton instance of [LogManager] for logging operations.
@@ -320,8 +325,9 @@ object ServiceModule {
   @Provides
   @Singleton
   fun provideDeviceService(
+    @ApplicationContext context: Context,
     deviceRepository: IDeviceRepository
-  ): IDeviceService = DeviceService(deviceRepository)
+  ): IDeviceService = DeviceService(deviceRepository, context)
 
   @Provides
   @Singleton

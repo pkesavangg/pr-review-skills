@@ -255,7 +255,7 @@ fun ScaleDetailsScreenContent(
                 },
               ),
             )
-            if (isWifiSetup || state.scale?.userNumber != null) {
+            if (isWifiSetup || state.scale?.userNumber != null && scaleSetupType != ScaleSetupType.BtWifiR4) {
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.UserNumber,

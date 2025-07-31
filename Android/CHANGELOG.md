@@ -4,10 +4,12 @@
 
 - Created a reusable select button screens for wifi and bluetooth setup. (MA-768)
 - Created wifi setup complete - UI. (MA-794)
+- Implemented wifi setup with wifi service (MA-787)
 
 ### Changed
 
 - Refactored setup loader. (MA-796)
+- Refactored integration settings (MA-787)
 
 ### Fixed
 
@@ -79,6 +81,8 @@
 - Improved account management error handling
 - Enhanced data synchronization reliability
 - Optimized graph performance during view transitions
+
+
 
 ### Technical
 
