@@ -206,20 +206,96 @@ extension View {
         modifier(WiggleModifier(shouldWiggle: shouldWiggle))
     }
     
-    /// Applies edit mode overlay with plus/minus circles
+    /// Applies a conditional wiggle animation to the view with row-based timing.
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the wiggle animation.
+    ///   - rowIndex: The row index to determine alternating animation timing.
+    /// - Returns: A view that conditionally wiggles with row-based timing.
+    func wiggling(_ shouldWiggle: Bool, rowIndex: Int) -> some View {
+        modifier(WiggleModifier(shouldWiggle: shouldWiggle, rowIndex: rowIndex))
+    }
+    
+    /// Applies a conditional wiggle animation to the view with custom parameters.
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the wiggle animation.
+    ///   - rowIndex: The row index to determine alternating animation timing.
+    ///   - evenRowDuration: Custom duration for even rows (optional).
+    ///   - oddRowDuration: Custom duration for odd rows (optional).
+    ///   - wiggleAngle: Custom rotation angle in degrees (optional).
+    /// - Returns: A view that conditionally wiggles with custom parameters.
+    func wiggling(
+        _ shouldWiggle: Bool,
+        rowIndex: Int = 0,
+        evenRowDuration: Double? = nil,
+        oddRowDuration: Double? = nil,
+        wiggleAngle: Double? = nil
+    ) -> some View {
+        modifier(WiggleModifier(
+            shouldWiggle: shouldWiggle,
+            rowIndex: rowIndex,
+            evenRowDuration: evenRowDuration,
+            oddRowDuration: oddRowDuration,
+            wiggleAngle: wiggleAngle
+        ))
+    }
+    
+    /// Applies a widget-style wiggle animation to the view (slower, gentler).
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the widget wiggle animation.
+    ///   - rowIndex: The row index for alternating timing (even/odd rows).
+    /// - Returns: A view that conditionally wiggles with widget-style animation.
+    func widgetWiggling(_ shouldWiggle: Bool, rowIndex: Int = 0) -> some View {
+        modifier(WiggleModifier(
+            shouldWiggle: shouldWiggle,
+            rowIndex: rowIndex,
+            evenRowDuration: 0.35,
+            oddRowDuration: 0.33,
+            wiggleAngle: 0.045
+        ))
+    }
+    
+    /// Applies a medium-speed wiggle animation to the view (faster than widget, gentler than app icon).
+    /// - Parameters:
+    ///   - shouldWiggle: If true, applies the medium wiggle animation.
+    ///   - rowIndex: The row index for alternating timing (even/odd rows).
+    /// - Returns: A view that conditionally wiggles with medium-speed animation.
+    func mediumWiggling(_ shouldWiggle: Bool, rowIndex: Int = 0) -> some View {
+        modifier(WiggleModifier(
+            shouldWiggle: shouldWiggle,
+            rowIndex: rowIndex,
+            evenRowDuration: 0.18,
+            oddRowDuration: 0.16,
+            wiggleAngle: 0.045
+        ))
+    }
+    
+    /// Applies edit mode overlay with plus/minus circles and row-based wiggle timing
+    /// - Parameters:
+    ///   - isEditMode: Whether edit mode is active
+    ///   - isRemoved: Whether the item is removed
+    ///   - onToggleRemoval: Callback for toggling removal
+    ///   - isBeingDragged: Whether the item is being dragged
+    ///   - isDropTarget: Whether the item is a drop target
+    ///   - rowIndex: Row index for alternating wiggle timing (matching movingGridsLearning exactly)
+    ///   - disableWiggle: Whether to disable the internal wiggle animation (for custom wiggle animations)
+    /// - Returns: A view with edit mode overlay applied
     func editModeOverlay(
         isEditMode: Bool,
         isRemoved: Bool,
         onToggleRemoval: @escaping () -> Void,
         isBeingDragged: Bool = false,
-        isDropTarget: Bool = false
+        isDropTarget: Bool = false,
+        rowIndex: Int = 0,
+        disableWiggle: Bool = false
     ) -> some View {
         modifier(EditModeOverlay(
             isEditMode: isEditMode,
             isRemoved: isRemoved,
             onToggleRemoval: onToggleRemoval,
             isBeingDragged: isBeingDragged,
-            isDropTarget: isDropTarget
+            isDropTarget: isDropTarget,
+            rowIndex: rowIndex,
+            disableWiggle: disableWiggle
         ))
     }
     
