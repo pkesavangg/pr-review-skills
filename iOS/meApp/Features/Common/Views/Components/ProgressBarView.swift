@@ -22,7 +22,7 @@ struct ProgressBarView: View {
     var labelForegroundColor: Color?
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 3) {
             ProgressView(value: Double(progress))
                 .progressViewStyle(LinearProgressViewStyle(tint: progressBarColor ?? theme.actionPrimary))
                 .scaleEffect(x: 1, y: 2, anchor: .center)

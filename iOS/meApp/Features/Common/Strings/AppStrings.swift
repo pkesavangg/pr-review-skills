@@ -271,6 +271,12 @@ struct InputFieldLabels {
     static let confirmPassword = "confirm password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
+    static let startingWeightLabel: (Bool) -> String = { isKg in
+        return isKg ? "starting weight (kg)" : "starting weight (lbs)"
+    }
+    static let goalWeightLabel: (Bool) -> String = { isKg in
+        return isKg ? "goal weight (kg)" : "goal weight (lbs)"
+    }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"

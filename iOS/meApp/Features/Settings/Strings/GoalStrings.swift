@@ -6,9 +6,12 @@ import Foundation
 struct GoalStrings {
     static let title = "Set A Goal"
     static let subtitle = "Current Goal"
-    static let description = "You can either choose to maintain your current weight or to lose / gain weight."
+    // Prompt displayed when choosing goal type
+    static let description = "Choose to maintain or set a lose/gain goal."
+    // Heading shown when a goal already exists and the user is updating it
+    static let updateGoalHeading = "Update Goal"
     static let goalTypeLabel = "Goal Type:"
     static let startingWeightLabel = "Starting Weight:"
     static let goalWeightLabel = "Goal Weight:"
     static let modeLabel = "Goal Mode"
-} 
+}
