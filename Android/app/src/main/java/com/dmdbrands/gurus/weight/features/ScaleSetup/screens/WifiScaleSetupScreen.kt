@@ -98,11 +98,6 @@ fun WifiScaleSetupScreenContent(
       }
     }
   }
-  LaunchedEffect(state.currentStep) {
-    if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
-      onIntent(WifiScaleSetupIntent.CheckScaleWifiConnection)
-    }
-  }
 
   val isNextButtonEnabledForStep: Boolean =
     when (state.currentStep) {
@@ -244,7 +239,6 @@ fun WifiScaleSetupScreenContent(
           }
         }
 
-        else -> null
       },
       pageContent = { step ->
         when (step) {
@@ -386,8 +380,8 @@ fun WifiScaleSetupScreenContent(
             SetupContent(
               title = WifiScaleSetupStrings.ScaleCount.Title,
               subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-              // isGifImage = true,
-              // supportingImage = AppIcons.Setup.WifiCountOn,
+              isGifImage = true,
+              supportingImage = AppIcons.Setup.WifiCountOn,
             )
           }
 

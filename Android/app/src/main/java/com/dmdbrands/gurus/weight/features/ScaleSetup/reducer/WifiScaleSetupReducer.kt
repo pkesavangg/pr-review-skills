@@ -179,8 +179,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
   override fun reduce(
     state: WifiScaleSetupState,
     intent: WifiScaleSetupIntent,
-  ): WifiScaleSetupState? =
-    when (intent) {
+  ): WifiScaleSetupState? {
+    return when (intent) {
       is WifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is WifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
       is WifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
@@ -211,7 +211,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
               nextIndex += 1
             } else if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI && state.isGetMACSetup) {
               nextIndex += 3
-              state.copy(
+              return state.copy(
                 currentStep = state.steps[nextIndex],
                 canProceedToNext = false,
                 isLastStep = true,
@@ -223,7 +223,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
               val nextStep = state.steps[nextIndex]
               state.copy(
                 currentStep = nextStep,
-                isLastStep = nextStep == WifiScaleSetupStep.SETUP_FINISHED,
+                isLastStep = nextStep == WifiScaleSetupStep.SETUP_FINISHED || nextStep == WifiScaleSetupStep.TROUBLE_SHOOTING,
                 canProceedToNext = nextStep != WifiScaleSetupStep.SETUP_FINISHED,
                 error = null,
                 nextButtonText = "Next",
@@ -248,24 +248,17 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
           WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
             // Go back to ERROR_GUIDE step
-            state.copy(currentStep = WifiScaleSetupStep.ERROR_GUIDE)
+            state.copy(
+              currentStep = WifiScaleSetupStep.ERROR_GUIDE,
+            )
           }
 
           WifiScaleSetupStep.TROUBLE_SHOOTING -> {
             // Go back to ERROR_GUIDE step
-            state.copy(currentStep = WifiScaleSetupStep.ERROR_GUIDE)
+            state.copy(
+              currentStep = WifiScaleSetupStep.ERROR_GUIDE,
+            )
           }
-
-          // WifiScaleSetupStep.SCALE_CONNECTED -> {
-          //   // If on scale connected step, go back 2 steps to ACTIVATE_SCALE
-          //   backStepCount = 2
-          //   val prevIndex = state.currentStepIndex - backStepCount
-          //   if (prevIndex >= 0) {
-          //     state.copy(currentStep = state.steps[prevIndex])
-          //   } else {
-          //     state.copy() // No change if at first step
-          //   }
-          // }
 
           else -> {
             if (state.currentStep == WifiScaleSetupStep.ACTIVATE_SCALE && state.isGetMACSetup) {
@@ -306,14 +299,20 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
       is WifiScaleSetupIntent.NavigateToTroubleShooting -> {
         // Navigate to trouble shooting step
-        state.copy(currentStep = WifiScaleSetupStep.TROUBLE_SHOOTING)
+        state.copy(
+          currentStep = WifiScaleSetupStep.TROUBLE_SHOOTING,
+          nextButtonText = "Finish",
+        )
       }
 
       is WifiScaleSetupIntent.SelectUser -> state.copy(selectedUser = intent.userNumber)
 
       is WifiScaleSetupIntent.SelectWifiMode -> state.copy(selectedWifiMode = intent.wifiMode)
 
-      is WifiScaleSetupIntent.SelectErrorCode -> state.copy(selectedErrorCode = intent.errorCode)
+      is WifiScaleSetupIntent.SelectErrorCode -> state.copy(
+        selectedErrorCode = intent.errorCode,
+        canProceedToNext = intent.errorCode.isNotEmpty(),
+      )
 
       is WifiScaleSetupIntent.RequestPermission -> state.copy() // No change for now, permission handling is separate
       is WifiScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
@@ -455,4 +454,5 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
       else -> state.copy()
     }
+  }
 }

@@ -14,18 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
-import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SelectButtonGrid
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
+import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 
 @Composable
 fun SelectButton(
@@ -44,7 +44,7 @@ fun SelectButton(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .padding(vertical = spacing.md, horizontal = spacing.sm)
+      .padding(vertical = spacing.md)
       .verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
@@ -134,7 +134,7 @@ private fun SelectButtonWithWifiModesPreview() {
       },
       noteMessage = WifiScaleSetupStrings.WifiMode.ApNote,
       supportingButtonLabel = "hello",
-      onSupportingButtonClick = {}
+      onSupportingButtonClick = {},
     )
   }
 }
