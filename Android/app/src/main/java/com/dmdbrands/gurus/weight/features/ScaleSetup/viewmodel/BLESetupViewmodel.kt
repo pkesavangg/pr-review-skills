@@ -1,15 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
-import com.dmdbrands.library.ggbluetooth.model.GGEntry
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
-import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
-import com.greatergoods.blewrapper.GGDeviceService
-import com.greatergoods.blewrapper.GGPermissionService
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -28,6 +19,15 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGEntry
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGDeviceService
+import com.greatergoods.blewrapper.GGPermissionService
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -101,7 +101,9 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   var isPermissionGranted = false
 
-  var currentSetupState: SetupState<Step> = SetupState(initialStep)
+  var currentSetupState: SetupState<Step> = SetupState(
+    provideInitialState().step,
+  )
 
   override fun handleIntent(intent: ScaleSetupIntent) {
     super.handleIntent(intent)
@@ -340,12 +342,12 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    */
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
     viewModelScope.launch {
       if (broadcastId != null) {
         discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
       }
       handleIntent(ScaleSetupIntent.SetSku(sku))
-      handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
     }
   }
 }
