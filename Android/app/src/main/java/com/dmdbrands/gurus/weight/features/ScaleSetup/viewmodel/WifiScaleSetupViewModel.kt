@@ -831,6 +831,7 @@ constructor(
 
     if (currentState.currentStep == WifiScaleSetupStep.SCALE_COUNTS) {
       saveScale()
+      notificationPermission()
       return
     }
 
@@ -1294,6 +1295,14 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error showing permission revoked alert", e.toString())
       }
+    }
+  }
+
+  private fun notificationPermission() {
+    val canRequestNotifPermission =
+      AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
+    if (canRequestNotifPermission) {
+      requestPermission(GGPermissionType.NOTIFICATION)
     }
   }
 

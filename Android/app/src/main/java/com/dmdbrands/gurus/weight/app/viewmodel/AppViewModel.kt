@@ -238,9 +238,13 @@ constructor(
     viewModelScope.launch {
       AppNotificationEventService.events.collect {
         when (it) {
+          NotificationEventType.NOTIFICATION_TAPPED -> {
+            entryService.syncOperations()
+          }
+
           NotificationEventType.NOTIFICATION_RECEIVED -> {
             entryService.syncOperations()
-            dialogQueueService.showToast(Toast("Entry added", "Success!"))
+            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
           }
 
           else -> {}

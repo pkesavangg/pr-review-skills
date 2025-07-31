@@ -10,7 +10,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dmdbrands.gurus.weight.app.MeApp
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.WifiScaleService
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
@@ -18,7 +22,6 @@ import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.greatergoods.blewrapper.GGBLEService
-import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -82,6 +85,13 @@ class MainActivity : AppCompatActivity() {
     super.onNewIntent(intent)
     setIntent(intent) // Save the new intent
     handleHealthConnectIntent(intent)
+    if (intent.action == "ACTION_HANDLE_NOTIFICATION") {
+      AppLog.d("MainActivity", "Notification tapped. Destination: ${intent.getStringExtra("destination")}")
+      lifecycleScope.launch {
+        AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
+      }
+      // Emit event to shared flow or handle navigation
+    }
   }
 
   /**
