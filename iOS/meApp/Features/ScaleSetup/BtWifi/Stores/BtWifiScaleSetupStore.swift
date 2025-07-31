@@ -41,6 +41,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Cached first name from active account
     private var firstName: String?
     
+    /// Indicates that the flow was launched only to configure Wi-Fi for a previously-paired scale.
+    // Indicates if the flow was launched only to configure Wi-Fi for a previously-paired scale. Exposed via
+    // a read-only computed property so views (e.g. `BtWifiScaleSetupScreen`) can react accordingly.
+    private var isWifiSetupOnly: Bool = false
+    /// Public accessor used by views to know whether the current flow is Wi-Fi-only (opened from Settings).
+    var isWifiSetupOnlyMode: Bool { isWifiSetupOnly }
+    
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
@@ -121,7 +128,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Selected customize settings items that have been configured
     @Published var selectedCustomizeItems: Set<String> = []
-
+    
     /// Selected scale metric keys from the Scale Metrics customization screen.
     /// Defaults to all available metrics so that, unless the user removes metrics, everything is sent to the scale.
     var selectedScaleMetrics: [String] = ScaleMetrics.defaultMetricsKeys
@@ -416,9 +423,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
     ///   - discoveryEvent: The raw discovery event emitted by `BluetoothService` (optional).
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
-                   discoveryEvent: DeviceDiscoveryEvent? = nil) {
+                   discoveryEvent: DeviceDiscoveryEvent? = nil, saveScale: Device? = nil) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
+        
+        // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
+        if let savedScaleParam = saveScale {
+            self.savedScale = savedScaleParam
+            self.isWifiSetupOnly = true
+            self.bluetoothService.isSetupInProgress = true
+        } else {
+            self.isWifiSetupOnly = false
+        }
         
         // Reset pairing/discovery state
         resetDiscoveryState()
@@ -436,7 +452,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
-            if discoveredScale != nil && discoveryEvent != nil {
+            if isWifiSetupOnly {
+                // Directly enter the Wi-Fi flow when setting up Wi-Fi only.
+                return .gatheringNetwork
+            } else if discoveredScale != nil && discoveryEvent != nil {
                 // When opened from sheet modal, go to connectingBluetooth if enabled, otherwise permissions
                 return arePermissionsEnabled()  ? .connectingBluetooth : .permissions
             } else {
@@ -456,30 +475,58 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     
     // MARK: - Exit / Help
+    private func performExitCleanup() {
+        dismissAction?()
+        if !isWifiSetupOnly { disconnectDevice() }
+        cancelWifi()
+        self.bluetoothService.isSetupInProgress = false
+    }
     
-    /// Presents a confirmation alert before abandoning the setup flow.
-    func handleExit() {
-        /// For the last step, simply dismiss the setup.
-        if currentStep == .scaleConnected {
-            dismissAction?()
-            return
-        }
+    /// Presents the standard exit-alert.
+    /// - Parameters:
+    ///   - onConfirm: called when user taps **Exit**
+    ///   - onCancel:  called when user taps **Go Back**
+    private func presentExitAlert(onConfirm: @escaping () -> Void,
+                                  onCancel: @escaping () -> Void = {}) {
+        let lang = AlertStrings.ExitBtWifiSetupAlert.self
+        let message: String = {
+            switch (isWifiSetupOnly, savedScale != nil) {
+            case (true, _):  return lang.wifiExitMessage
+            case (false, true):  return lang.postConnectionExitMessage
+            default:  return lang.preConnectionExitMessage
+            }
+        }()
         
-        let alertLang = AlertStrings.ExitBtWifiSetupAlert.self
         let alert = AlertModel(
-            title: alertLang.title,
-            message: savedScale != nil ? alertLang.postConnectionExitMessage : alertLang.preConnectionExitMessage,
+            title: lang.title,
+            message: message,
             buttons: [
-                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
-                    self?.dismissAction?()
-                    /// Calling DisconnectDevice and cancelWifi to ensure cleanup
-                    self?.disconnectDevice()
-                    self?.cancelWifi()
-                },
-                AlertButtonModel(title: alertLang.goBackButton, type: .secondary) { _ in }
-            ]
-        )
+                AlertButtonModel(title: lang.exitButton,  type: .primary) { _ in onConfirm() },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in onCancel() }
+            ])
         notificationService.showAlert(alert)
+    }
+    
+    // Called by the ✕ button.
+    func handleExit() {
+        guard currentStep != .scaleConnected else { performExitCleanup(); return }
+        presentExitAlert(onConfirm: performExitCleanup)
+    }
+    
+    // Used by tab-switch logic.
+    func confirmExit() async -> Bool {
+        if currentStep == .scaleConnected { performExitCleanup(); return true }
+        
+        return await withCheckedContinuation { cont in
+            presentExitAlert(
+                onConfirm: {
+                    self.performExitCleanup()
+                    cont.resume(returning: true)
+                },
+                onCancel: {
+                    cont.resume(returning: false)
+                })
+        }
     }
     
     /// Shows the generic Help modal used across the app.
@@ -638,7 +685,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .scaleMetrics:
             // Preload currently saved display metrics so the customization screen accurately reflects existing configuration.
             if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-              selectedScaleMetrics = preference.displayMetrics
+                selectedScaleMetrics = preference.displayMetrics
             } else {
                 selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
             }
@@ -1258,8 +1305,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     await checkDeviceInfoAfterWifiSetup(scale: scale)
                 }
                 
-                // Navigate back to root after success delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
+                let delay: TimeInterval = self.isWifiSetupOnly ? 0.1 : 2.0
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     self.dismissAction?()
                 }
                 break
@@ -1469,7 +1517,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
                     isTemporary: true
                 )
-              return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
+                return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
             }()
             
             // Build updated preference object
@@ -1508,7 +1556,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             
-             try await scaleService.updateScalePreference(
+            try await scaleService.updateScalePreference(
                 savedScale.id,
                 updatedPreference
             )
@@ -1674,9 +1722,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // Cancels Wi-Fi to hide connecting to wifi screen on 0412 scale.
     private func cancelWifi() {
-        if let discoveredScale = discoveredScale {
+        // Cancel any in-flight Wi-Fi setup
+        let scaleToCancel = discoveredScale ?? savedScale
+        if let scaleToCancel = scaleToCancel {
             Task {
-                await bluetoothService.cancelWifi(on: discoveredScale)
+                await bluetoothService.cancelWifi(on: scaleToCancel)
             }
         }
     }
