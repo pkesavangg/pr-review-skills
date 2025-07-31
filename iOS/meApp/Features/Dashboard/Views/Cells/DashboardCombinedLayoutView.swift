@@ -42,6 +42,17 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
         
         if !isDragging {
             uiView.reloadData()
+            // Force layout update to ensure proper content size calculation
+            DispatchQueue.main.async {
+                uiView.layoutIfNeeded()
+                uiView.collectionViewLayout.invalidateLayout()
+                uiView.collectionViewLayout.prepare()
+                // Force content size calculation
+                uiView.setNeedsLayout()
+                uiView.layoutIfNeeded()
+                // Notify SwiftUI that the view size has changed
+                uiView.invalidateIntrinsicContentSize()
+            }
         } else {
             context.coordinator.forceReconfigureVisibleCells(uiView)
         }
@@ -69,9 +80,13 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "DividerCell")
         collectionView.allowsSelection = false
         
-        // Hide scroll indicators
+        // Disable user scrolling but allow content size calculation
+        collectionView.isScrollEnabled = false
         collectionView.showsVerticalScrollIndicator = false
         collectionView.showsHorizontalScrollIndicator = false
+        
+        // Ensure the collection view can calculate its full content size
+        collectionView.contentInsetAdjustmentBehavior = .never
         
         return collectionView
     }
@@ -126,8 +141,8 @@ extension DashboardCombinedLayoutView {
                 dividerView.translatesAutoresizingMaskIntoConstraints = false
                 cell.contentView.addSubview(dividerView)
                 NSLayoutConstraint.activate([
-                    dividerView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 20),
-                    dividerView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -20),
+                    dividerView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+                    dividerView.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
                     dividerView.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
                     dividerView.heightAnchor.constraint(equalToConstant: 1)
                 ])
@@ -165,7 +180,7 @@ extension DashboardCombinedLayoutView {
                 let itemHeight = 70 + (verticalPadding * 2)
                 return CGSize(width: itemWidth, height: itemHeight)
             } else if indexPath.item < metricsCount + dividerCount {
-                return CGSize(width: collectionView.bounds.width, height: 1)
+                return CGSize(width: collectionView.bounds.width - 40, height: 1)
             } else if indexPath.item < metricsCount + dividerCount + goalCardCount {
                 let availableWidth = collectionView.bounds.width - 40
                 return CGSize(width: availableWidth, height: 140)

@@ -34,6 +34,17 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Reload data when edit mode changes to update wiggle state
         if !isDragging {
             uiView.reloadData()
+            // Force layout update to ensure proper content size calculation
+            DispatchQueue.main.async {
+                uiView.layoutIfNeeded()
+                uiView.collectionViewLayout.invalidateLayout()
+                uiView.collectionViewLayout.prepare()
+                // Force content size calculation
+                uiView.setNeedsLayout()
+                uiView.layoutIfNeeded()
+                // Notify SwiftUI that the view size has changed
+                uiView.invalidateIntrinsicContentSize()
+            }
         }
     }
     
@@ -62,9 +73,13 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Disable selection to prevent visual feedback
         collectionView.allowsSelection = false
         
-        // Hide scroll indicators
+        // Disable user scrolling but allow content size calculation
+        collectionView.isScrollEnabled = false
         collectionView.showsVerticalScrollIndicator = false
         collectionView.showsHorizontalScrollIndicator = false
+        
+        // Ensure the collection view can calculate its full content size
+        collectionView.contentInsetAdjustmentBehavior = .never
         
         return collectionView
     }

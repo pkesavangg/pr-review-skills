@@ -28,6 +28,17 @@ struct DashboardCombinedGridUIKitView: UIViewRepresentable {
         context.coordinator.store = store
         if !isDragging {
             uiView.reloadData()
+            // Force layout update to ensure proper content size calculation
+            DispatchQueue.main.async {
+                uiView.layoutIfNeeded()
+                uiView.collectionViewLayout.invalidateLayout()
+                uiView.collectionViewLayout.prepare()
+                // Force content size calculation
+                uiView.setNeedsLayout()
+                uiView.layoutIfNeeded()
+                // Notify SwiftUI that the view size has changed
+                uiView.invalidateIntrinsicContentSize()
+            }
         } else {
             context.coordinator.forceReconfigureVisibleCells(uiView)
         }
@@ -53,9 +64,13 @@ struct DashboardCombinedGridUIKitView: UIViewRepresentable {
         collectionView.register(StreakItemCell.self, forCellWithReuseIdentifier: "StreakItemCell")
         collectionView.allowsSelection = false
         
-        // Hide scroll indicators
+        // Disable user scrolling but allow content size calculation
+        collectionView.isScrollEnabled = false
         collectionView.showsVerticalScrollIndicator = false
         collectionView.showsHorizontalScrollIndicator = false
+        
+        // Ensure the collection view can calculate its full content size
+        collectionView.contentInsetAdjustmentBehavior = .never
         
         return collectionView
     }
@@ -289,5 +304,11 @@ public class CustomCollectionView: UICollectionView {
         if "\(type(of: subview))" == "_UIPlatterView" {
             subview.alpha = 0
         }
+    }
+    
+    // Override intrinsic content size to ensure proper sizing
+    override public var intrinsicContentSize: CGSize {
+        let contentSize = self.collectionViewLayout.collectionViewContentSize
+        return CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
     }
 }
