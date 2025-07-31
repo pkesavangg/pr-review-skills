@@ -72,7 +72,7 @@ fun DashboardMilestoneGrid(
     modifier = Modifier
       .fillMaxWidth()
       .padding(horizontal = MeTheme.spacing.sm)
-      .heightIn(max = 460.dp),
+      .heightIn(max = 800.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
   ) {

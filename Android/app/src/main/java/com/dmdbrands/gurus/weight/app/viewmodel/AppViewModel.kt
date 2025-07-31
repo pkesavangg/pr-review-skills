@@ -457,10 +457,10 @@ constructor(
   ) {
     viewModelScope.launch {
       val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-      if (device != null)
-        deviceService.onDeviceUpdate(
-          macAddress = device.device?.macAddress, connectionStatus = connectionStatus ?: device.connectionStatus,
-        )
+      deviceService.onDeviceUpdate(
+        macAddress = device?.device?.macAddress ?: deviceDetail.macAddress,
+        connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED,
+      )
     }
   }
 
