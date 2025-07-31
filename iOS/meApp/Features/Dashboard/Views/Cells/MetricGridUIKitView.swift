@@ -44,8 +44,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
     // MARK: - Private Methods
     
     /// Creates the collection view layout with proper spacing and insets
-    private func createLayout() -> UICollectionViewFlowLayout {
-        let layout = UICollectionViewFlowLayout()
+    private func createLayout() -> LeadingAlignedFlowLayout {
+        let layout = LeadingAlignedFlowLayout()
         layout.minimumInteritemSpacing = 16
         layout.minimumLineSpacing = 16
         layout.sectionInset = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
@@ -53,7 +53,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     }
     
     /// Creates and configures the collection view with drag-and-drop support
-    private func createCollectionView(with layout: UICollectionViewFlowLayout) -> UICollectionView {
+    private func createCollectionView(with layout: LeadingAlignedFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.dragInteractionEnabled = true
@@ -61,6 +61,10 @@ struct MetricGridUIKitView: UIViewRepresentable {
         
         // Disable selection to prevent visual feedback
         collectionView.allowsSelection = false
+        
+        // Hide scroll indicators
+        collectionView.showsVerticalScrollIndicator = false
+        collectionView.showsHorizontalScrollIndicator = false
         
         return collectionView
     }

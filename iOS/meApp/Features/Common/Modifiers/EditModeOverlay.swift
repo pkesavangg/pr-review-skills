@@ -32,9 +32,9 @@ struct EditModeOverlay: ViewModifier {
     var iconOpacity: Double {
         shouldShowCircleIcon ? 1 : 0
     }
-    
-    var draggedOpacity: Double {
-        isBeingDragged ? 0.6 : 1.0
+
+    var itemOpacity: Double {
+        isRemoved ? 0.75 : 1.0
     }
     
     var dropTargetScale: CGFloat {
@@ -44,7 +44,7 @@ struct EditModeOverlay: ViewModifier {
     func body(content: Content) -> some View {
         ZStack(alignment: .topTrailing) {
             content
-                .opacity(isRemoved ? 0.75 : draggedOpacity)
+                .opacity(itemOpacity)
                 .scaleEffect(dropTargetScale)
                 // Apply row-based wiggle animation (matching movingGridsLearning exactly)
                 .wiggling(shouldWiggle, rowIndex: rowIndex)

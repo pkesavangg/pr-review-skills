@@ -176,8 +176,9 @@ class MetricCell: UICollectionViewCell {
             // Restore normal appearance
             hostingController?.view.alpha = 1.0
         case .lifting, .dragging:
-            // Reduce opacity during drag for visual feedback
-            hostingController?.view.alpha = 0.6
+            // Don't reduce opacity during drag - let EditModeOverlay handle visibility
+            // This prevents items from appearing "removed" during drag operations
+            hostingController?.view.alpha = 1.0
         @unknown default:
             break
         }

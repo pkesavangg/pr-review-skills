@@ -158,9 +158,12 @@ class StreakItemCell: UICollectionViewCell {
         
         switch dragState {
         case .none:
+            // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
         case .lifting, .dragging:
-            hostingController?.view.alpha = 0.6
+            // Don't reduce opacity during drag - let EditModeOverlay handle visibility
+            // This prevents items from appearing "removed" during drag operations
+            hostingController?.view.alpha = 1.0
         @unknown default:
             break
         }
@@ -199,5 +202,28 @@ class StreakItemCell: UICollectionViewCell {
                 layoutSubviews()
             }
         }
+    }
+    
+    // MARK: - Drag Preview
+    
+    /// Creates a snapshot view for drag preview
+    /// - Returns: A UIView snapshot of the cell's content
+    func snapshotForPreview() -> UIView {
+        guard let hostingController = hostingController else {
+            // Fallback to a simple colored view if hosting controller is not available
+            let fallbackView = UIView(frame: contentView.bounds)
+            fallbackView.backgroundColor = UIColor.systemBackground
+            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.masksToBounds = true
+            return fallbackView
+        }
+        
+        // Create a snapshot of the hosting controller's view
+        let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
+        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.masksToBounds = true
+        snapshot?.backgroundColor = .clear
+        
+        return snapshot ?? UIView()
     }
 } 
