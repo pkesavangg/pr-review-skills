@@ -239,7 +239,6 @@ fun WifiScaleSetupScreenContent(
           }
         }
 
-        else -> null
       },
       pageContent = { step ->
         when (step) {
@@ -381,8 +380,8 @@ fun WifiScaleSetupScreenContent(
             SetupContent(
               title = WifiScaleSetupStrings.ScaleCount.Title,
               subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-              // isGifImage = true,
-              // supportingImage = AppIcons.Setup.WifiCountOn,
+              isGifImage = true,
+              supportingImage = AppIcons.Setup.WifiCountOn,
             )
           }
 

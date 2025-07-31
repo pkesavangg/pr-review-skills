@@ -1057,6 +1057,8 @@ constructor(
           sku = state.value.sku,
           deviceType = ScaleSetupType.Wifi.value,
           nickname = scaleInfo?.productName!!,
+          token = scaleToken,
+          userNumber = state.value.selectedUser,
         )
         deviceService.saveScale(wifiDevice)
       }
