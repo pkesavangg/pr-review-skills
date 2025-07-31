@@ -26,154 +26,173 @@ import kotlinx.coroutines.launch
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
 )
 class WifiScaleSetupViewModel
-  @AssistedInject
-  constructor(
-    @Assisted private val sku: String,
-  ) : BaseIntentViewModel<WifiScaleSetupState, WifiScaleSetupIntent>(
-      reducer = WifiScaleSetupReducer(),
-    ) {
-    @AssistedFactory
-    interface Factory {
-      fun create(sku: String): WifiScaleSetupViewModel
-    }
+@AssistedInject
+constructor(
+  @Assisted private val sku: String,
+) : BaseIntentViewModel<WifiScaleSetupState, WifiScaleSetupIntent>(
+  reducer = WifiScaleSetupReducer(),
+) {
+  @AssistedFactory
+  interface Factory {
+    fun create(sku: String): WifiScaleSetupViewModel
+  }
 
-    private val TAG = "WifiScaleSetupViewModel"
+  private val TAG = "WifiScaleSetupViewModel"
 
-    override fun provideInitialState(): WifiScaleSetupState = WifiScaleSetupState()
+  override fun provideInitialState(): WifiScaleSetupState = WifiScaleSetupState()
 
-    override fun handleIntent(intent: WifiScaleSetupIntent) {
-      super.handleIntent(intent)
-      when (intent) {
-        WifiScaleSetupIntent.Next -> onNext()
-        WifiScaleSetupIntent.Back -> onBack()
-        WifiScaleSetupIntent.Skip -> onSkip()
-        is WifiScaleSetupIntent.ExitSetup ->
-          onExitSetup(
-            intent.isSetupFinished,
-            intent.isConnected,
-          )
-        is WifiScaleSetupIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
-        WifiScaleSetupIntent.OpenHelp -> openHelpModal()
-        else -> {}
-      }
-    }
+  override fun handleIntent(intent: WifiScaleSetupIntent) {
+    super.handleIntent(intent)
+    when (intent) {
+      WifiScaleSetupIntent.Next -> onNext()
+      WifiScaleSetupIntent.Back -> onBack()
+      WifiScaleSetupIntent.Skip -> onSkip(
+        { },
+      )
 
-    init {
-      loadScaleInfo()
-    }
-
-    /**
-     * Loads scale information based on the provided SKU.
-     */
-    private fun loadScaleInfo() {
-      AppLog.d(TAG, "Loading scale info for SKU: $sku")
-      handleIntent(WifiScaleSetupIntent.SetScaleSku(sku))
-    }
-
-    /**
-     * Handles moving to the next step in the setup process.
-     */
-    private fun onNext() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
-
-      if (currentState.isLastStep) {
-        AppLog.d(TAG, "Reached last step, completing setup")
-        handleIntent(WifiScaleSetupIntent.ExitSetup(true, true))
-      } else {
-        AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles moving to the previous step in the setup process.
-     */
-    private fun onBack() {
-      val currentState = state.value
-      AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
-
-      if (currentState.isFirstStep) {
-        AppLog.d(TAG, "At first step, navigating back")
-        navigateTo(AppRoute.AccountSettings.AddEditScales)
-      } else {
-        AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.currentStep}")
-      }
-    }
-
-    /**
-     * Handles skipping the current step.
-     */
-    private fun onSkip() {
-      AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
-      // For now, treat skip as next
-      onNext()
-    }
-
-    private fun onExitSetup(
-      isSetupFinished: Boolean,
-      isConnected: Boolean,
-    ) {
-      if (isSetupFinished) {
-        navigateBack()
-      } else {
-        dialogQueueService.enqueue(
-          DialogModel.Confirm(
-            title = ScaleSetupStrings.ExitSetupAlert.Title,
-            message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
-            confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-            cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-            onConfirm = {
-              navigateBack()
-            },
-          ),
+      is WifiScaleSetupIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
+      is WifiScaleSetupIntent.OpenHelp -> openHelpModal()
+      is WifiScaleSetupIntent.ExitSetup ->
+        onExitSetup(
+          intent.isSetupFinished,
+          intent.isConnected,
         )
-      }
-    }
 
-    private fun onCopyMacAddress(isCopied: Boolean) {
-      showToast(
-        message = if (isCopied) WifiMacAddressStrings.Toast.Success
-        else WifiMacAddressStrings.Toast.Error,
-      )
+      WifiScaleSetupIntent.OpenHelp -> openHelpModal()
+      else -> {}
     }
-    private fun showToast(message: String) {
-      dialogQueueService.showToast(
-        Toast(
-          title = null,
-          message = message,
-          action = null,
-        ),
-      )
-    }
+  }
 
-    /**
-     * Opens the Help modal.
-     */
-    private fun openHelpModal() {
+  init {
+    loadScaleInfo()
+  }
+
+  /**
+   * Loads scale information based on the provided SKU.
+   */
+  private fun loadScaleInfo() {
+    AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    handleIntent(WifiScaleSetupIntent.SetScaleSku(sku))
+  }
+
+  private fun onCopyMacAddress(isCopied: Boolean) {
+    showToast(
+      message = if (isCopied) WifiMacAddressStrings.Toast.Success
+      else WifiMacAddressStrings.Toast.Error,
+    )
+  }
+
+  private fun showToast(message: String) {
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = message,
+        action = null,
+      ),
+    )
+  }
+
+  /**
+   * Handles moving to the next step in the setup process.
+   */
+  private fun onNext() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
+
+    if (currentState.isLastStep) {
+      AppLog.d(TAG, "Reached last step, completing setup")
+      handleIntent(WifiScaleSetupIntent.ExitSetup(true, true))
+    } else {
+      AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.currentStep}")
+    }
+  }
+
+  /**
+   * Handles moving to the previous step in the setup process.
+   */
+  private fun onBack() {
+    val currentState = state.value
+    AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
+
+    if (currentState.isFirstStep) {
+      AppLog.d(TAG, "At first step, navigating back")
+      navigateTo(AppRoute.AccountSettings.AddEditScales)
+    } else {
+      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.currentStep}")
+    }
+  }
+
+  /**
+   * Handles skipping the current step.
+   */
+  // For now, treat skip as next
+  fun onSkip(
+    onSkip: () -> Unit,
+  ) {
+    AppLog.d(TAG, "Skipping current step: ${state.value.currentStep}")
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleSetupStrings.SkipWifiPermissions.Title,
+        message = ScaleSetupStrings.SkipWifiPermissions.Message,
+        confirmText = ScaleSetupStrings.SkipWifiPermissions.Skip,
+        cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
+        onConfirm = {
+          onSkip.invoke()
+        },
+      ),
+    )
+    onNext()
+  }
+
+  private fun onExitSetup(
+    isSetupFinished: Boolean,
+    isConnected: Boolean,
+  ) {
+    if (isSetupFinished) {
+      navigateBack()
+    } else {
       dialogQueueService.enqueue(
-        DialogModel.Custom(
-          contentKey = DialogType.HelpPopup,
+        DialogModel.Confirm(
+          title = ScaleSetupStrings.ExitSetupAlert.Title,
+          message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
+          confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          onConfirm = {
+            navigateBack()
+          },
         ),
       )
     }
+  }
 
-    private fun navigateTo(route: AppRoute) {
-      viewModelScope.launch {
-        navigationService.navigateTo(route)
-      }
+  /**
+   * Opens the Help modal.
+   */
+  private fun openHelpModal() {
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.HelpPopup,
+      ),
+    )
+  }
+
+  private fun navigateTo(route: AppRoute) {
+    viewModelScope.launch {
+      navigationService.navigateTo(route)
     }
+  }
 
-    /**
-     * Navigates back from the setup screen.
-     */
-    private fun navigateBack() {
-      viewModelScope.launch {
-        try {
-          navigationService.navigateBack()
-          AppLog.d(TAG, "Successfully navigated back from scale setup")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
-        }
+  /**
+   * Navigates back from the setup screen.
+   */
+  private fun navigateBack() {
+    viewModelScope.launch {
+      try {
+        navigationService.navigateBack()
+        AppLog.d(TAG, "Successfully navigated back from scale setup")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
       }
     }
   }
+}

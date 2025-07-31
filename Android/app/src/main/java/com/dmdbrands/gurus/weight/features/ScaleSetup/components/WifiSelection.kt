@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,15 +12,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -29,9 +30,10 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
+import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 
 /**
  * Data class representing a WiFi network.
@@ -63,105 +65,89 @@ fun WifiSelection(
   onSelect: (String) -> Unit,
   onRefresh: () -> Unit,
 ) {
-  Column(
+  LazyColumn(
     modifier = Modifier
       .fillMaxSize()
       .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
-    AppText(
-      text = title,
-      textType = TextType.ListTitle2,
-      modifier = Modifier.padding(bottom = spacing.xs),
-    )
-    AppText(
-      text = subtitle,
-      textType = TextType.Body,
-      modifier = Modifier.padding(bottom = spacing.lg),
-    )
-
-    if (wifiList.isEmpty()) {
+    item {
       AppText(
-        text = ScaleSetupStrings.WifiList.NoNetworks,
+        text = title,
+        textType = TextType.ListTitle2,
+        modifier = Modifier.padding(bottom = spacing.xs),
+      )
+    }
+
+    item {
+      AppText(
+        text = subtitle,
         textType = TextType.Body,
         modifier = Modifier.padding(bottom = spacing.lg),
       )
+    }
+
+    if (wifiList.isEmpty()) {
+      item {
+        AppText(
+          text = ScaleSetupStrings.WifiList.NoNetworks,
+          textType = TextType.Body,
+          modifier = Modifier.padding(bottom = spacing.lg),
+        )
+      }
     } else {
-      LazyColumn(
-        modifier = Modifier
-          .clip(RoundedCornerShape(borderRadius.sm)),
-      ) {
-        // Show connected network section if there's a configured SSID
-        configuredSSID?.let { configuredSsid ->
-          val connectedWifi = wifiList.find { it.ssid == configuredSsid }
-          connectedWifi?.let { wifi ->
-            item {
-
-              AppText(
-                text = ScaleSetupStrings.WifiList.ConnectedNetwork,
-                textType = TextType.ListTitle1,
-                modifier = Modifier.padding(bottom = spacing.xs),
-              )
-              Column(
-                modifier = Modifier
-                  .padding(bottom = spacing.sm),
-              ) {
-                WifiItem(
-                  ssid = wifi.ssid,
-                  isConfigured = true,
-                )
-              }
-            }
-          }
-        }
-
-        // Show available networks section
-        val availableNetworks = wifiList.filter { it.ssid != configuredSSID }
-        if (availableNetworks.isNotEmpty()) {
+      // Connected SSID
+      configuredSSID?.let { configuredSsid ->
+        val connectedWifi = wifiList.find { it.ssid == configuredSsid }
+        connectedWifi?.let { wifi ->
           item {
             AppText(
-              text = ScaleSetupStrings.WifiList.AvailableNetworks,
+              text = ScaleSetupStrings.WifiList.ConnectedNetwork,
               textType = TextType.ListTitle1,
               modifier = Modifier.padding(bottom = spacing.xs),
             )
-          }
-
-          items(availableNetworks) { wifi ->
-            Column(
-              modifier = Modifier,
-            ) {
-              WifiItem(
-                ssid = wifi.ssid,
-                isConfigured = false,
-                onClick = { onSelect(wifi.ssid) },
-              )
-              if (availableNetworks.size > 1 && availableNetworks.indexOf(wifi) < availableNetworks.size - 1) {
-                HorizontalDivider(
-                  color = colorScheme.utility,
-                  thickness = .5.dp,
-                )
-              }
-            }
-          }
-          item {
-            Column(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              Spacer(Modifier.height(spacing.md))
-              AppButton(
-                label = ScaleSetupStrings.SetupButtons.Refresh,
-                type = ButtonType.InlineTextPrimary,
-                onClick = { onRefresh() },
-              )
-            }
+            WifiItem(
+              ssid = wifi.ssid,
+              isConfigured = true,
+              index = 0,
+              total = 1,
+            )
           }
         }
       }
+
+      val availableNetworks = wifiList.filter { it.ssid != configuredSSID }
+      if (availableNetworks.isNotEmpty()) {
+        item {
+          AppText(
+            text = ScaleSetupStrings.WifiList.AvailableNetworks,
+            textType = TextType.ListTitle1,
+            modifier = Modifier.padding(bottom = spacing.xs),
+          )
+        }
+
+        itemsIndexed(availableNetworks) { index, wifi ->
+          WifiItem(
+            ssid = wifi.ssid,
+            isConfigured = false,
+            index = index,
+            total = availableNetworks.size,
+            onClick = { onSelect(wifi.ssid) },
+          )
+        }
+      }
+    }
+
+    item {
       Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-
+        Spacer(Modifier.height(spacing.md))
+        AppButton(
+          label = ScaleSetupStrings.SetupButtons.Refresh,
+          type = ButtonType.InlineTextPrimary,
+          onClick = { onRefresh() },
+        )
       }
     }
   }
@@ -175,36 +161,63 @@ fun WifiSelection(
  * @param onClick Callback when the item is clicked
  */
 @Composable
-private fun WifiItem(
+fun WifiItem(
   ssid: String,
   isConfigured: Boolean,
+  index: Int,
+  total: Int,
+  borderRadius: Dp = 0.dp ,
   onClick: (() -> Unit)? = null,
 ) {
-  Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .background(colorScheme.primaryBackground)
-      .padding(spacing.sm),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-  ) {
-    AppIcon(
-      id = AppIcons.Connection.Wifi,
-      contentDescription = "Wifi",
-      modifier = Modifier.size(24.dp),
-    )
+  val shape = when {
+    total == 1 -> RoundedCornerShape(MeTheme.borderRadius.sm)
+    index == 0 -> RoundedCornerShape(topStart = MeTheme.borderRadius.sm, topEnd = MeTheme.borderRadius.sm)
+    index == total - 1 -> RoundedCornerShape(bottomStart = MeTheme.borderRadius.sm, bottomEnd = MeTheme.borderRadius.sm)
+    else -> RoundedCornerShape(0.dp)
+  }
 
-    AppText(
-      text = ssid,
-      textType = TextType.Body,
-    )
-    Spacer(modifier = Modifier.weight(1f))
-    if (!isConfigured) {
+  Column(
+    modifier = Modifier
+      .clip(shape)
+      .background(colorScheme.primaryBackground),
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(spacing.sm)
+        .clickable(
+          enabled = !isConfigured,
+          onClick = { onClick?.invoke() },
+        ),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
       AppIcon(
-        id = AppIcons.Default.RightCaret,
-        contentDescription = "Right caret",
-        modifier = Modifier.size(16.dp),
-        onClick = onClick,
+        id = AppIcons.Connection.Wifi,
+        contentDescription = "Wifi",
+        modifier = Modifier.size(24.dp),
+      )
+
+      AppText(
+        text = ssid,
+        textType = TextType.Body,
+      )
+
+      Spacer(modifier = Modifier.weight(1f))
+
+      if (!isConfigured) {
+        AppIcon(
+          id = AppIcons.Default.RightCaret,
+          contentDescription = "Right caret",
+          modifier = Modifier.size(16.dp),
+        )
+      }
+    }
+
+    if (index < total - 1) {
+      HorizontalDivider(
+        color = colorScheme.utility,
+        thickness = 0.5.dp,
       )
     }
   }

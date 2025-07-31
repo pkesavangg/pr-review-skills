@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.core.service.NotificationService
 import com.dmdbrands.gurus.weight.core.service.OfflineHandlerService
 import com.dmdbrands.gurus.weight.core.service.StorageClearService
 import com.dmdbrands.gurus.weight.core.service.UserSettingsService
+import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
@@ -55,6 +56,7 @@ import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.service.DialogQueueService
 import com.dmdbrands.gurus.weight.features.common.service.DialogUtility
+import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
 import dagger.Module
 import dagger.Provides
@@ -101,6 +103,21 @@ object ServiceModule {
   fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
 
   /**
+   * Provides a singleton instance of [IWifiscaleService].
+   * @return [AppEventService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideWifiScaleService(
+    @ApplicationContext context: Context,
+    wifiSmartConnectManager: WifiSmartConnectManager,
+    deviceService: IDeviceService
+  ) = WifiScaleService(
+    wifiSmartConnectManager, deviceService,
+    context = context,
+  )
+
+  /**
    * Provides a singleton instance of [GGNotificationManager] for notification operations.
    * @param context The application context.
    * @param notificationService The notification service dependency.
@@ -125,7 +142,7 @@ object ServiceModule {
     logRepository: ILogRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
+    appNavigationService: IAppNavigationService
   ): LogManager = LogManager(
     logRepository, connectivityObserver, dialogQueueService, appNavigationService,
   )
@@ -193,15 +210,16 @@ object ServiceModule {
     accountService: IAccountService,
     integrationRepository: IIntegrationRepository,
     appNavigationService: IAppNavigationService,
-    healthConnectRepository: IHealthConnectRepository
-  ): IIntegrationService = IntegrationService(
-    connectivityObserver,
-    dialogQueueService,
-    appNavigationService,
-    accountService,
-    integrationRepository,
-    healthConnectRepository,
-  )
+    healthConnectRepository: IHealthConnectRepository,
+  ): IIntegrationService =
+    IntegrationService(
+      connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
+      accountService,
+      integrationRepository,
+      healthConnectRepository,
+    )
 
   /**
    * Provides the export service implementation.
@@ -346,6 +364,6 @@ object ServiceModule {
     entryService = entryService,
     accountService = accountService,
     appNavigationService = navigationService,
-    dialogQueueService = dialogQueueService
+    dialogQueueService = dialogQueueService,
   )
 }

@@ -9,15 +9,16 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.greatergoods.blewrapper.GGBLEService
 import com.dmdbrands.gurus.weight.app.MeApp
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.greatergoods.blewrapper.GGBLEService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -49,6 +50,9 @@ class MainActivity : AppCompatActivity() {
   @Inject
   lateinit var gGBLEService: GGBLEService
 
+  @Inject
+  lateinit var wifiScaleService: WifiScaleService
+
   /**
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
@@ -61,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     enableEdgeToEdge()
     healthConnectService.initializeHealthConnect(this)
     gGBLEService.createInstance(this)
+    wifiScaleService.initialise(this)
     setContent {
       MeApp()
     }
@@ -85,7 +90,8 @@ class MainActivity : AppCompatActivity() {
    */
   private fun handleHealthConnectIntent(intent: Intent?) {
     if (intent?.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" ||
-        intent?.action == "android.intent.action.VIEW_PERMISSION_USAGE") {
+      intent?.action == "android.intent.action.VIEW_PERMISSION_USAGE"
+    ) {
       healthConnectService.handleOnNewIntent(intent)
     }
   }
