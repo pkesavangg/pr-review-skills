@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -16,11 +14,12 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LcbtScaleSetupRedu
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -100,6 +99,8 @@ constructor(
 
   override fun onTryAgain() {
     val currentStep = state.value.step
+    AppLog.d(TAG, "Trying again for step: $currentStep")
+
     when (currentStep) {
       LcbtScaleSetupStep.WAKEUP -> {
         wakeUpScale()
@@ -134,19 +135,29 @@ constructor(
    * Handles waking up the scale. Sets loading state and controls when to proceed.
    */
   private fun wakeUpScale() {
-    // Clear any existing timeout
+    // Always set loading state to ensure UI updates
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    // Clear any existing timeout and stop any existing device observation
     clearBluetoothTimeout()
+    stopObservingDevices()
+
+    // Set timeout for bluetooth scanning
+    bluetoothTimeoutJob = viewModelScope.launch {
+      delay(bluetoothTimeout)
+      // Check if we're still in the wakeup step and no device was found
+      if (discoveredScale == null) {
+        AppLog.d(TAG, "Bluetooth scan timeout reached")
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
+      }
+    }
 
     // Start collecting device scan responses only now
     AppLog.d(TAG, "Starting wake up scale process")
-    if (currentSetupState.connectionState != ConnectionState.Loading) {
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
-    }
 
-    viewModelScope.launch {
-      try {
-        ggDeviceService.scanForPairing()
-        startObservingDevices { data ->
+    try {
+      ggDeviceService.scanForPairing()
+      startObservingDevices { data ->
+        viewModelScope.launch {
           discoveredScale = Device(
             device = data,
             deviceType = ScaleSetupType.Lcbt.value,
@@ -154,33 +165,26 @@ constructor(
           )
           // Clear timeout when device is found
           clearBluetoothTimeout()
+          delay(2000)
           onNext()
         }
-        
-        // Set timeout for bluetooth scanning
-        bluetoothTimeoutJob = viewModelScope.launch {
-          delay(bluetoothTimeout)
-          // Check if we're still in the wakeup step and no device was found
-          if (currentSetupState.step == LcbtScaleSetupStep.WAKEUP && discoveredScale == null) {
-            AppLog.d(TAG, "Bluetooth scan timeout reached")
-            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
-          }
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during wake up process", e.toString())
-        clearBluetoothTimeout()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during wake up process", e.toString())
+      clearBluetoothTimeout()
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
     }
   }
 
   private fun connectToBluetooth() {
-    if (currentSetupState.connectionState != ConnectionState.Loading) {
-      handleIntent(
-        ScaleSetupIntent.AlterConnectionState(
-          ConnectionState.Loading,
-        ),
-      )
+    // Always set loading state to ensure UI updates
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    clearBluetoothTimeout()
+    AppLog.d(TAG, "Connecting to bluetooth")
+    bluetoothTimeoutJob = viewModelScope.launch {
+      delay(bluetoothTimeout)
+      AppLog.d(TAG, "Bluetooth connection timeout reached")
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
     }
     viewModelScope.launch {
       try {
@@ -188,20 +192,15 @@ constructor(
           macAddress = discoveredScale!!.device?.macAddress,
           connectionStatus = BLEStatus.CONNECTED,
         )
-        handleIntent(
-          ScaleSetupIntent.AlterConnectionState(
-            ConnectionState.Success,
-          ),
-        )
-        delay(1000)
+        clearBluetoothTimeout() // Cancel timeout on success
+        delay(3000)
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        delay(2000)
         onNext()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e.toString())
-        handleIntent(
-          ScaleSetupIntent.AlterConnectionState(
-            ConnectionState.Failed.ErrorWithMessage("BT_002"),
-          ),
-        )
+        clearBluetoothTimeout()
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("BT_002")))
       }
     }
   }

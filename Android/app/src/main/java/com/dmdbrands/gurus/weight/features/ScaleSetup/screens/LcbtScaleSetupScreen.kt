@@ -138,7 +138,6 @@ fun LcbtScaleSetupScreenContent(
                 connectionState = setupState.connectionState,
                 title = LcbtScaleSetupStrings.WakeupScale.Title(setupState.connectionState),
                 subtitle = LcbtScaleSetupStrings.WakeupScale.Subtitle(setupState.connectionState),
-                errorCode = if (setupState.connectionState is ConnectionState.Failed.ErrorWithMessage) setupState.connectionState.message else null,
                 scaleImageSku = if (setupState.connectionState is ConnectionState.Failed)
                   sku else null,
                 showIndicationOnly = setupState.connectionState !is ConnectionState.Failed,
