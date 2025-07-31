@@ -78,7 +78,7 @@ final class ContentViewModel: ObservableObject {
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
-        try await entryService.loadDashboardData()
+        await entryService.loadDashboardData()
         bluetoothService.initialize()
 
         do {
@@ -98,8 +98,5 @@ final class ContentViewModel: ObservableObject {
         contentViewState = isLoggedIn ? .dashboard : .landing
     }
 
-    // MARK: - Notification Permission Logic
-    private func areNotificationsRequired() async -> Bool {
-        await pushNotificationService.isNotificationAuthorized()
-    }
+
 }

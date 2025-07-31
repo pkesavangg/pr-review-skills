@@ -1209,7 +1209,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week, .month:
             return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         case .year:
-            return "\(startMonth) \(startDay) \(startYear) - \(endMonth) \(endDay), \(endYear)"
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         case .total:
             return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         }
