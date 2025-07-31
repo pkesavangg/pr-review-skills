@@ -9,26 +9,6 @@ import SwiftUI
 
 // MARK: - Animation Constants
 
-private struct WiggleAnimationConstants {
-    /// Wiggle animation duration for even rows (app icons - matching movingGridsLearning exactly)
-    static let wiggleDurationEven: Double = 0.135
-    
-    /// Wiggle animation duration for odd rows (app icons - matching movingGridsLearning exactly)
-    static let wiggleDurationOdd: Double = 0.125
-    
-    /// Wiggle rotation angle in radians (app icons - matching movingGridsLearning exactly)
-    static let wiggleRotationAngle: Double = 0.04 // Radians, not degrees
-    
-    /// Widget wiggle animation duration for even rows (more gentle - matching iOS home screen exactly)
-    static let widgetWiggleDurationEven: Double = 0.35
-    
-    /// Widget wiggle animation duration for odd rows (more gentle - matching iOS home screen exactly)
-    static let widgetWiggleDurationOdd: Double = 0.33
-    
-    /// Widget wiggle rotation angle (more subtle - matching iOS home screen exactly)
-    static let widgetWiggleRotationAngle: Double = 0.045 // Radians, not degrees
-}
-
 struct WiggleModifier: ViewModifier {
     let shouldWiggle: Bool
     let rowIndex: Int
