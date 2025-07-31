@@ -432,7 +432,7 @@ constructor(
    */
   override suspend fun getScaleByMac(mac: String): Device? =
     try {
-      deviceRepository.getDeviceByMac(mac).first()
+      deviceRepository.getDeviceByMac(mac, this.currentAccountId ?: "").first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale by MAC", e.toString())
       null

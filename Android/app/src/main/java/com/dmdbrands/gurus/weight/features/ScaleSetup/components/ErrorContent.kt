@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -30,7 +31,7 @@ fun ErrorContent(
 
   Column(
     modifier = modifier
-      .fillMaxWidth()
+      .fillMaxSize()
       .padding(vertical = spacing.md, horizontal = spacing.sm),
     verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
@@ -38,7 +39,6 @@ fun ErrorContent(
     AppText(
       text = "${WifiScaleSetupStrings.ErrorDetail.Troubleshooting} - $errorCode",
       textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
     )
 
     // Error message if available (similar to TypeScript ion-card-subtitle)

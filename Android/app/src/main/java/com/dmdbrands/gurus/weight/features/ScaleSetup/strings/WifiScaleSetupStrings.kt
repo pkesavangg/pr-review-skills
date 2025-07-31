@@ -63,42 +63,42 @@ object WifiScaleSetupStrings {
     const val Troubleshooting = "Troubleshooting"
 
     // T204 error messages
-    const val T204a = "It seems like your scale is having trouble communicating with your Wi-Fi network. +\n" +
+    const val T204a = "It seems like your scale is having trouble communicating with your Wi-Fi network. " +
       "The best way to fix it is to reset the Wi- Fi chip in your scale."
-    const val T204b = "To do this, start the scale setup process over and connect to another 2.4 GHz network  +\n" +
-      "when the app asks for your wi- fi network name and password.You can try using a phone as a  +\n" +
+    const val T204b = "To do this, start the scale setup process over and connect to another 2.4 GHz network  " +
+      "when the app asks for your wi- fi network name and password.You can try using a phone as a  " +
       "hotspot or someone else’s Wi- Fi network (friend, family, neighbor, etc)."
-    const val T204c = "If the scale connects fully OR simply doesn’t get the t204, we should be back in business  +\n" +
+    const val T204c = "If the scale connects fully OR simply doesn’t get the t204, we should be back in business  " +
       "and can try to connect on your original network again."
 
     // T205 error messages
     const val T205a =
-      "This is an issue with some phones and operating systems. First, try turning off your phone's  +\n" +
+      "This is an issue with some phones and operating systems. First, try turning off your phone's  " +
         "data by putting it in Airplane Mode with Wi - Fi enabled and retry the setup."
-    const val T205b = "If the problem continues, download the app on another device and try to pair with that. ' +\n" +
-      "Even if you connect the scale to your Wi- Fi through another device you’ll still be able to  +\n" +
+    const val T205b = "If the problem continues, download the app on another device and try to pair with that. ' " +
+      "Even if you connect the scale to your Wi- Fi through another device you’ll still be able to  " +
       "track your weight on your own phone."
 
     // T163, T206, T323 error messages (numbered list)
     const val T163a =
-      "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT “_5G” at the end.\n" +
+      "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT “_5G” at the end." +
         "You may need to forget the 5G network during setup if your phone continues to choose it by default."
     const val T163b = "Check your router — the scale cannot pair with some Xfinity XFI, Cox, and Arris routers."
     const val T163c =
       "The router and scale may be too far apart. Move the scale closer to the router and try connecting again."
-    const val T163d = "If you still can't connect or have one of the routers listed ,\n" +
+    const val T163d = "If you still can't connect or have one of the routers listed ," +
       "tap the \"?\" in the top right corner to contact our customer service team, and we'll be happy to help."
 
     // T164, T315, T325 error messages
     const val T164a =
-      "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your  +\n" +
+      "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your  " +
         "network, ask them to whitelist, or give access to, your scale’s MAC address."
     const val T164b =
       "To find your scales MAC address tap the button below and go through the MAC address search process."
 
     // T165 error message
     const val T165 =
-      "Check your personal information in the App Settings to make sure it is correct. Keep in mind the  +\n" +
+      "Check your personal information in the App Settings to make sure it is correct. Keep in mind the  " +
         "birthday must show you are over the age of 13 to comply with COPPA."
 
     // Other error message
