@@ -173,8 +173,7 @@ constructor(
         when (authState) {
           is AuthState.LoggedIn -> {
             // handle login event
-            deviceInfoService.updateDeviceInfo()
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.LoggedOut -> {
@@ -218,7 +217,7 @@ constructor(
                 ),
               )
             }
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -287,7 +286,7 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?) {
+  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
@@ -299,6 +298,9 @@ constructor(
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
+        if (isLoggedIn) {
+          deviceInfoService.updateDeviceInfo()
+        }
         navigationService.autoLogin()
       } else {
         routeToLandingOrApp()
