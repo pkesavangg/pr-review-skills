@@ -381,7 +381,7 @@ struct GraphView: View {
             )
             .zIndex(-100)
             .foregroundStyle(theme.actionSecondary)
-            .lineStyle(StrokeStyle(lineWidth: 2))
+            .lineStyle(StrokeStyle(lineWidth: 1))
         }
     }
 
