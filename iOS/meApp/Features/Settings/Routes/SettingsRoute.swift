@@ -43,7 +43,8 @@ enum SettingsRoute: Routable {
         case .scaleBluetoothScreen(let scale):
             ScaleBluetoothScreen(scale: scale)
         case .wifi(let scale):
-            WifiScreen(scale: scale)
+            let sku = scale.sku ?? "default"
+            BtWifiScaleSetupScreen(sku: sku, discoveredScale: nil, discoveryEvent: nil, savedScale: scale)
         case .wifiCredentials(let wifiName):
             WifiCredentialsView(wifiName: wifiName)
         case .editProfile:
