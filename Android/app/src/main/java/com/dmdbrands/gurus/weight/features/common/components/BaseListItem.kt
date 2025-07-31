@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,92 +45,93 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.typography
  */
 @Composable
 fun BaseListItem(
-    title: String,
-    modifier: Modifier = Modifier,
-    subTitle: String? = null,
-    leadingContent: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null,
-    enableCheckbox: Boolean = false,
-    checkboxDescription: String? = null,
-    isChecked: Boolean = false,
-    enabled: Boolean = true,
-    trailingAction: ActionButton? = null,
-    shape: Shape = RectangleShape,
-    onClick: (() -> Unit)? = null,
+  title: String,
+  modifier: Modifier = Modifier,
+  subTitle: String? = null,
+  leadingContent: @Composable (() -> Unit)? = null,
+  trailingContent: @Composable (() -> Unit)? = null,
+  enableCheckbox: Boolean = false,
+  checkboxDescription: String? = null,
+  isChecked: Boolean = false,
+  enabled: Boolean = true,
+  trailingAction: ActionButton? = null,
+  shape: Shape = RectangleShape,
+  onClick: (() -> Unit)? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .background(colorScheme.primaryBackground, shape)
-                .clip(shape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = LocalIndication.current,
-                    enabled = enabled,
-                    onClick = { onClick?.invoke() },
-                ).padding(
-                    start = spacing.sm,
-                    top = spacing.sm,
-                    bottom = spacing.sm,
-                    end = if (trailingAction == null) spacing.sm else 0.dp,
-                ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        leadingContent?.invoke()
+  remember { MutableInteractionSource() }
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .background(colorScheme.primaryBackground, shape)
+        .clip(shape)
+        .debounceClick(
+          // interactionSource = interactionSource,
+          // indication = LocalIndication.current,
+          // enabled = enabled,
+          onClick = { onClick?.invoke() },
+        )
+        .padding(
+          start = spacing.sm,
+          top = spacing.sm,
+          bottom = spacing.sm,
+          end = if (trailingAction == null) spacing.sm else 0.dp,
+        ),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    leadingContent?.invoke()
 
-        Spacer(modifier = Modifier.width(spacing.md))
+    Spacer(modifier = Modifier.width(spacing.md))
 
-        // Content section with title and subtitle
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style =
-                    typography.body2.copy(
-                        color = colorScheme.textBody,
-                    ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subTitle != null) {
-                Spacer(modifier = Modifier.height(spacing.x3s))
-                Text(
-                    text = subTitle,
-                    style =
-                        typography.subHeading2.copy(
-                            color = colorScheme.textSubheading,
-                        ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        // Checkbox section
-        if (enableCheckbox) {
-            AppIcon(
-                id = if (isChecked) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                contentDescription = checkboxDescription ?: "",
-                type = AppIconType.Primary,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-
-        // Trailing action button
-        if (trailingAction != null) {
-            AppButton(
-                label = trailingAction.text,
-                onClick = trailingAction.action,
-                type = ButtonType.TextPrimary,
-                size = ButtonSize.Small,
-                textTransform = TextTransform.NONE,
-            )
-        }
-
-        // Custom trailing content
-        trailingContent?.invoke()
+    // Content section with title and subtitle
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = title,
+        style =
+          typography.body2.copy(
+            color = colorScheme.textBody,
+          ),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      if (subTitle != null) {
+        Spacer(modifier = Modifier.height(spacing.x3s))
+        Text(
+          text = subTitle,
+          style =
+            typography.subHeading2.copy(
+              color = colorScheme.textSubheading,
+            ),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
     }
+
+    // Checkbox section
+    if (enableCheckbox) {
+      AppIcon(
+        id = if (isChecked) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+        contentDescription = checkboxDescription ?: "",
+        type = AppIconType.Primary,
+        modifier = Modifier.size(24.dp),
+      )
+    }
+
+    // Trailing action button
+    if (trailingAction != null) {
+      AppButton(
+        label = trailingAction.text,
+        onClick = trailingAction.action,
+        type = ButtonType.TextPrimary,
+        size = ButtonSize.Small,
+        textTransform = TextTransform.NONE,
+      )
+    }
+
+    // Custom trailing content
+    trailingContent?.invoke()
+  }
 }
 
 // region: Preview
@@ -140,108 +139,108 @@ fun BaseListItem(
 @PreviewTheme
 @Composable
 fun BaseListItemAllCombinationsPreview() {
-    MeAppTheme {
-        Column {
-            // Simple title only
-            BaseListItem(
-                title = "Title Only",
-                modifier = Modifier,
-            )
-            // Title + Subtitle
-            BaseListItem(
-                title = "Title with Subtitle",
-                subTitle = "Subtitle text",
-                modifier = Modifier,
-            )
-            // Leading content
-            BaseListItem(
-                title = "With Leading",
-                leadingContent = {
-                    AppIcon(
-                        id = AppIcons.Default.Close,
-                        contentDescription = "User Icon",
-                        modifier = Modifier.size(24.dp),
-                        type = AppIconType.Primary,
-                    )
-                },
-                modifier = Modifier,
-            )
-            // Trailing content
-            BaseListItem(
-                title = "With Trailing",
-                trailingContent = {
-                    AppIcon(
-                        id = AppIcons.Default.RightCaret,
-                        contentDescription = "Right Arrow",
-                        modifier = Modifier.size(24.dp),
-                        type = AppIconType.Secondary,
-                    )
-                },
-                modifier = Modifier,
-            )
-            // Checkbox (unchecked)
-            BaseListItem(
-                title = "With Checkbox",
-                enableCheckbox = true,
-                isChecked = false,
-                checkboxDescription = "Select item",
-                modifier = Modifier,
-            )
-            // Checkbox (checked)
-            BaseListItem(
-                title = "Checked Checkbox",
-                enableCheckbox = true,
-                isChecked = true,
-                checkboxDescription = "Select item",
-                modifier = Modifier,
-            )
-            // Trailing action button
-            BaseListItem(
-                title = "With Action Button",
-                trailingAction =
-                    ActionButton(
-                        text = "Action",
-                        action = {},
-                    ),
-                modifier = Modifier,
-            )
-            // Disabled state
-            BaseListItem(
-                title = "Disabled Item",
-                enabled = false,
-                modifier = Modifier,
-            )
-            // All features combined
-            BaseListItem(
-                title = "All Features",
-                subTitle = "Subtitle",
-                leadingContent = {
-                    AppIcon(
-                        id = AppIcons.Default.RightCaret,
-                        contentDescription = "User Icon",
-                        modifier = Modifier.size(24.dp),
-                        type = AppIconType.Primary,
-                    )
-                },
-                trailingContent = {
-                    AppIcon(
-                        id = AppIcons.Default.RightCaret,
-                        contentDescription = "Right Arrow",
-                        modifier = Modifier.size(24.dp),
-                        type = AppIconType.Secondary,
-                    )
-                },
-                enableCheckbox = true,
-                isChecked = true,
-                checkboxDescription = "Select item",
-                trailingAction =
-                    ActionButton(
-                        text = "Action",
-                        action = {},
-                    ),
-                enabled = true,
-                modifier = Modifier,
-            )
-        }
+  MeAppTheme {
+    Column {
+      // Simple title only
+      BaseListItem(
+        title = "Title Only",
+        modifier = Modifier,
+      )
+      // Title + Subtitle
+      BaseListItem(
+        title = "Title with Subtitle",
+        subTitle = "Subtitle text",
+        modifier = Modifier,
+      )
+      // Leading content
+      BaseListItem(
+        title = "With Leading",
+        leadingContent = {
+          AppIcon(
+            id = AppIcons.Default.Close,
+            contentDescription = "User Icon",
+            modifier = Modifier.size(24.dp),
+            type = AppIconType.Primary,
+          )
+        },
+        modifier = Modifier,
+      )
+      // Trailing content
+      BaseListItem(
+        title = "With Trailing",
+        trailingContent = {
+          AppIcon(
+            id = AppIcons.Default.RightCaret,
+            contentDescription = "Right Arrow",
+            modifier = Modifier.size(24.dp),
+            type = AppIconType.Secondary,
+          )
+        },
+        modifier = Modifier,
+      )
+      // Checkbox (unchecked)
+      BaseListItem(
+        title = "With Checkbox",
+        enableCheckbox = true,
+        isChecked = false,
+        checkboxDescription = "Select item",
+        modifier = Modifier,
+      )
+      // Checkbox (checked)
+      BaseListItem(
+        title = "Checked Checkbox",
+        enableCheckbox = true,
+        isChecked = true,
+        checkboxDescription = "Select item",
+        modifier = Modifier,
+      )
+      // Trailing action button
+      BaseListItem(
+        title = "With Action Button",
+        trailingAction =
+          ActionButton(
+            text = "Action",
+            action = {},
+          ),
+        modifier = Modifier,
+      )
+      // Disabled state
+      BaseListItem(
+        title = "Disabled Item",
+        enabled = false,
+        modifier = Modifier,
+      )
+      // All features combined
+      BaseListItem(
+        title = "All Features",
+        subTitle = "Subtitle",
+        leadingContent = {
+          AppIcon(
+            id = AppIcons.Default.RightCaret,
+            contentDescription = "User Icon",
+            modifier = Modifier.size(24.dp),
+            type = AppIconType.Primary,
+          )
+        },
+        trailingContent = {
+          AppIcon(
+            id = AppIcons.Default.RightCaret,
+            contentDescription = "Right Arrow",
+            modifier = Modifier.size(24.dp),
+            type = AppIconType.Secondary,
+          )
+        },
+        enableCheckbox = true,
+        isChecked = true,
+        checkboxDescription = "Select item",
+        trailingAction =
+          ActionButton(
+            text = "Action",
+            action = {},
+          ),
+        enabled = true,
+        modifier = Modifier,
+      )
     }
+  }
 }

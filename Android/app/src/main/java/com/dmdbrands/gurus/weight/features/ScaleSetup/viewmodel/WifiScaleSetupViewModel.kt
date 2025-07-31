@@ -14,7 +14,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupPath
-import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScalePasswordFormControls
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupReducer
@@ -73,12 +72,9 @@ constructor(
   }
 
   private val TAG = "WifiScaleSetupViewModel"
-  private var isPermissionGranted = false
-  private var currentSetupState: SetupState<WifiScaleSetupStep> = SetupState(WifiScaleSetupStep.SCALE_INFO)
 
   // WiFi setup properties
   private var scaleToken: String? = null
-  private var userNumber: Int? = null
   private var wifiStatus: WifiStatus? = null
   private var lastSsid: String? = null
   private var mac: String? = null
@@ -87,7 +83,6 @@ constructor(
   private var wifiSetupType: WifiSetupType = WifiSetupType.FIRST
   private var isDestroyed = false
   private var isWifiSwitchingContext = false // Track if we're in WiFi switching context
-  private var isNavigatingBack = false // Track if we're navigating back to prevent auto-navigation
 
   init {
     // Convert wifiSetupTypeString to WifiSetupType enum
@@ -164,19 +159,7 @@ constructor(
     viewModelScope.launch {
       subscribePermissions(true).collect { permissions ->
         handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
-        if (isPermissionGranted != areRequiredPermissionsEnabled) {
-          isPermissionGranted = areRequiredPermissionsEnabled
-        }
-        if (!areRequiredPermissionsEnabled && !state.value.permissionsSkipped) {
-          if (state.value.currentStep != WifiScaleSetupStep.PERMISSIONS &&
-            state.value.currentStep != WifiScaleSetupStep.SCALE_INFO && state.value.currentStep != WifiScaleSetupStep.SWITCH_WIFI
-          ) {
-            handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.PERMISSIONS))
-          }
-        } else {
-          handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-        }
+        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
       }
     }
   }
@@ -251,7 +234,11 @@ constructor(
 
             WifiScaleSetupStep.SWITCH_WIFI -> {
               val canProceed = isConnectedToScaleWifi()
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+              if (!state.value.permissionsSkipped || state.value.isGetMACSetup) {
+                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+              } else {
+                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+              }
             }
 
             WifiScaleSetupStep.MAC_ADDRESS -> {
@@ -300,12 +287,6 @@ constructor(
         }
 
         previousStep = currentStep
-
-        // Reset navigating back flag after step change is processed
-        if (isNavigatingBack) {
-          isNavigatingBack = false
-          AppLog.d(TAG, "Reset isNavigatingBack flag after step change")
-        }
       }
     }
   }
@@ -375,19 +356,19 @@ constructor(
   ) {
     if (isSetupFinished) {
       navigateBack()
-    } else {
-      dialogQueueService.enqueue(
-        DialogModel.Confirm(
-          title = ScaleSetupStrings.ExitSetupAlert.Title,
-          message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
-          confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
-          onConfirm = {
-            navigateBack()
-          },
-        ),
-      )
+      return
     }
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleSetupStrings.ExitSetupAlert.Title,
+        message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
+        confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+        onConfirm = {
+          navigateBack()
+        },
+      ),
+    )
   }
 
   /**
@@ -429,7 +410,7 @@ constructor(
   private fun navigateBack() {
     viewModelScope.launch {
       try {
-        // navigationService.navigateBack()
+        navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
@@ -567,6 +548,7 @@ constructor(
         WifiSetupInfo(
           ssid = currentState.wifiPasswordForm.ssid.value,
           password = if (hasPassword) currentState.wifiPasswordForm.password.value else "",
+          userNumber = currentUserNumber,
           token = scaleToken,
         )
       }
@@ -604,8 +586,6 @@ constructor(
 
         val info = getSetupInfo(setupType)
         wifiScaleService.stop()
-
-        Log.d("setuwifiinfo3", info.toString())
         connectedSsid = info.ssid
         connectedBssid = info.bssid
 
@@ -637,10 +617,8 @@ constructor(
       try {
         val info = getSetupInfo(WifiSetupType.CHANGE)
         wifiScaleService.stop()
-        Log.d("connectwifi2", info.toString())
         info.ssid = connectedSsid ?: info.ssid
         info.bssid = connectedBssid ?: info.bssid
-
         wifiScaleService.connect(
           setupInfo = info,
           setupType = WifiSetupType.CHANGE,
@@ -872,7 +850,7 @@ constructor(
 
       "Save" -> saveScale()
 
-      "Close" -> {
+      "Finish", "close", "exit" -> {
         startExitSetup()
         return
       }
@@ -887,9 +865,6 @@ constructor(
    */
   private fun onBack() {
     val currentState = state.value
-
-    // Set navigating back flag to prevent automatic navigation
-    isNavigatingBack = true
 
     // Handle MAC setup back navigation
     if (currentState.isGetMACSetup) {
@@ -941,11 +916,6 @@ constructor(
           return
         }
 
-        WifiScaleSetupStep.SCALE_CONNECTED -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-          return
-        }
-
         WifiScaleSetupStep.STEP_ON -> {
           handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           return
@@ -964,12 +934,7 @@ constructor(
       }
 
       WifiScaleSetupStep.WIFI_PASSWORD -> {
-        // Special back navigation for WiFi password step
-        if (isPermissionGranted && !currentState.wifiStatus?.ssid.isNullOrEmpty()) {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText("Start"))
-        } else {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        }
+        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
         return
       }
 
@@ -999,15 +964,6 @@ constructor(
 
       WifiScaleSetupStep.MAC_ADDRESS -> {
         handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        return
-      }
-
-      WifiScaleSetupStep.SCALE_CONNECTED -> {
-        if (currentState.showApMode) {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Save))
-        } else {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        }
         return
       }
 
@@ -1070,22 +1026,7 @@ constructor(
       }
 
       WifiScaleSetupStep.MAC_ADDRESS -> {
-        // From MAC_ADDRESS, get MAC address and exit
-        viewModelScope.launch {
-          try {
-            AppLog.d(TAG, "Getting MAC address in MAC setup mode")
-            val macAddress = getMacAddress()
-            if (macAddress != null) {
-              AppLog.d(TAG, "MAC address retrieved: $macAddress")
-              handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
-              // Exit setup after getting MAC address
-            } else {
-              AppLog.w(TAG, "Failed to get MAC address")
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error getting MAC address", e.toString())
-          }
-        }
+        navigateBack()
       }
 
       else -> {
@@ -1114,7 +1055,6 @@ constructor(
         deviceService.saveScale(wifiDevice)
       }
     } catch (e: Exception) {
-      Log.d("savescale2", e.toString())
     }
   }
 
@@ -1127,7 +1067,6 @@ constructor(
       try {
         checkAndSaveScale()
       } catch (e: Exception) {
-        Log.d("savescale", e.toString())
         AppLog.e(TAG, "Error saving scale", e.toString())
       }
     }
@@ -1351,31 +1290,12 @@ constructor(
   }
 
   /**
-   * Resets the WiFi switching context flag.
-   * This can be called externally to reset the context when needed.
-   */
-  fun resetWifiSwitchingContext() {
-    isWifiSwitchingContext = false
-    AppLog.d(TAG, "WiFi switching context flag reset manually")
-  }
-
-  /**
-   * Resets the navigating back flag.
-   * This can be called externally to reset the flag when needed.
-   */
-  fun resetNavigatingBackFlag() {
-    isNavigatingBack = false
-    AppLog.d(TAG, "Navigating back flag reset manually")
-  }
-
-  /**
    * Cleanup method called when ViewModel is destroyed.
    */
   override fun onCleared() {
     super.onCleared()
     isDestroyed = true
     isWifiSwitchingContext = false // Reset WiFi switching context flag
-    isNavigatingBack = false // Reset navigating back flag
     wifiScaleService.stop()
   }
 }

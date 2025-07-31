@@ -144,14 +144,15 @@ fun WifiScaleSetupScreenContent(
           state.canProceedToNext
         }
 
-      WifiScaleSetupStep.SWITCH_WIFI ->
-        if (state.isGetMACSetup) {
+      WifiScaleSetupStep.SWITCH_WIFI -> {
+        if (state.isGetMACSetup || !state.permissionsSkipped) {
           // MAC setup flow - check if connected to scale WiFi
           state.scaleNetworkForm.ssid.value.isNotEmpty()
         } else {
           // Normal flow - check if connected to scale WiFi
           state.canProceedToNext
         }
+      }
 
       WifiScaleSetupStep.MAC_ADDRESS ->
         if (state.isGetMACSetup) {
@@ -162,17 +163,13 @@ fun WifiScaleSetupScreenContent(
           !state.showError
         }
 
-      WifiScaleSetupStep.SCALE_CONNECTED ->
-        // Normal flow only - can proceed
-        state.canProceedToNext
-
       WifiScaleSetupStep.STEP_ON ->
         // Normal flow only - can proceed
         state.canProceedToNext
 
       WifiScaleSetupStep.SETUP_FINISHED ->
         // All flows - can proceed
-        state.canProceedToNext
+        true
 
       else -> state.canProceedToNext
     }
@@ -389,8 +386,8 @@ fun WifiScaleSetupScreenContent(
             SetupContent(
               title = WifiScaleSetupStrings.ScaleCount.Title,
               subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-              isGifImage = true,
-              supportingImage = AppIcons.Setup.WifiCountOn,
+              // isGifImage = true,
+              // supportingImage = AppIcons.Setup.WifiCountOn,
             )
           }
 
@@ -459,12 +456,8 @@ fun WifiScaleSetupScreenContent(
             SetupContent(
               title = WifiScaleSetupStrings.SetupFinished.Title,
               subtitle = WifiScaleSetupStrings.SetupFinished.Message,
-              supportingImage = AppIcons.Outlined.CheckedCircle,
+              setupFinished = true,
             )
-          }
-
-          else -> {
-            // Placeholder for other steps
           }
         }
       },

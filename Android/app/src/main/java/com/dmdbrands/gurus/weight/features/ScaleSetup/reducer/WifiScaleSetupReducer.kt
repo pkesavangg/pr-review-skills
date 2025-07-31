@@ -82,8 +82,7 @@ data class WifiScaleSetupState(
     WifiScaleSetupStep.ERROR_GUIDE,
     WifiScaleSetupStep.ERROR_CODE_SELECTED,
     WifiScaleSetupStep.TROUBLE_SHOOTING,
-
-    ),
+  ),
   val isLoading: Boolean = false,
   val error: String? = null,
   val isSetupFinished: Boolean = false,
@@ -187,42 +186,53 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
       is WifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
       is WifiScaleSetupIntent.SetError -> state.copy(error = intent.error)
       is WifiScaleSetupIntent.Next -> {
-        var nextIndex = state.currentStepIndex + 1
-        // Special handling for ERROR_GUIDE step
-        if (state.currentStep == WifiScaleSetupStep.ERROR_GUIDE && state.selectedErrorCode != null) {
-          // If error code is selected, navigate to ERROR_CODE_SELECTED step
+        // If we're on SETUP_FINISHED, don't advance further, just set isLastStep
+        if (state.currentStep == WifiScaleSetupStep.SETUP_FINISHED) {
           state.copy(
-            currentStep = WifiScaleSetupStep.ERROR_CODE_SELECTED,
-            canProceedToNext = true,
-            error = null,
-            nextButtonText = "Next",
+            isLastStep = true,
+            canProceedToNext = false,
           )
-        } else if (nextIndex < state.steps.size && !state.isLastStep) {
-          if (state.currentStep == WifiScaleSetupStep.WIFI_PASSWORD && state.isGetMACSetup) {
-            // user selection skipped
-            nextIndex = nextIndex + 1
-          } else if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode != "apmode") {
-            // gg wifi connection switch
-            nextIndex = nextIndex + 1
-          }
-          if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI && state.isGetMACSetup) {
+        } else {
+          var nextIndex = state.currentStepIndex + 1
+          // Special handling for ERROR_GUIDE step
+          if (state.currentStep == WifiScaleSetupStep.ERROR_GUIDE && state.selectedErrorCode != null) {
             state.copy(
-              currentStep = WifiScaleSetupStep.MAC_ADDRESS,
+              currentStep = WifiScaleSetupStep.ERROR_CODE_SELECTED,
               canProceedToNext = true,
-              isLastStep = true,
               error = null,
               nextButtonText = "Next",
+              isLastStep = false,
             )
           } else {
-            state.copy(
-              currentStep = state.steps[nextIndex],
-              canProceedToNext = true, // Reset for next step
-              error = null,
-              nextButtonText = "Next", // Reset button text
-            )
+            // --- SPECIAL CASES ---
+            if (state.currentStep == WifiScaleSetupStep.WIFI_PASSWORD && state.isGetMACSetup) {
+              nextIndex += 1
+            } else if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode != "apmode") {
+              nextIndex += 1
+            } else if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI && state.isGetMACSetup) {
+              nextIndex += 3
+              state.copy(
+                currentStep = state.steps[nextIndex],
+                canProceedToNext = false,
+                isLastStep = true,
+                error = null,
+              )
+            }
+            // --- END SPECIAL CASES ---
+            if (nextIndex < state.steps.size && !state.isLastStep) {
+              val nextStep = state.steps[nextIndex]
+              state.copy(
+                currentStep = nextStep,
+                isLastStep = nextStep == WifiScaleSetupStep.SETUP_FINISHED,
+                canProceedToNext = nextStep != WifiScaleSetupStep.SETUP_FINISHED,
+                error = null,
+                nextButtonText = "Next",
+              )
+            } else {
+              // Already at last step, don't advance
+              state.copy(isLastStep = true)
+            }
           }
-        } else {
-          state.copy(error = null, isSetupFinished = state.isLastStep) // No change if at last step or can't proceed
         }
       }
 

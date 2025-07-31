@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.core.config.NotificationConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.greatergoods.notification.NotificationService
 import com.greatergoods.notification.model.BuilderConfig
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,7 @@ class NotificationManager(
   private val context: Context,
   private val notificationService: NotificationService,
   private val appRepository: IAppRepository,
+  private val entryService: IEntryService
 ) {
 
   /**
@@ -32,6 +34,10 @@ class NotificationManager(
   fun createChannels() {
     val channels = generateBuilderConfig()
     notificationService.createInstance(channels)
+  }
+
+  suspend fun fetchEntries() {
+    entryService.syncOperations()
   }
 
   /**

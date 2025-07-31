@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -230,6 +232,18 @@ constructor(
           }
 
           // handle other AuthState events as needed
+          else -> {}
+        }
+      }
+    }
+    viewModelScope.launch {
+      AppNotificationEventService.events.collect {
+        when (it) {
+          NotificationEventType.NOTIFICATION_RECEIVED -> {
+            entryService.syncOperations()
+            dialogQueueService.showToast(Toast("Entry added", "Success!"))
+          }
+
           else -> {}
         }
       }

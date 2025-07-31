@@ -133,7 +133,8 @@ object ServiceModule {
     @ApplicationContext context: Context,
     notificationService: GGNotificationService,
     appRepository: IAppRepository,
-  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository)
+    entryService: IEntryService
+  ): GGNotificationManager = GGNotificationManager(context, notificationService, appRepository, entryService)
 
   /**
    * Provides a singleton instance of [LogManager] for logging operations.
