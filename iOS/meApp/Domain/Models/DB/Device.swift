@@ -56,9 +56,9 @@ final class Device {
     var token: String? // Token for scale authentication
 
     // Relationships
-    @Relationship(deleteRule: .cascade) var bathScale: BathScale?
+    @Relationship(deleteRule: .cascade, inverse: \BathScale.device) var bathScale: BathScale?
     @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
-    @Relationship(deleteRule: .cascade) var metaData: DeviceMetaData?
+    @Relationship(deleteRule: .cascade, inverse: \DeviceMetaData.device) var metaData: DeviceMetaData?
 
     init(id: String,
          accountId: String,
@@ -134,6 +134,20 @@ final class Device {
             r4Preference = R4ScalePreference(from: preference, scaleId: id)
         }
 
+        var metaData: DeviceMetaData? = nil
+        if let metaDataDto = dto.metaData {
+            metaData = DeviceMetaData(from: metaDataDto)
+        }
+
+        // Resolve scale type:
+        // • Prefer the explicit `scaleType` parameter when provided (e.g. during new-device pairing)
+        // • Fallback to `dto.type` coming from the backend when syncing existing devices
+        var bathScale: BathScale? = nil
+        let resolvedScaleType = scaleType ?? dto.type
+        if let resolvedScaleType {
+            bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
+        }
+
         self.init(
             id: id,
             accountId: dto.userId ?? "",
@@ -157,14 +171,20 @@ final class Device {
             wifiMac: dto.metaData?.wifiMac,
             isWifiConfigured: dto.isWifiConfigured,
             token: dto.scaleToken,
-            bathScale: BathScale(scaleType: dto.type, bodyComp: bodyComp),
+            bathScale: bathScale,
             r4ScalePreference: r4Preference,
-            metaData: dto.metaData.map { DeviceMetaData(from: $0) }
+            metaData: metaData
         )
 
         // Set the device reference after initialization
         if let preference = self.r4ScalePreference {
             preference.device = self
+        }
+        if let scale = self.bathScale {
+            scale.device = self
+        }
+        if let metaData = self.metaData {
+            metaData.device = self
         }
 
         if let broadcastId = self.broadcastId {

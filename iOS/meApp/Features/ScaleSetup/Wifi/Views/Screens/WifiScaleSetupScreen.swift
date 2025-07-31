@@ -88,7 +88,7 @@ struct WifiScaleSetupScreen: View {
         }
         .overlay {
             HStack {
-                if setupStore.currentStep == .permissions {
+                if setupStore.currentStep == .permissions && !setupStore.isForGetMac {
                     ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .
                                large, isDisabled: false, action: {
                         setupStore.handleSkipWifiStep()

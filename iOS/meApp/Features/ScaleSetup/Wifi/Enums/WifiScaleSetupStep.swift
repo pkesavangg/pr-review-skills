@@ -12,18 +12,20 @@ enum WifiScaleSetupStep: Int, CaseIterable {
     case selectUser
     /// Pairing mode activation.
     case activatePairingMode
-    /// User confirmation.
-    case userConfirm
+    /// Connection confirmation.
+    case connectionConfirm
     /// AP mode.
     case apMode
     /// AP mode confirmation.
     case apModeConfirm
-    /// Step on scale.
-    case stepOn
     /// Error selection.
     case errorSelect
     /// Error details.
     case errorDetail
+    ///  Copy MAC address to clipboard.
+    case copyMacAddress
+    /// Step on scale.
+    case stepOn
     /// Setup finished.
     case setupFinish
 

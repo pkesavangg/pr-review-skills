@@ -12,21 +12,26 @@ struct BtWifiScaleSetupScreen: View {
     // MARK: - State & Environment
     @StateObject private var setupStore = BtWifiScaleSetupStore()
     @Environment(\.appTheme) private var theme
+    // Registers a de-activation handler so the BottomTabBarView can ask whether it is
+    // safe to leave this screen when the user taps another tab.
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @Environment(\.dismiss) private var dismiss
     
     // MARK: - Input
     let sku: String
     let discoveredScale: Device?
     let discoveryEvent: DeviceDiscoveryEvent?
+    let savedScale: Device? // if the scale was previously saved in settings open the BtWifiScaleSetup for the wifi setup
     let commonLang = CommonStrings.self
     
     private let scaleSetupLang = ScaleSetupStrings.self
     
     // Custom init so callers can omit optional params.
-    init(sku: String, discoveredScale: Device? = nil, discoveryEvent: DeviceDiscoveryEvent? = nil) {
+    init(sku: String, discoveredScale: Device? = nil, discoveryEvent: DeviceDiscoveryEvent? = nil, savedScale: Device? = nil) {
         self.sku = sku
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
+        self.savedScale = savedScale
     }
     
     private var stepViews: [AnyView] { setupStore.stepViews }
@@ -49,7 +54,7 @@ struct BtWifiScaleSetupScreen: View {
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: savedScale == nil, // Show back button only if not opening from saved scale
             )
             
             // Step views with swiper
@@ -71,13 +76,23 @@ struct BtWifiScaleSetupScreen: View {
         }
         .environmentObject(setupStore)
         .onAppear {
+            // Register a tab de-activation handler so attempts to switch tabs while the
+            // Wi-Fi setup flow is active will first show the exit confirmation alert.
+            registerDeactivation {
+                await setupStore.confirmExit()
+            }
             setupStore.dismissAction = dismiss
             setupStore.configure(with: sku,
                                  discoveredScale: discoveredScale,
-                                 discoveryEvent: discoveryEvent)
+                                 discoveryEvent: discoveryEvent,
+                                 saveScale: savedScale)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        // Clear the deactivation handler when the view disappears to avoid stale closures.
+        .onDisappear {
+            registerDeactivation { true }
+        }
     }
     
     private var footerButtons: some View {

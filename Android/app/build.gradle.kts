@@ -16,11 +16,11 @@ plugins {
 }
 
 android {
-  namespace = "com.greatergoods.meapp"
+  namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.greatergoods.meapp"
+    applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
@@ -145,6 +145,7 @@ dependencies {
   implementation(project(":app:healthconnect"))
   implementation(project(":app:appsync"))
   implementation(project(":bleWrapper"))
+  implementation(project(":app:wificonnect"))
 
   // implementation(project(":ggBluetoothLibrary"))
   // Play Store Review
@@ -152,8 +153,10 @@ dependencies {
   implementation(libs.play.review.ktx)
 
   // Vico charts
-  implementation(libs.vico.compose)
-  implementation(libs.vico.compose.m3)
+
+  implementation("com.dmdbrands.lib:vico-core:1.1.0-alpha8")
+  implementation("com.dmdbrands.lib:vico-compose:1.1.0-alpha8")
+  implementation("com.dmdbrands.lib:vico-compose-m3:1.1.0-alpha8")
 
   // Gif Image
   implementation(libs.coil.compose)       // For Jetpack Compose

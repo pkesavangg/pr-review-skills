@@ -24,7 +24,7 @@ struct ConnectingBluetoothView: View {
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.leading)
                         .lineLimit(nil)
-
+                    
                     Text(lang.description)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
@@ -33,9 +33,11 @@ struct ConnectingBluetoothView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                GifView(gifName: appAssets.setupPressUnitButtonGifName(sku))
-                    .frame(height: 211)
-                    .frame(maxWidth: .infinity)
+                VStack(alignment: .center) {
+                    GifView(gifName: appAssets.setupPressUnitButtonGifName(sku), height: 250)
+                        .frame(width: 370, height: 250)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
                 
                 // Connection state content
                 switch connectionState {

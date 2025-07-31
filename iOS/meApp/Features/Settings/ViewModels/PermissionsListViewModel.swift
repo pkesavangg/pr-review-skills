@@ -7,6 +7,7 @@ import Combine // Added for Combine
 class PermissionsListViewModel: ObservableObject {
     @Injector var permissionsService: PermissionsService
     @Injector var loggerService: LoggerService
+    @Injector var wifiScaleService: WifiScaleService
     
     // MARK: Published Permission Flags
     @Published var bluetoothAuthorized: Bool = false
@@ -16,6 +17,7 @@ class PermissionsListViewModel: ObservableObject {
     @Published var cameraAuthorized: Bool = true
     @Published var notificationsEnabled: Bool = true
     @Published var internetConnected: Bool = false
+    @Published var wifiSwitchEnabled: Bool = false
     // Holds the currently connected Wi-Fi SSID (nil if not connected)
     @Published var wifiNetworkName: String? = nil
     
@@ -32,12 +34,18 @@ class PermissionsListViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] permissionDict in
                 self?.apply(permissionDict)
+                Task {
+                    self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
+                }
             }
             .store(in: &cancellables)
         NetworkMonitor.shared.$isConnected
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
                 self?.internetConnected = isConnected
+                Task {
+                    self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
+                }
             }
             .store(in: &cancellables)
     }
@@ -54,6 +62,7 @@ class PermissionsListViewModel: ObservableObject {
             cameraAuthorized = false
             notificationsEnabled = false
             internetConnected = false
+            wifiSwitchEnabled = false
             return
         }
         
@@ -68,6 +77,7 @@ class PermissionsListViewModel: ObservableObject {
         locationAuthorized      = isGranted(permissions[.LOCATION])
         cameraAuthorized        = isGranted(permissions[.CAMERA])
         notificationsEnabled    = isGranted(permissions[.NOTIFICATION])
+        wifiSwitchEnabled    = isGranted(permissions[.WIFI_SWITCH])
     }
     
     func handlePermission(_ type: PermissionType) {

@@ -26,7 +26,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
     private var lastYAxisScale: YAxisScale?
-    private var lastXAxisValues: [Date] = []
+    public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
 
@@ -34,14 +34,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         self.state = initialState
     }
 
-    func updateScrollPosition(to date: Date) async {
+    func updateScrollPosition(to date: Date) {
         guard !state.isScrolling else {
             return
         }
         state.xScrollPosition = date
     }
 
-    func handleScrollPositionChange(_ newPosition: Date?) async {
+    func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else { return }
         if state.isScrolling {
             latestScrollPosition = newPosition
@@ -50,7 +50,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    func handleScrollStart() async {
+    func handleScrollStart() {
         state.scrollEndTimer?.invalidate()
         if !state.isScrolling {
             state.isScrolling = true
@@ -139,9 +139,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Clear selection state for better UX
             state.clearSelection()
 
-            // Clear chart data cache to ensure fresh data for new visible range
-            clearChartDataCache()
-
              if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
@@ -169,15 +166,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             Task { @MainActor in
                 guard let self = self else { return }
 
-                // Clear chart data cache to ensure fresh data for new visible range
-                self.clearChartDataCache()
-
                 // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
+
+                self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
     }
@@ -262,15 +258,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return series
     }
 
-    // MARK: - Backward Compatibility
-    /// This method is kept for any external calls but logs a warning
-    /// The main chart generation should use generateChartDataWithYAxisDomain for consistency
-    func generateChartDataLegacy(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries] {
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Using legacy chart data generation - may cause metric line visibility issues during scroll")
-
-        // Call the original implementation (now moved above)
-        return generateChartData(from: operations, selectedMetric: selectedMetric, isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight, convertWeight: convertWeight)
-    }
 
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
 
@@ -375,16 +362,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Can use cached data: ranges are similar enough")
         return true
     }
-
-    /// Clears chart data cache to force regeneration with new parameters
-    func clearChartDataCache() {
-        lastChartData.removeAll()
-        lastChartDataWeightRange = nil
-        lastChartDataSelectedMetric = nil
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart data cache cleared")
-    }
-
-    // MARK: - Dynamic Metric Normalization (inspired by demo project)
 
     /// Generates normalized metric series using dynamic ranges based on actual data
     /// This approach ensures the metric line properly utilizes the weight range for better visibility
@@ -604,12 +581,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    func updateSelectedPeriod(_ period: TimePeriod) async {
+    func updateSelectedPeriod(_ period: TimePeriod) {
         state.selectedPeriod = period
         state.clearSelection()
-
-        // Clear chart data cache since period change means different operations and ranges
-        clearChartDataCache()
 
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
@@ -697,6 +671,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let allDates = operations.map { $0.date }
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
+
         let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 4)
         let calculatedEnd = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
         let visibleStart = max(calculatedStart, minDate)
@@ -707,10 +682,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCalculatedVisibleOps = visibleOps
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
+
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
+
         return visibleOps
     }
 
-    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async {
+    /// Forces recalculation of visible operations and clears cache
+    /// Use this after programmatically setting scroll position
+    func forceVisibleOperationsRecalculation() {
+        lastCalculatedVisibleOps = []
+        lastVisibleOpsScrollPosition = nil
+        lastVisibleOpsPeriod = nil
+        logger.log(level: .info, tag: "DashboardGraphManager", message: "Forced recalculation of visible operations after programmatic scroll position change")
+    }
+
+    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
         guard let latestDate = operations.map(\.date).max() else {
             return
         }
@@ -718,14 +705,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return
         }
         let boundedPosition = enforceScrollBoundaries(latestDate, from: operations)
-        await updateScrollPosition(to: boundedPosition)
+        updateScrollPosition(to: boundedPosition)
     }
 
-    func generateXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> [Date] {
-        let entryCount = operations.count
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
-        return DateTimeTools.generateXAxisValues(for: period, from: operations, shouldRepeat: shouldRepeat, entryCount: entryCount)
-    }
+
 
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
@@ -923,17 +906,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        let domainLength = visibleDomainLength(for: period)
+        // NEVER recalculate X-axis values during scrolling to prevent axis jumping
         if state.isScrolling {
-            if !lastXAxisValues.isEmpty,
-               let lastPosition = lastXAxisScrollPosition,
-               lastXAxisPeriod == period {
-                let positionChange = abs(scrollPosition.timeIntervalSince(lastPosition))
-                if positionChange < domainLength / 4 {
-                    return lastXAxisValues
-                }
+            if !lastXAxisValues.isEmpty && lastXAxisPeriod == period {
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll to prevent jumping")
+                return lastXAxisValues
             }
         }
+
+        let domainLength = visibleDomainLength(for: period)
         let allDates = operations.map(\.date)
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
         let buffer = domainLength * 2
@@ -955,19 +936,113 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastXAxisValues = xAxisValues
         lastXAxisScrollPosition = scrollPosition
         lastXAxisPeriod = period
+
         return xAxisValues
     }
 
+    /// Calculates the proper scroll position for chart initialization or segment changes
+    /// This ensures the scroll position aligns with the computed X-axis values
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
+        let allDates = operations.map(\.date)
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
+            return Date()
+        }
+
+        let domainLength = visibleDomainLength(for: period)
+
+        if showingLatest {
+            // For showing latest entries, start from the end and work backwards
+            // Calculate what the leftmost position should be to show recent data properly aligned
+            let targetEndDate = overallMaxDate
+            let targetStartDate = targetEndDate.addingTimeInterval(-domainLength * 0.75) // Show recent 75% of the domain
+
+            // Generate X-axis values for this range to find proper alignment
+            let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
+            let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
+
+            //Find the right most date and subract the period visisble length
+            let rightMostDate = xAxisValues.max()
+            let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
+            if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
+                return rightMostDateMinusPeriod
+            }
+            // Fallback to calculated position
+            return max(overallMinDate, targetStartDate)
+        } else {
+            // For other cases, use the beginning of data
+            return overallMinDate
+        }
+    }
+
+    /// Generates X-axis values for alignment calculation (internal helper)
+    private func generateXAxisValuesForAlignment(for period: TimePeriod, from operations: [BathScaleWeightSummary], centerPosition: Date) -> [Date] {
+        let allDates = operations.map(\.date)
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
+
+        let domainLength = visibleDomainLength(for: period)
+        let buffer = domainLength * 2
+        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2 - buffer))
+        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let entryCount = operations.count
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+
+        switch period {
+        case .week:
+            return generateVisibleWeeklyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .month:
+            return generateVisibleMonthlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .year:
+            return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
+        case .total:
+            return generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
+        }
+    }
+
+    /// Finds the optimal leftmost date from X-axis values
+    private func findOptimalLeftmostDate(from xAxisValues: [Date], targetStart: Date, domainLength: TimeInterval) -> Date? {
+        let targetEnd = targetStart.addingTimeInterval(domainLength)
+
+        // Find X-axis values that would be visible in our target range
+        let visibleXAxisValues = xAxisValues.filter { date in
+            date >= targetStart && date <= targetEnd
+        }
+
+        // If we have visible X-axis values, use the first one as our leftmost position
+        // This ensures the scroll position aligns with an actual X-axis tick
+        if let firstVisibleXAxis = visibleXAxisValues.first {
+            return firstVisibleXAxis
+        }
+
+        // If no X-axis values are in the target range, find the closest one before the target start
+        let beforeTarget = xAxisValues.filter { $0 <= targetStart }
+        if let closestBefore = beforeTarget.max() {
+            return closestBefore
+        }
+
+        // Fallback to the first available X-axis value
+        return xAxisValues.first
+    }
+
     private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
         var dates: [Date] = []
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .day, value: -1, to: visibleStart) ?? visibleStart
-        let totalWeeks = Int(ceil(visibleEnd.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week)) + 1
+
+        // Buffer logic: show from start of week (Sunday) of oldest entry to end of week (Saturday) of latest entry
+        let weekStartForOldest = calendar.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
+        let weekEndForLatest = calendar.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
+
+        // Calculate total weeks from start of oldest week to end of latest week
+        let timeInterval = weekEndForLatest.timeIntervalSince(weekStartForOldest)
+        let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
+
         for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
+            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
                 for dayOffset in 0..<7 {
                     if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
-                        if dayDate >= bufferStart && dayDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.day) {
+                        if dayDate >= weekStartForOldest && dayDate <= weekEndForLatest {
                             dates.append(dayDate)
                         }
                     }
@@ -978,15 +1053,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleMonthlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
         var dates: [Date] = []
-        let monthStart = calendar.dateInterval(of: .month, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .weekOfYear, value: -1, to: visibleStart) ?? visibleStart
-        let totalMonths = Int(ceil(visibleEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)) + 1
+
+        // Buffer logic: show from start of month of oldest entry to end of month of latest entry
+        let monthStartForOldest = calendar.dateInterval(of: .month, for: startDate)?.start ?? startDate
+        let monthEndForLatest = calendar.dateInterval(of: .month, for: endDate)?.end ?? endDate
+
+        // Calculate total months from start of oldest month to end of latest month
+        let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
+        let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
+
         for monthOffset in 0..<totalMonths {
-            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
+            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest) {
                 for weekOffset in 0..<5 {
                     if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= bufferStart && weekDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.week) {
+                        if weekDate >= monthStartForOldest && weekDate <= monthEndForLatest {
                             dates.append(weekDate)
                         }
                     }
@@ -997,15 +1082,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleYearlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
+        // Ensure dates are in correct order to prevent range errors
+        let startDate = min(visibleStart, visibleEnd)
+        let endDate = max(visibleStart, visibleEnd)
+
         var dates: [Date] = []
-        let yearStart = calendar.dateInterval(of: .year, for: visibleStart)?.start ?? visibleStart
-        let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
-        let totalYears = Int(ceil(visibleEnd.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year)) + 1
+
+        // Buffer logic: show from start of year of oldest entry to end of year of latest entry
+        let yearStartForOldest = calendar.dateInterval(of: .year, for: startDate)?.start ?? startDate
+        let yearEndForLatest = calendar.dateInterval(of: .year, for: endDate)?.end ?? endDate
+
+        // Calculate total years from start of oldest year to end of latest year
+        let timeInterval = yearEndForLatest.timeIntervalSince(yearStartForOldest)
+        let totalYears = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.year)))
+
         for yearOffset in 0..<totalYears {
-            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
+            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStartForOldest) {
                 for monthOffset in 0..<12 {
                     if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
-                        if monthDate >= bufferStart && monthDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                        if monthDate >= yearStartForOldest && monthDate <= yearEndForLatest {
                             dates.append(monthDate)
                         }
                     }
@@ -1016,16 +1111,36 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     private func generateVisibleTotalXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
+        // For datasets using yearly logic when entries are in same era
         if areEntriesInSameEra(operations) {
             return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
         } else {
+            // Multi-era datasets use quarterly logic with buffer
+            // Ensure dates are in correct order to prevent range errors
+            let startDate = min(visibleStart, visibleEnd)
+            let endDate = max(visibleStart, visibleEnd)
+
             var dates: [Date] = []
-            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: visibleStart)) ?? visibleStart
-            let bufferStart = calendar.date(byAdding: .month, value: -1, to: visibleStart) ?? visibleStart
-            let totalQuarters = Int(ceil(visibleEnd.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter)) + 1
+
+            // Buffer logic: show from start of quarter of oldest entry to end of quarter of latest entry
+            let quarterStartForOldest = calendar.date(from: calendar.dateComponents([.year, .month], from: startDate)) ?? startDate
+
+            // Calculate end of quarter for latest entry
+            let endDateComponents = calendar.dateComponents([.year, .month], from: endDate)
+            let endMonth = endDateComponents.month ?? 1
+            let endYear = endDateComponents.year ?? calendar.component(.year, from: endDate)
+
+            // Find the last month of the quarter containing the end date
+            let quarterEndMonth = ((endMonth - 1) / 3 + 1) * 3
+            let quarterEndForLatest = calendar.date(from: DateComponents(year: endYear, month: quarterEndMonth + 1, day: 1))?.addingTimeInterval(-1) ?? endDate
+
+            // Calculate total quarters from start of oldest quarter to end of latest quarter
+            let timeInterval = quarterEndForLatest.timeIntervalSince(quarterStartForOldest)
+            let totalQuarters = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.quarter)))
+
             for quarterOffset in 0..<totalQuarters {
-                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                    if quarterDate >= bufferStart && quarterDate <= visibleEnd.addingTimeInterval(DashboardConstants.TimeInterval.month) {
+                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStartForOldest) {
+                    if quarterDate >= quarterStartForOldest && quarterDate <= quarterEndForLatest {
                         dates.append(quarterDate)
                     }
                 }
@@ -1034,107 +1149,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    private func generateVisibleWeeklyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
-        var dates: [Date] = []
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: visibleStart)?.start ?? visibleStart
-        let totalWeeks = Int(ceil(visibleEnd.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week)) + 1
-        for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
-                for dayOffset in 0..<7 {
-                    if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
-                        if dayDate >= visibleStart && dayDate <= visibleEnd {
-                            dates.append(dayDate)
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateVisibleMonthlyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
-        var dates: [Date] = []
-        let monthStart = calendar.dateInterval(of: .month, for: visibleStart)?.start ?? visibleStart
-        let totalMonths = Int(ceil(visibleEnd.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month)) + 1
-        for monthOffset in 0..<totalMonths {
-            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
-                for weekOffset in 0..<5 {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= visibleStart && weekDate <= visibleEnd {
-                            dates.append(weekDate)
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateVisibleYearlyXAxis(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
-        var dates: [Date] = []
-        let yearStart = calendar.dateInterval(of: .year, for: visibleStart)?.start ?? visibleStart
-        let totalYears = Int(ceil(visibleEnd.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year)) + 1
-        for yearOffset in 0..<totalYears {
-            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
-                for monthOffset in 0..<12 {
-                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
-                        if monthDate >= visibleStart && monthDate <= visibleEnd {
-                            dates.append(monthDate)
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateVisibleTotalXAxis(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
-        if areEntriesInSameEra(operations) {
-            return generateVisibleYearlyXAxis(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
-        } else {
-            var dates: [Date] = []
-            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: visibleStart)) ?? visibleStart
-            let totalQuarters = Int(ceil(visibleEnd.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter)) + 1
-            for quarterOffset in 0..<totalQuarters {
-                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                    if quarterDate >= visibleStart && quarterDate <= visibleEnd {
-                        dates.append(quarterDate)
-                    }
-                }
-            }
-            return dates
-        }
-    }
 
     private func snapToNearestPosition() async {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
     }
 
-    func pastBufferFor(period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return DashboardConstants.TimeInterval.day * 1
-        case .month:
-            return DashboardConstants.TimeInterval.week * 1
-        case .year:
-            return DashboardConstants.TimeInterval.month * 1
-        case .total:
-            return DashboardConstants.TimeInterval.month * 2
-        }
-    }
-
-    func centeringBufferFor(period: TimePeriod) -> TimeInterval {
-        switch period {
-        case .week:
-            return DashboardConstants.TimeInterval.day * 3.5
-        case .month:
-            return DashboardConstants.TimeInterval.week * 2
-        case .year:
-            return DashboardConstants.TimeInterval.month * 2
-        case .total:
-            return DashboardConstants.TimeInterval.month * 3
-        }
-    }
 
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         let formatter = DateFormatter()
@@ -1149,21 +1168,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+        let startDay = calendar.component(.day, from: minDate)
+        let endDay = calendar.component(.day, from: maxDate)
+        let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
+        let endMonth = DateTimeTools.formatter("LLL").string(from: maxDate).lowercased()
+        let startYear = calendar.component(.year, from: minDate)
+        let endYear = calendar.component(.year, from: maxDate)
         switch period {
-        case .week:
-            let month = DateTimeTools.formatter("LLL").string(from: minDate)
-            let startDay = calendar.component(.day, from: minDate)
-            let endDay = calendar.component(.day, from: maxDate)
-            let year = calendar.component(.year, from: maxDate)
-            return "\(month) \(startDay)-\(endDay), \(year)"
-        case .month:
-            return DateTimeTools.formatter("LLL yyyy").string(from: minDate)
+        case .week, .month:
+            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         case .year:
-            return DateTimeTools.formatter("yyyy").string(from: minDate)
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         case .total:
-            let minYear = calendar.component(.year, from: minDate)
-            let maxYear = calendar.component(.year, from: maxDate)
-            return minYear == maxYear ? "\(minYear)" : "\(minYear)-\(maxYear)"
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         }
     }
 
@@ -1219,18 +1236,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return average
     }
 
-    func handleScrollPositionChange(_ newPosition: Date?, isScrolling: Bool, updateWeightDisplay: @escaping () -> Void) {
-        guard let newPosition = newPosition else { return }
-        state.xScrollPosition = newPosition
-        if !isScrolling {
-            updateWeightDisplay()
-        }
-    }
-
-    func handleScrollStart() {
-        guard !state.isScrolling else { return }
-        state.isScrolling = true
-    }
 
     func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
         state.scrollEndTimer?.invalidate()
@@ -1239,9 +1244,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 guard let self = self else { return }
                 self.state.isScrolling = false
                 self.state.hasDetectedScrollInCurrentGesture = false
-
-                // Clear chart data cache to ensure fresh data for new visible range
-                self.clearChartDataCache()
 
                 // Update weight display to show average of visible region
                 updateWeightDisplay()

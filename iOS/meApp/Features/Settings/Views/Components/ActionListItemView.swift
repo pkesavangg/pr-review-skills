@@ -47,6 +47,9 @@ struct ActionListItemView: View {
                     // Chevron based on type
                     chevronView()
                 }
+                // Force layout refresh whenever the badge visibility changes to
+                // avoid retaining previous leading spacing after the dot hides.
+                .id(config.showDot)
                 Spacer()
             }
             .frame(height: rowHeight)

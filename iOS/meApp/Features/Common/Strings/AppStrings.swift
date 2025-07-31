@@ -137,6 +137,9 @@ struct ToastStrings {
     static let synced = "Entries successfully resynced."
     static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
     static let resyncErrorTitle = "Not Connected to Wi-Fi"
+    static let internetRequiredTitle = "Internet Required"
+    static let internetRequiredMessage = "Internet required to connect Wi-Fi-scales"
+    static let genericError = "Sorry, something went wrong. Please try again later."
 }
 
 /// Constants for help modal strings used in the app
@@ -485,6 +488,7 @@ struct AlertStrings {
         static let title = "Are you sure you want to exit?"
         static let preConnectionExitMessage = "The scale will not be connected."
         static let postConnectionExitMessage = "If you exit early, you may not be able to access some features until set up."
+        static let wifiExitMessage = "Wi-Fi settings will not be updated."
         static let goBackButton = "Go Back"
         static let exitButton = "Exit"
     }
@@ -612,6 +616,8 @@ struct LoaderStrings {
     static let sendingLogs = "Sending logs..."
     static let resync = "Resyncing Data..."
     static let pleaseWait = "Please wait..."
+    /// Loader shown while retrieving the scale's MAC address.
+    static let gettingMacAddress = "Getting MAC address..."
 }
 
 struct URLStrings {
@@ -763,6 +769,14 @@ struct AppAssets {
     static let wifiStepOnGif: (String) -> String = { sku in
         sku == "0384" ? "0384-Sync" : "0396-Sync"
     }
+    static let wifiApMode: (String) -> String = { sku in
+        sku == "0384" ? "0384-Setup-Ap" : "0396-Setup-Ap"
+    }
+    static let wifiSetupComplete = "0396-Setup-Complete"
+    static func wifiSetupCompleteGifName(user: Int) -> String {
+        return "0384-Setup-u\(user)Complete"
+    }
+
 }
 
 /// Constants used in the AppSync entry result confirmation card
