@@ -98,11 +98,6 @@ fun WifiScaleSetupScreenContent(
       }
     }
   }
-  LaunchedEffect(state.currentStep) {
-    if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
-      onIntent(WifiScaleSetupIntent.CheckScaleWifiConnection)
-    }
-  }
 
   val isNextButtonEnabledForStep: Boolean =
     when (state.currentStep) {

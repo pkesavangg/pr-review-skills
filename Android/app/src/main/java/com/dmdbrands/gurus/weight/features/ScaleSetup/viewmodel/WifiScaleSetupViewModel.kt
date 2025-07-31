@@ -195,18 +195,19 @@ constructor(
             }
 
             WifiScaleSetupStep.WIFI_PASSWORD -> {
+              updateNetworkStatus()
               if (state.value.permissionsSkipped) {
                 clearWifiPasswordForm()
               }
               val canProceed = isWifiPasswordFormValid()
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+              // handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
             }
 
             WifiScaleSetupStep.SELECT_USER -> {
               val canProceed = isUserSelected()
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+              // handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
             }
 
             WifiScaleSetupStep.ACTIVATE_SCALE -> {
@@ -277,6 +278,10 @@ constructor(
             WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+            }
+
+            WifiScaleSetupStep.TROUBLE_SHOOTING -> {
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Finish))
             }
 
             else -> {
@@ -823,6 +828,7 @@ constructor(
     if (currentState.currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
       startApMode()
     }
+
     if (currentState.currentStep == WifiScaleSetupStep.SCALE_COUNTS) {
       saveScale()
       return
