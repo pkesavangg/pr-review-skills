@@ -319,6 +319,9 @@ class DashboardStore: ObservableObject {
     }
 
     var weightDisplayLabel: String {
+        if visibleOperations.isEmpty {
+            return "no entries"
+        }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
     }
 
@@ -326,7 +329,10 @@ class DashboardStore: ObservableObject {
     @MainActor
     func getCurrentAverageWeight() -> Double {
         let visibleOps = visibleOperations
-        let opsToUse = visibleOps.isEmpty ? continuousOperations : visibleOps
+        if visibleOps.isEmpty {
+            return 0
+        }
+        let opsToUse = visibleOps
 
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
