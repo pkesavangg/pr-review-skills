@@ -158,18 +158,9 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             let item = store.metricsToShow[indexPath.item]
-            
-            print("Hello: METRIC GRID DRAG START - Item: \(item.label), Index: \(indexPath.item), Total: \(collectionView.numberOfItems(inSection: 0))")
-            
-            // Print current positions of all metric items
-            print("Hello: METRIC GRID CURRENT POSITIONS - Metrics: \(store.metricsToShow.map { "\($0.label)(\($0.id))" })")
-            
-            // Check if the metric is removed - if so, don't allow dragging
             let isRemoved = store.isMetricRemovedInReorderedArray(at: indexPath.item)
-            print("Hello: METRIC GRID DRAG CHECK - IsRemoved: \(isRemoved)")
             
             if isRemoved {
-                print("Hello: METRIC GRID DRAG BLOCKED - Item is removed, cannot drag")
                 return [] // Return empty array to prevent drag
             }
             
@@ -196,8 +187,6 @@ extension MetricGridUIKitView {
             
             // Provide haptic feedback
             HapticFeedbackService.medium()
-            
-            print("Hello: METRIC GRID DRAG ALLOWED - Item: \(item.label), ID: \(item.id)")
             return [dragItem]
         }
         
@@ -343,16 +332,9 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
             guard let destinationIndexPath = coordinator.destinationIndexPath,
                   let item = coordinator.items.first,
-                  let sourceIndexPath = item.sourceIndexPath else { 
-                print("Hello: METRIC GRID DROP FAILED - Missing required data")
+                  let sourceIndexPath = item.sourceIndexPath else {
                 return 
             }
-            
-            print("Hello: METRIC GRID DROP ATTEMPT - Source: \(sourceIndexPath.item), Destination: \(destinationIndexPath.item)")
-            print("Hello: METRIC GRID DROP CONTEXT - Total: \(collectionView.numberOfItems(inSection: 0))")
-            
-            // Print current positions before drop
-            print("Hello: METRIC GRID BEFORE DROP - Metrics: \(store.metricsToShow.map { "\($0.label)(\($0.id))" })")
             
             // Completely disable ALL animations and force instant positioning (like iOS home screen)
             CATransaction.begin()
@@ -363,26 +345,18 @@ extension MetricGridUIKitView {
                     // Check if both source and destination are not removed
                     let sourceIsRemoved = store.isMetricRemovedInReorderedArray(at: sourceIndexPath.item)
                     let destIsRemoved = store.isMetricRemovedInReorderedArray(at: destinationIndexPath.item)
-                    
-                    print("Hello: METRIC GRID DROP CHECK - SourceRemoved: \(sourceIsRemoved), DestRemoved: \(destIsRemoved)")
-                    
+  
                     // Only allow move if neither source nor destination is removed
                     if !sourceIsRemoved && !destIsRemoved {
-                        print("Hello: METRIC GRID DROP EXECUTING - Moving from \(sourceIndexPath.item) to \(destinationIndexPath.item)")
                         store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
                         collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
-                        print("Hello: METRIC GRID DROP SUCCESS")
                     } else {
-                        // If trying to move to/from a removed item, just refresh the UI
-                        print("Hello: METRIC GRID DROP BLOCKED - Cannot move to/from removed item")
                         collectionView.reloadData()
                     }
                 })
             }
             CATransaction.commit()
-            
-            // Print positions after drop
-            print("Hello: METRIC GRID AFTER DROP - Metrics: \(store.metricsToShow.map { "\($0.label)(\($0.id))" })")
+    
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
