@@ -477,7 +477,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Exit / Help
     private func performExitCleanup() {
         dismissAction?()
-        if !isWifiSetupOnly { disconnectDevice() }
+        if savedScale == nil { disconnectDevice() }
         cancelWifi()
         self.bluetoothService.isSetupInProgress = false
     }
