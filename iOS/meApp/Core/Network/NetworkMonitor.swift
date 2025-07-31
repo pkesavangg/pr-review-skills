@@ -22,7 +22,7 @@ final class NetworkMonitor: ObservableObject {
     private let queue = DispatchQueue.global(qos: .background)
     
     private init() {
-        startMonitoring();
+        startMonitoring()
     }
     
     private func startMonitoring() {

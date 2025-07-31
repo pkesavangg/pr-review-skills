@@ -488,6 +488,7 @@ struct AlertStrings {
         static let title = "Are you sure you want to exit?"
         static let preConnectionExitMessage = "The scale will not be connected."
         static let postConnectionExitMessage = "If you exit early, you may not be able to access some features until set up."
+        static let wifiExitMessage = "Wi-Fi settings will not be updated."
         static let goBackButton = "Go Back"
         static let exitButton = "Exit"
     }

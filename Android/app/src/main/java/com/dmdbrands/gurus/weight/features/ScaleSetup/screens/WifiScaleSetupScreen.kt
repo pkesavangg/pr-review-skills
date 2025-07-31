@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,13 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermissions
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SelectButton
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiItem
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -30,8 +32,12 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.WifiMacAddress
+import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
+import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.model.BorderRadius
+import com.greatergoods.meapp.features.ScaleSetup.strings.WifiScaleSetupStrings
 import kotlinx.coroutines.delay
 
 @Composable
@@ -54,10 +60,9 @@ fun WifiScaleSetupScreenContent(
   state: WifiScaleSetupState,
   onIntent: (WifiScaleSetupIntent) -> Unit,
 ) {
-  val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.steps.size }
   val isAnimating = remember { mutableStateOf(false) }
-
+  val focusManager = LocalFocusManager.current
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
     if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
@@ -108,7 +113,6 @@ fun WifiScaleSetupScreenContent(
           modifier =
             Modifier
               .fillMaxSize()
-              .verticalScroll(rememberScrollState())
               .padding(MeTheme.spacing.md),
         ) {
           when (step) {
@@ -121,23 +125,140 @@ fun WifiScaleSetupScreenContent(
             }
 
             WifiScaleSetupStep.SETUP_FINISHED -> {
-              if(state.isApMode) {
+              if (state.isApMode) {
                 WifiMacAddress(
-                  title = WifiSetupStrings.setupFinished.MacTitle,
-                  macAddress = "",
+                  title = WifiScaleSetupStrings.setupFinished.MacTitle,
+                  macAddress = state.macAddress,
                   onCopyMacAddress = {
                     onIntent(WifiScaleSetupIntent.OnCopyMacAddress(it))
                   },
                 )
               } else {
                 SetupContent(
-                  title = WifiSetupStrings.setupFinished.Title,
-                  subtitle = WifiSetupStrings.setupFinished.Message,
-                  setupFinished = true
+                  title = WifiScaleSetupStrings.setupFinished.Title,
+                  subtitle = WifiScaleSetupStrings.setupFinished.Message,
+                  setupFinished = true,
                 )
               }
             }
-            // TODO: Add other steps as needed
+
+            WifiScaleSetupStep.PERMISSIONS -> {
+              ScalePermissions(
+                sku = state.sku,
+                permissions = state.permissions,
+                onRequestPermission = { },
+              )
+            }
+
+            WifiScaleSetupStep.WIFI_PASSWORD -> {
+              SetupForm(
+                formControl = state.wifiPasswordForm.password,
+                title = WifiScaleSetupStrings.NetworkFormSlide.Title,
+                label = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
+                subtitle = BtWifiScaleSetupStrings.WifiPassword.Subtitle,
+                subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
+                hasToggle = true,
+                toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
+                toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
+                onToggleChanged = {
+                  state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
+                  state.wifiPasswordForm.password.reset()
+                },
+                noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
+              )
+            }
+
+            WifiScaleSetupStep.SELECT_USER -> {
+              val userNumbers = (1..8).toList()
+              val userButtons =
+                SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.selectedUser)
+              SelectButton(
+                title = WifiScaleSetupStrings.ChooseUser.Title,
+                subtitle = WifiScaleSetupStrings.ChooseUser.Message,
+                selectButtonItems = userButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectUser(value.toInt()))
+                },
+              )
+            }
+
+            WifiScaleSetupStep.ACTIVATE_SCALE -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.ActivateScaleSlide.Title,
+                subtitle = WifiScaleSetupStrings.ActivateScaleSlide.Message,
+                supportingImage = AppIcons.Setup.WifiPair,
+              )
+            }
+
+            WifiScaleSetupStep.WIFI_MODE -> {
+              val wifiButtons = SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
+              SelectButton(
+                title = WifiScaleSetupStrings.WifiMode.Title,
+                selectButtonItems = wifiButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectWifiMode(value))
+                },
+                noteMessage = WifiScaleSetupStrings.WifiMode.Note,
+                supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
+                onSupportingButtonClick = {
+                  // need to navigate to error step
+                },
+              )
+            }
+
+            WifiScaleSetupStep.ERROR_GUIDE -> {
+              val errorButtons =
+                SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = state.selectedErrorCode)
+              SelectButton(
+                title = WifiScaleSetupStrings.Error.Title,
+                subtitle = WifiScaleSetupStrings.Error.Message,
+                selectButtonItems = errorButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectErrorCode(value))
+                },
+                supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
+                onSupportingButtonClick = {
+                  // TODO: Navigate to trouble shooting step or handle "something else" case
+                },
+              )
+            }
+
+            WifiScaleSetupStep.TROUBLE_SHOOTING -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.TroubleshootingSlide.Title,
+                subtitle = WifiScaleSetupStrings.TroubleshootingSlide.Message,
+              )
+            }
+
+            WifiScaleSetupStep.SWITCH_WIFI -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.SwitchWifi.Title,
+                subtitle = WifiScaleSetupStrings.SwitchWifi.Message,
+                content = {
+                  WifiItem(
+                    ssid = WifiScaleSetupStrings.SwitchWifi.ChangeNetwork,
+                    isConfigured = false,
+                    index = 0,
+                    total = 1
+                  )
+                },
+              )
+            }
+
+            WifiScaleSetupStep.MAC_ADDRESS -> {
+              SetupContent(
+
+                title = WifiScaleSetupStrings.SwitchWifi.Title,
+                subtitle = WifiScaleSetupStrings.SwitchWifi.Message,
+              )
+            }
+
+            WifiScaleSetupStep.CONNECTING_SCALE -> {
+            }
+
             else -> {
               // Placeholder for other steps
             }

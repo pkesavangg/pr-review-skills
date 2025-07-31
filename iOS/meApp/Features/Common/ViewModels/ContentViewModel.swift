@@ -86,17 +86,12 @@ final class ContentViewModel: ObservableObject {
         } catch {
             entries = []
         }
-        do {
-            try await feedService.fetchFeedItems()
-        } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Failed to fetch feed items: \(error)")
-        }
+        await feedService.fetchFeedItems()
+        feedService.checkAndTriggerFeedModal()
     }
 
     // MARK: - View State Management
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
     }
-
-
 }

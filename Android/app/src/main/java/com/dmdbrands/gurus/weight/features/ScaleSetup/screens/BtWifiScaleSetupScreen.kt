@@ -108,11 +108,12 @@ fun BtWifiScaleSetupScreenContent(
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
       shouldCenterMiddleContent = true,
-      leadingContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_INFO,
-        BtWifiSetupStep.PERMISSIONS,
-        BtWifiSetupStep.DUPLICATES_FOUND,
-        BtWifiSetupStep.WIFI_PASSWORD -> {
+      leadingContent = when {
+        state.currentStep == BtWifiSetupStep.SCALE_INFO ||
+          state.currentStep == BtWifiSetupStep.PERMISSIONS ||
+          state.currentStep == BtWifiSetupStep.DUPLICATES_FOUND ||
+          state.currentStep == BtWifiSetupStep.WIFI_PASSWORD ||
+          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) -> {
           {
             AppButton(
               type = ButtonType.TextPrimary,
@@ -141,8 +142,8 @@ fun BtWifiScaleSetupScreenContent(
           }
         }
 
-        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !isFromWiFiSetup -> {
-          {
+        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.connectedSSID.isNullOrEmpty() && !isFromWiFiSetup
+          -> { {
             AppButton(
               type = ButtonType.TextTertiary,
               label = ScaleSetupStrings.SetupButtons.Skip,
@@ -156,11 +157,12 @@ fun BtWifiScaleSetupScreenContent(
         } // No skip button on wakeup step
         else -> null // No skip button for other steps yet
       },
-      trailingContent = when (state.currentStep) {
-        BtWifiSetupStep.SCALE_INFO,
-        BtWifiSetupStep.PERMISSIONS,
-        BtWifiSetupStep.DUPLICATES_FOUND,
-        BtWifiSetupStep.WIFI_PASSWORD -> {
+      trailingContent = when {
+        state.currentStep == BtWifiSetupStep.SCALE_INFO ||
+          state.currentStep == BtWifiSetupStep.PERMISSIONS ||
+          state.currentStep == BtWifiSetupStep.DUPLICATES_FOUND ||
+          state.currentStep == BtWifiSetupStep.WIFI_PASSWORD ||
+          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
@@ -309,6 +311,9 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.ConnectingWifi.Title(state.currentStepConnectionState),
               scaleImageSku = state.sku,
+              errorCode = if (state.currentStepConnectionState is ConnectionState.Failed)
+                state.errorCode
+              else null,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
