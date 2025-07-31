@@ -21,7 +21,7 @@ struct BtWifiScaleSetupScreen: View {
     let sku: String
     let discoveredScale: Device?
     let discoveryEvent: DeviceDiscoveryEvent?
-    let savedScale: Device? // if the scale was previously saved in settings open the BtWifisetup for the wifi setup
+    let savedScale: Device? // if the scale was previously saved in settings open the BtWifiScaleSetup for the wifi setup
     let commonLang = CommonStrings.self
     
     private let scaleSetupLang = ScaleSetupStrings.self

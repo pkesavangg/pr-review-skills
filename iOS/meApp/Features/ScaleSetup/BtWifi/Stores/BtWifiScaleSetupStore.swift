@@ -41,9 +41,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Cached first name from active account
     private var firstName: String?
     
-    /// Indicates that the flow was launched only to configure Wi-Fi for a previously-paired scale.
-    // Indicates if the flow was launched only to configure Wi-Fi for a previously-paired scale. Exposed via
-    // a read-only computed property so views (e.g. `BtWifiScaleSetupScreen`) can react accordingly.
+    /// Exposed via a read-only computed property so views (e.g. `BtWifiScaleSetupScreen`) can react accordingly.
     private var isWifiSetupOnly: Bool = false
     /// Public accessor used by views to know whether the current flow is Wi-Fi-only (opened from Settings).
     var isWifiSetupOnlyMode: Bool { isWifiSetupOnly }
