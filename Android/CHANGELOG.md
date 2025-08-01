@@ -1,19 +1,24 @@
-## 08/01/2025
+## 5.0.0 - 08/01/2025
 
 ### Added
 
 - Created a reusable select button screens for wifi and bluetooth setup. (MA-768)
 - Created wifi setup complete - UI. (MA-794)
-- Implemented wifi setup with wifi service (MA-787)
+- Implemented wifi setup with wifi service. (MA-787)
+- Implemented A3 Scale setup with service. (MA-782)
 
 ### Changed
 
 - Refactored setup loader. (MA-796)
-- Refactored integration settings (MA-787)
+- Refactored integration settings. (MA-787)
+- Refactored Scale setup structure. (MA-769)
+- Refactored graph view. (MA-828)
 
 ### Fixed
 
 - Fixed location switch permission crash issue. (MA-776)
+- Resolved bluetooth scale connection and deletion issue. (MA-840, MA-842)
+- Fixed Push notification , MileStone card display and BLE connection status issue. (MA-829 , 833 , 839)
 
 ## UNRELEASED - 07/04/2025
 
@@ -81,8 +86,6 @@
 - Improved account management error handling
 - Enhanced data synchronization reliability
 - Optimized graph performance during view transitions
-
-
 
 ### Technical
 

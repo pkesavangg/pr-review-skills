@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtScaleSetupReduce
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -58,9 +59,12 @@ constructor(
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
 
   override suspend fun onSetupFinished() {
-    if (discoveredScale != null) {
-      dialogQueueService.showLoader(message = "Saving scale...")
-      deviceService.saveScale(discoveredScale!!)
+    dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
+    try {
+      if (discoveredScale != null) {
+        deviceService.saveScale(discoveredScale!!)
+      }
+    } finally {
       dialogQueueService.dismissLoader()
     }
   }
