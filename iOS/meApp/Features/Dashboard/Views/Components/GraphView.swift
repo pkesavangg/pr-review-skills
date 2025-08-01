@@ -149,9 +149,9 @@ struct GraphView: View {
             .onAppear {
                 dashboardStore.initializeChart()
             }
-            // Synchronized animations for chart components
-            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
-            .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+            // Disable animations for chart components to remove selection callout animation
+            .animation(.none, value: dashboardStore.yAxisDomain)
+            .animation(.none, value: dashboardStore.yAxisTicks)
             .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
             .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
             // Apply decision window modifier first, then scroll detection
