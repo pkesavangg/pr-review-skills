@@ -292,11 +292,6 @@ extension DashboardCombinedLayoutView {
                     }
                     let previewView = UIView(frame: streakCell.contentView.frame)
                     previewView.backgroundColor = streakCell.contentView.backgroundColor
-                    previewView.layer.cornerRadius = streakCell.contentView.layer.cornerRadius
-                    previewView.layer.shadowColor = streakCell.contentView.layer.shadowColor
-                    previewView.layer.shadowOffset = streakCell.contentView.layer.shadowOffset
-                    previewView.layer.shadowRadius = streakCell.contentView.layer.shadowRadius
-                    previewView.layer.shadowOpacity = streakCell.contentView.layer.shadowOpacity
                     previewView.alpha = 1.0
                     let parameters = UIDragPreviewParameters()
                     parameters.backgroundColor = .clear
@@ -306,11 +301,6 @@ extension DashboardCombinedLayoutView {
                 }
                 let previewView = UIView(frame: metricCell.contentView.frame)
                 previewView.backgroundColor = metricCell.contentView.backgroundColor
-                previewView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-                previewView.layer.shadowColor = metricCell.contentView.layer.shadowColor
-                previewView.layer.shadowOffset = metricCell.contentView.layer.shadowOffset
-                previewView.layer.shadowRadius = metricCell.contentView.layer.shadowRadius
-                previewView.layer.shadowOpacity = metricCell.contentView.layer.shadowOpacity
                 previewView.alpha = 1.0
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
@@ -325,11 +315,6 @@ extension DashboardCombinedLayoutView {
                 }
                 let previewView = UIView(frame: goalCell.contentView.frame)
                 previewView.backgroundColor = goalCell.contentView.backgroundColor
-                previewView.layer.cornerRadius = goalCell.contentView.layer.cornerRadius
-                previewView.layer.shadowColor = goalCell.contentView.layer.shadowColor
-                previewView.layer.shadowOffset = goalCell.contentView.layer.shadowOffset
-                previewView.layer.shadowRadius = goalCell.contentView.layer.shadowRadius
-                previewView.layer.shadowOpacity = goalCell.contentView.layer.shadowOpacity
                 previewView.alpha = 1.0
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear

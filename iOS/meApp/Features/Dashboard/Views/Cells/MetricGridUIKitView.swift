@@ -219,11 +219,6 @@ extension MetricGridUIKitView {
             // Create a custom preview view that shows only the content (no delete button)
             let previewView = UIView(frame: metricCell.contentView.frame)
             previewView.backgroundColor = metricCell.contentView.backgroundColor
-            previewView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-            previewView.layer.shadowColor = metricCell.contentView.layer.shadowColor
-            previewView.layer.shadowOffset = metricCell.contentView.layer.shadowOffset
-            previewView.layer.shadowRadius = metricCell.contentView.layer.shadowRadius
-            previewView.layer.shadowOpacity = metricCell.contentView.layer.shadowOpacity
             previewView.alpha = 1.0 // Ensure full opacity
             
             // Add the content to the preview
