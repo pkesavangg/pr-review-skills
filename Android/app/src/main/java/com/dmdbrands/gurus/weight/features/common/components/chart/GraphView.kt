@@ -260,7 +260,10 @@ fun GraphView(
       }
   }
 
-  val primaryLayer = primaryLayer(segment, animatedMinTarget, animatedMaxTarget)
+  val primaryLayer = primaryLayer(
+    segment, animatedMinTarget, animatedMaxTarget,
+    xLabels.minOf { it.value as Long },
+  )
   val defaultMarker = rememberDefaultMarker(xLabels, markerIndex, segment)
   val decorations = rememberHorizontalLine()
 
@@ -293,7 +296,7 @@ fun GraphView(
           while (true) {
             val event = awaitPointerEvent()
             val position = event.changes.firstOrNull()?.position
-            if (position != null) {
+            if (position != null && computationJob == null) {
               point = (Point(position.x, position.y))
             }
           }

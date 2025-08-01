@@ -11,12 +11,13 @@ import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 
 @Composable
 internal fun emptyMarker(): CartesianMarker {
-    val emptyFormatter = emptyFormatter()
-    return rememberDefaultCartesianMarker(
-        label = rememberTextComponent(color = MeTheme.colorScheme.textSubheading),
-        valueFormatter = emptyFormatter,
-        indicator = null,
-    )
+  val emptyFormatter = emptyFormatter()
+  return rememberDefaultCartesianMarker(
+    label = rememberTextComponent(color = MeTheme.colorScheme.textSubheading),
+    valueFormatter = emptyFormatter,
+    indicator = null,
+    guideline = null,
+  )
 }
 
 /**
@@ -24,11 +25,11 @@ internal fun emptyMarker(): CartesianMarker {
  */
 @Composable
 private fun emptyFormatter(): DefaultCartesianMarker.ValueFormatter =
-    remember {
-        object : DefaultCartesianMarker.ValueFormatter {
-            override fun format(
-                context: CartesianDrawingContext,
-                targets: List<CartesianMarker.Target>,
-            ) = ""
-        }
+  remember {
+    object : DefaultCartesianMarker.ValueFormatter {
+      override fun format(
+        context: CartesianDrawingContext,
+        targets: List<CartesianMarker.Target>,
+      ) = ""
     }
+  }

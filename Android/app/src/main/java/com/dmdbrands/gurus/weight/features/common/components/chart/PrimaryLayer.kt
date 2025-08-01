@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
@@ -18,12 +19,18 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import java.util.Calendar
 
 /**
  * Internal helper to remember the primary layer for the graph.
  */
 @Composable
-internal fun primaryLayer(segment: GraphSegment, minYTarget: Int, maxYTarget: Int): LineCartesianLayer {
+internal fun primaryLayer(
+  segment: GraphSegment,
+  minYTarget: Int,
+  maxYTarget: Int,
+  initialTimeStamp: Long
+): LineCartesianLayer {
 
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
@@ -39,6 +46,22 @@ internal fun primaryLayer(segment: GraphSegment, minYTarget: Int, maxYTarget: In
 
       disconnectionCriteria
     }
+  }
+
+  val todayMills = Calendar.getInstance().timeInMillis
+
+  val startRangeX = when (segment) {
+    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(initialTimeStamp).start
+    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(initialTimeStamp).start
+    GraphSegment.YEAR -> DateTimeConverter.getYearRange(initialTimeStamp).start
+    else -> null
+  }
+
+  val endRangeX = when (segment) {
+    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(todayMills).end
+    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(todayMills).end
+    GraphSegment.YEAR -> DateTimeConverter.getYearRange(todayMills).end
+    else -> null
   }
 
   return rememberLineCartesianLayer(
@@ -58,7 +81,6 @@ internal fun primaryLayer(segment: GraphSegment, minYTarget: Int, maxYTarget: In
             ),
           ),
           connectionCondition = { minXTarget, maxXTarget ->
-
             connectionCondition(minXTarget.x.toLong(), maxXTarget?.x?.toLong())
           },
         )
@@ -72,6 +94,14 @@ internal fun primaryLayer(segment: GraphSegment, minYTarget: Int, maxYTarget: In
 
       override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
         return maxYTarget.toDouble()
+      }
+
+      override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+        return endRangeX?.toDouble() ?: super.getMaxX(minX, maxX, extraStore)
+      }
+
+      override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+        return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
       }
     },
     pointSpacing = pointSpacing(segment, 10.dp),

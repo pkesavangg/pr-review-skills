@@ -128,14 +128,13 @@ internal fun ChartHostSection(
         decorations = listOf(decorations),
         markerVisibilityListener = markerListener,
         persistentMarkers =
-          key(markerIndex) {
-            if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
-              {
-                defaultMarker at xLabels[markerIndex].value
-              }
-            } else {
-              null
+
+          if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
+            {
+              defaultMarker at xLabels[markerIndex].value
             }
+          } else {
+            null
           },
         getXStep = {
           GraphUtil.calculateXStep(
