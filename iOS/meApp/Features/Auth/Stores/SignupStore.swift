@@ -211,7 +211,6 @@ final class SignupStore: ObservableObject {
                 profile: profile
             )
             // Create the goal if it's not skipped
-            print("Creating goal: createUser", goal, isGoalSkipped)
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }

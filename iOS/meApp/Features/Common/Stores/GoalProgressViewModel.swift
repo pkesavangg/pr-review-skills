@@ -28,12 +28,6 @@ final class GoalProgressViewModel: ObservableObject {
     // MARK: - Init
     init() {
         // Recalculate whenever active account changes.
-        accountService.$activeAccount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                Task { await self?.loadData() }
-            }
-            .store(in: &cancellables)
         
         entryService.entrySaved
             .receive(on: DispatchQueue.main)
@@ -98,7 +92,6 @@ final class GoalProgressViewModel: ObservableObject {
             let clampedAchieved  = max(signedAchieved, 0) // Prevent negative progress
             progress = totalDistance > 0 ? CGFloat(min(clampedAchieved / totalDistance, 1)) : 1
         }
-        print("GoalProgressViewModel: Loaded data for account \(account.accountId) - Start: \(startWeight), Goal: \(goalWeight), Progress: \(progress)")
     }
     
     // MARK: - Helpers

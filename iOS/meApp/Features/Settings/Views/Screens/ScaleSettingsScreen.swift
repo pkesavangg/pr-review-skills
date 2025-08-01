@@ -77,8 +77,6 @@ struct ScaleSettingsScreen: View {
                 // Note: Users will be fetched when the users button is tapped
             }
             
-            // Set up periodic connection status refresh
-            connectionRefreshTimer = Timer.scheduledTimer(withTimeInterval: SettingsConstants.connectionRefreshInterval, repeats: true) { _ in
                 Task {
                     await scaleStore.refreshConnectionStatus()
                     await scaleStore.refreshWifiStatus()
@@ -88,7 +86,6 @@ struct ScaleSettingsScreen: View {
                         await scaleStore.checkDeviceInfoAndWifiConfiguration()
                     }
                 }
-            }
         }
         .onDisappear {
             // Clean up timer
