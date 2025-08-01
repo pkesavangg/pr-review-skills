@@ -32,6 +32,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStri
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
@@ -106,74 +107,99 @@ fun WifiScaleSetupScreenContent(
       WifiScaleSetupStep.SCALE_INFO ->
         true
 
-      WifiScaleSetupStep.PERMISSIONS ->
+      WifiScaleSetupStep.PERMISSIONS -> {
         if (state.isGetMACSetup) {
           // MAC setup flow - check permissions only
           AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
         } else {
-          // Normal flow
+          // Normal flow - check permissions
           AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
-        }
-
-      WifiScaleSetupStep.WIFI_PASSWORD ->
-        if (state.permissionsSkipped) {
-          // Permissions skipped flow - check form validation
-          state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
-        } else {
-          // Normal flow - check form validation
-          state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
-        }
-
-      WifiScaleSetupStep.SELECT_USER ->
-        // Normal flow only - check if user is selected
-        state.selectedUser != null
-
-      WifiScaleSetupStep.ACTIVATE_SCALE ->
-        // All flows - can proceed
-        state.canProceedToNext
-
-      WifiScaleSetupStep.WIFI_MODE ->
-        if (state.isGetMACSetup) {
-          // MAC setup flow - check if AP mode is selected
-          state.selectedWifiMode == "apmode"
-        } else {
-          // Normal flow - check if mode is selected
-          state.canProceedToNext
-        }
-
-      WifiScaleSetupStep.SWITCH_WIFI -> {
-        if (state.isGetMACSetup || !state.permissionsSkipped) {
-          // MAC setup flow - check if connected to scale WiFi
-          state.scaleNetworkForm.ssid.value.isNotEmpty()
-        } else {
-          // Normal flow - check if connected to scale WiFi
-          state.canProceedToNext
         }
       }
 
-      WifiScaleSetupStep.MAC_ADDRESS ->
+      WifiScaleSetupStep.WIFI_PASSWORD -> {
+        // Both permission skipped and normal flow need valid form
+        state.wifiPasswordForm.ssid.isValueValid() &&
+          (state.wifiPasswordForm.noPasswordNetwork.value || state.wifiPasswordForm.password.isValueValid())
+      }
+
+      WifiScaleSetupStep.SELECT_USER ->
+        // Both permission skipped and normal flow need user selection
+        state.selectedUser != null
+
+      WifiScaleSetupStep.ACTIVATE_SCALE ->
+        // All flows can proceed
+        state.canProceedToNext
+
+      WifiScaleSetupStep.WIFI_MODE -> {
+        when {
+          state.isGetMACSetup -> {
+            // MAC setup flow - only AP mode allowed
+            state.selectedWifiMode == "apmode"
+          }
+
+          state.permissionsSkipped -> {
+            // Permission skipped flow - only AP mode allowed
+            state.selectedWifiMode == "apmode"
+          }
+
+          else -> {
+            // Normal flow - any mode allowed
+            !state.selectedWifiMode.isNullOrEmpty()
+          }
+        }
+      }
+
+      WifiScaleSetupStep.SWITCH_WIFI -> {
+        when {
+          state.isGetMACSetup -> {
+            // MAC setup flow - check if connected to scale WiFi
+            state.scaleNetworkForm.ssid.value.isNotEmpty()
+          }
+
+          state.permissionsSkipped -> {
+            // Permission skipped flow - can proceed
+            true
+          }
+
+          else -> {
+            // Normal flow - check if connected to scale WiFi
+            state.scaleNetworkForm.ssid.value.isNotEmpty()
+          }
+        }
+      }
+
+      WifiScaleSetupStep.MAC_ADDRESS -> {
         if (state.isGetMACSetup) {
-          // MAC setup flow - check if not showing error and connected to scale WiFi
-          !state.showError && state.wifiStatus?.ssid?.contains("gg_SmartScale") == true
+          // MAC setup flow - check if not showing error and have MAC address
+          !state.showError && state.macAddress.isNotEmpty()
         } else {
           // Normal flow - check if not showing error
           !state.showError
         }
+      }
 
-      WifiScaleSetupStep.STEP_ON ->
-        // Normal flow only - can proceed
+      WifiScaleSetupStep.ERROR_GUIDE ->
+        // Can only proceed if error code is selected
+        !state.selectedErrorCode.isNullOrEmpty()
+
+      WifiScaleSetupStep.ERROR_CODE_SELECTED,
+      WifiScaleSetupStep.TROUBLE_SHOOTING ->
+        // These steps can always proceed
         state.canProceedToNext
 
+      WifiScaleSetupStep.SCALE_COUNTS,
+      WifiScaleSetupStep.STEP_ON,
       WifiScaleSetupStep.SETUP_FINISHED ->
-        // All flows - can proceed
-        true
+        // These steps can always proceed
+        state.canProceedToNext
 
-      else -> state.canProceedToNext
     }
+
   val showSkipButton: Boolean =
     when (state.currentStep) {
       WifiScaleSetupStep.PERMISSIONS ->
-        // Hide skip button for MAC setup, show for normal flow
+        // Only show skip button for normal flow (not MAC setup)
         !state.isGetMACSetup
 
       else -> false
@@ -192,7 +218,7 @@ fun WifiScaleSetupScreenContent(
           type = ButtonType.TextPrimary,
           label = ScaleSetupStrings.backButton,
           size = ButtonSize.Small,
-          enabled = !state.isFirstStep,
+          enabled = !state.isFirstStep && !state.isLoading && !state.isNavigating,
           onClick = { onIntent(WifiScaleSetupIntent.Back) },
         )
       },
@@ -203,7 +229,7 @@ fun WifiScaleSetupScreenContent(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.SetupButtons.Skip,
             size = ButtonSize.Small,
-            enabled = !state.isLoading,
+            enabled = !state.isLoading && !state.isNavigating,
             onClick = { onIntent(WifiScaleSetupIntent.Skip) },
           )
         }
@@ -228,7 +254,7 @@ fun WifiScaleSetupScreenContent(
               type = ButtonType.PrimaryFilled,
               label = if (state.isLastStep) ScaleSetupStrings.FinishButton else state.nextButtonText,
               size = ButtonSize.Small,
-              enabled = !state.isLoading && isNextButtonEnabledForStep,
+              enabled = !state.isNavigating && isNextButtonEnabledForStep,
               onClick = {
                 focusManager.clearFocus()
                 if (state.isLastStep) {
@@ -280,6 +306,7 @@ fun WifiScaleSetupScreenContent(
                 state.wifiPasswordForm.password.reset()
               },
               noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
+              inputType = AppInputType.PASSWORD,
             )
           }
 
@@ -309,30 +336,51 @@ fun WifiScaleSetupScreenContent(
           }
 
           WifiScaleSetupStep.WIFI_MODE -> {
-            // In MAC setup mode, show only AP Mode button and require user selection
-            val wifiButtons = if (state.isGetMACSetup || state.permissionsSkipped) {
-              listOf(
-                SelectButtonItem(
-                  id = "wifi_ap_mode",
-                  displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                  emitValue = "apmode",
-                  isSelected = state.selectedWifiMode == "apmode", // Use actual selection state
-                ),
-              )
-            } else {
-              SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
+            // Show different buttons based on the flow type
+            val wifiButtons = when {
+              state.isGetMACSetup -> {
+                // MAC setup flow: Only AP mode available
+                listOf(
+                  SelectButtonItem(
+                    id = "wifi_ap_mode",
+                    displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                    emitValue = "apmode",
+                    isSelected = state.selectedWifiMode == "apmode",
+                  ),
+                )
+              }
+
+              state.permissionsSkipped -> {
+                // Permission skipped flow: Only AP mode available
+                listOf(
+                  SelectButtonItem(
+                    id = "wifi_ap_mode",
+                    displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                    emitValue = "apmode",
+                    isSelected = state.selectedWifiMode == "apmode",
+                  ),
+                )
+              }
+
+              else -> {
+                // Normal flow: Both modes available
+                SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
+              }
             }
 
             SelectButton(
               title = WifiScaleSetupStrings.WifiMode.Title,
-              subtitle = if (state.isGetMACSetup) {
-                // Add subtitle for MAC setup to guide user
-                "Please select AP mode to continue"
-              } else {
-                null
+              subtitle = when {
+                state.isGetMACSetup || state.permissionsSkipped -> {
+                  "Once your scale displays that is in AP mode, tap NEXT"
+                }
+
+                else -> {
+                  null
+                }
               },
               selectButtonItems = wifiButtons,
-              isSelectable = true, // Always allow selection
+              isSelectable = true,
               onItemSelected = { value ->
                 onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
               },

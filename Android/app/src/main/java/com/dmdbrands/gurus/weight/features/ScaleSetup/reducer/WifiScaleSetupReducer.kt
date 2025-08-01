@@ -108,11 +108,178 @@ data class WifiScaleSetupState(
   val macAddress: String = "AA:BB:CC:DD:EE:FF",
   val isConnectedToScaleWifi: Boolean = false,
   val isLastStep: Boolean = false,
-  val scaleWifiSsid: String = "gg_SmartScale_33"
+  val scaleWifiSsid: String = "gg_SmartScale_33",
+  val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
   val progress: Float = if (steps.isEmpty()) 0f else (currentStepIndex + 1).toFloat() / steps.size.toFloat()
+
+  /**
+   * Gets the next step based on the current setup flow
+   */
+  fun getNextStep(): WifiScaleSetupStep? {
+    return when {
+      // MAC Setup Flow: SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS
+      // (with error flows: WIFI_MODE -> ERROR_GUIDE -> ERROR_CODE_SELECTED/TROUBLE_SHOOTING)
+      isGetMACSetup -> {
+        when (currentStep) {
+          WifiScaleSetupStep.SCALE_INFO -> WifiScaleSetupStep.PERMISSIONS
+          WifiScaleSetupStep.PERMISSIONS -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.WIFI_MODE -> WifiScaleSetupStep.SWITCH_WIFI
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.MAC_ADDRESS
+          WifiScaleSetupStep.MAC_ADDRESS -> null // End of MAC setup
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> {
+            if (!selectedErrorCode.isNullOrEmpty()) {
+              WifiScaleSetupStep.ERROR_CODE_SELECTED
+            } else {
+              null // Can't proceed without selecting an error
+            }
+          }
+
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.WIFI_MODE // Return to WiFi mode
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> null // End of troubleshooting
+          else -> null
+        }
+      }
+
+      // Permission Skipped Flow: SCALE_INFO -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
+      // (with error flows: WIFI_MODE -> ERROR_GUIDE -> ERROR_CODE_SELECTED/TROUBLE_SHOOTING)
+      permissionsSkipped -> {
+        when (currentStep) {
+          WifiScaleSetupStep.SCALE_INFO -> WifiScaleSetupStep.PERMISSIONS
+          WifiScaleSetupStep.PERMISSIONS -> WifiScaleSetupStep.WIFI_PASSWORD
+          WifiScaleSetupStep.WIFI_PASSWORD -> WifiScaleSetupStep.SELECT_USER
+          WifiScaleSetupStep.SELECT_USER -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.WIFI_MODE -> WifiScaleSetupStep.SWITCH_WIFI
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.SCALE_COUNTS
+          WifiScaleSetupStep.SCALE_COUNTS -> WifiScaleSetupStep.STEP_ON
+          WifiScaleSetupStep.STEP_ON -> WifiScaleSetupStep.SETUP_FINISHED
+          WifiScaleSetupStep.SETUP_FINISHED -> null
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> {
+            if (!selectedErrorCode.isNullOrEmpty()) {
+              WifiScaleSetupStep.ERROR_CODE_SELECTED
+            } else {
+              null // Can't proceed without selecting an error
+            }
+          }
+
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.WIFI_MODE // Return to WiFi mode
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> null // End of troubleshooting
+          else -> null
+        }
+      }
+
+      // Normal Flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI/SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
+      // (with error flows: WIFI_MODE -> ERROR_GUIDE -> ERROR_CODE_SELECTED/TROUBLE_SHOOTING)
+      else -> {
+        when (currentStep) {
+          WifiScaleSetupStep.SCALE_INFO -> WifiScaleSetupStep.PERMISSIONS
+          WifiScaleSetupStep.PERMISSIONS -> WifiScaleSetupStep.WIFI_PASSWORD
+          WifiScaleSetupStep.WIFI_PASSWORD -> WifiScaleSetupStep.SELECT_USER
+          WifiScaleSetupStep.SELECT_USER -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.WIFI_MODE -> {
+            when (selectedWifiMode) {
+              "apmode" -> WifiScaleSetupStep.SWITCH_WIFI
+              else -> WifiScaleSetupStep.SCALE_COUNTS
+            }
+          }
+
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.SCALE_COUNTS
+          WifiScaleSetupStep.SCALE_COUNTS -> WifiScaleSetupStep.STEP_ON
+          WifiScaleSetupStep.STEP_ON -> WifiScaleSetupStep.SETUP_FINISHED
+          WifiScaleSetupStep.SETUP_FINISHED -> null
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> {
+            if (!selectedErrorCode.isNullOrEmpty()) {
+              WifiScaleSetupStep.ERROR_CODE_SELECTED
+            } else {
+              null // Can't proceed without selecting an error
+            }
+          }
+
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.WIFI_MODE // Return to WiFi mode
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> null // End of troubleshooting
+          else -> null
+        }
+      }
+    }
+  }
+
+  /**
+   * Gets the previous step based on the current setup flow
+   */
+  fun getPreviousStep(): WifiScaleSetupStep? {
+    return when {
+      // MAC Setup Flow
+      isGetMACSetup -> {
+        when (currentStep) {
+          WifiScaleSetupStep.PERMISSIONS -> WifiScaleSetupStep.SCALE_INFO
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.PERMISSIONS
+          WifiScaleSetupStep.WIFI_MODE -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.MAC_ADDRESS -> WifiScaleSetupStep.SWITCH_WIFI
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.ERROR_GUIDE
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> WifiScaleSetupStep.ERROR_GUIDE
+          else -> null
+        }
+      }
+
+      // Permission Skipped Flow
+      permissionsSkipped -> {
+        when (currentStep) {
+          WifiScaleSetupStep.WIFI_PASSWORD -> WifiScaleSetupStep.SCALE_INFO
+          WifiScaleSetupStep.SELECT_USER -> WifiScaleSetupStep.WIFI_PASSWORD
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.SELECT_USER
+          WifiScaleSetupStep.WIFI_MODE -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.SCALE_COUNTS -> WifiScaleSetupStep.SWITCH_WIFI
+          WifiScaleSetupStep.STEP_ON -> WifiScaleSetupStep.SCALE_COUNTS
+          WifiScaleSetupStep.SETUP_FINISHED -> WifiScaleSetupStep.STEP_ON
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.ERROR_GUIDE
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> WifiScaleSetupStep.ERROR_GUIDE
+          else -> null
+        }
+      }
+
+      // Normal Flow
+      else -> {
+        when (currentStep) {
+          WifiScaleSetupStep.PERMISSIONS -> WifiScaleSetupStep.SCALE_INFO
+          WifiScaleSetupStep.WIFI_PASSWORD -> WifiScaleSetupStep.PERMISSIONS
+          WifiScaleSetupStep.SELECT_USER -> WifiScaleSetupStep.WIFI_PASSWORD
+          WifiScaleSetupStep.ACTIVATE_SCALE -> WifiScaleSetupStep.SELECT_USER
+          WifiScaleSetupStep.WIFI_MODE -> WifiScaleSetupStep.ACTIVATE_SCALE
+          WifiScaleSetupStep.SWITCH_WIFI -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.SCALE_COUNTS -> {
+            // Check how we got to SCALE_COUNTS to determine correct back step
+            if (selectedWifiMode == "apmode") {
+              WifiScaleSetupStep.SWITCH_WIFI
+            } else {
+              WifiScaleSetupStep.WIFI_MODE
+            }
+          }
+
+          WifiScaleSetupStep.STEP_ON -> WifiScaleSetupStep.SCALE_COUNTS
+          WifiScaleSetupStep.SETUP_FINISHED -> WifiScaleSetupStep.STEP_ON
+          // Error flows
+          WifiScaleSetupStep.ERROR_GUIDE -> WifiScaleSetupStep.WIFI_MODE
+          WifiScaleSetupStep.ERROR_CODE_SELECTED -> WifiScaleSetupStep.ERROR_GUIDE
+          WifiScaleSetupStep.TROUBLE_SHOOTING -> WifiScaleSetupStep.ERROR_GUIDE
+          else -> null
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -159,6 +326,7 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class OnCopyMacAddress(val macAddress: String) : WifiScaleSetupIntent()
   data class ExitSetup(val isSetupFinished: Boolean, val isConnected: Boolean = false) : WifiScaleSetupIntent()
   data class OpenHelp(val helpType: String = "wifi") : WifiScaleSetupIntent()
+  data class SetShouldGetMacAddress(val shouldGet: Boolean) : WifiScaleSetupIntent() // Add this intent
   data class NavigateToErrorGuide(val step: WifiScaleSetupStep = WifiScaleSetupStep.ERROR_GUIDE) :
     WifiScaleSetupIntent()
 
@@ -170,6 +338,7 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   object Skip : WifiScaleSetupIntent()
   object GoToWifiSettings : WifiScaleSetupIntent()
   object CheckScaleWifiConnection : WifiScaleSetupIntent()
+  object ClearNavigationState : WifiScaleSetupIntent() // Add this to clear navigation state
 }
 
 /**
@@ -183,97 +352,66 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
     return when (intent) {
       is WifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is WifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
-      is WifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
+      is WifiScaleSetupIntent.SetLoading -> state.copy(
+        isLoading = intent.isLoading,
+        isNavigating = if (!intent.isLoading) false else state.isNavigating, // Clear navigation state when loading finishes
+      )
+
       is WifiScaleSetupIntent.SetError -> state.copy(error = intent.error)
       is WifiScaleSetupIntent.Next -> {
-        // If we're on SETUP_FINISHED, don't advance further, just set isLastStep
-        if (state.currentStep == WifiScaleSetupStep.SETUP_FINISHED) {
-          state.copy(
-            isLastStep = true,
-            canProceedToNext = false,
-          )
-        } else {
-          var nextIndex = state.currentStepIndex + 1
-          // Special handling for ERROR_GUIDE step
-          if (state.currentStep == WifiScaleSetupStep.ERROR_GUIDE && state.selectedErrorCode != null) {
+        // Prevent double-clicks during navigation
+        if (state.isNavigating) {
+          return null
+        }
+
+        val nextStep = state.getNextStep()
+        if (nextStep != null) {
+          // Clear error state when returning to normal flow from error flows
+          val updatedState = if (state.currentStep == WifiScaleSetupStep.ERROR_CODE_SELECTED &&
+            nextStep == WifiScaleSetupStep.WIFI_MODE
+          ) {
             state.copy(
-              currentStep = WifiScaleSetupStep.ERROR_CODE_SELECTED,
-              canProceedToNext = true,
-              error = null,
-              nextButtonText = "Next",
-              isLastStep = false,
+              selectedErrorCode = null,
+              showError = false,
             )
           } else {
-            // --- SPECIAL CASES ---
-            if (state.currentStep == WifiScaleSetupStep.WIFI_PASSWORD && state.isGetMACSetup) {
-              nextIndex += 1
-            } else if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode != "apmode") {
-              nextIndex += 1
-            } else if (state.currentStep == WifiScaleSetupStep.SWITCH_WIFI && state.isGetMACSetup) {
-              nextIndex += 3
-              return state.copy(
-                currentStep = state.steps[nextIndex],
-                canProceedToNext = false,
-                isLastStep = true,
-                error = null,
-              )
-            }
-            // --- END SPECIAL CASES ---
-            if (nextIndex < state.steps.size && !state.isLastStep) {
-              val nextStep = state.steps[nextIndex]
-              state.copy(
-                currentStep = nextStep,
-                isLastStep = nextStep == WifiScaleSetupStep.SETUP_FINISHED || nextStep == WifiScaleSetupStep.TROUBLE_SHOOTING,
-                canProceedToNext = nextStep != WifiScaleSetupStep.SETUP_FINISHED,
-                error = null,
-                nextButtonText = "Next",
-              )
-            } else {
-              // Already at last step, don't advance
-              state.copy(isLastStep = true)
-            }
+            state
           }
+
+          updatedState.copy(
+            currentStep = nextStep,
+            isNavigating = true,
+            canProceedToNext = false,
+            error = null,
+            isLastStep = when {
+              state.isGetMACSetup -> nextStep == WifiScaleSetupStep.MAC_ADDRESS
+              else -> nextStep == WifiScaleSetupStep.SETUP_FINISHED || nextStep == WifiScaleSetupStep.TROUBLE_SHOOTING
+            },
+          )
+        } else {
+          // No next step available
+          state.copy(isLastStep = true)
         }
       }
 
       is WifiScaleSetupIntent.Back -> {
-        var backStepCount = 1
+        // Prevent double-clicks during navigation
+        if (state.isNavigating) {
+          return null
+        }
 
-        // Special handling for certain steps - similar to AppsyncScaleSetupScreen
-        when (state.currentStep) {
-          WifiScaleSetupStep.ERROR_GUIDE -> {
-            // Go back to WIFI_MODE step
-            state.copy(currentStep = WifiScaleSetupStep.WIFI_MODE)
-          }
-
-          WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
-            // Go back to ERROR_GUIDE step
-            state.copy(
-              currentStep = WifiScaleSetupStep.ERROR_GUIDE,
-            )
-          }
-
-          WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-            // Go back to ERROR_GUIDE step
-            state.copy(
-              currentStep = WifiScaleSetupStep.ERROR_GUIDE,
-            )
-          }
-
-          else -> {
-            if (state.currentStep == WifiScaleSetupStep.ACTIVATE_SCALE && state.isGetMACSetup) {
-              backStepCount = 2
-            }
-            if (state.currentStep == WifiScaleSetupStep.SCALE_COUNTS && !state.isApMode) {
-              backStepCount = 2
-            }
-            val prevIndex = state.currentStepIndex - backStepCount
-            if (prevIndex >= 0) {
-              state.copy(currentStep = state.steps[prevIndex])
-            } else {
-              state.copy() // No change if at first step
-            }
-          }
+        val previousStep = state.getPreviousStep()
+        if (previousStep != null) {
+          state.copy(
+            currentStep = previousStep,
+            isNavigating = true,
+            canProceedToNext = false,
+            error = null,
+            isLastStep = false,
+          )
+        } else {
+          // No previous step available (at first step)
+          state.copy()
         }
       }
 
@@ -288,6 +426,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         // Set MAC setup flag and navigate to permissions step
         state.copy(
           isGetMACSetup = true,
+          shouldGetMacAddress = true,
           currentStep = WifiScaleSetupStep.PERMISSIONS,
         )
       }
@@ -450,6 +589,15 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
       is WifiScaleSetupIntent.CheckScaleWifiConnection -> {
         // This intent will be handled by the ViewModel to check WiFi connection
         state.copy()
+      }
+
+      is WifiScaleSetupIntent.ClearNavigationState -> {
+        // Clear navigation state to allow button clicks again
+        state.copy(isNavigating = false)
+      }
+
+      is WifiScaleSetupIntent.SetShouldGetMacAddress -> {
+        state.copy(shouldGetMacAddress = intent.shouldGet)
       }
 
       else -> state.copy()
