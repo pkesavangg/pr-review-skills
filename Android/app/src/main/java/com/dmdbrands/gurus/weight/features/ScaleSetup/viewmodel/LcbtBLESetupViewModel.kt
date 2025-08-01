@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LCBTScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LcbtScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
@@ -76,7 +77,14 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
-    deviceService.saveScale(discoveredScale!!)
+    dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
+    try {
+      if (discoveredScale != null) {
+        deviceService.saveScale(discoveredScale!!)
+      }
+    } finally {
+      dialogQueueService.dismissLoader()
+    }
   }
 
   override fun onBack() {

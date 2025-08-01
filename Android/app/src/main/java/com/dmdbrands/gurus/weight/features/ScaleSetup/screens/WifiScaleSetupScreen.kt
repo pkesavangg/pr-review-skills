@@ -342,7 +342,7 @@ fun WifiScaleSetupScreenContent(
                 // Navigate to error guide step
                 onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
               },
-              modifier = Modifier.padding(vertical = spacing.md, horizontal = spacing.sm)
+              modifier = Modifier.padding(horizontal = spacing.sm),
             )
           }
 
