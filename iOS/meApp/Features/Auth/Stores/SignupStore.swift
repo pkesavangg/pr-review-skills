@@ -113,9 +113,9 @@ final class SignupStore: ObservableObject {
     // MARK: - Navigation
     
     func handleSkip() {
-        isGoalSkipped = true
         signupForm.resetGoal()
         moveToNextStep()
+        isGoalSkipped = true
     }
     
     func moveToNextStep() {
@@ -211,6 +211,7 @@ final class SignupStore: ObservableObject {
                 profile: profile
             )
             // Create the goal if it's not skipped
+            print("Creating goal: createUser", goal, isGoalSkipped)
             if let goal = goal {
                 let _ = try await accountService.createGoal(goal)
             }
