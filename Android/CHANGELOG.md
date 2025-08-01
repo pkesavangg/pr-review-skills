@@ -1,4 +1,4 @@
-## 08/01/2025
+## 5.0.0 - 08/01/2025
 
 ### Added
 
@@ -14,6 +14,7 @@
 ### Fixed
 
 - Fixed location switch permission crash issue. (MA-776)
+- Resolved bluetooth scale connection and deletion issue. (MA-840, MA-842)
 
 ## UNRELEASED - 07/04/2025
 
