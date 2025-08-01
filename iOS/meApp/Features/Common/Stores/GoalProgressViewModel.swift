@@ -28,6 +28,12 @@ final class GoalProgressViewModel: ObservableObject {
     // MARK: - Init
     init() {
         // Recalculate whenever active account changes.
+        accountService.$activeAccount
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { await self?.loadData() }
+            }
+            .store(in: &cancellables)
         
         entryService.entrySaved
             .receive(on: DispatchQueue.main)

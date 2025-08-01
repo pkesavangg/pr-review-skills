@@ -66,6 +66,7 @@ struct GoalSettingScreen: View {
                     .onChange(of: settingsStore.selectedSegment) {
                         settingsStore.goalForm.goalType.value = settingsStore.selectedSegment.goalTypeValue
                     }
+                    .padding(.horizontal, .spacing2XL)
                     
                     VStack(spacing: 4) {
                         // Current Weight Input (hidden for maintain)
