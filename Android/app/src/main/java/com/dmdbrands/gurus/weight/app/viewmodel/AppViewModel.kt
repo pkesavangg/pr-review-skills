@@ -197,7 +197,6 @@ constructor(
                 navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
                 dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
               }
-              ggPermissionService.stopScan()
             }
           }
 
@@ -288,7 +287,6 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
-    ggPermissionService.stopScan()
     navigationService.replaceStack(route = route)
   }
 
