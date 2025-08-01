@@ -16,6 +16,7 @@ final class GoalProgressViewModel: ObservableObject {
     @Published var progress: CGFloat = 0           // 0…1 progress towards goal
     @Published var goalType: GoalType = .maintain  // Current goal type
     @Published var unit: String = WeightUnit.lb.rawValue // "lb" | "kg"
+    @Published var weightlessOn: Bool = false           // Weightless mode flag
 
     // MARK: - Dependencies
     @Injector private var accountService: AccountService
@@ -60,10 +61,18 @@ final class GoalProgressViewModel: ObservableObject {
             }
         } catch { /* ignore – keep fallback */ }
 
-        // Convert stored (tenths-lb) values to display units.
-        let initialDisplay  = convertStoredWeight(initialWeightStored,  unit: weightUnit)
-        let goalDisplay     = convertStoredWeight(goalWeightStored,     unit: weightUnit)
-        let currentDisplay  = convertStoredWeight(currentWeightStored,  unit: weightUnit)
+        // Weightless baseline (tenths-lbs) offset
+        weightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+        let baselineStored: Int = {
+            guard weightlessOn,
+                  let weight = account.weightlessSettings?.weightlessWeight else { return 0 }
+            return Int(weight)
+        }()
+
+        // Convert stored (tenths-lb) values to display units, applying weightless offset.
+        let initialDisplay  = convertStoredWeight(initialWeightStored - baselineStored,  unit: weightUnit)
+        let goalDisplay     = convertStoredWeight(goalWeightStored    - baselineStored,  unit: weightUnit)
+        let currentDisplay  = convertStoredWeight(currentWeightStored - baselineStored,  unit: weightUnit)
 
         // Populate published properties
         startWeight = initialDisplay

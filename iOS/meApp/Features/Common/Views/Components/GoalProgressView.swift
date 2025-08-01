@@ -15,6 +15,9 @@ struct GoalProgressView: View {
     private let lang = DashboardStrings.self
     // Use plural "lbs" for display when unit is imperial
     private var displayUnit: String { viewModel.unit == "lb" ? "lbs" : viewModel.unit }
+    // Goal completion flag
+    private var isGoalReached: Bool { viewModel.progress >= 1 }
+
 
     var body: some View {
         NoteBox(alignCenter: false) {
@@ -57,12 +60,20 @@ struct GoalProgressView: View {
     }
 
     // MARK: - Sub-components
+    @ViewBuilder
     private var deltaHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            deltaText
-            Text(lang.loseGoalWeightLabel(displayUnit))
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
+        if isGoalReached {
+            Text("Goal Reached!")
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+                .frame(maxWidth: .infinity, alignment: .center)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                deltaText
+                Text(lang.loseGoalWeightLabel(displayUnit))
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+            }
         }
     }
 
@@ -89,7 +100,12 @@ struct GoalProgressView: View {
     }
 
     private func formatWeight(_ weight: Double) -> String {
-        String(format: "%.1f %@", weight, displayUnit)
+        // In weightless mode, prepend '+' for positive offsets so user can see direction.
+        if viewModel.weightlessOn && weight > 0 {
+            return String(format: "+%.1f %@", weight, displayUnit)
+        } else {
+            return String(format: "%.1f %@", weight, displayUnit)
+        }
     }
 }
 
