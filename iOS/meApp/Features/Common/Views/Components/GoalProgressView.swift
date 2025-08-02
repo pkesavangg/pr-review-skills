@@ -53,7 +53,7 @@ struct GoalProgressView: View {
     private var maintainGoalView: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             deltaText
-            Text("\(displayUnit) to \(String(format: "%.1f%@", viewModel.goalWeight, displayUnit)) goal weight")
+            Text("\(displayUnit) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
         }
@@ -106,6 +106,10 @@ struct GoalProgressView: View {
         } else {
             return String(format: "%.1f %@", weight, displayUnit)
         }
+    }
+
+    private func formatGoalWeight(_ weight: Double) -> String {
+        String(format: "%.1f%@", weight, displayUnit)
     }
 }
 
