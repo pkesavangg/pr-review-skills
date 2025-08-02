@@ -34,10 +34,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardMetricsStrings
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import sh.calvin.reorderable.ReorderableCollectionItemScope
 
 /**
  * Composable for displaying a single metric item in the dashboard metrics grid.

@@ -36,18 +36,18 @@ enum class CUSTOMIZE_SETTINGS {
 enum class WifiScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
-
-  // WifiPassword step data (ssid) should be stored in state, not here
   WIFI_PASSWORD,
   SELECT_USER,
   ACTIVATE_SCALE,
-  CONNECTING_SCALE,
-  ERROR_GUIDE,
-  TROUBLE_SHOOTING,
+  WIFI_MODE,
   SWITCH_WIFI,
   SCALE_COUNTS,
   STEP_ON,
-  SETUP_FINISHED
+  SETUP_FINISHED,
+  MAC_ADDRESS,
+  ERROR_GUIDE,
+  ERROR_CODE_SELECTED,
+  TROUBLE_SHOOTING,
 }
 
 /**

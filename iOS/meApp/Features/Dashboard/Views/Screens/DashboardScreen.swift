@@ -4,8 +4,16 @@
 //
 //  Created by Lakshmi Priya on 30/06/25.
 //
+//  Wiggle Animation Implementation:
+//  - Metric grid uses app icon-style wiggle (0.135s/0.125s duration, 0.04 radians)
+//  - Goal card uses medium-speed wiggle (0.18s duration, 0.045 radians)
+//  - Streak grid uses medium-speed wiggle with alternating timing (0.18s/0.16s duration, 0.045 radians)
+//  - Widget wiggle uses alternating timing (0.35s/0.33s duration, 0.045 radians)
+//  - This provides a balanced wiggle that's faster than widgets but gentler than app icons
+//
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
@@ -71,18 +79,12 @@ struct DashboardScreen: View {
         ScrollView(showsIndicators: false) {
             WeightTrendView(dashboardStore: store)
             if !store.allContentRemoved {
-                metricGridSection()
+                // Use single combined layout view for all items
+                DashboardCombinedLayoutView(store: store)
+                    .frame(minHeight: 600)
                     .padding(.top, .spacingSM)
-                if !store.metricsToShow.isEmpty {
-                    Divider()
-                        .foregroundColor(theme.statusUtilityPrimary)
-                        .padding(.vertical, .spacingSM)
-                        .padding(.horizontal, .spacing2XL)
-                }
-                goalCardSection()
-                if store.shouldShowStreakGrid {
-                    streakAndLossGrid()
-                }
+                    .id(store.state.ui.gridLayoutId)
+                    .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
             }
             actionButtonsSection()
                 .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
@@ -90,199 +92,34 @@ struct DashboardScreen: View {
         .padding(.top, .zero)
     }
 
-    // MARK: - Metric Grid Section
-    private func metricGridSection() -> some View {
-           LazyVGrid(columns: store.metricGridColumns, spacing: 16) {
-               ForEach(store.metricsToShow) { item in
-                   metricCardView(for: item)
-               }
-           }
-           .padding(.horizontal, .spacingSM)
-           .id(store.state.ui.gridLayoutId)
-           .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-       }
-
-       // MARK: - Metric Card View Helper
-    private func metricCardView(for item: MetricItem) -> some View {
-        let index = store.metricsToShow.firstIndex(of: item) ?? 0
-        let isRemoved = store.isMetricRemovedInReorderedArray(at: index)
-        let isSelected = store.state.ui.selectedMetricLabel == item.label
-        let verticalPadding = store.state.metrics.dashboardType == .dashboard12 ? MetricCardView.twelveCardVerticalPadding : MetricCardView.fourCardVerticalPadding
-        
-        let card = MetricCardView(
-            value: store.formattedMetricValue(for: (item.preLabel, item.value)),
-            label: item.label,
-            dashboardType: store.state.metrics.dashboardType,
-            isEditMode: store.state.ui.isEditMode,
-            isRemoved: isRemoved,
-            isSelected: isSelected,
-            onToggleRemoval: {
-                if let idx = store.metricsToShow.firstIndex(of: item) {
-                    store.toggleMetricRemovalInReorderedArray(at: idx)
-                }
-            },
-            onTap: {
-                store.selectMetric(item.label)
-            },
-            isDropTarget: store.state.ui.dropHoverId == item.label,
-            onDrop: { _, _ in true },
-            onDropTargetChanged: { isTargeted in
-                store.updateDropTarget(isTargeted ? item.label : nil)
-            },
-            verticalPadding: verticalPadding
-        )
-        
-        return card
-            .editModeOverlay(
-                isEditMode: store.state.ui.isEditMode,
-                isRemoved: isRemoved,
-                onToggleRemoval: {
-                    if let idx = store.metricsToShow.firstIndex(of: item) {
-                        store.toggleMetricRemovalInReorderedArray(at: idx)
-                    }
-                },
-                isBeingDragged: store.state.ui.draggingMetric?.id == item.id,
-                isDropTarget: store.state.ui.dropHoverId == item.label
-            )
-            .draggableReorder(
-                item: item,
-                draggingItem: store.draggingMetricBinding,
-                items: store.metricsBinding,
-                isDraggable: store.state.ui.isEditMode && !isRemoved,
-                onDropTargetChanged: { isTargeted in
-                    store.updateDropTarget(isTargeted ? item.label : nil)
-                },
-                onDragEnd: {
-                    store.handleMetricDragEnd()
-                }
-            )
-            .longPressGesture(isEditMode: store.state.ui.isEditMode) {
-                store.handleMetricLongPress(for: item.label, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
-            }
-    }
-
-    // MARK: - Streak and Loss Grid
-    private func streakAndLossGrid() -> some View {
-        LazyVGrid(columns: store.streakColumns, spacing: 16) {
-            ForEach(store.streakItemsToShow) { item in
-                streakCardView(for: item)
-            }
-        }
-        .id("\(store.state.ui.gridLayoutId)-\(store.currentUnitText)") // Force refresh when unit changes
-        .padding(.bottom, .spacingSM)
-        .padding(.top, (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : .spacingSM)
-        .padding(.horizontal, .spacingSM)
-        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-    }
-
-    // MARK: - Streak Card View Helper
-    private func streakCardView(for item: MetricItem) -> some View {
-        let index = store.streakItemsToShow.firstIndex(of: item) ?? 0
-        let isRemoved = store.isStreakRemovedInReorderedArray(at: index)
-
-        let card = StreakCardView(
-            value: item.value,
-            label: item.label,
-            icon: item.icon,
-            isEditMode: store.state.ui.isEditMode,
-            isRemoved: isRemoved,
-            isDropTarget: store.state.ui.dropHoverId == item.label,
-            onToggleRemoval: {
-                if let idx = store.streakItemsToShow.firstIndex(of: item) {
-                    store.toggleStreakRemovalInReorderedArray(at: idx)
-                }
-            },
-            onDrop: { _, _ in true },
-            onDropTargetChanged: { isTargeted in
-                store.updateDropTarget(isTargeted ? item.label : nil)
-            }
-        )
-
-        return card
-            .editModeOverlay(
-                isEditMode: store.state.ui.isEditMode,
-                isRemoved: isRemoved,
-                onToggleRemoval: {
-                    if let idx = store.streakItemsToShow.firstIndex(of: item) {
-                        store.toggleStreakRemovalInReorderedArray(at: idx)
-                    }
-                },
-                isBeingDragged: store.state.ui.draggingStreak?.id == item.id,
-                isDropTarget: store.state.ui.dropHoverId == item.label
-            )
-            .draggableReorder(
-                item: item,
-                draggingItem: store.draggingStreakBinding,
-                items: store.streakItemsBinding,
-                isDraggable: store.state.ui.isEditMode && !isRemoved,
-                onDropTargetChanged: { isTargeted in
-                    store.updateDropTarget(isTargeted ? item.label : nil)
-                },
-                onDragEnd: {
-                    store.handleStreakDragEnd()
-                }
-            )
-    }
-
-    // MARK: - Goal Progress Section
-    private func goalCardSection() -> some View {
-        if !store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved {
-            return AnyView(EmptyView())
-        }
-        return AnyView(goalCardView())
-    }
-
-    // MARK: - Goal Card View Helper
-    private func goalCardView() -> some View {
-        GoalProgressCardView(
-            delta: store.state.goal.goalDelta,
-            startWeight: store.state.goal.goalStartWeight,
-            goalWeight: store.state.goal.goalWeight,
-            unit: store.currentUnitText,
-            isRemoved: store.state.ui.isGoalCardRemoved,
-            progress: store.state.goal.goalProgress,
-            goalType: store.state.goal.goalType,
-            isWeightlessMode: store.isWeightlessModeEnabled
-        )
-        .id(store.currentUnitText) // Force refresh when unit changes
-        .editModeOverlay(
-            isEditMode: store.state.ui.isEditMode,
-            isRemoved: store.state.ui.isGoalCardRemoved,
-            onToggleRemoval: { store.toggleGoalCardRemoval() },
-            isBeingDragged: false,
-            isDropTarget: false
-        )
-        .padding(.horizontal, .spacingSM)
-    }
-
     // MARK: - Action Buttons
     private func actionButtonsSection() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
             if store.state.ui.isEditMode {
-                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: false, action: {
+                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.saveChanges()
                     store.resetDragState()
                 })
-                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: false, action: {
+                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.showResetDashboardAlert()
                 })
             } else {
-                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: false, action: {
+                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.state.ui.isEditMode.toggle()
                     if store.state.ui.isEditMode {
                         store.resetDragState()
                     }
                 })
-                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: false, action: {
+                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     tabViewModel.navigateToGoalSetting()
                 })
-                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: false, action: {
+                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                 })
                 
                 // Add button to switch to 12 metrics if currently showing 4 metrics
                 if store.state.metrics.dashboardType == .dashboard4 {
-                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: false, action: {
+                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                         store.switchTo12MetricsDashboard()
                     })
                 }

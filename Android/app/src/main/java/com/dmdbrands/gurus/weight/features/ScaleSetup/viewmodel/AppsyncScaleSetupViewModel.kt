@@ -1,10 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
-import com.greatergoods.blewrapper.GGPermissionService
-import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -21,13 +17,16 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.util.Log
 
 /**
  * ViewModel for the AppsyncScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -130,8 +129,6 @@ constructor(
     }
   }
 
-
-
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
@@ -153,6 +150,7 @@ constructor(
   }
 
   private fun checkAndSaveScale() {
+    dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     viewModelScope.launch {
       val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
       if (alreadyPairedScale != null) {
@@ -170,6 +168,7 @@ constructor(
         nickname = scaleInfo?.productName!!,
       )
       deviceService.saveScale(appSyncDevice)
+      dialogQueueService.dismissLoader()
       navigateBack()
     }
   }

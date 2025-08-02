@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.util.ScaleSetupNavigationUtils
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleFormControls
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleIntent
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleReducer
@@ -98,16 +99,19 @@ constructor(
   }
 
   private fun navigateToSelectedScaleSetup(sku: String) {
-    val setupType = SCALES.find { it.sku == sku }?.setupType
-    if (setupType != null) {
-      when (setupType) {
+    val scaleInfo = SCALES.find { it.sku == sku }
+    if (scaleInfo != null) {
+      when (scaleInfo.setupType) {
         ScaleSetupType.AppSync -> navigateTo(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
         ScaleSetupType.Bluetooth -> navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku))
         ScaleSetupType.Lcbt -> navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku))
         ScaleSetupType.BtWifiR4 -> navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
         ScaleSetupType.Wifi,
-        ScaleSetupType.EspTouchWifi,
-          -> navigateTo(AppRoute.ScaleSetup.WifiScaleSetup(sku))
+        ScaleSetupType.EspTouchWifi -> {
+          // Use the ScaleSetupNavigationUtils to determine the correct route with ScaleInfo and wifiSetupType
+          val route = ScaleSetupNavigationUtils.createWifiSetupRoute(scaleInfo)
+          navigateTo(route)
+        }
       }
     }
   }

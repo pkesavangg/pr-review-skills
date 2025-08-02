@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -16,9 +14,12 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtScaleSetupReduce
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -58,9 +59,12 @@ constructor(
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
 
   override suspend fun onSetupFinished() {
-    if (discoveredScale != null) {
-      dialogQueueService.showLoader(message = "Saving scale...")
-      deviceService.saveScale(discoveredScale!!)
+    dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
+    try {
+      if (discoveredScale != null) {
+        deviceService.saveScale(discoveredScale!!)
+      }
+    } finally {
       dialogQueueService.dismissLoader()
     }
   }
@@ -208,7 +212,7 @@ constructor(
       bluetoothTimeoutJob = viewModelScope.launch {
         delay(bluetoothTimeout)
         // Check if we're still in the pairing mode step and no device was found
-        if (currentSetupState.step == BtScaleSetupStep.PAIRING_MODE && discoveredScale == null) {
+        if (discoveredScale == null) {
           AppLog.d(TAG, "Bluetooth scan timeout reached")
           showRetryToast()
           handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))

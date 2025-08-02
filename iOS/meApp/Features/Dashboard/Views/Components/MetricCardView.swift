@@ -99,9 +99,12 @@ struct MetricCardView: View {
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.fourCardVerticalPadding
         )
+        
+        // Edit mode with wiggle animation (matching movingGridsLearning exactly)
+        // Row 0 - even timing (0.135s)
         MetricCardView(
-            value: "8",
-            label: "visceral fat",
+            value: "22.1",
+            label: "muscle mass",
             dashboardType: .dashboard12,
             isEditMode: true,
             isRemoved: false,
@@ -113,9 +116,46 @@ struct MetricCardView: View {
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.twelveCardVerticalPadding
         )
+        .wiggling(true, rowIndex: 0) // Even row timing
+        
+        // Row 1 - odd timing (0.125s)
         MetricCardView(
-            value: "41.6",
-            label: "muscle",
+            value: "15.2",
+            label: "water weight",
+            dashboardType: .dashboard4,
+            isEditMode: true,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.fourCardVerticalPadding
+        )
+        .wiggling(true, rowIndex: 1) // Odd row timing
+        
+        // Row 2 - even timing (0.135s)
+        MetricCardView(
+            value: "28.7",
+            label: "bone mass",
+            dashboardType: .dashboard12,
+            isEditMode: true,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.twelveCardVerticalPadding
+        )
+        .wiggling(true, rowIndex: 2) // Even row timing
+        
+        // Edit mode - removed item (no wiggle)
+        MetricCardView(
+            value: "15.2",
+            label: "water weight",
             dashboardType: .dashboard4,
             isEditMode: true,
             isRemoved: true,
@@ -129,5 +169,5 @@ struct MetricCardView: View {
         )
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .environmentObject(Theme.shared)
 }

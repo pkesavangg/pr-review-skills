@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.core.service.pushNotification
 
 import com.dmdbrands.gurus.weight.MainActivity
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
+import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.NotificationChannel
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
@@ -16,6 +18,7 @@ import javax.inject.Inject
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 
 /**
  * Service for handling Firebase push notifications and forwarding them to the app UI.
@@ -76,6 +79,7 @@ class PushNotificationService : FirebaseMessagingService() {
    * @param message The received remote message.
    */
   override fun onMessageReceived(message: RemoteMessage) {
+    Log.d(TAG, "Received message: $message")
     val intent =
       Intent(context, MainActivity::class.java).apply {
         setPackage(context.packageName)
@@ -99,5 +103,9 @@ class PushNotificationService : FirebaseMessagingService() {
       message.notification?.body ?: "You have a new message",
       pendingIntent,
     )
+
+    CoroutineScope(Dispatchers.IO).launch {
+      AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
+    }
   }
 }

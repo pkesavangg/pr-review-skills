@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -171,8 +173,7 @@ constructor(
         when (authState) {
           is AuthState.LoggedIn -> {
             // handle login event
-            deviceInfoService.updateDeviceInfo()
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.LoggedOut -> {
@@ -216,7 +217,7 @@ constructor(
                 ),
               )
             }
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -230,6 +231,22 @@ constructor(
           }
 
           // handle other AuthState events as needed
+          else -> {}
+        }
+      }
+    }
+    viewModelScope.launch {
+      AppNotificationEventService.events.collect {
+        when (it) {
+          NotificationEventType.NOTIFICATION_TAPPED -> {
+            entryService.syncOperations()
+          }
+
+          NotificationEventType.NOTIFICATION_RECEIVED -> {
+            entryService.syncOperations()
+            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
+          }
+
           else -> {}
         }
       }
@@ -273,7 +290,7 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?) {
+  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
@@ -285,6 +302,9 @@ constructor(
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
+        if (isLoggedIn) {
+          deviceInfoService.updateDeviceInfo()
+        }
         navigationService.autoLogin()
       } else {
         routeToLandingOrApp()
@@ -443,10 +463,10 @@ constructor(
   ) {
     viewModelScope.launch {
       val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-      if (device != null)
-        deviceService.onDeviceUpdate(
-          macAddress = device.device?.macAddress, connectionStatus = connectionStatus ?: device.connectionStatus,
-        )
+      deviceService.onDeviceUpdate(
+        macAddress = device?.device?.macAddress ?: deviceDetail.macAddress,
+        connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED,
+      )
     }
   }
 

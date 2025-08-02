@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.core.service
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
@@ -10,6 +9,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,9 +23,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.util.TimeZone
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
 
 /**
  * Service for managing device/scale data operations.
@@ -35,6 +38,7 @@ class DeviceService
 @Inject
 constructor(
   private val deviceRepository: IDeviceRepository,
+  @ApplicationContext private val context: Context,
 ) : IDeviceService {
   private val tag = "DeviceService"
 
@@ -254,6 +258,8 @@ constructor(
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }
+      // 8. Refresh the pairedScales StateFlow to reflect changes in UI
+      fetchScales(currentAccountId)
     } catch (e: Exception) {
       AppLog.e(tag, "Error storing final device list", e.toString())
     }
@@ -428,7 +434,7 @@ constructor(
    */
   override suspend fun getScaleByMac(mac: String): Device? =
     try {
-      deviceRepository.getDeviceByMac(mac).first()
+      deviceRepository.getDeviceByMac(mac, this.currentAccountId ?: "").first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale by MAC", e.toString())
       null
@@ -452,10 +458,10 @@ constructor(
    * Get scale token from the API.
    * @return The scale token as a string.
    */
-  override suspend fun getScaleToken(): String {
+  override suspend fun getScaleToken(isR4: Boolean): String {
     AppLog.d(tag, "Getting scale token from API")
     return try {
-      val token = deviceRepository.getScaleTokenFromApi()
+      val token = deviceRepository.getScaleTokenFromApi(isR4)
       AppLog.d(tag, "Scale token retrieved successfully")
       token
     } catch (e: Exception) {
@@ -473,7 +479,7 @@ constructor(
   }
 
   private fun getTimeZoneInMinutes(): Int {
-    val timeZone = java.util.TimeZone.getDefault()
+    val timeZone = TimeZone.getDefault()
     val offsetInMillis = timeZone.getOffset(System.currentTimeMillis())
     return offsetInMillis / (60 * 1000) // convert milliseconds to minutes
   }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -33,135 +34,131 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun BaseModal(
-    modifier: Modifier = Modifier,
-    primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
-    primaryAction: ActionButton? = null,
-    title: String? = null,
-    body: String? = null,
-    secondaryAction: ActionButton? = null,
-    onDismiss: (() -> Unit)? = null,
-    content: @Composable (() -> Unit)? = null,
+  modifier: Modifier = Modifier,
+  primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
+  primaryAction: ActionButton? = null,
+  title: String? = null,
+  body: String? = null,
+  secondaryAction: ActionButton? = null,
+  onDismiss: (() -> Unit)? = null,
+  content: @Composable (() -> Unit)? = null,
 ) {
-    val cardColors =
-        CardDefaults
-            .cardColors(
-                containerColor = MeTheme.colorScheme.primaryBackground,
-            )
+  val cardColors =
+    CardDefaults
+      .cardColors(
+        containerColor = MeTheme.colorScheme.primaryBackground,
+      )
 
-    Card(
-        modifier = modifier.width(316.dp),
-        shape = RoundedCornerShape(28.dp), // Figma: radius-xl = 28dp (no token found)
-        colors = cardColors,
+  Card(
+    modifier = modifier.width(316.dp),
+    shape = RoundedCornerShape(28.dp), // Figma: radius-xl = 28dp (no token found)
+    colors = cardColors,
+  ) {
+    Column(
+      modifier = Modifier.padding(MeTheme.spacing.md),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     ) {
-        Column(
-            modifier = Modifier.padding(MeTheme.spacing.md),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-        ) {
-            title?.let {
-                Text(
-                    text = it,
-                    style = MeTheme.typography.heading4,
-                    color = MeTheme.colorScheme.textHeading,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            body?.let {
-                Text(
-                    text = body,
-                    style = MeTheme.typography.body2,
-                    color = MeTheme.colorScheme.textBody,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Column(Modifier.fillMaxWidth()) {
-                content?.let {
-                    it()
-                }
-            }
+      title?.let {
+        Text(
+          text = it,
+          style = MeTheme.typography.heading4,
+          color = MeTheme.colorScheme.textHeading,
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+      body?.let {
+        Text(
+          text = body,
+          style = MeTheme.typography.body2,
+          color = MeTheme.colorScheme.textBody,
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+      Column(Modifier.fillMaxWidth()) {
+        content?.let {
+          it()
         }
-        if (secondaryAction != null || primaryAction != null) {
-            Column(
-                modifier =
-                    Modifier
-                        .padding(MeTheme.spacing.md),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                BoxWithConstraints(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val maxWidth = maxWidth
-
-                    // Calculate if we need to stack buttons vertically based on text length
-                    val shouldStackVertically = remember {
-                        derivedStateOf {
-                            val totalTextLength = (secondaryAction?.text?.length ?: 0) + (primaryAction?.text?.length ?: 0)
-                            // If total text length is more than ~25 characters, stack vertically
-                            // This is a rough estimate - you can adjust this threshold
-                            totalTextLength >= 25
-                        }
-                    }
-
-                    if (shouldStackVertically.value) {
-                        // Stack buttons vertically when text is too long
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            if (secondaryAction != null) {
-                                AppButton(
-                                    label = secondaryAction.text,
-                                    onClick = secondaryAction.action,
-                                    type = ButtonType.InlineTextTertiary,
-                                    size = ButtonSize.Small,
-                                    enabled = secondaryAction.enabled,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            if (primaryAction != null) {
-                                AppButton(
-                                    label = primaryAction.text,
-                                    onClick = primaryAction.action,
-                                    type = primaryActionType,
-                                    size = ButtonSize.Small,
-                                    enabled = primaryAction.enabled,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    } else {
-                        // Use horizontal layout when text is short enough
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
-                        ) {
-                            if (secondaryAction != null) {
-                                AppButton(
-                                    label = secondaryAction.text,
-                                    onClick = secondaryAction.action,
-                                    type = ButtonType.InlineTextTertiary,
-                                    size = ButtonSize.Small,
-                                    enabled = secondaryAction.enabled,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            if (primaryAction != null) {
-                                AppButton(
-                                    label = primaryAction.text,
-                                    onClick = primaryAction.action,
-                                    type = primaryActionType,
-                                    size = ButtonSize.Small,
-                                    enabled = primaryAction.enabled,
-                                    modifier = if (secondaryAction != null) Modifier.weight(1f) else Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+      }
     }
+    if (secondaryAction != null || primaryAction != null) {
+      Column(
+        modifier =
+          Modifier
+            .padding(MeTheme.spacing.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        BoxWithConstraints {
+          maxWidth
+
+          // Calculate if we need to stack buttons vertically based on text length
+          val shouldStackVertically = remember {
+            derivedStateOf {
+              val totalTextLength = (secondaryAction?.text?.length ?: 0) + (primaryAction?.text?.length ?: 0)
+              // If total text length is more than ~25 characters, stack vertically
+              // This is a rough estimate - you can adjust this threshold
+              totalTextLength >= 25
+            }
+          }
+
+          if (shouldStackVertically.value) {
+            // Stack buttons vertically when text is too long
+            Column(
+              modifier = Modifier.fillMaxWidth(),
+              // verticalArrangement = Arrangement.spacedBy(0.dp),
+              horizontalAlignment = Alignment.End,
+            ) {
+              if (secondaryAction != null) {
+                AppButton(
+                  label = secondaryAction.text,
+                  onClick = secondaryAction.action,
+                  type = ButtonType.InlineTextTertiary,
+                  size = ButtonSize.Small,
+                  enabled = secondaryAction.enabled,
+                )
+              }
+              if (primaryAction != null) {
+                AppButton(
+                  label = primaryAction.text,
+                  onClick = primaryAction.action,
+                  type = primaryActionType,
+                  size = ButtonSize.Small,
+                  enabled = primaryAction.enabled,
+                )
+              }
+            }
+          } else {
+            // Use horizontal layout when text is short enough
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.End,
+            ) {
+              if (secondaryAction != null) {
+                AppButton(
+                  label = secondaryAction.text,
+                  onClick = secondaryAction.action,
+                  type = ButtonType.InlineTextTertiary,
+                  size = ButtonSize.Small,
+                  enabled = secondaryAction.enabled,
+                  modifier = Modifier,
+                )
+                Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
+              }
+              if (primaryAction != null) {
+                AppButton(
+                  label = primaryAction.text,
+                  onClick = primaryAction.action,
+                  type = primaryActionType,
+                  size = ButtonSize.Small,
+                  enabled = primaryAction.enabled,
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -170,26 +167,26 @@ fun BaseModal(
 @PreviewTheme
 @Composable
 fun BaseModelPreview() {
-    MeAppTheme {
-        Column {
-            BaseModal(
-                title = "Header",
-                body = "Body content goes here. This is a sample dialog body.",
-                primaryAction = ActionButton(text = "looooooongtext", action = {}),
-                secondaryAction = ActionButton(text = "loooongtext", action = {}),
-            )
-            BaseModal(
-                title = "Header",
-                primaryAction = ActionButton(text = "Button", action = {}),
-            ) {
-                Text("Custom content")
-            }
+  MeAppTheme {
+    Column {
+      BaseModal(
+        title = "Header",
+        body = "Body content goes here. This is a sample dialog body.",
+        primaryAction = ActionButton(text = "loooooooooooo", action = {}),
+        secondaryAction = ActionButton(text = "loooooooooooo", action = {}),
+      )
+      BaseModal(
+        title = "Header",
+        primaryAction = ActionButton(text = "Button", action = {}),
+      ) {
+        Text("Custom content")
+      }
 
-            BaseModal(
-                title = "Header",
-            ) {
-                Text("Custom content")
-            }
-        }
+      BaseModal(
+        title = "Header",
+      ) {
+        Text("Custom content")
+      }
     }
+  }
 }

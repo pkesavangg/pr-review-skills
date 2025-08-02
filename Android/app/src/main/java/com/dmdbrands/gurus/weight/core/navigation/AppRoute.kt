@@ -1,12 +1,13 @@
 package com.dmdbrands.gurus.weight.core.navigation
 
 import androidx.navigation3.runtime.NavKey
-import com.example.nav3integration.PublicRoute
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.example.nav3integration.PublicRoute
 import kotlinx.serialization.Serializable
 
 /**
@@ -173,6 +174,8 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class WifiScaleSetup(
       val sku: String,
+      val wifiSetupType: String = "first",
+      val scaleInfo: ScaleInfo? = null
     ) : ScaleSetup()
 
     @Serializable

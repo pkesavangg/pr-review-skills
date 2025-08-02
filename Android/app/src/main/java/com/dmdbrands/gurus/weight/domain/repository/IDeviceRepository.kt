@@ -27,13 +27,13 @@ interface IDeviceRepository {
 
   fun deviceExistsByBroadcastId(broadcastId: String): Flow<Boolean>
 
-  fun deviceExistsByMac(mac: String): Flow<Boolean>
+  fun deviceExistsByMac(mac: String, accountId: String): Flow<Boolean>
 
   fun deviceExistsByPeripheralId(peripheralId: String): Flow<Boolean>
 
   fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?>
 
-  fun getDeviceByMac(mac: String): Flow<Device?>
+  fun getDeviceByMac(mac: String, accountId: String): Flow<Device?>
 
   fun getDeviceByPeripheralId(peripheralId: String): Flow<Device?>
 
@@ -83,5 +83,5 @@ interface IDeviceRepository {
    * Get scale token from the API.
    * @return The scale token as a string.
    */
-  suspend fun getScaleTokenFromApi(): String
+  suspend fun getScaleTokenFromApi(isR4: Boolean): String
 }

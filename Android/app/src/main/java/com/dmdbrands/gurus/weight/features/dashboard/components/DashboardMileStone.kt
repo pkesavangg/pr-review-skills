@@ -49,17 +49,27 @@ fun DashboardMilestone(
   val allMilestones = StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false)
   val hiddenMilestones = allMilestones.filter { it !in visibleMilestones }
 
-  val onMilestoneMoved = { fromVisible: Boolean, toVisible: Boolean, milestone: Stat ->
+  val onMilestoneMoved = { isAdded: Boolean, milestone: Stat ->
     val milestoneKey = milestone.key
-    if (fromVisible && !toVisible) {
-      val newKeys = localVisibleKeys.filterNot { it == milestoneKey }
-      localVisibleKeys = newKeys
-      onMilestonesChanged(newKeys)
-    } else if (!fromVisible && toVisible) {
-      val newKeys = localVisibleKeys + milestoneKey
-      localVisibleKeys = newKeys
-      onMilestonesChanged(newKeys)
+    val newStats = if (!isAdded) {
+      // Moving from visible to hidden
+      visibleMilestones.filterNot { it.key == milestoneKey }
+    } else {
+      // Moving from hidden to visible
+      visibleMilestones + milestone
     }
+    localVisibleKeys = newStats.reorderGrid().map { stat ->
+      stat.key
+    }
+    onMilestonesChanged(localVisibleKeys)
+  }
+
+  val onMilestoneReordered = { newOrder: List<Stat> ->
+    val newVisibleKeys = newOrder.map { stat ->
+      stat.key
+    }
+    localVisibleKeys = newVisibleKeys
+    onMilestonesChanged(newVisibleKeys)
   }
 
   Column(modifier = modifier) {
@@ -68,6 +78,7 @@ fun DashboardMilestone(
       hiddenMilestones = hiddenMilestones,
       inEditMode = inEditMode,
       onMilestoneMoved = onMilestoneMoved,
+      onMilestoneReordered = onMilestoneReordered,
       progress = progress,
     )
   }

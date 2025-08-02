@@ -13,6 +13,7 @@ object ScaleSetupStrings {
   const val FinishButton = "Finish"
   const val skipButton = "skip"
   const val saveButton = "save"
+  const val SaveScaleLoader = "Saving Scale..."
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
@@ -42,6 +43,7 @@ object ScaleSetupStrings {
     const val Connect = "Connect"
     const val Next = "next"
     const val SomethingElse = "I see something else?"
+    const val Continue = "Continue"
     const val SetupWifiLater = "Setup Wifi Later"
   }
 
@@ -63,5 +65,26 @@ object ScaleSetupStrings {
     const val ConnectedNetwork = "Connected Network"
     const val AvailableNetworks = "Available Networks"
     const val NoNetworks = "Unable to gather networks.."
+  }
+
+  object SkipWifiPermissions {
+    const val Title = "Are you sure you want to skip?"
+    const val Message = "Doing so makes necessary a more in-depth, time consuming setup process."
+    const val Skip = "Skip"
+    const val Goback = "Go Back"
+  }
+
+  object PermissionAlerts {
+    object LocationDisabled {
+      const val Title = "Location Services Disabled"
+      const val Message = "Please enable Location Services to continue with scale setup."
+      const val Enable = "Enable"
+    }
+
+    object LocationAccessDisabled {
+      const val Title = "Location Permission Required"
+      const val Message = "Location permission is required to detect your WiFi network for scale setup."
+      const val Enable = "Enable"
+    }
   }
 }

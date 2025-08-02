@@ -197,7 +197,6 @@ struct YAxisCalculator {
 
     /// Enforce tick limits (min 3, max 8) by adjusting step size
     internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) {
-        let range = max - min
         var step = initialStep
         var ticks: [Double] = []
 

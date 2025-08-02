@@ -26,6 +26,9 @@ struct GraphView: View {
     @State private var initialTouchPoint: CGPoint = .zero
     @State private var decisionTimer: Timer?
 
+    // Callout positioning
+    @State private var chartFrame: CGRect = .zero
+
     // Check if there are any entries to display
     private var hasEntries: Bool {
         return !dashboardStore.continuousOperations.isEmpty
@@ -38,7 +41,9 @@ struct GraphView: View {
 
     var body: some View {
         VStack(alignment: .leading){
-            Text(dashboardStore.weightLabel)
+            // Hide weight label when there is a selection
+
+            Text(dashboardStore.state.graph.selectedPoint == nil ? dashboardStore.weightLabel : "")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     .padding(.leading, .spacingSM)
@@ -65,85 +70,119 @@ struct GraphView: View {
     // MARK: - Chart View
     private var chartView: some View {
         return HStack(spacing: 0) {
-            Chart {
-                yAxisGridLines
-                chartSeries
-                crosshairContent
-            }
-            .chartXVisibleDomain(length: getVisibleDomainLength() ?? 0)
-            .chartScrollableAxes(getScrollableAxes())
-            .chartYScale(domain: dashboardStore.yAxisDomain)
-            .chartScrollPosition(x: Binding(
-                get: { dashboardStore.state.graph.xScrollPosition },
-                set: { newPosition in
-                    dashboardStore.handleScrollPositionChange(newPosition)
+            ZStack {
+                Chart {
+                    yAxisGridLines
+                    chartSeries
+                    crosshairContent
                 }
-            ))
-            .chartForegroundStyleScale([
-                DashboardStrings.weight: theme.actionPrimary,
-                DashboardStrings.bmi: theme.actionSecondary,
-                DashboardStrings.bodyFat: theme.actionSecondary,
-                DashboardStrings.muscle: theme.actionSecondary,
-                DashboardStrings.water: theme.actionSecondary,
-                DashboardStrings.heartBpm: theme.actionSecondary,
-                DashboardStrings.bone: theme.actionSecondary,
-                DashboardStrings.visceralFat: theme.actionSecondary,
-                DashboardStrings.subFat: theme.actionSecondary,
-                DashboardStrings.protein: theme.actionSecondary,
-                DashboardStrings.skelMuscle: theme.actionSecondary,
-                DashboardStrings.bmrKcal: theme.actionSecondary,
-                DashboardStrings.metAge: theme.actionSecondary
-            ])
-            .chartYAxis { yAxisMarks }
-            .chartLegend(.hidden)
-            .chartXAxis {
-                if dashboardStore.state.graph.selectedPeriod != .total {
-                    AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel {
-                            if let date = value.as(Date.self),
-                               let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
-                                Text(labelString)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                .chartXVisibleDomain(length: getVisibleDomainLength() ?? 0)
+                .chartScrollableAxes(getScrollableAxes())
+                .chartYScale(domain: dashboardStore.yAxisDomain)
+                .chartScrollPosition(x: Binding(
+                    get: { dashboardStore.state.graph.xScrollPosition },
+                    set: { newPosition in
+                        dashboardStore.handleScrollPositionChange(newPosition)
+                    }
+                ))
+                .chartForegroundStyleScale([
+                    DashboardStrings.weight: theme.actionPrimary,
+                    DashboardStrings.bmi: theme.actionSecondary,
+                    DashboardStrings.bodyFat: theme.actionSecondary,
+                    DashboardStrings.muscle: theme.actionSecondary,
+                    DashboardStrings.water: theme.actionSecondary,
+                    DashboardStrings.heartBpm: theme.actionSecondary,
+                    DashboardStrings.bone: theme.actionSecondary,
+                    DashboardStrings.visceralFat: theme.actionSecondary,
+                    DashboardStrings.subFat: theme.actionSecondary,
+                    DashboardStrings.protein: theme.actionSecondary,
+                    DashboardStrings.skelMuscle: theme.actionSecondary,
+                    DashboardStrings.bmrKcal: theme.actionSecondary,
+                    DashboardStrings.metAge: theme.actionSecondary
+                ])
+                .chartYAxis { yAxisMarks }
+                .chartLegend(.hidden)
+                .chartXAxis {
+                    if dashboardStore.state.graph.selectedPeriod != .total {
+                        AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let date = value.as(Date.self),
+                                   let labelString = dashboardStore.xLabelString(for: date, period: dashboardStore.state.graph.selectedPeriod) {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
                             }
                         }
                     }
                 }
-            }
-            .chartXSelection(value: Binding(
-                get: {
-                    // Use local state for selection (like WeightGraph)
-                    selectedXValue
-                },
-                set: { newValue in
-                    // Only handle selection if not in scroll mode and not actively scrolling
-                    if touchInteractionMode != .scrolling && !dashboardStore.state.graph.isScrolling {
-                        selectedXValue = newValue
-                        if let selectedDate = newValue {
-                            // Update the global store for metrics
-                            Task {
-                                await dashboardStore.handleChartSelection(at: selectedDate)
+                .chartXSelection(value: Binding(
+                    get: {
+                        // Use local state for selection (like WeightGraph)
+                        selectedXValue
+                    },
+                    set: { newValue in
+                        // Only handle selection if not in scroll mode and not actively scrolling
+                        if touchInteractionMode != .scrolling && !dashboardStore.state.graph.isScrolling {
+                            selectedXValue = newValue
+                            if let selectedDate = newValue {
+                                // Update the global store for metrics
+                                Task {
+                                    await dashboardStore.handleChartSelection(at: selectedDate)
+                                }
                             }
                         }
                     }
+                ))
+                .frame(height: 265)
+                .frame(maxWidth: .infinity, minHeight: 240)
+                .padding(.leading, isAtLeftBoundary ? .spacingXS : 0)
+                .padding(.trailing, .spacingXS)
+                .background(
+                    GeometryReader { geo in
+                        theme.textInverse
+                            .onAppear {
+                                dashboardStore.state.graph.chartHeight = geo.size.height
+                                chartFrame = geo.frame(in: .local)
+                            }
+                            .onChange(of: geo.frame(in: .local)) { _, newFrame in
+                                chartFrame = newFrame
+                            }
+                    }
+                )
+                .onPreferenceChange(AnnotationHeightKey.self) { height in
+                    dashboardStore.state.graph.annotationHeight = height
                 }
-            ))
-            .frame(height: 265)
-            .frame(maxWidth: .infinity, minHeight: 240)
-            .padding(.leading, isAtLeftBoundary ? .spacingXS : 0)
-            .padding(.trailing, .spacingXS)
-            .background(
-                GeometryReader { geo in
-                    theme.textInverse
-                        .onAppear {
-                            dashboardStore.state.graph.chartHeight = geo.size.height
-                        }
+                .accessibilityLabel(Text("Weight chart"))
+                .onAppear {
+                    dashboardStore.initializeChart()
                 }
-            )
-            .onPreferenceChange(AnnotationHeightKey.self) { height in
-                dashboardStore.state.graph.annotationHeight = height
+                // Synchronized animations for chart components
+                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
+                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+                .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
+                .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
+                // Apply decision window modifier first, then scroll detection
+                .modifier(DecisionWindowModifier(
+                    touchInteractionMode: $touchInteractionMode,
+                    initialTouchPoint: $initialTouchPoint,
+                    decisionTimer: $decisionTimer,
+                    selectedXValue: $selectedXValue,
+                    dashboardStore: dashboardStore
+                ))
+                // Keep existing scroll detection modifier
+                .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
+
+                // Selection callout overlay - shows when a point is selected
+                if let selectedPoint = dashboardStore.state.graph.selectedPoint,
+                   dashboardStore.state.graph.showCrosshair {
+                    selectionCallout(for: selectedPoint)
+                }
+
+                // Goal chip overlay - shows goal weight chip positioned based on ticks
+                goalChipCallout()
             }
             .accessibilityLabel(Text("Weight chart"))
             .onAppear {
@@ -168,6 +207,133 @@ struct GraphView: View {
 
     }
 
+                                 // MARK: - Selection Callout
+    @ViewBuilder
+    private func selectionCallout(for selectedPoint: BathScaleWeightSummary) -> some View {
+        if let displayWeight = dashboardStore.displayWeight,
+           let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight) {
+
+            let isOnLeftSide = chartPosition.x < chartFrame.width / 2
+            let textOffset: CGFloat = isOnLeftSide ? 0 : -25 // Offset from the line
+            let finalXPosition = chartPosition.x + textOffset
+            Text(dashboardStore.weightLabel)
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+                .position(
+                    x: max(50, min(chartFrame.width - 50, finalXPosition)), // Prevent cropping with 50pt padding
+                    y: -15 // Position above chart boundary
+                )
+                .animation(.easeInOut(duration: 0.2), value: finalXPosition)
+        }
+        }
+
+            // MARK: - Goal Chip Callout
+    @ViewBuilder
+    private func goalChipCallout() -> some View {
+        let goalWeight = dashboardStore.goalWeightForDisplay
+        let yAxisTicks = dashboardStore.yAxisTicks
+        let yAxisDomain = dashboardStore.yAxisDomain
+
+                                // Always show goal chip - it has special significance even if it matches a tick
+        let goalPosition = getGoalChipPosition(goalWeight: goalWeight, ticks: yAxisTicks, domain: yAxisDomain)
+
+                let xOffset = getGoalChipXOffset(for: goalWeight)
+
+        goalWeightChip(goalWeight)
+            .position(
+                x: chartFrame.width > 0 ? chartFrame.width - xOffset : 320,
+                y: goalPosition.yPosition
+            )
+            .animation(.easeInOut(duration: 0.2), value: goalPosition.yPosition)
+    }
+
+    // MARK: - Goal Chip Positioning
+    private func getGoalChipXOffset(for goalWeight: Double) -> CGFloat {
+        let formattedText = dashboardStore.formatYAxisTickLabel(goalWeight)
+
+        // Check if it's a 3-digit value or longer
+        if formattedText.count >= 3 {
+            return 32 // More space for 3+ digit values
+        } else {
+            return 28 // Less space for 1-2 digit values
+        }
+    }
+
+    private func getGoalChipPosition(goalWeight: Double, ticks: [Double], domain: ClosedRange<Double>) -> (yPosition: CGFloat, placement: GoalPlacement) {
+
+        // If goal weight is higher than all ticks, show at top
+        if let maxTick = ticks.max(), goalWeight > maxTick {
+            return (yPosition: -25, placement: .top)
+        }
+
+        // If goal weight is lower than all ticks, show at bottom
+        if let minTick = ticks.min(), goalWeight < minTick {
+            return (yPosition: chartFrame.height + 20, placement: .bottom)
+        }
+
+        // Goal weight is within tick range, calculate proportional position
+        let yRatio = (goalWeight - domain.lowerBound) / (domain.upperBound - domain.lowerBound)
+        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
+
+        return (yPosition: yPosition, placement: .middle)
+    }
+
+    // MARK: - Goal Chip UI
+    @ViewBuilder
+    private func goalWeightChip(_ value: Double) -> some View {
+        Text(dashboardStore.formatYAxisTickLabel(value))
+            .fontWeight(.bold)
+            .font(.body)
+            .foregroundColor(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(theme.statusSuccess))
+    }
+
+    // MARK: - Helper Methods for Callout
+
+        /// Calculate the chart position for a given date and value
+    private func getChartPosition(for date: Date, value: Double) -> CGPoint? {
+        let yAxisDomain = dashboardStore.yAxisDomain
+
+        let xPosition: CGFloat
+
+        if dashboardStore.state.graph.selectedPeriod == .total {
+            // For TOTAL period, calculate position based on actual data range
+            let allOperations = dashboardStore.continuousOperations
+            guard !allOperations.isEmpty else { return nil }
+
+            let allDates = allOperations.map { $0.date }
+            guard let minDate = allDates.min(), let maxDate = allDates.max() else { return nil }
+
+                        let totalTimeRange = maxDate.timeIntervalSince(minDate)
+            if totalTimeRange > 0 {
+                let timeFromStart = date.timeIntervalSince(minDate)
+                let xRatio = timeFromStart / totalTimeRange
+                xPosition = chartFrame.width * xRatio
+            } else {
+                xPosition = chartFrame.width / 2 // Single point, center it
+            }
+        } else {
+            // For other periods, use scroll-based calculation
+            let xScrollPosition = dashboardStore.state.graph.xScrollPosition
+            let visibleDomainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
+
+            let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
+            let xRatio = timeFromScrollPosition / visibleDomainLength
+            xPosition = chartFrame.width * xRatio
+        }
+
+        // Calculate y position relative to y-axis domain
+        let yRatio = (value - yAxisDomain.lowerBound) / (yAxisDomain.upperBound - yAxisDomain.lowerBound)
+        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
+
+        // Add padding offsets
+        let adjustedX = xPosition + (isAtLeftBoundary ? .spacingXS : 0)
+        let adjustedY = yPosition
+
+        return CGPoint(x: adjustedX, y: adjustedY)
+    }
     // MARK: - Computed Properties
 
         /// Determines if the chart is scrolled to the leftmost boundary of the data
@@ -300,7 +466,7 @@ struct GraphView: View {
             )
             .zIndex(-100)
             .foregroundStyle(theme.actionSecondary)
-            .lineStyle(StrokeStyle(lineWidth: 2))
+            .lineStyle(StrokeStyle(lineWidth: 1))
         }
     }
 
@@ -368,25 +534,25 @@ struct GraphView: View {
 
         return AxisMarks(values: yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
-                if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
-                    AxisValueLabel {
-                        goalWeightBubbleLabel(doubleValue)
-                    }
-                } else {
+                // Commented out goal weight bubble label - using goal chip callout instead
+                // if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
+                //     AxisValueLabel {
+                //         goalWeightBubbleLabel(doubleValue)
+                //     }
+                // } else {
                     AxisValueLabel {
                         Text(dashboardStore.formatYAxisTickLabel(doubleValue))
                             .font(.body)
                             .fontWeight(.medium)
                             .foregroundColor(theme.textSubheading)
+                            .padding(.horizontal, .spacingXS)
                     }
-                }
+                // }
             }
         }
     }
 
-
-
-        // MARK: - Helper Functions
+    // MARK: - Helper Functions
 
     /// Returns appropriate point size based on the selected period
     private func getPointSizeForPeriod() -> CGFloat {
@@ -418,204 +584,33 @@ struct GraphView: View {
         }
     }
 
-
-
     // MARK: - Axis Label Helpers
-    @ViewBuilder
-    private func goalWeightBubbleLabel(_ value: Double) -> some View {
-        Text(dashboardStore.formatYAxisTickLabel(value))
-            .fontWeight(.bold)
-            .font(.body)
-            .foregroundColor(.white)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(theme.statusSuccess))
-            .background(
-                GeometryReader { bubbleGeo in
-                    Color.clear
-                        .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
-                }
-            )
-            .zIndex(100)
-    }
+    // Commented out - using goal chip callout instead
+    // @ViewBuilder
+    // private func goalWeightBubbleLabel(_ value: Double) -> some View {
+    //     Text(dashboardStore.formatYAxisTickLabel(value))
+    //         .fontWeight(.bold)
+    //         .font(.body)
+    //         .foregroundColor(.white)
+    //         .padding(.horizontal, 5)
+    //         .padding(.vertical, 1)
+    //         .background(Capsule().fill(theme.statusSuccess))
+    //         .background(
+    //             GeometryReader { bubbleGeo in
+    //                 Color.clear
+    //                     .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
+    //             }
+    //         )
+    //         .zIndex(100)
+    // }
 }
 
-// MARK: - Touch Interaction Mode
-
-/// Enum to track the current touch interaction mode
-enum TouchInteractionMode {
-    case none
-    case deciding
-    case scrubbing
-    case scrolling
+// MARK: - Goal Placement Enum
+enum GoalPlacement {
+    case top
+    case bottom
+    case middle
 }
-
-// MARK: - Decision Window Modifier
-
-/// ViewModifier that implements a decision window to determine touch interaction mode
-struct DecisionWindowModifier: ViewModifier {
-    @Binding var touchInteractionMode: TouchInteractionMode
-    @Binding var initialTouchPoint: CGPoint
-    @Binding var decisionTimer: Timer?
-    @Binding var selectedXValue: Date?
-    let dashboardStore: DashboardStore
-
-    // Constants for decision logic
-    private let decisionWindowDuration: TimeInterval = 0.15 // 150ms
-    private let movementThreshold: CGFloat = 12 // 10-12 points
-    private let scrollThreshold: CGFloat = 10 // 8-10 points
-    private let horizontalScrollRatio: CGFloat = 1.5 // abs(dx) > 1.5 * abs(dy)
-
-    func body(content: Content) -> some View {
-        content
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        handleTouchChange(value)
-                    }
-                    .onEnded { value in
-                        handleTouchEnd(value)
-                    }
-            )
-    }
-
-    private func handleTouchChange(_ value: DragGesture.Value) {
-        let translation = value.translation
-
-        switch touchInteractionMode {
-        case .none:
-            // Start decision window
-            touchInteractionMode = .deciding
-            initialTouchPoint = value.location
-            startDecisionTimer()
-
-        case .deciding:
-            // Check if we should enter scroll mode early
-            let dx = abs(translation.width)
-            let dy = abs(translation.height)
-            let isHorizontalMovement = dx > horizontalScrollRatio * dy && dx > scrollThreshold
-
-            if isHorizontalMovement {
-                enterScrollMode()
-            }
-            // If not horizontal scrolling, let timer decide
-
-        case .scrubbing:
-            // Continue scrubbing - chartXSelection will handle this
-            break
-
-        case .scrolling:
-            // Let existing scroll detection handle it
-            break
-        }
-    }
-
-    private func handleTouchEnd(_ value: DragGesture.Value) {
-        cancelDecisionTimer()
-
-        switch touchInteractionMode {
-        case .scrubbing:
-            // Clear selection when user lifts finger
-            selectedXValue = nil
-
-        case .scrolling:
-            // Let existing scroll detection handle scroll end
-            break
-
-        case .deciding, .none:
-            // For quick taps, let the chart's natural selection work
-            break
-        }
-
-        // Reset interaction mode
-        touchInteractionMode = .none
-    }
-
-    private func startDecisionTimer() {
-        cancelDecisionTimer()
-
-        decisionTimer = Timer.scheduledTimer(withTimeInterval: decisionWindowDuration, repeats: false) { _ in
-            Task { @MainActor in
-                // Timer fired - if still in deciding mode, enter scrub mode
-                if touchInteractionMode == .deciding {
-                    enterScrubMode()
-                }
-            }
-        }
-    }
-
-    private func cancelDecisionTimer() {
-        decisionTimer?.invalidate()
-        decisionTimer = nil
-    }
-
-    private func enterScrubMode() {
-        guard touchInteractionMode == .deciding else { return }
-
-        touchInteractionMode = .scrubbing
-        cancelDecisionTimer()
-    }
-
-        private func enterScrollMode() {
-        guard touchInteractionMode == .deciding else { return }
-
-        touchInteractionMode = .scrolling
-        cancelDecisionTimer()
-
-        // Clear active selection so crosshair disappears
-        selectedXValue = nil
-    }
-}
-
-// MARK: - Scroll Detection Modifier
-
-/// ViewModifier that handles scroll detection using iOS 18+ onScrollPhaseChange when available,
-/// with fallback to simultaneousGesture for older iOS versions
-struct ScrollDetectionModifier: ViewModifier {
-    let dashboardStore: DashboardStore
-    @Binding var hasDetectedScrollInCurrentGesture: Bool
-    @Binding var selectedXValue: Date?
-
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content
-                .onScrollPhaseChange { oldPhase, newPhase in
-                    Task { @MainActor in
-                        await dashboardStore.handleScrollPhaseChange(to: newPhase)
-
-                        // Clear local selection state when scrolling starts
-                        if newPhase == .interacting {
-                            selectedXValue = nil
-                        }
-                    }
-                }
-        } else {
-            content
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 3)
-                        .onChanged { value in
-                            let isHorizontalScroll = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                            let isSignificantMovement = abs(value.translation.width) > 8
-
-                            if isHorizontalScroll && isSignificantMovement && !hasDetectedScrollInCurrentGesture {
-                                hasDetectedScrollInCurrentGesture = true
-                                dashboardStore.handleScrollStart()
-
-                                // Clear local selection state when scrolling starts
-                                selectedXValue = nil
-                            }
-                        }
-                        .onEnded { value in
-                            hasDetectedScrollInCurrentGesture = false
-                            dashboardStore.handleScrollEndOptimized()
-                        }
-                )
-        }
-    }
-}
-
-
-
 
 #Preview {
     GraphView(dashboardStore: DashboardStore())

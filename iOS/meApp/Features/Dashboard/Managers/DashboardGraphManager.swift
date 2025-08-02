@@ -139,10 +139,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Clear selection state for better UX
             state.clearSelection()
 
-            // Clear all caches to ensure fresh data for new visible range
-            clearChartDataCache()
-            clearXAxisCache()
-
              if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
@@ -169,10 +165,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
-
-                // Clear all caches to ensure fresh data for new visible range
-                self.clearChartDataCache()
-                self.clearXAxisCache()
 
                 // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
@@ -370,16 +362,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Can use cached data: ranges are similar enough")
         return true
     }
-
-    /// Clears chart data cache to force regeneration with new parameters
-    func clearChartDataCache() {
-        lastChartData.removeAll()
-        lastChartDataWeightRange = nil
-        lastChartDataSelectedMetric = nil
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart data cache cleared")
-    }
-
-    // MARK: - Dynamic Metric Normalization (inspired by demo project)
 
     /// Generates normalized metric series using dynamic ranges based on actual data
     /// This approach ensures the metric line properly utilizes the weight range for better visibility
@@ -603,9 +585,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.selectedPeriod = period
         state.clearSelection()
 
-        // Clear chart data cache since period change means different operations and ranges
-        clearChartDataCache()
-
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
 
@@ -715,17 +694,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCalculatedVisibleOps = []
         lastVisibleOpsScrollPosition = nil
         lastVisibleOpsPeriod = nil
-        clearChartDataCache()
-        clearXAxisCache()
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Forced recalculation of visible operations after programmatic scroll position change")
-    }
-
-    /// Clear X-axis cache to force regeneration
-    private func clearXAxisCache() {
-        lastXAxisValues = []
-        lastXAxisScrollPosition = nil
-        lastXAxisPeriod = nil
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "X-axis cache cleared")
     }
 
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
@@ -1209,7 +1178,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week, .month:
             return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         case .year:
-            return "\(startMonth) \(startDay) \(startYear) - \(endMonth) \(endDay), \(endYear)"
+            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         case .total:
             return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
         }
@@ -1275,10 +1244,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 guard let self = self else { return }
                 self.state.isScrolling = false
                 self.state.hasDetectedScrollInCurrentGesture = false
-
-                // Clear all caches to ensure fresh data for new visible range
-                self.clearChartDataCache()
-                self.clearXAxisCache()
 
                 // Update weight display to show average of visible region
                 updateWeightDisplay()

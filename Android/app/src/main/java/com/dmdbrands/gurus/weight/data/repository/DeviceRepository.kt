@@ -54,9 +54,7 @@ constructor(
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
-    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "") ?: deviceDao.getDeviceByBroadcastId(
-      deviceDetails.device.broadcastId.toString(),
-    )
+    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "", accountId)
     if (existingDevice == null)
       deviceDao.insertDevice(deviceDetails)
     else
@@ -73,9 +71,9 @@ constructor(
       emit(device != null)
     }
 
-  override fun deviceExistsByMac(mac: String): Flow<Boolean> =
+  override fun deviceExistsByMac(mac: String, accountId: String): Flow<Boolean> =
     flow {
-      val device = deviceDao.getDeviceByMac(mac)
+      val device = deviceDao.getDeviceByMac(mac, accountId = accountId)
       emit(device != null)
     }
 
@@ -91,9 +89,9 @@ constructor(
       emit(deviceEntity?.toDeviceDomainModel())
     }
 
-  override fun getDeviceByMac(mac: String): Flow<Device?> =
+  override fun getDeviceByMac(mac: String, accountId: String): Flow<Device?> =
     flow {
-      val deviceEntity = deviceDao.getDeviceByMac(mac)
+      val deviceEntity = deviceDao.getDeviceByMac(mac, accountId)
       emit(deviceEntity?.toDeviceDomainModel())
     }
 
@@ -181,8 +179,9 @@ constructor(
     }
   }
 
-  override suspend fun getScaleTokenFromApi(): String {
-    val response = deviceApi.getScaleToken()
+  override suspend fun getScaleTokenFromApi(isR4: Boolean): String {
+    val param = if (isR4) "4" else null
+    val response = deviceApi.getScaleToken(param)
     if (response.isSuccessful) {
       val tokenResponse = response.body()
       return tokenResponse?.token ?: throw Exception("Token response is null")

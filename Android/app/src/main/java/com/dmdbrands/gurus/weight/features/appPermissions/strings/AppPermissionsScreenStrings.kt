@@ -30,6 +30,9 @@ object AppPermissionsScreenStrings {
   const val NetworkEnabledDescription = "Network Connected"
   const val NetworkDisabledDescription = "Network Disconnected"
 
+  const val EnabledWifiDescription = "Wi-Fi is Enabled"
+  const val DisabledWifiDescription = "Enable Wi-Fi to Continue"
+
   const val LocationSwitchEnabledDescription = "Location services authorized"
   const val LocationSwitchDisabledDescription = "Allow location services access"
 

@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * API interface for scale-related endpoints.
@@ -25,9 +26,12 @@ interface IDeviceAPI {
 
   /**
    * Get scale token for the account.
+   * @param r Optional parameter for scale type (e.g., "4" for R4 scale).
    */
-  @GET("account/scale?r=4")
-  suspend fun getScaleToken(): Response<ScaleTokenResponse>
+  @GET(ACCOUNT_SCALE)
+  suspend fun getScaleToken(
+    @Query("r") r: String? = null
+  ): Response<ScaleTokenResponse>
 
   /**
    * Get all paired scales for the account.

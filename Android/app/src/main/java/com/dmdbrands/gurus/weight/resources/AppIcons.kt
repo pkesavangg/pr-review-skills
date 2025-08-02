@@ -136,5 +136,8 @@ object AppIcons {
     val SetupCompleteCheck = R.drawable.setup_complete_check
     val WifiAPMode = R.drawable.wifi_ap_mode
     val WifiSmartConnect = R.drawable.wifi_smart_connect
+    val WifiPair = R.raw.pair_0384
+    val WifiStepOn = R.raw.step_on_0384
+    val WifiCountOn = R.raw.scale_counts_wifi
   }
 }

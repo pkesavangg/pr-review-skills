@@ -45,7 +45,7 @@ fun IntegrationListItem(
     modifier = modifier,
     leadingContent = {
       Image(
-        painterResource( integration.iconRes),
+        painterResource(integration.iconRes),
         contentDescription = "${integration.name} logo",
         modifier = Modifier
           .size(42.dp)
@@ -71,7 +71,7 @@ fun IntegrationListItemPreview() {
               provider = IntegrationProvider.Fitbit,
               name = IntegrationStrings.FitbitProvider,
               isConnected = true,
-              iconRes = AppIcons.Integrations.Fitbit ,
+              iconRes = AppIcons.Integrations.Fitbit,
               platformRequirement = IntegrationProvider.Fitbit.getPlatformRequirement(),
               requiresOAuth = IntegrationProvider.Fitbit.requiresOAuth(),
             ),
@@ -86,7 +86,7 @@ fun IntegrationListItemPreview() {
               provider = IntegrationProvider.MyFitnessPal,
               name = IntegrationStrings.MyFitnessPalProvider,
               isConnected = false,
-              iconRes = AppIcons.Integrations.My_Fitness_Pal ,
+              iconRes = AppIcons.Integrations.My_Fitness_Pal,
               platformRequirement = IntegrationProvider.MyFitnessPal.getPlatformRequirement(),
               requiresOAuth = IntegrationProvider.MyFitnessPal.requiresOAuth(),
             ),
@@ -101,7 +101,7 @@ fun IntegrationListItemPreview() {
               provider = IntegrationProvider.HealthConnect,
               name = IntegrationStrings.HealthConnectProvider,
               isConnected = true,
-              iconRes = AppIcons.Integrations.Health_Connect_Logo ,
+              iconRes = AppIcons.Integrations.Health_Connect_Logo,
               platformRequirement = IntegrationProvider.HealthConnect.getPlatformRequirement(),
               requiresOAuth = IntegrationProvider.HealthConnect.requiresOAuth(),
             ),

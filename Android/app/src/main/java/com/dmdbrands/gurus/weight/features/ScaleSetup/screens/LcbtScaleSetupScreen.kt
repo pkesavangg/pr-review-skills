@@ -106,7 +106,7 @@ fun LcbtScaleSetupScreenContent(
             type = ButtonType.PrimaryFilled,
             label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
-            enabled = setupState.connectionState == ConnectionState.Success || state.isFirstStep || state.isLastStep,
+            enabled = setupState.connectionState == ConnectionState.Success || state.isFirstStep || state.isLastStep || state.nextEnabled,
             onClick = {
               focusManager.clearFocus()
               onIntent(ScaleSetupIntent.Next)
@@ -138,7 +138,6 @@ fun LcbtScaleSetupScreenContent(
                 connectionState = setupState.connectionState,
                 title = LcbtScaleSetupStrings.WakeupScale.Title(setupState.connectionState),
                 subtitle = LcbtScaleSetupStrings.WakeupScale.Subtitle(setupState.connectionState),
-                errorCode = if (setupState.connectionState is ConnectionState.Failed.ErrorWithMessage) setupState.connectionState.message else null,
                 scaleImageSku = if (setupState.connectionState is ConnectionState.Failed)
                   sku else null,
                 showIndicationOnly = setupState.connectionState !is ConnectionState.Failed,
