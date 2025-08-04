@@ -178,7 +178,6 @@ constructor(
 
           when (currentStep) {
             WifiScaleSetupStep.SCALE_INFO -> {
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Start"))
               updateNetworkStatus()
             }
 
@@ -797,23 +796,21 @@ constructor(
   }
 
   /**
-   * Enhanced next() method that uses the new flow logic from the reducer
+   * Simplified next() method - special navigation logic is now in the reducer
    */
   private fun onNext() {
     val currentState = state.value
+
+    // Prevent double-clicks during navigation
+    if (currentState.isNavigating || currentState.isLoading) {
+      AppLog.d(TAG, "Ignoring next click - navigation in progress")
+      return
+    }
+
     AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
 
-    // Handle special actions before moving to next step
+    // Handle actions that need to happen before/during navigation
     when (currentState.currentStep) {
-      WifiScaleSetupStep.SCALE_INFO -> {
-        // Check if this is MAC setup based on button clicked
-        if (currentState.shouldGetMacAddress) {
-          handleIntent(WifiScaleSetupIntent.SetIsGetMACSetup(true))
-        } else {
-          handleIntent(WifiScaleSetupIntent.SetIsGetMACSetup(false))
-        }
-      }
-
       WifiScaleSetupStep.PERMISSIONS -> {
         if (!checkScaleToken()) {
           return
@@ -822,7 +819,6 @@ constructor(
 
       WifiScaleSetupStep.ACTIVATE_SCALE -> {
         handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
-        handleIntent(WifiScaleSetupIntent.SetSetupResult(null))
       }
 
       WifiScaleSetupStep.WIFI_MODE -> {
@@ -830,21 +826,11 @@ constructor(
           "apmode" -> {
             handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
           }
-
-          "esptouchwifi" -> {
-            // ESP Touch WiFi mode selected
-          }
-
-          else -> {
-            AppLog.w(TAG, "Unknown WiFi mode selected: ${currentState.selectedWifiMode}")
-          }
         }
       }
 
       WifiScaleSetupStep.SWITCH_WIFI -> {
-        if (currentState.isGetMACSetup) {
-          // For MAC setup, just move to next step
-        } else {
+        if (!currentState.isGetMACSetup) {
           // For normal setup, start AP mode
           startApMode()
         }
@@ -853,7 +839,6 @@ constructor(
       WifiScaleSetupStep.SCALE_COUNTS -> {
         saveScale()
         notificationPermission()
-        return
       }
 
       WifiScaleSetupStep.MAC_ADDRESS -> {
@@ -865,9 +850,15 @@ constructor(
       }
 
       WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
-        // Clear error state and return to WiFi mode
+        // Clear error state and exit
         handleIntent(WifiScaleSetupIntent.SetShowError(false))
         handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
+        startExitSetup(true)
+        return
+      }
+
+      WifiScaleSetupStep.TROUBLE_SHOOTING -> {
+        // From troubleshooting, user wants to exit
         startExitSetup(true)
         return
       }
@@ -879,64 +870,28 @@ constructor(
             startSmartConnect()
             return // Don't proceed to next step yet
           }
-
-          "Save" -> {
-            saveScale()
-          }
-
           "Finish", "close", "exit", "Close" -> {
-            if (currentState.isGetMACSetup) {
-              navigateBack()
-            } else if (currentState.currentStep == WifiScaleSetupStep.TROUBLE_SHOOTING) {
-              // From troubleshooting, user wants to exit the setup
-              startExitSetup(true)
-            } else {
-              startExitSetup(true)
-            }
+            startExitSetup(true)
             return
           }
-
         }
       }
     }
   }
 
   /**
-   * Enhanced back() method that uses the new flow logic from the reducer
+   * Simplified back() method - special navigation logic is now in the reducer
    */
   private fun onBack() {
     val currentState = state.value
-    AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
 
-    // Handle special back actions if needed
-    when (currentState.currentStep) {
-      WifiScaleSetupStep.PERMISSIONS -> {
-        if (currentState.isGetMACSetup) {
-          // Going back from permissions in MAC setup should reset MAC setup flag
-          handleIntent(WifiScaleSetupIntent.SetIsGetMACSetup(false))
-        }
-      }
-
-      WifiScaleSetupStep.ACTIVATE_SCALE -> {
-        if (currentState.showError) {
-          handleIntent(WifiScaleSetupIntent.SetShowError(false))
-          handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
-        }
-      }
-
-      else -> {
-        // No special handling needed
-      }
+    // Prevent double-clicks during navigation
+    if (currentState.isNavigating || currentState.isLoading) {
+      AppLog.d(TAG, "Ignoring back click - navigation in progress")
+      return
     }
-  }
 
-  /**
-   * MAC setup next method - now simplified since flow logic is in reducer
-   */
-  private fun macSetupNext() {
-    // This method is no longer needed as flow logic is handled by reducer
-    // Just call the regular onNext() method
-    onNext()
+    AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
   private fun checkAndSaveScale() {

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.screens
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
@@ -30,7 +31,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
-import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -98,112 +98,30 @@ fun WifiScaleSetupScreenContent(
       } finally {
         delay(100)
         isAnimating.value = false
+        // Clear navigation state after animation completes
+        onIntent(WifiScaleSetupIntent.ClearNavigationState)
       }
     }
   }
 
-  val isNextButtonEnabledForStep: Boolean =
-    when (state.currentStep) {
-      WifiScaleSetupStep.SCALE_INFO ->
-        true
-
-      WifiScaleSetupStep.PERMISSIONS -> {
-        if (state.isGetMACSetup) {
-          // MAC setup flow - check permissions only
-          AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
+  // Default button content for all steps
+  val defaultButtonContent: @Composable () -> Unit = {
+    AppButton(
+      type = ButtonType.PrimaryFilled,
+      label = if (state.isLastStep) ScaleSetupStrings.FinishButton else state.nextButtonText,
+      size = ButtonSize.Small,
+      enabled = !state.isLoading && !state.isNavigating && state.isNextButtonEnabled,
+      onClick = {
+        focusManager.clearFocus()
+        if (state.isLastStep) {
+          onIntent(WifiScaleSetupIntent.ExitSetup(isSetupFinished = true))
         } else {
-          // Normal flow - check permissions
-          AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
+          onIntent(WifiScaleSetupIntent.Next)
         }
-      }
+      },
+    )
+  }
 
-      WifiScaleSetupStep.WIFI_PASSWORD -> {
-        // Both permission skipped and normal flow need valid form
-        state.wifiPasswordForm.ssid.isValueValid() &&
-          (state.wifiPasswordForm.noPasswordNetwork.value || state.wifiPasswordForm.password.isValueValid())
-      }
-
-      WifiScaleSetupStep.SELECT_USER ->
-        // Both permission skipped and normal flow need user selection
-        state.selectedUser != null
-
-      WifiScaleSetupStep.ACTIVATE_SCALE ->
-        // All flows can proceed
-        state.canProceedToNext
-
-      WifiScaleSetupStep.WIFI_MODE -> {
-        when {
-          state.isGetMACSetup -> {
-            // MAC setup flow - only AP mode allowed
-            state.selectedWifiMode == "apmode"
-          }
-
-          state.permissionsSkipped -> {
-            // Permission skipped flow - only AP mode allowed
-            state.selectedWifiMode == "apmode"
-          }
-
-          else -> {
-            // Normal flow - any mode allowed
-            !state.selectedWifiMode.isNullOrEmpty()
-          }
-        }
-      }
-
-      WifiScaleSetupStep.SWITCH_WIFI -> {
-        when {
-          state.isGetMACSetup -> {
-            // MAC setup flow - check if connected to scale WiFi
-            state.scaleNetworkForm.ssid.value.isNotEmpty()
-          }
-
-          state.permissionsSkipped -> {
-            // Permission skipped flow - can proceed
-            true
-          }
-
-          else -> {
-            // Normal flow - check if connected to scale WiFi
-            state.scaleNetworkForm.ssid.value.isNotEmpty()
-          }
-        }
-      }
-
-      WifiScaleSetupStep.MAC_ADDRESS -> {
-        if (state.isGetMACSetup) {
-          // MAC setup flow - check if not showing error and have MAC address
-          !state.showError && state.macAddress.isNotEmpty()
-        } else {
-          // Normal flow - check if not showing error
-          !state.showError
-        }
-      }
-
-      WifiScaleSetupStep.ERROR_GUIDE ->
-        // Can only proceed if error code is selected
-        !state.selectedErrorCode.isNullOrEmpty()
-
-      WifiScaleSetupStep.ERROR_CODE_SELECTED,
-      WifiScaleSetupStep.TROUBLE_SHOOTING ->
-        // These steps can always proceed
-        state.canProceedToNext
-
-      WifiScaleSetupStep.SCALE_COUNTS,
-      WifiScaleSetupStep.STEP_ON,
-      WifiScaleSetupStep.SETUP_FINISHED ->
-        // These steps can always proceed
-        state.canProceedToNext
-
-    }
-
-  val showSkipButton: Boolean =
-    when (state.currentStep) {
-      WifiScaleSetupStep.PERMISSIONS ->
-        // Only show skip button for normal flow (not MAC setup)
-        !state.isGetMACSetup
-
-      else -> false
-    }
   ScaleSetupHeader(
     sku = state.sku,
     onBack = { onIntent(WifiScaleSetupIntent.ExitSetup(isSetupFinished = false)) },
@@ -224,7 +142,7 @@ fun WifiScaleSetupScreenContent(
       },
       middleContent = {
         // Show skip button only on permissions step and NOT in MAC setup mode
-        if (showSkipButton) {
+        if (state.showSkipButton) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.SetupButtons.Skip,
@@ -248,261 +166,245 @@ fun WifiScaleSetupScreenContent(
         WifiScaleSetupStep.SWITCH_WIFI,
         WifiScaleSetupStep.STEP_ON,
         WifiScaleSetupStep.ERROR_CODE_SELECTED,
-        WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-          {
-            AppButton(
-              type = ButtonType.PrimaryFilled,
-              label = if (state.isLastStep) ScaleSetupStrings.FinishButton else state.nextButtonText,
-              size = ButtonSize.Small,
-              enabled = !state.isNavigating && isNextButtonEnabledForStep,
-              onClick = {
-                focusManager.clearFocus()
-                if (state.isLastStep) {
-                  onIntent(WifiScaleSetupIntent.ExitSetup(isSetupFinished = true))
-                } else {
-                  onIntent(WifiScaleSetupIntent.Next)
-                }
-              },
-            )
-          }
-        }
-
+        WifiScaleSetupStep.TROUBLE_SHOOTING -> defaultButtonContent
       },
-      pageContent = { step ->
-        when (step) {
-          WifiScaleSetupStep.SCALE_INFO -> {
-            com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo(
-              sku = state.sku,
-              buttonText = ScaleSetupStrings.ScaleInfo.WifiScaleButtonText,
-              onButtonClick = { onIntent(WifiScaleSetupIntent.OnGetScaleMacAddress()) },
-            )
-          }
-
-          WifiScaleSetupStep.PERMISSIONS -> {
-            ScalePermissions(
-              sku = state.sku,
-              permissions = state.permissions,
-              onRequestPermission = { permissionType ->
-                onIntent(WifiScaleSetupIntent.RequestPermission(permissionType))
-              },
-            )
-          }
-
-          WifiScaleSetupStep.WIFI_PASSWORD -> {
-            SetupForm(
-              wifiNameFormControl = state.wifiPasswordForm.ssid,
-              formControl = state.wifiPasswordForm.password,
-              title = WifiScaleSetupStrings.NetworkFormSlide.Title,
-              subtitle = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
-              label = WifiScaleSetupStrings.NetworkFormSlide.Password,
-              secondaryLabel = WifiScaleSetupStrings.NetworkFormSlide.NetworkName,
-              subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
-              isWifiConnected = false,
-              hasToggle = true,
-              toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
-              toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
-              onToggleChanged = {
-                state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
-                state.wifiPasswordForm.password.reset()
-              },
-              noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
-              inputType = AppInputType.PASSWORD,
-            )
-          }
-
-          WifiScaleSetupStep.SELECT_USER -> {
-            val userNumbers = (1..8).toList()
-            val userButtons =
-              SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.selectedUser)
-            SelectButton(
-              title = WifiScaleSetupStrings.ChooseUser.Title,
-              subtitle = WifiScaleSetupStrings.ChooseUser.Message,
-              selectButtonItems = userButtons,
-              isSelectable = true,
-              onItemSelected = { value ->
-                onIntent(WifiScaleSetupIntent.SelectUser(value.toInt()))
-                onIntent(WifiScaleSetupIntent.SetUserNumber(value.toInt()))
-              },
-            )
-          }
-
-          WifiScaleSetupStep.ACTIVATE_SCALE -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.ActivateScaleSlide.Title,
-              subtitle = WifiScaleSetupStrings.ActivateScaleSlide.Message,
-              isGifImage = true,
-              supportingImage = AppIcons.Setup.WifiPair,
-            )
-          }
-
-          WifiScaleSetupStep.WIFI_MODE -> {
-            // Show different buttons based on the flow type
-            val wifiButtons = when {
-              state.isGetMACSetup -> {
-                // MAC setup flow: Only AP mode available
-                listOf(
-                  SelectButtonItem(
-                    id = "wifi_ap_mode",
-                    displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                    emitValue = "apmode",
-                    isSelected = state.selectedWifiMode == "apmode",
-                  ),
-                )
-              }
-
-              state.permissionsSkipped -> {
-                // Permission skipped flow: Only AP mode available
-                listOf(
-                  SelectButtonItem(
-                    id = "wifi_ap_mode",
-                    displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                    emitValue = "apmode",
-                    isSelected = state.selectedWifiMode == "apmode",
-                  ),
-                )
-              }
-
-              else -> {
-                // Normal flow: Both modes available
-                SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
-              }
+      pageContent = {
+        Crossfade(targetState = state.currentStep) { step ->
+          when (step) {
+            WifiScaleSetupStep.SCALE_INFO -> {
+              com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo(
+                sku = state.sku,
+                buttonText = ScaleSetupStrings.ScaleInfo.WifiScaleButtonText,
+                onButtonClick = { onIntent(WifiScaleSetupIntent.OnGetScaleMacAddress()) },
+              )
             }
 
-            SelectButton(
-              title = WifiScaleSetupStrings.WifiMode.Title,
-              subtitle = when {
-                state.isGetMACSetup || state.permissionsSkipped -> {
-                  "Once your scale displays that is in AP mode, tap NEXT"
+            WifiScaleSetupStep.PERMISSIONS -> {
+              ScalePermissions(
+                sku = state.sku,
+                permissions = state.permissions,
+                onRequestPermission = { permissionType ->
+                  onIntent(WifiScaleSetupIntent.RequestPermission(permissionType))
+                },
+              )
+            }
+
+            WifiScaleSetupStep.WIFI_PASSWORD -> {
+              SetupForm(
+                wifiNameFormControl = state.wifiPasswordForm.ssid,
+                formControl = state.wifiPasswordForm.password,
+                title = WifiScaleSetupStrings.NetworkFormSlide.Title,
+                subtitle = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
+                label = WifiScaleSetupStrings.NetworkFormSlide.Password,
+                secondaryLabel = WifiScaleSetupStrings.NetworkFormSlide.NetworkName,
+                subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
+                isWifiConnected = false,
+                hasToggle = true,
+                toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
+                toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
+                onToggleChanged = {
+                  state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
+                  state.wifiPasswordForm.password.reset()
+                },
+                noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
+                inputType = AppInputType.PASSWORD,
+              )
+            }
+
+            WifiScaleSetupStep.SELECT_USER -> {
+              val userNumbers = (1..8).toList()
+              val userButtons =
+                SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.selectedUser)
+              SelectButton(
+                title = WifiScaleSetupStrings.ChooseUser.Title,
+                subtitle = WifiScaleSetupStrings.ChooseUser.Message,
+                selectButtonItems = userButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectUser(value.toInt()))
+                  onIntent(WifiScaleSetupIntent.SetUserNumber(value.toInt()))
+                },
+              )
+            }
+
+            WifiScaleSetupStep.ACTIVATE_SCALE -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.ActivateScaleSlide.Title,
+                subtitle = WifiScaleSetupStrings.ActivateScaleSlide.Message,
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.WifiPair,
+              )
+            }
+
+            WifiScaleSetupStep.WIFI_MODE -> {
+              // Show different buttons based on the flow type
+              val wifiButtons = when {
+                state.isGetMACSetup -> {
+                  // MAC setup flow: Only AP mode available
+                  listOf(
+                    SelectButtonItem(
+                      id = "wifi_ap_mode",
+                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                      emitValue = "apmode",
+                      isSelected = state.selectedWifiMode == "apmode",
+                    ),
+                  )
+                }
+
+                state.permissionsSkipped -> {
+                  // Permission skipped flow: Only AP mode available
+                  listOf(
+                    SelectButtonItem(
+                      id = "wifi_ap_mode",
+                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                      emitValue = "apmode",
+                      isSelected = state.selectedWifiMode == "apmode",
+                    ),
+                  )
                 }
 
                 else -> {
-                  null
+                  // Normal flow: Both modes available
+                  SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
                 }
-              },
-              selectButtonItems = wifiButtons,
-              isSelectable = true,
-              onItemSelected = { value ->
-                onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
-              },
-              noteMessage = if (state.isApMode) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
-              supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
-              onSupportingButtonClick = {
-                // Navigate to error guide step
-                onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
-              },
-              modifier = Modifier.padding(horizontal = spacing.sm),
-            )
-          }
+              }
 
-          WifiScaleSetupStep.ERROR_GUIDE -> {
-            // Show error selection buttons when no error code is selected
-            val errorButtons =
-              SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = state.selectedErrorCode)
-            SelectButton(
-              title = WifiScaleSetupStrings.Error.Title,
-              subtitle = WifiScaleSetupStrings.Error.Message,
-              selectButtonItems = errorButtons,
-              isSelectable = true,
-              onItemSelected = { value ->
-                onIntent(WifiScaleSetupIntent.SelectErrorCode(value))
-              },
-              supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
-              onSupportingButtonClick = {
-                // Navigate to trouble shooting step
-                onIntent(WifiScaleSetupIntent.NavigateToTroubleShooting())
-              },
-            )
-          }
+              SelectButton(
+                title = WifiScaleSetupStrings.WifiMode.Title,
+                subtitle = when {
+                  state.isGetMACSetup || state.permissionsSkipped -> {
+                    "Once your scale displays that is in AP mode, tap NEXT"
+                  }
 
-          WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.TroubleshootingSlide.Title,
-              subtitle = WifiScaleSetupStrings.TroubleshootingSlide.Message,
-            )
-          }
+                  else -> {
+                    null
+                  }
+                },
+                selectButtonItems = wifiButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
+                },
+                noteMessage = if (state.isApMode) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
+                supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
+                onSupportingButtonClick = {
+                  // Navigate to error guide step
+                  onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
+                },
+                modifier = Modifier.padding(horizontal = spacing.sm),
+              )
+            }
 
-          WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
-            ErrorContent(
-              errorCode = state.selectedErrorCode.toString(),
-            )
-          }
+            WifiScaleSetupStep.ERROR_GUIDE -> {
+              // Show error selection buttons when no error code is selected
+              val errorButtons =
+                SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = state.selectedErrorCode)
+              SelectButton(
+                title = WifiScaleSetupStrings.Error.Title,
+                subtitle = WifiScaleSetupStrings.Error.Message,
+                selectButtonItems = errorButtons,
+                isSelectable = true,
+                onItemSelected = { value ->
+                  onIntent(WifiScaleSetupIntent.SelectErrorCode(value))
+                },
+                supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
+                onSupportingButtonClick = {
+                  // Navigate to trouble shooting step
+                  onIntent(WifiScaleSetupIntent.NavigateToTroubleShooting())
+                },
+              )
+            }
 
-          WifiScaleSetupStep.SCALE_COUNTS -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.ScaleCount.Title,
-              subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-              isGifImage = true,
-              supportingImage = AppIcons.Setup.WifiCountOn,
-            )
-          }
+            WifiScaleSetupStep.TROUBLE_SHOOTING -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.TroubleshootingSlide.Title,
+                subtitle = WifiScaleSetupStrings.TroubleshootingSlide.Message,
+              )
+            }
 
-          WifiScaleSetupStep.SWITCH_WIFI -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.SwitchWifi.Title,
-              subtitle = WifiScaleSetupStrings.SwitchWifi.Message.format(state.scaleWifiSsid),
-              content = {
-                if (state.permissionsSkipped) {
-                  AppButton(
-                    onClick = {
-                      onIntent(WifiScaleSetupIntent.GoToWifiSettings)
-                    },
-                    label = "Go to wi-fi settings",
-                    type = ButtonType.PrimaryFilled,
-                    size = ButtonSize.Large,
-                    enabled = true,
-                    modifier = Modifier.fillMaxWidth(),
-                  )
-                } else {
-                  WifiItem(
-                    borderRadius = borderRadius.sm,
-                    ssid = if (!state.scaleNetworkForm.ssid.value.isEmpty()) {
-                      state.scaleNetworkForm.ssid.value
-                    } else {
-                      WifiScaleSetupStrings.SwitchWifi.ChangeNetwork
-                    },
-                    isConfigured = !state.scaleNetworkForm.ssid.value.isEmpty(),
-                    index = 0,
-                    total = 1,
-                    onClick = {
-                      if (state.scaleNetworkForm.ssid.value.isEmpty()) {
+            WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
+              ErrorContent(
+                errorCode = state.selectedErrorCode.toString(),
+              )
+            }
+
+            WifiScaleSetupStep.SCALE_COUNTS -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.ScaleCount.Title,
+                subtitle = WifiScaleSetupStrings.ScaleCount.Message,
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.WifiCountOn,
+              )
+            }
+
+            WifiScaleSetupStep.SWITCH_WIFI -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.SwitchWifi.Title,
+                subtitle = WifiScaleSetupStrings.SwitchWifi.Message.format(state.scaleWifiSsid),
+                content = {
+                  if (state.permissionsSkipped) {
+                    AppButton(
+                      onClick = {
                         onIntent(WifiScaleSetupIntent.GoToWifiSettings)
-                      }
-                    },
-                  )
-                }
+                      },
+                      label = "Go to wi-fi settings",
+                      type = ButtonType.PrimaryFilled,
+                      size = ButtonSize.Large,
+                      enabled = true,
+                      modifier = Modifier.fillMaxWidth(),
+                    )
+                  } else {
+                    WifiItem(
+                      borderRadius = borderRadius.sm,
+                      ssid = if (!state.scaleNetworkForm.ssid.value.isEmpty()) {
+                        state.scaleNetworkForm.ssid.value
+                      } else {
+                        WifiScaleSetupStrings.SwitchWifi.ChangeNetwork
+                      },
+                      isConfigured = !state.scaleNetworkForm.ssid.value.isEmpty(),
+                      index = 0,
+                      total = 1,
+                      onClick = {
+                        if (state.scaleNetworkForm.ssid.value.isEmpty()) {
+                          onIntent(WifiScaleSetupIntent.GoToWifiSettings)
+                        }
+                      },
+                    )
+                  }
 
-              },
-            )
-          }
+                },
+              )
+            }
 
-          WifiScaleSetupStep.MAC_ADDRESS -> {
-            // Show MAC address component for both AP mode and MAC setup mode
-            WifiMacAddress(
-              title = WifiScaleSetupStrings.SetupFinished.MacTitle,
-              macAddress = state.macAddress,
-              onCopyMacAddress = { isSuccess ->
-                if (isSuccess) {
-                  onIntent(WifiScaleSetupIntent.OnCopyMacAddress(state.macAddress))
-                }
-              },
-            )
-          }
+            WifiScaleSetupStep.MAC_ADDRESS -> {
+              // Show MAC address component for both AP mode and MAC setup mode
+              WifiMacAddress(
+                title = WifiScaleSetupStrings.SetupFinished.MacTitle,
+                macAddress = state.macAddress,
+                onCopyMacAddress = { isSuccess ->
+                  if (isSuccess) {
+                    onIntent(WifiScaleSetupIntent.OnCopyMacAddress(state.macAddress))
+                  }
+                },
+              )
+            }
 
-          WifiScaleSetupStep.STEP_ON -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.StepOn.Title,
-              subtitle = WifiScaleSetupStrings.StepOn.Message,
-              isGifImage = true,
-              supportingImage = AppIcons.Setup.WifiStepOn,
-            )
-          }
+            WifiScaleSetupStep.STEP_ON -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.StepOn.Title,
+                subtitle = WifiScaleSetupStrings.StepOn.Message,
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.WifiStepOn,
+              )
+            }
 
-          WifiScaleSetupStep.SETUP_FINISHED -> {
-            SetupContent(
-              title = WifiScaleSetupStrings.SetupFinished.Title,
-              subtitle = WifiScaleSetupStrings.SetupFinished.Message,
-              setupFinished = true,
-            )
+            WifiScaleSetupStep.SETUP_FINISHED -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.SetupFinished.Title,
+                subtitle = WifiScaleSetupStrings.SetupFinished.Message,
+                setupFinished = true,
+              )
+            }
           }
         }
       },
