@@ -19,10 +19,10 @@ class ScaleStore: ObservableObject {
     @Injector private var scaleService: ScaleService
     @Injector var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
-
+    
     // MARK: - Centralized State
     @Published var state: ScaleState = ScaleState()
-
+    
     // MARK: - Public Properties (Backward Compatibility)
     @Published var scales: [Device] = []
     @Published var isLoading: Bool = false
@@ -54,7 +54,7 @@ class ScaleStore: ObservableObject {
     
     @Published var metrics: [ScaleMetricSetting] = ScaleMetrics.bodyMetrics
     @Published var progressMetrics: [ScaleMetricSetting] = ScaleMetrics.progressMetrics
-
+    
     @Published var showWeightOnlyBanner: Bool = false
     @Published var showWeightOnlyInfo: Bool = false
     @Published var showHeartRateBanner: Bool = false
@@ -80,7 +80,7 @@ class ScaleStore: ObservableObject {
         self.usersManager = ScaleUsersManager()
         self.modesManager = ScaleModesManager()
         self.metricsManager = ScaleMetricsManager()
-
+        
         // Set up reactive bindings
         setupBindings()
         setupSubscriptions()
@@ -93,12 +93,12 @@ class ScaleStore: ObservableObject {
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
-
+    
     // MARK: - Constants
     private let legalURLs = AppConstants.LegalURLs.self
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
-
+    
     // MARK: - Managers (Business Logic)
     private let dataManager: ScaleDataManager
     private let deviceManager: ScaleDeviceManager
@@ -113,20 +113,20 @@ class ScaleStore: ObservableObject {
     var wifiMacAddressValue: String { deviceManager.wifiMacAddressValue }
     var usersValue: String { usersManager.usersValue }
     var otherDeviceUsersList: [DeviceUser] { usersManager.otherDeviceUsersList }
-
+    
     var shouldShowWeightOnlyBanner: Bool {
         guard let scale = state.device.scale else { return false }
         return modesManager.shouldShowWeightOnlyBanner(for: scale)
     }
-
+    
     var shouldShowSetupIncompleteBanner: Bool {
         guard let scale = state.device.scale else { return false }
         return modesManager.shouldShowSetupIncompleteBanner(for: scale, connectedWifiSSID: state.device.connectedWifiSSID)
     }
-
+    
     var isFormValid: Bool { dataManager.isFormValid }
     var passwordError: String? { dataManager.passwordError }
-
+    
     var isBrowserPresented: Binding<Bool> {
         Binding(
             get: { self.state.ui.showTermsBrowser },
@@ -138,7 +138,7 @@ class ScaleStore: ObservableObject {
             }
         )
     }
-
+    
     var presentingBrowserURL: URL {
         let url = state.data.browserURL ?? legalURLs.greaterGoodsWebsite
         return url
@@ -167,7 +167,7 @@ class ScaleStore: ObservableObject {
                 self?.browserURL = dataState.browserURL
             }
             .store(in: &cancellables)
-
+        
         deviceManager.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] deviceState in
@@ -182,10 +182,10 @@ class ScaleStore: ObservableObject {
                 self?.isDeviceConnected = deviceState.isDeviceConnected
                 self?.scaleTypeValue = deviceState.scaleTypeValue
                 self?.skuValue = deviceState.skuValue
-
+                
             }
             .store(in: &cancellables)
-
+        
         usersManager.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] usersState in
@@ -196,7 +196,7 @@ class ScaleStore: ObservableObject {
                 self?.isLoadingUsers = usersState.isLoadingUsers
             }
             .store(in: &cancellables)
-
+        
         modesManager.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] modesState in
@@ -220,7 +220,7 @@ class ScaleStore: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-
+        
         metricsManager.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] metricsState in
@@ -241,7 +241,7 @@ class ScaleStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-
+    
     private func setupSubscriptions() {
         // Subscribe to scale service updates
         scaleService.$scales
@@ -261,7 +261,7 @@ class ScaleStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-
+    
     // MARK: - Scale Management
     func loadScale(_ scale: Device) async {
         await deviceManager.loadScale(scale)
@@ -295,24 +295,29 @@ class ScaleStore: ObservableObject {
             self.isLoading = false
         }
     }
-
+    
     func forceRefreshDeviceData() async {
         await dataManager.fetchScales()
-        if let scale = state.device.scale {
+        if state.device.scale != nil {
             await deviceManager.refreshConnectionStatus()
             // Ensure the connection status is properly updated in the UI
             self.isDeviceConnected = state.device.isDeviceConnected
         }
     }
-
+    
     // MARK: - Scale Operations
     func deleteScale(scaleId: String, onSuccess: @escaping () -> Void) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.deletingScale))
         
         do {
+            let rawType = (state.device.scale?.bathScale?.scaleType ?? "")
+            let scaleType = ScaleSourceType(rawValue: rawType)
+            if let device = state.device.scale, device.isConnected == true && scaleType == .btWifiR4, let broadcastId = device.broadcastIdString {
+                let _ = await bluetoothService.deleteDevice(device, disconnect: false)
+                let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
+            }
             try await dataManager.deleteScale(scaleId: scaleId)
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
-            
             if state.device.scale?.id == scaleId {
                 state.device.scale = nil
                 self.scale = nil
@@ -325,7 +330,7 @@ class ScaleStore: ObservableObject {
         
         notificationService.dismissLoader()
     }
-
+    
     func saveScaleName(_ newName: String) async {
         guard let scale = state.device.scale else {
             state.ui.errorMessage = ToastStrings.somethingWentWrong
@@ -340,18 +345,18 @@ class ScaleStore: ObservableObject {
             try await dataManager.saveScaleName(newName, for: scale)
             state.device.scale?.nickname = newName
             state.device.scale?.deviceName = newName
-                self.scale?.nickname = newName
-                self.scale?.deviceName = newName
-                notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
+            self.scale?.nickname = newName
+            self.scale?.deviceName = newName
+            notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
         } catch {
             state.ui.errorMessage = error.localizedDescription
-                self.errorMessage = error.localizedDescription
-            }
+            self.errorMessage = error.localizedDescription
+        }
         
         state.ui.isLoading = false
         self.isLoading = false
     }
-
+    
     func saveNickname() async {
         guard let scale = state.device.scale else { return }
         
@@ -373,7 +378,7 @@ class ScaleStore: ObservableObject {
         state.ui.isLoading = false
         self.isLoading = false
     }
-
+    
     // MARK: - User Management
     func deleteUser(_ user: DeviceUser) async {
         guard let scale = state.device.scale else { return }
@@ -391,7 +396,7 @@ class ScaleStore: ObservableObject {
         state.ui.isLoadingUsers = false
         self.isLoadingUsers = false
     }
-
+    
     func saveUsers(newName: String) async {
         guard let scale = state.device.scale else { return }
         
@@ -408,7 +413,7 @@ class ScaleStore: ObservableObject {
         state.ui.isLoading = false
         self.isLoading = false
     }
-
+    
     // MARK: - Mode Management
     func handleScaleModeSave() {
         guard let scale = state.device.scale else { return }
@@ -440,9 +445,9 @@ class ScaleStore: ObservableObject {
             self.isLoading = false
         }
     }
-
+    
     func handleWeightOnlyBannerAction()  {
-        guard let scale = state.device.scale else { return }
+        guard state.device.scale != nil else { return }
         
         // Navigate to scale modes screen where user can change their mode
         logger.log(level: .info, tag: "ScaleStore", message: "Weight-only banner tapped - navigating to scale modes screen")
@@ -450,7 +455,7 @@ class ScaleStore: ObservableObject {
         // The navigation will be handled by the calling view (ScaleSettingsScreen)
         // This method is kept for logging and potential future functionality
     }
-
+    
     // MARK: - Metrics Management
     func saveDisplayMetrics() async {
         guard let scale = state.device.scale else { return }
@@ -468,24 +473,24 @@ class ScaleStore: ObservableObject {
         state.ui.isLoading = false
         self.isLoading = false
     }
-
+    
     func handleMetricsReorder(indices: IndexSet, newOffset: Int, isProgressMetrics: Bool) {
         metricsManager.handleMetricsReorder(indices: indices, newOffset: newOffset, isProgressMetrics: isProgressMetrics)
     }
-
+    
     func updateDisplayMetricsValue() {
         metricsManager.updateDisplayMetricsValue()
-       // self.displayMetricsValue = state.metrics.displayMetricsValue
+        // self.displayMetricsValue = state.metrics.displayMetricsValue
     }
-
+    
     func loadDisplayMetrics() {
         guard let scale = state.device.scale else { return }
         metricsManager.loadDisplayMetrics(for: scale)
         self.metrics = state.metrics.metrics
         self.progressMetrics = state.metrics.progressMetrics
-       // self.displayMetricsValue = state.metrics.displayMetricsValue
+        // self.displayMetricsValue = state.metrics.displayMetricsValue
     }
-
+    
     // MARK: - UI Actions
     func changeNickname() {
         state.ui.showNicknameAlert = true
@@ -493,11 +498,11 @@ class ScaleStore: ObservableObject {
         state.data.nicknameInput = state.device.scale?.nickname ?? ""
         self.nicknameInput = state.device.scale?.nickname ?? ""
     }
-
+    
     func setPasswordTouched() {
         dataManager.setPasswordTouched()
     }
-
+    
     func openProductGuide(for sku: String) {
         // Set the URL directly in the data manager
         dataManager.openProductGuide(for: sku)
@@ -511,7 +516,7 @@ class ScaleStore: ObservableObject {
         state.ui.showTermsBrowser = true
         self.showTermsBrowser = true
     }
-
+    
     func openBIAModel() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView(){
@@ -520,7 +525,7 @@ class ScaleStore: ObservableObject {
             backdropDismiss: true
         ))
     }
-
+    
     func openHelp() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(ModelNumberHelpModalView(){
@@ -529,7 +534,7 @@ class ScaleStore: ObservableObject {
             backdropDismiss: true
         ))
     }
-
+    
     // MARK: - Alert Handlers
     func handleScaleDelete(scaleId: String, onSuccess: @escaping () -> Void) {
         let alert = AlertModel(
@@ -546,7 +551,7 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     func handleWifiCredentialsExit(onExit: @escaping () -> Void) {
         let alert = AlertModel(
             title: alertLang.ConnectWifiNetwork.title,
@@ -560,7 +565,7 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     func handleDuplicateScale(sku: String, onPair: @escaping () -> Void) {
         let lang = alertLang.DeviceAlreadyPairedAlert.self
         let alert = AlertModel(
@@ -575,7 +580,7 @@ class ScaleStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
         let alert = AlertModel(
             title: alertLang.DeleteUserAlert.title(user.name),
@@ -597,16 +602,16 @@ class ScaleStore: ObservableObject {
     func determineConnectionStatus(for scale: Device) -> ScaleConnectionStatus {
         return deviceManager.determineConnectionStatus(for: scale)
     }
-
+    
     func resetForm() {
         dataManager.resetForm()
         self.addScaleForm = state.data.addScaleForm
     }
-
+    
     func getError() -> String? {
         return dataManager.getError()
     }
-
+    
     func fetchScales() {
         Task {
             await dataManager.fetchScales()
@@ -626,7 +631,7 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     func updateCurrentUserNameInline(_ newName: String) async {
         // Legacy method - now handled by usersManager
         guard let scale = state.device.scale else { return }
@@ -636,7 +641,7 @@ class ScaleStore: ObservableObject {
             logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name inline: \(error)")
         }
     }
-
+    
     func updateCurrentUserName(_ newName: String) async {
         // Legacy method - now handled by usersManager
         guard let scale = state.device.scale else { return }
@@ -646,27 +651,27 @@ class ScaleStore: ObservableObject {
             logger.log(level: .error, tag: "ScaleStore", message: "Failed to update user name: \(error)")
         }
     }
-
+    
     func refreshUserList() async {
         // Legacy method - now handled by usersManager
         guard let scale = state.device.scale else { return }
         await usersManager.refreshUserList(for: scale)
     }
-
+    
     func fetchUserList() async {
         guard let scale = state.device.scale else { return }
         await usersManager.fetchUserList(for: scale)
     }
-
+    
     func loadScaleModePreferences() {
         guard let scale = state.device.scale else { return }
         modesManager.loadScaleModePreferences(for: scale)
     }
-
+    
     func resetModeSettings() {
         modesManager.resetModeSettings()
     }
-
+    
     func updateModeChangeTracking() {
         modesManager.updateModeChangeTracking()
         // Update public properties for backward compatibility
@@ -731,19 +736,19 @@ class ScaleStore: ObservableObject {
         // Update display value
         metricsManager.updateDisplayMetricsValue()
     }
-
+    
     func getDeviceInfo() async {
         await deviceManager.getDeviceInfo()
     }
-
+    
     func getConnectedWifiSSID() async {
         await deviceManager.getConnectedWifiSSID()
     }
-
+    
     func fetchWifiMacAddress() async {
         await deviceManager.fetchWifiMacAddress()
     }
-
+    
     func shouldFetchWifiMacAddress(for scale: Device) -> Bool {
         return deviceManager.shouldFetchWifiMacAddress(for: scale)
     }
@@ -757,7 +762,7 @@ class ScaleStore: ObservableObject {
         UIPasteboard.general.string = macAddress
         notificationService.showToast(ToastModel(message: ToastStrings.copiedToClipboard))
     }
-
+    
     // MARK: - WiFi Operations
     func connectToWifiNetwork(wifiName: String) {
         // This method is called from WifiCredentialsView
@@ -765,10 +770,10 @@ class ScaleStore: ObservableObject {
         logger.log(level: .info, tag: "ScaleStore", message: "WiFi connection requested for network: \(wifiName)")
         // TODO: Implement actual WiFi connection logic if needed
     }
-
+    
     // MARK: - Callbacks
     var onNavigateToWifi: (() -> Void)?
-
+    
     func handleSetupIncompleteBannerAction() {
         logger.log(level: .info, tag: "ScaleStore", message: "Setup incomplete banner tapped - navigating to WiFi setup")
         
@@ -786,24 +791,24 @@ class ScaleStore: ObservableObject {
             }
         }
     }
-
+    
     // MARK: - Users Loader Management
     func showUsersLoader() {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
     }
-
+    
     func hideUsersLoader() {
         notificationService.dismissLoader()
     }
-
+    
     func refreshConnectionStatus() async {
-        if let scale = state.device.scale {
+        if state.device.scale != nil {
             await deviceManager.refreshConnectionStatus()
             // Ensure the connection status is properly updated in the UI
             self.isDeviceConnected = state.device.isDeviceConnected
         }
     }
-
+    
     /// Refreshes the WiFi status and triggers UI update
     func refreshWifiStatus() async {
         if let scale = state.device.scale {
@@ -824,20 +829,15 @@ class ScaleStore: ObservableObject {
               scale.sku == SettingsConstants.defaultR4Sku,
               scale.isConnected == true else { return }
         
-        do {
-            let result = await bluetoothService.getDeviceInfo(for: scale)
-            switch result {
-            case .success(let deviceInfo):
-                let isWifiConfigured = deviceInfo.isWifiConfigured
-                // Update the scale's WiFi configuration status
-                scale.isWifiConfigured = isWifiConfigured
-                logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved - WiFi configured: \(isWifiConfigured)")
-            case .failure(let error):
-                logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info: \(error)")
-            }
-        } catch {
-            // Handle any unexpected errors (including the String casting crash)
-            logger.log(level: .error, tag: "ScaleStore", message: "Unexpected error getting device info: \(error)")
+        let result = await bluetoothService.getDeviceInfo(for: scale)
+        switch result {
+        case .success(let deviceInfo):
+            let isWifiConfigured = deviceInfo.isWifiConfigured
+            // Update the scale's WiFi configuration status
+            scale.isWifiConfigured = isWifiConfigured
+            logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved - WiFi configured: \(isWifiConfigured ?? false)")
+        case .failure(let error):
+            logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info: \(error)")
         }
     }
     
@@ -846,20 +846,15 @@ class ScaleStore: ObservableObject {
         for scale in scales {
             // Only check device info for connected SKU 0412 scales
             if scale.sku == SettingsConstants.defaultR4Sku && scale.isConnected == true {
-                do {
-                    let result = await bluetoothService.getDeviceInfo(for: scale)
-                    switch result {
-                    case .success(let deviceInfo):
-                        let isWifiConfigured = deviceInfo.isWifiConfigured
-                        // Update the scale's WiFi configuration status
-                        scale.isWifiConfigured = isWifiConfigured
-                        logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved for \(scale.id) - WiFi configured: \(isWifiConfigured)")
-                    case .failure(let error):
-                        logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info for \(scale.id): \(error)")
-                    }
-                } catch {
-                    // Handle any unexpected errors (including the String casting crash)
-                    logger.log(level: .error, tag: "ScaleStore", message: "Unexpected error getting device info for \(scale.id): \(error)")
+                let result = await bluetoothService.getDeviceInfo(for: scale)
+                switch result {
+                case .success(let deviceInfo):
+                    let isWifiConfigured = deviceInfo.isWifiConfigured
+                    // Update the scale's WiFi configuration status
+                    scale.isWifiConfigured = isWifiConfigured
+                    logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved for \(scale.id) - WiFi configured: \(isWifiConfigured ?? false)")
+                case .failure(let error):
+                    logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info for \(scale.id): \(error)")
                 }
             }
         }

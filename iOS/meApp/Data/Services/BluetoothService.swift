@@ -63,6 +63,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
     }
+    /// Publisher for live measurement data.
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> {
+        liveMeasurementSubject.eraseToAnyPublisher()
+    }
     
     var skipDevices: [String] = []
     
@@ -72,6 +76,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     private let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
     private let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
+    /// Subject for live measurement data events.
+    private let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -759,7 +765,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Handle device wake up
             break
         case .LIVE_MEASUREMENT:
-            // Handle live measurement data
+            if let liveData = data.data as? GGWeightEntry {
+                liveMeasurementSubject.send(liveData)
+            } else {
+               logger.log(level: .error, tag: tag, message: "Failed to get live measurement data")
+            }
             break
         }
     }

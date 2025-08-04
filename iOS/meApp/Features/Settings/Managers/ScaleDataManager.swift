@@ -9,6 +9,7 @@ class ScaleDataManager: ObservableObject {
     // MARK: - Dependencies
     @Injector private var scaleService: ScaleService
     @Injector private var logger: LoggerService
+    
 
     // MARK: - Published Properties
     @Published var state: ScaleDataState

@@ -198,9 +198,10 @@ struct ScaleSettingsScreen: View {
                 )
             )
             
-            if scaleType == .bluetoothA3 || scaleType == .bluetoothA6 {
-                ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: scale.userNumber))
+            if let userNumber = scale.userNumber, scaleType != .bluetoothR4 {
+                ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: "U\(userNumber)", chevronType: .none))
             }
+
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)

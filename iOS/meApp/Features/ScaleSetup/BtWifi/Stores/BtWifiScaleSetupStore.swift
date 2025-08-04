@@ -54,6 +54,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var networkFormCancellable: AnyCancellable? = nil
     /// Active subscription to new entry events during measurement
     private var newEntrySubscription: AnyCancellable? = nil
+    /// Active subscription to live measurement data during step-on phase
+    private var liveMeasurementSubscription: AnyCancellable? = nil
     /// Task handling measurement timeout
     private var measurementTimeoutTask: Task<Void, Never>? = nil
     
@@ -935,28 +937,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
         case .stepOn:
             Task {
-                if let scale = self.savedScale, let broadcastId = scale.broadcastIdString {
-                    self.scaleSetupError = .none
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.moveToNextStep()
-                    }
-                    // TODO: Uncomment when measurement live data issue resolved
-                    /*
-                     let response = await self.bluetoothService.getMeasurementLiveData(broadcastId: broadcastId)
-                     switch response {
-                     case .success(let measurement):
-                     // Successfully received measurement data
-                     LoggerService.shared.log(level: .info, tag: tag, message: "Live Measurement data received: \(measurement)")
-                     
-                     if (measurement.weight ?? 0) > 0 {
-                     self.scaleSetupError = .none
-                     self.moveToNextStep()
-                     }
-                     case .failure(let error):
-                     // Handle failure to get measurement data
-                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get measurement data: \(error.localizedDescription)")
-                     }
-                     */
+                if self.savedScale != nil {
+                    // Subscribe to live measurement updates and proceed when weight > 0
+                    self.liveMeasurementSubscription = self.bluetoothService.liveMeasurementPublisher
+                        .receive(on: DispatchQueue.main)
+                        .sink { [weak self] liveEntry in
+                            guard let self else { return }
+                            if liveEntry.displayWeight > 0 && savedScale?.broadcastIdString == liveEntry.broadcastId {
+                                self.cancelMeasurementSubscription()
+                                self.scaleSetupError = .none
+                                self.moveToNextStep()
+                            }
+                        }
                 }
             }
         case .measurement:
@@ -1610,6 +1602,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func cancelMeasurementSubscription() {
         newEntrySubscription?.cancel()
         newEntrySubscription = nil
+        liveMeasurementSubscription?.cancel()
+        liveMeasurementSubscription = nil
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
     }
@@ -1749,9 +1743,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         networkFormCancellable?.cancel()
         networkFormCancellable = nil
         
-        // Cancel measurement subscription and timeout
+        // Cancel measurement subscriptions and timeout
         newEntrySubscription?.cancel()
         newEntrySubscription = nil
+        liveMeasurementSubscription?.cancel()
+        liveMeasurementSubscription = nil
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
         
