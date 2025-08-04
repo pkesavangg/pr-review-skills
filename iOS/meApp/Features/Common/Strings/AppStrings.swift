@@ -716,6 +716,7 @@ struct AppAssets {
     static let grid = "grid"
     static let scale = "scale"
     static let metric = "metric"
+    static let export = "export"
     
     // MARK: - Scale images
     // MARK: - AppSync series
