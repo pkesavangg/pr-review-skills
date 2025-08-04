@@ -11,7 +11,7 @@ final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
     @Injector var notificationHelperService: NotificationHelperService
-    public var skipCheckNetwork = false
+    @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
 
     private init() {}
