@@ -428,29 +428,41 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         AppLog.d("IntegrationViewModel", "Disconnecting from ${integration.provider}")
+        // Show loading while disconnecting
+        dialogQueueService.showLoader("Disconnecting...")
+
+        // Attempt to disconnect
         integrationService.disconnectIntegration(integration.provider)
-        // Immediately update UI to show disconnected state
-        handleIntent(
-          IntegrationIntent.UpdateIntegrationConnectionStatus(
-            integration.provider,
-            isConnected = false,
-            isValid = true,
-          ),
-        )
+
+        // Only update UI after successful disconnection
+        refreshIntegrationStatus() // This will get fresh state from server
+
         AppLog.d("IntegrationViewModel", "Successfully disconnected from ${integration.provider}")
+        dialogQueueService.dismissLoader()
+
+        // Show success toast
+        dialogQueueService.showToast(
+          Toast(
+            message = "Successfully disconnected from ${integration.name}"
+          )
+        )
       } catch (e: Exception) {
         AppLog.e(
           "IntegrationViewModel",
           "Failed to disconnect from ${integration.provider}",
           e.toString(),
         )
-        handleIntent(
-          IntegrationIntent.UpdateIntegrationConnectionStatus(
-            integration.provider,
-            isConnected = integration.isConnected,
-            isValid = false, // Mark as invalid if disconnect failed
-          ),
+        dialogQueueService.dismissLoader()
+
+        // Show error toast
+        dialogQueueService.showToast(
+          Toast(
+            message = "Failed to disconnect from ${integration.name}"
+          )
         )
+
+        // Refresh to ensure UI shows correct state
+        refreshIntegrationStatus()
       }
     }
   }

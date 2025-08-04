@@ -40,7 +40,10 @@ fun IntegrationListItem(
     title = integration.name,
     enableCheckbox = true,
     isChecked = integration.isConnected,
-    checkboxDescription = "Toggle ${integration.name} integration",
+    checkboxDescription = if (integration.isConnected)
+      "Disconnect from ${integration.name}"
+    else
+      "Connect to ${integration.name}",
     onClick = onToggle,
     modifier = modifier,
     leadingContent = {
