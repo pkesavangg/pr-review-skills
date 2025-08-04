@@ -184,25 +184,6 @@ struct GraphView: View {
                 // Goal chip overlay - shows goal weight chip positioned based on ticks
                 goalChipCallout()
             }
-            .accessibilityLabel(Text("Weight chart"))
-            .onAppear {
-                dashboardStore.initializeChart()
-            }
-            // Disable animations for chart components to remove selection callout animation
-            .animation(.none, value: dashboardStore.yAxisDomain)
-            .animation(.none, value: dashboardStore.yAxisTicks)
-            .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
-            .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
-            // Apply decision window modifier first, then scroll detection
-            .modifier(DecisionWindowModifier(
-                touchInteractionMode: $touchInteractionMode,
-                initialTouchPoint: $initialTouchPoint,
-                decisionTimer: $decisionTimer,
-                selectedXValue: $selectedXValue,
-                dashboardStore: dashboardStore
-            ))
-            // Keep existing scroll detection modifier
-            .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
         }
 
     }
