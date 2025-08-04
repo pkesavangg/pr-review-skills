@@ -11,7 +11,9 @@ struct StatusRowView: View {
     let iconName: String
     let label: String
     let statusText: String
+    let font: CustomTextStyle?
     let foregroundColor: Color?
+    let iconColor: Color?
     
     @Environment(\.appTheme) private var theme
     
@@ -19,12 +21,16 @@ struct StatusRowView: View {
         iconName: String,
         label: String,
         statusText: String,
-        foregroundColor: Color? = nil
+        font: CustomTextStyle? = nil,
+        foregroundColor: Color? = nil,
+        iconColor: Color? = nil
     ) {
         self.iconName = iconName
         self.label = label
         self.statusText = statusText
+        self.font = font
         self.foregroundColor = foregroundColor
+        self.iconColor = iconColor
     }
     
     var body: some View {
@@ -33,11 +39,11 @@ struct StatusRowView: View {
                 .foregroundColor(foregroundColor ?? theme.actionPrimary)
             
             Text(label)
-                .fontOpenSans(.body3)
+                .fontOpenSans(font ?? .body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
             
             Text(statusText)
-                .fontOpenSans(.body3)
+                .fontOpenSans(font ?? .body3)
                 .foregroundColor(foregroundColor ?? theme.textHeading)
         }
     }

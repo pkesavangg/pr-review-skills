@@ -12,7 +12,7 @@ struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     @ObservedObject var permissionsStore = PermissionsStore()
     let scale: Device
     let lang = ScaleBluetoothStrings.self
@@ -74,7 +74,7 @@ struct ScaleBluetoothScreen: View {
             scaleIcon: scaleIcon(for: scale.sku),
             modelNumber: scale.sku ?? "----",
             scaleName: getScaleDisplayName(),
-            status: scaleStore.determineConnectionStatus(for: scale),
+            status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
             hideChevron: true
         )

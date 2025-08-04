@@ -10,7 +10,7 @@ import SwiftUI
 struct DisplayMetricsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @StateObject private var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     @State private var isWeightOnlyModeOn: Bool = true
     @State private var isHeartRateOn: Bool = true
     let lang = ScaleModesStrings.self
@@ -31,6 +31,7 @@ struct DisplayMetricsScreen: View {
                         action: {
                             Task {
                                 await scaleStore.saveDisplayMetrics()
+                                router.navigateBack()
                             }
                         }
                     )

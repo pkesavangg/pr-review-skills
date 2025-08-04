@@ -41,7 +41,7 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
-    static let heartRateLabel = "Heart Rate: "
+    static let heartRateLabel = "Heart Rate:"
     static let update = "Update"
     static let appVersion = "App Version"
     static let yes = "Yes"

@@ -10,7 +10,7 @@ import SwiftUI
 struct ScaleNameScreen : View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     let scale: Device
     let lang = ScaleSettingsStrings.self
     let commonLang = CommonStrings.self
@@ -18,6 +18,7 @@ struct ScaleNameScreen : View {
     @State private var editedName: String = ""
     @State private var focusedField: FocusField? = nil
     @State private var errorMessage: String? = nil
+    @StateObject private var scaleNameForm = ScaleNameForm()
     
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -29,10 +30,11 @@ struct ScaleNameScreen : View {
                         text: commonLang.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || editedName == (scale.nickname ?? scale.deviceName ?? ""),
+                        isDisabled: !scaleNameForm.isValid || editedName.trimmingCharacters(in: .whitespacesAndNewlines) == (scale.nickname ?? scale.deviceName ?? ""),
                         action: {
                             Task {
-                                await scaleStore.saveScaleName(editedName)
+                                let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                await scaleStore.saveScaleName(trimmedName)
                                 if scaleStore.errorMessage == nil {
                                     router.navigateBack()
                                 } else {
@@ -53,7 +55,7 @@ struct ScaleNameScreen : View {
                         label: lang.scaleName,
                         placeholder: lang.scaleName,
                         inputType: .text,
-                        errorMessage: errorMessage,
+                        errorMessage: scaleNameForm.getError(for: .scaleName) ?? errorMessage,
                         focusField: .scaleName
                     ),
                     value: $editedName,
@@ -61,6 +63,9 @@ struct ScaleNameScreen : View {
                 ) {
                     // Handle commit action if needed
                 }
+                .onChange(of: editedName) {
+                scaleNameForm.setScaleName(editedName)
+            }
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingMD)
                 
@@ -76,6 +81,7 @@ struct ScaleNameScreen : View {
             }
             // Initialize the edited name with current scale name
             editedName = scale.nickname ?? scale.deviceName ?? ""
+            scaleNameForm.setScaleName(editedName)
         }
     }
     

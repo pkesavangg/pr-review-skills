@@ -59,12 +59,14 @@ class ScaleDataManager: ObservableObject {
     func saveScaleName(_ newName: String, for scale: Device) async throws {
         let properties: [String: Any] = ["nickname": newName]
         _ = try await scaleService.editDevice(scale.id, properties: properties)
+        await scaleService.pushLocalChangesToServer()
         await fetchScales()
     }
 
     func saveNickname(_ nickname: String, for scale: Device) async throws {
         let properties: [String: Any] = ["nickname": nickname]
         _ = try await scaleService.editDevice(scale.id, properties: properties)
+        await scaleService.pushLocalChangesToServer()
         await fetchScales()
     }
 

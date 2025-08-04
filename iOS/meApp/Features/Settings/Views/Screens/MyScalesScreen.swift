@@ -10,7 +10,7 @@ import SwiftUI
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
-    @StateObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
@@ -310,6 +310,7 @@ struct MyScalesScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        
         .onTapGesture {
             focusedField = nil
             hideKeyboard()
@@ -322,4 +323,5 @@ struct MyScalesScreen: View {
 
 #Preview {
     MyScalesScreen()
+    .environmentObject(ScaleStore())
 }

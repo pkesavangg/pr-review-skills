@@ -10,7 +10,7 @@ import SwiftUI
 struct ScaleSettingsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     let scale: Device
     var scaleType: ScaleType
     let lang = ScaleSettingsStrings.self
@@ -53,6 +53,7 @@ struct ScaleSettingsScreen: View {
             isPresented: scaleStore.isBrowserPresented
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        
         .navigationBarBackButtonHidden(true)
         .onAppear {
             // Set up navigation callback for WiFi setup

@@ -16,7 +16,7 @@ struct AllBodyMetricsContentView: View {
     private let commonLang = CommonStrings.self
 
     var body: some View {
-        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        let iconColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
 
         VStack {
             VStack(spacing: 0) {
@@ -25,9 +25,9 @@ struct AllBodyMetricsContentView: View {
                         iconName: AppAssets.heartIcon,
                         label: commonLang.heartRateLabel,
                         statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
-                        foregroundColor: iconAndLabelColor
+                        font: .heading5,
+                        iconColor: iconColor
                     )
-                    .fontWeight(.bold)
 
                     Spacer()
                     

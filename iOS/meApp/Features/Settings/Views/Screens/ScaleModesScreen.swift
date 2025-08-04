@@ -15,7 +15,7 @@ struct ScaleModesScreen: View {
     @Environment(\.appTheme) private var theme
     
     // MARK: - Observed Objects
-    @ObservedObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     
     // MARK: - Properties
     let scale: Device
@@ -53,7 +53,10 @@ struct ScaleModesScreen: View {
                                 size: .small,
                                 isDisabled: !scaleStore.hasModeChanges,
                                 action: {
-                                    scaleStore.handleScaleModeSave()
+                                    Task {
+                                        scaleStore.handleScaleModeSave()
+                                        router.navigateBack()
+                                    }
                                 }
                             )
                             .accessibilityLabel("Save scale mode preferences")

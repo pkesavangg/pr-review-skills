@@ -10,10 +10,8 @@ import SwiftUI
 struct UsersScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @StateObject var scaleStore = ScaleStore()
-    @State private var editedName: String = ""
-    @State private var isEditingName: Bool = false
-    @State private var errorMessage: String? = nil
+    @EnvironmentObject var scaleStore: ScaleStore
+    @StateObject private var userNameForm = UserNameForm()
     @State private var focusedField: FocusField?
     let scale: Device
     let lang = UsersViewStrings.self
@@ -32,10 +30,13 @@ struct UsersScreen: View {
                             text: CommonStrings.save.uppercased(),
                             type: .inlineTextPrimary,
                             size: .small,
-                            isDisabled: scaleStore.isLoadingUsers || editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || editedName == (scaleStore.currentDeviceUser?.name ?? ""),
+                            isDisabled: scaleStore.isLoadingUsers ||
+                                !userNameForm.displayName.isValid ||
+                                userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (scaleStore.currentDeviceUser?.name ?? ""),
                             action: {
                                 Task {
-                                    await scaleStore.saveUsers(newName: editedName.trimmingCharacters(in: .whitespacesAndNewlines))
+                                    await scaleStore.saveUsers(newName: userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines))
+                                    router.navigateBack()
                                 }
                             }
                         ))
@@ -52,10 +53,13 @@ struct UsersScreen: View {
                                 label: lang.userNameLabel,
                                 placeholder: scaleStore.currentDeviceUser?.name ?? lang.enterUserName,
                                 inputType: .text,
-                                errorMessage: errorMessage,
+                                errorMessage: userNameForm.getError(for: userNameForm.displayName),
                                 focusField: .userName
                             ),
-                            value: $editedName,
+                            value: Binding(
+                                get: { userNameForm.displayName.value },
+                                set: { userNameForm.displayName.value = $0 }
+                            ),
                             focusedField: $focusedField
                         ) {
                             // Handle commit action if needed
@@ -105,12 +109,15 @@ struct UsersScreen: View {
             }
         }
         .onAppear {
-            // Load scale and fetch user list when screen appears
             Task {
                 await scaleStore.loadScale(scale)
-                // Initialize editedName with current user's name after loading
                 await MainActor.run {
-                    editedName = scaleStore.currentDeviceUser?.name ?? ""
+                    let currentName = scaleStore.currentDeviceUser?.name ?? ""
+                    userNameForm.setDisplayName(currentName)
+                    let scaleUsers = scaleStore.otherDeviceUsersList.map { deviceUser in
+                        ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                    }
+                    userNameForm.updateUserList(scaleUsers)
                 }
             }
         }

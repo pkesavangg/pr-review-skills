@@ -10,7 +10,7 @@ import SwiftUI
 struct WifiMacAddressScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @EnvironmentObject var scaleStore: ScaleStore
     let scale: Device
     let lang = WifiMacAddressScreenStrings.self
 

@@ -340,7 +340,7 @@ class ScaleStore: ObservableObject {
         
         state.ui.isLoading = true
         self.isLoading = true
-        
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
             try await dataManager.saveScaleName(newName, for: scale)
             state.device.scale?.nickname = newName
@@ -352,7 +352,7 @@ class ScaleStore: ObservableObject {
             state.ui.errorMessage = error.localizedDescription
             self.errorMessage = error.localizedDescription
         }
-        
+        notificationService.dismissLoader()
         state.ui.isLoading = false
         self.isLoading = false
     }
@@ -362,7 +362,7 @@ class ScaleStore: ObservableObject {
         
         state.ui.isLoading = true
         self.isLoading = true
-        
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
             try await dataManager.saveNickname(state.data.nicknameInput, for: scale)
             notificationService.showToast(ToastModel(title: ToastStrings.saved, message: ToastStrings.nicknameUpdated))
@@ -372,7 +372,7 @@ class ScaleStore: ObservableObject {
             state.ui.errorMessage = error.localizedDescription
             self.errorMessage = error.localizedDescription
         }
-        
+        notificationService.dismissLoader()
         state.ui.showNicknameAlert = false
         self.showNicknameAlert = false
         state.ui.isLoading = false
@@ -402,14 +402,14 @@ class ScaleStore: ObservableObject {
         
         state.ui.isLoading = true
         self.isLoading = true
-        
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
             try await usersManager.updateCurrentUserName(newName, for: scale)
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userNameUpdated))
         } catch {
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorUpdatingUserName))
         }
-        
+        notificationService.dismissLoader()
         state.ui.isLoading = false
         self.isLoading = false
     }
@@ -462,14 +462,14 @@ class ScaleStore: ObservableObject {
         
         state.ui.isLoading = true
         self.isLoading = true
-        
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
             try await metricsManager.saveDisplayMetrics(for: scale)
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.displayMetricsSaved))
         } catch {
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorSavingDisplayMetrics))
         }
-        
+        notificationService.dismissLoader()
         state.ui.isLoading = false
         self.isLoading = false
     }
@@ -488,7 +488,7 @@ class ScaleStore: ObservableObject {
         metricsManager.loadDisplayMetrics(for: scale)
         self.metrics = state.metrics.metrics
         self.progressMetrics = state.metrics.progressMetrics
-        // self.displayMetricsValue = state.metrics.displayMetricsValue
+         self.displayMetricsValue = state.metrics.displayMetricsValue
     }
     
     // MARK: - UI Actions

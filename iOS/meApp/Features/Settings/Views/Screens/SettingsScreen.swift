@@ -15,6 +15,7 @@ struct SettingsScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject var settingsStore = SettingsStore()
     @StateObject private var router = Router<SettingsRoute>()
+    @StateObject private var scaleStore = ScaleStore()
     // Dialog state controls
     @State private var showAppearancePicker: Bool = false
     @State private var showNotificationPicker: Bool = false
@@ -79,6 +80,7 @@ struct SettingsScreen: View {
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
+        .environmentObject(scaleStore)
         // Appearance picker
         .pickerSheet(
             isPresented: $showAppearancePicker,
