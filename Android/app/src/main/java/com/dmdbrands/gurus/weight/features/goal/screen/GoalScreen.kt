@@ -42,100 +42,100 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  */
 @Composable
 fun GoalScreen() {
-    val viewmodel: GoalViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
-    BackHandler {
-        viewmodel.handleIntent(GoalIntent.OnBack)
-    }
-    GoalContent(state, viewmodel::handleIntent)
+  val viewmodel: GoalViewModel = hiltViewModel()
+  val state by viewmodel.state.collectAsState()
+  BackHandler {
+    viewmodel.handleIntent(GoalIntent.OnBack)
+  }
+  GoalContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    val scrollState = rememberScrollState()
-    AppScaffold(
-        title = GoalStrings.PageTitle,
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { handleIntent(GoalIntent.OnBack) }
+  val keyboardController = LocalSoftwareKeyboardController.current
+  val focusManager = LocalFocusManager.current
+  val scrollState = rememberScrollState()
+  AppScaffold(
+    title = GoalStrings.PageTitle,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) { handleIntent(GoalIntent.OnBack) }
+    },
+    actions = {
+      AppButton(
+        GoalStrings.SaveGoalButton,
+        type = ButtonType.InlineTextPrimary,
+        size = ButtonSize.Small,
+        enabled = state.form.isValid && state.form.isDirty,
+      ) {
+        keyboardController?.hide()
+        handleIntent.invoke(GoalIntent.Submit)
+      }
+    },
+    containerColor = colorScheme.secondaryBackground,
+    appBarColor = colorScheme.secondaryBackground,
+  ) { scaffoldModifier ->
+    Column(
+      modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(scrollState),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Top,
+    ) {
+      val canDisplayMilestone =
+        state.account?.goalType != null && state.account.goalWeight != null && state.account.goalWeight > 0
+      val canShowTitle = state.account?.goalWeight != null && state.account.goalWeight == 0.0
+      // Milestone Display Section - showing current goal progress
+      if (canDisplayMilestone) {
+        GoalMilestoneDisplay(
+          account = state.account,
+          latestWeight = state.latestWeight,
+          modifier = Modifier.padding(bottom = spacing.md),
+        )
+      }
+      Spacer(modifier = Modifier.padding(top = if (!canDisplayMilestone) spacing.md else 0.dp))
+
+      GoalStep(
+        title = if (canShowTitle) GoalStrings.Title else null,
+        subtitle = GoalStrings.Subtitle,
+        goalTypeControl = state.form.controls.goalType,
+        currentWeightControl = state.form.controls.currentWeight,
+        goalWeightControl = state.form.controls.goalWeight,
+        onGoalTypeChange = { goalType ->
+          handleIntent(GoalIntent.ChangeGoalType(goalType))
         },
-        actions = {
-            AppButton(
-                GoalStrings.SaveGoalButton,
-                type = ButtonType.InlineTextPrimary,
-                size = ButtonSize.Small,
-                enabled = state.form.isValid && state.form.isDirty,
-            ) {
-                keyboardController?.hide()
-                handleIntent.invoke(GoalIntent.Submit)
-            }
+        onNext = {
+          keyboardController?.hide()
+          focusManager.clearFocus()
         },
-        containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground,
-    ) { scaffoldModifier ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
-        ) {
-            val canDisplayMilestone = state.account?.goalType != null && state.account.goalWeight != null && state.account.goalWeight > 0
-            // Milestone Display Section - showing current goal progress
-            if (canDisplayMilestone) {
-                GoalMilestoneDisplay(
-                    account = state.account,
-                    latestWeight = state.latestWeight,
-                    modifier = Modifier.padding(bottom = spacing.md)
-                )
-            }
-            Spacer(modifier = Modifier.padding(top = if(!canDisplayMilestone) spacing.md else 0.dp))
-            GoalStep(
-                subtitle = GoalStrings.Subtitle,
-                goalTypeControl = state.form.controls.goalType,
-                currentWeightControl = state.form.controls.currentWeight,
-                goalWeightControl = state.form.controls.goalWeight,
-                onGoalTypeChange = { goalType ->
-                    handleIntent(GoalIntent.ChangeGoalType(goalType))
-                },
-                onNext = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                },
-                showCurrentWeightForMaintain = false,
-                showMetricToggle = false
-            )
-            Spacer(modifier = Modifier.padding(spacing.lg))
-        }
+        showCurrentWeightForMaintain = false,
+        showMetricToggle = false,
+      )
+      Spacer(modifier = Modifier.padding(spacing.lg))
     }
+  }
 }
-
-
-
-
 
 @PreviewTheme
 @Composable
 fun GoalScreenPreview() {
-    MeAppTheme {
-        val dummyGoalState = GoalState(
-            form = FormGroup(
-                controls = GoalFormControls(
-                    FormControl.create(
-                        initialValue = "maintain"
-                    ),
-                    FormControl.create(
-                        initialValue = "150.0",
-                        validators = emptyList(),
-                    ),
-                    FormControl.create(
-                        initialValue = "140.0",
-                        validators = emptyList(),
-                    ),
-                ),
-            ),
-        )
-        GoalContent(dummyGoalState) {}
-    }
+  MeAppTheme {
+    val dummyGoalState = GoalState(
+      form = FormGroup(
+        controls = GoalFormControls(
+          FormControl.create(
+            initialValue = "maintain",
+          ),
+          FormControl.create(
+            initialValue = "150.0",
+            validators = emptyList(),
+          ),
+          FormControl.create(
+            initialValue = "140.0",
+            validators = emptyList(),
+          ),
+        ),
+      ),
+    )
+    GoalContent(dummyGoalState) {}
+  }
 }

@@ -11,39 +11,39 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
  * Controls for Goal form.
  */
 data class GoalFormControls(
-    val goalType: FormControl<String>,
-    val currentWeight: FormControl<String>,
-    val goalWeight: FormControl<String>,
+  val goalType: FormControl<String>,
+  val currentWeight: FormControl<String>,
+  val goalWeight: FormControl<String>,
 ) {
-    companion object {
-        fun create(goalType: GoalType = GoalType.LOSE_GAIN) =
-            GoalFormControls(
-                goalType =
-                    FormControl.create(
-                        initialValue = goalType.value,
-                        validators = listOf(FormValidations.required()),
-                    ),
-                currentWeight =
-                    FormControl.create(
-                        initialValue = "0.0",
-                        validators =
-                            if (goalType == GoalType.LOSE_GAIN) {
-                                listOf(FormValidations.required(), FormValidations.weightValidator())
-                            } else {
-                                listOf(FormValidations.weightValidator()) // No required validation for disabled field
-                            },
-                    ),
-                goalWeight =
-                    FormControl.create(
-                        initialValue = "0",
-                        validators =
-                            listOf(
-                                FormValidations.required(),
-                                FormValidations.weightValidator(),
-                            ),
-                    ),
-            )
-    }
+  companion object {
+    fun create(goalType: GoalType = GoalType.LOSE_GAIN) =
+      GoalFormControls(
+        goalType =
+          FormControl.create(
+            initialValue = goalType.value,
+            validators = listOf(FormValidations.required()),
+          ),
+        currentWeight =
+          FormControl.create(
+            initialValue = "0.0",
+            validators =
+              if (goalType == GoalType.LOSE_GAIN) {
+                listOf(FormValidations.required(), FormValidations.weightValidator())
+              } else {
+                listOf(FormValidations.weightValidator()) // No required validation for disabled field
+              },
+          ),
+        goalWeight =
+          FormControl.create(
+            initialValue = "0",
+            validators =
+              listOf(
+                FormValidations.required(),
+                FormValidations.weightValidator(),
+              ),
+          ),
+      )
+  }
 }
 
 /**
@@ -55,175 +55,146 @@ data class GoalFormControls(
  * @property latestWeight The latest weight reading for milestone display.
  */
 data class GoalState(
-    val form: FormGroup<GoalFormControls>,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val account: Account? = null,
-    val latestWeight: Double? = null,
+  val form: FormGroup<GoalFormControls>,
+  val isLoading: Boolean = false,
+  val error: String? = null,
+  val account: Account? = null,
+  val latestWeight: Double? = null,
 ) : IReducer.State
 
 /**
  * Intents for Goal screen actions.
  */
 sealed class GoalIntent : IReducer.Intent {
-    /** Trigger goal form submission. */
-    object Submit : GoalIntent()
+  /** Trigger goal form submission. */
+  object Submit : GoalIntent()
 
-    /** Change goal type between Maintain and LoseGain. */
-    data class ChangeGoalType(
-        val goalType: GoalType,
-    ) : GoalIntent()
+  /** Change goal type between Maintain and LoseGain. */
+  data class ChangeGoalType(
+    val goalType: GoalType,
+  ) : GoalIntent()
 
-    /** Open help modal. */
-    object OpenHelpModal : GoalIntent()
+  /** Open help modal. */
+  object OpenHelpModal : GoalIntent()
 
-    /** Navigate back. */
-    object OnBack : GoalIntent()
+  /** Navigate back. */
+  object OnBack : GoalIntent()
 
-    /** Show an error message. */
-    data class Error(
-        val message: String,
-    ) : GoalIntent()
+  /** Show an error message. */
+  data class Error(
+    val message: String,
+  ) : GoalIntent()
 
-    /** Update the form state. */
-    data class UpdateForm(
-        val form: FormGroup<GoalFormControls>,
-    ) : GoalIntent()
+  /** Update the form state. */
+  data class UpdateForm(
+    val form: FormGroup<GoalFormControls>,
+  ) : GoalIntent()
 
-    /** Goal update was successful. */
-    object Success : GoalIntent()
+  /** Goal update was successful. */
+  object Success : GoalIntent()
 
-    /** Handle goal met dialog response. */
-    data class HandleGoalMet(
-        val setNewGoal: Boolean,
-    ) : GoalIntent()
+  /** Handle goal met dialog response. */
+  data class HandleGoalMet(
+    val setNewGoal: Boolean,
+  ) : GoalIntent()
 
-    /** Handle goal leave dialog response. */
-    data class HandleGoalLeave(
-        val updateGoal: Boolean,
-    ) : GoalIntent()
+  /** Handle goal leave dialog response. */
+  data class HandleGoalLeave(
+    val updateGoal: Boolean,
+  ) : GoalIntent()
 
-    /** Update account information. */
-    data class UpdateAccount(
-        val account: Account?,
-    ) : GoalIntent()
+  /** Update account information. */
+  data class UpdateAccount(
+    val account: Account?,
+  ) : GoalIntent()
 
-    /** Update latest weight. */
-    data class UpdateLatestWeight(
-        val weight: Double?,
-    ) : GoalIntent()
+  /** Update latest weight. */
+  data class UpdateLatestWeight(
+    val weight: Double?,
+  ) : GoalIntent()
 
-    /** Toggle met previous goal flag. */
-    object ToggleMetPreviousGoal : GoalIntent()
+  /** Toggle met previous goal flag. */
+  object ToggleMetPreviousGoal : GoalIntent()
 }
 
 /**
  * Reducer for Goal screen state transitions.
  */
 class GoalReducer : IReducer<GoalState, GoalIntent> {
-    /**
-     * Reduces the current state and intent to a new state.
-     * @param state The current state.
-     * @param intent The intent/action to handle.
-     * @return The new state after applying the intent.
-     */
-    override fun reduce(
-        state: GoalState,
-        intent: GoalIntent,
-    ): GoalState =
-        when (intent) {
-            is GoalIntent.Submit -> {
-                state.copy(isLoading = true, error = null)
-            }
+  /**
+   * Reduces the current state and intent to a new state.
+   * @param state The current state.
+   * @param intent The intent/action to handle.
+   * @return The new state after applying the intent.
+   */
+  override fun reduce(state: GoalState, intent: GoalIntent): GoalState {
+    return when (intent) {
+      is GoalIntent.Submit -> {
+        state.copy(isLoading = true, error = null)
+      }
 
-            is GoalIntent.ChangeGoalType -> {
-                // Update form validators based on goal type
-                val goalWeightValidators =
-                    if (intent.goalType == GoalType.LOSE_GAIN) {
-                        listOf(FormValidations.required(), FormValidations.weightValidator())
-                    } else {
-                        listOf(FormValidations.weightValidator())
-                    }
-
-                // For maintain goal, current weight input is hidden, so no validation needed
-                val currentWeightValidators =
-                    if (intent.goalType == GoalType.LOSE_GAIN) {
-                        listOf(FormValidations.required(), FormValidations.weightValidator())
-                    } else {
-                        emptyList() // No validation for hidden field in maintain mode
-                    }
-
-                val updatedGoalTypeControl =
-                    FormControl.create(
-                        initialValue = intent.goalType.value,
-                        validators = listOf(FormValidations.required()),
-                    )
-
-                val updatedCurrentWeightControl =
-                    FormControl.create(
-                        initialValue = state.form.controls.currentWeight.value,
-                        validators = currentWeightValidators,
-                    )
-
-                val updatedGoalWeightControl =
-                    FormControl.create(
-                        initialValue = state.form.controls.goalWeight.value,
-                        validators = goalWeightValidators,
-                    )
-
-                val updatedControls =
-                    state.form.controls.copy(
-                        goalType = updatedGoalTypeControl,
-                        currentWeight = updatedCurrentWeightControl,
-                        goalWeight = updatedGoalWeightControl,
-                    )
-                val updatedForm = FormGroup(updatedControls)
-
-                state.copy(
-                    form = updatedForm,
-                )
-            }
-
-            is GoalIntent.OpenHelpModal -> {
-                state.copy(isLoading = false, error = null)
-            }
-
-            is GoalIntent.Error -> {
-                state.copy(isLoading = false, error = intent.message)
-            }
-
-            is GoalIntent.UpdateForm -> {
-                state.copy(form = intent.form)
-            }
-
-            is GoalIntent.Success -> {
-                state.copy(isLoading = false, error = null)
-            }
-
-            is GoalIntent.OnBack -> {
-                state.copy(isLoading = false, error = null)
-            }
-
-            is GoalIntent.HandleGoalMet -> {
-                state.copy(isLoading = false, error = null)
-            }
-
-            is GoalIntent.HandleGoalLeave -> {
-                state.copy(isLoading = false, error = null)
-            }
-
-            is GoalIntent.UpdateAccount -> {
-                state.copy(
-                    account = intent.account,
-                )
-            }
-
-            is GoalIntent.UpdateLatestWeight -> {
-                state.copy(latestWeight = intent.weight)
-            }
-
-            is GoalIntent.ToggleMetPreviousGoal -> {
-                state.copy()
-            }
+      is GoalIntent.ChangeGoalType -> {
+        // Update goal type and current weight input state
+        val currentControls = state.form.controls
+        val currentWeightValidators = if (intent.goalType != GoalType.MAINTAIN) {
+          listOf(FormValidations.required(), FormValidations.weightValidator())
+        } else {
+          emptyList() // No validation for hidden field in maintain mode
         }
+
+        val newControls = GoalFormControls(
+          goalType = FormControl.create(
+            initialValue = intent.goalType.value,
+            validators = listOf(FormValidations.required()),
+          ),
+          currentWeight = FormControl.create(
+            initialValue = currentControls.currentWeight.value,
+            validators = currentWeightValidators,
+          ),
+          goalWeight = currentControls.goalWeight,
+        )
+        state.copy(form = FormGroup(newControls))
+      }
+
+      is GoalIntent.OpenHelpModal -> {
+        state.copy(isLoading = false, error = null)
+      }
+
+      is GoalIntent.Error -> {
+        state.copy(isLoading = false, error = intent.message)
+      }
+
+      is GoalIntent.UpdateForm -> {
+        state.copy(form = intent.form)
+      }
+
+      is GoalIntent.Success -> {
+        state.copy(isLoading = false, error = null)
+      }
+
+      is GoalIntent.OnBack -> {
+        state.copy(isLoading = false, error = null)
+      }
+
+      is GoalIntent.HandleGoalMet -> {
+        state.copy(isLoading = false, error = null)
+      }
+
+      is GoalIntent.HandleGoalLeave -> {
+        state.copy(isLoading = false, error = null)
+      }
+
+      is GoalIntent.UpdateAccount -> {
+        state.copy(account = intent.account)
+      }
+
+      is GoalIntent.UpdateLatestWeight -> {
+        state.copy(latestWeight = intent.weight)
+      }
+
+      is GoalIntent.ToggleMetPreviousGoal -> {
+        state.copy()
+      }
+    }
+  }
 }

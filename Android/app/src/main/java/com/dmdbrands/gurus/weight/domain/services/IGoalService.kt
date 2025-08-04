@@ -51,13 +51,6 @@ interface IGoalService {
   ): Int?
 
   /**
-   * Checks if goal completion alert should be shown.
-   * @param currentWeight Current weight to check against goal
-   * @return True if goal completion alert should be shown
-   */
-  suspend fun shouldShowGoalCompletionAlert(currentWeight: Double): Boolean
-
-  /**
    * Shows goal completion alert based on goal type.
    * @param currentWeight Current weight that triggered the alert
    */
