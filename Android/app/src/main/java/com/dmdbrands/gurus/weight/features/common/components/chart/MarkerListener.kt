@@ -10,7 +10,6 @@ import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibility
 import com.patrykandpatrick.vico.core.cartesian.marker.LineCartesianLayerMarkerTarget
 import com.patrykandpatrick.vico.core.common.Point
 import kotlin.math.abs
-import android.util.Log
 
 /**
  * Internal helper to remember the marker listener for the graph.
@@ -34,7 +33,6 @@ internal fun markerListener(
       targets: List<CartesianMarker.Target>,
     ) {
       val targetCanvasX = targets.first().canvasX
-      Log.d("CHECKING", "value formatter called : ${targets.first().x}")
       val targetCanvasY = (targets.first() as LineCartesianLayerMarkerTarget).points.first().canvasY
       val dx = abs(targetCanvasX - (point.x))
       val dy = abs(targetCanvasY - (point.y))

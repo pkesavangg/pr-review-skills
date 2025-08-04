@@ -8,7 +8,6 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
-import android.util.Log
 
 @Composable
 internal fun emptyMarker(): CartesianMarker {
@@ -32,7 +31,6 @@ private fun emptyFormatter(): DefaultCartesianMarker.ValueFormatter =
         context: CartesianDrawingContext,
         targets: List<CartesianMarker.Target>,
       ): String {
-        Log.d("CHECKING", "Empty formatter called : ${targets.first().x}")
         return ""
       }
     }
