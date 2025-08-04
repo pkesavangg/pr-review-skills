@@ -76,7 +76,7 @@ internal fun primaryLayer(
               rememberShapeComponent(
                 fill(it),
                 CorneredShape.Pill,
-                strokeThickness = 2.dp,
+                strokeThickness = 0.dp,
               ),
             ),
           ),

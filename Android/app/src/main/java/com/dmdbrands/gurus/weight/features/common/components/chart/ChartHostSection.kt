@@ -15,6 +15,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -43,7 +44,7 @@ internal fun ChartHostSection(
   modifier: Modifier = Modifier,
   segment: GraphSegment,
   primaryLayer: LineCartesianLayer,
-  markerListener: CartesianMarkerVisibilityListener,
+  markerListener: CartesianMarkerVisibilityListener?,
   stepSize: Double,
   defaultMarker: CartesianMarker,
   xLabels: List<Label>,
@@ -90,7 +91,20 @@ internal fun ChartHostSection(
         startAxis =
           VerticalAxis.rememberStart(
             label = null,
-            line = null,
+            line = rememberAxisLineComponent(
+              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+              thickness = 1.dp,
+            ),
+            guideline = null,
+            tickLength = 0.dp,
+          ),
+        topAxis =
+          HorizontalAxis.rememberTop(
+            label = null,
+            line = rememberAxisLineComponent(
+              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+              thickness = 1.dp,
+            ),
             guideline = null,
             tickLength = 0.dp,
           ),

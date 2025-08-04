@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -292,12 +293,30 @@ fun GraphView(
     modifier = modifier
       .height(300.dp)
       .pointerInput(Unit) {
+        var isScrollInProgress = false
         awaitPointerEventScope {
           while (true) {
             val event = awaitPointerEvent()
-            val position = event.changes.firstOrNull()?.position
-            if (position != null && computationJob == null) {
-              point = (Point(position.x, position.y))
+            when (event.type) {
+              PointerEventType.Press -> {
+                isScrollInProgress = false
+              }
+
+              PointerEventType.Move -> {
+                isScrollInProgress = true
+              }
+
+              PointerEventType.Release -> {
+                if (!isScrollInProgress) {
+                  val position = event.changes.firstOrNull()?.position
+                  if (position != null && computationJob == null) {
+                    point = (Point(position.x, position.y))
+                  }
+                } else {
+                  point = null
+                }
+                isScrollInProgress = false
+              }
             }
           }
         }
