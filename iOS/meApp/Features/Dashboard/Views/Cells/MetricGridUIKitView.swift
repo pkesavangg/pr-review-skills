@@ -18,6 +18,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     @ObservedObject var store: DashboardStore
     @State private var isDragging: Bool = false
     @State private var draggedItemId: String?
+    var onMetricLongPress: ((String) -> Void)? = nil
     
     // MARK: - UIViewRepresentable
     
@@ -67,7 +68,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     private func createCollectionView(with layout: LeadingAlignedFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        collectionView.dragInteractionEnabled = true
+        collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         
         // Disable selection to prevent visual feedback
@@ -123,9 +124,29 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
             let item = store.metricsToShow[indexPath.item]
-            cell.configure(with: item, dashboardType: store.state.metrics.dashboardType, store: store)
+            cell.configure(
+                with: item,
+                dashboardType: store.state.metrics.dashboardType,
+                store: store,
+                onMetricLongPress: parent.onMetricLongPress,
+                onSelectMetric: { label in
+                    if label.isEmpty {
+                        self.store.state.ui.selectedMetricLabel = nil
+                    } else {
+                        self.store.state.ui.selectedMetricLabel = label
+                    }
+                }
+            )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
+            cell.gestureRecognizers?.forEach { cell.removeGestureRecognizer($0) }
+            if store.state.ui.isEditMode {
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricDragLongPress(_:)))
+                longPress.minimumPressDuration = 0.5
+                cell.addGestureRecognizer(longPress)
+                cell.tag = indexPath.item
+            }
+            cell.isUserInteractionEnabled = true
             
             // Set up delete callback (EditModeOverlay handles the UI)
             cell.onDeleteTapped = {
@@ -138,6 +159,14 @@ extension MetricGridUIKitView {
             }
             
             return cell
+        }
+        
+        @objc func handleMetricDragLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began,
+                  let cell = gesture.view as? MetricCell,
+                  let item = cell.representedItem,
+                  store.state.ui.isEditMode else { return }
+            // UIKit grid will handle drag-and-drop
         }
         
         // MARK: - UICollectionViewDelegateFlowLayout
@@ -163,6 +192,8 @@ extension MetricGridUIKitView {
             if isRemoved {
                 return [] // Return empty array to prevent drag
             }
+            
+            if !store.state.ui.isEditMode { return [] } // Prevent drag if not in edit mode
             
             let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             let dragItem = UIDragItem(itemProvider: itemProvider)

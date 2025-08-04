@@ -88,7 +88,7 @@ class MetricCell: UICollectionViewCell {
     ///   - item: The MetricItem to display
     ///   - dashboardType: The dashboard type for styling
     ///   - store: The dashboard store for formatting
-    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore) {
+    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
         representedItem = item
         
         // Determine if this item is removed
@@ -108,7 +108,16 @@ class MetricCell: UICollectionViewCell {
                 }
             },
             onTap: {
-                store.selectMetric(item.label)
+                // Only allow selection if not in edit mode
+                if !store.state.ui.isEditMode {
+                    if store.state.ui.selectedMetricLabel == item.label {
+                        // Deselect if already selected
+                        onSelectMetric?("")
+                    } else {
+                        // Select if not selected
+                        onSelectMetric?(item.label)
+                    }
+                }
             },
             isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onDrop: { _, _ in false }, // Drag and drop handled by UIKit
@@ -137,6 +146,20 @@ class MetricCell: UICollectionViewCell {
         )
         
         hostingController?.rootView = viewWithOverlay
+        // Remove previous gesture recognizers
+        gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
+        if store.state.ui.isEditMode {
+            // Add drag-and-drop gesture in edit mode (handled by UIKit grid)
+            // No-op here, handled by parent
+        } else {
+            // Add long-press for info sheet only in non-edit mode
+            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
+            longPress.minimumPressDuration = 0.5
+            self.addGestureRecognizer(longPress)
+            self.tag = item.id.hashValue
+            self.onMetricLongPressCallback = onMetricLongPress
+            self.onSelectMetricCallback = onSelectMetric
+        }
     }
     
     // MARK: - Reuse
@@ -231,6 +254,32 @@ class MetricCell: UICollectionViewCell {
     func showDeleteButtonIfNeeded() {
         // The EditModeOverlay will automatically show/hide based on edit mode
         // No manual intervention needed
+    }
+    
+    // MARK: - Long Press Handling
+    
+    private var onMetricLongPressCallback: ((String) -> Void)? {
+        get { objc_getAssociatedObject(self, &AssociatedKeys.metricLongPressCallback) as? ((String) -> Void) }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.metricLongPressCallback, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC) }
+    }
+    private var onSelectMetricCallback: ((String) -> Void)? {
+        get { objc_getAssociatedObject(self, &AssociatedKeys.metricSelectCallback) as? ((String) -> Void) }
+        set { objc_setAssociatedObject(self, &AssociatedKeys.metricSelectCallback, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC) }
+    }
+    private struct AssociatedKeys {
+        static var metricLongPressCallback = "metricLongPressCallback"
+        static var metricSelectCallback = "metricSelectCallback"
+    }
+    
+    @objc private func handleMetricLongPressForInfo(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began,
+              let item = representedItem,
+              let callback = onMetricLongPressCallback else { return }
+        // In non-edit mode, always select the item and open info sheet
+        if let selectCallback = onSelectMetricCallback, !isSelected {
+            selectCallback(item.label)
+        }
+        callback(item.label)
     }
 }
 

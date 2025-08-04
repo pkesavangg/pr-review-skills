@@ -47,6 +47,8 @@ struct DashboardScreen: View {
                 await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
                 // Clear the selectedMetricInfo after handling
                 selectedMetricInfo = nil
+                // Clear selection after info sheet is dismissed
+                store.state.ui.selectedMetricLabel = nil
             }
         }
         .onChange(of: store.state.ui.selectedMetricLabel) { _, newValue in
@@ -57,6 +59,8 @@ struct DashboardScreen: View {
         }
         .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
             store.handleMetricInfoSheetDismiss(newValue)
+            // Clear selection after info sheet is dismissed
+            store.state.ui.selectedMetricLabel = nil
         }
         .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
         .onChange(of: store.currentUnit) { _, _ in 
@@ -80,7 +84,9 @@ struct DashboardScreen: View {
             WeightTrendView(dashboardStore: store)
             if !store.allContentRemoved {
                 // Use single combined layout view for all items
-                DashboardCombinedLayoutView(store: store)
+                DashboardCombinedLayoutView(store: store, onMetricLongPress: { label in
+                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                })
                     .frame(minHeight: 600)
                     .padding(.top, .spacingSM)
                     .id(store.state.ui.gridLayoutId)

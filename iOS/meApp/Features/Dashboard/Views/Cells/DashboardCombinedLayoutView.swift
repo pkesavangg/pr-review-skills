@@ -29,6 +29,7 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
     @ObservedObject var store: DashboardStore
     @State private var isDragging: Bool = false
     @State private var draggedItemId: String?
+    var onMetricLongPress: ((String) -> Void)? = nil
     
     func makeUIView(context: Context) -> UICollectionView {
         let layout = createLayout()
@@ -73,7 +74,7 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
     private func createCollectionView(with layout: LeadingAlignedFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        collectionView.dragInteractionEnabled = true
+        collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakItemCell.self, forCellWithReuseIdentifier: "StreakItemCell")
@@ -129,9 +130,32 @@ extension DashboardCombinedLayoutView {
             if indexPath.item < metricsCount {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
                 let item = store.metricsToShow[indexPath.item]
-                cell.configure(with: item, dashboardType: store.state.metrics.dashboardType, store: store)
+                cell.configure(
+                    with: item,
+                    dashboardType: store.state.metrics.dashboardType,
+                    store: store,
+                    onMetricLongPress: parent.onMetricLongPress,
+                    onSelectMetric: { label in
+                        if label.isEmpty {
+                            self.store.state.ui.selectedMetricLabel = nil
+                        } else {
+                            self.store.state.ui.selectedMetricLabel = label
+                        }
+                    }
+                )
                 cell.rowIndex = indexPath.row
                 cell.isWiggling = store.state.ui.isEditMode
+                // Remove previous gesture recognizers
+                cell.gestureRecognizers?.forEach { cell.removeGestureRecognizer($0) }
+                if store.state.ui.isEditMode {
+                    // Add drag-and-drop gesture in edit mode (handled by UIKit grid)
+                    let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricDragLongPress(_:)))
+                    longPress.minimumPressDuration = 0.5
+                    cell.addGestureRecognizer(longPress)
+                    cell.tag = indexPath.item
+                }
+                // Tapping a metric sets it as selected
+                cell.isUserInteractionEnabled = true
                 return cell
             } else if indexPath.item < metricsCount + dividerCount {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "DividerCell", for: indexPath)
@@ -200,6 +224,7 @@ extension DashboardCombinedLayoutView {
                 let item = store.metricsToShow[indexPath.item]
                 let isRemoved = store.isMetricRemovedInReorderedArray(at: indexPath.item)
                 if isRemoved { return [] }
+                if !store.state.ui.isEditMode { return [] } // Prevent drag if not in edit mode
                 let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
                 let dragItem = UIDragItem(itemProvider: itemProvider)
                 dragItem.localObject = DragItemWrapper(type: .metric, item: item)
@@ -236,6 +261,7 @@ extension DashboardCombinedLayoutView {
                     let item = store.streakItemsToShow[streakIndex]
                     let isRemoved = store.isStreakRemovedInReorderedArray(at: streakIndex)
                     if isRemoved { return [] }
+                    if !store.state.ui.isEditMode { return [] } // Prevent drag if not in edit mode
                     let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
                     let dragItem = UIDragItem(itemProvider: itemProvider)
                     dragItem.localObject = DragItemWrapper(type: .streak, item: item)
@@ -341,6 +367,7 @@ extension DashboardCombinedLayoutView {
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
+            guard store.state.ui.isEditMode else { return }
             parent.isDragging = true
             if let draggedItem = session.items.first {
                 if let dragItem = draggedItem.localObject as? DragItemWrapper {
@@ -430,15 +457,15 @@ extension DashboardCombinedLayoutView {
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionAllowsMoveOperation session: UIDragSession) -> Bool {
-            return true
+            return store.state.ui.isEditMode
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionDidUpdate session: UIDragSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
-            return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
+            return store.state.ui.isEditMode ? UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath) : UICollectionViewDropProposal(operation: .forbidden)
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
-            return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
+            return store.state.ui.isEditMode ? UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath) : UICollectionViewDropProposal(operation: .forbidden)
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
@@ -448,6 +475,7 @@ extension DashboardCombinedLayoutView {
         }
         
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
+            guard store.state.ui.isEditMode else { return }
             guard let destinationIndexPath = coordinator.destinationIndexPath,
                   let item = coordinator.items.first,
                   let sourceIndexPath = item.sourceIndexPath else {
@@ -544,6 +572,22 @@ extension DashboardCombinedLayoutView {
                 }
             }
             CATransaction.commit()
+        }
+        
+        @objc func handleMetricLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began,
+                  let cell = gesture.view as? MetricCell,
+                  let item = cell.representedItem,
+                  !store.state.ui.isEditMode else { return }
+            parent.onMetricLongPress?(item.label)
+        }
+        
+        @objc func handleMetricDragLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began,
+                  let cell = gesture.view as? MetricCell,
+                  store.state.ui.isEditMode else { return }
+            // UIKit grid will handle drag-and-drop
+            // Optionally, you can trigger drag programmatically if needed
         }
     }
 }
