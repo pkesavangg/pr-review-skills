@@ -28,6 +28,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
+import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -57,6 +58,35 @@ constructor(
       _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
         this[macAddress] = connectionStatus
       }
+
+      // Immediately update the device with new connection status and recalculate weight-only mode
+      val currentDevices = _pairedScales.value.toMutableList()
+      val deviceIndex = currentDevices.indexOfFirst { it.device?.macAddress == macAddress }
+
+      if (deviceIndex >= 0) {
+        val device = currentDevices[deviceIndex]
+        val isConnected = connectionStatus == BLEStatus.CONNECTED
+
+        val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
+          device.preferences.shouldMeasureImpedance == true &&
+            device.device.impedanceSwitchState == false
+        } else {
+          false
+        }
+
+        val updatedDevice = device.copy(
+          connectionStatus = connectionStatus,
+          isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+        )
+
+        currentDevices[deviceIndex] = updatedDevice
+        _pairedScales.value = currentDevices
+
+        AppLog.d(
+          tag,
+          "Connection status updated for ${device.device?.deviceName}: $connectionStatus, isWeighOnlyModeEnabledByOthers: $isWeighOnlyModeEnabledByOthers",
+        )
+      }
     }
     // Optionally log or handle the null case
     // else log.warn("Received update with null MAC address")
@@ -64,7 +94,38 @@ constructor(
 
   override suspend fun updateDevice(device: Device) {
     try {
-      deviceRepository.updateDevice(device, currentAccountId!!)
+      // Calculate weight-only mode before updating
+      val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+      val isConnected = connectionStatus == BLEStatus.CONNECTED
+
+      val updatedDevice = if (isConnected && device.preferences != null && device.device != null) {
+        val isWeighOnlyModeEnabledByOthers = device.preferences.shouldMeasureImpedance == true &&
+          device.device.impedanceSwitchState == false
+        device.copy(
+          connectionStatus = connectionStatus,
+          isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+        )
+      } else {
+        device.copy(
+          connectionStatus = connectionStatus,
+          isWeighOnlyModeEnabledByOthers = false,
+        )
+      }
+
+      deviceRepository.updateDevice(updatedDevice, currentAccountId!!)
+
+      // Update the local state immediately
+      val currentDevices = _pairedScales.value.toMutableList()
+      val deviceIndex = currentDevices.indexOfFirst { it.id == updatedDevice.id }
+      if (deviceIndex >= 0) {
+        currentDevices[deviceIndex] = updatedDevice
+        _pairedScales.value = currentDevices
+      }
+
+      AppLog.d(
+        tag,
+        "Device updated: ${device.device?.deviceName}, isWeighOnlyModeEnabledByOthers: ${updatedDevice.isWeighOnlyModeEnabledByOthers}",
+      )
     } catch (e: Exception) {
       AppLog.e(tag, "Error updating device", e.toString())
     }
@@ -94,11 +155,27 @@ constructor(
         deviceRepository.getDevices(resolvedAccountId),
         _connectionStatusMap,
       ) { devices, connectionStatusMap ->
+        Log.d("Appviewmodel1", devices.toString())
         devices.map { device ->
-          device.copy(connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED)
+          val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+          val isConnected = connectionStatus == BLEStatus.CONNECTED
+          Log.d("Appviewmodel2", device.toString())
+          // Calculate isWeighOnlyModeEnabledByOthers based on Angular logic
+          val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
+            device.preferences.shouldMeasureImpedance == true &&
+              device.device.impedanceSwitchState == false || device.device.impedanceSwitchState == null
+          } else {
+            false
+          }
+
+          device.copy(
+            connectionStatus = connectionStatus,
+            isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+          )
         }
       }.collect { updatedDevices ->
         _pairedScales.value = updatedDevices
+        AppLog.d(tag, "Updated ${updatedDevices.size} devices with connection status and weight-only mode calculation")
       }
     }
   }

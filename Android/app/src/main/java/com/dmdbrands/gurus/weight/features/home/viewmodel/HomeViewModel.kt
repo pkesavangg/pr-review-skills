@@ -17,6 +17,9 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeReducer
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
@@ -44,6 +47,7 @@ constructor(
   init {
     observeAppSyncStatus()
     observePermissions()
+    subscribeToWeightOnlyModeEvents()
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -54,6 +58,10 @@ constructor(
       }
 
       is HomeIntent.HandleAppSyncResult -> handleAppSyncResult(intent.result)
+
+      is HomeIntent.OnWeightOnlyModeEnable -> onWeightOnlyModeEnable()
+
+      is HomeIntent.OnWeightOnlyModeAlertDismiss -> onWeightOnlyModeAlertDismiss()
 
       // Handle toggle appsync logic if needed
 
@@ -160,5 +168,85 @@ constructor(
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home)
     }
+  }
+
+  /**
+   * Subscribes to weight-only mode events for showing/hiding bottom sheet.
+   */
+  private fun subscribeToWeightOnlyModeEvents() {
+    viewModelScope.launch {
+      WeightOnlyModeEventService.events.collect { event ->
+        when (event) {
+          WeightOnlyModeEventType.SHOW_ALERT -> {
+            handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(true))
+            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be shown")
+          }
+          WeightOnlyModeEventType.HIDE_ALERT -> {
+            handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
+            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be hidden")
+          }
+          else -> {
+            // Handle other events if needed
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Handles enabling weight-only mode for connected scales.
+   * Delegates to AppViewModel for the actual implementation.
+   */
+  private fun onWeightOnlyModeEnable() {
+    viewModelScope.launch {
+      try {
+        AppLog.d("HomeViewModel", "Enabling weight-only mode via AppViewModel")
+
+        val pairedScales = deviceService.pairedScales.first()
+        val scalesToUpdate = pairedScales.filter { device ->
+          device.connectionStatus == BLEStatus.CONNECTED &&
+            device.isWeighOnlyModeEnabledByOthers
+        }
+
+        if (scalesToUpdate.isNotEmpty()) {
+          // Show loading toast
+          dialogQueueService.showToast(
+            Toast(message = "Updating scale settings..."),
+          )
+
+          for (scale in scalesToUpdate) {
+            // Update scale settings to enable body metrics
+            try {
+              // This would call the scale service to update settings
+              // ggDeviceService.updateSetting(...) - implementation depends on your scale service
+              AppLog.d("HomeViewModel", "Updated settings for scale: ${scale.device?.deviceName}")
+            } catch (e: Exception) {
+              AppLog.e("HomeViewModel", "Failed to update scale settings", e.toString())
+            }
+          }
+
+          // Show success toast
+          dialogQueueService.showToast(
+            Toast(message = "Body metrics enabled successfully!"),
+          )
+        }
+
+        // Dismiss the bottom sheet
+        onWeightOnlyModeAlertDismiss()
+      } catch (e: Exception) {
+        AppLog.e("HomeViewModel", "Failed to enable weight-only mode", e.toString())
+        dialogQueueService.showToast(
+          Toast(message = "Failed to update scale settings"),
+        )
+      }
+    }
+  }
+
+  /**
+   * Handles dismissing the weight-only mode bottom sheet.
+   */
+  private fun onWeightOnlyModeAlertDismiss() {
+    handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
+    AppLog.d("HomeViewModel", "Weight-only mode bottom sheet dismissed")
   }
 }

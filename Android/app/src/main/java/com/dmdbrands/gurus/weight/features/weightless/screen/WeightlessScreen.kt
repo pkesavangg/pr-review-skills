@@ -95,7 +95,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
       verticalArrangement = Arrangement.Top,
     ) {
       AppStyledCard {
-        Spacer(Modifier.height(spacing.md))
+        // Spacer(Modifier.height(spacing.md))
         Column(
           modifier =
             Modifier

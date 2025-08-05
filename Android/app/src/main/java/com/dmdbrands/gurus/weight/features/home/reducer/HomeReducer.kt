@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.home.reducer
 
-import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.greatergoods.libs.appsync.model.AppSyncResult
 
 /**
  * State for HomeScreen.
@@ -9,6 +9,8 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 data class HomeState(
   val showAppsync: Boolean = false,
   val isAppSyncPermissionsEnabled: Boolean = false,
+  val showWeightOnlyModeBottomSheet: Boolean = false,
+  val openWeightOnlyModePopup: Boolean = false
 ) : IReducer.State
 
 /**
@@ -31,6 +33,17 @@ sealed interface HomeIntent : IReducer.Intent {
     val result: AppSyncResult
   ) : HomeIntent
 
+  data class SetShowWeightOnlyModeBottomSheet(
+    val show: Boolean
+  ) : HomeIntent
+
+  data class OpenWeightOnlyModePopup(
+    val open: Boolean
+  ) : HomeIntent
+
+  data object OnWeightOnlyModeEnable : HomeIntent
+
+  data object OnWeightOnlyModeAlertDismiss : HomeIntent
 }
 
 /**
@@ -45,6 +58,12 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
       is HomeIntent.SetShowAppsync -> state.copy(showAppsync = intent.show)
       is HomeIntent.isAppSyncPermissionsEnabled ->
         state.copy(isAppSyncPermissionsEnabled = intent.enabled)
+
+      is HomeIntent.SetShowWeightOnlyModeBottomSheet ->
+        state.copy(showWeightOnlyModeBottomSheet = intent.show)
+
+      is HomeIntent.OpenWeightOnlyModePopup ->
+        state.copy(openWeightOnlyModePopup = intent.open)
 
       else -> state.copy()
     }

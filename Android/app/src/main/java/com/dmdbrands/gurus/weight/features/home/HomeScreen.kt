@@ -1,9 +1,13 @@
 package com.dmdbrands.gurus.weight.features.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,15 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.greatergoods.libs.appsync.startAppSyncScan
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.features.common.components.AppFab
 import com.dmdbrands.gurus.weight.features.common.components.MainBottomNav
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.WeightOnlyModePopup
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
 import com.dmdbrands.gurus.weight.features.home.viewmodel.HomeViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.greatergoods.libs.appsync.startAppSyncScan
 import kotlinx.coroutines.launch
 
 /**
@@ -32,7 +39,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsState()
-  HomeScreenContent(state, viewModel::handleIntent)
+  HomeScreenContent(
+    state = state,
+    handleIntent = viewModel::handleIntent,
+  )
 }
 
 @Composable
@@ -76,6 +86,18 @@ fun HomeScreenContent(
         },
       )
     },
+    floatingActionButton = {
+      if (state.showWeightOnlyModeBottomSheet) {
+        AppFab(
+          isDraggable = true, // Enable drag and drop
+          enabled = true,
+          showWeightOnlyModeAlert = true,
+          onClick = {
+            handleIntent(HomeIntent.OpenWeightOnlyModePopup(true))
+          },
+        )
+      }
+    },
   ) {
     Surface(
       modifier =
@@ -88,13 +110,48 @@ fun HomeScreenContent(
       )
     }
   }
+
+  // Weight-only mode bottom sheet
+  if (state.openWeightOnlyModePopup) {
+    OpenWeightOnlyModePopup(
+      onEnable = {
+        handleIntent(HomeIntent.OnWeightOnlyModeEnable)
+      },
+      onDismiss = {
+        handleIntent(HomeIntent.OnWeightOnlyModeAlertDismiss)
+      },
+    )
+  }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun OpenWeightOnlyModePopup(
+  onEnable: () -> Unit,
+  onDismiss: () -> Unit
+) {
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  ModalBottomSheet(
+    sheetState = sheetState,
+    modifier = Modifier.navigationBarsPadding(),
+    onDismissRequest = onDismiss,
+    containerColor = MeTheme.colorScheme.primaryBackground,
+  ) {
+    WeightOnlyModePopup(
+      onEnable = onEnable,
+      onDismiss = onDismiss,
+    )
+  }
 }
 
 @PreviewTheme
 @Composable
 fun HomeScreenPreview() {
   MeAppTheme {
-    val dummyHomeState = HomeState(showAppsync = false)
+    val dummyHomeState = HomeState(
+      showAppsync = false,
+      showWeightOnlyModeBottomSheet = true,
+    )
     HomeScreenContent(
       state = dummyHomeState,
       handleIntent = {},

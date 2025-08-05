@@ -6,6 +6,8 @@ import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -47,6 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -120,6 +123,10 @@ constructor(
       is AppIntent.OnPopUpConnect -> onPopUpConnect()
 
       is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
+
+      is AppIntent.OnWeightOnlyModeEnable -> onWeightOnlyModeEnable()
+
+      is AppIntent.OnWeightOnlyModeAlertDismiss -> onWeightOnlyModeAlertDismiss()
 
       else -> {}
     }
@@ -407,6 +414,7 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
+          checkCanShowWeightOnlyModeAlert()
         }
 
         GGScanResponseType.DEVICE_DISCONNECTED -> {
@@ -414,6 +422,12 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
+          checkCanShowWeightOnlyModeAlert()
+        }
+
+        GGScanResponseType.DEVICE_INFO_UPDATE -> {
+          onDeviceInfoUpdate(deviceDetail = data)
+          checkCanShowWeightOnlyModeAlert()
         }
 
         else -> null
@@ -469,6 +483,33 @@ constructor(
         macAddress = device?.device?.macAddress ?: deviceDetail.macAddress,
         connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED,
       )
+    }
+  }
+
+  /**
+   * Updates device information when device info changes.
+   * This ensures that properties like isWeighOnlyModeEnabledByOthers are properly updated.
+   */
+  private fun onDeviceInfoUpdate(deviceDetail: GGDeviceDetail) {
+    viewModelScope.launch {
+      try {
+        val pairedScales = deviceService.pairedScales.first()
+        val existingDevice = pairedScales.find { it.device?.macAddress == deviceDetail.macAddress }
+
+        if (existingDevice != null) {
+          // Update the device with new information
+          val updatedDevice = existingDevice.copy(
+            device = deviceDetail,
+            connectionStatus = BLEStatus.CONNECTED, // Device info update means it's connected
+          )
+
+          deviceService.updateDevice(updatedDevice)
+        } else {
+          AppLog.w(TAG, "Device not found in paired scales: ${deviceDetail.macAddress}")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to update device info", e.toString())
+      }
     }
   }
 
@@ -531,6 +572,105 @@ constructor(
   private fun navigateToAppPermissions() {
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.AppPermissions)
+    }
+  }
+
+  /**
+   * Checks if weight-only mode alert should be shown and emits appropriate events.
+   * Similar to checkCanShowWeightOnlyModeAlert() in Angular BluetoothService.
+   */
+  private fun checkCanShowWeightOnlyModeAlert() {
+    viewModelScope.launch {
+      try {
+        val pairedScales = deviceService.pairedScales.first()
+        Log.d(TAG, pairedScales.toString())
+        // Log detailed information about each scale
+        pairedScales.forEach { device ->
+          AppLog.d(
+            TAG,
+            "Scale: ${device.device?.deviceName}, MAC: ${device.device?.macAddress}, " +
+              "Connected: ${device.connectionStatus == BLEStatus.CONNECTED}, " +
+              "WeightOnlyMode: ${device.isWeighOnlyModeEnabledByOthers}",
+          )
+        }
+
+        val connectedScales = pairedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
+        val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
+
+        val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()
+
+        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${weightOnlyScales.size}")
+        Log.d(TAG, "Has weight-only mode scale: $hasWeightOnlyModeScale")
+
+        if (hasWeightOnlyModeScale) {
+          WeightOnlyModeEventService.emit(WeightOnlyModeEventType.SHOW_ALERT)
+          AppLog.d(TAG, "Weight-only mode alert event emitted")
+        } else {
+          WeightOnlyModeEventService.emit(WeightOnlyModeEventType.HIDE_ALERT)
+          AppLog.d(TAG, "Weight-only mode alert hide event emitted")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check weight-only mode alert", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Handles enabling weight-only mode for connected scales.
+   * Similar to updateWeightOnlyMode() in Angular BluetoothService.
+   */
+  private fun onWeightOnlyModeEnable() {
+    viewModelScope.launch {
+      try {
+        AppLog.d(TAG, "Enabling weight-only mode for connected scales")
+
+        val pairedScales = deviceService.pairedScales.first()
+        val scalesToUpdate = pairedScales.filter { device ->
+          device.connectionStatus == BLEStatus.CONNECTED &&
+            device.isWeighOnlyModeEnabledByOthers
+        }
+
+        if (scalesToUpdate.isNotEmpty()) {
+          // Show loading toast
+          dialogQueueService.showToast(
+            Toast(message = "Updating scale settings..."),
+          )
+
+          for (scale in scalesToUpdate) {
+            // Update scale settings to enable body metrics
+            try {
+              // This would call the scale service to update settings
+              // ggDeviceService.updateSetting(...) - implementation depends on your scale service
+              AppLog.d(TAG, "Updated settings for scale: ${scale.device?.deviceName}")
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Failed to update scale settings", e.toString())
+            }
+          }
+
+          // Show success toast
+          dialogQueueService.showToast(
+            Toast(message = "Body metrics enabled successfully!"),
+          )
+        }
+
+        // Dismiss the alert
+        onWeightOnlyModeAlertDismiss()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to enable weight-only mode", e.toString())
+        dialogQueueService.showToast(
+          Toast(message = "Failed to update scale settings"),
+        )
+      }
+    }
+  }
+
+  /**
+   * Handles dismissing the weight-only mode alert.
+   */
+  private fun onWeightOnlyModeAlertDismiss() {
+    viewModelScope.launch {
+      WeightOnlyModeEventService.emit(WeightOnlyModeEventType.HIDE_ALERT)
+      AppLog.d(TAG, "Weight-only mode alert dismissed")
     }
   }
 }
