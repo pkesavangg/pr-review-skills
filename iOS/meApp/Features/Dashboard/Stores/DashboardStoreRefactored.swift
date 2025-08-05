@@ -110,7 +110,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightSettings?.weightUnit }
             .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .dropFirst()
             .sink { [weak self] newWeightUnit in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
                 self?.handleSettingsChange()
@@ -121,7 +121,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.isWeightlessOn }
             .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .dropFirst()
             .sink { [weak self] isWeightlessOn in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
                 self?.handleSettingsChange()
@@ -132,7 +132,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.weightlessWeight }
             .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .dropFirst()
             .sink { [weak self] weightlessWeight in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
                 self?.handleSettingsChange()
@@ -154,7 +154,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .dropFirst() 
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
