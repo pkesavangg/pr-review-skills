@@ -82,9 +82,9 @@ class GoalCardCell: UICollectionViewCell {
             .map { $0.goal.goalType }
             .sink { [weak self] newGoalType in
                 DispatchQueue.main.async {
-                    let goalCardView = GoalProgressView()
+                    // Reuse the existing GoalProgressView instead of creating a new instance
                     let viewWithOverlay = AnyView(
-                        goalCardView
+                        GoalProgressView()
                             .editModeOverlay(
                                 isEditMode: store.state.ui.isEditMode,
                                 isRemoved: store.state.ui.isGoalCardRemoved,
@@ -106,6 +106,8 @@ class GoalCardCell: UICollectionViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        // Clear cancellables to prevent memory leaks and unexpected behavior
+        cancellables.removeAll()
         // Reset to placeholder view
         let placeholderView = AnyView(
             GoalProgressView()
