@@ -78,8 +78,26 @@ struct WiggleModifier: ViewModifier {
 }
 
 extension UIView {
+    // Static cache for randomized intervals per rowIndex and animation type
+    private static var intervalCache: [String: Double] = [:]
+    
+    // Helper to get cached or new interval
+    private func cachedRandomizedInterval(forKey key: String, baseInterval: Double, variance: Double) -> Double {
+        if let cached = UIView.intervalCache[key] {
+            return cached
+        }
+        let randomFactor = Double.random(in: -1.0...1.0)
+        let interval = baseInterval + (randomFactor * variance)
+        UIView.intervalCache[key] = interval
+        return interval
+    }
+    
+    // Clear the interval cache when needed (e.g., when app becomes active)
+    static func clearWiggleIntervalCache() {
+        intervalCache.removeAll()
+    }
+    
     func startWiggle() {
-        layer.removeAnimation(forKey: "wiggle")
         layer.removeAnimation(forKey: "rotation")
         layer.removeAnimation(forKey: "bounce")
         
@@ -88,7 +106,6 @@ extension UIView {
     }
     
     func startWiggleWithRowIndex(_ rowIndex: Int) {
-        layer.removeAnimation(forKey: "wiggle")
         layer.removeAnimation(forKey: "rotation")
         layer.removeAnimation(forKey: "bounce")
         
@@ -97,7 +114,6 @@ extension UIView {
     }
     
     func stopWiggle() {
-        layer.removeAnimation(forKey: "wiggle")
         layer.removeAnimation(forKey: "rotation")
         layer.removeAnimation(forKey: "bounce")
     }
@@ -111,9 +127,10 @@ extension UIView {
         ]
         
         animation.autoreverses = true
-        animation.duration = randomizeInterval(
-            WiggleAnimationConstants.wiggleRotateDuration,
-            withVariance: WiggleAnimationConstants.wiggleRotateDurationVariance
+        animation.duration = cachedRandomizedInterval(
+            forKey: "rotation_\(rowIndex)",
+            baseInterval: WiggleAnimationConstants.wiggleRotateDuration,
+            variance: WiggleAnimationConstants.wiggleRotateDurationVariance
         )
         animation.repeatCount = Float.infinity
         
@@ -129,9 +146,10 @@ extension UIView {
         ]
         
         animation.autoreverses = true
-        animation.duration = randomizeInterval(
-            WiggleAnimationConstants.wiggleBounceDuration,
-            withVariance: WiggleAnimationConstants.wiggleBounceDurationVariance
+        animation.duration = cachedRandomizedInterval(
+            forKey: "bounce_\(rowIndex)",
+            baseInterval: WiggleAnimationConstants.wiggleBounceDuration,
+            variance: WiggleAnimationConstants.wiggleBounceDurationVariance
         )
         animation.repeatCount = Float.infinity
         
@@ -147,9 +165,10 @@ extension UIView {
         ]
         
         animation.autoreverses = true
-        animation.duration = randomizeInterval(
-            WiggleAnimationConstants.wiggleRotateDuration,
-            withVariance: WiggleAnimationConstants.wiggleRotateDurationVariance
+        animation.duration = cachedRandomizedInterval(
+            forKey: "rotation_default",
+            baseInterval: WiggleAnimationConstants.wiggleRotateDuration,
+            variance: WiggleAnimationConstants.wiggleRotateDurationVariance
         )
         animation.repeatCount = Float.infinity
         
@@ -165,17 +184,13 @@ extension UIView {
         ]
         
         animation.autoreverses = true
-        animation.duration = randomizeInterval(
-            WiggleAnimationConstants.wiggleBounceDuration,
-            withVariance: WiggleAnimationConstants.wiggleBounceDurationVariance
+        animation.duration = cachedRandomizedInterval(
+            forKey: "bounce_default",
+            baseInterval: WiggleAnimationConstants.wiggleBounceDuration,
+            variance: WiggleAnimationConstants.wiggleBounceDurationVariance
         )
         animation.repeatCount = Float.infinity
         
         return animation
-    }
-    
-    private func randomizeInterval(_ baseInterval: Double, withVariance variance: Double) -> Double {
-        let randomFactor = Double.random(in: -1.0...1.0)
-        return baseInterval + (randomFactor * variance)
     }
 }

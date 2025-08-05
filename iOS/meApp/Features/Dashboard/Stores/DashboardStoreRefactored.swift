@@ -634,8 +634,12 @@ class DashboardStore: ObservableObject {
     
     /// Restarts wiggle animations for all visible cells when app becomes active from background
     func restartWiggleAnimations() {
+        // Clear the interval cache to ensure fresh randomization
+        UIView.clearWiggleIntervalCache()
+        
         state.ui.gridLayoutId = UUID()
         objectWillChange.send()
+        logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
 
     func selectMetric(_ label: String) {

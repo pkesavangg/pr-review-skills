@@ -70,7 +70,7 @@ struct DashboardScreen: View {
             // Restart wiggle animations when app becomes active from background
             if store.state.ui.isEditMode {
                 // Force a small delay to ensure the view is fully loaded
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
                     store.restartWiggleAnimations()
                 }
             }

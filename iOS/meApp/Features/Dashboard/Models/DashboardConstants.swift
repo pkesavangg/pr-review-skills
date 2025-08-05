@@ -68,4 +68,5 @@ public struct WiggleAnimationConstants {
     static let wiggleRotateAngle: Double = 0.03
     static let wiggleRotateDuration: Double = 0.12
     static let wiggleRotateDurationVariance: Double = 0.025
+    static let wiggleRestartDelayAfterAppActive: Double = 0.1
 }

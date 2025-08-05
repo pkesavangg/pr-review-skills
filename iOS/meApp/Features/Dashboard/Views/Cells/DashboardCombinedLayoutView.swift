@@ -57,6 +57,11 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
                 uiView.layoutIfNeeded()
                 // Notify SwiftUI that the view size has changed
                 uiView.invalidateIntrinsicContentSize()
+                
+                // Restart wiggle animations if needed
+                if shouldRestartWiggle && store.state.ui.isEditMode {
+                    context.coordinator.restartWiggleAnimations(for: uiView)
+                }
             }
         } else {
             context.coordinator.forceReconfigureVisibleCells(uiView)
@@ -113,7 +118,7 @@ extension DashboardCombinedLayoutView {
         var parent: DashboardCombinedLayoutView
         var store: DashboardStore
         private var draggedItemId: String?
-        var lastGridLayoutId: UUID = UUID() // Added to track gridLayoutId changes
+        var lastGridLayoutId: UUID? = nil // Added to track gridLayoutId changes
         
         init(_ parent: DashboardCombinedLayoutView) {
             self.parent = parent
