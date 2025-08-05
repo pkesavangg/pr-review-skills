@@ -835,7 +835,7 @@ class ScaleStore: ObservableObject {
             let isWifiConfigured = deviceInfo.isWifiConfigured
             // Update the scale's WiFi configuration status
             scale.isWifiConfigured = isWifiConfigured
-            logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved - WiFi configured: \(isWifiConfigured ?? false)")
+            logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved - WiFi configured: \(String(describing: isWifiConfigured))")
         case .failure(let error):
             logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info: \(error)")
         }
@@ -852,7 +852,7 @@ class ScaleStore: ObservableObject {
                     let isWifiConfigured = deviceInfo.isWifiConfigured
                     // Update the scale's WiFi configuration status
                     scale.isWifiConfigured = isWifiConfigured
-                    logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved for \(scale.id) - WiFi configured: \(isWifiConfigured ?? false)")
+                    logger.log(level: .info, tag: "ScaleStore", message: "Device info retrieved for \(scale.id) - WiFi configured: \(String(describing: isWifiConfigured))")
                 case .failure(let error):
                     logger.log(level: .error, tag: "ScaleStore", message: "Failed to get device info for \(scale.id): \(error)")
                 }

@@ -199,7 +199,7 @@ struct ScaleSettingsScreen: View {
             )
             
             if let userNumber = scale.userNumber, scaleType != .bluetoothR4 {
-                ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: "U\(userNumber)", chevronType: .none))
+                ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: lang.userNumberInfo(userNumber), chevronType: .none))
             }
 
         }
