@@ -937,19 +937,24 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
         case .stepOn:
             Task {
-                if self.savedScale != nil {
-                    // Subscribe to live measurement updates and proceed when weight > 0
-                    self.liveMeasurementSubscription = self.bluetoothService.liveMeasurementPublisher
-                        .receive(on: DispatchQueue.main)
-                        .sink { [weak self] liveEntry in
-                            guard let self else { return }
-                            if liveEntry.displayWeight > 0 && savedScale?.broadcastIdString == liveEntry.broadcastId {
+                guard let savedScale = self.savedScale else { return }
+                // Subscribe to live measurement updates and proceed when weight > 0
+                await bluetoothService.startLiveMeasurement(for: savedScale)
+                self.liveMeasurementSubscription = self.bluetoothService.liveMeasurementPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] liveEntry in
+                        guard let self else { return }
+                        
+                        if liveEntry.displayWeight > 0 && savedScale.broadcastIdString == liveEntry.broadcastId {
+                            Task {
+                                await self.bluetoothService.stopLiveMeasurement(for: savedScale)
                                 self.cancelMeasurementSubscription()
                                 self.scaleSetupError = .none
                                 self.moveToNextStep()
                             }
                         }
-                }
+                    }
+                
             }
         case .measurement:
             // Cancel any existing measurement subscription and timeout
