@@ -194,6 +194,7 @@ constructor(
               val activeAccount =
                 accountService.handleUnauthorizedLogout(authState.accountId)
               if (activeAccount != null) {
+                stopScan()
                 navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
                 dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
               }
@@ -287,6 +288,7 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
+    stopScan()
     navigationService.replaceStack(route = route)
   }
 
@@ -340,7 +342,7 @@ constructor(
               }
               initialized = true
             }
-            ggPermissionService.stopScan()
+            stopScan()
           }
         }
       }
@@ -510,6 +512,18 @@ constructor(
       val account = accountService.getCurrentAccount()
       if (account != null) {
         ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, account.toGGBTUserProfile())
+        handleIntent(AppIntent.SetScanStatus(true))
+        AppLog.i(TAG, "Scan started")
+      }
+    }
+  }
+
+  private fun stopScan() {
+    viewModelScope.launch {
+      if (state.value.hasScanStarted) {
+        ggPermissionService.stopScan()
+        handleIntent(AppIntent.SetScanStatus(false))
+        AppLog.i(TAG, "Scan stopped")
       }
     }
   }
