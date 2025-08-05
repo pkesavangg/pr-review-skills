@@ -66,6 +66,15 @@ struct DashboardScreen: View {
         .onChange(of: store.currentUnit) { _, _ in 
             store.handleUnitChange()
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Restart wiggle animations when app becomes active from background
+            if store.state.ui.isEditMode {
+                // Force a small delay to ensure the view is fully loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    store.restartWiggleAnimations()
+                }
+            }
+        }
         .presentAlert(alertData: $store.state.ui.alertData)
         .presentLoader(loaderData: store.loaderData)
     }

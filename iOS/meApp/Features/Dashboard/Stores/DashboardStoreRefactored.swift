@@ -631,6 +631,12 @@ class DashboardStore: ObservableObject {
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
     }
+    
+    /// Restarts wiggle animations for all visible cells when app becomes active from background
+    func restartWiggleAnimations() {
+        state.ui.gridLayoutId = UUID()
+        objectWillChange.send()
+    }
 
     func selectMetric(_ label: String) {
         if state.ui.selectedMetricLabel == label {

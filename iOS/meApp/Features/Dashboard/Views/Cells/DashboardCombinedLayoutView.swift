@@ -41,6 +41,10 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
     func updateUIView(_ uiView: UICollectionView, context: Context) {
         context.coordinator.store = store
         
+        // Check if we need to restart wiggle animations (when gridLayoutId changes)
+        let shouldRestartWiggle = context.coordinator.lastGridLayoutId != store.state.ui.gridLayoutId
+        context.coordinator.lastGridLayoutId = store.state.ui.gridLayoutId
+        
         if !isDragging {
             uiView.reloadData()
             // Force layout update to ensure proper content size calculation
@@ -62,6 +66,7 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
+    
     
     private func createLayout() -> LeadingAlignedFlowLayout {
         let layout = LeadingAlignedFlowLayout()
@@ -108,10 +113,25 @@ extension DashboardCombinedLayoutView {
         var parent: DashboardCombinedLayoutView
         var store: DashboardStore
         private var draggedItemId: String?
+        var lastGridLayoutId: UUID = UUID() // Added to track gridLayoutId changes
         
         init(_ parent: DashboardCombinedLayoutView) {
             self.parent = parent
             self.store = parent.store
+        }
+        
+        // MARK: - App Lifecycle Handling
+        
+        /// Restarts wiggle animations for all visible MetricCells when app becomes active
+        func restartWiggleAnimations(for collectionView: UICollectionView) {
+            guard store.state.ui.isEditMode else { return }
+            
+            // Restart wiggle animations for all visible MetricCells
+            for cell in collectionView.visibleCells {
+                if let metricCell = cell as? MetricCell {
+                    metricCell.restartWiggleAnimation()
+                }
+            }
         }
         
         func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {

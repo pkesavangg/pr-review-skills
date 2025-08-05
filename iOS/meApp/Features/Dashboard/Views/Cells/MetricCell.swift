@@ -168,6 +168,12 @@ class MetricCell: UICollectionViewCell {
         super.prepareForReuse()
         representedItem = nil
         
+        // Stop any ongoing wiggle animation
+        contentView.stopWiggle()
+        isWiggling = false
+        isRemoved = false
+        rowIndex = 0
+        
         // Reset to placeholder view
         let placeholderView = AnyView(
             MetricCardView(
@@ -211,7 +217,6 @@ class MetricCell: UICollectionViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        // Only wiggle if not removed and in wiggle mode
         if isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
@@ -219,26 +224,30 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
-    /// Controls whether the cell is in wiggle mode
     var isWiggling: Bool = false {
         didSet {
             layoutSubviews()
         }
     }
     
-    /// Controls whether the cell represents a removed item
     var isRemoved: Bool = false {
         didSet {
             layoutSubviews()
         }
     }
     
-    /// Row index used for alternating wiggle animation timing
     var rowIndex: Int = 0 {
         didSet {
             if isWiggling && !isRemoved {
                 layoutSubviews()
             }
+        }
+    }
+    
+    func restartWiggleAnimation() {
+        if isWiggling && !isRemoved {
+            contentView.stopWiggle()
+            contentView.startWiggleWithRowIndex(rowIndex)
         }
     }
     
@@ -282,28 +291,3 @@ class MetricCell: UICollectionViewCell {
         callback(item.label)
     }
 }
-
-// MARK: - Wiggle Animation Extension
-
-extension UIView {
-    /// Creates a wiggle animation with specified parameters (matching movingGridsLearning exactly)
-    /// - Parameters:
-    ///   - duration: Animation duration
-    ///   - rotationAngle: Rotation angle in radians
-    /// - Returns: Configured CAKeyframeAnimation
-    private func createWiggleAnimation(duration: Double, rotationAngle: Double) -> CAKeyframeAnimation {
-        let transformAnim = CAKeyframeAnimation(keyPath: "transform")
-        
-        // Use the exact same values as movingGridsLearning for consistency
-        transformAnim.values = [
-            NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle, 0.0, 0.0, 1.0)),
-            NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle, 0.0, 0.0, 1.0))
-        ]
-        
-        transformAnim.autoreverses = true
-        transformAnim.duration = duration
-        transformAnim.repeatCount = Float.infinity
-        
-        return transformAnim
-    }
-} 
