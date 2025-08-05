@@ -84,7 +84,6 @@ struct ScaleModesScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .presentLoader(loaderData: scaleStore.loaderData)
         .task {
             // Load scale mode data when the screen appears
             await scaleStore.loadScaleModeDataWithLoading(for: scale)

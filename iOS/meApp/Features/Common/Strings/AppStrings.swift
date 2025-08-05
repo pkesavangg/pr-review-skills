@@ -128,6 +128,8 @@ struct ToastStrings {
     static let userDeleted = "User deleted successfully."
     static let errorDeletingUser = "Failed to delete user."
     static let scaleDeleted = "Scale deleted."
+    static let errorDeletingScale = "Error deleting scale."
+    static let errorEditingScale = "Error editing scale."
     static let nicknameUpdated = "Nickname updated."
     static let deleted = "Deleted"
     static let saved = "Saved"

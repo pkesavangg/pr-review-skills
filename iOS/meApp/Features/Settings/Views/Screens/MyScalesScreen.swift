@@ -269,45 +269,7 @@ struct MyScalesScreen: View {
         }
         .onAppear(perform: {
             scaleStore.fetchScales()
-            
-            // Set up periodic device info check for SKU 0412 scales
-            Task {
-                // Initial check
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-                
-                // Periodic check every 10 seconds while the screen is visible
-                for _ in 0..<SettingsConstants.maxCheckIterations { // Check 6 times (60 seconds total)
-                    try? await Task.sleep(nanoseconds: SettingsConstants.checkIntervalNanoseconds) // 10 seconds
-                    await scaleStore.checkDeviceInfoForAllR4Scales()
-                }
-            }
         })
-        .onDisappear {
-            scaleStore.resetForm()
-        }
-        .task {
-            // Refresh scales when view appears (including after setup flow dismissal)
-            await scaleStore.forceRefreshDeviceData()
-            
-            // Check device info for SKU 0412 scales to properly determine setup incomplete status
-            await scaleStore.checkDeviceInfoForAllR4Scales()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            // Refresh scales when app becomes active (e.g., returning from setup flow)
-            scaleStore.fetchScales()
-            
-            // Check device info for SKU 0412 scales when app becomes active
-            Task {
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .scaleAddedOrUpdated)) { _ in
-            // Refresh scales when a scale is added or updated
-            Task {
-                await scaleStore.forceRefreshDeviceData()
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-            }
-        }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         

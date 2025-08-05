@@ -12,7 +12,6 @@ struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
-    @EnvironmentObject var scaleStore: ScaleStore
     @ObservedObject var permissionsStore = PermissionsStore()
     let scale: Device
     let lang = ScaleBluetoothStrings.self
@@ -46,11 +45,6 @@ struct ScaleBluetoothScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .onAppear {
-            Task {
-                await scaleStore.loadScale(scale)
-            }
-        }
     }
 
     // MARK: - Subviews
@@ -81,11 +75,7 @@ struct ScaleBluetoothScreen: View {
     }
     
     private func getScaleDisplayName() -> String {
-         
-        if let deviceName = scale.deviceName, !deviceName.isEmpty {
-            return deviceName
-        }
-        return "unknown scale"
+        return scale.nickname ?? scale.deviceName ?? ""
     }
     
     private var permissionItems: some View {
