@@ -60,10 +60,7 @@ protocol ScaleRepositoryProtocol {
     ///   - accountId: The account ID to filter devices by.
     ///   - serverDevices: Array of fresh Device objects from the server.
     ///   - preserveUnsynced: Array of unsynced local devices to preserve.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device], preserveUnsynced unsyncedDevices: [Device]) async throws
-
-    /// Legacy method for backward compatibility - replaces all devices without preserving unsynced.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device]) async throws
+    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws
 
     /// Marks a device as deleted locally (for server sync).
     /// - Parameter deviceId: The ID of the device to mark as deleted.

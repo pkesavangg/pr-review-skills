@@ -54,11 +54,11 @@ final class Device {
     var wifiMac: String? // Wifi MAC (R4 scales)
     var isWifiConfigured: Bool? // If WiFi is configured
     var token: String? // Token for scale authentication
-
     // Relationships
     @Relationship(deleteRule: .cascade, inverse: \BathScale.device) var bathScale: BathScale?
     @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
     @Relationship(deleteRule: .cascade, inverse: \DeviceMetaData.device) var metaData: DeviceMetaData?
+
 
     init(id: String,
          accountId: String,
@@ -139,9 +139,6 @@ final class Device {
             metaData = DeviceMetaData(from: metaDataDto)
         }
 
-        // Resolve scale type:
-        // • Prefer the explicit `scaleType` parameter when provided (e.g. during new-device pairing)
-        // • Fallback to `dto.type` coming from the backend when syncing existing devices
         var bathScale: BathScale? = nil
         let resolvedScaleType = scaleType ?? dto.type
         if let resolvedScaleType {
@@ -176,19 +173,23 @@ final class Device {
             metaData: metaData
         )
 
-        // Set the device reference after initialization
-        if let preference = self.r4ScalePreference {
-            preference.device = self
-        }
-        if let scale = self.bathScale {
-            scale.device = self
-        }
-        if let metaData = self.metaData {
-            metaData.device = self
-        }
+                // Set the device reference after initialization
+//        if let preference = self.r4ScalePreference {
+//            preference.device = self
+//        }
+//        if let scale = self.bathScale {
+//            scale.device = self
+//        }
+//        if let metaData = self.metaData {
+//            metaData.device = self
+//        }
+
+
+        // Note: Relationship setup (device references) will be handled when the object is
+        // inserted into a SwiftData ModelContext to avoid crashes with non-persisted instances
 
         if let broadcastId = self.broadcastId {
-            let scaleSource = ScaleSourceType(rawValue: self.bathScale?.scaleType ?? "") ?? .bluetoothScale
+            let scaleSource = ScaleSourceType(rawValue: resolvedScaleType ?? "") ?? .bluetoothScale
             let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
         }

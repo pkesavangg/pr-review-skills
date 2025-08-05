@@ -418,8 +418,31 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
                 // Normalize to weight range using the dynamic approach from demo project
+                let metricRange = effectiveMetricMax - effectiveMetricMin
+                guard metricRange > 0 else {
+                    // If no metric variation, use middle of weight range
+                    let normalizedValue = (weightMin + weightMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: normalizedValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
                 let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                                    (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+                                    (weightMax - weightMin) / metricRange
+
+                // Additional safety check for NaN/infinite values
+                guard normalizedValue.isFinite else {
+                    let fallbackValue = (weightMin + weightMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
 
                 // Ensure normalized value is within weight bounds
                 guard normalizedValue >= weightMin && normalizedValue <= weightMax else {
@@ -523,9 +546,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 // Clamp the metric value to the effective range
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
-                                // Step 1: Normalize metric to consistent weight range
+                // Step 1: Normalize metric to consistent weight range
+                let metricRange = effectiveMetricMax - effectiveMetricMin
+                guard metricRange > 0 else {
+                    // If no metric variation, use middle of weight range
+                    let normalizedToWeightRange = (weightMin + weightMax) / 2
+                    let yAxisMin = yAxisDomain.lowerBound
+                    let yAxisMax = yAxisDomain.upperBound
+                    let finalValue = (yAxisMin + yAxisMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: finalValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
                 let normalizedToWeightRange = weightMin + (clampedValue - effectiveMetricMin) *
-                                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+                                            (weightMax - weightMin) / metricRange
 
                 // Step 2: Map to Y-axis domain for visibility while preserving relationships
                 let yAxisMin = yAxisDomain.lowerBound
@@ -533,14 +572,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let yAxisSpan = yAxisMax - yAxisMin
                 let weightSpan = weightMax - weightMin
 
+                guard weightSpan > 0, yAxisSpan > 0 else {
+                    // If no weight or axis variation, use middle values
+                    let finalValue = (yAxisMin + yAxisMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: finalValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
                 // Calculate the relative position within weight range
                 let relativePosition = (normalizedToWeightRange - weightMin) / weightSpan
 
                 // Map this relative position to Y-axis domain
                 let finalValue = yAxisMin + (relativePosition * yAxisSpan)
 
-                // Clamp to Y-axis bounds for safety
+                // Clamp to Y-axis bounds for safety and validate
                 let clampedFinalValue = max(yAxisMin, min(yAxisMax, finalValue))
+
+                // Additional safety check for NaN/infinite values
+                guard clampedFinalValue.isFinite else {
+                    let fallbackValue = (yAxisMin + yAxisMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
 
                 normalizedSeries.append(GraphSeries(
                     date: summary.date,

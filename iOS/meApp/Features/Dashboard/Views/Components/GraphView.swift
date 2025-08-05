@@ -182,7 +182,9 @@ struct GraphView: View {
                 }
 
                 // Goal chip overlay - shows goal weight chip positioned based on ticks
-                goalChipCallout()
+                if dashboardStore.goalWeightForDisplay != 0 {
+                    goalChipCallout()
+                }
             }
         }
 
@@ -192,7 +194,8 @@ struct GraphView: View {
     @ViewBuilder
     private func selectionCallout(for selectedPoint: BathScaleWeightSummary) -> some View {
         if let displayWeight = dashboardStore.displayWeight,
-           let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight) {
+           let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight),
+           chartFrame.width > 0 {
 
             let isOnLeftSide = chartPosition.x < chartFrame.width / 2
             let textOffset: CGFloat = isOnLeftSide ? 0 : -25 // Offset from the line
@@ -253,7 +256,16 @@ struct GraphView: View {
         }
 
         // Goal weight is within tick range, calculate proportional position
-        let yRatio = (goalWeight - domain.lowerBound) / (domain.upperBound - domain.lowerBound)
+        let domainRange = domain.upperBound - domain.lowerBound
+        guard domainRange > 0, chartFrame.height > 0 else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
+
+        let yRatio = (goalWeight - domain.lowerBound) / domainRange
+        guard yRatio.isFinite else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
+
         let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
 
         return (yPosition: yPosition, placement: .middle)
@@ -293,7 +305,7 @@ struct GraphView: View {
                 let xRatio = timeFromStart / totalTimeRange
                 xPosition = chartFrame.width * xRatio
             } else {
-                xPosition = chartFrame.width / 2 // Single point, center it
+                xPosition = chartFrame.width > 0 ? chartFrame.width / 2 : 0 // Single point, center it
             }
         } else {
             // For other periods, use scroll-based calculation
@@ -306,7 +318,16 @@ struct GraphView: View {
         }
 
         // Calculate y position relative to y-axis domain
-        let yRatio = (value - yAxisDomain.lowerBound) / (yAxisDomain.upperBound - yAxisDomain.lowerBound)
+        let domainRange = yAxisDomain.upperBound - yAxisDomain.lowerBound
+        guard domainRange > 0, chartFrame.height > 0 else {
+            return CGPoint(x: 0, y: chartFrame.height / 2)
+        }
+
+        let yRatio = (value - yAxisDomain.lowerBound) / domainRange
+        guard yRatio.isFinite else {
+            return CGPoint(x: 0, y: chartFrame.height / 2)
+        }
+
         let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
 
         // Add padding offsets
