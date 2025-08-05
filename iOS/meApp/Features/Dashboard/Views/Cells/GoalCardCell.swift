@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftUI
+import Combine
 
 /// Custom UICollectionViewCell that represents the goal card as a large widget
 /// Features include wiggle animation and iOS home screen-like behavior
@@ -21,21 +22,16 @@ class GoalCardCell: UICollectionViewCell {
     
     var onDeleteTapped: (() -> Void)?
     
+    // MARK: - Private Properties
+    
+    private var cancellables = Set<AnyCancellable>()
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
         // Create a placeholder view that will be configured later
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         
         self.hostingController = UIHostingController(rootView: placeholderView)
@@ -81,37 +77,29 @@ class GoalCardCell: UICollectionViewCell {
     /// Configures the cell with dashboard store data
     /// - Parameter store: The dashboard store
     func configure(with store: DashboardStore) {
-        // Set the removal state
-        isRemoved = store.state.ui.isGoalCardRemoved
-        
-        let goalCardView = GoalProgressCardView(
-            delta: store.state.goal.goalDelta,
-            startWeight: store.state.goal.goalStartWeight,
-            goalWeight: store.state.goal.goalWeight,
-            unit: store.currentUnitText,
-            isRemoved: store.state.ui.isGoalCardRemoved,
-            progress: store.state.goal.goalProgress,
-            goalType: store.state.goal.goalType,
-            isWeightlessMode: store.isWeightlessModeEnabled
-        )
-        
-        // Apply EditModeOverlay to the GoalProgressCardView
-        let viewWithOverlay = AnyView(
-            goalCardView
-                .editModeOverlay(
-                    isEditMode: store.state.ui.isEditMode,
-                    isRemoved: store.state.ui.isGoalCardRemoved,
-                    onToggleRemoval: {
-                        store.toggleGoalCardRemoval()
-                    },
-                    isBeingDragged: store.state.ui.isGoalCardBeingDragged,
-                    isDropTarget: store.state.ui.dropHoverId == "goalCard",
-                    rowIndex: rowIndex,
-                    disableWiggle: false
-                )
-        )
-        
-        hostingController?.rootView = viewWithOverlay
+        // Observe changes in goal type and update UI
+        store.$state
+            .map { $0.goal.goalType }
+            .sink { [weak self] newGoalType in
+                DispatchQueue.main.async {
+                    let goalCardView = GoalProgressView()
+                    let viewWithOverlay = AnyView(
+                        goalCardView
+                            .editModeOverlay(
+                                isEditMode: store.state.ui.isEditMode,
+                                isRemoved: store.state.ui.isGoalCardRemoved,
+                                onToggleRemoval: {
+                                    store.toggleGoalCardRemoval()
+                                },
+                                isBeingDragged: store.state.ui.isGoalCardBeingDragged,
+                                isDropTarget: store.state.ui.dropHoverId == "goalCard",
+                                rowIndex: self?.rowIndex ?? 0,
+                                disableWiggle: false
+                            )
+                    )
+                    self?.hostingController?.rootView = viewWithOverlay
+                }
+            }.store(in: &cancellables)
     }
     
     // MARK: - Reuse
@@ -120,16 +108,7 @@ class GoalCardCell: UICollectionViewCell {
         super.prepareForReuse()
         // Reset to placeholder view
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         hostingController?.rootView = placeholderView
     }
@@ -223,4 +202,4 @@ class GoalCardCell: UICollectionViewCell {
         
         return snapshot ?? UIView()
     }
-} 
+}

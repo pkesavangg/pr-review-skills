@@ -139,6 +139,17 @@ class DashboardStore: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Subscribe to goal settings changes
+        accountService.$activeAccount
+            .compactMap { $0?.goalSettings }
+            .removeDuplicates()
+            .dropFirst() // Skip initial value
+            .sink { [weak self] goalSettings in
+                self?.logger.log(level: .info, tag: "DashboardStore", message: "Goal settings changed - type: \(goalSettings.goalType?.rawValue ?? "nil"), goal weight: \(goalSettings.goalWeight ?? 0)")
+                self?.handleSettingsChange()
+            }
+            .store(in: &cancellables)
+
         // Subscribe to dashboard type changes
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }

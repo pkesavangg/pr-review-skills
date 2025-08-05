@@ -63,7 +63,7 @@ struct DashboardScreen: View {
             store.state.ui.selectedMetricLabel = nil
         }
         .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
-        .onChange(of: store.currentUnit) { _, _ in 
+        .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in

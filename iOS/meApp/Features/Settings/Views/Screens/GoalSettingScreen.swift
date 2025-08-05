@@ -61,10 +61,14 @@ struct GoalSettingScreen: View {
                     }
                     SegmentedButtonView(
                         segments: GoalTypeSegment.allCases,
-                        selectedSegment: $settingsStore.selectedSegment
+                        selectedSegment: Binding(
+                            get: { settingsStore.selectedSegment },
+                            set: { settingsStore.selectedSegment = $0 }
+                        )
                     )
                     .onChange(of: settingsStore.selectedSegment) {
                         settingsStore.goalForm.goalType.value = settingsStore.selectedSegment.goalTypeValue
+                        settingsStore.notifyGoalTypeChange() 
                     }
                     .padding(.horizontal, .spacing2XL)
                     
