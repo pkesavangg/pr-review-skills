@@ -226,3 +226,15 @@ final class Device {
 extension Device: @unchecked Sendable {}
 // Extend `Device` to conform to `Identifiable` so it can be used with SwiftUI's `.sheet(item:)` API.
 extension Device: Identifiable {}
+
+extension Device {
+    var connectionStatus: ScaleConnectionStatus {
+        let type = ScaleTypeHelper.determineScaleType(for: self)
+        if type == .appsync { return .noStatus }
+        if type == .bluetoothR4 && isConnected == true {
+            let wifiOk = isWifiConfigured == true
+            if !wifiOk { return .setupIncomplete }
+        }
+        return isConnected == true ? .connected : .notConnected
+    }
+}

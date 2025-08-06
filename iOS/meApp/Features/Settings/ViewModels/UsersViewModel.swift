@@ -32,7 +32,7 @@ final class UsersViewModel: ObservableObject {
         } else {
             Task {
                 await loadUsers()
-            }            
+            }
         }
     }
     
@@ -131,8 +131,14 @@ final class UsersViewModel: ObservableObject {
     private func deleteUser(_ user: DeviceUser) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         
-        
+        // Preserve the original token so we can restore it after the deletion call
+        let originalToken = scale.token
+        // Temporarily set the token to the user's token we want to delete
+        scale.token = user.token
+        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(user.token ?? "nil") on scale \(scale.id)")
         let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+        // Restore the original token to avoid side-effects elsewhere in the app
+        scale.token = originalToken
         switch result {
         case .success(_):
             deviceUsers.removeAll { $0.token == user.token }

@@ -17,12 +17,11 @@ class ScaleStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
     @Injector private var scaleService: ScaleService
-    @Injector var bluetoothService: BluetoothService
+    @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
     
     @Published var scales: [Device] = []
-    @Published var addScaleForm = AddScaleForm()
-    
+    @Published var addScaleForm = AddScaleForm()    
     
     private let tag = "ScaleStore"
     
@@ -38,6 +37,7 @@ class ScaleStore: ObservableObject {
     private let legalURLs = AppConstants.LegalURLs.self
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
+
     
     func handleDuplicateScale(sku: String, onPair: @escaping () -> Void) {
         let lang = alertLang.DeviceAlreadyPairedAlert.self
@@ -67,6 +67,19 @@ class ScaleStore: ObservableObject {
     func resetForm() {
         self.addScaleForm.reset()
         self.addScaleForm = AddScaleForm()
+    }
+    
+    func updateSetupInProgressStatus(_ isInProgress: Bool) {
+        self.bluetoothService.isSetupInProgress = isInProgress
+    }
+    
+    func clearScaleDiscoveredInfo() {
+        updateSetupInProgressStatus(false)
+        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+        bluetoothService.clearScaleDiscoveredInfo()
+        Task {
+            try await scaleService.syncDevices(tempDevice: nil)
+        }
     }
     
     func determineConnectionStatus(for scale: Device) -> ScaleConnectionStatus {

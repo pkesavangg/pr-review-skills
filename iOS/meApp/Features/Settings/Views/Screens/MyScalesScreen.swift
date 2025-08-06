@@ -203,14 +203,10 @@ struct MyScalesScreen: View {
                     switch newSheet {
                     case .setupFlow:
                         // A setup flow sheet is being presented → start setup tracking
-                        scaleStore.bluetoothService.isSetupInProgress = true
+                        scaleStore.updateSetupInProgressStatus(true)
                     default:
-                        // Either the sheet was dismissed or it's a non-setup sheet → stop setup tracking
-                        scaleStore.bluetoothService.isSetupInProgress = false
-                        scaleStore.bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-                        Task {
-                            await scaleStore.bluetoothService.resyncAndScan()
-                        }
+                        scaleStore.clearScaleDiscoveredInfo()
+                        break
                     }
                 }
                 
@@ -228,7 +224,7 @@ struct MyScalesScreen: View {
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: scale.sku ?? "----",
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
-                                status: scaleStore.determineConnectionStatus(for: scale),
+                                status: scale.connectionStatus,
                                 onTap: {
                                     let scaleType = determineScaleType(for: scale)
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
