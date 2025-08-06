@@ -1,9 +1,10 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,6 +16,7 @@ interface IDeviceService {
   suspend fun fetchScales(accountId: String? = null)
 
   val pairedScales: Flow<List<Device>>
+  val connectedScales: Flow<List<Device>>
 
   /**
    * Set the current account ID and initialize scale data for that account.
@@ -25,8 +27,11 @@ interface IDeviceService {
   suspend fun setAccountId(accountId: String)
 
   suspend fun onDeviceUpdate(
-    macAddress: String?, connectionStatus: BLEStatus
+    deviceDetail: GGDeviceDetail,
+    connectionStatus: BLEStatus? = null
   )
+
+  suspend fun updateConnectedScales(deviceDetail: GGDeviceDetail, isConnected: Boolean)
 
   fun getGGBTDevices(): Flow<List<GGBTDevice>>
 

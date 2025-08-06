@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,13 +49,20 @@ constructor(
   private var fetchJob: Job? = null
 
   private val _connectionStatusMap = MutableStateFlow<Map<String, BLEStatus>>(emptyMap())
-
+  private val _connectedDeviceMap = MutableStateFlow<Map<String, GGDeviceDetail>>(emptyMap())
+  private val _connectedScales = MutableStateFlow<List<Device>>(emptyList())
+  override val connectedScales: Flow<List<Device>>
+    get() = _connectedScales.asStateFlow()
   private val _pairedScales = MutableStateFlow<List<Device>>(emptyList())
   override val pairedScales: Flow<List<Device>>
     get() = _pairedScales.asStateFlow()
 
-  override suspend fun onDeviceUpdate(macAddress: String?, connectionStatus: BLEStatus) {
-    macAddress?.let { macAddress ->
+  override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
+    val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
+    val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
+    val connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED
+
+    macAddress.let { macAddress ->
       _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
         this[macAddress] = connectionStatus
       }
@@ -92,9 +100,64 @@ constructor(
     // else log.warn("Received update with null MAC address")
   }
 
+  override suspend fun updateConnectedScales(deviceDetail: GGDeviceDetail, isConnected: Boolean) {
+    val broadcastId = deviceDetail.broadcastId ?: deviceDetail.macAddress
+
+    // Update connected device map (equivalent to Angular's connectedScales Map)
+    _connectedDeviceMap.value = _connectedDeviceMap.value.toMutableMap().apply {
+      if (isConnected) {
+        this[broadcastId] = deviceDetail
+      } else {
+        this.remove(broadcastId)
+      }
+    }
+
+    // Update connectedScales flow with actual Device objects
+    val connectedDeviceDetails = _connectedDeviceMap.value.values
+    val pairedScalesList = _pairedScales.value
+    val connectedScalesList = pairedScalesList.filter { device ->
+      val deviceBroadcastId = device.device?.broadcastId ?: device.device?.macAddress
+      connectedDeviceDetails.any { connectedDevice ->
+        val connectedBroadcastId = connectedDevice.broadcastId ?: connectedDevice.macAddress
+        deviceBroadcastId == connectedBroadcastId
+      }
+    }
+    _connectedScales.value = connectedScalesList
+    // Call updateScaleStatus equivalent (update all scale statuses)
+    updateScaleStatus()
+    AppLog.d(
+      tag,
+      "Connected scales updated: ${if (isConnected) "Added" else "Removed"} ${deviceDetail.deviceName}, Total connected: ${connectedScalesList.size}",
+    )
+  }
+
+  private fun updateScaleStatus() {
+    val connectedDeviceMap = _connectedDeviceMap.value
+    val updatedScales = _pairedScales.value.map { device ->
+      val broadcastId = device.device?.broadcastId ?: device.device?.macAddress
+      val isConnected = broadcastId?.let { connectedDeviceMap.containsKey(it) } ?: false
+      val connectedDevice = broadcastId?.let { connectedDeviceMap[it] }
+
+      val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && connectedDevice != null) {
+        device.preferences.shouldMeasureImpedance == true &&
+          (connectedDevice.impedanceSwitchState == false || connectedDevice.impedanceSwitchState == null)
+      } else {
+        false
+      }
+
+      device.copy(
+        connectionStatus = if (isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
+        isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+      )
+    }
+
+    _pairedScales.value = updatedScales
+    val connectedScalesList = updatedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
+    _connectedScales.value = connectedScalesList
+  }
+
   override suspend fun updateDevice(device: Device) {
     try {
-      // Calculate weight-only mode before updating
       val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
       val isConnected = connectionStatus == BLEStatus.CONNECTED
 

@@ -339,7 +339,7 @@ object ServiceModule {
   @Singleton
   fun provideDeviceService(
     @ApplicationContext context: Context,
-    deviceRepository: IDeviceRepository
+    deviceRepository: IDeviceRepository,
   ): IDeviceService = DeviceService(deviceRepository, context)
 
   @Provides

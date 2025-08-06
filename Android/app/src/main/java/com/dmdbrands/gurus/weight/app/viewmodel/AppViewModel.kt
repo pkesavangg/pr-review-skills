@@ -414,6 +414,7 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
+          deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -422,11 +423,16 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
+          deviceService.updateConnectedScales(data, false)
           checkCanShowWeightOnlyModeAlert()
         }
 
         GGScanResponseType.DEVICE_INFO_UPDATE -> {
-          onDeviceInfoUpdate(deviceDetail = data)
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.CONNECTED,
+          )
+          deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -478,38 +484,9 @@ constructor(
     connectionStatus: BLEStatus? = null,
   ) {
     viewModelScope.launch {
-      val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
       deviceService.onDeviceUpdate(
-        macAddress = device?.device?.macAddress ?: deviceDetail.macAddress,
-        connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED,
+        deviceDetail, connectionStatus,
       )
-    }
-  }
-
-  /**
-   * Updates device information when device info changes.
-   * This ensures that properties like isWeighOnlyModeEnabledByOthers are properly updated.
-   */
-  private fun onDeviceInfoUpdate(deviceDetail: GGDeviceDetail) {
-    viewModelScope.launch {
-      try {
-        val pairedScales = deviceService.pairedScales.first()
-        val existingDevice = pairedScales.find { it.device?.macAddress == deviceDetail.macAddress }
-
-        if (existingDevice != null) {
-          // Update the device with new information
-          val updatedDevice = existingDevice.copy(
-            device = deviceDetail,
-            connectionStatus = BLEStatus.CONNECTED, // Device info update means it's connected
-          )
-
-          deviceService.updateDevice(updatedDevice)
-        } else {
-          AppLog.w(TAG, "Device not found in paired scales: ${deviceDetail.macAddress}")
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to update device info", e.toString())
-      }
     }
   }
 

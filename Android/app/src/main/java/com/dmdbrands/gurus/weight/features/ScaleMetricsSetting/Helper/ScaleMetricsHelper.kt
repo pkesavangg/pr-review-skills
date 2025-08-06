@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper
 
-import com.dmdbrands.library.ggbluetooth.enums.TimeFormat
-import com.greatergoods.ggbluetoothsdk.external.Utils
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
@@ -9,6 +7,8 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.enum.NotifyScaleM
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.otherScaleMetrics
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.scaleMetrics
+import com.dmdbrands.library.ggbluetooth.enums.TimeFormat
+import com.greatergoods.ggbluetoothsdk.external.Utils
 import java.util.UUID
 
 /**

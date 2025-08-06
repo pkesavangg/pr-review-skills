@@ -118,7 +118,7 @@ fun HomeScreenContent(
         handleIntent(HomeIntent.OnWeightOnlyModeEnable)
       },
       onDismiss = {
-        handleIntent(HomeIntent.OnWeightOnlyModeAlertDismiss)
+        handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
       },
     )
   }
