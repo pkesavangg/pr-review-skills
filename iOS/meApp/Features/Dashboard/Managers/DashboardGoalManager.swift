@@ -50,11 +50,11 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             // Set basic goal data
             state.goalStartWeight = initialWeightDisplay
             state.goalWeight = goalWeightDisplay
-            state.goalDelta = currentWeightDisplay - initialWeightDisplay
+            state.goalDelta = goalWeightDisplay - currentWeightDisplay
 
             // Calculate progress
             let totalDistance = abs(state.goalWeight - state.goalStartWeight)
-            let achievedDistance = abs(state.goalDelta)
+            let achievedDistance = abs(currentWeightDisplay - state.goalStartWeight)
 
             if totalDistance > 0 {
                 let progress = min(max(CGFloat(achievedDistance / totalDistance), 0), 1)

@@ -1304,9 +1304,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
                 
                 // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
-                let delay: TimeInterval = self.isWifiSetupOnly ? 0.1 : 2.0
+                let delay: TimeInterval = 2.0
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    self.dismissAction?()
+                    if self.isWifiSetupOnly {
+                        self.dismissAction?()
+                    } else {
+                        self.navigateToStep(.customizeSettings)
+                    }
                 }
                 break
             default:

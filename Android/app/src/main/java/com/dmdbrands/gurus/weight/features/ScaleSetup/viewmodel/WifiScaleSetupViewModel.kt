@@ -1042,9 +1042,13 @@ constructor(
   }
 
   private fun checkAndSaveScale() {
+    dialogQueueService.showLoader(
+      message = ScaleSetupStrings.SaveScaleLoader,
+    )
     try {
       viewModelScope.launch {
-        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
+        val alreadyPairedScale =
+          deviceService.pairedScales.first().find { it.sku == sku && it.userNumber == state.value.selectedUser }
         if (alreadyPairedScale != null) {
           deviceService.deleteScale(alreadyPairedScale.id)
         }
@@ -1063,7 +1067,8 @@ constructor(
         )
         deviceService.saveScale(wifiDevice)
       }
-    } catch (e: Exception) {
+    } finally {
+      dialogQueueService.dismissLoader()
     }
   }
 

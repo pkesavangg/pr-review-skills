@@ -258,6 +258,8 @@ constructor(
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }
+      // 8. Refresh the pairedScales StateFlow to reflect changes in UI
+      fetchScales(currentAccountId)
     } catch (e: Exception) {
       AppLog.e(tag, "Error storing final device list", e.toString())
     }

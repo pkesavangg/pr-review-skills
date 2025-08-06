@@ -113,9 +113,9 @@ final class SignupStore: ObservableObject {
     // MARK: - Navigation
     
     func handleSkip() {
-        isGoalSkipped = true
         signupForm.resetGoal()
         moveToNextStep()
+        isGoalSkipped = true
     }
     
     func moveToNextStep() {

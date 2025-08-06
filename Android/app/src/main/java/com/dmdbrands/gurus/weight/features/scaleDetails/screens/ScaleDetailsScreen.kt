@@ -91,6 +91,7 @@ fun ScaleDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
+  val showUserNumber = (isWifiSetup || scaleSetupType == ScaleSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
   val scaleMode =
     if (device?.preferences?.shouldMeasureImpedance == true) {
@@ -248,18 +249,18 @@ fun ScaleDetailsScreenContent(
                 title = ScaleDetailsStrings.ScaleName,
                 type =
                   SettingsItemType.TextOnly(
-                    device?.nickname ?: device?.device?.deviceName ?: "",
+                    device?.nickname ?: "",
                   ),
                 onClick = {
                   handleIntent(ScaleDetailsIntent.ShowScaleNameModal)
                 },
               ),
             )
-            if (isWifiSetup || state.scale?.userNumber != null && scaleSetupType != ScaleSetupType.BtWifiR4) {
+            if (showUserNumber) {
               add(
                 SettingsItem(
                   title = ScaleDetailsStrings.UserNumber,
-                  type = SettingsItemType.TextOnly("U${device?.userNumber}"),
+                  type = SettingsItemType.TextOnly("U${device.userNumber}"),
                 ),
               )
             }
