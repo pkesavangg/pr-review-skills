@@ -137,8 +137,7 @@ struct DisplayMetricsScreen: View {
                 .fontWeight(.regular)
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    // Navigate to scale modes screen where user can change their mode
-                    router.navigate(to: .scaleModes(scale: scale))
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 })
             }
         }
@@ -178,7 +177,7 @@ struct DisplayMetricsScreen: View {
                 )
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    // TODO: Navigate to heart rate settings screen
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 })
             }
         }
