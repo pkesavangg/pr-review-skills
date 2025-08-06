@@ -28,7 +28,11 @@ final class UsersViewModel: ObservableObject {
         self.scale = scale
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
-            self.currentDeviceUser = initialUsersList.first
+            self.currentDeviceUser = initialUsersList.filter({$0.token == scale.token}).first
+        } else {
+            Task {
+                await loadUsers()
+            }            
         }
     }
     
@@ -55,7 +59,7 @@ final class UsersViewModel: ObservableObject {
             case .success(let users):
                 self.deviceUsers = users
                 // Find current user (typically the first one or the one that matches our account)
-                self.currentDeviceUser = users.first
+                self.currentDeviceUser = users.filter({$0.token == scale.token}).first
                 logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")

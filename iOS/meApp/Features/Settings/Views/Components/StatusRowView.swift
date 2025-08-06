@@ -36,7 +36,7 @@ struct StatusRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: .spacingXS) {
             AppIconView(icon: iconName, size: IconSize(width: 20, height: 20))
-                .foregroundColor(foregroundColor ?? theme.actionPrimary)
+                .foregroundColor(iconColor ?? theme.actionPrimary)
             
             Text(label)
                 .fontOpenSans(font ?? .body3)

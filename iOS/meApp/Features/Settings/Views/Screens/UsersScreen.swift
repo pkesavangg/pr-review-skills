@@ -110,7 +110,6 @@ struct UsersScreen: View {
         }
         .onAppear {
             Task {
-                await viewModel.loadUsers()
                 await MainActor.run {
                     let currentName = viewModel.currentDeviceUser?.name ?? ""
                     userNameForm.setDisplayName(currentName)

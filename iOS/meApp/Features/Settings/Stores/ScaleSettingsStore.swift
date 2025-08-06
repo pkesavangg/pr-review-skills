@@ -59,12 +59,12 @@ final class ScaleSettingsStore: ObservableObject {
                 guard let self = self else { return }
                 let current = self.scale
                 guard let updated = devices.first(where: { $0.id == current.id }) else { return }
-                
                 let wasConnected = self.isDeviceConnected
                 self.scale = updated
                 self.isDeviceConnected = updated.isConnected ?? false
                 self.isWifiConfigured = updated.isWifiConfigured ?? false
                 self.displayName = updated.r4ScalePreference?.displayName ?? accountService.activeAccount?.firstName ?? "Unknown"
+                Task { await self.getDeviceInfo() }
                 // Trigger any post-connection logic once the device connects.
                 if !wasConnected && self.isDeviceConnected {
                     self.logger.log(level: .debug, tag: self.tag, message: "Scale connected – fetch additional info if needed")
@@ -147,9 +147,7 @@ final class ScaleSettingsStore: ObservableObject {
         let result = await bluetoothService.getDeviceInfo(for: scale)
         switch result {
         case .success(let deviceInfo):
-            if (self.connectedWifiSSID == nil) {
-                self.getConnectedWifiSSID();
-            }
+            self.getConnectedWifiSSID();
             // Update published properties
             self.firmwareVersion = deviceInfo.firmwareRevision
             self.isImpedanceSwitchedOnForSession = deviceInfo.sessionImpedanceSwitchState ?? false
@@ -175,7 +173,7 @@ final class ScaleSettingsStore: ObservableObject {
                 let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
-            await scaleService.pushLocalChangesToServer() 
+            await scaleService.pushLocalChangesToServer()
             await scaleService.syncAllScalesWithRemote()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
