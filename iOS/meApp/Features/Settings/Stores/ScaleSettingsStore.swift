@@ -58,7 +58,6 @@ final class ScaleSettingsStore: ObservableObject {
             .sink { [weak self] devices in
                 guard let self = self else { return }
                 let current = self.scale
-                print("Updating required categories based on scales:", devices.map({ $0.r4ScalePreference?.shouldMeasureImpedance}))
                 guard let updated = devices.first(where: { $0.id == current.id }) else { return }
                 
                 let wasConnected = self.isDeviceConnected
@@ -177,6 +176,7 @@ final class ScaleSettingsStore: ObservableObject {
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
             await scaleService.pushLocalChangesToServer()
+            await scaleService.syncAllScalesWithRemote()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
         } catch {

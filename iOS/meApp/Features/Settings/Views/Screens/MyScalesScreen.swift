@@ -181,30 +181,12 @@ struct MyScalesScreen: View {
                         case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .lcbt:
                             A6ScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .btWifiR4:
                             BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .bluetooth:
                             BluetoothScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
@@ -228,13 +210,6 @@ struct MyScalesScreen: View {
                         scaleStore.bluetoothService.resumeSmartScan(clearOnlyPairing: false)
                         Task {
                             await scaleStore.bluetoothService.resyncAndScan()
-                        }
-                        
-                        // If a setup flow was just dismissed, refresh the scales list
-                        if case .setupFlow = oldSheet {
-                            Task {
-                                await scaleStore.forceRefreshDeviceData()
-                            }
                         }
                     }
                 }
@@ -267,9 +242,6 @@ struct MyScalesScreen: View {
                 }
             }
         }
-        .onAppear(perform: {
-            scaleStore.fetchScales()
-        })
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         

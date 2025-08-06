@@ -24,6 +24,12 @@ struct UsersScreen: View {
         _viewModel = StateObject(wrappedValue: UsersViewModel(scale: scale, initialUsersList: usersList))
     }
     
+    var canDisableSaveButton: Bool {
+        viewModel.isLoadingUsers ||
+        !userNameForm.displayName.isValid ||
+        userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (viewModel.currentDeviceUser?.name ?? "")
+    }
+    
     var body: some View {
         ZStack {
             VStack(alignment: .center, spacing: 0) {
@@ -35,16 +41,9 @@ struct UsersScreen: View {
                             text: CommonStrings.save.uppercased(),
                             type: .inlineTextPrimary,
                             size: .small,
-                            isDisabled: viewModel.isLoadingUsers ||
-                            !userNameForm.displayName.isValid ||
-                            userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (viewModel.currentDeviceUser?.name ?? ""),
+                            isDisabled: canDisableSaveButton,
                             action: {
-                                Task {
-                                    let trimmedName = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    await viewModel.saveUsers(newName: trimmedName) {
-                                        router.navigateBack()
-                                    }
-                                }
+                                saveName()
                             }
                         ))
                     },
@@ -69,7 +68,7 @@ struct UsersScreen: View {
                             ),
                             focusedField: $focusedField
                         ) {
-                            // Handle commit action if needed
+                            saveName()
                         }
                         .padding(.top, .spacingLG)
                         
@@ -127,6 +126,17 @@ struct UsersScreen: View {
     private func formatLastActiveTimestamp(_ timestamp: Int) -> String {
         return DateTimeTools.getFormattedDateFromTimestamp(Int64(timestamp)).toLowerCase()
     }
+    
+    private func saveName() {
+        Task {
+            if !canDisableSaveButton {
+                let trimmedName = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                await viewModel.saveUsers(newName: trimmedName) {
+                    router.navigateBack()
+                }
+            }
+        }
+    }
 }
 
 #Preview{
@@ -157,140 +167,4 @@ struct UsersScreen: View {
             DeviceUser(name: "Jane Smith", token: "token2", lastActive: 1234567800, isBodyMetricsEnabled: false)
         ]
     )
-}
-
-@MainActor
-final class UsersViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var scaleService: ScaleService
-    @Injector var logger: LoggerService
-    
-    @Published var deviceUsers: [DeviceUser] = []
-    @Published var currentDeviceUser: DeviceUser?
-    @Published var isLoadingUsers: Bool = false
-    
-    private let scale: Device
-    private let tag = "UsersViewModel"
-    
-    var otherDeviceUsersList: [DeviceUser] {
-        return deviceUsers.filter { $0.token != currentDeviceUser?.token }
-    }
-    
-    init(scale: Device, initialUsersList: [DeviceUser] = []) {
-        self.scale = scale
-        if !initialUsersList.isEmpty {
-            self.deviceUsers = initialUsersList
-            self.currentDeviceUser = initialUsersList.first
-        }
-    }
-    
-    func loadUsers() async {
-        // If users were already provided during initialization, don't fetch again
-        guard deviceUsers.isEmpty else {
-            logger.log(level: .info, tag: tag, message: "Users already loaded from initial list")
-            return
-        }
-        
-        guard scale.isConnected == true else {
-            logger.log(level: .error, tag: tag, message: "Scale is not connected, cannot load users")
-            return
-        }
-        
-        await MainActor.run {
-            isLoadingUsers = true
-        }
-        
-        let result = await bluetoothService.getScaleUserList(for: scale)
-        
-        await MainActor.run {
-            switch result {
-            case .success(let users):
-                self.deviceUsers = users
-                // Find current user (typically the first one or the one that matches our account)
-                self.currentDeviceUser = users.first
-                logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
-            case .failure(let error):
-                logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")
-                self.deviceUsers = []
-                self.currentDeviceUser = nil
-            }
-            isLoadingUsers = false
-        }
-    }
-    
-    func saveUsers(newName: String, onSuccess: (() -> Void)? = nil) async {
-        guard !newName.isEmpty else {
-            notificationService.showToast(ToastModel(title: ToastStrings.error, message: "User name cannot be empty"))
-            return
-        }
-        
-        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
-        
-        do {
-            // Update the current user's name via Bluetooth service
-            if currentDeviceUser != nil,
-               let preference = scale.r4ScalePreference {
-                preference.displayName = newName
-                try await scaleService.updateScalePreference(
-                    scale.id,
-                    preference
-                )
-                await scaleService.pushLocalChangesToServer()
-                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
-                switch result {
-                case .success(_):
-                    currentDeviceUser?.name = newName
-                    notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userNameUpdated))
-                    logger.log(level: .info, tag: tag, message: "User name updated successfully", data: ["scaleId": scale.id, "newName": newName])
-                    onSuccess?()
-                case .failure(let error):
-                    logger.log(level: .error, tag: tag, message: "Failed to update user name: \(error.localizedDescription)")
-                    notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorUpdatingUserName))
-                }
-            } else {
-                logger.log(level: .error, tag: tag, message: "No current user or preference found for scale")
-                notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorUpdatingUserName))
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to save user name: \(error.localizedDescription)", data: error)
-            notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorUpdatingUserName))
-        }
-        
-        notificationService.dismissLoader()
-    }
-    
-    func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
-        let alert = AlertModel(
-            title: AlertStrings.DeleteUserAlert.title(user.name),
-            message: AlertStrings.DeleteUserAlert.message(user.name),
-            buttons: [
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.cancelButton, type: .secondary) { _ in },
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.removeButton, type: .primary) { _ in
-                    Task {
-                        await self.deleteUser(user)
-                        onDelete()
-                    }
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
-    private func deleteUser(_ user: DeviceUser) async {
-        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
-        
-        
-        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-        switch result {
-        case .success(_):
-            deviceUsers.removeAll { $0.token == user.token }
-            notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
-            logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
-        case .failure(let error):
-            logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
-            notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
-        }
-        notificationService.dismissLoader()
-    }
 }
