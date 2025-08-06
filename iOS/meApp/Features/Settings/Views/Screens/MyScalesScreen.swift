@@ -10,7 +10,7 @@ import SwiftUI
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
-    @EnvironmentObject var scaleStore: ScaleStore
+    @StateObject private var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
