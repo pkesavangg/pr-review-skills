@@ -280,24 +280,17 @@ final class UsersViewModel: ObservableObject {
     private func deleteUser(_ user: DeviceUser) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         
-        do {
-            let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-            switch result {
-            case .success(_):
-                await MainActor.run {
-                    deviceUsers.removeAll { $0.token == user.token }
-                }
-                notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
-                logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
-            case .failure(let error):
-                logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
-                notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)", data: error)
+        
+        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
+        switch result {
+        case .success(_):
+            deviceUsers.removeAll { $0.token == user.token }
+            notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
+            logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
         }
-        
         notificationService.dismissLoader()
     }
 }

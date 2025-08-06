@@ -35,7 +35,7 @@ struct ScaleSettingsScreen: View {
             List {
                 scaleImageSection()
                 if scaleType == .bluetoothR4 && scaleSettingsStore.isDeviceConnected {
-                    if !scaleSettingsStore.isWifiConfigured {
+                    if !scaleSettingsStore.isWifiConfigured && scaleSettingsStore.connectedWifiSSID == nil {
                         setupWiFiItem()
                     }
                     if self.scaleSettingsStore.isWeighOnlyModeEnabledByOthers {
@@ -58,39 +58,6 @@ struct ScaleSettingsScreen: View {
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .onAppear {
-            // Set up navigation callback for WiFi setup
-            //            settingsStore.onNavigateToWifi = {
-            //                router.navigate(to: .wifi(scale: scale))
-            //            }
-            
-            //            Task {
-            //                await settingsStore.loadScale(scale)
-            //                // Force refresh to ensure we have the latest data
-            //                await settingsStore.forceRefreshDeviceData()
-            //
-            //                // Refresh connection status specifically
-            //                await settingsStore.refreshConnectionStatus()
-            //
-            //                // Refresh WiFi status to ensure banner logic is correct
-            //                await settingsStore.refreshWifiStatus()
-            //
-            //                // Check device info and WiFi configuration for scale SKU 0412
-            //                await settingsStore.checkDeviceInfoAndWifiConfiguration()
-            //
-            //                // Note: Users will be fetched when the users button is tapped
-            //            }
-            //
-            //                Task {
-            //                    await settingsStore.refreshConnectionStatus()
-            //                    await settingsStore.refreshWifiStatus()
-            //
-            //                    // Periodically check device info and WiFi configuration for scale SKU 0412
-            //                    if scale.sku == SettingsConstants.defaultR4Sku {
-            //                        await settingsStore.checkDeviceInfoAndWifiConfiguration()
-            //                    }
-            //                }
-        }
     }
     
     // MARK: - Sections as Functions
@@ -116,7 +83,7 @@ struct ScaleSettingsScreen: View {
     private func enableBodyMetricsItem() -> some View {
         scaleStatusSection {
             ScaleStatusBanner(type: .weightOnly {
-                router.navigate(to: .scaleModes(scale: scale))
+                scaleSettingsStore.handleEnableBodyMetrics()
             })
         }
     }
@@ -143,38 +110,37 @@ struct ScaleSettingsScreen: View {
     
     private func settingsSection() -> some View {
         Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
-                        if scaleType == .bluetoothR4 {
-//                            ActionListItemView(
-//                                config: ActionListItemConfig(
-//                                    title: lang.mode,
-//                                    value: settingsStore.modeValue.rawValue,
-//                                    onTap: {
-//                                        router.navigate(to: .scaleModes(scale: scale))
-//                                    }
-//                                )
-//                            )
-//                            ActionListItemView(
-//                                config: ActionListItemConfig(
-//                                    title: lang.displayMetrics,
-//                                    value: settingsStore.displayMetricsValue,
-//                                    onTap: { router.navigate(to: .displayMetrics(scale: scale)) }
-//                                )
-//                            )
-                            ActionListItemView(
-                                config: ActionListItemConfig(
-                                    title: lang.users,
-                                    value: scaleSettingsStore.displayName,
-                                    chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
-                                    isDisabled: !scaleSettingsStore.isDeviceConnected,
-                                    onTap: {
-                                        Task {
-                                            await scaleSettingsStore.ensureUsersList()
-                                            router.navigate(to: .users(scale: scale, usersList: scaleSettingsStore.usersList))
-                                        }
-                                    }
-                                )
-                            )
+            if scaleType == .bluetoothR4 {
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.mode,
+                        value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only",
+                        onTap: {
+                            router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers))
                         }
+                    )
+                )
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.displayMetrics,
+                        onTap: { router.navigate(to: .displayMetrics(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers)) }
+                    )
+                )
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.users,
+                        value: scaleSettingsStore.displayName,
+                        chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
+                        isDisabled: !scaleSettingsStore.isDeviceConnected,
+                        onTap: {
+                            Task {
+                                await scaleSettingsStore.ensureUsersList()
+                                router.navigate(to: .users(scale: scale, usersList: scaleSettingsStore.usersList))
+                            }
+                        }
+                    )
+                )
+            }
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.scaleName,
@@ -209,8 +175,6 @@ struct ScaleSettingsScreen: View {
                     onTap: { router.navigate(to: .wifi(scale: scale)) }
                 )
             )
-            
-            
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.wifiMacAddress,

@@ -566,6 +566,13 @@ struct AlertStrings {
         static let backButton = "Back"
     }
     
+    struct EnableBodyMetricsAlert {
+        static let title = "Enable Body Metrics"
+        static let message = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
+        static let enableButton = "Enable"
+        static let cancelButton = "Cancel"
+    }
+    
     struct ConfirmDeleteUserAlert {
         static let title = "Are you sure you want to delete?"
         static let message: (String) -> String = { userName in
@@ -602,6 +609,13 @@ struct AlertStrings {
         static let message = "Doing so makes necessary a more in-depth, time consuming setup process."
         static let skipButton = "YES, SKIP"
         static let goBackButton = "GO BACK"
+    }
+    
+    struct UpdateAccountFailedAlert {
+        static let title = "Update Can't Be Saved"
+        static let message = "The scale is currently busy. Wait a few moments and try again."
+        static let tryAgainButton = "Try Again"
+        static let cancelButton = "Cancel"
     }
 }
 

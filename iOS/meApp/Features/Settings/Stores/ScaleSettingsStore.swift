@@ -75,6 +75,10 @@ final class ScaleSettingsStore: ObservableObject {
             .store(in: &cancellables)
     }
     
+    var isBodyMetrics: Bool {
+        return self.scale.r4ScalePreference?.shouldMeasureImpedance ?? false
+    }
+    
     /// Opens the product guide/manual for the given SKU inside the in-app browser.
     /// - Parameter sku: The product SKU string.
     func openProductGuide(for sku: String) {
@@ -84,6 +88,22 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     // MARK: - Alert Handlers
+    func handleEnableBodyMetrics() {
+        let alert = AlertModel(
+            title: alertLang.EnableBodyMetricsAlert.title,
+            message: alertLang.EnableBodyMetricsAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.EnableBodyMetricsAlert.enableButton, type: .primary) { _ in
+                    Task { [weak self] in
+                        await self?.enableBodyMetricsForSession()
+                    }
+                },
+                AlertButtonModel(title: alertLang.EnableBodyMetricsAlert.cancelButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
     func handleScaleDelete(scaleId: String, onSuccess: @escaping () -> Void) {
         let alert = AlertModel(
             title: alertLang.DeleteScaleAlert.title,
@@ -215,5 +235,22 @@ final class ScaleSettingsStore: ObservableObject {
     private func getScaleType() -> ScaleSourceType? {
         guard let scaleType = scale.bathScale?.scaleType else { return nil }
         return ScaleSourceType(rawValue: scaleType)
+    }
+    
+    /// Enables body metrics for one session by calling the Bluetooth service
+    private func enableBodyMetricsForSession() async {
+        guard isDeviceConnected else {
+            logger.log(level: .error, tag: tag, message: "Cannot enable body metrics - device not connected")
+            return
+        }
+        
+        let result = await bluetoothService.updateWeightOnlyMode(on: scale)
+        switch result {
+        case .success:
+            logger.log(level: .info, tag: tag, message: "Successfully enabled body metrics for session")
+            notificationService.showToast(ToastModel(title: toastLang.success, message: ScaleModesStrings.bodyMetricsEnabled))
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to enable body metrics: \(error.localizedDescription)", data: error)
+        }
     }
 }

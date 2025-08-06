@@ -38,13 +38,13 @@ struct AllBodyMetricsContentView: View {
                             onHeartRateChanged(newValue)
                         }
                     ))
-                    
                 }
 
                 Text(lang.heartRateInfoDescription)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
                     .padding(.top, .spacingSM)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.bottom, .spacingMD)
 
@@ -53,7 +53,5 @@ struct AllBodyMetricsContentView: View {
             }
         }
         .background(theme.backgroundSecondary)
-
-        
     }
 }

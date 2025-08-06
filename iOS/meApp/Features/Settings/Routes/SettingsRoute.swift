@@ -12,8 +12,8 @@ import SwiftUI
 enum SettingsRoute: Routable {
     case editProfile
     case changePassword
-    case scaleModes(scale: Device)
-    case displayMetrics(scale: Device)
+    case scaleModes(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false)
+    case displayMetrics(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false)
     case scaleNameScreen(scale: Device)
     case users(scale: Device, usersList: [DeviceUser])
     case wifi(scale: Device)
@@ -31,10 +31,10 @@ enum SettingsRoute: Routable {
             MyScalesScreen()
         case .scaleSettings(let scale, let scaleType):
             ScaleSettingsScreen(scale: scale, scaleType: scaleType)
-        case .scaleModes(let scale):
-            ScaleModesScreen(scale: scale)
-        case .displayMetrics(let scale):
-            DisplayMetricsScreen(scale: scale)
+        case .scaleModes(let scale, let isWeighOnlyModeEnabledByOthers):
+            ScaleModesScreen(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers)
+        case .displayMetrics(let scale, let isWeighOnlyModeEnabledByOthers):
+            DisplayMetricsScreen(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers)
         case .scaleNameScreen(let scale):
             ScaleNameScreen(scale: scale)
         case .users(let scale, let usersList):
