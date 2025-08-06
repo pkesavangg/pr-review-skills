@@ -7,7 +7,6 @@
 
 import UIKit
 import SwiftUI
-import Combine
 
 /// Custom UICollectionViewCell that represents the goal card as a large widget
 /// Features include wiggle animation and iOS home screen-like behavior
@@ -21,10 +20,6 @@ class GoalCardCell: UICollectionViewCell {
     // MARK: - Public Accessors
     
     var onDeleteTapped: (() -> Void)?
-    
-    // MARK: - Private Properties
-    
-    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     
@@ -77,37 +72,34 @@ class GoalCardCell: UICollectionViewCell {
     /// Configures the cell with dashboard store data
     /// - Parameter store: The dashboard store
     func configure(with store: DashboardStore) {
-        // Observe changes in goal type and update UI
-        store.$state
-            .map { $0.goal.goalType }
-            .sink { [weak self] newGoalType in
-                DispatchQueue.main.async {
-                    // Reuse the existing GoalProgressView instead of creating a new instance
-                    let viewWithOverlay = AnyView(
-                        GoalProgressView()
-                            .editModeOverlay(
-                                isEditMode: store.state.ui.isEditMode,
-                                isRemoved: store.state.ui.isGoalCardRemoved,
-                                onToggleRemoval: {
-                                    store.toggleGoalCardRemoval()
-                                },
-                                isBeingDragged: store.state.ui.isGoalCardBeingDragged,
-                                isDropTarget: store.state.ui.dropHoverId == "goalCard",
-                                rowIndex: self?.rowIndex ?? 0,
-                                disableWiggle: false
-                            )
-                    )
-                    self?.hostingController?.rootView = viewWithOverlay
-                }
-            }.store(in: &cancellables)
+        // Set the removal state
+        isRemoved = store.state.ui.isGoalCardRemoved
+        
+        let goalCardView = GoalProgressView()
+        
+        // Apply EditModeOverlay to the GoalProgressView
+        let viewWithOverlay = AnyView(
+            goalCardView
+                .editModeOverlay(
+                    isEditMode: store.state.ui.isEditMode,
+                    isRemoved: store.state.ui.isGoalCardRemoved,
+                    onToggleRemoval: {
+                        store.toggleGoalCardRemoval()
+                    },
+                    isBeingDragged: store.state.ui.isGoalCardBeingDragged,
+                    isDropTarget: store.state.ui.dropHoverId == "goalCard",
+                    rowIndex: rowIndex,
+                    disableWiggle: false
+                )
+        )
+        
+        hostingController?.rootView = viewWithOverlay
     }
     
     // MARK: - Reuse
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        // Clear cancellables to prevent memory leaks and unexpected behavior
-        cancellables.removeAll()
         // Reset to placeholder view
         let placeholderView = AnyView(
             GoalProgressView()
@@ -204,4 +196,18 @@ class GoalCardCell: UICollectionViewCell {
         
         return snapshot ?? UIView()
     }
-}
+
+    override var isHighlighted: Bool {
+        didSet {
+            // Disable highlight visual
+            contentView.backgroundColor = .clear
+        }
+    }
+
+    override var isSelected: Bool {
+        didSet {
+            // Disable selection visual
+            contentView.backgroundColor = .clear
+        }
+    }
+} 

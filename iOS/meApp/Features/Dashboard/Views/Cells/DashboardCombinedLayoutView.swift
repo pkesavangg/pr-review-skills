@@ -45,6 +45,12 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
         let shouldRestartWiggle = context.coordinator.lastGridLayoutId != store.state.ui.gridLayoutId
         context.coordinator.lastGridLayoutId = store.state.ui.gridLayoutId
         
+        // Safety check: force clear drag state if it's been stuck for too long
+        if isDragging && !store.state.ui.isEditMode {
+            context.coordinator.forceClearDragState()
+            isDragging = false
+        }
+        
         if !isDragging {
             uiView.reloadData()
             // Force layout update to ensure proper content size calculation
@@ -137,6 +143,45 @@ extension DashboardCombinedLayoutView {
                     metricCell.restartWiggleAnimation()
                 }
             }
+        }
+        
+        func forceReconfigureVisibleCells(_ collectionView: UICollectionView) {
+            let metricsCount = store.metricsToShow.count
+            let dividerCount = (metricsCount > 0 && (!store.state.ui.isGoalCardRemoved || store.streakItemsToShow.count > 0)) ? 1 : 0
+            let goalCardCount = (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : 1
+            
+            for cell in collectionView.visibleCells {
+                if let indexPath = collectionView.indexPath(for: cell) {
+                    if indexPath.item < metricsCount {
+                        if let metricCell = cell as? MetricCell {
+                            let item = store.metricsToShow[indexPath.item]
+                            metricCell.configure(with: item, dashboardType: store.state.metrics.dashboardType, store: store)
+                        }
+                    } else if indexPath.item < metricsCount + dividerCount {
+                        // Divider cell doesn't need reconfiguration
+                    } else {
+                        let positionAfterDivider = indexPath.item - metricsCount - dividerCount
+                        if positionAfterDivider == store.state.ui.goalCardPosition && goalCardCount > 0 {
+                            if let goalCell = cell as? GoalCardCell {
+                                goalCell.configure(with: store)
+                            }
+                        } else {
+                            let streakIndex = positionAfterDivider - (positionAfterDivider > store.state.ui.goalCardPosition ? 1 : 0)
+                            if let streakCell = cell as? StreakItemCell {
+                                let item = store.streakItemsToShow[streakIndex]
+                                streakCell.configure(with: item, store: store)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add a safety method to force clear drag state
+        func forceClearDragState() {
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
         }
         
         func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -318,7 +363,7 @@ extension DashboardCombinedLayoutView {
             } else if let cell = collectionView.cellForItem(at: indexPath) as? StreakItemCell {
                 let contentFrame = cell.contentView.frame
                 parameters.visiblePath = UIBezierPath(roundedRect: contentFrame, cornerRadius: 16)
-            } else if let cell = collectionView.cellForItem(at: indexPath) as? UICollectionViewCell {
+            } else if let cell = collectionView.cellForItem(at: indexPath) {
                 let contentFrame = cell.contentView.frame
                 parameters.visiblePath = UIBezierPath(roundedRect: contentFrame, cornerRadius: 0)
             }
@@ -343,11 +388,7 @@ extension DashboardCombinedLayoutView {
                     }
                     let previewView = UIView(frame: streakCell.contentView.frame)
                     previewView.backgroundColor = streakCell.contentView.backgroundColor
-                    previewView.layer.cornerRadius = streakCell.contentView.layer.cornerRadius
-                    previewView.layer.shadowColor = streakCell.contentView.layer.shadowColor
-                    previewView.layer.shadowOffset = streakCell.contentView.layer.shadowOffset
-                    previewView.layer.shadowRadius = streakCell.contentView.layer.shadowRadius
-                    previewView.layer.shadowOpacity = streakCell.contentView.layer.shadowOpacity
+                   previewView.layer.cornerRadius = streakCell.contentView.layer.cornerRadius
                     previewView.alpha = 1.0
                     let parameters = UIDragPreviewParameters()
                     parameters.backgroundColor = .clear
@@ -358,10 +399,6 @@ extension DashboardCombinedLayoutView {
                 let previewView = UIView(frame: metricCell.contentView.frame)
                 previewView.backgroundColor = metricCell.contentView.backgroundColor
                 previewView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-                previewView.layer.shadowColor = metricCell.contentView.layer.shadowColor
-                previewView.layer.shadowOffset = metricCell.contentView.layer.shadowOffset
-                previewView.layer.shadowRadius = metricCell.contentView.layer.shadowRadius
-                previewView.layer.shadowOpacity = metricCell.contentView.layer.shadowOpacity
                 previewView.alpha = 1.0
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
@@ -377,10 +414,6 @@ extension DashboardCombinedLayoutView {
                 let previewView = UIView(frame: goalCell.contentView.frame)
                 previewView.backgroundColor = goalCell.contentView.backgroundColor
                 previewView.layer.cornerRadius = goalCell.contentView.layer.cornerRadius
-                previewView.layer.shadowColor = goalCell.contentView.layer.shadowColor
-                previewView.layer.shadowOffset = goalCell.contentView.layer.shadowOffset
-                previewView.layer.shadowRadius = goalCell.contentView.layer.shadowRadius
-                previewView.layer.shadowOpacity = goalCell.contentView.layer.shadowOpacity
                 previewView.alpha = 1.0
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
@@ -401,59 +434,13 @@ extension DashboardCombinedLayoutView {
                     } else if dragItem.type == .streak {
                         store.startDraggingStreak(dragItem.item)
                     }
-                    for cell in collectionView.visibleCells {
-                        if let metricCell = cell as? MetricCell,
-                           metricCell.representedItem?.id == dragItem.item.id {
-                            metricCell.configure(with: dragItem.item, dashboardType: self.store.state.metrics.dashboardType, store: self.store)
-                            break
-                        } else if let streakCell = cell as? StreakItemCell,
-                                  streakCell.representedItem?.id == dragItem.item.id {
-                            streakCell.configure(with: dragItem.item, store: self.store)
-                            break
-                        }
-                    }
+                    // Immediately reconfigure ALL visible cells to reflect the new drag state
+                    forceReconfigureVisibleCells(collectionView)
                 } else if let dragItem = draggedItem.localObject as? String,
                           dragItem == "goalCard" {
                     store.startDraggingGoalCard()
-                    for cell in collectionView.visibleCells {
-                        if let goalCell = cell as? GoalCardCell {
-                            goalCell.configure(with: self.store)
-                            break
-                        }
-                    }
-                }
-            }
-        }
-        
-        func forceReconfigureVisibleCells(_ collectionView: UICollectionView) {
-            let metricsCount = store.metricsToShow.count
-            let dividerCount = (metricsCount > 0 && (!store.state.ui.isGoalCardRemoved || store.streakItemsToShow.count > 0)) ? 1 : 0
-            let goalCardCount = (!store.state.ui.isEditMode && store.state.ui.isGoalCardRemoved) ? 0 : 1
-            
-            for cell in collectionView.visibleCells {
-                if let indexPath = collectionView.indexPath(for: cell) {
-                    if indexPath.item < metricsCount {
-                        if let metricCell = cell as? MetricCell {
-                            let item = store.metricsToShow[indexPath.item]
-                            metricCell.configure(with: item, dashboardType: store.state.metrics.dashboardType, store: store)
-                        }
-                    } else if indexPath.item < metricsCount + dividerCount {
-                        if let dividerCell = cell as? UICollectionViewCell {
-                        }
-                    } else {
-                        let positionAfterDivider = indexPath.item - metricsCount - dividerCount
-                        if positionAfterDivider == store.state.ui.goalCardPosition && goalCardCount > 0 {
-                            if let goalCell = cell as? GoalCardCell {
-                                goalCell.configure(with: store)
-                            }
-                        } else {
-                            let streakIndex = positionAfterDivider - (positionAfterDivider > store.state.ui.goalCardPosition ? 1 : 0)
-                            if let streakCell = cell as? StreakItemCell {
-                                let item = store.streakItemsToShow[streakIndex]
-                                streakCell.configure(with: item, store: store)
-                            }
-                        }
-                    }
+                    // Immediately reconfigure ALL visible cells to reflect the new drag state
+                    forceReconfigureVisibleCells(collectionView)
                 }
             }
         }
@@ -462,10 +449,33 @@ extension DashboardCombinedLayoutView {
             parent.isDragging = false
             draggedItemId = nil
             store.endDragging()
+            
+            // Immediately reconfigure cells to restore overlay visibility
             if store.state.ui.isEditMode {
-                DispatchQueue.main.async {
-                    self.forceReconfigureVisibleCells(collectionView)
-                }
+                forceReconfigureVisibleCells(collectionView)
+            }
+        }
+
+        // Add additional drag session handling methods
+        func collectionView(_ collectionView: UICollectionView, dropSessionDidExit session: UIDropSession) {
+            // Immediately clear drag state when drag exits
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
+            // Immediately reconfigure cells to restore overlay visibility
+            if store.state.ui.isEditMode {
+                forceReconfigureVisibleCells(collectionView)
+            }
+        }
+
+        func collectionView(_ collectionView: UICollectionView, dragSessionDidEnd session: UIDragSession, withOperation operation: UIDropOperation) {
+            parent.isDragging = false
+            draggedItemId = nil
+            store.endDragging()
+            
+            // Immediately reconfigure cells to restore overlay visibility
+            if store.state.ui.isEditMode {
+                forceReconfigureVisibleCells(collectionView)
             }
         }
         
@@ -473,14 +483,15 @@ extension DashboardCombinedLayoutView {
             animator.addCompletion { _ in
                 self.draggedItemId = nil
                 self.store.endDragging()
+                self.parent.isDragging = false
+                // Immediately reconfigure cells to restore overlay visibility
                 if self.store.state.ui.isEditMode {
-                    DispatchQueue.main.async {
-                        self.forceReconfigureVisibleCells(collectionView)
-                    }
+                    self.forceReconfigureVisibleCells(collectionView)
                 }
             }
         }
         
+        // Add immediate drag state clearing methods
         func collectionView(_ collectionView: UICollectionView, dragSessionAllowsMoveOperation session: UIDragSession) -> Bool {
             return store.state.ui.isEditMode
         }
@@ -519,18 +530,22 @@ extension DashboardCombinedLayoutView {
                     if sourceIndexPath.item < metricsCount {
                         if let dragItem = item.dragItem.localObject as? DragItemWrapper,
                            dragItem.type == .metric {
+                            // Add guard clauses to ensure indices are within bounds
                             let sourceMetricIndex = sourceIndexPath.item
                             let destMetricIndex = destinationIndexPath.item
-                            let sourceIsRemoved = store.isMetricRemovedInReorderedArray(at: sourceMetricIndex)
-                            let destIsRemoved = store.isMetricRemovedInReorderedArray(at: destMetricIndex)
-                            if !sourceIsRemoved && !destIsRemoved {
-                                let movedMetric = store.metricsManager.state.metrics.remove(at: sourceMetricIndex)
-                                store.metricsManager.state.metrics.insert(movedMetric, at: destMetricIndex)
-                                HapticFeedbackService.light()
-                                collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
-                            } else {
+
+                            // Ensure indices are within bounds before accessing the array
+                            guard sourceMetricIndex >= 0 && sourceMetricIndex < store.metricsManager.state.metrics.count,
+                                  destMetricIndex >= 0 && destMetricIndex < store.metricsManager.state.metrics.count else {
                                 collectionView.reloadData()
+                                return
                             }
+
+                            // Proceed with moving the metric if indices are valid
+                            let movedMetric = store.metricsManager.state.metrics.remove(at: sourceMetricIndex)
+                            store.metricsManager.state.metrics.insert(movedMetric, at: destMetricIndex)
+                            HapticFeedbackService.light()
+                            collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
                         } else {
                             collectionView.reloadData()
                         }
@@ -608,11 +623,26 @@ extension DashboardCombinedLayoutView {
         }
         
         @objc func handleMetricDragLongPress(_ gesture: UILongPressGestureRecognizer) {
-            guard gesture.state == .began,
-                  let cell = gesture.view as? MetricCell,
-                  store.state.ui.isEditMode else { return }
-            // UIKit grid will handle drag-and-drop
-            // Optionally, you can trigger drag programmatically if needed
+            guard let cell = gesture.view as? MetricCell else { return }
+            switch gesture.state {
+            case .began:
+                // Hide the EditModeOverlay and shadow
+                cell.updateDragState(true)
+                cell.contentView.layer.shadowOpacity = 0
+            case .ended, .cancelled:
+                // Restore the EditModeOverlay and shadow
+                cell.updateDragState(false)
+                cell.contentView.layer.shadowOpacity = 1
+            default:
+                break
+            }
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, willBeginInteractiveMovementForItemAt indexPath: IndexPath) {
+            if let cell = collectionView.cellForItem(at: indexPath) {
+                cell.layer.shadowOpacity = 0
+                cell.layer.shadowRadius = 0
+            }
         }
     }
 }

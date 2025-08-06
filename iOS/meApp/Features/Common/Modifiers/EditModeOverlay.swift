@@ -26,7 +26,14 @@ struct EditModeOverlay: ViewModifier {
     }
     
     var shouldShowCircleIcon: Bool {
-        isEditMode && !isBeingDragged && !isDropTarget
+        let shouldShow = isEditMode && !isBeingDragged && !isDropTarget
+        // Debug logging to track overlay visibility
+        #if DEBUG
+        if isEditMode {
+            print("[EditModeOverlay] shouldShowCircleIcon: \(shouldShow) - isEditMode: \(isEditMode), isBeingDragged: \(isBeingDragged), isDropTarget: \(isDropTarget)")
+        }
+        #endif
+        return shouldShow
     }
     
     var iconOpacity: Double {

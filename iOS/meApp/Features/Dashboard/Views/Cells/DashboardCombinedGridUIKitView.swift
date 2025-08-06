@@ -245,9 +245,7 @@ extension DashboardCombinedGridUIKitView {
             draggedItemId = nil
             store.endDragging()
             if store.state.ui.isEditMode {
-                DispatchQueue.main.async {
-                    self.forceReconfigureVisibleCells(collectionView)
-                }
+                forceReconfigureVisibleCells(collectionView)
             }
         }
 
@@ -256,9 +254,7 @@ extension DashboardCombinedGridUIKitView {
                 self.draggedItemId = nil
                 self.store.endDragging()
                 if self.store.state.ui.isEditMode {
-                    DispatchQueue.main.async {
-                        self.forceReconfigureVisibleCells(collectionView)
-                    }
+                    self.forceReconfigureVisibleCells(collectionView)
                 }
             }
         }
@@ -271,6 +267,16 @@ extension DashboardCombinedGridUIKitView {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.commit()
+        }
+
+        func collectionView(_ collectionView: UICollectionView, dropSessionDidExit session: UIDropSession) {
+            // Immediately clear drag state when drag exits
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
+            if store.state.ui.isEditMode {
+                forceReconfigureVisibleCells(collectionView)
+            }
         }
 
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
