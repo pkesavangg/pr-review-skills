@@ -97,8 +97,8 @@ public struct MeasurementLiveData: Sendable, Equatable {
 }
 
 /// Representation of a user slot stored on the scale (R4 only).
-public struct DeviceUser: Sendable, Equatable {
-    public let name: String
+public struct DeviceUser: Sendable, Equatable, Hashable {
+    public var name: String
     public let token: String?
     public let lastActive: Int
     public let isBodyMetricsEnabled: Bool

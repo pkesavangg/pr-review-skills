@@ -62,13 +62,19 @@ struct GoalProgressView: View {
     // MARK: - Sub-components
     @ViewBuilder
     private var deltaHeader: some View {
-        if isGoalReached {
-            Text("Goal Reached!")
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
-                .frame(maxWidth: .infinity, alignment: .center)
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline) {
+            if isGoalReached {
+                Text("0")
+                    .fontOpenSans(.heading3)
+                    .foregroundColor(theme.textHeading)
+                Text("\(displayUnit) to goal")
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                Spacer()
+                Text(lang.goalReached)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+            } else {
                 deltaText
                 Text(lang.loseGoalWeightLabel(displayUnit))
                     .fontOpenSans(.subHeading2)

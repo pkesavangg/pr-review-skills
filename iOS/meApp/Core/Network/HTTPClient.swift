@@ -11,7 +11,9 @@ final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
     @Injector var notificationHelperService: NotificationHelperService
+    @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
+
     private init() {}
     
     // MARK: - GET Request
@@ -104,7 +106,24 @@ final class HTTPClient {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            if let urlError = error as? URLError,
+               urlError.code == .notConnectedToInternet ||
+               urlError.code == .networkConnectionLost ||
+               urlError.code == .cannotConnectToHost ||
+               urlError.code == .timedOut {
+                do {
+                    try await checkConnectivity()
+                } catch {
+                    // If connectivity check fails, throw network error
+                    throw error
+                }
+            }
+            throw error
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
@@ -117,6 +136,11 @@ final class HTTPClient {
         
         // Check for success status
         guard status.isSuccess else {
+            // Attempt to decode server-provided error message for more context
+            if let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+               let serverMessage = apiError.error ?? apiError.message, !serverMessage.isEmpty {
+                throw HTTPError.apiError(message: serverMessage, code: status.rawValue)
+            }
             if let status = HTTPStatusCode(rawValue: httpResponse.statusCode) {
                 throw HTTPError.from(status: status)
             }
@@ -205,9 +229,11 @@ final class HTTPClient {
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
         if await !NetworkMonitor.shared.isConnected {
-            await notificationHelperService.showToast(ToastModel(
-                message: ToastStrings.unableToConnect
-            ))
+            if !skipCheckNetwork {
+                await notificationHelperService.showToast(ToastModel(
+                    message: ToastStrings.unableToConnect
+                ))
+            }
             throw HTTPError.noInternet
         }
     }
@@ -252,4 +278,3 @@ final class HTTPClient {
 // ✅ Notes:
 // - Request/response models must conform to `Codable`.
 // - 204 responses support `EmptyResponse` type.
-
