@@ -150,12 +150,10 @@ final class GoalAlertService: ObservableObject {
 
         do {
             _ = try await accountService.createGoal(maintainGoal)
-            notificationService.showToast(ToastModel(message: ToastStrings.goalSaved))
+            logger.log(level: .info, tag: tag, message: "Successfully created maintain goal", data: "\(maintainGoal)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to create maintain goal", data: error.localizedDescription)
-            notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.somethingWentWrong))
         }
-
         resetGoalMetFlag()
         notificationService.dismissAlert()
     }
