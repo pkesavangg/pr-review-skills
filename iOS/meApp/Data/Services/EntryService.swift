@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
+    @Injector var goalAlertService: GoalAlertService
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
@@ -553,16 +554,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Check for goal achievements and trigger alerts if needed
     private func checkGoalAlerts() async {
         do {
-            let accountId = try await getAccountId()
-            // TODO: Implement goal checking logic based on your app's requirements
-            // Example:
-            // - Check if user reached weight goal
-            // - Check if user achieved streak milestone
-            // - Trigger notifications or alerts
-
-            logger.log(level: .debug, tag: tag, message: "Goal alerts checked for account: \(accountId)")
+            guard let latestEntry = try await getLatestEntry(),
+                  let weight = latestEntry.scaleEntry?.weight else { return }
+            // Weight is stored as tenths of lbs – cast to Double for compatibility
+            await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to check goal alerts: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
         }
     }
 

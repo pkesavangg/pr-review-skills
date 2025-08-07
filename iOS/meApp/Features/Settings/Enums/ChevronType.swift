@@ -11,5 +11,6 @@
 enum ChevronType {
     case right
     case upDown
+    case loading
     case none
 }

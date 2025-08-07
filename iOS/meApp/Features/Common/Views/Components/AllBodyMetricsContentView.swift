@@ -16,7 +16,7 @@ struct AllBodyMetricsContentView: View {
     private let commonLang = CommonStrings.self
 
     var body: some View {
-        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        let iconColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
 
         VStack {
             VStack(spacing: 0) {
@@ -25,9 +25,9 @@ struct AllBodyMetricsContentView: View {
                         iconName: AppAssets.heartIcon,
                         label: commonLang.heartRateLabel,
                         statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
-                        foregroundColor: iconAndLabelColor
+                        font: .heading5,
+                        iconColor: iconColor
                     )
-                    .fontWeight(.bold)
 
                     Spacer()
                     
@@ -38,13 +38,13 @@ struct AllBodyMetricsContentView: View {
                             onHeartRateChanged(newValue)
                         }
                     ))
-                    
                 }
 
                 Text(lang.heartRateInfoDescription)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
                     .padding(.top, .spacingSM)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.bottom, .spacingMD)
 
@@ -53,7 +53,5 @@ struct AllBodyMetricsContentView: View {
             }
         }
         .background(theme.backgroundSecondary)
-
-        
     }
 }

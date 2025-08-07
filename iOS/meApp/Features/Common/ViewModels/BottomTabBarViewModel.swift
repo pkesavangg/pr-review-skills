@@ -16,6 +16,8 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
     // Inject Bluetooth service to listen for new scale discovery events
     @Injector var bluetoothService: BluetoothService
+    // Inject GoalAlertService to handle goal alert navigation
+    @Injector var goalAlertService: GoalAlertService
     // Publisher-driven sheet presentation for newly discovered scales
     @Published var discoveredScale: Device? = nil
     /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
@@ -36,6 +38,9 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var healthKitService: HealthKitService
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
+    // New dependencies for Set Goal Card logic
+    @Injector private var entryService: EntryService
+    @Injector private var accountService: AccountService
     @Injector private var scaleService: ScaleService
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsService
@@ -47,6 +52,9 @@ class BottomTabBarViewModel: ObservableObject {
     /// Key used to store whether the *notification-only* permissions alert has been shown across launches.
     private let notificationOnlyAlertKey = "notificationOnlyAlertShown"
     /// Indicates whether the *notification-only* permissions alert has already been shown (persisted via `KvStorageService`).
+    // MARK: - Goal Card Tracking
+    /// Keeps track if the Set a Goal card has been shown in this app session.
+    private var hasShownSetGoalCardThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get { (KvStorageService.shared.getValue(forKey: notificationOnlyAlertKey) as? Bool) ?? false }
         set { KvStorageService.shared.setValue(newValue, forKey: notificationOnlyAlertKey) }
@@ -83,6 +91,7 @@ class BottomTabBarViewModel: ObservableObject {
         // Perform Apple Health integration check on launch
         Task { [weak self] in
             await self?.checkAppleHealthIntegrationStatus()
+            await self?.checkSetGoalCardPrompt()
         }
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list
@@ -109,6 +118,11 @@ class BottomTabBarViewModel: ObservableObject {
             } else {
                 await pushNotificationService.updateDeviceInfo()
             }
+        }
+        
+        // Connect GoalAlertService navigation callback
+        goalAlertService.onNavigateToGoalSetting = { [weak self] in
+            self?.navigateToGoalSetting()
         }
     }
     
@@ -302,8 +316,8 @@ class BottomTabBarViewModel: ObservableObject {
         
         let modalView = HKIntegrationModalView(
             state: state,
-            onClose: { [weak notificationService] in
-                notificationService?.dismissModal()
+            onClose: { [weak self] in
+                self?.notificationService.dismissModal()
             },
             onPrimaryTap: onPrimary,
             onSecondaryTap: onSecondary
@@ -336,5 +350,56 @@ class BottomTabBarViewModel: ObservableObject {
             return cameraPermissionState
         }
         return await permissionsService.handlePermission(.camera)
+    }
+    
+    // MARK: - Set Goal Card Prompt
+    /// Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
+    private func checkSetGoalCardPrompt() async {
+        // Avoid duplicate prompts within the same session
+        guard !hasShownSetGoalCardThisSession else { return }
+        
+        // Ensure we have an active account and goal settings
+        guard let account = accountService.activeAccount else { return }
+        
+        // 1. Goal type must be nil (no goal set)
+        if account.goalSettings?.goalType != nil { return }
+        
+        // 2. At least 3 entries must exist
+        let entryCount: Int
+        do {
+            entryCount = try await entryService.getEntryCount()
+        } catch {
+            return // Could not fetch entry count – silently ignore
+        }
+        guard entryCount >= 3 else { return }
+        
+        // 3. Check KvStorage flag to see if popup already shown for this account
+        let key = "\(account.accountId)_goalCardStatus"
+        if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
+            return // Already shown previously
+        }
+        // Persist flag so it won't show again across launches
+        KvStorageService.shared.setValue(true, forKey: key)
+        hasShownSetGoalCardThisSession = true
+        
+        await MainActor.run { [weak self] in
+            self?.presentSetGoalCard()
+        }
+    }
+    
+    /// Presents the Set a Goal card modal.
+    private func presentSetGoalCard() {
+        let modalView = SetAGoalCardView(
+            onClose: { [weak notificationService] in
+                notificationService?.dismissModal()
+            },
+            onSetGoal: { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                self.navigateToGoalSetting()
+            }
+        )
+        let modalData = ModalData(presentedView: AnyView(modalView))
+        notificationService.showModal(modalData)
     }
 }
