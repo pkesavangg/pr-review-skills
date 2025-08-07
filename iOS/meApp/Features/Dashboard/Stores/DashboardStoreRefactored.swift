@@ -762,6 +762,9 @@ class DashboardStore: ObservableObject {
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
         state.ui.resetDragState()
+        
+        // Reset the saved order to restore default order
+        resetGridOrder()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -800,6 +803,13 @@ class DashboardStore: ObservableObject {
                 self.state.ui.gridLayoutId = UUID()
             }
         }
+    }
+    
+    /// Resets the saved grid order to restore default order
+    private func resetGridOrder() {
+        state.ui.streakGridOrder = []
+        state.ui.goalCardPosition = 0
+        logger.log(level: .info, tag: "DashboardStore", message: "Reset grid order to default")
     }
 
     func showResetDashboardAlert() {

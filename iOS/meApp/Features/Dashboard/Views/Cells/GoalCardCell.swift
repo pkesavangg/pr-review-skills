@@ -21,6 +21,12 @@ class GoalCardCell: UICollectionViewCell {
     
     var onDeleteTapped: (() -> Void)?
     
+    // MARK: - Private Properties for Configuration
+    
+    private var currentStore: DashboardStore?
+    private var isLongPressed: Bool = false
+    private var isTapped: Bool = false
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
@@ -72,6 +78,8 @@ class GoalCardCell: UICollectionViewCell {
     /// Configures the cell with dashboard store data
     /// - Parameter store: The dashboard store
     func configure(with store: DashboardStore) {
+        currentStore = store
+        
         // Set the removal state
         isRemoved = store.state.ui.isGoalCardRemoved
         
@@ -86,7 +94,7 @@ class GoalCardCell: UICollectionViewCell {
                     onToggleRemoval: {
                         store.toggleGoalCardRemoval()
                     },
-                    isBeingDragged: store.state.ui.isGoalCardBeingDragged,
+                    isBeingDragged: store.state.ui.isGoalCardBeingDragged || isLongPressed || isTapped,
                     isDropTarget: store.state.ui.dropHoverId == "goalCard",
                     rowIndex: rowIndex,
                     disableWiggle: false
@@ -100,6 +108,10 @@ class GoalCardCell: UICollectionViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        currentStore = nil
+        isLongPressed = false
+        isTapped = false
+        
         // Reset to placeholder view
         let placeholderView = AnyView(
             GoalProgressView()
@@ -116,10 +128,24 @@ class GoalCardCell: UICollectionViewCell {
         case .none:
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
+            // Clear interaction states
+            isLongPressed = false
+            isTapped = false
+            // Reconfigure to show overlay after drag ends
+            if let store = currentStore {
+                configure(with: store)
+            }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
             // This prevents items from appearing "removed" during drag operations
             hostingController?.view.alpha = 1.0
+            // Set interaction states to hide overlay during drag
+            isLongPressed = true
+            isTapped = true
+            // Reconfigure to hide overlay during drag
+            if let store = currentStore {
+                configure(with: store)
+            }
         @unknown default:
             break
         }

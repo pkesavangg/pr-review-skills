@@ -92,14 +92,26 @@ struct DashboardScreen: View {
         ScrollView(showsIndicators: false) {
             WeightTrendView(dashboardStore: store)
             if !store.allContentRemoved {
-                // Use single combined layout view for all items
-                DashboardCombinedLayoutView(store: store, onMetricLongPress: { label in
-                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
-                })
-                    .frame(minHeight: 600)
-                    .padding(.top, .spacingSM)
-                    .id(store.state.ui.gridLayoutId)
-                    .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                if !store.metricsToShow.isEmpty {
+                    MetricGridUIKitView(store: store)
+                        .frame(minHeight: 200)
+                        .padding(.top, .spacingSM)
+                        .id(store.state.ui.gridLayoutId)
+                        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                }
+                
+                if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
+                    Divider()
+                        .padding(.horizontal, .spacingLG)
+                        .padding(.vertical, .spacingSM)
+                }
+                
+                if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+                    GoalStreakGridUIKitView(store: store)
+                        .frame(minHeight: 200)
+                        .id(store.state.ui.gridLayoutId)
+                        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                }
             }
             actionButtonsSection()
                 .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
