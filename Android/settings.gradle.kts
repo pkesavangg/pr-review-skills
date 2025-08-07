@@ -1,22 +1,38 @@
 pluginManagement {
-    repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
-        mavenCentral()
-        gradlePluginPortal()
+  repositories {
+    google {
+      content {
+        includeGroupByRegex("com\\.android.*")
+        includeGroupByRegex("com\\.google.*")
+        includeGroupByRegex("androidx.*")
+      }
     }
+    mavenCentral()
+    gradlePluginPortal()
+  }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+    maven {
+      url =
+        uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
+      credentials {
+        username = System.getenv("GPR_USER") ?: "VivekGG"
+        password = System.getenv("GPR_API_KEY") ?: "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"
+      }
     }
+    maven {
+      url =
+        uri("https://maven.pkg.github.com/dmdbrands/vico")
+      credentials {
+        username = System.getenv("GPR_USER") ?: "VivekGG"
+        password = System.getenv("GPR_API_KEY") ?: "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"
+      }
+    }
+  }
 }
 
 rootProject.name = "Me App"
@@ -25,3 +41,5 @@ include(":notification")
 include(":app:healthconnect")
 include(":app:wificonnect")
 include(":app:appsync")
+include(":bleWrapper")
+// include(":ggBluetoothLibrary")

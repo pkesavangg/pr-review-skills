@@ -6,12 +6,34 @@
 //
 
 import SwiftUI
+import UIKit
 
+// MARK: - ViewModel
+@MainActor
+final class WifiMacAddressViewModel: ObservableObject {
+    @Published var macAddress: String
+    @Injector private var notificationService: NotificationHelperService
+    
+    init(macAddress: String) {
+        self.macAddress = macAddress
+    }
+    
+    func copyMacAddress() {
+        UIPasteboard.general.string = macAddress
+        notificationService.showToast(ToastModel(message: ToastStrings.copiedToClipboard))
+    }
+}
+
+// MARK: - Screen
 struct WifiMacAddressScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @StateObject private var viewModel: WifiMacAddressViewModel
     let lang = WifiMacAddressScreenStrings.self
+    
+    init(macAddress: String) {
+        _viewModel = StateObject(wrappedValue: WifiMacAddressViewModel(macAddress: macAddress))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,7 +54,7 @@ struct WifiMacAddressScreen: View {
 
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     NoteBox(alignCenter: true){
-                        Text(scaleStore.getWifiMacAddressString())
+                        Text(viewModel.macAddress)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
@@ -45,7 +67,7 @@ struct WifiMacAddressScreen: View {
                             size: .large,
                             isDisabled: false,
                             action: {
-                                UIPasteboard.general.string = scaleStore.getWifiMacAddressString()
+                                viewModel.copyMacAddress()
                             }
                         )
                     }
@@ -62,9 +84,10 @@ struct WifiMacAddressScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        
     }
 }
 
 #Preview {
-    WifiMacAddressScreen()
+    WifiMacAddressScreen(macAddress: "00:11:22:33:44:55")
 }

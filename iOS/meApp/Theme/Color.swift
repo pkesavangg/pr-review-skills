@@ -34,6 +34,7 @@ enum AppColors {
         // Support colors
         let supportOverlay: Color
         let supportToastBackground: Color
+        let glow: Color
         
         // Action colors
         let actionPrimary: Color

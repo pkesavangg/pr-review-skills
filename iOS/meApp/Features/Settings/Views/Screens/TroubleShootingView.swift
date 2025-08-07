@@ -44,6 +44,9 @@ struct TroubleShootingView: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .sheet(isPresented: $helpStore.showScaleLogSheet) {
+            ScaleLogSheetView(scales: helpStore.scales)
+        }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }
 
@@ -95,12 +98,23 @@ struct TroubleShootingView: View {
     }
 
     private func scaleTroubleshootingSection() -> some View {
-        Section(header: sectionHeader(title: lang.scaleTroubleshooting)) {
-            ActionListItemView(config: ActionListItemConfig(title: lang.sendScaleLog, chevronType: .right, onTap: { helpStore.sendScaleLog() }))
-                .listRowInsets()
+        Group {
+            if helpStore.shouldShowScaleTroubleshooting {
+                Section(header: sectionHeader(title: lang.scaleTroubleshooting)) {
+                    ActionListItemView(
+                        config: ActionListItemConfig(
+                            title: lang.sendScaleLog,
+                            chevronType: .right,
+                            isDisabled: !helpStore.isSendScaleLogEnabled,
+                            onTap: { helpStore.sendScaleLogHandler() }
+                        )
+                    )
+                    .listRowInsets()
+                }
+                .listRowBackground(theme.backgroundPrimary)
+                .listRowSeparatorTint(theme.statusUtilityPrimary)
+            }
         }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
 
     private func sectionHeader(title: String) -> some View {

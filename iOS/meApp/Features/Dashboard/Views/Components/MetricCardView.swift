@@ -4,7 +4,7 @@ struct MetricCardView: View {
     @Environment(\.appTheme) private var theme
     let value: String
     let label: String
-    let metricType: DashboardMetricType
+    let dashboardType: DashboardType
     let isEditMode: Bool
     let isRemoved: Bool
     let isSelected: Bool
@@ -29,6 +29,14 @@ struct MetricCardView: View {
 
     private var subheadingColor: Color {
         (isSelected && !isEditMode) ? theme.textInverse : theme.textSubheading
+    }
+    
+    private var borderColor: Color {
+        isDropTarget ? theme.actionSecondary : Color.clear
+    }
+    
+    private var borderWidth: CGFloat {
+        isDropTarget ? 2 : 0
     }
 
     var body: some View {
@@ -66,7 +74,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "24.5",
             label: "bmi",
-            metricType: .twelve,
+            dashboardType: .dashboard12,
             isEditMode: false,
             isRemoved: false,
             isSelected: false,
@@ -80,7 +88,7 @@ struct MetricCardView: View {
         MetricCardView(
             value: "18.3",
             label: "body fat",
-            metricType: .four,
+            dashboardType: .dashboard4,
             isEditMode: false,
             isRemoved: false,
             isSelected: true,
@@ -91,10 +99,13 @@ struct MetricCardView: View {
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.fourCardVerticalPadding
         )
+        
+        // Edit mode with wiggle animation (matching movingGridsLearning exactly)
+        // Row 0 - even timing (0.135s)
         MetricCardView(
-            value: "8",
-            label: "visceral fat",
-            metricType: .twelve,
+            value: "22.1",
+            label: "muscle mass",
+            dashboardType: .dashboard12,
             isEditMode: true,
             isRemoved: false,
             isSelected: false,
@@ -105,10 +116,47 @@ struct MetricCardView: View {
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.twelveCardVerticalPadding
         )
+        .wiggling(true, rowIndex: 0) // Even row timing
+        
+        // Row 1 - odd timing (0.125s)
         MetricCardView(
-            value: "41.6",
-            label: "muscle",
-            metricType: .four,
+            value: "15.2",
+            label: "water weight",
+            dashboardType: .dashboard4,
+            isEditMode: true,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.fourCardVerticalPadding
+        )
+        .wiggling(true, rowIndex: 1) // Odd row timing
+        
+        // Row 2 - even timing (0.135s)
+        MetricCardView(
+            value: "28.7",
+            label: "bone mass",
+            dashboardType: .dashboard12,
+            isEditMode: true,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.twelveCardVerticalPadding
+        )
+        .wiggling(true, rowIndex: 2) // Even row timing
+        
+        // Edit mode - removed item (no wiggle)
+        MetricCardView(
+            value: "15.2",
+            label: "water weight",
+            dashboardType: .dashboard4,
             isEditMode: true,
             isRemoved: true,
             isSelected: false,
@@ -121,5 +169,5 @@ struct MetricCardView: View {
         )
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .environmentObject(Theme.shared)
 }

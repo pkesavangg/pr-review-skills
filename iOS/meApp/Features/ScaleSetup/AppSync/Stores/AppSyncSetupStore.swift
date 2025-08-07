@@ -12,7 +12,7 @@ final class AppSyncSetupStore: ObservableObject {
     @Injector private var accountService: AccountService
     // Permissions
     @Injector private var permissionsService: PermissionsService
-    
+
     // MARK: - Public state
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -22,10 +22,10 @@ final class AppSyncSetupStore: ObservableObject {
     }
     @Published private(set) var currentStep: AppSyncSetupStep = .intro
     @Published var isNextEnabled: Bool = true // Dynamically updated based on permission state
-    
+
     /// Ordered list of steps. Updated once `configure(with:)` is called.
     @Published private(set) var steps: [AppSyncSetupStep] = AppSyncSetupStep.allCases
-    
+
     /// Lazily builds the views for each step. The `AppSyncScannerView` is
     /// constructed **only** when the current step is `.appSync` so that the
     /// camera permission dialog is requested at the correct time.
@@ -46,18 +46,18 @@ final class AppSyncSetupStore: ObservableObject {
             return viewForStep(step, scaleItem: scaleItem)
         }
     }
-    
+
     var dismissAction: DismissAction?
-    
+
     // MARK: - Private
     private let tag = "AppSyncSetupStore"
     private var cancellables = Set<AnyCancellable>()
     private var scaleItem: ScaleItemInfo?
-    
+
     // Strings
     let loaderLang = LoaderStrings.self
     let toastLang = ToastStrings.self
-    
+
     // MARK: - Lifecycle
     init() {
         // Observe permission changes and update button state accordingly
@@ -68,13 +68,13 @@ final class AppSyncSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     /// Call once the screen knows the SKU to prepare step flow.
     func configure(with sku: String) {
         // Resolve SKU → ScaleItemInfo (fallback to first element).
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES[0]
         self.scaleItem = resolved
-        
+
         // Determine steps based on body-composition support.
         // Build the base set of steps first (depends on body-composition support).
         let baseSteps: [AppSyncSetupStep] = {
@@ -90,7 +90,7 @@ final class AppSyncSetupStore: ObservableObject {
         // advance jump straight to the next step without an unnecessary stop.
         let cameraPermissionGranted = permissionsService.getPermissionState(.CAMERA) == .ENABLED
         steps = cameraPermissionGranted ? baseSteps.filter { $0 != .permissions } : baseSteps
-        
+
         // Reset navigation indices.
         currentStepIndex = 0
         currentStep = steps.first ?? .intro
@@ -98,7 +98,7 @@ final class AppSyncSetupStore: ObservableObject {
         // Evaluate initial button state based on current permissions
         updateNextEnabled()
     }
-    
+
     // MARK: - Navigation helpers
 
     func moveToNextStep() {
@@ -117,7 +117,7 @@ final class AppSyncSetupStore: ObservableObject {
 
         currentStepIndex = nextIndex
     }
-    
+
     func moveToPreviousStep() {
         var previousIndex = currentStepIndex - 1
 
@@ -129,9 +129,9 @@ final class AppSyncSetupStore: ObservableObject {
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
     }
-    
+
     // MARK: - Exit / Help
-    
+
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
         let alertLang = AlertStrings.ExitSetupAlert.self
@@ -148,16 +148,16 @@ final class AppSyncSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     /// Shows the generic Help modal used across the app.
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView {
+            presentedView: AnyView(HelpModalView(skuToNavigate: scaleItem?.sku) {
                 self.notificationService.dismissModal()
             })
         ))
     }
-    
+
     // MARK: - Validation Helpers
     /// Updates `isNextEnabled` based on the current step and camera permission state.
     private func updateNextEnabled() {
@@ -169,7 +169,7 @@ final class AppSyncSetupStore: ObservableObject {
         let cameraEnabled = permissionsService.getPermissionState(.CAMERA) == .ENABLED
         isNextEnabled = cameraEnabled
     }
-    
+
     // MARK: - Step → View mapping
     private func viewForStep(_ step: AppSyncSetupStep, scaleItem: ScaleItemInfo) -> AnyView {
         switch step {
@@ -206,15 +206,15 @@ final class AppSyncSetupStore: ObservableObject {
             )
         }
     }
-    
+
     private func saveScale() {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
-        
+
         guard let scaleItem else {
             notificationService.dismissLoader()
             return
         }
-        
+
         Task {
             defer { self.notificationService.dismissLoader() }
             guard let accountId = self.accountService.activeAccount?.accountId else {
@@ -229,7 +229,7 @@ final class AppSyncSetupStore: ObservableObject {
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to remove existing device before saving: \(error.localizedDescription)")
             }
-            
+
             do {
                 let newDevice = Device(
                     id: UUID().uuidString,
@@ -240,8 +240,12 @@ final class AppSyncSetupStore: ObservableObject {
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
-                await self.scaleService.syncAllScalesWithRemote()
+                await self.scaleService.pushLocalChangesToServer()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
+                
+                // Post notification that scale was added
+                NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+                
                 self.dismissAction?()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
@@ -249,12 +253,12 @@ final class AppSyncSetupStore: ObservableObject {
             }
         }
     }
-    
+
     /// Returns `true` when the camera permission has already been granted.
     private func isCameraPermissionEnabled() -> Bool {
         permissionsService.getPermissionState(.CAMERA) == .ENABLED
     }
-    
+
     deinit {
       cancellables.forEach { $0.cancel() }
       cancellables.removeAll()

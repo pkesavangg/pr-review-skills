@@ -38,7 +38,7 @@ final class Device {
     var nickname: String? // User's nickname for the device
     var sku: String? // SKU identifier
     var mac: String? // MAC address
-    var password: String? // Device password
+    var password: Int64? // Device password
     var isDeleted: Bool? // If the device is deleted
     var deviceName: String? // Device name
     var deviceType: String? // Device type (e.g., 'scale', 'bgm')
@@ -57,9 +57,9 @@ final class Device {
     var isWeighOnlyModeEnabledByOthers: Bool? = false // If weight-only mode is enabled by other users
 
     // Relationships
-    @Relationship(deleteRule: .cascade) var bathScale: BathScale?
-    @Relationship(deleteRule: .cascade) var r4ScalePreference: R4ScalePreference?
-    @Relationship(deleteRule: .cascade) var metaData: DeviceMetaData?
+    @Relationship(deleteRule: .cascade, inverse: \BathScale.device) var bathScale: BathScale?
+    @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
+    @Relationship(deleteRule: .cascade, inverse: \DeviceMetaData.device) var metaData: DeviceMetaData?
 
     init(id: String,
          accountId: String,
@@ -67,7 +67,7 @@ final class Device {
          nickname: String? = nil,
          sku: String? = nil,
          mac: String? = nil,
-         password: String? = nil,
+         password: Int64? = nil,
          isDeleted: Bool? = nil,
          deviceName: String? = nil,
          deviceType: String? = nil,
@@ -122,6 +122,7 @@ final class Device {
 
     }
     convenience init(from dto: ScaleDTO,
+                     accountId: String? = nil,
                      protocolType: String? = nil,
                      isSynced: Bool? = nil,
                      lastModified: Int? = nil,
@@ -129,14 +130,36 @@ final class Device {
                      isWifiConfigured: Bool? = nil,
                      scaleType: String? = nil,
                      bodyComp: Bool? = nil) {
+        let id = dto.id ?? UUID().uuidString
+
+        // Create R4ScalePreference first if needed
+        var r4Preference: R4ScalePreference? = nil
+        if let preference = dto.preference {
+            r4Preference = R4ScalePreference(from: preference, scaleId: id)
+        }
+
+        var metaData: DeviceMetaData? = nil
+        if let metaDataDto = dto.metaData {
+            metaData = DeviceMetaData(from: metaDataDto)
+        }
+
+        // Resolve scale type:
+        // • Prefer the explicit `scaleType` parameter when provided (e.g. during new-device pairing)
+        // • Fallback to `dto.type` coming from the backend when syncing existing devices
+        var bathScale: BathScale? = nil
+        let resolvedScaleType = scaleType ?? dto.type
+        if let resolvedScaleType {
+            bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
+        }
+
         self.init(
-            id: dto.id ?? UUID().uuidString,
-            accountId: dto.userId ?? "",
+            id: id,
+            accountId: accountId ?? dto.userId ?? "",
             peripheralIdentifier: dto.peripheralIdentifier,
             nickname: dto.nickname,
             sku: dto.sku,
             mac: dto.mac,
-            password: dto.password.map { String($0) },
+            password: dto.password.map { Int64($0) },
             isDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
@@ -153,10 +176,27 @@ final class Device {
             isWifiConfigured: dto.isWifiConfigured,
             token: dto.scaleToken,
             isWeighOnlyModeEnabledByOthers: dto.isWeighOnlyModeEnabledByOthers,
-            bathScale: BathScale(scaleType: dto.type, bodyComp: bodyComp),
-            r4ScalePreference: dto.preference.map { R4ScalePreference(from: $0) },
-            metaData: dto.metaData.map { DeviceMetaData(from: $0) }
+            bathScale: bathScale,
+            r4ScalePreference: r4Preference,
+            metaData: metaData
         )
+
+        // Set the device reference after initialization
+        if let preference = self.r4ScalePreference {
+            preference.device = self
+        }
+        if let scale = self.bathScale {
+            scale.device = self
+        }
+        if let metaData = self.metaData {
+            metaData.device = self
+        }
+
+        if let broadcastId = self.broadcastId {
+            let scaleSource = ScaleSourceType(rawValue: self.bathScale?.scaleType ?? "") ?? .bluetoothScale
+            let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+            self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
+        }
     }
 
     func toDTO() -> ScaleDTO {
@@ -189,3 +229,17 @@ final class Device {
 
 /// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
 extension Device: @unchecked Sendable {}
+// Extend `Device` to conform to `Identifiable` so it can be used with SwiftUI's `.sheet(item:)` API.
+extension Device: Identifiable {}
+
+extension Device {
+    var connectionStatus: ScaleConnectionStatus {
+        let type = ScaleTypeHelper.determineScaleType(for: self)
+        if type == .appsync { return .noStatus }
+        if type == .bluetoothR4 && isConnected == true {
+            let wifiOk = isWifiConfigured == true
+            if !wifiOk { return .setupIncomplete }
+        }
+        return isConnected == true ? .connected : .notConnected
+    }
+}

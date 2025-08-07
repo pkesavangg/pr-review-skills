@@ -57,6 +57,7 @@ final class A6ScaleSetupStore: ObservableObject {
     private var stepTimerTask: Task<Void, Never>? = nil
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
+    private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -75,6 +76,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(
                     BluetoothConnectionView(
                         state: connectionState,
+                        setupType: .lcbt,
                         onTryAgain: { [weak self] in self?.retryPairing() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
@@ -98,6 +100,7 @@ final class A6ScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
     }
@@ -119,15 +122,33 @@ final class A6ScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Configuration
-    func configure(with sku: String) {
+    /// Configures the store for the given SKU, optionally injecting a previously-discovered
+    /// scale and its discovery event (used when the flow originates from the *Scale Discovered* sheet).
+    /// - Parameters:
+    ///   - sku:            The model/SKU (e.g. "0378").
+    ///   - discoveredScale: The scale object discovered by Bluetooth (optional).
+    ///   - discoveryEvent:  The raw discovery event emitted by `BluetoothService` (optional).
+    ///   - startStep:       The initial step for the wizard (defaults to `.intro`).
+    func configure(with sku: String,
+                   discoveredScale: Device? = nil,
+                   discoveryEvent: DeviceDiscoveryEvent? = nil) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
-        currentStepIndex = 0
-        currentStep = steps.first ?? .intro
-        
-        // Reset discovery state
+        // Reset pairing/discovery state
         resetDiscoveryState()
+        // Inject discovery context if provided.
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
         
+        
+        
+        // Set the starting step (defaults to intro, but may be connectingBluetooth for direct flow)
+        let startStep: A6ScaleSetupStep = discoveredScale != nil && discoveryEvent != nil ? .connectingBluetooth : .intro
+        if let idx = steps.firstIndex(of: startStep) {
+            currentStepIndex = idx
+        } else {
+            currentStepIndex = 0
+        }
         // Evaluate initial next-button state.
         updateNextEnabled()
     }
@@ -159,7 +180,7 @@ final class A6ScaleSetupStore: ObservableObject {
     /// Shows the generic Help modal used across the app.
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView {
+            presentedView: AnyView(HelpModalView(skuToNavigate: scaleItem?.sku) {
                 self.notificationService.dismissModal()
             })
         ))
@@ -183,7 +204,8 @@ final class A6ScaleSetupStore: ObservableObject {
         
         /// Start a timer to handle the wake-up step timeout.
         stepTimerTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(AppConstants.bluetoothTimeoutNs))
+            guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
+            try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
             await MainActor.run {
                 guard let self else { return }
                 // Still on wake-up step and nothing discovered → failure
@@ -227,6 +249,20 @@ final class A6ScaleSetupStore: ObservableObject {
         }
     }
     
+    /// Handles permission changes during the setup flow
+    private func handlePermissionChange() {
+        let showError = !isBluetoothPermissionEnabled()
+        if showError {
+            if currentStep == .wakeUp {
+                // Reset discovery state and navigate back to permissions screen
+                resetDiscoveryState()
+                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionStepIndex
+                }
+            }
+        }
+    }
+    
     // MARK: - Discovery State Management
     
     /// Clears any active Bluetooth discovery subscriptions and timers and resets related state.
@@ -254,6 +290,10 @@ final class A6ScaleSetupStore: ObservableObject {
             switch result {
             case .success(let savedScale):
                 LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+                
+                // Post notification that scale was added
+                NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+                
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
@@ -265,6 +305,8 @@ final class A6ScaleSetupStore: ObservableObject {
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
         // Only handle discovery during wake-up step
         guard currentStep == .wakeUp else { return }
+        // Only handle LCBT/A6 scales
+        guard event.deviceInfo.setupType == .lcbt else { return }
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()

@@ -10,7 +10,25 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     let context: ModelContext = PersistenceController.shared.context
     let logger = LoggerService.shared
 
-    /// Fetches all scales stored locally.
+    /// Deletes all scales from local storage.
+    func clearAllData() async throws {
+        let descriptor = FetchDescriptor<Device>()
+        let allDevices = try context.fetch(descriptor)
+        for device in allDevices {
+            context.delete(device)
+        }
+        try context.save()
+    }
+
+    /// Fetches all scales stored locally for a specific account.
+    /// - Parameter accountId: The account ID to filter scales by.
+    /// - Returns: An array of Device objects for the account.
+    func listScales(forAccountId accountId: String) async throws -> [Device] {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.accountId == accountId })
+        return try context.fetch(descriptor)
+    }
+    
+    /// Fetches all scales stored locally (legacy method).
     /// - Returns: An array of all Device objects.
     func listScales() async throws -> [Device] {
         let descriptor = FetchDescriptor<Device>()
@@ -56,6 +74,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         managedDevice.token = device.token
         managedDevice.metaData = device.metaData
         managedDevice.r4ScalePreference = device.r4ScalePreference
+        managedDevice.bathScale = device.bathScale
         // Add more fields as needed
         try context.save()
     }
@@ -100,6 +119,9 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func deleteScale(_ scaleId: String) async throws {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
+            // Break the reference *before* we delete so any lingering copies of the
+            // `Device` model can no longer reach a cascade-deleted `R4ScalePreference`.
+            device.r4ScalePreference = nil
             context.delete(device)
             try context.save()
         }
@@ -124,8 +146,26 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func patchScalePreference(_ scaleId: String, _ preference: R4ScalePreference) async throws {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == scaleId })
         if let device = try context.fetch(descriptor).first {
-            device.r4ScalePreference = preference
-            device.r4ScalePreference?.isSynced = false
+            if let existingPreference = device.r4ScalePreference {
+                // UPDATE existing object instead of deleting/recreating to prevent UI crashes
+                existingPreference.displayName = preference.displayName
+                existingPreference.displayMetrics = preference.displayMetrics
+                existingPreference.shouldFactoryReset = preference.shouldFactoryReset
+                existingPreference.shouldMeasureImpedance = preference.shouldMeasureImpedance
+                existingPreference.shouldMeasurePulse = preference.shouldMeasurePulse
+                existingPreference.timeFormat = preference.timeFormat
+                existingPreference.tzOffset = preference.tzOffset
+                existingPreference.wifiFotaScheduleTime = preference.wifiFotaScheduleTime
+                existingPreference.updatedAt = preference.updatedAt
+                existingPreference.isSynced = false
+            } else {
+                // No existing preference, insert the new one
+                preference.id = scaleId
+                preference.isSynced = false
+                device.r4ScalePreference = preference
+                context.insert(preference)
+            }
+
             device.isSynced = false
             try context.save()
         }
@@ -149,6 +189,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
 
         for device in syncedDevices {
             context.delete(device)
+            try context.save()
         }
 
         // Insert server devices, but skip any that conflict with unsynced local devices
@@ -168,11 +209,18 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             // Only insert server device if it doesn't conflict with unsynced local changes
             if !hasUnsyncedConflict {
                 serverDevice.isSynced = true // Mark as synced since they come from server
+                serverDevice.hasServerID = true
+                if let pref = serverDevice.r4ScalePreference {
+                    pref.id = serverDevice.id
+                    serverDevice.r4ScalePreference = pref
+                    pref.isSynced = true
+                }
                 context.insert(serverDevice)
+                try context.save()
             }
         }
 
-        try context.save()
+
     }
 
     /// Legacy method for backward compatibility - replaces all devices without preserving unsynced.

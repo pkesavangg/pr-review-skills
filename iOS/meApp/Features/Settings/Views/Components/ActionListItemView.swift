@@ -47,11 +47,15 @@ struct ActionListItemView: View {
                     // Chevron based on type
                     chevronView()
                 }
+                // Force layout refresh whenever the badge visibility changes to
+                // avoid retaining previous leading spacing after the dot hides.
+                .id(config.showDot)
                 Spacer()
             }
             .frame(height: rowHeight)
         }
-        .disabled(config.toggleBinding != nil && config.onTap == nil)
+        .disabled(config.isDisabled || (config.toggleBinding != nil && config.onTap == nil))
+        .opacity(config.isDisabled ? 0.5 : 1.0)
     }
     
     @ViewBuilder
@@ -63,6 +67,11 @@ struct ActionListItemView: View {
         case .upDown:
             AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconSecondary)
+        case .loading:
+            ProgressView()
+                .progressViewStyle(.circular)
+                .frame(width: 22, height: 22)
+                .tint(theme.statusIconSecondary)
         case .none:
             EmptyView()
         }

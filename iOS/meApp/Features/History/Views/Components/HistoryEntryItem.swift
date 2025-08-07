@@ -19,6 +19,7 @@ struct HistoryEntryItem: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (Entry, BodyMetric) -> Void
+    var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
 
     // MARK: - Computed Properties
 
@@ -71,63 +72,46 @@ struct HistoryEntryItem: View {
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
 
-                // Expansion chevron
-                AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
-                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
-                    .padding(.leading, .spacingSM)
-                    .animation(.easeOut, value: isExpanded)
+                // Expansion chevron (only if metrics exist)
+                if !entry.metricItems.isEmpty {
+                    AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
+                        .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                        .padding(.leading, .spacingSM)
+                        .animation(.easeOut, value: isExpanded)
+                }
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
+            .background(backgroundColor)
+            // Swipeable delete action
+            .swipeableActions(
+                buttons: [
+                    SwipeButton(
+                        tint: theme.textError,
+                        action: { onDelete() },
+                        label: {
+                            AnyView(
+                                Text(CommonStrings.delete)
+                                .fontOpenSans(.button1)
+                                .fontWeight(.bold)
+                                .foregroundColor(theme.textInverse)
+                            )
+                        }
+                    )
+                ],
+                itemID: entry.id,
+                openItemID: openItemID
+            )
+
 
             Divider()
                 .foregroundColor(theme.actionPrimary)
             // Expanded metrics section
-            if isExpanded {
+            if isExpanded, !entry.metricItems.isEmpty {
                 VStack() {
-
-                    // Build array of available metrics
-                    let metricItems: [(value: Int, metric: BodyMetric)] = {
-                        var arr: [(Int, BodyMetric)] = []
-                        if let bmi = entry.scaleEntry?.bmi {
-                            arr.append((bmi, .bmi))
-                        }
-                        if let bodyFat = entry.scaleEntry?.bodyFat, bodyFat != 0 {
-                            arr.append((bodyFat, .bodyFat))
-                        }
-                        if let muscleMass = entry.scaleEntry?.muscleMass, muscleMass != 0 {
-                            arr.append((muscleMass, .muscleMass))
-                        }
-                        if let water = entry.scaleEntry?.water, water != 0 {
-                            arr.append((water, .water))
-                        }
-                        if let heartRate = entry.scaleEntryMetric?.pulse, heartRate != 0 {
-                            arr.append((heartRate, .pulse))
-                        }
-                        if let boneMass = entry.scaleEntryMetric?.boneMass, boneMass != 0 {
-                            arr.append((boneMass, .boneMass))
-                        }
-                        if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel, visceralFat != 0 {
-                            arr.append((visceralFat, .visceralFatLevel))
-                        }
-                        if let subcutaneousFat = entry.scaleEntryMetric?.subcutaneousFatPercent, subcutaneousFat != 0 {
-                            arr.append((subcutaneousFat, .subcutaneousFatPercent))
-                        }
-                        if let skeletalMuscles = entry.scaleEntryMetric?.skeletalMusclePercent, skeletalMuscles != 0 {
-                            arr.append((skeletalMuscles, .skeletalMusclePercent))
-                        }
-                        if let bmr = entry.scaleEntryMetric?.bmr, bmr != 0 {
-                            arr.append((bmr, .bmr))
-                        }
-                        if let metabolicAge = entry.scaleEntryMetric?.metabolicAge, metabolicAge != 0 {
-                            arr.append((metabolicAge, .metabolicAge))
-                        }
-                        return arr
-                    }()
-
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(metricItems.enumerated()), id: \.0) { index, item in
+                        ForEach(Array(entry.metricItems.enumerated()), id: \ .0) { index, item in
                             HistoryMetricItem(
                                 metric: BodyMetrics.config[item.metric]!,
                                 value: item.value,
@@ -139,20 +123,15 @@ struct HistoryEntryItem: View {
                 }
             }
         }
-        .background(backgroundColor)
+
         .animation(.easeOut, value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            onTap()
-        }
-        // Swipe to delete
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if !entry.metricItems.isEmpty {
+                onTap()
             }
         }
+
     }
 }
 
@@ -190,13 +169,15 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             unit: "kg"
         )
 
+        @State var openItemID: UUID? = nil
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
                 entry: entry,
                 isExpanded: false,
                 onTap: {},
                 onDelete: {},
-                onMetricTap: { _, _ in }
+                onMetricTap: { _, _ in },
+                openItemID: .constant(nil)
             )
 
             HistoryEntryItem(
@@ -204,7 +185,8 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 isExpanded: true,
                 onTap: {},
                 onDelete: {},
-                onMetricTap: { _, _ in }
+                onMetricTap: { _, _ in },
+                openItemID: .constant(nil)
             )
         }
         .padding()

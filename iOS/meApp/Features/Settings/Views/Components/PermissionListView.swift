@@ -4,12 +4,6 @@ import SwiftUI
 /// A standalone view that renders the grouped list of application permission states.
 /// It mirrors the layout previously embedded directly inside `AppPermissionsScreen`.
 struct PermissionListView: View {
-    // MARK: Enumerations
-    /// Distinct permission groups that can be rendered by the list.
-    enum Category: CaseIterable, Hashable {
-        case bluetooth, location, camera, internet, notifications
-    }
-    
     /// High-level scale setup types that determine which permissions are required.
     /// – `appSync`  ➜ needs camera access only.
     /// – `btWifi`   ➜ needs Bluetooth access only (BT-WiFi scale).
@@ -23,15 +17,15 @@ struct PermissionListView: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: PermissionsListViewModel = PermissionsListViewModel()
     // MARK: Configuration
-    private let categories: Set<Category>
-    private let requiredCategories: Set<Category>
+    private let categories: Set<PermissionCategory>
+    private let requiredCategories: Set<PermissionCategory>
     private let headerDescription: String?
     private var setupType: SetupType = .all
     
     /// Generic initialiser – retains the previous behaviour where caller explicitly specifies the permission groups.
     init(
-        categories: Set<Category> = Set(Category.allCases.filter { $0 != .internet }),
-        requiredCategories: Set<Category> = [.bluetooth, .location]
+        categories: Set<PermissionCategory> = Set(PermissionCategory.allCases.filter { $0 != .internet }),
+        requiredCategories: Set<PermissionCategory> = [.bluetooth, .location]
     ) {
         self.categories = categories
         self.requiredCategories = requiredCategories
@@ -45,11 +39,11 @@ struct PermissionListView: View {
     /// - Parameter setupType: The high-level scale setup variant.
     init(setupType: SetupType) {
         // Determine configuration based on setup type.
-        let config: (Set<Category>, String)
+        let config: (Set<PermissionCategory>, String)
         self.setupType = setupType
         switch setupType {
         case .all:
-            config = (Set(Category.allCases), "") // no header; will be ignored via nil below
+            config = (Set(PermissionCategory.allCases), "") // no header; will be ignored via nil below
         case .appSync:
             config = ([.camera], PermissionsStrings.cameraPermissionDescription)
         case .btWifi:
@@ -122,13 +116,13 @@ struct PermissionListView: View {
         // For Wi-Fi–only setup flows add an extra Wi-Fi status row
         if setupType == .wifi {
             let wifiRowTitle: String
-            if let ssid = viewModel.wifiNetworkName, !ssid.isEmpty {
+            let ssid = viewModel.wifiNetworkName ?? ""
+            if !ssid.isEmpty {
                 wifiRowTitle = "Connected to \(ssid)"
             } else {
                 wifiRowTitle = PermissionsStrings.wifiEnablePrompt
             }
-            
-            rows.append((wifiRowTitle, viewModel.wifiNetworkName != nil, .wifiSwitch))
+            rows.append((wifiRowTitle, viewModel.wifiSwitchEnabled && !ssid.isEmpty, .wifiSwitch))
         }
         
         return sectionView(
@@ -221,7 +215,7 @@ struct PermissionListView: View {
     }
     
     // MARK: Private helpers
-    private func isRequired(_ category: Category) -> Bool {
+    private func isRequired(_ category: PermissionCategory) -> Bool {
         requiredCategories.contains(category)
     }
     
@@ -234,7 +228,7 @@ struct PermissionListView: View {
     @ViewBuilder
     private func sectionView(title: String,
                              rows: [(String, Bool, PermissionType)],
-                             category: Category) -> some View {
+                             category: PermissionCategory) -> some View {
         VStack(alignment: .leading) {
             sectionHeader(title)
             // Card container

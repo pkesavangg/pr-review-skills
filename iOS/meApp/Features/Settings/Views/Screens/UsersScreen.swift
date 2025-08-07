@@ -10,87 +10,160 @@ import SwiftUI
 struct UsersScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
+    @StateObject private var userNameForm = UserNameForm()
+    @StateObject private var viewModel: UsersViewModel
+    @State private var focusedField: FocusField?
+    let scale: Device
+    let usersList: [DeviceUser]
     let lang = UsersViewStrings.self
-
+    let loaderLang = LoaderStrings.self
+    
+    init(scale: Device, usersList: [DeviceUser]) {
+        self.scale = scale
+        self.usersList = usersList
+        _viewModel = StateObject(wrappedValue: UsersViewModel(scale: scale, initialUsersList: usersList))
+    }
+    
+    var canDisableSaveButton: Bool {
+        viewModel.isLoadingUsers ||
+        !userNameForm.displayName.isValid ||
+        userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (viewModel.currentDeviceUser?.name ?? "")
+    }
+    
     var body: some View {
-        VStack(alignment: .center, spacing: 0) {
-            NavbarHeaderView(
-                title: lang.usersTitle,
-                leadingContent: { Image(AppAssets.chevronLeft) },
-                trailingContent: {
-                    AnyView(ButtonView(
-                        text: CommonStrings.save.uppercased(),
-                        type: .inlineTextPrimary,
-                        size: .small,
-                        isDisabled: false,
-                        action: { scaleStore.saveUsers() }
-                    ))
-                },
-                onLeadingTap: { router.navigateBack() },
-                canShowBorder: true
-            )
-            
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: .spacingMD) {
-                    ListItemView(
-                        title: scaleStore.currentUser,
-                        subtitleTop: lang.userNameLabel,
-                        trailing: Button(action: { scaleStore.deleteCurrentUser() }) {
-                            Image(AppAssets.closeCircle)
-                                .foregroundColor(theme.actionPrimary)
-                        },
-                        rowHeight: 56,
-                        onTap: { scaleStore.deleteCurrentUser() }
-                    )
-                    .cornerRadius(.spacingXS)
-                    .padding(.top, .spacingMD)
-                    
-                    VStack(alignment: .leading){
+        ZStack {
+            VStack(alignment: .center, spacing: 0) {
+                NavbarHeaderView(
+                    title: lang.usersTitle,
+                    leadingContent: { Image(AppAssets.chevronLeft) },
+                    trailingContent: {
+                        AnyView(ButtonView(
+                            text: CommonStrings.save.uppercased(),
+                            type: .inlineTextPrimary,
+                            size: .small,
+                            isDisabled: canDisableSaveButton,
+                            action: {
+                                saveName()
+                            }
+                        ))
+                    },
+                    onLeadingTap: { router.navigateBack() },
+                    canShowBorder: true
+                )
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: .spacingMD) {
+                        // Current User section
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: lang.userNameLabel,
+                                placeholder: viewModel.currentDeviceUser?.name ?? lang.enterUserName,
+                                inputType: .text,
+                                errorMessage: userNameForm.getError(for: userNameForm.displayName),
+                                focusField: .userName
+                            ),
+                            value: Binding(
+                                get: { userNameForm.displayName.value },
+                                set: { userNameForm.displayName.value = $0 }
+                            ),
+                            focusedField: $focusedField
+                        ) {
+                            saveName()
+                        }
+                        .padding(.top, .spacingLG)
+                        
                         // Other Users section
-                        Text(lang.otherUsersSection)
-                            .fontOpenSans(.heading5)
-                            .fontWeight(.bold)
-                            .foregroundColor(theme.textHeading)
-                        
-                        Text(lang.maxUsers)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                            .padding(.bottom, .radiusXS)
-                        
-                        VStack(spacing: 2) {
-                            ForEach(scaleStore.otherUsers.indices, id: \.self) { idx in
-                                ListItemView(
-                                    title: scaleStore.otherUsers[idx],
-                                    subtitle: lang.lastActive,
-                                    trailing: Button(action: { scaleStore.deleteOtherUser(at: idx) }) {
-                                        Image(AppAssets.trash)
-                                            .foregroundColor(theme.actionPrimary)
-                                    },
-                                    rowHeight: 56,
-                                    onTap: { scaleStore.deleteOtherUser(at: idx) },
-                                    verticalPadding: .spacingXS
+                        VStack(alignment: .leading, spacing: .spacingXS) {
+                            if viewModel.isLoadingUsers {
+                                ProgressView()
+                                    .scaleEffect(1.5)
+                                    .padding(.vertical, 50)
+                                    .frame(maxWidth: .infinity)
+                            } else if !viewModel.otherDeviceUsersList.isEmpty {
+                                Text(lang.otherUsersSection)
+                                    .fontOpenSans(.heading5)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textHeading)
+                                
+                                Text(lang.maxUsers)
+                                    .fontOpenSans(.subHeading2)
+                                    .foregroundColor(theme.textSubheading)
+                                
+                                DeviceUserListView(
+                                    users: viewModel.otherDeviceUsersList,
+                                    onDeleteUser: { user in
+                                        viewModel.showDeleteUserAlert(for: user) {
+                                            // Alert dismissed, no additional action needed
+                                        }
+                                    }
                                 )
-                                if idx < scaleStore.otherUsers.count - 1 {
-                                    Divider()
-                                        .background(theme.statusUtilityPrimary)
-                                }
                             }
                         }
-                        .background(theme.backgroundPrimary)
-                        .cornerRadius(.radiusXS)
                     }
+                    .padding(.horizontal, .spacingSM)
+                    .frame(maxWidth: .infinity, alignment: .top)
                 }
-                .padding(.horizontal, .spacingSM)
-                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(theme.backgroundSecondary.ignoresSafeArea())
+                .navigationBarBackButtonHidden(true)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
-            .background(theme.backgroundSecondary.ignoresSafeArea())
-            .navigationBarBackButtonHidden(true)
+        }
+        .onAppear {
+            Task {
+                await MainActor.run {
+                    let currentName = viewModel.currentDeviceUser?.name ?? ""
+                    userNameForm.setDisplayName(currentName)
+                    let scaleUsers = viewModel.otherDeviceUsersList.map { deviceUser in
+                        ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                    }
+                    userNameForm.updateUserList(scaleUsers)
+                }
+            }
+        }
+    }
+    
+    private func formatLastActiveTimestamp(_ timestamp: Int) -> String {
+        return DateTimeTools.getFormattedDateFromTimestamp(Int64(timestamp)).toLowerCase()
+    }
+    
+    private func saveName() {
+        Task {
+            if !canDisableSaveButton {
+                let trimmedName = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                await viewModel.saveUsers(newName: trimmedName) {
+                    router.navigateBack()
+                }
+            }
         }
     }
 }
 
 #Preview{
-    UsersScreen()
+    UsersScreen(
+        scale: Device(
+            id: "preview-scale",
+            accountId: "preview-account",
+            nickname: "Preview Scale",
+            sku: "0412",
+            mac: "00:00:00:00:00:00",
+            password: 3692707582,
+            deviceName: "Preview Scale",
+            deviceType: "bluetooth",
+            broadcastId: 123456,
+            broadcastIdString: "123456",
+            userNumber: "1",
+            protocolType: "R4",
+            createdAt: "2024-01-01T00:00:00Z",
+            isConnected: true,
+            wifiMac: nil,
+            token: "preview-token",
+            bathScale: nil,
+            r4ScalePreference: nil,
+            metaData: nil
+        ),
+        usersList: [
+            DeviceUser(name: "John Doe", token: "token1", lastActive: 1234567890, isBodyMetricsEnabled: true),
+            DeviceUser(name: "Jane Smith", token: "token2", lastActive: 1234567800, isBodyMetricsEnabled: false)
+        ]
+    )
 }

@@ -16,7 +16,7 @@ final class HistoryStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
     @Injector private var notificationService: NotificationHelperService
-
+    @Injector private var logger: LoggerService
 
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -37,17 +37,28 @@ final class HistoryStore: ObservableObject {
     @Published var isEmptyState: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
+    // MARK: - Language Strings
+    private let alertLang = AlertStrings.self
+    private let loaderLang = LoaderStrings.self
+    private let toastLang = ToastStrings.self
+    
+    /// Logger tag for this store
+    private let tag = "HistoryStore"
 
     // MARK: - Init ------------------------------------------------------
 
     init() {
-        // Refresh only the affected month when a new entry is stored.
+        // Refresh only the affected month when a new entry is stored or deleted.
+        let refreshMonthForEntry: (Entry) -> Void = { [weak self] entry in
+            guard let self = self else { return }
+            let monthKey = String(entry.entryTimestamp.prefix(7))
+            Task { await self.refreshMonth(monthKey) }
+        }
         entryService.entrySaved
-            .sink { [weak self] entry in
-                guard let self = self else { return }
-                let monthKey = String(entry.entryTimestamp.prefix(7))
-                Task { await self.refreshMonth(monthKey) }
-            }
+            .sink(receiveValue: refreshMonthForEntry)
+            .store(in: &cancellables)
+        entryService.entryDeleted
+            .sink(receiveValue: refreshMonthForEntry)
             .store(in: &cancellables)
     }
 
@@ -85,8 +96,39 @@ final class HistoryStore: ObservableObject {
 
     func deleteEntry(_ entry: Entry) {
         Task { [weak self] in
-            await self?.deleteEntryInternal(entry)
+            guard let self = self else { return }
+            // Show confirmation alert first
+            let loader = LoaderModel(text: LoaderStrings.deletingEntry)
+            self.notificationService.showLoader(loader)
+            await self.deleteEntryInternal(entry)
+            await self.refreshSelectedMonth()
+            self.notificationService.dismissLoader()
         }
+    }
+
+    /// Presents a delete entry confirmation alert.
+    /// - Parameters:
+    ///   - entry: The entry to be deleted.
+    ///   - onConfirm: Executed when user confirms deletion.
+    ///   - onCancel:  Executed when user cancels (optional).
+    func showDeleteEntryAlert(entry: Entry, onCancel: (() -> Void)? = nil) {
+        let alert = AlertModel(
+          title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+              AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                  Task {
+                    self.deleteEntry(entry)
+                    onCancel?()
+                  }
+
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     // MARK: - Manual Refresh -------------------------------------------------
@@ -100,6 +142,22 @@ final class HistoryStore: ObservableObject {
     func refreshAllEntries() async {
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal()
+    }
+    
+    // MARK: - Handle export
+    func handleExport() {
+        let alert = AlertModel(
+            title: alertLang.CsvExportAlert.title,
+            message: alertLang.CsvExportAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
+                    self.exportData()
+                },
+                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
 
@@ -162,6 +220,28 @@ final class HistoryStore: ObservableObject {
             try await entryService.deleteEntry(entry)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+    
+    // MARK: - Export Data
+    private func exportData() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
+            do {
+                try await entryService.exportCSV()
+                notificationService.showToast(ToastModel(message: toastLang.csvExported))
+            } catch {
+                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    break
+                default:
+                    notificationService.showToast(ToastModel(
+                        message: toastLang.csvExportError)
+                    )
+                }
+            }
+            notificationService.dismissLoader()
         }
     }
     

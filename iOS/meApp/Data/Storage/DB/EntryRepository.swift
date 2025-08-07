@@ -46,7 +46,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter id: The UUID string of the entry to delete.
     func deleteEntry(byId id: String) async throws {
         if let entry = try await fetchEntry(byId: id) {
-             context.delete(entry)
+            context.delete(entry)
             try context.save()
         }
     }
@@ -55,7 +55,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     func deleteAllEntries() async throws {
         let all = try await fetchAllEntries()
         for entry in all {
-            entry.operationType = OperationType.delete.rawValue
+            context.delete(entry)
         }
         try context.save()
     }

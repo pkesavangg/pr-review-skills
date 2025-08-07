@@ -17,6 +17,7 @@ enum HTTPError: Error, LocalizedError {
     case forbidden
     case serverError
     case statusCode(Int)
+    case apiError(message: String, code: Int)
     case unauthorized
     case notFound
     case noInternet
@@ -39,6 +40,8 @@ enum HTTPError: Error, LocalizedError {
             return "Failed to decode response"
         case .badRequest:
             return "Bad request"
+        case .apiError(let message, _):
+            return message
         case .statusCode(let code):
             return "Unknown error occurred \(code)"
         case .noInternet:

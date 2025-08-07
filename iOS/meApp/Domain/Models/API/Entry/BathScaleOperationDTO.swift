@@ -83,4 +83,28 @@ extension BathScaleOperationDTO {
             weight: self.weight
         )
     }
+
+    /// Initialize from BathScaleWeightSummary
+    init(from summary: BathScaleWeightSummary) {
+        self.accountId = summary.accountId
+        self.bmr = summary.bmr
+        self.bmi = summary.bmi
+        self.bodyFat = summary.bodyFat
+        self.boneMass = summary.boneMass
+        self.entryTimestamp = summary.entryTimestamp
+        self.impedance = summary.impedance
+        self.metabolicAge = summary.metabolicAge
+        self.muscleMass = summary.muscleMass
+        self.operationType = nil
+        self.proteinPercent = summary.proteinPercent
+        self.pulse = summary.pulse
+        self.serverTimestamp = nil
+        self.skeletalMusclePercent = summary.skeletalMusclePercent
+        self.source = nil
+        self.subcutaneousFatPercent = summary.subcutaneousFatPercent
+        self.unit = nil
+        self.visceralFatLevel = summary.visceralFatLevel
+        self.water = summary.water
+        self.weight = summary.weight
+    }
 }

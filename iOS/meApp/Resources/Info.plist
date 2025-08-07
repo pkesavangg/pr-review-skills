@@ -30,10 +30,14 @@
 	<string>Weight Gurus uses Location to pair with Wi-Fi scales.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Weight Gurus uses camera and photo access to sync with AppSync scales.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Weight Gurus needs local network access to connect and configure Wi-Fi scales on your network.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Weight Gurus uses Local Network to pair with Wi-Fi scales.</string>
 </dict>
 </plist>

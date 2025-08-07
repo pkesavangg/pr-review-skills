@@ -14,6 +14,7 @@ struct DashboardStrings {
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
+    static let switchTo12Metrics = "Switch to 12 Metrics"
 
     // Metrics labels, units, preLabels
     static let weight = "weight"
@@ -54,10 +55,17 @@ struct DashboardStrings {
     static let plus  = "+"
     static let minus  = "-"
     static let placeholder = "--"
+    static let goalReached = "goal reached!"
     static func loseGoalWeightLabel(_ unit: String) -> String{
         return "\(unit) to goal"
     }
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
            return "\(unit) to \(goalWeight) \(unit) goal weight"
-       }
+    }
+    
+    // Empty state messages
+    static let noEntriesMessage = "To collect your first entry, connect a scale or add a manual entry."
+    static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
+        return "You haven't added any entries this \(timePeriod)."
+    }
 }

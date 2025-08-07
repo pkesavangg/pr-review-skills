@@ -52,7 +52,7 @@ struct BottomTabBarView: View {
                             TabBarItemView(
                                 tab: tab,
                                 isSelected: viewModel.selectedTab == tab,
-                                showSettingsBadge: viewModel.showSettingsBadge
+                                showSettingsBadge: viewModel.canShowFeedNotificationBadge
                             )
                         }
                         .padding(.leading, index == 0 ? .spacingSM : 0)
@@ -69,13 +69,58 @@ struct BottomTabBarView: View {
         .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
+        // Half-sheet shown when a new scale is discovered via Bluetooth
+        .sheet(item: $viewModel.discoveredScale) { scale in
+            ScaleDiscoveredSheetView(
+                device: scale,
+                discoveryEvent: viewModel.discoveryEvent,
+                onClose: {
+                    viewModel.dismissDiscoveredScaleSheet()
+                },
+                onConnect: {
+                    viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                }
+            )
+            .deviceDiscoverSheetStyle()
+        }
+        // Setup flow presentation
+        .sheet(item: $viewModel.setupPayload, onDismiss: {
+            viewModel.bluetoothService.isSetupInProgress = false
+        }) { payload in
+            // Determine setup type from the scale item info
+            let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
+            switch setupType {
+            case .lcbt:
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale,
+                                   discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            case .btWifiR4:
+                BtWifiScaleSetupScreen(sku: payload.sku,
+                                       discoveredScale: payload.scale,
+                                       discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            default:
+                // Fallback to A6 setup for other types
+                A6ScaleSetupScreen(sku: payload.sku,
+                                   discoveredScale: payload.scale,
+                                   discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
+            }
+        }
     }
-
+    
     // MARK: - Helpers
     private func handleTabSelection(_ tab: BottomTab) {
         guard viewModel.selectedTab != tab else { return }
-
+        
         Task {
+            // Check camera permission for AppSync tab
+            if tab == .appsync {
+                let permissionState = await viewModel.handleCameraPermission()
+                guard permissionState == .ENABLED else { return }
+            }
+            
             // Check if there is a deactivation handler for the selected tab
             // If there is, call it and await the result
             // If it returns true, switch to the new tab

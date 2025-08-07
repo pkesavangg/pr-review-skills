@@ -57,3 +57,9 @@ enum Month: Int, CaseIterable {
         Month(rawValue: month)?.initial ?? ""
     }
 }
+
+// MARK: - Supporting Types
+enum PeriodType {
+    case day
+    case month
+}

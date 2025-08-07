@@ -143,6 +143,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    /// Deletes all accounts locally.
+    func deleteAllAccounts() async throws {
+        do {
+            try await localRepo.deleteAllAccounts()
+            try await updatePublishedState()
+        } catch {
+            throw error // Handle any errors that occur during deletion
+        }
+    }
+    
     // MARK: - Account Switching
     /// Switches to a different account by setting it as the active account.
     func switchAccount(to account: Account) async throws {
@@ -216,6 +226,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    @discardableResult
     func createGoal(_ goal: Goal) async throws -> Account {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
@@ -234,8 +245,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                return localAccount
+            } else {
+                throw error
             }
-            throw error
         }
     }
     
@@ -600,6 +613,22 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                !isSynced {
                 try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
+            
+            // Handle Goal Settings
+            if let goalType = account.goalSettings?.goalType,
+               let initialWeight = account.goalSettings?.initialWeight,
+               let goalWeight = account.goalSettings?.goalWeight,
+               account.goalSettings?.isSynced == false {
+                let goal = Goal(
+                    type: goalType,
+                    goalWeight: Int(goalWeight),
+                    initialWeight: Int(initialWeight),
+                    goalType: goalType
+                )
+                try await createGoal(goal)
+            }
+        
+            
             // Handle Integration Settings
             if let integrationSettings = account.integrationSettings,
                !isSynced {
@@ -747,6 +776,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
+                localAccount.weightlessSettings?.isWeightlessOn = isWeightlessOn
+                localAccount.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
+                localAccount.weightlessSettings?.weightlessWeight = isWeightlessOn ? weightlessWeight : nil
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount
@@ -789,7 +821,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
-        activeAccount = allAccounts.first(where: { $0.isActiveAccount == true})
+        let nextActive = allAccounts.first { $0.isActiveAccount == true }
+        // Only publish when the active account actually changes to prevent unnecessary Combine emissions.
+        if activeAccount?.accountId != nextActive?.accountId {
+            activeAccount = nextActive
+        }
     }
     
     // MARK: - Private Helpers
@@ -859,5 +895,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         
         // Attempt to refresh published state; propagate any errors to the caller
         try await updatePublishedState()
+    }
+    
+    deinit {
+      cancellables.forEach { $0.cancel() }
+      cancellables.removeAll()
     }
 }

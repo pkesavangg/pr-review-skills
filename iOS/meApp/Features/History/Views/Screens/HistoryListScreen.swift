@@ -11,29 +11,51 @@ import SwiftUI
 /// Uses `HistoryStore` for state and `MonthSummaryItem` for each row.
 struct HistoryListScreen: View {
     @Environment(\.appTheme) private var theme
+    @StateObject private var router = Router<HistoryRoute>()
     @StateObject private var store = HistoryStore()
-    @State private var selectedMonth: HistoryMonth?
-
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     var body: some View {
-        VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(
-                title: HistoryListStrings.title,
-                canShowBorder: true
-            )
-            .background(theme.backgroundPrimary)
+      RoutingView(stack: $router.stack) {
+          VStack(spacing: 0) {
+              NavbarHeaderView<EmptyView, _>(
+                  title: HistoryListStrings.title,
+                  trailingContent: {
+                      Group {
+                          if !store.isEmptyState {
+                              Button {
+                                  store.handleExport()
+                              } label: {
+                                  AppIconView(icon: AppAssets.export)
+                                      .foregroundColor(theme.statusIconPrimary)
+                                      .frame(width: 24, height: 24)
+                              }
+                          } else {
+                              EmptyView()
+                          }
+                      }
+                  },
+                  canShowBorder: true
+              )
+              .background(theme.backgroundPrimary)
 
-            content
-                .background(theme.backgroundSecondary)
-                .edgesIgnoringSafeArea(.bottom)
-        }
-        .background(theme.backgroundSecondary)
-        .onAppear {
-            store.loadMonths()
-        }
-        .sheet(item: $selectedMonth) { month in
-            HistoryMonthListScreen(month: month)
+              content
+                  .background(theme.backgroundSecondary)
+                  .edgesIgnoringSafeArea(.bottom)
+          }
+          .background(theme.backgroundSecondary)
+          .onAppear {
+              store.loadMonths()
+          }
+          // Re-evaluate modal presentation whenever the selected tab changes.
+          .onChange(of: tabViewModel.selectedTab) {
+              if tabViewModel.selectedTab == .history {
+                  store.loadMonths()
+              }
+          }
         }
         .environmentObject(Theme.shared)
+        .environmentObject(router)
+        .environmentObject(store)
     }
 
     @ViewBuilder
@@ -41,7 +63,8 @@ struct HistoryListScreen: View {
        if store.isEmptyState {
             NoEntryView(
               onButtonTap: {
-                // TODO: Navigate to Add Scale Screen
+                  tabViewModel.pendingSettingsNavigation = .addEditScales
+                  tabViewModel.selectedTab = .settings
               }
             )
         } else {
@@ -54,7 +77,7 @@ struct HistoryListScreen: View {
                     }
                     .onTapGesture {
                         store.selectMonth(month)
-                        selectedMonth = month
+                        router.navigate(to: .historyMonthList(month: month))
                     }
                     .background(theme.backgroundSecondary)
                 }

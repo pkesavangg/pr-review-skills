@@ -10,11 +10,18 @@ import SwiftUI
 struct DisplayMetricsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @StateObject private var scaleStore = ScaleStore()
-    @State private var isWeightOnlyModeOn: Bool = true
-    @State private var isHeartRateOn: Bool = true
+    @StateObject private var viewModel: DisplayMetricsViewModel
     let lang = ScaleModesStrings.self
-
+    
+    let scale: Device
+    let isWeighOnlyModeEnabledByOthers: Bool
+    
+    init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
+        self.scale = scale
+        self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
+        _viewModel = StateObject(wrappedValue: DisplayMetricsViewModel(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+    }
+    
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -27,7 +34,10 @@ struct DisplayMetricsScreen: View {
                         size: .small,
                         isDisabled: false,
                         action: {
-                            scaleStore.saveDisplayMetrics()
+                            Task {
+                                await viewModel.saveDisplayMetrics()
+                                router.navigateBack()
+                            }
                         }
                     )
                 },
@@ -37,46 +47,42 @@ struct DisplayMetricsScreen: View {
                 },
                 canShowBorder: true
             )
-
+            
             List {
                 bannerSection()
                 descriptionSection()
                 
-                Section {
-                    ForEach($scaleStore.metrics) { $metric in
-                        let config = BodyMetrics.config[metric.id]!
-                        ToggleListItem(
-                            isOn: $metric.isOn,
-                            text: config.expandedLabel ?? config.label,
-                            icon: config.icon,
-                            isDisabled: metric.isDisabled
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
-                        scaleStore.metrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
-                Section {
-                    ForEach($scaleStore.progressMetrics) { $toggle in
-                        ToggleListItem(
-                            isOn: $toggle.isOn,
-                            text: toggle.label
-                        )
-                        .listRowBackground(theme.backgroundPrimary)
-                        .listRowInsets(EdgeInsets())
-                    }
-                    .onMove { indices, newOffset in
-                        scaleStore.progressMetrics.move(fromOffsets: indices, toOffset: newOffset)
-                    }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-
+                // Body Metrics Section
+                MetricsSectionView(
+                    metrics: Binding(
+                        get: { viewModel.metrics },
+                        set: { viewModel.updateMetrics($0) }
+                    ),
+                    onValueChanged: { viewModel.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
+                        var updatedMetrics = viewModel.metrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        viewModel.updateMetrics(updatedMetrics)
+                        viewModel.updateDisplayMetricsValue()
+                    },
+                    showIcon: true
+                )
+                
+                // Progress Metrics Section
+                MetricsSectionView(
+                    metrics: Binding(
+                        get: { viewModel.progressMetrics },
+                        set: { viewModel.updateProgressMetrics($0) }
+                    ),
+                    onValueChanged: { viewModel.updateDisplayMetricsValue() },
+                    onMove: { indices, newOffset in
+                        var updatedMetrics = viewModel.progressMetrics
+                        updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
+                        viewModel.updateProgressMetrics(updatedMetrics)
+                        viewModel.updateDisplayMetricsValue()
+                    },
+                    showIcon: false
+                )
             }
             .scrollContentBackground(.hidden)
             .listStyle(.insetGrouped)
@@ -86,16 +92,19 @@ struct DisplayMetricsScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .task {
+            await viewModel.loadDisplayMetricsData()
+        }
     }
     
     // MARK: - Sections as Functions
     private func bannerSection() -> some View {
         Section {
-            if scaleStore.showWeightOnlyBanner || scaleStore.showWeightOnlyInfo || scaleStore.showHeartRateBanner {
+            if viewModel.showWeightOnlyBanner || viewModel.showWeightOnlyInfo || viewModel.showHeartRateBanner {
                 VStack(spacing: .spacingSM) {
-                    if scaleStore.showWeightOnlyBanner { weightOnlyBanner() }
-                    if scaleStore.showWeightOnlyInfo { weightOnlyInfo() }
-                    if scaleStore.showHeartRateBanner { heartRateBanner() }
+                    if viewModel.showWeightOnlyBanner { weightOnlyBanner() }
+                    if viewModel.showWeightOnlyInfo { weightOnlyInfo() }
+                    if viewModel.showHeartRateBanner { heartRateBanner() }
                 }
             }
         }
@@ -114,6 +123,8 @@ struct DisplayMetricsScreen: View {
         .listRowInsets(EdgeInsets())
     }
     
+    // MARK: - Banner Components
+    
     private func weightOnlyBanner() -> some View {
         let commonLang = CommonStrings.self
         return NoteBox {
@@ -121,50 +132,67 @@ struct DisplayMetricsScreen: View {
                 StatusRowView(
                     iconName: AppAssets.weightOnlyMode,
                     label: lang.weightOnlyLabel,
-                    statusText: isWeightOnlyModeOn ? commonLang.on.uppercased() : commonLang.off.uppercased()
+                    statusText: viewModel.isWeightOnlyModeOn ? commonLang.on.uppercased() : commonLang.off.uppercased()
                 )
                 .fontWeight(.regular)
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateWeightOnlyMode()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+                })
             }
         }
     }
-
+    
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 HStack() {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
-
+                    
                     Text(lang.weightOnlyBannerTitle)
                         .fontWeight(.bold)
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textHeading)
                 }
-
+                
                 Text(lang.weightOnlyBannerDescription)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
             }
         }
     }
-
+    
     private func heartRateBanner() -> some View {
         let commonLang = CommonStrings.self
-        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
-
+        let iconAndLabelColor = viewModel.isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        
         return NoteBox {
             HStack(spacing: .spacingSM) {
                 StatusRowView(
                     iconName: AppAssets.heartIcon,
                     label: commonLang.heartRateLabel,
-                    statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
+                    statusText: viewModel.isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
                     foregroundColor: iconAndLabelColor
                 )
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {scaleStore.updateHeartRate()})
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+                })
             }
         }
     }
+}
+
+
+#Preview {
+    DisplayMetricsScreen(scale: Device(
+        id: "preview-scale-id",
+        accountId: "preview-account",
+        sku: "0412",
+        deviceName: "Preview Scale",
+        deviceType: "scale"
+    ))
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
 }

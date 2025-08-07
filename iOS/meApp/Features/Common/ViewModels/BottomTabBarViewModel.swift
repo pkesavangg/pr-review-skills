@@ -9,12 +9,21 @@
 import Foundation
 import SwiftUI
 import Combine
+import GGBluetoothSwiftPackage
 
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
+    // Inject Bluetooth service to listen for new scale discovery events
+    @Injector var bluetoothService: BluetoothService
+    // Inject GoalAlertService to handle goal alert navigation
+    @Injector var goalAlertService: GoalAlertService
+    // Publisher-driven sheet presentation for newly discovered scales
+    @Published var discoveredScale: Device? = nil
+    /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
+    @Published var discoveryEvent: DeviceDiscoveryEvent? = nil
     @Published var selectedTab: BottomTab = .dash
-    @Published var showSettingsBadge: Bool = false
+    @Published var canShowFeedNotificationBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
     /// Holds the body-composition metrics captured by AppSync when the user taps **Edit** on the confirmation card.
@@ -23,23 +32,66 @@ class BottomTabBarViewModel: ObservableObject {
     /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
     @Published var pendingSettingsNavigation: SettingsRoute? = nil
+    @Published var setupPayload: ScaleDiscoverSheetInfo? = nil
     
     // MARK: - Dependencies
     @Injector private var healthKitService: HealthKitService
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
+    // New dependencies for Set Goal Card logic
+    @Injector private var entryService: EntryService
+    @Injector private var accountService: AccountService
     @Injector private var scaleService: ScaleService
+    // New dependency to evaluate permission status
+    @Injector private var permissionsService: PermissionsService
+    @Injector private var pushNotificationService: PushNotificationService
     
+    // MARK: - Permission Disabled Alert Tracking
+    /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
+    private var hasShownPermissionAlert: Bool = false
+    /// Key used to store whether the *notification-only* permissions alert has been shown across launches.
+    private let notificationOnlyAlertKey = "notificationOnlyAlertShown"
+    /// Indicates whether the *notification-only* permissions alert has already been shown (persisted via `KvStorageService`).
+    // MARK: - Goal Card Tracking
+    /// Keeps track if the Set a Goal card has been shown in this app session.
+    private var hasShownSetGoalCardThisSession: Bool = false
+    private var notificationOnlyAlertShown: Bool {
+        get { (KvStorageService.shared.getValue(forKey: notificationOnlyAlertKey) as? Bool) ?? false }
+        set { KvStorageService.shared.setValue(newValue, forKey: notificationOnlyAlertKey) }
+    }
+    
+    private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
     
     init() {
-        self.showSettingsBadge = feedService.getUnreadFeedCount() > 0
-        // TODO: Update the app sync display based on the app sync scale defined in the paired scale list
+        self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
+        // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
+        bluetoothService.deviceDiscoveredPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                if self.shouldShowDiscoveredScale(for: event) {
+                    self.discoveredScale = event.device
+                    self.discoveryEvent = event
+                }
+            }
+            .store(in: &cancellables)
+        
+        bluetoothService.newEntryReceivedPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                if !self.bluetoothService.isSetupInProgress {
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
+                }
+            }
+            .store(in: &cancellables)
         
         // Perform Apple Health integration check on launch
         Task { [weak self] in
             await self?.checkAppleHealthIntegrationStatus()
+            await self?.checkSetGoalCardPrompt()
         }
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list
@@ -50,6 +102,87 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.showAppSync, on: self)
             .store(in: &cancellables)
+        
+        feedService.notificationBadgeUpdated
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.canShowFeedNotificationBadge, on: self)
+            .store(in: &cancellables)
+        
+        // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
+        self.evaluateAndShowPermissionAlert()
+        
+        Task {
+            let notificationsRequired = permissionsService.requiredCategories.contains(.notifications)
+            if notificationsRequired {
+                await pushNotificationService.setupPushNotifications()
+            } else {
+                await pushNotificationService.updateDeviceInfo()
+            }
+        }
+        
+        // Connect GoalAlertService navigation callback
+        goalAlertService.onNavigateToGoalSetting = { [weak self] in
+            self?.navigateToGoalSetting()
+        }
+    }
+    
+    // MARK: - Permission Disabled Alert Helpers
+    /// Evaluates whether the *Permission Disabled* alert should be shown and presents it if needed.
+    private func evaluateAndShowPermissionAlert() {
+        guard !hasShownPermissionAlert else { return }
+        
+        let required = permissionsService.requiredCategories
+        // Exit early if neither Bluetooth nor Notifications are required.
+        guard required.contains(.bluetooth) || required.contains(.notifications) else { return }
+        
+        // Current permission states
+        let btSwitchState = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) ?? .ENABLED
+        let btAuthState   = permissionsService.getPermissionState(.BLUETOOTH) ?? .ENABLED
+        let notificationState = permissionsService.getPermissionState(.NOTIFICATION) ?? .ENABLED
+        
+        // Determine which categories are disabled
+        let isBluetoothMissing = (required.contains(.bluetooth) && (btSwitchState != .ENABLED || btAuthState != .ENABLED))
+        let isNotificationMissing = (required.contains(.notifications) && notificationState != .ENABLED)
+        
+        // If no permissions are missing, nothing to do.
+        guard isBluetoothMissing || isNotificationMissing else { return }
+        
+        // Check for the *notification-only* case and whether it has already been shown.
+        let isNotificationOnlyMissing = isNotificationMissing && !isBluetoothMissing
+        if isNotificationOnlyMissing && notificationOnlyAlertShown {
+            return // Alert already shown for this scenario – skip.
+        }
+        
+        showPermissionDisabledAlert(isNotificationOnlyMissing: isNotificationOnlyMissing)
+    }
+    
+    /// Presents the *Permission Disabled* alert and handles navigation when the user taps **APP PERMISSION**.
+    private func showPermissionDisabledAlert(isNotificationOnlyMissing: Bool) {
+        let lang = AlertStrings.PermissionDisabledAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.dismissButton, type: .secondary) { _ in },
+                AlertButtonModel(title: lang.appPermissionButton, type: .primary) { [weak self] _ in
+                    self?.navigateToAppPermissions()
+                }
+            ]
+        )
+        
+        notificationService.showAlert(alert)
+        hasShownPermissionAlert = true
+        
+        // Persist flag when alert corresponds to *notification-only* case.
+        if isNotificationOnlyMissing {
+            notificationOnlyAlertShown = true
+        }
+    }
+    
+    /// Selects the **Settings** tab and navigates to the App Permissions screen.
+    private func navigateToAppPermissions() {
+        selectTab(.settings)
+        pendingSettingsNavigation = .appPermissions
     }
     
     // MARK: - Tab Deactivation Handling
@@ -95,7 +228,32 @@ class BottomTabBarViewModel: ObservableObject {
         selectTab(.settings)
         pendingSettingsNavigation = .goal
     }
-
+    
+    /// Dismisses the “Scale Discovered” sheet.
+    func dismissDiscoveredScaleSheet() {
+        discoveredScale = nil
+        discoveryEvent = nil
+    }
+    
+    // MARK: - Connect Action from Scale Discovered Sheet
+    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
+        let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
+        guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
+        bluetoothService.isSetupInProgress = true
+        
+        switch setupType {
+        case .lcbt, .btWifiR4:
+            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+        default:
+            // Handle other setup types if needed
+            bluetoothService.isSetupInProgress = false
+            return
+        }
+        
+        // Ensure sheet dismissed
+        dismissDiscoveredScaleSheet()
+    }
+    
     // MARK: - Apple Health Integration Prompt
     /// Checks whether the user should be prompted to add Apple Health integration
     /// and shows the modal if needed.
@@ -158,13 +316,89 @@ class BottomTabBarViewModel: ObservableObject {
         
         let modalView = HKIntegrationModalView(
             state: state,
-            onClose: { [weak notificationService] in
-                notificationService?.dismissModal()
+            onClose: { [weak self] in
+                self?.notificationService.dismissModal()
             },
             onPrimaryTap: onPrimary,
             onSecondaryTap: onSecondary
         )
         
+        let modalData = ModalData(presentedView: AnyView(modalView))
+        notificationService.showModal(modalData)
+    }
+    
+    // MARK: - Scale Discovery Handling
+    private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
+        /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
+        guard !bluetoothService.isSetupInProgress,
+              bluetoothService.canShowScaleDiscoveredModal,
+              !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
+              event.isNew,
+              discoveredScale == nil,
+              event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
+              !event.deviceInfo.sku.isEmpty else {
+            return false
+        }
+        return true
+    }
+    
+    // MARK: - Permission Handling
+    func handleCameraPermission() async -> GGPermissionState {
+        // Check if camera permission is already granted
+        let cameraPermissionState = permissionsService.getPermissionState(.CAMERA) ?? .ENABLED
+        if cameraPermissionState == .ENABLED {
+            return cameraPermissionState
+        }
+        return await permissionsService.handlePermission(.camera)
+    }
+    
+    // MARK: - Set Goal Card Prompt
+    /// Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
+    private func checkSetGoalCardPrompt() async {
+        // Avoid duplicate prompts within the same session
+        guard !hasShownSetGoalCardThisSession else { return }
+        
+        // Ensure we have an active account and goal settings
+        guard let account = accountService.activeAccount else { return }
+        
+        // 1. Goal type must be nil (no goal set)
+        if account.goalSettings?.goalType != nil { return }
+        
+        // 2. At least 3 entries must exist
+        let entryCount: Int
+        do {
+            entryCount = try await entryService.getEntryCount()
+        } catch {
+            return // Could not fetch entry count – silently ignore
+        }
+        guard entryCount >= 3 else { return }
+        
+        // 3. Check KvStorage flag to see if popup already shown for this account
+        let key = "\(account.accountId)_goalCardStatus"
+        if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
+            return // Already shown previously
+        }
+        // Persist flag so it won't show again across launches
+        KvStorageService.shared.setValue(true, forKey: key)
+        hasShownSetGoalCardThisSession = true
+        
+        await MainActor.run { [weak self] in
+            self?.presentSetGoalCard()
+        }
+    }
+    
+    /// Presents the Set a Goal card modal.
+    private func presentSetGoalCard() {
+        let modalView = SetAGoalCardView(
+            onClose: { [weak notificationService] in
+                notificationService?.dismissModal()
+            },
+            onSetGoal: { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                self.navigateToGoalSetting()
+            }
+        )
         let modalData = ModalData(presentedView: AnyView(modalView))
         notificationService.showModal(modalData)
     }

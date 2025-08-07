@@ -8,6 +8,9 @@ protocol EntryServiceProtocol {
 
     /// Clears all entry-related data from the service (memory/cache/state).
     func clearAllData() async
+    
+    /// Clears the last sync timestamp for the current user.
+    func clearLastSyncTimestamp() async throws
 
     // MARK: - CRUD
 

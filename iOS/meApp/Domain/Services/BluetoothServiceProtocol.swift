@@ -85,7 +85,7 @@ protocol BluetoothServiceProtocol {
     func getWifiList(for device: Device) async -> Result<[WifiDetails], BluetoothServiceError>
     /// Configures Wi-Fi on the given device.
     /// - Returns: Result<Void, BluetoothServiceError>
-    func setupWifi(on device: Device, config: WifiConfig) async -> Result<Void, BluetoothServiceError>
+    func setupWifi(on device: Device, config: WifiConfig) async -> Result<WifiSetupResponse, BluetoothServiceError>
     /// Cancels a pending Wi-Fi configuration.
     /// - Returns: Result<Void, BluetoothServiceError>
     func cancelWifi(on device: Device) async -> Result<Void, BluetoothServiceError>
@@ -119,12 +119,24 @@ protocol BluetoothServiceProtocol {
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
     /// - Returns: Result<String, BluetoothServiceError>
     func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError>
+
+    /// Starts live measurement for the given device.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func startLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError>
+
+    /// Stops live measurement for the given device.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError>
+
     /// Retrieves live measurement data while a user is on the scale.
     /// - Returns: Result<MeasurementLiveData, BluetoothServiceError>
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>
     /// Retrieves the list of users stored on the scale (R4 only).
     /// - Returns: Result<[DeviceUser], BluetoothServiceError>
     func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError>
+    /// Retrieves device logs from the scale.
+    /// - Returns: Result<DeviceLogs, BluetoothServiceError>
+    func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError>
 
     // MARK: - Alerts & Utility
     /// Triggers the in-app alert required when weight-only mode is enabled by another user.

@@ -31,6 +31,7 @@ enum Endpoint {
     case updateDashboardType
     case updateDashboardMetrics
     case updateNotifications
+    case updateDeviceInfo
     case operations(startTimestamp: String?)
     case operationsR4(startTimestamp: String?)
     case submitOperation
@@ -49,6 +50,7 @@ enum Endpoint {
     case integrationHealthDevice(String) 
     case integrationHealth
     case integrationHealthLog
+    case wifiScale(r: String?)
 
     var urlRequest: URLRequest? {
         switch self {
@@ -86,6 +88,8 @@ enum Endpoint {
             return request(path: "/account/dashboard-metrics")
         case .updateNotifications:
             return request(path: "/account/notification")
+        case .updateDeviceInfo:
+            return request(path: "/account/device/")
         case .operations(let startTimestamp):
             var components = URLComponents(string: "\(API.baseURL)/operation")
             if let timestamp = startTimestamp {
@@ -135,6 +139,13 @@ enum Endpoint {
             return request(path: "/integrations/health")
         case .integrationHealthLog:
             return request(path: "/integrations/health/log")
+        case .wifiScale(let r):
+            var components = URLComponents(string: "\(API.baseURL)/account/scale")
+            if let r = r {
+                components?.queryItems = [URLQueryItem(name: "r", value: r)]
+            }
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
         }
     }
 

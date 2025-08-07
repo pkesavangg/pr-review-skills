@@ -41,19 +41,21 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
-    static let heartRateLabel = "Heart Rate: "
+    static let heartRateLabel = "Heart Rate:"
     static let update = "Update"
     static let appVersion = "App Version"
     static let yes = "Yes"
     static let no = "No"
     static let iOS = "iOS"
     static let finish = "Finish"
+    static let delete = "Delete"
     static let permissions = "Permissions"
     static let allow = "Allow"
     static let ignore = "Ignore"
     static let enable = "Enable"
     static let tryAgain = "Try Again"
     static let support = "Support"
+    static let connect = "Connect"
 }
 
 /// Constants for entry strings used in the app
@@ -62,9 +64,15 @@ struct EntryStrings {
     static let toStart = "To start, connect a scale or add a manual entry."
 }
 
+/// Constants for scale discovered sheet strings used in the app
+struct ScaleDiscoveredSheetStrings {
+    static let title = "New Scale Discovered"
+}
+
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
+    static let error = "Error"
     static let loginError = "Login Error"
     static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
@@ -113,13 +121,34 @@ struct ToastStrings {
     static let hkIntegrationSynced = "Apple Health is synced!"
     static let saveScaleError = "Error saving scale. Please restart the app and try again."
     static let restartApp = "Please restart your app and try again."
+    static let displayMetricsSaved = "Display metrics saved successfully."
+    static let errorSavingDisplayMetrics = "Failed to save display metrics."
+    static let userNameUpdated = "User name updated successfully."
+    static let errorUpdatingUserName = "Failed to update user name."
+    static let userDeleted = "User deleted successfully."
+    static let errorDeletingUser = "Failed to delete user."
+    static let scaleDeleted = "Scale deleted."
+    static let errorDeletingScale = "Error deleting scale."
+    static let errorEditingScale = "Error editing scale."
+    static let nicknameUpdated = "Nickname updated."
+    static let deleted = "Deleted"
+    static let saved = "Saved"
+    static let scaleNameUpdated = "Scale name updated."
+    static let copiedToClipboard = "Copied to clipboard"
+    static let logsSent = "Logs sent to Greater Goods"
+    static let synced = "Entries successfully resynced."
+    static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
+    static let resyncErrorTitle = "Not Connected to Wi-Fi"
+    static let internetRequiredTitle = "Internet Required"
+    static let internetRequiredMessage = "Internet required to connect Wi-Fi-scales"
+    static let genericError = "Sorry, something went wrong. Please try again later."
 }
 
 /// Constants for help modal strings used in the app
 struct HelpStrings {
     static let question = "Have a question?"
     static let generalHelp = "We're here for you. Contact us and we'll be happy to help."
-    static let viewGuide = "View Getting Started Guide"
+    static let gettingStartedGuide = "Getting Started Guide"
 }
 
 struct HKIntegrationStrings {
@@ -217,7 +246,7 @@ struct FormErrorMessages {
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "passwords do not match"
     static let bothPasswordsMatch = "both passwords must match"
-    static let valueShouldNotBeEqual = "value should not be equal to current weight"
+    static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
     static let minWeightLb = "value should be greater than 0 lbs"
     static let maxWeightKg = "value should be less than 450 kg"
@@ -228,17 +257,28 @@ struct FormErrorMessages {
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "Model Number Invalid"
+    static let duplicate = "the scale can’t have duplicate user names"
+    static let namePattern = "please enter a valid name"
+    static let userNameUnavailable = "user name is unavailable"
 }
 
 /// Constants for input field labels used in the app
 struct InputFieldLabels {
     static let firstName = "first name"
     static let lastName = "last name"
+    static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let networkName = "network name"
     static let confirmPassword = "confirm password"
     static let currentPassword = "current password"
-    static let currentWeight = "current weight"
+    static let startingWeight = "starting weight"
+    static let startingWeightLabel: (Bool) -> String = { isKg in
+        return isKg ? "starting weight (kg)" : "starting weight (lbs)"
+    }
+    static let goalWeightLabel: (Bool) -> String = { isKg in
+        return isKg ? "goal weight (kg)" : "goal weight (lbs)"
+    }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric"
     static let zipCode = "zipcode"
@@ -452,6 +492,15 @@ struct AlertStrings {
         static let returnButton = "Return"
     }
 
+    struct ExitBtWifiSetupAlert {
+        static let title = "Are you sure you want to exit?"
+        static let preConnectionExitMessage = "The scale will not be connected."
+        static let postConnectionExitMessage = "If you exit early, you may not be able to access some features until set up."
+        static let wifiExitMessage = "Wi-Fi settings will not be updated."
+        static let goBackButton = "Go Back"
+        static let exitButton = "Exit"
+    }
+
     struct ResetDashboardAlert {
         static let title = "Are you sure?"
         static let message = "Your dashboard display metrics will reset to default settings"
@@ -473,6 +522,27 @@ struct AlertStrings {
         }
         static let returnButton = "RETURN"
         static let pairButton = "PAIR"
+    }
+
+    struct DeleteEntryAlert {
+        static let title = "Delete Entry?"
+        static let message = "Are you sure you want to delete your entry?"
+        static let cancelButton = "Cancel"
+        static let deleteButton = "Delete"
+    }
+
+    // MARK: - Goal Alerts
+    struct GoalMetAlert {
+        static let header = "Congratulations! You've hit your goal weight!"
+        static let message = "Would you like to set a new goal or maintain this goal weight?"
+        static let newGoal = "NEW GOAL"
+        static let maintain = "MAINTAIN"
+    }
+
+    struct GoalLeaveAlert {
+        static let message = "It looks like you’re moving away from your target weight. Do you want to set a new goal to get back on track?"
+        static let no = "NO"
+        static let yes = "YES"
     }
 
     struct knownScaleDiscoveredAlert {
@@ -502,6 +572,65 @@ struct AlertStrings {
         static let notificationDisabledTitle = "Notifications are disabled!"
         static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
     }
+
+    struct ConfirmRestoreAlert {
+        static let title = "Confirm Account Restore"
+        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let restoreButton = "Restore"
+        static let backButton = "Back"
+    }
+
+    struct EnableBodyMetricsAlert {
+        static let title = "Enable Body Metrics"
+        static let message = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
+        static let enableButton = "Enable"
+        static let cancelButton = "Cancel"
+    }
+
+    struct ConfirmDeleteUserAlert {
+        static let title = "Are you sure you want to delete?"
+        static let message: (String) -> String = { userName in
+            "Deleting \(userName) will remove them as a user of the scale and they’ll need to reconnect."
+        }
+        static let deleteButton = "Delete"
+        static let goBackButton = "Go Back"
+    }
+
+    struct SkipWifiStepAlert {
+        static let title = "Are you sure you want to skip Wi-Fi?"
+        static let message = "After setup, find additional WiFi settings or the MAC Address via scale settings."
+        static let skipButton = "Skip"
+        static let goBackButton = "GO BACK"
+    }
+
+    struct PermissionDisabledAlert {
+        static let title = "Unable to scan devices!"
+        static let message = "One or more required permissions or device services may be disabled. Visit the App Permissions screen in the Settings tab to check and enable the app’s permissions access."
+        static let dismissButton = "DISMISS"
+        static let appPermissionButton = "APP PERMISSION"
+    }
+
+    struct DataClearingAlert {
+        static let successHeader = "Your data has been cleared."
+        static let successMessage = "To complete this, you will need to close your app."
+        static let errorHeader = "Something may have gone wrong."
+        static let errorMessage = "Please restart your app and try again. If the problem continues, you can clear your data by deleting the app."
+        static let okButton = "OK"
+    }
+
+    struct SkipPermissionsAlert {
+        static let title = "Are you sure you want to skip?"
+        static let message = "Doing so makes necessary a more in-depth, time consuming setup process."
+        static let skipButton = "YES, SKIP"
+        static let goBackButton = "GO BACK"
+    }
+
+    struct UpdateAccountFailedAlert {
+        static let title = "Update Can't Be Saved"
+        static let message = "The scale is currently busy. Wait a few moments and try again."
+        static let tryAgainButton = "Try Again"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -516,6 +645,15 @@ struct LoaderStrings {
     static let loading = "Loading..."
     static let removingIntegration = "Removing integration..."
     static let syncing = "Syncing..."
+    static let deletingScale = "Deleting scale..."
+    static let deletingEntry = "Deleting entry..."
+    static let savingScale = "Saving scale..."
+    static let exiting = "Exiting..."
+    static let sendingLogs = "Sending logs..."
+    static let resync = "Resyncing Data..."
+    static let pleaseWait = "Please wait..."
+    /// Loader shown while retrieving the scale's MAC address.
+    static let gettingMacAddress = "Getting MAC address..."
 }
 
 struct URLStrings {
@@ -606,6 +744,11 @@ struct AppAssets {
     static let ggLogoLarge = "ggLogoLarge"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
+    static let close = "close"
+    static let grid = "grid"
+    static let scale = "scale"
+    static let metric = "metric"
+    static let export = "export"
 
     // MARK: - Scale images
     // MARK: - AppSync series
@@ -644,6 +787,35 @@ struct AppAssets {
     static let plusCircleDark = "plusCircleDark"
     static let minusCircleDark = "minusCircleDark"
     static let minusCircleClear = "minusCircleClear"
+
+    // MARK: - BtWifi Setup
+    static let userInfoScreen = "0412UserInfoScreen"
+    static let wgLogo = "wgLogo"
+    static let stepOnGif = "stepOnGif"
+    static let btStepOnGif = "btStepOnGif"
+    static let accuCheck = "accuCheck"
+    static let accuCheckTickLarge = "accuCheckTickLarge"
+
+    // MARK: - Bluetooth Setup
+    static let setupPressUnitButtonGifName: (String) -> String = { sku in
+        "\(sku)-Setup-PressUnitButton"
+    }
+    static let setupSetUserNumberGifName: (String) -> String = { sku in
+        "\(sku)-Setup-SetUserNumber"
+    }
+
+    // MARK: - WiFi Setup
+    static let wifiStepOnGif: (String) -> String = { sku in
+        sku == "0384" ? "0384-Sync" : "0396-Sync"
+    }
+    static let wifiApMode: (String) -> String = { sku in
+        sku == "0384" ? "0384-Setup-Ap" : "0396-Setup-Ap"
+    }
+    static let wifiSetupComplete = "0396-Setup-Complete"
+    static func wifiSetupCompleteGifName(user: Int) -> String {
+        return "0384-Setup-u\(user)Complete"
+    }
+
 }
 
 /// Constants used in the AppSync entry result confirmation card
@@ -654,5 +826,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+}
+
+/// Constants used in the Set A Goal card
+struct SetGoalCardStrings {
+    static let title = "Set a Goal"
+    static let description = "A great tool for tracking your journey that can always be changed in the app settings."
+    static let buttonTitle = "LET'S DO IT"
 }
 

@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import GGBluetoothSwiftPackage
 
 struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
+    @ObservedObject var permissionsStore = PermissionsStore()
     let scale: Device
     let lang = ScaleBluetoothStrings.self
 
@@ -55,22 +58,39 @@ struct ScaleBluetoothScreen: View {
             .padding(.bottom, .spacingMD)
     }
 
+    private func scaleIcon(for sku: String?) -> Image {
+        let imagePath = SCALES.first(where: { $0.sku == (sku ?? "") })?.imgPath ?? AppAssets.meLogoDark
+        return Image(imagePath)
+    }
+
     private var scaleItemView: some View {
         ScaleItemView(
-            scaleIcon: Image(AppAssets.meLogoDark),
+            scaleIcon: scaleIcon(for: scale.sku),
             modelNumber: scale.sku ?? "----",
-            scaleName: scale.deviceName ?? lang.unknownScale,
-            status: .connected, // TODO: Replace with actual status if available
+            scaleName: getScaleDisplayName(),
+            status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
             hideChevron: true
         )
     }
-
+    
+    private func getScaleDisplayName() -> String {
+        return scale.nickname ?? scale.deviceName ?? ""
+    }
+    
     private var permissionItems: some View {
         VStack(spacing: 0) {
-            permissionRow(title: lang.bluetoothAuthorized)
+            permissionRow(
+                title: lang.bluetoothAuthorized,
+                isEnabled: permissionsStore.isBluetoothAuthorized,
+                onTap: { permissionsStore.handleBluetoothAuthorizationTap() }
+            )
             divider()
-            permissionRow(title: lang.bluetoothOn)
+            permissionRow(
+                title: lang.bluetoothOn,
+                isEnabled: permissionsStore.isBluetoothOn,
+                onTap: { permissionsStore.handleBluetoothSwitchTap() }
+            )
         }
         .background(theme.backgroundPrimary)
         .cornerRadius(.spacingXS)
@@ -78,10 +98,18 @@ struct ScaleBluetoothScreen: View {
         .padding(.bottom, .spacingMD)
     }
 
-    private func permissionRow(title: String) -> some View {
-        ListItemView<EmptyView>(
-            leadingImage: AppAssets.filledTickCircle,
+    private func permissionRow(
+        title: String,
+        isEnabled: Bool,
+        onTap: @escaping () -> Void
+    ) -> some View {
+        ListItemView(
+            leadingImage: isEnabled ? AppAssets.filledTickCircle : AppAssets.minusCircle,
+            useThemedImage: !isEnabled,
             title: title,
+            trailing: isEnabled ? nil : Image(AppAssets.chevronRight)
+                .foregroundColor(theme.actionPrimary),
+            onTap: isEnabled ? nil : onTap,
             verticalPadding: .zero
         )
     }
@@ -107,7 +135,7 @@ struct ScaleBluetoothScreen_Previews: PreviewProvider {
         let mockDevice = Device(
             id: "1",
             accountId: "demo-account",
-            sku: "0412",
+            sku: SettingsConstants.defaultR4Sku,
             deviceName: "AccuCheck Verve Smart Scale"
         )
         ScaleBluetoothScreen(scale: mockDevice)

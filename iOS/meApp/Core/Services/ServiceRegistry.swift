@@ -38,6 +38,8 @@ class ServiceRegistry {
         DependencyContainer.shared.register(FeedService.shared)
         DependencyContainer.shared.register(BluetoothService.shared)
         DependencyContainer.shared.register(PermissionsService.shared)
+        DependencyContainer.shared.register(WifiScaleService.shared)
+        DependencyContainer.shared.register(GoalAlertService.shared)
     }
 
     /// Registers services needed after login
@@ -59,6 +61,8 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: BluetoothService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: PermissionsService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: WifiScaleService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GoalAlertService.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)

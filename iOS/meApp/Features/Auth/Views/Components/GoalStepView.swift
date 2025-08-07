@@ -42,23 +42,25 @@ struct GoalStepView: View {
                     
                     VStack(spacing: 4) {
                         // Current Weight Input
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: "\(labels.currentWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
-                                placeholder: "0.0",
-                                inputType: .metric,
-                                errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
-                                isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
-                                focusField: .currentWeight,
-                                maxLength: 4,
-                                maxValue: 999.9
-                            ),
-                            value: $signupStore.signupForm.currentWeight.value,
-                            focusedField: $focusedField,
-                            onCommit: {
-                                focusedField = .goalWeight
-                            }
-                        )
+                        if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
+                            MetricInputField(
+                                config: TextInputConfig(
+                                    label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                    placeholder: "0.0",
+                                    inputType: .metric,
+                                    errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
+                                    isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
+                                    focusField: .currentWeight,
+                                    maxLength: 4,
+                                    maxValue: 999.9
+                                ),
+                                value: $signupStore.signupForm.currentWeight.value,
+                                focusedField: $focusedField,
+                                onCommit: {
+                                    focusedField = .goalWeight
+                                }
+                            )
+                        }
                         
                         MetricInputField(
                             config: TextInputConfig(
@@ -76,10 +78,6 @@ struct GoalStepView: View {
                                 focusedField = nil
                             }
                         )
-                        
-                        CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
-                                         text: labels.useMetric)
-                        .padding(.top, .spacingXS)
                     }
                     .padding(.top, .spacingMD)
                 }
@@ -89,8 +87,8 @@ struct GoalStepView: View {
                 }
             }
             .padding(.bottom, .spacing3XL)
-            .dismissKeyboardOnDrag() // Dismiss keyboard when dragging
         }
+        .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
     }
 }
 

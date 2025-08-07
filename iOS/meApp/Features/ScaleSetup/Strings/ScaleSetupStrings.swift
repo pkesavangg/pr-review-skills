@@ -20,9 +20,18 @@ struct ScaleSetupStrings {
     static let wakeYourScaleSubtitle = "Give it a little tap, so your phone can find it."
     static let gatheringNetworksTitle = "Gathering Networks"
     static let connectingToBluetooth = "Connecting to Bluetooth"
+    static let connectedToBluetooth = "Connected to Bluetooth"
+    static let connectingToWifi = "Connecting to WiFi"
+    static let connectedToWifi = "Connected to WiFi"
     static let connectionError = "Connection Error"
+    static let noNetworksFound = "No Networks Found"
     static let errorCode: (String) -> String = { errorCode in
         "Error Code: \(errorCode)"
+    }
+    
+    struct UserNumberSelectionViewStrings {
+        static let title = "Choose your user number."
+        static let description = "Pick one that no one else is using for this scale."
     }
     
     /// Finish view strings

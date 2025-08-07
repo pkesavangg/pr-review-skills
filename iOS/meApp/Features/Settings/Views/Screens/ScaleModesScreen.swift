@@ -7,88 +7,344 @@
 
 import SwiftUI
 
+/// A screen that allows users to configure scale modes and settings.
+/// Supports both regular scale mode configuration and R4 scale setup workflows.
 struct ScaleModesScreen: View {
+    // MARK: - Environment Objects
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @ObservedObject var scaleStore = ScaleStore()
-    var isR4ScaleSetup: Bool = false
-    let lang = ScaleModesStrings.self
+    
+    // MARK: - Observed Objects
+    @StateObject private var viewModel: ScaleModesViewModel
+    
+    // MARK: - Properties
+    let scale: Device
+    let isR4ScaleSetup: Bool
+    private let lang = ScaleModesStrings.self
 
+    // MARK: - Initializer
+    init(scale: Device, isR4ScaleSetup: Bool = false, isWeighOnlyModeEnabledByOthers: Bool = false) {
+        self.scale = scale
+        self.isR4ScaleSetup = isR4ScaleSetup
+        _viewModel = StateObject(wrappedValue: ScaleModesViewModel(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+    }
+
+    // MARK: - Body
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: isR4ScaleSetup ? lang.r4scaleSetupTitle : lang.modeTitle,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { 
+                    Image(AppAssets.chevronLeft)
+                        .accessibilityLabel("Back")
+                },
                 trailingContent: {
-                    if isR4ScaleSetup {
-                        AnyView(Button(action: {
-                            scaleStore.handleHelp()
-                        },label: { Image(AppAssets.helpCircle) }))
-                    } else {
-                        AnyView(ButtonView(
-                            text: CommonStrings.save.uppercased(),
-                            type: .inlineTextPrimary,
-                            size: .small,
-                            isDisabled: false,
-                            action: {
-                                scaleStore.handleSave()
+                    Group {
+                        if isR4ScaleSetup {
+                            Button(action: {
+                                viewModel.openHelp()
+                            }) {
+                                Image(AppAssets.helpCircle)
+                                    .accessibilityLabel("Help")
                             }
-                        ))
+                        } else {
+                            ButtonView(
+                                text: CommonStrings.save.uppercased(),
+                                type: .inlineTextPrimary,
+                                size: .small,
+                                isDisabled: !viewModel.hasModeChanges,
+                                action: {
+                                    Task {
+                                        await viewModel.handleScaleModeSave() {
+                                            router.navigateBack()
+                                        }
+                                    }
+                                }
+                            )
+                            .accessibilityLabel("Save scale mode preferences")
+                        }
                     }
                 },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
                 canShowBorder: true
             )
-
-            VStack(alignment: .leading, spacing: .spacingLG) {
-                descriptionWithBIAButton
-
-                SegmentedButtonView(
-                    segments: ScaleModes.allCases,
-                    selectedSegment: $scaleStore.modeValue
-                )
-
-                Group {
-                    if scaleStore.modeValue == .allBodyMetrics {
-                        AllBodyMetricsView()
-                    } else if scaleStore.modeValue == .weightOnly {
-                        WeightOnlyView()
-                    }
-                }
-                .frame(maxHeight: .infinity, alignment: .top)
-
+            
+            if viewModel.isWeighOnlyModeEnabledByOthers {
+                weightOnlyInfo()
+                    .padding([.horizontal, .top], .spacingSM)
             }
 
+            ScaleModesSelectionView(
+                selectedMode: viewModel.modeValue,
+                isHeartRateEnabled: viewModel.isHeartRateEnabled,
+                isR4ScaleSetup: isR4ScaleSetup,
+                onBIAButtonTap: {
+                    viewModel.openBIAModel()
+                },
+                onValueChanged: { scaleMode, heartRateEnabled in
+                    viewModel.updateModeValue(scaleMode)
+                    viewModel.updateHeartRateEnabled(heartRateEnabled)
+                }
+            )
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .task {
+            // Load scale mode data when the screen appears
+            await viewModel.loadScaleModeData()
+        }
     }
-
-    // MARK: - Description with Inline Button
-    private var descriptionWithBIAButton: some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            if isR4ScaleSetup {
-                Text(lang.changeScaleModeTitle)
-                    .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
-            }
-
-            InlineButtonText(
-                prefix: lang.biaExplanationPrefix,
-                linkText: lang.biaButtonText,
-                suffix: lang.biaExplanationSuffix
-            ) {
-                scaleStore.openBIAModel()
+    
+    private func weightOnlyInfo() -> some View {
+        NoteBox {
+            VStack(alignment: .leading, spacing: .spacingXS) {
+                HStack() {
+                    AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
+                        .foregroundColor(theme.statusIconPrimary)
+                    
+                    Text(lang.weightOnlyBannerTitle)
+                        .fontWeight(.bold)
+                        .fontOpenSans(.body3)
+                        .foregroundColor(theme.textHeading)
+                }
+                
+                Text(lang.temporarilyEnableAllBodyMetrics)
+                    .fontOpenSans(.body3)
+                    .foregroundColor(theme.textBody)
             }
         }
-        .padding(.top, .spacingMD)
     }
 }
 
-#Preview {
-    ScaleModesScreen()
-        .environmentObject(Theme.shared)
-        .environmentObject(Router<SettingsRoute>())
+// MARK: - Preview
+#Preview("Scale Modes Screen - Light") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "Preview Scale",
+            deviceType: "scale"       
+        )
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
+}
+
+#Preview("Scale Modes Screen - Dark") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "Preview Scale",
+            deviceType: "scale"       
+        )
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
+    .preferredColorScheme(.dark)
+}
+
+#Preview("R4 Scale Setup - Light") {
+    ScaleModesScreen(
+        scale: Device(
+            id: "preview-r4-scale-id",
+            accountId: "preview-account",
+            sku: "0412",
+            deviceName: "R4 Scale Setup",
+            deviceType: "scale"       
+        ),
+        isR4ScaleSetup: true
+    )
+    .environmentObject(Theme.shared)
+    .environmentObject(Router<SettingsRoute>())
+}
+
+// MARK: - ScaleModesViewModel
+@MainActor
+final class ScaleModesViewModel: ObservableObject {
+    @Injector var notificationService: NotificationHelperService
+    @Injector var scaleService: ScaleService
+    @Injector var bluetoothService: BluetoothService
+    @Injector var logger: LoggerService
+    @Injector var accountService: AccountService
+    
+    @Published var scale: Device
+    @Published var modeValue: ScaleModes = .weightOnly
+    @Published var isHeartRateEnabled: Bool = false
+    @Published var isWeighOnlyModeEnabledByOthers: Bool = false
+    
+    // Track original values to detect changes
+    private var originalModeValue: ScaleModes = .weightOnly
+    private var originalIsHeartRateEnabled: Bool = false
+    
+    // Retry functionality
+    private var retryCount: Int = 0
+    private let maxRetries: Int = 2
+    private let retryDelay: TimeInterval = 5.0
+    
+    private let tag = "ScaleModesViewModel"
+    
+    var hasModeChanges: Bool {
+        return modeValue != originalModeValue || isHeartRateEnabled != originalIsHeartRateEnabled
+    }
+    
+    init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
+        self.scale = scale
+        self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
+        setupInitialValues()
+    }
+    
+    private func setupInitialValues() {
+        // Initialize based on scale preferences
+        if let preference = scale.r4ScalePreference {
+            modeValue = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
+            isHeartRateEnabled = preference.shouldMeasurePulse
+        }
+        
+        // Store original values
+        originalModeValue = modeValue
+        originalIsHeartRateEnabled = isHeartRateEnabled
+    }
+    
+    func loadScaleModeData() async {
+        // Refresh scale data and update UI accordingly
+        setupInitialValues()
+    }
+    
+    func updateModeValue(_ mode: ScaleModes) {
+        modeValue = mode
+        // If weight only mode is selected, disable heart rate
+        if mode == .weightOnly {
+            isHeartRateEnabled = false
+        }
+    }
+    
+    func updateHeartRateEnabled(_ enabled: Bool) {
+        isHeartRateEnabled = enabled
+    }
+    
+    func handleScaleModeSave(onSuccess: (() -> Void)? = nil) async {
+        await performSaveOperation(onSuccess: onSuccess)
+    }
+    
+    private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
+        guard let preference = scale.r4ScalePreference else {
+            logger.log(level: .error, tag: tag, message: "No R4 scale preference found for scale")
+            notificationService.showToast(ToastModel(title: ToastStrings.error, message: "Unable to save scale mode settings"))
+            return
+        }
+        
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
+        
+        do {
+            // Update the preference values
+            preference.shouldMeasureImpedance = (modeValue == .allBodyMetrics)
+            preference.shouldMeasurePulse = isHeartRateEnabled && (modeValue == .allBodyMetrics)
+            
+            // Handle heart rate display metrics
+            await updateDisplayMetricsForHeartRate(preference: preference)
+            
+            // Save to local database
+            try await scaleService.updateScalePreference(scale.id, preference)
+            await scaleService.pushLocalChangesToServer()
+            
+            // Update the scale via Bluetooth if connected
+            if scale.isConnected == true {
+                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
+                switch result {
+                case .success(_):
+                    logger.log(level: .info, tag: tag, message: "Scale mode updated successfully via Bluetooth")
+                case .failure(let error):
+                    logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")
+                    // Rethrow to trigger retry logic
+                    throw error
+                }
+            }
+            
+            // Success - reset retry count and update state
+            retryCount = 0
+            originalModeValue = modeValue
+            originalIsHeartRateEnabled = isHeartRateEnabled
+            
+            notificationService.dismissLoader()
+            notificationService.showToast(ToastModel(title: ToastStrings.success, message: ScaleModesStrings.preferencesSaved))
+            onSuccess?()
+            
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save scale mode: \(error.localizedDescription)", data: error)
+            notificationService.dismissLoader()
+            
+            // Handle retry logic
+            if retryCount < maxRetries {
+                retryCount += 1
+                logger.log(level: .info, tag: tag, message: "Retrying save operation (attempt \(retryCount)/\(maxRetries))")
+                
+                // Wait before retrying
+                try? await Task.sleep(nanoseconds: UInt64(retryDelay * 1_000_000_000))
+                await performSaveOperation(onSuccess: onSuccess)
+            } else {
+                // Max retries reached - show alert
+                retryCount = 0
+                showUpdateAccountFailedAlert(onSuccess: onSuccess)
+            }
+        }
+    }
+    
+    private func updateDisplayMetricsForHeartRate(preference: R4ScalePreference) async {
+        let heartRateKey = ScaleMetrics.config.first { $0.name == "Heart Rate" }?.key ?? "heartRate"
+        let goalMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
+        
+        // Add heart rate to display metrics if pulse is enabled and not already present
+        if preference.shouldMeasurePulse && !preference.displayMetrics.contains(heartRateKey) {
+            // Find insertion point (before goal metrics if they exist)
+            if let insertIndex = preference.displayMetrics.firstIndex(where: { goalMetricsKeys.contains($0) }) {
+                preference.displayMetrics.insert(heartRateKey, at: insertIndex)
+            } else {
+                preference.displayMetrics.append(heartRateKey)
+            }
+        }
+        
+        // Remove heart rate from display metrics if pulse is disabled
+        if !preference.shouldMeasurePulse {
+            preference.displayMetrics.removeAll { $0 == heartRateKey }
+        }
+    }
+    
+    private func showUpdateAccountFailedAlert(onSuccess: (() -> Void)? = nil) {
+        let alert = AlertModel(
+            title: AlertStrings.UpdateAccountFailedAlert.title,
+            message: AlertStrings.UpdateAccountFailedAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.UpdateAccountFailedAlert.cancelButton, type: .secondary) { _ in },
+                AlertButtonModel(title: AlertStrings.UpdateAccountFailedAlert.tryAgainButton, type: .primary) { _ in
+                    Task { [weak self] in
+                        await self?.handleScaleModeSave(onSuccess: onSuccess)
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+    
+    func openHelp() {
+         notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
+    
+    func openBIAModel() {
+         notificationService.showModal(ModalData(
+            presentedView: AnyView(BIAInfoModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
 }

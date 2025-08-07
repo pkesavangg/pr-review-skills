@@ -28,8 +28,9 @@ public struct WifiConfig: Sendable, Equatable {
 }
 
 public struct WifiDetails: Sendable, Equatable {
-    public  var macAddress: String
-    public  var ssid: String?
+    public var id = UUID()
+    public var macAddress: String
+    public var ssid: String?
     public var rssi: Int?
     public var password: String?
 
@@ -38,6 +39,16 @@ public struct WifiDetails: Sendable, Equatable {
         self.ssid = ssid
         self.rssi = rssi
         self.password = password
+    }
+}
+
+public struct WifiSetupResponse: Sendable, Equatable {
+    public var wifiState: String
+    public var errorCode: String?
+
+    public init(wifiState: String, errorCode: String? = nil) {
+        self.wifiState = wifiState
+        self.errorCode = errorCode
     }
 }
 
@@ -86,8 +97,8 @@ public struct MeasurementLiveData: Sendable, Equatable {
 }
 
 /// Representation of a user slot stored on the scale (R4 only).
-public struct DeviceUser: Sendable, Equatable {
-    public let name: String
+public struct DeviceUser: Sendable, Equatable, Hashable {
+    public var name: String
     public let token: String?
     public let lastActive: Int
     public let isBodyMetricsEnabled: Bool
@@ -332,7 +343,19 @@ public struct FirmwareUpdateStatus: Sendable, Equatable {
     }
 }
 
+/// Represents a collection of device logs
+public struct DeviceLogs {
+    /// Array of individual log entries
+    let logs: [DeviceLogEntry]
+}
 
+/// Represents a single device log entry
+public struct DeviceLogEntry {
+    /// The MAC address of the device that generated the log
+    let macAddress: String?
+    /// The log content
+    let log: String?
+}
 
 
 

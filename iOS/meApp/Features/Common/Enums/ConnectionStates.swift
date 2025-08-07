@@ -11,4 +11,5 @@ enum ConnectionState {
     case loading
     case success
     case failure
+    case noNetworks
 }

@@ -20,23 +20,54 @@ class HelpStore: ObservableObject {
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
-    
+    @Injector var scaleService: ScaleService
+    @Injector var bluetoothService: BluetoothService
+    var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     
     @Published var activeAccount: Account?
-
+    
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL? = nil
     // NEW – debug-menu state
     @Published var showDebugMenu = false
     
+    // MARK: - Scale Log State
+    @Published var showScaleLogSheet = false
+    @Published var scales: [Device] = []
+    
+    var isSendScaleLogEnabled: Bool {
+        if scales.count > 1 {
+            return true
+        }
+        return scales.first?.isConnected == true
+    }
+    
+    var shouldShowScaleTroubleshooting: Bool {
+        !scales.isEmpty
+    }
+    
+    var cancellables: Set<AnyCancellable> = []
+    private let loaderLang = LoaderStrings.self
+    private let toastLang = ToastStrings.self
+    
     // ───────────────────────────────
     //  Five-tap detection (private)
     // ───────────────────────────────
     private var headerTapCounter = 0
     private var firstTapTime: Date?
-
+    private let tag = "HelpStore"
+    
+    init() {
+        scaleService.scalesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scales in
+                self?.scales = scales.filter({$0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue})
+            }
+            .store(in: &cancellables)
+    }
+    
     /// Presents the in-app browser for the given product SKU.
     func openProductManual(sku: String) {
         guard let url = URL(string: "\(AppConstants.Product.baseURL)/\(sku)") else { return }
@@ -47,7 +78,7 @@ class HelpStore: ObservableObject {
     /// Call from the view's tap gesture on the header.
     func handleHeaderTap() {
         let now = Date()
-
+        
         if let first = firstTapTime, now.timeIntervalSince(first) < 5 {
             headerTapCounter += 1
         } else {
@@ -55,7 +86,7 @@ class HelpStore: ObservableObject {
             headerTapCounter = 1
             firstTapTime = now
         }
-
+        
         if headerTapCounter >= 5 {
             // Success – trigger sheet
             headerTapCounter = 0
@@ -63,46 +94,170 @@ class HelpStore: ObservableObject {
             showDebugMenu = true
         }
     }
-
+    
     /// Resets the flag after the sheet is dismissed (optional helper).
     func dismissDebugMenu() {
         showDebugMenu = false
     }
-
+    
     // MARK: - Debug Menu Actions
     /// Sends Weight Gurus application logs to support.
     func sendWeightGurusLog() {
-        logger.log(level: .info, tag: "DebugMenu", message: "Send Weight Gurus Log tapped")
-        // TODO: Hook into actual log exporter service when available.
-        notificationService.showToast(ToastModel(message: "Logs sent."))
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
+            do {
+                try await logger.sendLogsToServer()
+                notificationService.showToast(ToastModel(message: toastLang.logsSent))
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to send logs: \(error.localizedDescription)")
+                switch error {
+                case HTTPError.noInternet:
+                    break // No message needed, handled by NetworkMonitor
+                default:
+                    notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
+                }
+            }
+            notificationService.dismissLoader()
+        }
     }
-
+    
     /// Triggers a resync of all entries with the server.
     func resyncEntries() {
-        logger.log(level: .info, tag: "DebugMenu", message: "Resync Entries tapped")
-        // TODO: Implement real resync using entryService when backend ready.
-        notificationService.showToast(ToastModel(message: "Resync started."))
+        Task {
+            let networkStatus = NetworkMonitor.shared.isConnected
+            if networkStatus {
+                notificationService.showLoader(LoaderModel(text: loaderLang.resync))
+                
+                do {
+                    // Clear local entries and sync timestamp
+                    await entryService.clearAllData()
+                    try await entryService.clearLastSyncTimestamp()
+                    
+                    // Resync with server
+                    await entryService.syncAllEntriesWithRemote()
+                    // Show success toast after a delay
+                    notificationService.showToast(ToastModel(message: toastLang.synced))
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Resync failed: \(error.localizedDescription)")
+                    notificationService.showToast(ToastModel(
+                        title: toastLang.somethingWentWrongTitle,
+                        message: toastLang.restartAndTryAgain
+                    ))
+                }
+                notificationService.dismissLoader()
+            } else {
+                showErrorToast()
+            }
+        }
     }
-
+    
     /// Clears all local persistence (dangerous!).
     func clearAllLocalData() {
-        logger.log(level: .info, tag: "DebugMenu", message: "Clear Local Data tapped")
-        // TODO: Wire into actual local data wiping routine.
-        notificationService.showToast(ToastModel(message: "Local data cleared."))
+        Task {
+            let alertLang = AlertStrings.DataClearingAlert.self
+            
+            // Show loading indicator
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
+            
+            do {
+                // Clear all data from repositories
+                try await Task.sleep(for: .seconds(3)) // Simulate delay for UI
+                kvStorage.clearAll()
+                await entryService.clearAllData()
+                await scaleService.clearAllData()
+                try await accountService.deleteAllAccounts()
+                // Show success alert
+                notificationService.dismissLoader()
+                let alert = AlertModel(
+                    title: alertLang.successHeader,
+                    message: alertLang.successMessage,
+                    buttons: [
+                        AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+                    ]
+                )
+                notificationService.showAlert(alert)
+                
+            } catch {
+                // Show error alert
+                notificationService.dismissLoader()
+                let alert = AlertModel(
+                    title: alertLang.errorHeader,
+                    message: alertLang.errorMessage,
+                    buttons: [
+                        AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in }
+                    ]
+                )
+                notificationService.showAlert(alert)
+                logger.log(level: .error, tag: tag, message: "Failed to clear local data: \(error.localizedDescription)")
+            }
+        }
     }
-
+    
     /// Shows the system/app rating modal.
     func showAppRateModal() {
-        logger.log(level: .info, tag: "DebugMenu", message: "Show Rate Modal tapped")
+        logger.log(level: .info, tag: tag, message: "Show Rate Modal tapped")
         // iOS: Request review prompt if available.
         AppRatingHelper.requestReview()
     }
-
+    
     /// Sends scale-specific logs.
-    func sendScaleLog() {
-        logger.log(level: .info, tag: "DebugMenu", message: "Send Scale Log tapped")
-        // TODO: Implement scale log export.
-        notificationService.showToast(ToastModel(message: "Scale logs sent."))
+    func sendScaleLogHandler(device: Device? = nil) {
+        let resolvedDevice: Device? = {
+            if let id = device {
+                return id
+            } else if scales.count == 1 {
+                return scales.first
+            } else {
+                return nil
+            }
+        }()
+
+        if let device = resolvedDevice {
+            sendScaleLogsToServer(device: device)
+        } else {
+            showScaleLogSheet = true
+        }
+    }
+
+    private func sendScaleLogsToServer(device: Device) {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
+            
+            do {
+                let result = await bluetoothService.getDeviceLogs(for: device)
+                switch result {
+                case .success(let logs):
+                    try await logger.sendScaleLogsToServer(deviceLogs: logs.logs)
+                    logger.log(level: .info, tag: tag, message: "Scale logs sent for device:", data: device.mac)
+                case .failure(let error):
+                    logger.log(level: .error, tag: tag, message: "Failed to get scale logs: \(error.localizedDescription)")
+                    notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
+                    return
+                }
+                notificationService.showToast(ToastModel(message: toastLang.logsSent))
+                showScaleLogSheet = false // Hide sheet after sending
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to send scale log: \(error.localizedDescription)")
+                switch error {
+                case HTTPError.noInternet:
+                    break // No message needed, handled by NetworkMonitor
+                default:
+                    notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
+                }
+            }
+            notificationService.dismissLoader()
+        }
+    }
+    
+    private func showErrorToast() {
+        notificationService.showToast(ToastModel(
+            title: toastLang.resyncErrorTitle,
+            message: toastLang.resyncError
+        ))
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
     }
 }
 

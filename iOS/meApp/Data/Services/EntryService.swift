@@ -1,18 +1,10 @@
 import Foundation
 import Combine
 
-/// Protocol for handling incremental entry updates (used by dashboard stores)
-protocol EntryServiceDelegate: AnyObject {
-    func onEntryAdded(_ entry: Entry) async
-    func onEntryDeleted(_ entry: Entry) async
-    func onEntryUpdated(_ entry: Entry) async
-}
-
-
-
 @MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
+    @Injector var goalAlertService: GoalAlertService
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
@@ -32,8 +24,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Published var progress: ProgressSummary = .empty
     @Published var streak: Int = 0
 
-    // MARK: - Incremental Dashboard Updates
-    private var delegates: [EntryServiceDelegate] = []
+    // MARK: - Dashboard Data
+    @Published var dailySummaries: [BathScaleWeightSummary] = []
+    @Published var monthlySummaries: [BathScaleWeightSummary] = []
 
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
@@ -52,18 +45,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         try? await localRepo.deleteAllEntries()
     }
 
+    /// Clears the last sync timestamp for the current user.
+    func clearLastSyncTimestamp() async throws {
+        let accountId = try await getAccountId()
+        try await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
+    }
+
     func saveNewEntry(_ entry: Entry) async throws {
         entry.isSynced = false
         entry.operationType = OperationType.create.rawValue
         entry.attempts = 0
         try await localRepo.saveEntry(entry)
+        try await handleEntryAdded(entry)
         // Broadcast change
-        entrySaved.send(entry)
-
-        // Notify delegates for incremental updates
-        await notifyDelegates { delegate in
-            await delegate.onEntryAdded(entry)
-        }
 
         await syncUnsyncedEntries()
     }
@@ -72,12 +66,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         for entry in entries {
             entry.isSynced = false
             try await localRepo.saveEntry(entry)
-            entrySaved.send(entry)
-
-            // Notify delegates for incremental updates
-            await notifyDelegates { delegate in
-                await delegate.onEntryAdded(entry)
-            }
+            try await handleEntryAdded(entry)
         }
         await syncUnsyncedEntries()
     }
@@ -87,13 +76,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
         try await localRepo.saveEntry(deletedEntry)
-        entryDeleted.send(deletedEntry)
-
-        // Notify delegates for incremental updates
-        await notifyDelegates { delegate in
-            await delegate.onEntryDeleted(deletedEntry)
-        }
-
         await syncUnsyncedEntries()
     }
 
@@ -273,7 +255,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // 2. Fetch latest from remote and merge, using last sync timestamp
             let lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            print("Last sync timestamp: \(String(describing: lastSyncTimestamp))", "Last sync timestamp")
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            print("Fetched remote operations: \(remoteOps.operations.count) operations", "Remote operations count Last sync timestamp")
             await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
 
             // 5. Update sync timestamp and local state
@@ -310,6 +294,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                       logger.log(level: .info, tag: tag, message: "Entry create/update synced: \(operation.id)")
                   } else {
                     try await localRepo.deleteEntry(byId: operation.id.uuidString)
+                    try await handleEntryDeleted(operation)
                       // Log based on operation type
                       logger.log(level: .info, tag: tag, message: "Entry deleted: \(operation.id)")
                   }
@@ -373,28 +358,52 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp)
     private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async {
-        // For each remote op, check if local entry exists
-        for remoteOp in remoteOps {
-            guard let remoteTimestamp = remoteOp.entryTimestamp else { continue }
-            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: remoteTimestamp)
-            if let localEntry = localEntries?.first {
-                // Conflict: keep the one with the latest serverTimestamp
+        // Group operations by timestamp to determine final state for each timestamp
+        let groupedOps = Dictionary(grouping: remoteOps) { op in
+            op.entryTimestamp ?? ""
+        }
+        print("Grouped operations by timestamp: \(groupedOps.keys.count) unique timestamps Last sync timestamp", groupedOps.count)
+        for (timestamp, ops) in groupedOps {
+            guard !timestamp.isEmpty else { continue }
+
+            // Sort operations by serverTimestamp to process in chronological order
+            let sortedOps = ops.sorted {
+                ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
+            }
+
+            // Find the final operation for this timestamp (the latest one)
+            guard let finalOp = sortedOps.last else { continue }
+
+            // Check if local entry exists with this timestamp
+            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: timestamp)
+            let localEntry = localEntries?.first
+
+            if let localEntry = localEntry {
+                // Local entry exists - compare server timestamps
                 let localServerTS = localEntry.serverTimestamp ?? ""
-                let remoteServerTS = remoteOp.serverTimestamp ?? ""
+                let remoteServerTS = finalOp.serverTimestamp ?? ""
+
                 if remoteServerTS > localServerTS {
-                    //if remoteOp is delete, delete local entry
-                    if remoteOp.operationType == OperationType.delete.rawValue {
+                    // Remote is newer - apply the final operation
+                    if finalOp.operationType == OperationType.delete.rawValue {
+                        // Final state is deleted - remove from local storage
                         try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
+                        try? await handleEntryDeleted(localEntry)
                     } else {
-                      // Update local with remote
-                      let updated = Entry(from: remoteOp,accountId: accountId, isSynced: true)
-                      try? await localRepo.updateEntry(updated)
+                        // Final state is create - update local with remote
+                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        try? await localRepo.updateEntry(updated)
                     }
                 }
             } else {
-                // Not found locally, insert
-              let newEntry = Entry(from: remoteOp, accountId: accountId, isSynced: true)
-                try? await localRepo.saveEntry(newEntry)
+                // No local entry - only create if final operation is create
+                if finalOp.operationType == OperationType.create.rawValue {
+                    // Final state is create - add to local storage
+                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    try? await localRepo.saveEntry(newEntry)
+                }
+                // If final operation is delete and no local entry exists, nothing to do
+                // (entry was already deleted or never existed locally)
             }
         }
     }
@@ -428,6 +437,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
             guard !validEntries.isEmpty else { return nil }
 
+            // Ensure we have a valid date string before parsing
+            guard !day.isEmpty else { return nil }
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
@@ -480,7 +491,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
             guard !validEntries.isEmpty else { return nil }
 
-          let date = DateTimeTools.getDateFromDateString(month, format: "yyyy-MM")
+            // Create date from month string (YYYY-MM) by adding "-01" to get first day of month
+            guard !month.isEmpty else { return nil }
+            let dateString = "\(month)-01"
+            let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
+
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
 
@@ -513,6 +528,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }.sorted { $0.period < $1.period }
     }
 
+
     // MARK: - Helpers ---------------------------------------------------
 
 
@@ -538,16 +554,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Check for goal achievements and trigger alerts if needed
     private func checkGoalAlerts() async {
         do {
-            let accountId = try await getAccountId()
-            // TODO: Implement goal checking logic based on your app's requirements
-            // Example:
-            // - Check if user reached weight goal
-            // - Check if user achieved streak milestone
-            // - Trigger notifications or alerts
-
-            logger.log(level: .debug, tag: tag, message: "Goal alerts checked for account: \(accountId)")
+            guard let latestEntry = try await getLatestEntry(),
+                  let weight = latestEntry.scaleEntry?.weight else { return }
+            // Weight is stored as tenths of lbs – cast to Double for compatibility
+            await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to check goal alerts: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
         }
     }
 
@@ -594,26 +606,135 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
     }
 
-    // MARK: - Delegate Management
+    // MARK: - Entry Management (Moved from DashboardDataManager)
 
-    /// Register a delegate to receive entry change notifications
-    func addDelegate(_ delegate: EntryServiceDelegate) {
-        delegates.append(delegate)
-    }
+    /// Loads and aggregates all entry data for dashboard display
+    func loadDashboardData() async {
+       do {
+          let accountId = try await getAccountId()
+          logger.log(level: .info, tag: tag, message: "Loading dashboard data")
+          // Get all entries for the account
+          let entries = try await getAllEntries()
+          // Aggregate data by day and month
+          let dailyData = aggregateByDay(entries: entries, accountId: accountId)
+          let monthlyData = aggregateByMonth(entries: entries, accountId: accountId)
 
-    /// Unregister a delegate from receiving entry change notifications
-    func removeDelegate(_ delegate: EntryServiceDelegate) {
-        delegates.removeAll { $0 === delegate }
-    }
+          // Update published arrays
+          dailySummaries = dailyData.compactMap { $0 }.sorted { $0.period < $1.period }
+          monthlySummaries = monthlyData.compactMap { $0 }.sorted { $0.period < $1.period }
 
-    /// Notify all delegates about entry changes
-    private func notifyDelegates(action: @escaping (EntryServiceDelegate) async -> Void) async {
-        await withTaskGroup(of: Void.self) { group in
-            for delegate in delegates {
-                group.addTask {
-                    await action(delegate)
-                }
-            }
+          logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
+        } catch {
+          logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
         }
     }
+
+    /// Handles entry addition by updating affected day and month summaries
+    func handleEntryAdded(_ entry: Entry) async throws {
+        let accountId = try await getAccountId()
+
+        logger.log(level: .info, tag: tag, message: "Handling entry addition: \(entry.id)")
+
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch all entries for the affected day and month
+        let dayEntries = try await getEntries(forDay: dayKey)
+        let monthEntries = try await getEntries(forMonth: monthKey)
+
+        // Update summaries with aggregated data
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
+
+        if let dailySummary = dailySummary {
+            updateDailySummary(dayKey: dayKey, summary: dailySummary)
+        }
+        if let monthlySummary = monthlySummary {
+            updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+        }
+        entrySaved.send(entry)
+        logger.log(level: .info, tag: tag, message: "Entry addition handled successfully")
+    }
+
+    /// Handles entry update by treating as delete + add
+    func handleEntryUpdated(_ entry: Entry) async throws {
+        logger.log(level: .info, tag: tag, message: "Handling entry update: \(entry.id)")
+
+        // For updates, we can treat as delete + add for simplicity
+        try await handleEntryDeleted(entry)
+        try await handleEntryAdded(entry)
+
+        logger.log(level: .info, tag: tag, message: "Entry update handled successfully")
+    }
+
+    /// Handles entry deletion by updating affected day and month summaries
+    func handleEntryDeleted(_ entry: Entry) async throws {
+        let accountId = try await getAccountId()
+
+        logger.log(level: .info, tag: tag, message: "Handling entry deletion: \(entry.id)")
+
+        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+
+        // Fetch remaining entries for the affected day and month
+        let dayEntries = try await getEntries(forDay: dayKey)
+        let monthEntries = try await getEntries(forMonth: monthKey)
+
+        // Update summaries with aggregated data
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first
+
+        if let dailySummary = dailySummary {
+            updateDailySummary(dayKey: dayKey, summary: dailySummary)
+        } else {
+          // If no entries left for the day, remove summary
+          updateDailySummary(dayKey: dayKey, summary: nil)
+        }
+        if let monthlySummary = monthlySummary {
+          updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+        } else {
+          // If no entries left for the month, remove summary
+          updateMonthlySummary(monthKey: monthKey, summary: nil)
+        }
+
+        entryDeleted.send(entry)
+        logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
+    }
+
+    // MARK: - Private Helper Methods
+
+    /// Updates the daily summary for a specific day key
+    private func updateDailySummary(dayKey: String, summary: BathScaleWeightSummary?) {
+        if let summary = summary {
+            // Update existing or add new
+            if let index = dailySummaries.firstIndex(where: { $0.period == dayKey }) {
+                dailySummaries[index] = summary
+            } else {
+                dailySummaries.append(summary)
+                dailySummaries.sort { $0.period < $1.period }
+            }
+        } else {
+            // Remove if no summary (empty day)
+            dailySummaries.removeAll { $0.period == dayKey }
+        }
+    }
+
+    /// Updates the monthly summary for a specific month key
+    private func updateMonthlySummary(monthKey: String, summary: BathScaleWeightSummary?) {
+        if let summary = summary {
+            // Update existing or add new
+            if let index = monthlySummaries.firstIndex(where: { $0.period == monthKey }) {
+                monthlySummaries[index] = summary
+            } else {
+                monthlySummaries.append(summary)
+                monthlySummaries.sort { $0.period < $1.period }
+            }
+        } else {
+            // Remove if no summary (empty month)
+            monthlySummaries.removeAll { $0.period == monthKey }
+        }
+    }
+
+
+
 }
