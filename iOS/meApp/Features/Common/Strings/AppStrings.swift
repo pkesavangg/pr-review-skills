@@ -531,6 +531,20 @@ struct AlertStrings {
         static let deleteButton = "Delete"
     }
     
+    // MARK: - Goal Alerts
+    struct GoalMetAlert {
+        static let header = "Congratulations! You've hit your goal weight!"
+        static let message = "Would you like to set a new goal or maintain this goal weight?"
+        static let newGoal = "NEW GOAL"
+        static let maintain = "MAINTAIN"
+    }
+    
+    struct GoalLeaveAlert {
+        static let message = "It looks like you’re moving away from your target weight. Do you want to set a new goal to get back on track?"
+        static let no = "NO"
+        static let yes = "YES"
+    }
+    
     struct knownScaleDiscoveredAlert {
         static let title = "Known Scale Discovered"
         static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
@@ -810,5 +824,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+}
+
+/// Constants used in the Set A Goal card
+struct SetGoalCardStrings {
+    static let title = "Set a Goal"
+    static let description = "A great tool for tracking your journey that can always be changed in the app settings."
+    static let buttonTitle = "LET'S DO IT"
 }
 

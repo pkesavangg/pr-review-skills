@@ -18,6 +18,7 @@ class SettingsStore: ObservableObject {
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
+    @Injector var goalAlertService: GoalAlertService
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
@@ -1057,6 +1058,7 @@ class SettingsStore: ObservableObject {
             do {
                 _ = try await accountService.createGoal(goalPayload)
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                goalAlertService.resetGoalMetFlag()
                 logger.log(level: .info, tag: tag, message: "Goal updated successfully")
                 resetGoalForm()
                 router.navigateBack()
