@@ -1077,6 +1077,12 @@ class SettingsStore: ObservableObject {
         populateGoalFormIfNeeded()
     }
     
+    /// Notifies other components about goal type changes
+    func notifyGoalTypeChange() {
+        NotificationCenter.default.post(name: .goalTypeChanged, object: nil)
+        logger.log(level: .info, tag: tag, message: "Goal type change notification sent")
+    }
+    
     /// Current notification preference derived from account settings.
     var notificationPreference: NotificationPreference {
         let settings = activeAccount?.notificationSettings
