@@ -59,7 +59,7 @@ struct DashboardScreen: View {
             store.handleMetricInfoSheetDismiss(newValue)
         }
         .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
-        .onChange(of: store.currentUnit) { _, _ in 
+        .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
         }
         .presentAlert(alertData: $store.state.ui.alertData)
@@ -116,7 +116,7 @@ struct DashboardScreen: View {
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                 })
-                
+
                 // Add button to switch to 12 metrics if currently showing 4 metrics
                 if store.state.metrics.dashboardType == .dashboard4 {
                     ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {

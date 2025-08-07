@@ -311,7 +311,7 @@ struct GraphView: View {
             // For other periods, use scroll-based calculation
             let xScrollPosition = dashboardStore.state.graph.xScrollPosition
             let visibleDomainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
-
+            guard visibleDomainLength.isFinite && visibleDomainLength > 0 else { return nil }
             let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
             let xRatio = timeFromScrollPosition / visibleDomainLength
             xPosition = chartFrame.width * xRatio
@@ -572,7 +572,7 @@ struct GraphView: View {
         case .week, .month, .year:
             return dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
         case .total:
-            return nil // Show all data points without domain restriction
+            return 0 // Show all data points without domain restriction
         }
     }
 

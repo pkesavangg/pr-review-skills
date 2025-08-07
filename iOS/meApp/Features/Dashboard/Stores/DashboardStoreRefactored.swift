@@ -89,7 +89,7 @@ class DashboardStore: ObservableObject {
                 self?.state.data = dataState
             }
             .store(in: &cancellables)
-        
+
 
     }
 
@@ -612,13 +612,13 @@ class DashboardStore: ObservableObject {
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
     }
-    
+
     /// Updates the goal card position in the grid (like a large widget)
     /// - Parameter newPosition: The new position after the divider (0 = first position)
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
         let clampedPosition = max(0, min(newPosition, maxPosition))
-        
+
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .info, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
@@ -1030,12 +1030,12 @@ class DashboardStore: ObservableObject {
     func startDraggingStreak(_ streak: MetricItem) {
         state.ui.draggingStreak = streak
     }
-    
+
     /// Start dragging the goal card
     func startDraggingGoalCard() {
         state.ui.isGoalCardBeingDragged = true
     }
-    
+
     /// Update drop target during drag
     func updateDropTarget(_ targetId: String?) {
         state.ui.dropHoverId = targetId
@@ -1091,18 +1091,18 @@ class DashboardStore: ObservableObject {
            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
             return
         }
-        
+
         // Move the metric in the data source
         let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
         metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
-        
+
         // Update active metrics count if needed
         let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
         metricsManager.state.activeMetricsCount = currentActiveCount
-        
+
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
-        
+
         logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
     }
 
