@@ -139,7 +139,6 @@ class MetricCell: UICollectionViewCell {
                 : MetricCardView.fourCardVerticalPadding
         )
         
-        // Reintroduce the EditModeOverlay modifier to the metricCardView
         let viewWithOverlay = AnyView(
             metricCardView
                 .editModeOverlay(
@@ -150,7 +149,7 @@ class MetricCell: UICollectionViewCell {
                             store.toggleMetricRemovalInReorderedArray(at: index)
                         }
                     },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped, // Include interaction states
+                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped, /
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                     rowIndex: rowIndex,
                     disableWiggle: false
@@ -161,13 +160,9 @@ class MetricCell: UICollectionViewCell {
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
-            // Add tap gesture for edit mode
             let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
             self.addGestureRecognizer(tapGesture)
-            // Add drag-and-drop gesture in edit mode (handled by UIKit grid)
-            // No-op here, handled by parent
         } else {
-            // Add long-press for info sheet only in non-edit mode
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
             self.addGestureRecognizer(longPress)

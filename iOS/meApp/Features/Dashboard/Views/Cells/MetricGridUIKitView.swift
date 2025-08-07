@@ -342,6 +342,11 @@ extension MetricGridUIKitView {
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
+            // Immediately clear any existing drag state when drop session enters
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
+            
             // Disable animations when drop session enters
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -375,11 +380,27 @@ extension MetricGridUIKitView {
                 })
             }
             CATransaction.commit()
-    
+            
+            // Immediately clear drag state after drop is executed
+            parent.isDragging = false
+            draggedItemId = nil
+            store.endDragging()
+            
+            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
+            if store.state.ui.isEditMode {
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false)
+                    }
+                }
+            }
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+            // Immediately clear drag state when drop session ends
+            parent.isDragging = false
             draggedItemId = nil
+            store.endDragging()
             
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -394,6 +415,15 @@ extension MetricGridUIKitView {
                 }
             }
             CATransaction.commit()
+            
+            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
+            if store.state.ui.isEditMode {
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false)
+                    }
+                }
+            }
         }
     }
 } 

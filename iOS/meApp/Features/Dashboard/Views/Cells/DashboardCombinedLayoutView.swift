@@ -505,6 +505,11 @@ extension DashboardCombinedLayoutView {
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
+            // Immediately clear any existing drag state when drop session enters
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
+            
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.commit()
@@ -595,10 +600,24 @@ extension DashboardCombinedLayoutView {
                 })
             }
             CATransaction.commit()
+            
+            // Immediately clear drag state after drop is executed
+            parent.isDragging = false
+            draggedItemId = nil
+            store.endDragging()
+            
+            // Immediately reconfigure cells to restore overlay visibility
+            if store.state.ui.isEditMode {
+                forceReconfigureVisibleCells(collectionView)
+            }
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+            // Immediately clear drag state when drop session ends
+            parent.isDragging = false
             draggedItemId = nil
+            store.endDragging()
+            
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
@@ -612,6 +631,11 @@ extension DashboardCombinedLayoutView {
                 }
             }
             CATransaction.commit()
+            
+            // Immediately reconfigure cells to restore overlay visibility
+            if store.state.ui.isEditMode {
+                forceReconfigureVisibleCells(collectionView)
+            }
         }
         
         @objc func handleMetricLongPress(_ gesture: UILongPressGestureRecognizer) {

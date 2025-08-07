@@ -26,14 +26,7 @@ struct EditModeOverlay: ViewModifier {
     }
     
     var shouldShowCircleIcon: Bool {
-        let shouldShow = isEditMode && !isBeingDragged && !isDropTarget
-        // Debug logging to track overlay visibility
-        #if DEBUG
-        if isEditMode {
-            print("[EditModeOverlay] shouldShowCircleIcon: \(shouldShow) - isEditMode: \(isEditMode), isBeingDragged: \(isBeingDragged), isDropTarget: \(isDropTarget)")
-        }
-        #endif
-        return shouldShow
+        return  isEditMode && !isBeingDragged && !isDropTarget
     }
     
     var iconOpacity: Double {
@@ -53,7 +46,6 @@ struct EditModeOverlay: ViewModifier {
             content
                 .opacity(itemOpacity)
                 .scaleEffect(dropTargetScale)
-                // Apply row-based wiggle animation (matching movingGridsLearning exactly)
                 .wiggling(shouldWiggle, rowIndex: rowIndex)
                 .animation(.easeInOut(duration: 0.2), value: isBeingDragged)
                 .animation(.easeInOut(duration: 0.2), value: isDropTarget)
@@ -66,7 +58,6 @@ struct EditModeOverlay: ViewModifier {
                 ThemedImage(name: iconName, isSingleMode: true)
                     .frame(width: 28, height: 28)
                     .offset(x: 5, y: -5)
-                    // Apply row-based wiggle animation to icon too (matching movingGridsLearning exactly)
                     .wiggling(shouldWiggle, rowIndex: rowIndex)
                     .opacity(iconOpacity)
                     .animation(.easeInOut(duration: 0.2), value: iconOpacity)
