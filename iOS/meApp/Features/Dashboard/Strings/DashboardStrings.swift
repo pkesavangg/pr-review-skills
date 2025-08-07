@@ -55,12 +55,13 @@ struct DashboardStrings {
     static let plus  = "+"
     static let minus  = "-"
     static let placeholder = "--"
+    static let goalReached = "goal reached!"
     static func loseGoalWeightLabel(_ unit: String) -> String{
         return "\(unit) to goal"
     }
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
            return "\(unit) to \(goalWeight) \(unit) goal weight"
-       }
+    }
     
     // Empty state messages
     static let noEntriesMessage = "To collect your first entry, connect a scale or add a manual entry."
