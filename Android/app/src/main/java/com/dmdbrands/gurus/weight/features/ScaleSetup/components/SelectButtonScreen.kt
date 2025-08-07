@@ -148,8 +148,8 @@ private fun SelectButtonWithWifiModesPreview() {
 //     val errorButtons = SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = selectedErrorCode)
 //
 //     SelectButton(
-//       title = WifiSetupStrings.Error.Title,
-//       subtitle =  WifiSetupStrings.Error.Message,
+//       title = WifiScaleSetupStrings.Error.Title,
+//       subtitle = WifiScaleSetupStrings.Error.Message,
 //       selectButtonItems = errorButtons,
 //       isSelectable = true,
 //       onItemSelected = { value ->
@@ -157,7 +157,7 @@ private fun SelectButtonWithWifiModesPreview() {
 //         // Handle error code selection
 //       },
 //       supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
-//       onSupportingButtonClick = {}
+//       onSupportingButtonClick = {},
 //     )
 //   }
 // }

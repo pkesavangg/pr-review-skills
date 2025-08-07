@@ -45,13 +45,19 @@ object SelectButtonHelper {
         return listOf(
           SelectButtonItem(
                 id = "wifi_smart_connect",
-                displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiSmartConnect),
+                displayValue = SelectButtonDisplayValue.Image(
+                    if (selectedMode == "espTouchWifi") AppIcons.Setup.WifiSmartConnectSelected 
+                    else AppIcons.Setup.WifiSmartConnect
+                ),
                 emitValue = "espTouchWifi",
                 isSelected = selectedMode == "espTouchWifi"
             ),
           SelectButtonItem(
                 id = "wifi_ap_mode",
-                displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                displayValue = SelectButtonDisplayValue.Image(
+                    if (selectedMode == "apmode") AppIcons.Setup.WifiAPModeSelected 
+                    else AppIcons.Setup.WifiAPMode
+                ),
                 emitValue = "apmode",
                 isSelected = selectedMode == "apmode"
             )
