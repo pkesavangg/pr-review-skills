@@ -67,6 +67,11 @@ struct ActionListItemView: View {
         case .upDown:
             AppIconView(icon: AppAssets.chevronUpDown, size: IconSize(width: 22, height: 22))
                 .foregroundColor(theme.statusIconSecondary)
+        case .loading:
+            ProgressView()
+                .progressViewStyle(.circular)
+                .frame(width: 22, height: 22)
+                .tint(theme.statusIconSecondary)
         case .none:
             EmptyView()
         }

@@ -10,7 +10,7 @@ import SwiftUI
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var router: Router<SettingsRoute>
-    @StateObject var scaleStore = ScaleStore()
+    @StateObject private var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
@@ -181,30 +181,12 @@ struct MyScalesScreen: View {
                         case .appSync:
                             AppSyncSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .lcbt:
                             A6ScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .btWifiR4:
                             BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil)
                                 .interactiveDismissDisabled(true)
-                                .onDisappear {
-                                    // Refresh scales when setup flow is dismissed
-                                    Task {
-                                        await scaleStore.forceRefreshDeviceData()
-                                    }
-                                }
                         case .bluetooth:
                             BluetoothScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
@@ -221,21 +203,10 @@ struct MyScalesScreen: View {
                     switch newSheet {
                     case .setupFlow:
                         // A setup flow sheet is being presented → start setup tracking
-                        scaleStore.bluetoothService.isSetupInProgress = true
+                        scaleStore.updateSetupInProgressStatus(true)
                     default:
-                        // Either the sheet was dismissed or it's a non-setup sheet → stop setup tracking
-                        scaleStore.bluetoothService.isSetupInProgress = false
-                        scaleStore.bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-                        Task {
-                            await scaleStore.bluetoothService.resyncAndScan()
-                        }
-                        
-                        // If a setup flow was just dismissed, refresh the scales list
-                        if case .setupFlow = oldSheet {
-                            Task {
-                                await scaleStore.forceRefreshDeviceData()
-                            }
-                        }
+                        scaleStore.clearScaleDiscoveredInfo()
+                        break
                     }
                 }
                 
@@ -253,7 +224,7 @@ struct MyScalesScreen: View {
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: scale.sku ?? "----",
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
-                                status: scaleStore.determineConnectionStatus(for: scale),
+                                status: scale.connectionStatus,
                                 onTap: {
                                     let scaleType = determineScaleType(for: scale)
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
@@ -267,49 +238,9 @@ struct MyScalesScreen: View {
                 }
             }
         }
-        .onAppear(perform: {
-            scaleStore.fetchScales()
-            
-            // Set up periodic device info check for SKU 0412 scales
-            Task {
-                // Initial check
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-                
-                // Periodic check every 10 seconds while the screen is visible
-                for _ in 0..<SettingsConstants.maxCheckIterations { // Check 6 times (60 seconds total)
-                    try? await Task.sleep(nanoseconds: SettingsConstants.checkIntervalNanoseconds) // 10 seconds
-                    await scaleStore.checkDeviceInfoForAllR4Scales()
-                }
-            }
-        })
-        .onDisappear {
-            scaleStore.resetForm()
-        }
-        .task {
-            // Refresh scales when view appears (including after setup flow dismissal)
-            await scaleStore.forceRefreshDeviceData()
-            
-            // Check device info for SKU 0412 scales to properly determine setup incomplete status
-            await scaleStore.checkDeviceInfoForAllR4Scales()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            // Refresh scales when app becomes active (e.g., returning from setup flow)
-            scaleStore.fetchScales()
-            
-            // Check device info for SKU 0412 scales when app becomes active
-            Task {
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .scaleAddedOrUpdated)) { _ in
-            // Refresh scales when a scale is added or updated
-            Task {
-                await scaleStore.forceRefreshDeviceData()
-                await scaleStore.checkDeviceInfoForAllR4Scales()
-            }
-        }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        
         .onTapGesture {
             focusedField = nil
             hideKeyboard()
@@ -322,4 +253,5 @@ struct MyScalesScreen: View {
 
 #Preview {
     MyScalesScreen()
+    .environmentObject(ScaleStore())
 }

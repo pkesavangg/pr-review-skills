@@ -26,14 +26,13 @@ final class ScaleAPIRepository : ScaleRepositoryAPIProtocol{
         )
     }
     
-    func editScale(_ scaleId: String, properties: [String: Any]) async throws -> ScaleDTO {
+    func editScale(_ scaleId: String, properties: ScaleDTO) async throws -> ScaleDTO {
         // PATCH /paired-scale/:scaleId
         let endpoint = Endpoint.pairedScaleId(scaleId)
-        let data = try JSONSerialization.data(withJSONObject: properties, options: [])
         return try await httpClient.send(
             endpoint,
             method: .patch,
-            body: data,
+            body: properties,
             needsAuth: true
         )
     }

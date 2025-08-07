@@ -71,11 +71,10 @@ class ScaleModesManager: ObservableObject {
             return
         }
         
-        var displayName = scale.nickname ?? scale.deviceName ?? "Unknown Device"
+        var displayName = scale.r4ScalePreference?.displayName ?? scale.deviceName ?? "Unknown Device"
         if displayName.isEmpty {
             displayName = "Unknown Device"
         }
-        
         // Create or update R4ScalePreference with proper defaults
         let updatedPreference = R4ScalePreference(
             scaleId: scaleId,
@@ -92,7 +91,6 @@ class ScaleModesManager: ObservableObject {
         
         // Save to database
         try await scaleService.updateScalePreference(scaleId, updatedPreference)
-        
         // Update the scale's R4ScalePreference in memory
         scale.r4ScalePreference = updatedPreference
         
@@ -117,7 +115,7 @@ class ScaleModesManager: ObservableObject {
         state.originalModeValue = state.modeValue
         state.originalHeartRateEnabled = state.isHeartRateEnabled
         updateModeChangeTracking()
-        
+        bluetoothService.syncDevices([])
         logger.log(level: .info, tag: "ScaleModesManager", message: "Scale mode preferences saved successfully")
     }
 

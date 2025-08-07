@@ -14,6 +14,7 @@ The `BluetoothService` provides a comprehensive interface for managing Bluetooth
 - ✅ Wi-Fi configuration for smart scales
 - ✅ Firmware updates with progress tracking
 - ✅ User profile synchronization
+- ✅ Real-time live measurement streaming
 
 ## Architecture
 
@@ -94,6 +95,23 @@ func subscribeToWeightOnlyModeAlerts() {
             }
         }
         .store(in: &cancellables)
+}
+```
+
+### 5. Live Measurement Streaming
+
+```swift
+func streamLiveMeasurement(for device: Device) async {
+    // Start live measurement
+    _ = await bluetoothService.startLiveMeasurement(for: device)
+
+    // Fetch the latest snapshot (optional)
+    if case let .success(liveData) = await bluetoothService.getMeasurementLiveData(broadcastId: device.broadcastId) {
+        print("Weight: \(liveData.weight) kg")
+    }
+
+    // Stop live measurement when finished
+    _ = await bluetoothService.stopLiveMeasurement(for: device)
 }
 ```
 
