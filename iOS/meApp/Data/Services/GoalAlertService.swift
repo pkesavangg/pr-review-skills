@@ -51,7 +51,6 @@ final class GoalAlertService: ObservableObject {
         let storageKey = goalAlertStorageKey(for: account.accountId)
         let alertAlreadyShown = (kv.getValue(forKey: storageKey) as? Bool) ?? false
         guard !alertAlreadyShown else { return }
-
         let hasMetGoal: Bool = {
             switch goalType {
             case .gain:
@@ -110,7 +109,8 @@ final class GoalAlertService: ObservableObject {
     private func presentGoalLeaveAlert() async {
         isShowingAlert = true
         let alert = AlertModel(
-            title: alertStrings.GoalLeaveAlert.message,
+            title: "",
+            message: alertStrings.GoalLeaveAlert.message,
             buttons: [
                 AlertButtonModel(title: alertStrings.GoalLeaveAlert.no, type: .secondary) { [weak self] _ in
                     self?.isShowingAlert = false

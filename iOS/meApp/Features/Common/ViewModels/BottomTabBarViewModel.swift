@@ -316,8 +316,8 @@ class BottomTabBarViewModel: ObservableObject {
         
         let modalView = HKIntegrationModalView(
             state: state,
-            onClose: { [weak notificationService] in
-                notificationService?.dismissModal()
+            onClose: { [weak self] in
+                self?.notificationService.dismissModal()
             },
             onPrimaryTap: onPrimary,
             onSecondaryTap: onSecondary
