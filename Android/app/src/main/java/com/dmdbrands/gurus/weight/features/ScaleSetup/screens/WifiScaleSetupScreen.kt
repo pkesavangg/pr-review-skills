@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.screens
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -44,6 +45,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -340,6 +342,7 @@ fun WifiScaleSetupScreenContent(
                 // Navigate to error guide step
                 onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
               },
+              modifier = Modifier.padding(horizontal = spacing.sm),
             )
           }
 

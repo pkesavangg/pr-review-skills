@@ -96,7 +96,10 @@ struct LoginScreen: View {
                                         store.setPasswordTouched()
                                         focusedField = nil
                                         if store.isFormValid {
-                                            Task { await store.logIn() }
+                                            Task {
+                                                hideKeyboard()
+                                                await store.logIn()
+                                            }
                                         }
                                     }
                                 }
@@ -113,7 +116,10 @@ struct LoginScreen: View {
                                             store.loginForm.email.markAsDirty()
                                             store.loginForm.password.markAsDirty()
                                             if store.isFormValid {
-                                                Task { await store.logIn() }
+                                                Task {
+                                                    hideKeyboard()
+                                                    await store.logIn()
+                                                }
                                             }
                                         }
                                     )

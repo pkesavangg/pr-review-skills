@@ -1,18 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
-import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
-import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
-import com.greatergoods.blewrapper.GGDeviceService
-import com.greatergoods.blewrapper.GGPermissionService
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
-import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
@@ -41,6 +29,18 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
+import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
+import com.greatergoods.blewrapper.GGDeviceService
+import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
+import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -86,6 +86,7 @@ constructor(
   }
 
   private val TAG = "BtWifiScaleSetupViewModel"
+  private var deviceConfigured: Boolean = false
 
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
@@ -158,7 +159,7 @@ constructor(
 
   private fun observePermissions() {
     viewModelScope.launch {
-      subscribePermissions().collect {
+      permissionService.permissionCallBackFlow.collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
         if (!areRequiredPermissionsEnabled) {
@@ -276,9 +277,9 @@ constructor(
         }
 
         else -> {
-          if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.value.connectedSSID != null) {
-            ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
-            handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+          if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST) {
+            // TODO: IF wifi configured move to BtWifiSetupStep.CUSTOMIZE_SETTINGS else
+            //  move to BtWifiSetupStep.WIFI_PASSWORD
           }
           // For other steps (like SCALE_INFO, AVAILABLE_WIFI_LIST), let the normal flow continue
           // The base class will handle the intent and call the reducer
@@ -356,12 +357,12 @@ constructor(
   private fun onExit() {
     viewModelScope.launch {
       if (discoveredScale != null) {
-        deviceService.updateDevice(discoveredScale!!)
         ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+        if (!deviceConfigured) {
+          ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
+        }
       }
-      ggDeviceService.resumeScan(true)
-      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-      ggDeviceService.syncDevices(pairedDevices)
+      ggDeviceService.resumeScan(false)
       navigateBack()
     }
   }
@@ -533,6 +534,7 @@ constructor(
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
+                deviceConfigured = true
                 handleIntent(
                   BtWifiScaleSetupIntent.SetStepConnectionState(
                     BtWifiSetupStep.CONNECTING_BLUETOOTH,
@@ -660,6 +662,7 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
+      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
       handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
@@ -698,16 +701,15 @@ constructor(
             }
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode(null))
           } else {
             AppLog.w(TAG, "Wifi connection failed")
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode(it.errorCode))
             handleIntent(
               BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.CONNECTING_WIFI,
                 ConnectionState.Failed.Error,
               ),
             )
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           }
         }

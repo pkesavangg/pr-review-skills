@@ -831,6 +831,7 @@ constructor(
 
     if (currentState.currentStep == WifiScaleSetupStep.SCALE_COUNTS) {
       saveScale()
+      notificationPermission()
       return
     }
 
@@ -1041,9 +1042,13 @@ constructor(
   }
 
   private fun checkAndSaveScale() {
+    dialogQueueService.showLoader(
+      message = ScaleSetupStrings.SaveScaleLoader,
+    )
     try {
       viewModelScope.launch {
-        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
+        val alreadyPairedScale =
+          deviceService.pairedScales.first().find { it.sku == sku && it.userNumber == state.value.selectedUser }
         if (alreadyPairedScale != null) {
           deviceService.deleteScale(alreadyPairedScale.id)
         }
@@ -1062,7 +1067,8 @@ constructor(
         )
         deviceService.saveScale(wifiDevice)
       }
-    } catch (e: Exception) {
+    } finally {
+      dialogQueueService.dismissLoader()
     }
   }
 
@@ -1294,6 +1300,14 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Error showing permission revoked alert", e.toString())
       }
+    }
+  }
+
+  private fun notificationPermission() {
+    val canRequestNotifPermission =
+      AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
+    if (canRequestNotifPermission) {
+      requestPermission(GGPermissionType.NOTIFICATION)
     }
   }
 

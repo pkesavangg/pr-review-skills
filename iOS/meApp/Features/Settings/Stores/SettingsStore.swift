@@ -455,7 +455,7 @@ class SettingsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     func handleChangePasswordExit(router: Router<SettingsRoute>) {
         // If form is pristine just pop and bail.
         guard changePasswordForm.isDirty else {
@@ -463,7 +463,7 @@ class SettingsStore: ObservableObject {
             resetChangePasswordForm()
             return
         }
-
+        
         presentChangePasswordExitAlert(onExit: {
             self.resetChangePasswordForm()
             router.navigateBack()
@@ -531,11 +531,11 @@ class SettingsStore: ObservableObject {
     func resetChangePasswordForm() {
         changePasswordForm = ChangePasswordForm()
     }
-
+    
     func confirmDiscardPasswordChanges() async -> Bool {
         // Fast-path: no changes → allow exit.
         guard changePasswordForm.isDirty else { return true }
-
+        
         return await withCheckedContinuation { continuation in
             presentChangePasswordExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -546,7 +546,7 @@ class SettingsStore: ObservableObject {
     }
     
     // MARK: - Edit Profile Exit Helpers
-
+    
     /// Presents an Edit-Profile exit confirmation alert using shared strings.
     /// - Parameters:
     ///   - onExit:    Closure executed when the user confirms leaving.
@@ -567,7 +567,7 @@ class SettingsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     func handleEditProfileExit(router: Router<SettingsRoute>) {
         // Fast path: if form is pristine just pop the screen and bail.
         guard editProfileForm.isDirty else {
@@ -575,7 +575,7 @@ class SettingsStore: ObservableObject {
             resetEditProfileForm()
             return
         }
-
+        
         presentEditProfileExitAlert(onExit: {
             self.resetEditProfileForm()
             router.navigateBack()
@@ -586,7 +586,7 @@ class SettingsStore: ObservableObject {
     func confirmDiscardProfileChanges() async -> Bool {
         // Allow exit immediately when no changes.
         guard editProfileForm.isDirty else { return true }
-
+        
         return await withCheckedContinuation { continuation in
             presentEditProfileExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -709,7 +709,7 @@ class SettingsStore: ObservableObject {
     }
     
     // MARK: - Weightless Exit Helpers
-
+    
     /// Presents a Weightless exit confirmation alert using shared strings.
     /// - Parameters:
     ///   - onExit:    Closure executed when the user confirms leaving.
@@ -730,7 +730,7 @@ class SettingsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
     func handleWeightlessExit(router: Router<SettingsRoute>) {
         // Fast path: if form is pristine simply pop and bail.
@@ -739,18 +739,18 @@ class SettingsStore: ObservableObject {
             resetWeightlessForm()
             return
         }
-
+        
         presentWeightlessExitAlert(onExit: {
             self.resetWeightlessForm()
             router.navigateBack()
         })
     }
-
+    
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
     func confirmDiscardWeightlessChanges() async -> Bool {
         // Allow immediate exit when there are no unsaved changes.
         guard weightlessForm.isDirty else { return true }
-
+        
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -764,10 +764,10 @@ class SettingsStore: ObservableObject {
     func saveWeightless(router: Router<SettingsRoute>) {
         // Validate form first.
         weightlessForm.validate()
-
+        
         guard weightlessForm.isDirty, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-
+        
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
@@ -775,23 +775,23 @@ class SettingsStore: ObservableObject {
             }
             return 0
         }()
-
+        
         updateWeightlessMode(isOn: weightlessForm.isOn.value, storedWeight: storedWeight) {
             router.navigateBack()
         }
     }
-
+    
     /// Handles the networking call for updating Weightless settings and executes `onSuccess` on completion.
     private func updateWeightlessMode(isOn: Bool, storedWeight: Int, onSuccess: @escaping () -> Void) {
         guard let account = activeAccount else { return }
-
+        
         let currentOn = account.weightlessSettings?.isWeightlessOn ?? false
         let currentWeightStored = Int(account.weightlessSettings?.weightlessWeight ?? 0)
         if currentOn == isOn && currentWeightStored == storedWeight {
             onSuccess()
             return
         }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -926,30 +926,23 @@ class SettingsStore: ObservableObject {
             goalForm.goalType.value = gType == .maintain ? GoalType.maintain.rawValue : GoalTypeSegment.losegainValue
             goalForm.goalType.markAsPristine()
         }
-        Task {
-            do {
-                let latestEntry = try await entryService.getLatestEntry()
-                if let latestWeight = latestEntry?.scaleEntry?.weight {
-                    self.latestWeight = latestWeight
-                    let unit = account.weightSettings?.weightUnit ?? .lb
-                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(latestWeight)) : ConversionTools.convertStoredToLbs(Int(latestWeight))
-                    goalForm.currentWeight.value = String(format: "%.1f", display)
-                    goalForm.currentWeight.markAsPristine()
-                }
-                
-                if let goalW = account.goalSettings?.goalWeight {
-                    let unit = account.weightSettings?.weightUnit ?? .lb
-                    let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
-                    goalForm.goalWeight.value = String(format: "%.1f", display)
-                    goalForm.goalWeight.markAsPristine()
-                }
-                
-                // Update max-value validator according to unit.
-                updateGoalWeightValidators()
-                goalForm.validate()
-            } catch {}
+        if let goalW = account.goalSettings?.initialWeight {
+            let unit = account.weightSettings?.weightUnit ?? .lb
+            let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
+            goalForm.currentWeight.value = String(format: "%.1f", display)
+            goalForm.currentWeight.markAsPristine()
         }
         
+        if let goalW = account.goalSettings?.goalWeight {
+            let unit = account.weightSettings?.weightUnit ?? .lb
+            let display = unit == .kg ? ConversionTools.convertStoredToKg(Int(goalW)) : ConversionTools.convertStoredToLbs(Int(goalW))
+            goalForm.goalWeight.value = String(format: "%.1f", display)
+            goalForm.goalWeight.markAsPristine()
+        }
+        
+        // Update max-value validator according to unit.
+        updateGoalWeightValidators()
+        goalForm.validate()
     }
     
     /// Updates the max-weight validator whenever the preferred unit changes.
@@ -965,7 +958,7 @@ class SettingsStore: ObservableObject {
     }
     
     // MARK: - Goal Exit Helpers
-
+    
     /// Presents a Goal exit confirmation alert using shared strings.
     /// - Parameters:
     ///   - onExit:    Closure executed when the user confirms leaving.
@@ -986,7 +979,7 @@ class SettingsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
+    
     /// Variant for navigation push presentation.
     func handleGoalExit(router: Router<SettingsRoute>) {
         // Fast path: if form is pristine simply pop.
@@ -995,17 +988,17 @@ class SettingsStore: ObservableObject {
             resetGoalForm()
             return
         }
-
+        
         presentGoalExitAlert(onExit: {
             self.resetGoalForm()
             router.navigateBack()
         })
     }
-
+    
     /// Async variant used by tab-deactivation; returns whether it is safe to leave.
     func confirmDiscardGoalChanges() async -> Bool {
         guard goalForm.isDirty else { return true }
-
+        
         return await withCheckedContinuation { continuation in
             presentGoalExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -1037,14 +1030,17 @@ class SettingsStore: ObservableObject {
                 return convert(currentDisplay)
             }
         }()
-        let goalPayload: Goal
-        if goalTypeValue == GoalType.maintain.rawValue {
-            goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: self.latestWeight, goalType: .maintain)
-        } else {
-            let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
-            goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
-        }
+        
         Task {
+            let latestEntry = try await entryService.getLatestEntry()
+            let latestWeight = latestEntry?.scaleEntry?.weight ?? 0
+            let goalPayload: Goal
+            if goalTypeValue == GoalType.maintain.rawValue {
+                goalPayload = Goal(type: .maintain, goalWeight: goalStored, initialWeight: latestWeight, goalType: .maintain)
+            } else {
+                let derivedType: GoalType = goalStored > initialStored ? .gain : .lose
+                goalPayload = Goal(type: derivedType, goalWeight: goalStored, initialWeight: initialStored, goalType: derivedType)
+            }
             notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
                 _ = try await accountService.createGoal(goalPayload)
@@ -1094,10 +1090,10 @@ class SettingsStore: ObservableObject {
     
     func sendForgotPasswordEmail() {
         guard let email = activeAccount?.email else { return }
-
+        
         let trimmedEmail = removeWhiteSpace(email)
         guard !trimmedEmail.isEmpty else { return }
-
+        
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
@@ -1121,19 +1117,19 @@ class SettingsStore: ObservableObject {
     func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
         // Ensure we have exactly one account logged in
         guard accountService.allAccounts.count == 1 else { return }
-
+        
         // Check persistent flag – bail if user has already seen the modal
         let flagKey = hasSeenAddMultipleAccountsModalKey
         let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
         guard !hasSeen else { return }
-
+        
         // We need an initial to render inside the icon cluster
         guard let initialChar = activeAccount?.firstName?.first else { return }
         let initial = String(initialChar)
-
+        
         // Set the flag immediately to avoid repeated triggers
         kvStore.setValue(true, forKey: flagKey)
-
+        
         // Delay presentation by 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let modalView = AddMultipleAccountsModalView(
@@ -1146,7 +1142,7 @@ class SettingsStore: ObservableObject {
                     router.navigate(to: .myAccounts)
                 }
             )
-
+            
             // Present the modal – disable tap-to-dismiss backdrop to force explicit action
             self.notificationService.showModal(
                 ModalData(presentedView: AnyView(modalView), backdropDismiss: false)

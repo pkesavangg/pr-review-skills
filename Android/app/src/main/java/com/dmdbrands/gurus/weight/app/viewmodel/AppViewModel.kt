@@ -173,8 +173,7 @@ constructor(
         when (authState) {
           is AuthState.LoggedIn -> {
             // handle login event
-            deviceInfoService.updateDeviceInfo()
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.LoggedOut -> {
@@ -218,7 +217,7 @@ constructor(
                 ),
               )
             }
-            initLoadingData(authState.account)
+            initLoadingData(authState.account, true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -239,9 +238,13 @@ constructor(
     viewModelScope.launch {
       AppNotificationEventService.events.collect {
         when (it) {
+          NotificationEventType.NOTIFICATION_TAPPED -> {
+            entryService.syncOperations()
+          }
+
           NotificationEventType.NOTIFICATION_RECEIVED -> {
             entryService.syncOperations()
-            dialogQueueService.showToast(Toast("Entry added", "Success!"))
+            dialogQueueService.showToast(Toast(message = "Success! Entry added"))
           }
 
           else -> {}
@@ -287,7 +290,7 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?) {
+  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
@@ -299,6 +302,9 @@ constructor(
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
+        if (isLoggedIn) {
+          deviceInfoService.updateDeviceInfo()
+        }
         navigationService.autoLogin()
       } else {
         routeToLandingOrApp()
@@ -457,10 +463,10 @@ constructor(
   ) {
     viewModelScope.launch {
       val device = deviceService.pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-      if (device != null)
-        deviceService.onDeviceUpdate(
-          macAddress = device.device?.macAddress, connectionStatus = connectionStatus ?: device.connectionStatus,
-        )
+      deviceService.onDeviceUpdate(
+        macAddress = device?.device?.macAddress ?: deviceDetail.macAddress,
+        connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED,
+      )
     }
   }
 

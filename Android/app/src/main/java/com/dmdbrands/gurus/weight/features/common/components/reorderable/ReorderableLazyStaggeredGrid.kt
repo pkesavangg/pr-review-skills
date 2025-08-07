@@ -30,11 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -43,6 +46,15 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.AbsolutePixelPadding
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.LazyCollectionItemInfo
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.LazyCollectionLayoutInfo
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.LazyCollectionState
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItem
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableLazyCollectionDefaults
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableLazyCollectionState
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -58,124 +70,122 @@ import kotlinx.coroutines.CoroutineScope
  */
 @Composable
 fun rememberReorderableLazyStaggeredGridState(
-    lazyStaggeredGridState: LazyStaggeredGridState,
-    scrollThresholdPadding: PaddingValues = PaddingValues(0.dp),
-    scrollThreshold: Dp = ReorderableLazyCollectionDefaults.ScrollThreshold,
-    scroller: Scroller = rememberScroller(
-        scrollableState = lazyStaggeredGridState,
-        pixelAmountProvider = { lazyStaggeredGridState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
-    ),
-    onMove: suspend CoroutineScope.(from: LazyStaggeredGridItemInfo, to: LazyStaggeredGridItemInfo) -> Unit,
+  lazyStaggeredGridState: LazyStaggeredGridState,
+  scrollThresholdPadding: PaddingValues = PaddingValues(0.dp),
+  scrollThreshold: Dp = ReorderableLazyCollectionDefaults.ScrollThreshold,
+  scroller: Scroller = rememberScroller(
+    scrollableState = lazyStaggeredGridState,
+    pixelAmountProvider = { lazyStaggeredGridState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
+  ),
+  onMove: suspend CoroutineScope.(from: LazyStaggeredGridItemInfo, to: LazyStaggeredGridItemInfo) -> Unit,
 ): ReorderableLazyStaggeredGridState {
-    val density = LocalDensity.current
-    val scrollThresholdPx = with(density) { scrollThreshold.toPx() }
+  val density = LocalDensity.current
+  val scrollThresholdPx = with(density) { scrollThreshold.toPx() }
 
-    val scope = rememberCoroutineScope()
-    val onMoveState = rememberUpdatedState(onMove)
-    val layoutDirection = LocalLayoutDirection.current
-    val absoluteScrollThresholdPadding = AbsolutePixelPadding(
-        start = with(density) {
-            scrollThresholdPadding.calculateStartPadding(layoutDirection).toPx()
-        },
-        end = with(density) {
-            scrollThresholdPadding.calculateEndPadding(layoutDirection).toPx()
-        },
-        top = with(density) { scrollThresholdPadding.calculateTopPadding().toPx() },
-        bottom = with(density) { scrollThresholdPadding.calculateBottomPadding().toPx() },
+  val scope = rememberCoroutineScope()
+  val onMoveState = rememberUpdatedState(onMove)
+  val layoutDirection = LocalLayoutDirection.current
+  val absoluteScrollThresholdPadding = AbsolutePixelPadding(
+    start = with(density) {
+      scrollThresholdPadding.calculateStartPadding(layoutDirection).toPx()
+    },
+    end = with(density) {
+      scrollThresholdPadding.calculateEndPadding(layoutDirection).toPx()
+    },
+    top = with(density) { scrollThresholdPadding.calculateTopPadding().toPx() },
+    bottom = with(density) { scrollThresholdPadding.calculateBottomPadding().toPx() },
+  )
+  val state = remember(
+    scope, lazyStaggeredGridState, scrollThreshold, scrollThresholdPadding, scroller,
+  ) {
+    ReorderableLazyStaggeredGridState(
+      state = lazyStaggeredGridState,
+      scope = scope,
+      onMoveState = onMoveState,
+      scrollThreshold = scrollThresholdPx,
+      scrollThresholdPadding = absoluteScrollThresholdPadding,
+      scroller = scroller,
+      layoutDirection = layoutDirection,
     )
-    val state = remember(
-        scope, lazyStaggeredGridState, scrollThreshold, scrollThresholdPadding, scroller,
-    ) {
-        ReorderableLazyStaggeredGridState(
-            state = lazyStaggeredGridState,
-            scope = scope,
-            onMoveState = onMoveState,
-            scrollThreshold = scrollThresholdPx,
-            scrollThresholdPadding = absoluteScrollThresholdPadding,
-            scroller = scroller,
-            layoutDirection = layoutDirection,
-        )
-    }
-    return state
+  }
+  return state
 }
 
 private val LazyStaggeredGridLayoutInfo.mainAxisViewportSize: Int
-    get() = when (orientation) {
-        Orientation.Vertical -> viewportSize.height
-        Orientation.Horizontal -> viewportSize.width
-    }
+  get() = when (orientation) {
+    Orientation.Vertical -> viewportSize.height
+    Orientation.Horizontal -> viewportSize.width
+  }
 
 private fun LazyStaggeredGridItemInfo.toLazyCollectionItemInfo() =
-    object : LazyCollectionItemInfo<LazyStaggeredGridItemInfo> {
-        override val index: Int
-            get() = this@toLazyCollectionItemInfo.index
-        override val key: Any
-            get() = this@toLazyCollectionItemInfo.key
-        override val offset: IntOffset
-            get() = this@toLazyCollectionItemInfo.offset
-        override val size: IntSize
-            get() = this@toLazyCollectionItemInfo.size
-        override val data: LazyStaggeredGridItemInfo
-            get() = this@toLazyCollectionItemInfo
-
-    }
+  object : LazyCollectionItemInfo<LazyStaggeredGridItemInfo> {
+    override val index: Int
+      get() = this@toLazyCollectionItemInfo.index
+    override val key: Any
+      get() = this@toLazyCollectionItemInfo.key
+    override val offset: IntOffset
+      get() = this@toLazyCollectionItemInfo.offset
+    override val size: IntSize
+      get() = this@toLazyCollectionItemInfo.size
+    override val data: LazyStaggeredGridItemInfo
+      get() = this@toLazyCollectionItemInfo
+  }
 
 private fun LazyStaggeredGridLayoutInfo.toLazyCollectionLayoutInfo() =
-    object : LazyCollectionLayoutInfo<LazyStaggeredGridItemInfo> {
-        override val visibleItemsInfo: List<LazyCollectionItemInfo<LazyStaggeredGridItemInfo>>
-            get() = this@toLazyCollectionLayoutInfo.visibleItemsInfo.map {
-                it.toLazyCollectionItemInfo()
-            }
-        override val viewportSize: IntSize
-            get() = this@toLazyCollectionLayoutInfo.viewportSize
-        override val orientation: Orientation
-            get() = this@toLazyCollectionLayoutInfo.orientation
-        override val reverseLayout: Boolean = false
-        override val beforeContentPadding: Int
-            get() = this@toLazyCollectionLayoutInfo.beforeContentPadding
-
-    }
+  object : LazyCollectionLayoutInfo<LazyStaggeredGridItemInfo> {
+    override val visibleItemsInfo: List<LazyCollectionItemInfo<LazyStaggeredGridItemInfo>>
+      get() = this@toLazyCollectionLayoutInfo.visibleItemsInfo.map {
+        it.toLazyCollectionItemInfo()
+      }
+    override val viewportSize: IntSize
+      get() = this@toLazyCollectionLayoutInfo.viewportSize
+    override val orientation: Orientation
+      get() = this@toLazyCollectionLayoutInfo.orientation
+    override val reverseLayout: Boolean = false
+    override val beforeContentPadding: Int
+      get() = this@toLazyCollectionLayoutInfo.beforeContentPadding
+  }
 
 private fun LazyStaggeredGridState.toLazyCollectionState() =
-    object : LazyCollectionState<LazyStaggeredGridItemInfo> {
-        override val firstVisibleItemIndex: Int
-            get() = this@toLazyCollectionState.firstVisibleItemIndex
-        override val firstVisibleItemScrollOffset: Int
-            get() = this@toLazyCollectionState.firstVisibleItemScrollOffset
-        override val layoutInfo: LazyCollectionLayoutInfo<LazyStaggeredGridItemInfo>
-            get() = this@toLazyCollectionState.layoutInfo.toLazyCollectionLayoutInfo()
+  object : LazyCollectionState<LazyStaggeredGridItemInfo> {
+    override val firstVisibleItemIndex: Int
+      get() = this@toLazyCollectionState.firstVisibleItemIndex
+    override val firstVisibleItemScrollOffset: Int
+      get() = this@toLazyCollectionState.firstVisibleItemScrollOffset
+    override val layoutInfo: LazyCollectionLayoutInfo<LazyStaggeredGridItemInfo>
+      get() = this@toLazyCollectionState.layoutInfo.toLazyCollectionLayoutInfo()
 
-        override suspend fun animateScrollBy(value: Float, animationSpec: AnimationSpec<Float>) =
-            this@toLazyCollectionState.animateScrollBy(value, animationSpec)
+    override suspend fun animateScrollBy(value: Float, animationSpec: AnimationSpec<Float>) =
+      this@toLazyCollectionState.animateScrollBy(value, animationSpec)
 
-        override suspend fun requestScrollToItem(index: Int, scrollOffset: Int) =
-            this@toLazyCollectionState.requestScrollToItem(index, scrollOffset)
-    }
+    override suspend fun requestScrollToItem(index: Int, scrollOffset: Int) =
+      this@toLazyCollectionState.requestScrollToItem(index, scrollOffset)
+  }
 
 @Stable
 class ReorderableLazyStaggeredGridState internal constructor(
-    state: LazyStaggeredGridState,
-    scope: CoroutineScope,
-    onMoveState: State<suspend CoroutineScope.(from: LazyStaggeredGridItemInfo, to: LazyStaggeredGridItemInfo) -> Unit>,
+  state: LazyStaggeredGridState,
+  scope: CoroutineScope,
+  onMoveState: State<suspend CoroutineScope.(from: LazyStaggeredGridItemInfo, to: LazyStaggeredGridItemInfo) -> Unit>,
 
-    /**
-     * The threshold in pixels for scrolling the grid when dragging an item.
-     * If the dragged item is within this threshold of the top or bottom of the grid, the grid will scroll.
-     * Must be greater than 0.
-     */
-    scrollThreshold: Float,
-    scrollThresholdPadding: AbsolutePixelPadding,
-    scroller: Scroller,
-    layoutDirection: LayoutDirection,
+  /**
+   * The threshold in pixels for scrolling the grid when dragging an item.
+   * If the dragged item is within this threshold of the top or bottom of the grid, the grid will scroll.
+   * Must be greater than 0.
+   */
+  scrollThreshold: Float,
+  scrollThresholdPadding: AbsolutePixelPadding,
+  scroller: Scroller,
+  layoutDirection: LayoutDirection,
 ) : ReorderableLazyCollectionState<LazyStaggeredGridItemInfo>(
-    state.toLazyCollectionState(),
-    scope,
-    onMoveState,
-    scrollThreshold,
-    scrollThresholdPadding,
-    scroller,
-    layoutDirection,
-    lazyVerticalStaggeredGridRtlFix = true,
+  state.toLazyCollectionState(),
+  scope,
+  onMoveState,
+  scrollThreshold,
+  scrollThresholdPadding,
+  scroller,
+  layoutDirection,
+  lazyVerticalStaggeredGridRtlFix = true,
 )
 
 /**
@@ -188,40 +198,67 @@ class ReorderableLazyStaggeredGridState internal constructor(
  */
 @Composable
 fun LazyStaggeredGridItemScope.ReorderableItem(
-    state: ReorderableLazyStaggeredGridState,
-    key: Any,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    animateItemModifier: Modifier = Modifier.animateItem(),
-    content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
+  state: ReorderableLazyStaggeredGridState,
+  key: Any,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  animateItemModifier: Modifier = Modifier.animateItem(),
+  content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
 ) {
-    val dragging by state.isItemDragging(key)
-    val offsetModifier = if (dragging) {
-        Modifier
-            .zIndex(1f)
-            .graphicsLayer {
-                translationY = state.draggingItemOffset.y
-                translationX = state.draggingItemOffset.x
-            }
-    } else if (key == state.previousDraggingItemKey) {
-        Modifier
-            .zIndex(1f)
-            .graphicsLayer {
-                translationY =
-                    state.previousDraggingItemOffset.value.y
-                translationX =
-                    state.previousDraggingItemOffset.value.x
-            }
-    } else {
-        animateItemModifier
-    }
+  val dragging by state.isItemDragging(key)
+  var itemSize by remember { mutableStateOf(IntSize.Zero) }
+  val viewportSize = state.viewportSize
+  val draggingOrigin = state.draggingItemOrigin
+  val draggingSize = state.draggingItemSize ?: itemSize
+  val offsetModifier = if (dragging) {
+    Modifier
+      .onGloballyPositioned { itemSize = it.size }
+      .zIndex(1f)
+      .graphicsLayer {
+        // Clamp translation so the item cannot be dragged outside the grid (all sides)
+        val originX = draggingOrigin?.x?.toFloat() ?: 0f
+        val originY = draggingOrigin?.y?.toFloat() ?: 0f
+        val maxX = (viewportSize.width - draggingSize.width).toFloat()
+        val maxY = (viewportSize.height - draggingSize.height).toFloat()
+        // Ensure bounds are valid (non-negative)
+        val clampedMaxX = maxX.coerceAtLeast(0f)
+        val clampedMaxY = maxY.coerceAtLeast(0f)
+        val minTranslationX = -originX
+        val maxTranslationX = clampedMaxX - originX
+        val minTranslationY = -originY
+        val maxTranslationY = clampedMaxY - originY
+        translationX = state.draggingItemOffset.x.coerceIn(minTranslationX, maxTranslationX)
+        translationY = state.draggingItemOffset.y.coerceIn(minTranslationY, maxTranslationY)
+      }
+  } else if (key == state.previousDraggingItemKey) {
+    Modifier
+      .onGloballyPositioned { itemSize = it.size }
+      .zIndex(1f)
+      .graphicsLayer {
+        val originX = draggingOrigin?.x?.toFloat() ?: 0f
+        val originY = draggingOrigin?.y?.toFloat() ?: 0f
+        val maxX = (viewportSize.width - draggingSize.width).toFloat()
+        val maxY = (viewportSize.height - draggingSize.height).toFloat()
+        // Ensure bounds are valid (non-negative)
+        val clampedMaxX = maxX.coerceAtLeast(0f)
+        val clampedMaxY = maxY.coerceAtLeast(0f)
+        val minTranslationX = -originX
+        val maxTranslationX = clampedMaxX - originX
+        val minTranslationY = -originY
+        val maxTranslationY = clampedMaxY - originY
+        translationX = state.previousDraggingItemOffset.value.x.coerceIn(minTranslationX, maxTranslationX)
+        translationY = state.previousDraggingItemOffset.value.y.coerceIn(minTranslationY, maxTranslationY)
+      }
+  } else {
+    Modifier.onGloballyPositioned { itemSize = it.size } then animateItemModifier
+  }
 
-    ReorderableCollectionItem(
-        state = state,
-        key = key,
-        modifier = modifier.then(offsetModifier),
-        enabled = enabled,
-        dragging = dragging,
-        content = content,
-    )
+  ReorderableCollectionItem(
+    state = state,
+    key = key,
+    modifier = modifier.then(offsetModifier),
+    enabled = enabled,
+    dragging = dragging,
+    content = content,
+  )
 }
