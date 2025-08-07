@@ -149,7 +149,7 @@ class MetricCell: UICollectionViewCell {
                             store.toggleMetricRemovalInReorderedArray(at: index)
                         }
                     },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped, /
+                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped, 
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                     rowIndex: rowIndex,
                     disableWiggle: false
