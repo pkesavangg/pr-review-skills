@@ -91,7 +91,6 @@ class ScaleMetricsManager: ObservableObject {
             wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
             updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
         )
-        
         try await scaleService.updateScalePreference(scale.id, updatedPreference)
         
         // Update the scale's R4ScalePreference in memory
