@@ -559,7 +559,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let serverScales = try await remoteRepo.listScales()
             print("serverScales: \(serverScales)")
             let serverDevices = serverScales.map { 
-                var device = Device(from: $0)
+                let device = Device(from: $0)
                 device.accountId = accountId // Ensure account ID is set
                 return device
             }
