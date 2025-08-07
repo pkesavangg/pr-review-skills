@@ -22,6 +22,14 @@ class MetricCell: UICollectionViewCell {
     var representedItem: MetricItem?
     var onDeleteTapped: (() -> Void)?
     
+    // MARK: - Private Properties for Configuration
+    
+    private var currentStore: DashboardStore?
+    private var currentDashboardType: DashboardType = .dashboard12
+    private var currentIsBeingDragged: Bool = false
+    private var isLongPressed: Bool = false
+    private var isTapped: Bool = false
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
@@ -88,8 +96,12 @@ class MetricCell: UICollectionViewCell {
     ///   - item: The MetricItem to display
     ///   - dashboardType: The dashboard type for styling
     ///   - store: The dashboard store for formatting
-    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
+    ///   - isBeingDragged: Whether this cell is currently being dragged
+    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
         representedItem = item
+        currentStore = store
+        currentDashboardType = dashboardType
+        currentIsBeingDragged = isBeingDragged
         
         // Determine if this item is removed
         let itemIsRemoved = store.isMetricRemovedInReorderedArray(at: store.metricsToShow.firstIndex(where: { $0.id == item.id }) ?? 0)
@@ -127,7 +139,6 @@ class MetricCell: UICollectionViewCell {
                 : MetricCardView.fourCardVerticalPadding
         )
         
-        // Apply EditModeOverlay to the MetricCardView
         let viewWithOverlay = AnyView(
             metricCardView
                 .editModeOverlay(
@@ -138,7 +149,7 @@ class MetricCell: UICollectionViewCell {
                             store.toggleMetricRemovalInReorderedArray(at: index)
                         }
                     },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id,
+                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped, /
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                     rowIndex: rowIndex,
                     disableWiggle: false
@@ -149,10 +160,9 @@ class MetricCell: UICollectionViewCell {
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
-            // Add drag-and-drop gesture in edit mode (handled by UIKit grid)
-            // No-op here, handled by parent
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
+            self.addGestureRecognizer(tapGesture)
         } else {
-            // Add long-press for info sheet only in non-edit mode
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
             self.addGestureRecognizer(longPress)
@@ -167,6 +177,17 @@ class MetricCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         representedItem = nil
+        currentStore = nil
+        currentDashboardType = .dashboard12
+        currentIsBeingDragged = false
+        isLongPressed = false
+        isTapped = false
+        
+        // Stop any ongoing wiggle animation
+        contentView.stopWiggle()
+        isWiggling = false
+        isRemoved = false
+        rowIndex = 0
         
         // Reset to placeholder view
         let placeholderView = AnyView(
@@ -193,15 +214,28 @@ class MetricCell: UICollectionViewCell {
     override func dragStateDidChange(_ dragState: UICollectionViewCell.DragState) {
         super.dragStateDidChange(dragState)
         
-        // Manage visual feedback during drag operations
         switch dragState {
         case .none:
-            // Restore normal appearance
+            // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
+            // Clear interaction states
+            isLongPressed = false
+            isTapped = false
+            // Reconfigure to show overlay after drag ends
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false)
+            }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
             // This prevents items from appearing "removed" during drag operations
             hostingController?.view.alpha = 1.0
+            // Set interaction states to hide overlay during drag
+            isLongPressed = true
+            isTapped = true
+            // Reconfigure to hide overlay during drag
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true)
+            }
         @unknown default:
             break
         }
@@ -211,7 +245,6 @@ class MetricCell: UICollectionViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        // Only wiggle if not removed and in wiggle mode
         if isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
@@ -219,21 +252,18 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
-    /// Controls whether the cell is in wiggle mode
     var isWiggling: Bool = false {
         didSet {
             layoutSubviews()
         }
     }
     
-    /// Controls whether the cell represents a removed item
     var isRemoved: Bool = false {
         didSet {
             layoutSubviews()
         }
     }
     
-    /// Row index used for alternating wiggle animation timing
     var rowIndex: Int = 0 {
         didSet {
             if isWiggling && !isRemoved {
@@ -242,18 +272,49 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
+    func restartWiggleAnimation() {
+        if isWiggling && !isRemoved {
+            contentView.stopWiggle()
+            contentView.startWiggleWithRowIndex(rowIndex)
+        }
+    }
+    
     // MARK: - EditModeOverlay Management
     
     /// Hides the EditModeOverlay delete button specifically for drag operations
+    /// Similar to AppIconCell.hideDeleteButtonForDrag() in movingGridsLearning
     func hideDeleteButtonForDrag() {
-        // The EditModeOverlay will automatically hide during drag operations
-        // based on the isBeingDragged parameter
+        // Update the drag state without full reconfiguration
+        currentIsBeingDragged = true
+        
+        // Reconfigure the cell with isBeingDragged = true to hide the overlay
+        if let item = representedItem, let store = currentStore {
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true)
+        }
     }
     
     /// Shows the EditModeOverlay delete button if the cell is in wiggle mode
+    /// Similar to AppIconCell.showDeleteButtonIfNeeded() in movingGridsLearning
     func showDeleteButtonIfNeeded() {
-        // The EditModeOverlay will automatically show/hide based on edit mode
-        // No manual intervention needed
+        // Update the drag state without full reconfiguration
+        currentIsBeingDragged = false
+        
+        // Reconfigure the cell with isBeingDragged = false to show the overlay
+        if let item = representedItem, let store = currentStore {
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false)
+        }
+    }
+    
+    /// Updates the drag state for this cell
+    /// - Parameter isBeingDragged: Whether this cell is currently being dragged
+    func updateDragState(_ isBeingDragged: Bool) {
+        let oldState = currentIsBeingDragged
+        currentIsBeingDragged = isBeingDragged
+        
+        // Reconfigure the cell with the new drag state
+        if let item = representedItem, let store = currentStore {
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged)
+        }
     }
     
     // MARK: - Long Press Handling
@@ -272,38 +333,64 @@ class MetricCell: UICollectionViewCell {
     }
     
     @objc private func handleMetricLongPressForInfo(_ gesture: UILongPressGestureRecognizer) {
-        guard gesture.state == .began,
-              let item = representedItem,
+        switch gesture.state {
+        case .began:
+            isLongPressed = true
+            // Reconfigure to hide overlay during long press
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+            }
+            guard let item = representedItem,
               let callback = onMetricLongPressCallback else { return }
-        // In non-edit mode, always select the item and open info sheet
-        if let selectCallback = onSelectMetricCallback, !isSelected {
-            selectCallback(item.label)
+            // In non-edit mode, always select the item and open info sheet
+            if let selectCallback = onSelectMetricCallback, !isSelected {
+                selectCallback(item.label)
+            }
+            callback(item.label)
+        case .ended, .cancelled:
+            isLongPressed = false
+            // Reconfigure to show overlay after long press ends
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+            }
+            break
+        default:
+            break
         }
-        callback(item.label)
+    }
+    
+    @objc private func handleMetricTap(_ gesture: UITapGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            isTapped = true
+            // Reconfigure to hide overlay during tap
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+            }
+        case .ended, .cancelled:
+            isTapped = false
+            // Reconfigure to show overlay after tap ends
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+            }
+        default:
+            break
+        }
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            contentView.alpha = 1.0
+            backgroundView?.alpha = 1.0
+            layer.shadowOpacity = 0.0
+        }
+    }
+
+    override var isSelected: Bool {
+        didSet {
+            contentView.alpha = 1.0
+            backgroundView?.alpha = 1.0
+            layer.shadowOpacity = 0.0
+        }
     }
 }
-
-// MARK: - Wiggle Animation Extension
-
-extension UIView {
-    /// Creates a wiggle animation with specified parameters (matching movingGridsLearning exactly)
-    /// - Parameters:
-    ///   - duration: Animation duration
-    ///   - rotationAngle: Rotation angle in radians
-    /// - Returns: Configured CAKeyframeAnimation
-    private func createWiggleAnimation(duration: Double, rotationAngle: Double) -> CAKeyframeAnimation {
-        let transformAnim = CAKeyframeAnimation(keyPath: "transform")
-        
-        // Use the exact same values as movingGridsLearning for consistency
-        transformAnim.values = [
-            NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle, 0.0, 0.0, 1.0)),
-            NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle, 0.0, 0.0, 1.0))
-        ]
-        
-        transformAnim.autoreverses = true
-        transformAnim.duration = duration
-        transformAnim.repeatCount = Float.infinity
-        
-        return transformAnim
-    }
-} 

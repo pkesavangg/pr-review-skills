@@ -110,7 +110,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightSettings?.weightUnit }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] newWeightUnit in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
                 self?.handleSettingsChange()
@@ -121,7 +121,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.isWeightlessOn }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] isWeightlessOn in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
                 self?.handleSettingsChange()
@@ -132,9 +132,20 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.weightlessWeight }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] weightlessWeight in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
+                self?.handleSettingsChange()
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to goal settings changes
+        accountService.$activeAccount
+            .compactMap { $0?.goalSettings }
+            .removeDuplicates()
+            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .sink { [weak self] goalSettings in
+                self?.logger.log(level: .info, tag: "DashboardStore", message: "Goal settings changed - type: \(goalSettings.goalType?.rawValue ?? "nil"), goal weight: \(goalSettings.goalWeight ?? 0)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -143,7 +154,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst() 
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
@@ -630,6 +641,16 @@ class DashboardStore: ObservableObject {
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
+    }
+    
+    /// Restarts wiggle animations for all visible cells when app becomes active from background
+    func restartWiggleAnimations() {
+        // Clear the interval cache to ensure fresh randomization
+        UIView.clearWiggleIntervalCache()
+        
+        state.ui.gridLayoutId = UUID()
+        objectWillChange.send()
+        logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
 
     func selectMetric(_ label: String) {
