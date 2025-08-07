@@ -167,8 +167,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
-        // Simply return local devices - main sync handles server communication
-        let localDevices = try await localRepository.listScales()
+        let accountId = try await getAccountId()
+        
+        // Get devices for the current account
+        let localDevices = try await localRepository.listScales(forAccountId: accountId)
 
         // Filter out deleted devices for the UI
         let activeDevices = localDevices.filter { device in
@@ -427,7 +429,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     // MARK: - Internal Helpers
     private func refreshScalesFromLocal() async {
         do {
-            self.scales = try await localRepository.listScales().filter { $0.isDeleted != true }
+            let accountId = try await getAccountId()
+            self.scales = try await localRepository.listScales(forAccountId: accountId).filter { $0.isDeleted != true }
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
         }
@@ -555,7 +558,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         do {
             let serverScales = try await remoteRepo.listScales()
             print("serverScales: \(serverScales)")
-            let serverDevices = serverScales.map { Device(from: $0) }
+            let serverDevices = serverScales.map { Device(from: $0, accountId: accountId) }
 
             // Get any unsynced local devices to preserve them
             let unsyncedDevices = try await localRepository.getUnsyncedDevices()

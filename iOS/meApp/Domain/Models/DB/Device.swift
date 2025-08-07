@@ -119,6 +119,7 @@ final class Device {
 
     }
     convenience init(from dto: ScaleDTO,
+                     accountId: String? = nil,
                      protocolType: String? = nil,
                      isSynced: Bool? = nil,
                      lastModified: Int? = nil,
@@ -150,7 +151,7 @@ final class Device {
 
         self.init(
             id: id,
-            accountId: dto.userId ?? "",
+            accountId: accountId ?? dto.userId ?? "",
             peripheralIdentifier: dto.peripheralIdentifier,
             nickname: dto.nickname,
             sku: dto.sku,
