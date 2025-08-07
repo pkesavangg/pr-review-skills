@@ -65,7 +65,6 @@ struct GoalSettingScreen: View {
                     )
                     .onChange(of: settingsStore.selectedSegment) {
                         settingsStore.goalForm.goalType.value = settingsStore.selectedSegment.goalTypeValue
-                        settingsStore.notifyGoalTypeChange() 
                     }
                     .padding(.horizontal, .spacing2XL)
                     
