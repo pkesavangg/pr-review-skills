@@ -57,7 +57,24 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     /// Enables body metrics for the specified scale temporarily
     /// - Parameter scale: The scale to enable body metrics for
-    func enableBodyMetricsForScale(_ scale: Device) {
+    func enableBodyMetricsForScale(onCancel: (() -> Void)? = nil) {
+       let alert = AlertModel(
+          title: AlertStrings.EnableBodyMetricsAlert.title,
+            message: AlertStrings.EnableBodyMetricsAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.EnableBodyMetricsAlert.enableButton, type: .primary) { _ in
+                    self.handleEnableBodyMetrics()
+                },
+                AlertButtonModel(title: AlertStrings.EnableBodyMetricsAlert.cancelButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+
+    }
+
+    func handleEnableBodyMetrics() {
         Task {
             do {
                 // TODO: Implement the actual enabling logic based on scale type
@@ -68,7 +85,6 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                 await MainActor.run {
                     notificationService.showToast(
                         ToastModel(
-                            title: WeightOnlyModeStrings.bodyMetricsEnabledMessage,
                             message: WeightOnlyModeStrings.temporaryOverride
                         )
                     )
@@ -84,6 +100,22 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                 }
             }
         }
+    }
+
+    func dismissWeightOnlyModeAlert(onCancel: (() -> Void)? = nil) {
+         let alert = AlertModel(
+          title: AlertStrings.DisableWeightOnlyModeAlert.title,
+            message: AlertStrings.DisableWeightOnlyModeAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DisableWeightOnlyModeAlert.dismissButton, type: .primary) { _ in
+                  self.bluetoothService.handleWeightOnlyModeAlertDismissed()
+                },
+                AlertButtonModel(title: AlertStrings.DisableWeightOnlyModeAlert.cancelButton, type: .secondary) { _ in
+                    onCancel?()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     // MARK: - Private Methods

@@ -32,7 +32,7 @@ struct WeightOnlyModeIndicator: View {
                 .frame(width: buttonSize, height: buttonSize)
                 .background(theme.actionPrimary)
                 .clipShape(Circle())
-                .dropShadow(DropShadow.glowBlack)
+                .themeDropShadow()
                 .scaleEffect(isPressed ? 0.95 : 1.0)
                 .opacity(isDragging ? activeOpacity : defaultOpacity)
                 .animation(.easeInOut(duration: animationDuration), value: isDragging)
@@ -87,7 +87,15 @@ struct WeightOnlyModeIndicator: View {
         }
         .allowsHitTesting(true)
         .sheet(isPresented: $showWeightOnlyAlert) {
-            WeightOnlyModeAlertView()
+            WeightOnlyModeBottomSheet(
+                onDismiss: {
+                    showWeightOnlyAlert = false
+                },
+                onEnableAllBodyMetrics: {
+                    showWeightOnlyAlert = false
+                }
+            )
+            .deviceDiscoverSheetStyle()
         }
     }
 

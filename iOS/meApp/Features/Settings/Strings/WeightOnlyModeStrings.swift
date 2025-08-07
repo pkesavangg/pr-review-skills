@@ -29,7 +29,7 @@ struct WeightOnlyModeStrings {
     // Scale status messages
     static let weightOnlyModeActive = "Weight Only Mode Active"
     static let enabledByOthers = "Enabled by other users"
-    static let temporaryOverride = "Temporary override available"
+    static let temporaryOverride = "All body metrics temporarily on"
 
     // Error messages
     static let enableFailedTitle = "Enable Failed"

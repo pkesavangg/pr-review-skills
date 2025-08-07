@@ -11,8 +11,6 @@ import Combine
 /// A view modifier that conditionally shows the WeightOnlyModeIndicator
 /// based on whether any connected scales have weight-only mode enabled by others
 struct WeightOnlyModeOverlay: ViewModifier {
-    @Injector private var bluetoothService: BluetoothService
-
     func body(content: Content) -> some View {
         ZStack {
             content
@@ -23,8 +21,7 @@ struct WeightOnlyModeOverlay: ViewModifier {
 
 /// Internal view that handles the state and animation
 private struct WeightOnlyModeOverlayContent: View {
-//    let bluetoothService: BluetoothService
-    @State private var shouldShowIndicator = true
+    @State private var shouldShowIndicator = false
 
     var body: some View {
         Group {
@@ -35,11 +32,9 @@ private struct WeightOnlyModeOverlayContent: View {
                     .animation(.easeInOut(duration: 0.3), value: shouldShowIndicator)
             }
         }
-//        .onReceive(bluetoothService.showWeightOnlyModeAlertPublisher) { shouldShow in
-//            withAnimation(.easeInOut(duration: 0.3)) {
-//                shouldShowIndicator = shouldShow
-//            }
-//        }
+        .onReceive(BluetoothService.shared.showWeightOnlyModeAlertPublisher) { shouldShow in
+            shouldShowIndicator = shouldShow
+        }
     }
 }
 

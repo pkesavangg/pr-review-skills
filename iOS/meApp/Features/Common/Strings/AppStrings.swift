@@ -56,6 +56,7 @@ struct CommonStrings {
     static let tryAgain = "Try Again"
     static let support = "Support"
     static let connect = "Connect"
+    static let dismiss = "Dismiss"
 }
 
 /// Constants for entry strings used in the app
@@ -67,6 +68,11 @@ struct EntryStrings {
 /// Constants for scale discovered sheet strings used in the app
 struct ScaleDiscoveredSheetStrings {
     static let title = "New Scale Discovered"
+}
+
+struct WeightOnlyModeAlertStrings {
+    static let title = "A User has Weight Only Mode on"
+    static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
 }
 
 
@@ -587,6 +593,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct DisableWeightOnlyModeAlert {
+        static let title = "Are you sure?"
+        static let message = "The alert will be dismissed for this session. Visit scale settings to enable and/or review users."
+        static let dismissButton = "Dismiss"
+        static let cancelButton = "Cancel"
+    }
+
     struct ConfirmDeleteUserAlert {
         static let title = "Are you sure you want to delete?"
         static let message: (String) -> String = { userName in
@@ -629,6 +642,12 @@ struct AlertStrings {
         static let title = "Update Can't Be Saved"
         static let message = "The scale is currently busy. Wait a few moments and try again."
         static let tryAgainButton = "Try Again"
+        static let cancelButton = "Cancel"
+    }
+    struct WeightOnlyModeAlert {
+        static let title = "Weight Only Mode"
+        static let message = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
+        static let enableButton = "Enable"
         static let cancelButton = "Cancel"
     }
 }
