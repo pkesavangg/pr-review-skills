@@ -10,7 +10,8 @@ data class HomeState(
   val showAppsync: Boolean = false,
   val isAppSyncPermissionsEnabled: Boolean = false,
   val showWeightOnlyModeBottomSheet: Boolean = false,
-  val openWeightOnlyModePopup: Boolean = false
+  val openWeightOnlyModePopup: Boolean = false,
+  val isWeightOnlyModeDismissed: Boolean = false
 ) : IReducer.State
 
 /**
@@ -44,6 +45,10 @@ sealed interface HomeIntent : IReducer.Intent {
   data object OnWeightOnlyModeEnable : HomeIntent
 
   data object OnWeightOnlyModeAlertDismiss : HomeIntent
+
+  data class SetWeightOnlyModeDismissed(
+    val isDismissed: Boolean
+  ) : HomeIntent
 }
 
 /**
@@ -64,6 +69,9 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
 
       is HomeIntent.OpenWeightOnlyModePopup ->
         state.copy(openWeightOnlyModePopup = intent.open)
+
+      is HomeIntent.SetWeightOnlyModeDismissed ->
+        state.copy(isWeightOnlyModeDismissed = intent.isDismissed)
 
       else -> state.copy()
     }

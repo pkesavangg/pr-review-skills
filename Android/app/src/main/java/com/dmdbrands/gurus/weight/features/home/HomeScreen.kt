@@ -87,10 +87,8 @@ fun HomeScreenContent(
       )
     },
     floatingActionButton = {
-      if (state.showWeightOnlyModeBottomSheet) {
+      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed) {
         AppFab(
-          isDraggable = true, // Enable drag and drop
-          enabled = true,
           showWeightOnlyModeAlert = true,
           onClick = {
             handleIntent(HomeIntent.OpenWeightOnlyModePopup(true))
@@ -117,8 +115,11 @@ fun HomeScreenContent(
       onEnable = {
         handleIntent(HomeIntent.OnWeightOnlyModeEnable)
       },
-      onDismiss = {
+      onClose = {
         handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
+      },
+      onDismiss = {
+        handleIntent(HomeIntent.OnWeightOnlyModeAlertDismiss)
       },
     )
   }
@@ -128,13 +129,14 @@ fun HomeScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 fun OpenWeightOnlyModePopup(
   onEnable: () -> Unit,
+  onClose: () -> Unit,
   onDismiss: () -> Unit
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   ModalBottomSheet(
     sheetState = sheetState,
     modifier = Modifier.navigationBarsPadding(),
-    onDismissRequest = onDismiss,
+    onDismissRequest = onClose,
     containerColor = MeTheme.colorScheme.primaryBackground,
   ) {
     WeightOnlyModePopup(

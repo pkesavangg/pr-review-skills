@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * Service interface for managing device/scale data operations.
@@ -17,6 +18,7 @@ interface IDeviceService {
 
   val pairedScales: Flow<List<Device>>
   val connectedScales: Flow<List<Device>>
+  val isWeightOnlyModeAlertShown: MutableStateFlow<Boolean>
 
   /**
    * Set the current account ID and initialize scale data for that account.
@@ -175,4 +177,8 @@ interface IDeviceService {
    * @return The scale token as a string.
    */
   suspend fun getScaleToken(isR4: Boolean = true): String
+
+  fun weightOnlyModeDismissAlert(onConfirm: () -> Unit)
+
+  fun updateWeightOnlyModeAlertShown(isAlertShown: Boolean)
 }

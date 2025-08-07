@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -8,7 +9,9 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -40,6 +43,7 @@ class DeviceService
 @Inject
 constructor(
   private val deviceRepository: IDeviceRepository,
+  private val dialogQueueService: IDialogQueueService,
   @ApplicationContext private val context: Context,
 ) : IDeviceService {
   private val tag = "DeviceService"
@@ -57,6 +61,8 @@ constructor(
   override val pairedScales: Flow<List<Device>>
     get() = _pairedScales.asStateFlow()
 
+  override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
+
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
     val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
     val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
@@ -73,27 +79,14 @@ constructor(
 
       if (deviceIndex >= 0) {
         val device = currentDevices[deviceIndex]
-        val isConnected = connectionStatus == BLEStatus.CONNECTED
-
-        val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
-          device.preferences.shouldMeasureImpedance == true &&
-            device.device.impedanceSwitchState == false
-        } else {
-          false
-        }
+        connectionStatus == BLEStatus.CONNECTED
 
         val updatedDevice = device.copy(
           connectionStatus = connectionStatus,
-          isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
         )
 
         currentDevices[deviceIndex] = updatedDevice
         _pairedScales.value = currentDevices
-
-        AppLog.d(
-          tag,
-          "Connection status updated for ${device.device?.deviceName}: $connectionStatus, isWeighOnlyModeEnabledByOthers: $isWeighOnlyModeEnabledByOthers",
-        )
       }
     }
     // Optionally log or handle the null case
@@ -144,7 +137,6 @@ constructor(
       } else {
         false
       }
-
       device.copy(
         connectionStatus = if (isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
         isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
@@ -608,6 +600,31 @@ constructor(
       AppLog.e(tag, "Error getting scale token", e.toString())
       throw e
     }
+  }
+
+  override fun weightOnlyModeDismissAlert(
+    onConfirm: () -> Unit
+  ) {
+    dialogQueueService.showDialog(
+      DialogModel.Confirm(
+        title = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Title,
+        message = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Message,
+        confirmText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Dismiss,
+        cancelText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Cancel,
+        onConfirm = {
+          updateWeightOnlyModeAlertShown(true)
+          onConfirm.invoke()
+          dialogQueueService.dismissCurrent()
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
+  }
+
+  override fun updateWeightOnlyModeAlertShown(isAlertShown: Boolean) {
+    isWeightOnlyModeAlertShown.value = isAlertShown
   }
 
   override suspend fun updateScalePreferencesByMac(

@@ -49,7 +49,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -560,8 +559,6 @@ constructor(
     viewModelScope.launch {
       try {
         val pairedScales = deviceService.pairedScales.first()
-        Log.d(TAG, pairedScales.toString())
-        // Log detailed information about each scale
         pairedScales.forEach { device ->
           AppLog.d(
             TAG,
@@ -575,16 +572,12 @@ constructor(
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()
-
         AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${weightOnlyScales.size}")
-        Log.d(TAG, "Has weight-only mode scale: $hasWeightOnlyModeScale")
-
-        if (hasWeightOnlyModeScale) {
+        if (hasWeightOnlyModeScale && !deviceService.isWeightOnlyModeAlertShown.value) {
           WeightOnlyModeEventService.emit(WeightOnlyModeEventType.SHOW_ALERT)
-          AppLog.d(TAG, "Weight-only mode alert event emitted")
-        } else {
+          deviceService.updateWeightOnlyModeAlertShown(false)
+        } else if (!hasWeightOnlyModeScale) {
           WeightOnlyModeEventService.emit(WeightOnlyModeEventType.HIDE_ALERT)
-          AppLog.d(TAG, "Weight-only mode alert hide event emitted")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check weight-only mode alert", e.toString())
