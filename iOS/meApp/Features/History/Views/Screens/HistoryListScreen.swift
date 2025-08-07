@@ -17,8 +17,23 @@ struct HistoryListScreen: View {
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
-              NavbarHeaderView<EmptyView, EmptyView>(
+              NavbarHeaderView<EmptyView, _>(
                   title: HistoryListStrings.title,
+                  trailingContent: {
+                      Group {
+                          if !store.isEmptyState {
+                              Button {
+                                  store.handleExport()
+                              } label: {
+                                  AppIconView(icon: AppAssets.export)
+                                      .foregroundColor(theme.statusIconPrimary)
+                                      .frame(width: 24, height: 24)
+                              }
+                          } else {
+                              EmptyView()
+                          }
+                      }
+                  },
                   canShowBorder: true
               )
               .background(theme.backgroundPrimary)
@@ -48,7 +63,8 @@ struct HistoryListScreen: View {
        if store.isEmptyState {
             NoEntryView(
               onButtonTap: {
-                // TODO: Navigate to Add Scale Screen
+                  tabViewModel.pendingSettingsNavigation = .addEditScales
+                  tabViewModel.selectedTab = .settings
               }
             )
         } else {

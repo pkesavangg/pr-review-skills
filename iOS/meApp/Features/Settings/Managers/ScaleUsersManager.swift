@@ -8,7 +8,7 @@ class ScaleUsersManager: ObservableObject {
     // MARK: - Dependencies
     @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
-
+    @Injector private var scaleService: ScaleService
     // MARK: - Published Properties
     @Published var state: ScaleUsersState
 
@@ -113,8 +113,11 @@ class ScaleUsersManager: ObservableObject {
             wifiFotaScheduleTime: scale.r4ScalePreference?.wifiFotaScheduleTime ?? Int(Date().timeIntervalSince1970),
             updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
         )
-        
         let result = await bluetoothService.updateAccount(on: scale, preference: updatedPreference)
+        try await scaleService.updateScalePreference(
+            scale.id,
+            updatedPreference
+        )
         switch result {
         case .success(let response):
             // Treat both creationCompleted and userSelectionInProgress as success

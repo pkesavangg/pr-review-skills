@@ -16,7 +16,7 @@ final class HistoryStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
     @Injector private var notificationService: NotificationHelperService
-
+    @Injector private var logger: LoggerService
 
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -37,6 +37,13 @@ final class HistoryStore: ObservableObject {
     @Published var isEmptyState: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
+    // MARK: - Language Strings
+    private let alertLang = AlertStrings.self
+    private let loaderLang = LoaderStrings.self
+    private let toastLang = ToastStrings.self
+    
+    /// Logger tag for this store
+    private let tag = "HistoryStore"
 
     // MARK: - Init ------------------------------------------------------
 
@@ -136,6 +143,22 @@ final class HistoryStore: ObservableObject {
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal()
     }
+    
+    // MARK: - Handle export
+    func handleExport() {
+        let alert = AlertModel(
+            title: alertLang.CsvExportAlert.title,
+            message: alertLang.CsvExportAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
+                    self.exportData()
+                },
+                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
 
 
     // MARK: - Internal helpers -------------------------------------------
@@ -197,6 +220,28 @@ final class HistoryStore: ObservableObject {
             try await entryService.deleteEntry(entry)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+    
+    // MARK: - Export Data
+    private func exportData() {
+        Task {
+            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
+            do {
+                try await entryService.exportCSV()
+                notificationService.showToast(ToastModel(message: toastLang.csvExported))
+            } catch {
+                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    break
+                default:
+                    notificationService.showToast(ToastModel(
+                        message: toastLang.csvExportError)
+                    )
+                }
+            }
+            notificationService.dismissLoader()
         }
     }
     

@@ -14,14 +14,7 @@ struct ScaleState {
 
 // MARK: - UI State
 struct ScaleUIState {
-    var isLoading: Bool = false
-    var errorMessage: String? = nil
-    var showErrorToast: ToastModel? = nil
-    var showNicknameAlert: Bool = false
     var showTermsBrowser: Bool = false
-    var showPassword: Bool = false
-    var isWifiLoading: Bool = false
-    var isLoadingUsers: Bool = false
     var showWeightOnlyBanner: Bool = false
     var showWeightOnlyInfo: Bool = false
     var showHeartRateBanner: Bool = false

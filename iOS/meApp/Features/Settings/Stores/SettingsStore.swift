@@ -18,7 +18,8 @@ class SettingsStore: ObservableObject {
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
-    
+    @Injector var goalAlertService: GoalAlertService
+    private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
     
@@ -605,6 +606,7 @@ class SettingsStore: ObservableObject {
         guard account.weightSettings?.weightUnit != unit else { return }
         
         Task {
+            httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let bodyComp = BodyComp(
@@ -619,6 +621,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Weight unit update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
     
@@ -628,6 +631,7 @@ class SettingsStore: ObservableObject {
         guard account.weightSettings?.activityLevel != level else { return }
         
         Task {
+            httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let bodyComp = BodyComp(
@@ -643,6 +647,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Activity level update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
     
@@ -665,6 +670,7 @@ class SettingsStore: ObservableObject {
         )
         
         Task {
+            httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 _ = try await accountService.updateNotifications(notifications: notifications)
@@ -675,6 +681,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Notification preference update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
     
@@ -684,6 +691,7 @@ class SettingsStore: ObservableObject {
         guard account.gender != sex else { return }
         
         Task {
+            httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let profile = Profile(
@@ -705,6 +713,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Gender update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
     
@@ -793,6 +802,7 @@ class SettingsStore: ObservableObject {
         }
         
         Task {
+            httpClient.skipCheckNetwork = true
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 let timestamp = DateTimeTools.getCurrentDatetimeIsoString()
@@ -809,6 +819,8 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
+            self.resetWeightlessForm()
         }
     }
     
@@ -1032,6 +1044,7 @@ class SettingsStore: ObservableObject {
         }()
         
         Task {
+            httpClient.skipCheckNetwork = true
             let latestEntry = try await entryService.getLatestEntry()
             let latestWeight = latestEntry?.scaleEntry?.weight ?? 0
             let goalPayload: Goal
@@ -1045,6 +1058,7 @@ class SettingsStore: ObservableObject {
             do {
                 _ = try await accountService.createGoal(goalPayload)
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                goalAlertService.resetGoalMetFlag()
                 logger.log(level: .info, tag: tag, message: "Goal updated successfully")
                 resetGoalForm()
                 router.navigateBack()
@@ -1053,6 +1067,7 @@ class SettingsStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Goal update failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+            httpClient.skipCheckNetwork = false
         }
     }
     
