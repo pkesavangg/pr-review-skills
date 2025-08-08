@@ -106,27 +106,41 @@ final class LoggerService: LoggerServiceProtocol {
         guard let resolvedAccountId = resolvedAccountId else {
             throw LoggerServiceError.noActiveAccount
         }
-        
-        // Get logs for the account
-        let logs = try await getLogsForAccount(resolvedAccountId)
-        
-        // Format logs for API
-        let logsPayload = formatLogsForAPI(logs, version: version)
 
-        // Send to API using LoggerApiRepository
-        try await loggerApiRepository.sendLogs(logsPayload)
-        
-        // Clear logs for the account after successful upload
-        try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
+        do {
+            // Get logs for the account
+            let logs = try await getLogsForAccount(resolvedAccountId)
+            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploading \(logs.count) logs for accountId=\(resolvedAccountId)")
+
+            // Format logs for API
+            let logsPayload = formatLogsForAPI(logs, version: version)
+
+            // Send to API using LoggerApiRepository
+            try await loggerApiRepository.sendLogs(logsPayload)
+
+            // Clear logs for the account after successful upload
+            try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
+            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")
+        } catch {
+            systemLogger.log(level: .error, tag: "LoggerService", message: "Failed to upload logs: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     /// Sends scale logs to the server
     public func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String = AppInfo.appVersion) async throws {
-        // Format logs for API
-        let logsPayload = formatScaleLogsForAPI(deviceLogs, version: version)
-        
-        // Send to API using LoggerApiRepository
-        try await loggerApiRepository.sendLogs(logsPayload)
+        do {
+            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploading scale logs count=\(deviceLogs.count)")
+            // Format logs for API
+            let logsPayload = formatScaleLogsForAPI(deviceLogs, version: version)
+            
+            // Send to API using LoggerApiRepository
+            try await loggerApiRepository.sendLogs(logsPayload)
+            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded scale logs successfully")
+        } catch {
+            systemLogger.log(level: .error, tag: "LoggerService", message: "Failed to upload scale logs: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     /// Helper method to parse additional data as string array

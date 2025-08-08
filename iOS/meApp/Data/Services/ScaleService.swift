@@ -109,6 +109,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Scale sync started")
         if isSyncing {
             logger.log(level: .info, tag: tag, message: "Sync already in progress, skipping")
             return
@@ -124,6 +125,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // Step 3: Refresh published scales
 
         isSyncing = false
+        logger.log(level: .info, tag: tag, message: "Scale sync completed")
     }
 
     // MARK: - DeviceServiceProtocol Implementation
