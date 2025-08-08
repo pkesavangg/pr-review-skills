@@ -9,6 +9,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
+    private let migrationService = SQLiteMigrationService()
     static let shared = EntryService(accountService: AccountService.shared)
     // MARK: - Publishers ------------------------------------------------
 
@@ -233,6 +234,36 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             prevDate = date
         }
         return Streak(current: currentStreak, max: maxStreak)
+    }
+
+    // MARK: - Migration Logic
+    /// Migrates data from Ionic app's SQLite database to SwiftData if needed
+    /// Should be called once on app startup before other operations
+    public func migrateFromSQLiteIfNeeded() async {
+        guard migrationService.isMigrationNeeded() else {
+            logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
+            return
+        }
+        
+        do {
+            let accountId = try await getAccountId()
+            logger.log(level: .info, tag: tag, message: "Starting SQLite migration for account: \(accountId)")
+            
+            let migratedCount = try await migrationService.migrateEntryData(accountId: accountId)
+            logger.log(level: .info, tag: tag, message: "SQLite migration completed: \(migratedCount) entries migrated")
+            
+            // Update dashboard data after migration
+            await loadDashboardData()
+            await updateProgressAndStreakInternal()
+            
+            // Clean up SQLite database after successful migration
+            try migrationService.cleanupAfterMigration()
+            logger.log(level: .info, tag: tag, message: "✅ SQLite database cleaned up successfully")
+            logger.log(level: .info, tag: tag, message: "🎉 Migration process completed!")
+            
+        } catch {
+            logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Sync Logic

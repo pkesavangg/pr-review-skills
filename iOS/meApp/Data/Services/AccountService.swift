@@ -11,6 +11,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
+    /// Migration service for Ionic app data
+    private let migrationService = AccountMigrationService()
     
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
@@ -25,8 +27,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
                 try await updatePublishedState()
                 let _ = try await refreshAllAccounts()
+                if activeAccount == nil {
+                    /// migrate from ionic app if needed
+                    try await migrateFromIonicAppIfNeeded()
+                }
             } catch {
-                
+                logger.log(level: .error, tag: "AccountService", message: "Error: \(error.localizedDescription)")
             }
             $activeAccount
                 .sink(receiveValue: { data in
@@ -895,6 +901,40 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         
         // Attempt to refresh published state; propagate any errors to the caller
         try await updatePublishedState()
+    }
+    
+    // MARK: - Migration
+    
+    /// Migrates account data from Ionic app if needed
+    /// Should be called once on app startup before other operations
+    private func migrateFromIonicAppIfNeeded() async throws {
+        guard migrationService.isMigrationNeeded() else {
+            LoggerService.shared.log(level: .info, tag: "AccountService", message: "No Ionic app migration needed")
+            return
+        }
+        
+        do {
+            LoggerService.shared.log(level: .info, tag: "AccountService", message: "Starting Ionic app account migration")
+            
+            if let migratedAccount = try await migrationService.migrateAccountData() {
+                LoggerService.shared.log(level: .info, tag: "AccountService", message: "Ionic app migration completed for account: \(migratedAccount.email)")
+                
+                // Clean up Ionic app data after successful migration
+                migrationService.cleanupAfterMigration()
+                migrationService.cleanupOfflineData(for: migratedAccount.accountId)
+                
+                // Update published state to reflect the migrated account
+                try await updatePublishedState()
+                
+                LoggerService.shared.log(level: .info, tag: "AccountService", message: "🎉 Ionic app migration process completed!")
+            } else {
+                LoggerService.shared.log(level: .info, tag: "AccountService", message: "No account data was migrated from Ionic app")
+            }
+            
+        } catch {
+            LoggerService.shared.log(level: .error, tag: "AccountService", message: "Ionic app migration failed: \(error.localizedDescription)")
+            // Don't throw the error - continue with normal app initialization
+        }
     }
     
     deinit {
