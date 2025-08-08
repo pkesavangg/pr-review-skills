@@ -992,35 +992,32 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
     
     // MARK: - Migration
-    
     /// Migrates account data from Ionic app if needed
     /// Should be called once on app startup before other operations
     private func migrateFromIonicAppIfNeeded() async throws {
         guard migrationService.isMigrationNeeded() else {
-            LoggerService.shared.log(level: .info, tag: "AccountService", message: "No Ionic app migration needed")
+            LoggerService.shared.log(level: .info, tag: tag, message: "No Ionic app migration needed")
             return
         }
         
         do {
-            LoggerService.shared.log(level: .info, tag: "AccountService", message: "Starting Ionic app account migration")
+            LoggerService.shared.log(level: .info, tag: tag, message: "Starting comprehensive Ionic app migration (account + scales)")
             
-            if let migratedAccount = try await migrationService.migrateAccountData() {
-                LoggerService.shared.log(level: .info, tag: "AccountService", message: "Ionic app migration completed for account: \(migratedAccount.email)")
-                
-                // Clean up Ionic app data after successful migration
-                migrationService.cleanupAfterMigration()
-                migrationService.cleanupOfflineData(for: migratedAccount.accountId)
+            let (migratedAccount, scalesCount) = try await migrationService.migrateAccountAndScaleData()
+            
+            if let migratedAccount = migratedAccount {
+                LoggerService.shared.log(level: .info, tag: tag, message: "Ionic app migration completed for account: \(migratedAccount.email) with \(scalesCount) scales")
                 
                 // Update published state to reflect the migrated account
                 try await updatePublishedState()
                 
-                LoggerService.shared.log(level: .info, tag: "AccountService", message: "🎉 Ionic app migration process completed!")
+                LoggerService.shared.log(level: .info, tag: tag, message: "Ionic app migration process completed!")
             } else {
-                LoggerService.shared.log(level: .info, tag: "AccountService", message: "No account data was migrated from Ionic app")
+                LoggerService.shared.log(level: .info, tag: tag, message: "No account data was migrated from Ionic app")
             }
             
         } catch {
-            LoggerService.shared.log(level: .error, tag: "AccountService", message: "Ionic app migration failed: \(error.localizedDescription)")
+            LoggerService.shared.log(level: .error, tag: tag, message: "Ionic app migration failed: \(error.localizedDescription)")
             // Don't throw the error - continue with normal app initialization
         }
     }

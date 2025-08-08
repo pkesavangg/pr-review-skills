@@ -6,6 +6,7 @@ import SwiftData
 final class AccountMigrationService {
     @Injector private var logger: LoggerService
     private var accountRepo = AccountRepository()
+    private let scaleMigrationService = ScaleMigrationService()
     
     private let tag = "AccountMigrationService"
     private let kvStorage = KvStorageService.shared
@@ -46,6 +47,61 @@ final class AccountMigrationService {
             
         } catch {
             logger.log(level: .error, tag: tag, message: "Account migration failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    /// Migrates both account and scale data from Ionic app to SwiftUI app
+    /// - Returns: A tuple containing the migrated account and number of scales migrated
+    func migrateAccountAndScaleData() async throws -> (account: Account?, scalesCount: Int) {
+        logger.log(level: .info, tag: tag, message: "Starting comprehensive migration (account + scales) from Ionic app")
+        
+        // First migrate account data
+        guard let account = try await migrateAccountData() else {
+            logger.log(level: .error, tag: tag, message: "Account migration failed, skipping scale migration")
+            return (nil, 0)
+        }
+        
+        // Then migrate scale data for this account
+        var scalesCount = 0
+        do {
+            scalesCount = try await migrateScaleData(for: account.accountId)
+            logger.log(level: .info, tag: tag, message: "Scale migration completed. Migrated \(scalesCount) scales for account: \(account.accountId)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Scale migration failed for account \(account.accountId): \(error.localizedDescription)")
+            // Don't throw error here - account migration was successful
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Comprehensive migration completed for account: \(account.email) with \(scalesCount) scales")
+        
+        // Clean up Ionic data after successful migration
+        cleanupAfterMigration()
+        cleanupOfflineData(for: account.accountId)
+        scaleMigrationService.cleanupAfterMigration(for: account.accountId)
+        
+        return (account, scalesCount)
+    }
+    
+    /// Migrates scale data for a specific account
+    /// - Parameter accountId: The account ID to migrate scales for
+    /// - Returns: The number of scales migrated
+    @discardableResult
+    func migrateScaleData(for accountId: String) async throws -> Int {
+        logger.log(level: .info, tag: tag, message: "Starting scale data migration for account: \(accountId)")
+        
+        guard scaleMigrationService.isMigrationNeeded(for: accountId) else {
+            logger.log(level: .info, tag: tag, message: "No scale migration needed for account: \(accountId)")
+            return 0
+        }
+        
+        do {
+            let migratedDevices = try await scaleMigrationService.migrateScaleData(for: accountId)
+            scaleMigrationService.cleanupAfterMigration(for: accountId)
+            
+            logger.log(level: .info, tag: tag, message: "Scale migration completed for account: \(accountId). Migrated \(migratedDevices.count) scales")
+            return migratedDevices.count
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Scale migration failed for account \(accountId): \(error.localizedDescription)")
             throw error
         }
     }

@@ -52,6 +52,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
+    private let migrationService = ScaleMigrationService()
     private var isSyncing = false
 
     // MARK: - Published State
@@ -101,7 +102,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// 1. Push local changes (creates, edits, deletes) to server
     /// 2. Fetch fresh server state
     /// 3. Replace only synced devices with server state, preserve unsynced local devices
-    public func syncAllScalesWithRemote() async {
+    public func syncAllScalesWithRemote() async { 
         let accountId: String
         do {
             accountId = try await getAccountId()
@@ -123,7 +124,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         await pullServerStateAndReplace(accountId: accountId)
 
         // Step 3: Refresh published scales
-
+        await refreshScalesFromLocal()
         isSyncing = false
         logger.log(level: .info, tag: tag, message: "Scale sync completed")
     }
@@ -443,7 +444,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         guard let account = try await accountService.getActiveAccount() else {
             throw AccountError.noActiveAccount
         }
-        return String(describing: account.id)
+        return account.accountId
     }
 
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
@@ -582,5 +583,4 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         //Add Properties here in order to update the device
         return properties
     }
-
 }
