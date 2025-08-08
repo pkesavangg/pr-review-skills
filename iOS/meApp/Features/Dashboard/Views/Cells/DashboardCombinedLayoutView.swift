@@ -8,21 +8,6 @@
 import SwiftUI
 import UIKit
 
-class DragItemWrapper {
-    enum ItemType {
-        case metric
-        case streak
-    }
-    
-    let type: ItemType
-    let item: MetricItem
-    
-    init(type: ItemType, item: MetricItem) {
-        self.type = type
-        self.item = item
-    }
-}
-
 /// A SwiftUI wrapper around UICollectionView that displays all dashboard items in a single layout
 struct DashboardCombinedLayoutView: UIViewRepresentable {
     
@@ -93,7 +78,7 @@ struct DashboardCombinedLayoutView: UIViewRepresentable {
         collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
-        collectionView.register(StreakItemCell.self, forCellWithReuseIdentifier: "StreakItemCell")
+        collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "DividerCell")
         collectionView.allowsSelection = false
         
@@ -167,7 +152,7 @@ extension DashboardCombinedLayoutView {
                             }
                         } else {
                             let streakIndex = positionAfterDivider - (positionAfterDivider > store.state.ui.goalCardPosition ? 1 : 0)
-                            if let streakCell = cell as? StreakItemCell {
+                            if let streakCell = cell as? StreakCardCell {
                                 let item = store.streakItemsToShow[streakIndex]
                                 streakCell.configure(with: item, store: store)
                             }
@@ -251,7 +236,7 @@ extension DashboardCombinedLayoutView {
                     return cell
                 } else {
                     let streakIndex = positionAfterDivider - (positionAfterDivider > store.state.ui.goalCardPosition ? 1 : 0)
-                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakItemCell", for: indexPath) as! StreakItemCell
+                    let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
                     let item = store.streakItemsToShow[streakIndex]
                     cell.configure(with: item, store: store)
                     cell.rowIndex = indexPath.row
@@ -338,7 +323,7 @@ extension DashboardCombinedLayoutView {
                     session.localContext = indexPath
                     draggedItemId = item.id.uuidString
                     store.startDraggingStreak(item)
-                    if let streakCell = collectionView.cellForItem(at: indexPath) as? StreakItemCell {
+                    if let streakCell = collectionView.cellForItem(at: indexPath) as? StreakCardCell {
                         DispatchQueue.main.async {
                             streakCell.configure(with: item, store: self.store)
                         }
@@ -360,7 +345,7 @@ extension DashboardCombinedLayoutView {
             } else if let cell = collectionView.cellForItem(at: indexPath) as? GoalCardCell {
                 let contentFrame = cell.contentView.frame
                 parameters.visiblePath = UIBezierPath(roundedRect: contentFrame, cornerRadius: 16)
-            } else if let cell = collectionView.cellForItem(at: indexPath) as? StreakItemCell {
+            } else if let cell = collectionView.cellForItem(at: indexPath) as? StreakCardCell {
                 let contentFrame = cell.contentView.frame
                 parameters.visiblePath = UIBezierPath(roundedRect: contentFrame, cornerRadius: 16)
             } else if let cell = collectionView.cellForItem(at: indexPath) {
@@ -381,9 +366,9 @@ extension DashboardCombinedLayoutView {
                     return cellItem.id.uuidString == dragItem.item.id.uuidString
                 }) as? MetricCell else {
                     guard let streakCell = collectionView.visibleCells.first(where: {
-                        guard let cellItem = ($0 as? StreakItemCell)?.representedItem else { return false }
+                        guard let cellItem = ($0 as? StreakCardCell)?.representedItem else { return false }
                         return cellItem.id.uuidString == dragItem.item.id.uuidString
-                    }) as? StreakItemCell else {
+                    }) as? StreakCardCell else {
                         return nil
                     }
                     let previewView = UIView(frame: streakCell.contentView.frame)

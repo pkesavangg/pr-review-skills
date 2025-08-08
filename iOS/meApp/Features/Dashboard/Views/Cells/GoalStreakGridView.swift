@@ -47,9 +47,9 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
 
     private func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = 16         // gap between columns
-        layout.minimumLineSpacing = 16              // gap between rows
-        layout.sectionInset = UIEdgeInsets(top: 24, left: 24, bottom: 24, right: 24) // outer margin
+        layout.minimumInteritemSpacing = .spacingSM
+        layout.minimumLineSpacing = .spacingSM
+        layout.sectionInset = UIEdgeInsets(top: .spacingMD, left: .spacingMD, bottom: .spacingMD, right: .spacingMD)
 
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear

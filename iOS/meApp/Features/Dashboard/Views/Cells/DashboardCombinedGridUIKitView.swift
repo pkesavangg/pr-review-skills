@@ -61,7 +61,7 @@ struct DashboardCombinedGridUIKitView: UIViewRepresentable {
         collectionView.backgroundColor = .clear
         collectionView.dragInteractionEnabled = true
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
-        collectionView.register(StreakItemCell.self, forCellWithReuseIdentifier: "StreakItemCell")
+        collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
         collectionView.allowsSelection = false
         
         // Disable user scrolling but allow content size calculation
@@ -115,18 +115,11 @@ extension DashboardCombinedGridUIKitView {
                 return cell
             } else {
                 let streakIndex = indexPath.item - goalCardCount
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakItemCell", for: indexPath) as! StreakItemCell
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
                 let item = store.streakItemsToShow[streakIndex]
                 cell.configure(with: item, store: store)
                 cell.rowIndex = indexPath.row
                 cell.isWiggling = store.state.ui.isEditMode
-                cell.onDeleteTapped = {
-                    if let originalIndex = self.store.state.streak.streakItems.firstIndex(where: { $0.id == item.id }) {
-                        Task {
-                            try? await self.store.streakManager.toggleStreakVisibility(at: originalIndex)
-                        }
-                    }
-                }
                 return cell
             }
         }
@@ -173,7 +166,7 @@ extension DashboardCombinedGridUIKitView {
                 session.localContext = indexPath
                 draggedItemId = item.id.uuidString
                 store.startDraggingStreak(item)
-                if let cell = collectionView.cellForItem(at: indexPath) as? StreakItemCell {
+                if let cell = collectionView.cellForItem(at: indexPath) as? StreakCardCell {
                     DispatchQueue.main.async {
                         cell.configure(with: item, store: self.store)
                     }
@@ -188,7 +181,7 @@ extension DashboardCombinedGridUIKitView {
             parameters.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) as? GoalCardCell {
                 parameters.visiblePath = UIBezierPath(roundedRect: cell.contentView.frame, cornerRadius: 16)
-            } else if let cell = collectionView.cellForItem(at: indexPath) as? StreakItemCell {
+            } else if let cell = collectionView.cellForItem(at: indexPath) as? StreakCardCell {
                 parameters.visiblePath = UIBezierPath(roundedRect: cell.contentView.frame, cornerRadius: 16)
             }
             return parameters
@@ -207,16 +200,15 @@ extension DashboardCombinedGridUIKitView {
                 return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
             } else if let dragItem = item.localObject as? DragItemWrapper {
                 guard let streakCell = collectionView.visibleCells.first(where: {
-                    ($0 as? StreakItemCell)?.representedItem?.id == dragItem.item.id
-                }) as? StreakItemCell else {
+                    ($0 as? StreakCardCell)?.representedItem?.id == dragItem.item.id
+                }) as? StreakCardCell else {
                     return nil
                 }
-                let previewView = streakCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: streakCell.contentView.bounds, cornerRadius: 16)
                 let target = UIDragPreviewTarget(container: collectionView, center: streakCell.center)
-                return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
+                return UITargetedDragPreview(view: streakCell.contentView, parameters: parameters, target: target)
             }
             return nil
         }
@@ -231,7 +223,7 @@ extension DashboardCombinedGridUIKitView {
                 if let indexPath = collectionView.indexPath(for: cell) {
                     if indexPath.item < goalCardCount {
                         (cell as? GoalCardCell)?.configure(with: store)
-                    } else if let streakCell = cell as? StreakItemCell {
+                    } else if let streakCell = cell as? StreakCardCell {
                         let streakIndex = indexPath.item - goalCardCount
                         let item = store.streakItemsToShow[streakIndex]
                         streakCell.configure(with: item, store: store)
