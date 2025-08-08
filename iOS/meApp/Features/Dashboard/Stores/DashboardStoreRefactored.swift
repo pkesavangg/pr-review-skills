@@ -980,7 +980,13 @@ class DashboardStore: ObservableObject {
     }
 
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
-        metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+        let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
+        let numericChars = raw.filter { "0123456789.-".contains($0) }
+        if let number = Double(numericChars), number == 0 {
+            return DashboardStrings.placeholder
+        }
+        return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
     // Delegate entry creation to MetricsManager

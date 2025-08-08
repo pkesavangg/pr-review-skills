@@ -84,8 +84,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
     /// Creates the collection view layout with proper spacing and insets
     private func createLayout() -> LeadingAlignedFlowLayout {
         let layout = LeadingAlignedFlowLayout()
-        layout.minimumInteritemSpacing = 16
-        layout.minimumLineSpacing = 16
+        layout.minimumInteritemSpacing = .spacingSM
+        layout.minimumLineSpacing = .spacingSM
         layout.sectionInset = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         return layout
     }

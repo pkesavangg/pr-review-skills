@@ -128,8 +128,8 @@ struct DashboardScreen: View {
                     
                     if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
                         Divider()
+                            .foregroundColor(theme.statusUtilityPrimary)
                             .padding(.horizontal, .spacingLG)
-                            .padding(.vertical, .spacingSM)
                     }
                     
                     if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
