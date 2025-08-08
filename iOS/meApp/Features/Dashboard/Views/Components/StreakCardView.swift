@@ -41,11 +41,11 @@ struct StreakCardView: View {
     }
     
     private func content() -> some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .center, spacing: 8) {
             if let icon = icon {
-                AppIconView(icon: icon, size: IconSize(width: 35, height: 35))
+                AppIconView(icon: icon, size: IconSize(width: 40, height: 40))
                     .foregroundColor(isRemoved ? theme.statusIconSecondary : theme.statusStreak)
-                    .padding(.trailing, .spacingXS)
+                    .padding(.trailing, 2)
             }
             VStack(alignment: .center, spacing: 2) {
                 Text(value)

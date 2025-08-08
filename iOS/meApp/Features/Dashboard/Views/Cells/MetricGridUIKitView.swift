@@ -30,15 +30,49 @@ struct MetricGridUIKitView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UICollectionView, context: Context) {
-        context.coordinator.store = store
-        
-        // Reload data when edit mode changes to update wiggle state
-        if !isDragging {
-            uiView.reloadData()
-            uiView.collectionViewLayout.invalidateLayout()
-            uiView.layoutIfNeeded()
-            uiView.invalidateIntrinsicContentSize()
+        let coordinator = context.coordinator
+        coordinator.store = store
+
+        // Determine if content or layout actually changed
+        let newIds = store.metricsToShow.map { $0.id }
+        let newDashboardType = store.state.metrics.dashboardType
+        let newIsEditMode = store.state.ui.isEditMode
+        let contentChanged = newIds != coordinator.lastItemIds
+        let layoutChanged = newDashboardType != coordinator.lastDashboardType
+
+        // Keep drag interaction in sync with edit mode
+        uiView.dragInteractionEnabled = newIsEditMode
+
+        if contentChanged || layoutChanged {
+            // Apply minimal updates; fallback to reload if complex changes
+            UIView.performWithoutAnimation {
+                uiView.performBatchUpdates({
+                    uiView.reloadData()
+                }, completion: nil)
+            }
+            coordinator.lastItemIds = newIds
+            coordinator.lastDashboardType = newDashboardType
+        } else {
+            // No content/layout changes. Avoid explicit reloads; just update wiggle state if needed
+            if newIsEditMode != coordinator.lastIsEditMode {
+                uiView.visibleCells.forEach { cell in
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.isWiggling = newIsEditMode
+                        // Reconfigure SwiftUI content to reflect new edit state and hide overlays
+                        if let item = metricCell.representedItem {
+                            metricCell.configure(
+                                with: item,
+                                dashboardType: store.state.metrics.dashboardType,
+                                store: store,
+                                isBeingDragged: false
+                            )
+                        }
+                    }
+                }
+            }
         }
+
+        coordinator.lastIsEditMode = newIsEditMode
     }
     
     func makeCoordinator() -> Coordinator {
@@ -92,6 +126,10 @@ extension MetricGridUIKitView {
     /// Coordinator class that handles all UICollectionView delegate methods
     /// and manages the interaction between UIKit and SwiftUI
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
+        // Cache for differential updates
+        var lastItemIds: [UUID] = []
+        var lastDashboardType: DashboardType = .dashboard12
+        var lastIsEditMode: Bool = false
         
         // MARK: - Properties
         

@@ -21,14 +21,53 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     }
     
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
-        context.coordinator.store = store
-        context.coordinator.gridModel = buildGridModelFromStoreState()
-        
-        // Reload data when edit mode changes to update wiggle state
-        collectionView.reloadData()
-        collectionView.collectionViewLayout.invalidateLayout()
-        collectionView.layoutIfNeeded()
-        collectionView.invalidateIntrinsicContentSize()
+        let coordinator = context.coordinator
+        coordinator.store = store
+
+        // Rebuild model and compare to previous for minimal updates
+        let newModel = buildGridModelFromStoreState()
+        let newIsEditMode = store.state.ui.isEditMode
+
+        let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
+            switch widget {
+            case .goalCard: return "goalCard"
+            case .streak(let item): return item.id.uuidString
+            }
+        }
+        let newIds = newModel.mileStones.map { widget -> String in
+            switch widget {
+            case .goalCard: return "goalCard"
+            case .streak(let item): return item.id.uuidString
+            }
+        }
+
+        let contentChanged = oldIds != newIds
+
+        if contentChanged {
+            coordinator.gridModel = newModel
+            UIView.performWithoutAnimation {
+                collectionView.performBatchUpdates({
+                    collectionView.reloadData()
+                }, completion: nil)
+            }
+        } else {
+            // Only wiggle state might have changed; update visible cells without reload
+            if newIsEditMode != coordinator.lastIsEditMode {
+                collectionView.visibleCells.forEach { cell in
+                    if let goal = cell as? GoalCardCell {
+                        goal.isWiggling = newIsEditMode
+                        goal.configure(with: coordinator.store)
+                    } else if let streak = cell as? StreakCardCell {
+                        streak.isWiggling = newIsEditMode
+                        if let item = streak.representedItem {
+                            streak.configure(with: item, store: coordinator.store)
+                        }
+                    }
+                }
+            }
+        }
+
+        coordinator.lastIsEditMode = newIsEditMode
     }
     
     func makeCoordinator() -> Coordinator {
@@ -73,7 +112,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         collectionView.delegate = context.coordinator
         collectionView.dragDelegate = context.coordinator
         collectionView.dropDelegate = context.coordinator
-        collectionView.dragInteractionEnabled = true
+        collectionView.dragInteractionEnabled = store.state.ui.isEditMode
     }
     
     /// Builds the grid model using the saved order from DashboardStore UI state
@@ -154,6 +193,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     // MARK: - Coordinator
     
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
+        var lastIsEditMode: Bool = false
         var store: DashboardStore
         var gridModel: MileStoneGridModel
         

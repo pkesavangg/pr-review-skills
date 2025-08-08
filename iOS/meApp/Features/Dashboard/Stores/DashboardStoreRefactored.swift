@@ -651,6 +651,13 @@ class DashboardStore: ObservableObject {
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
     }
+
+    /// Clears drag-related flags without bumping `gridLayoutId` to avoid ScrollView jump
+    private func clearDragStateNonDestructive() {
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+    }
     
     /// Restarts wiggle animations for all visible cells when app becomes active from background
     func restartWiggleAnimations() {
@@ -1377,12 +1384,11 @@ class DashboardStore: ObservableObject {
             state.ui.goalCardPosition = snapshotGoalCardPosition
             state.ui.streakGridOrder = snapshotStreakGridOrder
         }
-        // Clear selection/drag and exit edit mode
+        // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
-        state.ui.resetDragState()
+        clearDragStateNonDestructive()
         withAnimation(.easeInOut(duration: 0.2)) {
             state.ui.isEditMode = false
-            state.ui.gridLayoutId = UUID()
         }
         hasEditSnapshot = false
         objectWillChange.send()

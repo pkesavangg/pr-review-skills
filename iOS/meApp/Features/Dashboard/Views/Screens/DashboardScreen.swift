@@ -62,7 +62,10 @@ struct DashboardScreen: View {
             // Clear selection after info sheet is dismissed
             store.state.ui.selectedMetricLabel = nil
         }
-        .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
+        .onChange(of: store.state.ui.isEditMode) { _, isEdit in
+            // Only rebuild layout when entering edit to start wiggle animations
+            if isEdit { store.resetDragState() }
+        }
         .onChange(of: store.currentUnit) { _, _ in 
             store.handleUnitChange()
         }
@@ -143,6 +146,10 @@ struct DashboardScreen: View {
             .simultaneousGesture(TapGesture().onEnded({
                 if store.state.ui.isEditMode {
                     store.cancelEdit()
+                    // Force a lightweight refresh of visible cells to clear overlay/wiggle without full reload
+                    DispatchQueue.main.async {
+                        store.objectWillChange.send()
+                    }
                 }
             }))
         }
