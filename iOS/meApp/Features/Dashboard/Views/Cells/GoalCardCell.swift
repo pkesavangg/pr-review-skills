@@ -157,10 +157,22 @@ class GoalCardCell: UICollectionViewCell {
         super.layoutSubviews()
         // Only wiggle if not removed and in wiggle mode
         if isWiggling && !isRemoved {
-            contentView.startWiggleWithRowIndex(rowIndex)
+            startWiggleAnimation()
         } else {
-            contentView.stopWiggle()
+            stopWiggleAnimation()
         }
+    }
+    
+    /// Starts the widget wiggle animation (same behavior as reference WidgetCell)
+    private func startWiggleAnimation() {
+        // Remove any existing animations before starting
+        layer.removeAllAnimations()
+        contentView.startWiggleWithRowIndex(rowIndex)
+    }
+    
+    /// Stops the widget wiggle animation (same behavior as reference WidgetCell)
+    private func stopWiggleAnimation() {
+        contentView.stopWiggle()
     }
     
     /// Controls whether the cell is in wiggle mode

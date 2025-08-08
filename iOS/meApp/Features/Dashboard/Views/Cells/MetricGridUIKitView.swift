@@ -35,17 +35,9 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Reload data when edit mode changes to update wiggle state
         if !isDragging {
             uiView.reloadData()
-            // Force layout update to ensure proper content size calculation
-            DispatchQueue.main.async {
-                uiView.layoutIfNeeded()
-                uiView.collectionViewLayout.invalidateLayout()
-                uiView.collectionViewLayout.prepare()
-                // Force content size calculation
-                uiView.setNeedsLayout()
-                uiView.layoutIfNeeded()
-                // Notify SwiftUI that the view size has changed
-                uiView.invalidateIntrinsicContentSize()
-            }
+            uiView.collectionViewLayout.invalidateLayout()
+            uiView.layoutIfNeeded()
+            uiView.invalidateIntrinsicContentSize()
         }
     }
     

@@ -26,17 +26,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // Reload data when edit mode changes to update wiggle state
         collectionView.reloadData()
-        // Force layout update to ensure proper content size calculation
-        DispatchQueue.main.async {
-            collectionView.layoutIfNeeded()
-            collectionView.collectionViewLayout.invalidateLayout()
-            collectionView.collectionViewLayout.prepare()
-            // Force content size calculation
-            collectionView.setNeedsLayout()
-            collectionView.layoutIfNeeded()
-            // Notify SwiftUI that the view size has changed
-            collectionView.invalidateIntrinsicContentSize()
-        }
+        collectionView.collectionViewLayout.invalidateLayout()
+        collectionView.layoutIfNeeded()
+        collectionView.invalidateIntrinsicContentSize()
     }
     
     func makeCoordinator() -> Coordinator {

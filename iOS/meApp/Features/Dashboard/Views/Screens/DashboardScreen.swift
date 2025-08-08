@@ -4,13 +4,6 @@
 //
 //  Created by Lakshmi Priya on 30/06/25.
 //
-//  Wiggle Animation Implementation:
-//  - Metric grid uses app icon-style wiggle (0.135s/0.125s duration, 0.04 radians)
-//  - Goal card uses medium-speed wiggle (0.18s duration, 0.045 radians)
-//  - Streak grid uses medium-speed wiggle with alternating timing (0.18s/0.16s duration, 0.045 radians)
-//  - Widget wiggle uses alternating timing (0.35s/0.33s duration, 0.045 radians)
-//  - This provides a balanced wiggle that's faster than widgets but gentler than app icons
-//
 
 import SwiftUI
 import UniformTypeIdentifiers
@@ -18,6 +11,7 @@ import UniformTypeIdentifiers
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject var store = DashboardStore()
     let lang = DashboardStrings.self
     @State private var selectedEntry: Entry? = nil
@@ -28,6 +22,12 @@ struct DashboardScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             navbarHeaderSection()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if store.state.ui.isEditMode {
+                        store.cancelEdit()
+                    }
+                }
             dashboardScrollView()
         }
         .onAppear(perform: store.onAppearActions)
@@ -75,8 +75,29 @@ struct DashboardScreen: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            if store.state.ui.isEditMode { store.cancelEdit() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            if store.state.ui.isEditMode { store.cancelEdit() }
+        }
         .presentAlert(alertData: $store.state.ui.alertData)
         .presentLoader(loaderData: store.loaderData)
+        .onChange(of: scenePhase) { _, newPhase in
+            if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
+                store.cancelEdit()
+            }
+        }
+        .onChange(of: tabViewModel.selectedTab) { _, newTab in
+            if store.state.ui.isEditMode && newTab != .dash {
+                store.cancelEdit()
+            }
+            if newTab == .dash {
+                DispatchQueue.main.async {
+                    store.state.ui.gridLayoutId = UUID()
+                }
+            }
+        }
     }
 
     // MARK: - Sections split for type-checking
@@ -90,31 +111,40 @@ struct DashboardScreen: View {
     @ViewBuilder
     private func dashboardScrollView() -> some View {
         ScrollView(showsIndicators: false) {
-            WeightTrendView(dashboardStore: store)
-            if !store.allContentRemoved {
-                if !store.metricsToShow.isEmpty {
-                    MetricGridUIKitView(store: store)
-                        .frame(minHeight: 200)
-                        .padding(.top, .spacingSM)
-                        .id(store.state.ui.gridLayoutId)
-                        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+            VStack(spacing: 0) {
+                WeightTrendView(dashboardStore: store)
+                    .contentShape(Rectangle())
+                if !store.allContentRemoved {
+                    if !store.metricsToShow.isEmpty {
+                        MetricGridUIKitView(store: store)
+                            .frame(minHeight: 200)
+                            .padding(.top, .spacingSM)
+                            .id(store.state.ui.gridLayoutId)
+                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                    }
+                    
+                    if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
+                        Divider()
+                            .padding(.horizontal, .spacingLG)
+                            .padding(.vertical, .spacingSM)
+                    }
+                    
+                    if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+                        GoalStreakGridUIKitView(store: store)
+                            .frame(minHeight: 200)
+                            .id(store.state.ui.gridLayoutId)
+                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                    }
                 }
-                
-                if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
-                    Divider()
-                        .padding(.horizontal, .spacingLG)
-                        .padding(.vertical, .spacingSM)
-                }
-                
-                if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
-                    GoalStreakGridUIKitView(store: store)
-                        .frame(minHeight: 200)
-                        .id(store.state.ui.gridLayoutId)
-                        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-                }
+                actionButtonsSection()
+                    .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
-            actionButtonsSection()
-                .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
+            .contentShape(Rectangle())
+            .simultaneousGesture(TapGesture().onEnded({
+                if store.state.ui.isEditMode {
+                    store.cancelEdit()
+                }
+            }))
         }
         .padding(.top, .zero)
     }
@@ -132,6 +162,9 @@ struct DashboardScreen: View {
                 })
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                    if !store.state.ui.isEditMode {
+                        store.beginEdit()
+                    }
                     store.state.ui.isEditMode.toggle()
                     if store.state.ui.isEditMode {
                         store.resetDragState()
