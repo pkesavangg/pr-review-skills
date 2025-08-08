@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `SQLiteMigrationService` handles the migration of entry data from your Ionic app's SQLite database to the native iOS app's SwiftData storage. Since both apps use the same bundle identifier, the native app can access the SQLite database files created by the Ionic app.
+The `SQLiteMigrationService` handles the migration of weight entry data from the Ionic Weight Gurus 4 app's SQLite database to the native SwiftUI Weight Gurus app's SwiftData storage. This service is part of the comprehensive migration system implemented in August 2025 to transition users from the legacy Ionic app to the new native iOS app.
+
+Since both apps use the same bundle identifier, the native app can access the SQLite database files created by the Ionic app's Capacitor SQLite plugin.
 
 ## How It Works
 
@@ -15,10 +17,12 @@ Library/CapacitorDatabase/WeightGurus4SQLite.db
 ### 2. Migration Process
 When the native app launches:
 1. **Check for SQLite Database**: The service checks if `WeightGurus4SQLite.db` exists in the Library/CapacitorDatabase directory
-2. **Read SQLite Data (opStack)**: If found, it opens the SQLite database and queries the `opStack` and `opStack_metric` tables (joined on `userId` + `entryTimestamp`) for the current account only
+2. **Read SQLite Data (opStack)**: If found, it opens the SQLite database and queries the `opStack` and `opStack_metric` tables (joined on `userId` + `entryTimestamp`) for **all users** in the database
 3. **Transform Data**: Converts opStack rows to SwiftData `Entry` objects and related `BathScaleEntry`/`BathScaleMetric`
-4. **Save to SwiftData**: Inserts the transformed data into the SwiftData model context
+4. **Save to SwiftData**: Inserts the transformed data into the SwiftData model context for all users
 5. **Cleanup**: After successful migration, removes the SQLite database file
+
+**Note**: This service migrates data for ALL users found in the opStack tables, not just the current active user. This ensures that all historical data is preserved when the native app is installed.
 
 ### 3. Schema Mapping
 
@@ -115,7 +119,7 @@ The migration service performs the following transformations:
   - `BathScaleMetric` is created when any metric exists in `opStack_metric` and maps bmr/metabolicAge/proteinPercent/pulse/skeletalMusclePercent/subcutaneousFatPercent/visceralFatLevel/boneMass
 - **NULL Handling**: Properly handles NULL values from SQLite; missing fields remain `nil`
 
-Selection is done with a single LEFT JOIN for the active account:
+Selection is done with a single LEFT JOIN for all users in the database:
 
 ```sql
 SELECT 
@@ -126,7 +130,6 @@ SELECT
   o.attempts
 FROM opStack o
 LEFT JOIN opStack_metric m ON o.userId = m.userId AND o.entryTimestamp = m.entryTimestamp
-WHERE o.userId = '<currentAccountId>'
 ORDER BY o.entryTimestamp DESC;
 ```
 
@@ -144,11 +147,17 @@ The migration runs automatically when the app starts. No manual intervention is 
 ### Manual Migration (if needed)
 ```swift
 let migrationService = SQLiteMigrationService()
-let accountId = "your-account-id"
 
 do {
-    let migratedCount = try await migrationService.migrateEntryData(accountId: accountId)
-    print("Migrated \(migratedCount) entries")
+    // Migrates data for ALL users in the opStack database
+    let migratedData = try await migrationService.migrateAllUsersEntryData()
+    let totalMigrated = migratedData.values.reduce(0, +)
+    print("Migrated \(totalMigrated) entries for \(migratedData.count) users")
+    
+    // Log per-user migration counts
+    for (userId, count) in migratedData {
+        print("User \(userId): \(count) entries migrated")
+    }
     
     // Clean up after successful migration
     try migrationService.cleanupAfterMigration()
@@ -170,7 +179,7 @@ All errors are logged with detailed information for debugging.
 ## Important Notes
 
 ### Data Integrity
-- All migrated entries are marked as `isSynced = true` to prevent re-uploading to the server
+- All migrated entries are marked as `isSynced = false` since they represent unsynced operations from opStack
 - Original SQLite database is only deleted after successful migration
 - Migration is idempotent - safe to run multiple times
 
@@ -179,18 +188,19 @@ All errors are logged with detailed information for debugging.
 - Progress is logged every 100 entries
 - Uses `sqlite3_prepare_v2` and iterates rows efficiently
 
-### Account Mapping
-- The service assumes `opStack.userId` maps to `Entry.accountId`
-- Make sure the account is properly authenticated before migration
-- Only entries for the current account are migrated (`WHERE o.userId = accountId`)
+### Multi-User Support
+- The service migrates data for ALL users found in the opStack tables
+- `opStack.userId` maps to `Entry.accountId` for each user
+- No authentication required during migration - all historical data is preserved
+- Dashboard updates only occur for the currently active account (if available)
 
 ## Troubleshooting
 
 ### Migration Not Running
 - Check if `WeightGurus4SQLite.db` exists in Library/CapacitorDatabase directory
-- Verify user is logged in before migration
 - Check app logs for migration status messages
 - Ensure both `opStack` and/or `opStack_metric` tables exist; migration skips if not found
+- Migration runs automatically regardless of user authentication status
 
 ### Partial Migration
 - Review error logs for specific entry failures
@@ -214,8 +224,16 @@ To test the migration:
 4. Verify data appears correctly in the native app
 5. Confirm SQLite database is cleaned up after migration
 
+## Related Documentation
+
+For complete migration information, see:
+- [`MIGRATION.md`](./MIGRATION.md) - Overall migration system overview
+- [`AccountMigrationService.md`](./AccountMigrationService.md) - Account data migration
+- [`ScaleMigrationService.md`](./ScaleMigrationService.md) - Scale device migration
+
 ## File Locations
 
 - **Migration Service**: `meApp/Data/Services/SQLiteMigrationService.swift`
 - **Entry Service Integration**: `meApp/Data/Services/EntryService.swift`
 - **App Startup Integration**: `meApp/Features/Common/ViewModels/ContentViewModel.swift`
+- **Migration Error Types**: `meApp/Domain/Models/API/Auth/AccountMigrationError.swift`

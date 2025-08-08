@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `AccountMigrationService` handles the migration of account data from the Ionic app to the native SwiftUI app. Since both apps use the same bundle identifier, the native app can access the UserDefaults/Preferences data created by the Ionic app.
+The `AccountMigrationService` handles the migration of account data from the Ionic Weight Gurus 4 app to the native SwiftUI Weight Gurus app. This service is part of the comprehensive migration system implemented in August 2025 to transition users from the legacy Ionic app to the new native iOS app.
+
+Since both apps use the same bundle identifier, the native app can access the UserDefaults/Preferences data created by the Ionic app's Capacitor Preferences API.
 
 ## How It Works
 
@@ -68,17 +70,33 @@ The Ionic data is converted to:
 - **DashboardSettings**: Dashboard type and metrics
 - **IntegrationSettings**: Third-party integration flags
 
-### 4. Migration Timing
+### 4. Comprehensive Migration Support
+The AccountMigrationService also supports comprehensive migration that includes both account and scale data:
+
+```swift
+/// Migrates both account and scale data from Ionic app to SwiftUI app
+func migrateAccountAndScaleData() async throws -> (account: Account?, scalesCount: Int)
+```
+
+This method:
+1. First migrates account data using `migrateAccountData()`
+2. Then migrates scale data for the account using `ScaleMigrationService`
+3. Performs cleanup for both account and scale data
+4. Returns both the migrated account and the number of scales migrated
+
+### 5. Migration Timing
 - Migration runs automatically on app startup before other account operations
 - Only runs once - subsequent launches skip migration if no Ionic data exists
 - Integrated into `AccountService.init()` for seamless user experience
+- Can migrate account independently or as part of comprehensive migration
 
-### 5. Error Handling
+### 6. Error Handling
 - Migration errors are logged but don't crash the app
 - If migration fails, the app continues with normal initialization
 - Users can still sign up/log in normally if migration fails
+- Scale migration failures don't affect account migration success
 
-### 6. Data Cleanup
+### 7. Data Cleanup
 After successful migration:
 - Removes `activeAccountKey` from UserDefaults
 - Removes `offlineAccount_{accountId}` for the migrated account
@@ -89,7 +107,7 @@ After successful migration:
 The migration service is automatically used by `AccountService` and requires no manual intervention:
 
 ```swift
-// Automatically called during AccountService initialization
+// Account-only migration (automatically called during AccountService initialization)
 private func migrateFromIonicAppIfNeeded() async throws {
     guard migrationService.isMigrationNeeded() else { return }
     
@@ -99,6 +117,10 @@ private func migrateFromIonicAppIfNeeded() async throws {
         try await updatePublishedState()
     }
 }
+
+// Comprehensive migration (account + scales)
+let (account, scalesCount) = try await migrationService.migrateAccountAndScaleData()
+print("Migrated account: \(account?.email ?? "none"), scales: \(scalesCount)")
 ```
 
 ## Testing Migration
@@ -130,11 +152,20 @@ UserDefaults.standard.set(testAccountData, forKey: "activeAccountKey")
 3. **Verify Results**: Check that the account appears in the SwiftUI app with correct data
 4. **Confirm Cleanup**: Verify that the UserDefaults keys have been removed
 
+## Related Documentation
+
+For complete migration information, see:
+- [`MIGRATION.md`](./MIGRATION.md) - Overall migration system overview
+- [`ScaleMigrationService.md`](./ScaleMigrationService.md) - Scale device migration
+- [`SQLiteMigrationService.md`](./SQLiteMigrationService.md) - Entry data migration
+
 ## Dependencies
 
 The migration service depends on:
 - `AccountRepositoryProtocol`: For saving migrated accounts
 - `LoggerService`: For logging migration progress and errors
 - `KvStorageService`: For accessing UserDefaults data
+- `ScaleMigrationService`: For comprehensive migration including scales
 - Account model and related settings entities
 - Various enum types (Sex, WeightUnit, ActivityLevel, etc.)
+- `MigrationKey` enum for consistent key management

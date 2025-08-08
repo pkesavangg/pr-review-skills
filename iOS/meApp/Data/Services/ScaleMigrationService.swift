@@ -17,12 +17,11 @@ final class ScaleMigrationService {
     
     private let tag = "ScaleMigrationService"
     
-    // Ionic app keys (matching the Angular service)
-    private let pairedScalesKey = "pairedScalesKey"
+    // Using shared public MigrationKey enum for key composition
     
     /// Checks if scale migration is needed by looking for Ionic app scale data
     func isMigrationNeeded(for accountId: String) -> Bool {
-        let scaleKey = "CapacitorStorage.\(accountId)-\(pairedScalesKey)"
+        let scaleKey = MigrationKey.scaleKey(for: accountId)
         let hasScaleData = kvStorage.getValue(forKey: scaleKey) != nil
         logger.log(level: .info, tag: tag, message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)")
         return hasScaleData
@@ -67,7 +66,7 @@ final class ScaleMigrationService {
     func cleanupAfterMigration(for accountId: String) {
         logger.log(level: .info, tag: tag, message: "Cleaning up Ionic app scale data after migration for account: \(accountId)")
         
-        let scaleKey = "CapacitorStorage.\(accountId)-\(pairedScalesKey)"
+        let scaleKey = MigrationKey.scaleKey(for: accountId)
         kvStorage.clearValue(forKey: scaleKey)
         
         logger.log(level: .info, tag: tag, message: "Ionic app scale data cleanup completed for account: \(accountId)")
@@ -77,7 +76,7 @@ final class ScaleMigrationService {
     
     /// Retrieves stored Ionic scale data for a specific account
     private func getStoredIonicScaleData(for accountId: String) -> [IonicScaleData]? {
-        let scaleKey = "CapacitorStorage.\(accountId)-\(pairedScalesKey)"
+        let scaleKey = MigrationKey.scaleKey(for: accountId)
         
         guard let scaleString = kvStorage.getValue(forKey: scaleKey) as? String else {
             logger.log(level: .error, tag: tag, message: "No scale data string found for account: \(accountId) with key: \(scaleKey)")
@@ -194,48 +193,12 @@ final class ScaleMigrationService {
         switch ionicScale.type {
         case "btWifiR4":
             return "R4"
-        case "bluetooth", "lcbt":
+        case "bluetooth":
             return "A3"
-        case "wifi", "espTouchWifi":
+        case "lcbt":
             return "A6"
-        case "appsync":
-            return nil // AppSync doesn't use protocol types
         default:
-            return "A6" // Default fallback
+            return nil
         }
     }
-}
-
-// MARK: - Ionic Scale Data Models
-
-/// Model representing scale data structure from Ionic app
-struct IonicScaleData: Codable {
-    let id: String?
-    let nickname: String?
-    let type: String?
-    let createdAt: String?
-    let userNumber: Int?
-    let scaleToken: String?
-    let mac: String?
-    let broadcastId: Int?
-    let password: Int?
-    let sku: String?
-    let name: String?
-    let peripheralIdentifier: String?
-    let preference: IonicR4ScalePreference?
-    let latestVersion: String?
-    let isDeleted: Bool?
-    let isTemporary: Bool?
-}
-
-/// Model representing R4 scale preference data from Ionic app
-struct IonicR4ScalePreference: Codable {
-    let tzOffset: Int
-    let timeFormat: String
-    let displayName: String
-    let displayMetrics: [String]
-    let shouldMeasurePulse: Bool
-    let shouldMeasureImpedance: Bool
-    let shouldFactoryReset: Bool
-    let wifiFotaScheduleTime: Int?
 }

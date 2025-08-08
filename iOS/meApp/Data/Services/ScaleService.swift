@@ -460,13 +460,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     public func pushLocalChangesToServer() async {
         do {
             logger.log(level: .info, tag: tag, message: "Pushing local changes to server")
-            let accountId: String
-            do {
-                accountId = try await getAccountId()
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
-                return
-            }
             // Handle deletions first
             let devicesMarkedForDeletion = try await localRepository.getDevicesMarkedForDeletion()
             for device in devicesMarkedForDeletion {

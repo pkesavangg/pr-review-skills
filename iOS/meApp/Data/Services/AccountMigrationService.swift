@@ -11,15 +11,13 @@ final class AccountMigrationService {
     private let tag = "AccountMigrationService"
     private let kvStorage = KvStorageService.shared
     
-    // Ionic app keys (matching the Angular service)
-    private let activeAccountKey = "CapacitorStorage.activeAccountKey"
-    private let offlineAccountKeyPrefix = "CapacitorStorage.offlineAccount"
+    // Using shared public MigrationKey enum
     
     // MARK: - Migration Interface
     
     /// Checks if migration is needed by looking for Ionic app account data
     func isMigrationNeeded() -> Bool {
-        let hasActiveAccount = kvStorage.getValue(forKey: activeAccountKey) != nil
+        let hasActiveAccount = kvStorage.getValue(forKey: MigrationKey.activeAccount.rawValue) != nil
         logger.log(level: .info, tag: tag, message: "Migration check - Active account exists: \(hasActiveAccount)")
         return hasActiveAccount
     }
@@ -111,7 +109,7 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Cleaning up Ionic app data after migration")
         
         // Remove active account data
-        kvStorage.clearValue(forKey: activeAccountKey)
+        kvStorage.clearValue(forKey: MigrationKey.activeAccount.rawValue)
         
         // Remove offline account data (we'll need the account ID for this)
         // This will be called after we know the account ID
@@ -120,7 +118,7 @@ final class AccountMigrationService {
     
     /// Removes offline account data for specific account ID
     func cleanupOfflineData(for accountId: String) {
-        let offlineKey = "\(offlineAccountKeyPrefix)\(accountId)"
+        let offlineKey = "\(MigrationKey.offlineAccountPrefix.rawValue)\(accountId)"
         kvStorage.clearValue(forKey: offlineKey)
         logger.log(level: .info, tag: tag, message: "Cleaned up offline data for account: \(accountId)")
     }
@@ -129,7 +127,7 @@ final class AccountMigrationService {
     
     /// Gets stored Ionic account data from UserDefaults/Preferences
     private func getStoredIonicAccountData() -> IonicAccountData? {
-        guard let accountString = kvStorage.getValue(forKey: activeAccountKey) as? String else {
+        guard let accountString = kvStorage.getValue(forKey: MigrationKey.activeAccount.rawValue) as? String else {
             logger.log(level: .error, tag: tag, message: "No active account string found in UserDefaults")
             return nil
         }
@@ -202,71 +200,5 @@ final class AccountMigrationService {
         
         logger.log(level: .info, tag: tag, message: "Successfully converted Ionic data to Account model")
         return account
-    }
-}
-
-// MARK: - Ionic Account Data Model
-
-/// Represents the account data structure from the Ionic app
-private struct IonicAccountData: Codable {
-    let accessToken: String
-    let refreshToken: String
-    let expiresAt: String
-    let id: String
-    let email: String
-    let firstName: String
-    let lastName: String?
-    let gender: String
-    let zipcode: String?
-    let weightUnit: String
-    let isWeightlessOn: Bool?
-    let preferredInputMethod: String?
-    let height: Int
-    let activityLevel: String
-    let dob: String
-    let weightlessBodyFat: Double?
-    let weightlessMuscle: Double?
-    let weightlessTimestamp: String?
-    let weightlessWeight: Int?
-    let isStreakOn: Bool?
-    let dashboardType: String
-    let dashboardMetrics: [String]
-    let goalType: String
-    let goalWeight: Int?
-    let initialWeight: Int?
-    let shouldSendEntryNotifications: Bool
-    let shouldSendWeightInEntryNotifications: Bool
-    let isGoogleFitOn: Bool?
-    let isGoogleFitValid: Bool?
-    let isFitbitOn: Bool?
-    let isFitbitValid: Bool?
-    let isMFPOn: Bool?
-    let isMFPValid: Bool?
-    let isUAOn: Bool?
-    let isUAValid: Bool?
-    let isHealthConnectOn: Bool?
-    let isHealthKitOn: Bool?
-    let type: String?
-}
-
-// MARK: - Migration Errors
-
-enum AccountMigrationError: LocalizedError {
-    case noDataToMigrate
-    case invalidDataFormat
-    case conversionFailed
-    case saveFailed
-    
-    var errorDescription: String? {
-        switch self {
-        case .noDataToMigrate:
-            return "No account data found to migrate from Ionic app"
-        case .invalidDataFormat:
-            return "Invalid data format in Ionic app storage"
-        case .conversionFailed:
-            return "Failed to convert Ionic account data to SwiftUI format"
-        case .saveFailed:
-            return "Failed to save migrated account data"
-        }
     }
 }
