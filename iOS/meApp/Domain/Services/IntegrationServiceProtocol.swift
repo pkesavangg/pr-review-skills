@@ -37,4 +37,14 @@ protocol IntegrationServiceProtocol {
     /// - Parameter integrationType: The integration type to clear.
     ///  - Throws: An error if the operation fails.
     func clearIntegrationStatus(integrationType: IntegrationType) async throws
+    
+    // MARK: - Entry Sync Operations
+    
+    /// Syncs a new entry to the integrated health service (e.g., HealthKit) if integration is active.
+    /// - Parameter entry: The entry to sync to the health service.
+    func syncNewEntry(_ entry: Entry) async throws
+    
+    /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
+    /// - Parameter entry: The entry to delete from the health service.
+    func deleteEntry(_ entry: Entry) async throws
 }

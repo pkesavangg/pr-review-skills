@@ -200,6 +200,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         try await makeOtherAccountsInactive(except: account)
         try await localRepo.updateAccount(account)
         try await updatePublishedState()
+        
+        // Update theme with new active account
+        Theme.shared.setActiveAccount(account.accountId)
+        
         logger.log(level: .info, tag: tag, message: "Active account set to accountId=\(account.accountId)")
     }
     
@@ -911,6 +915,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Only publish when the active account actually changes to prevent unnecessary Combine emissions.
         if activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
+            // Update theme with new active account
+            Theme.shared.setActiveAccount(nextActive?.accountId)
         }
         logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil")")
     }

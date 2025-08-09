@@ -99,6 +99,24 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
         removeIntegrationKey(key)
     }
     
+    /// Checks if HealthKit integration migration is needed for the given account.
+    /// - Parameter accountId: The account/user ID.
+    /// - Returns: True if HealthKit integration data exists in Ionic format and needs migration.
+    func isHealthKitMigrationNeeded(accountId: String) -> Bool {
+        let kvStorage = KvStorageService.shared
+        
+        // Check for any Ionic HealthKit integration keys
+        let ionicHealthKitKey = "\(accountId)-healthKitIntegrated"
+        let ionicAssignedToKey = "healthKitIntegratedAssignedTo"
+        let ionicDeintegratedKey = "healthKitDeintegrated-\(accountId)"
+        
+        let hasIntegratedFlag = kvStorage.getValue(forKey: ionicHealthKitKey) != nil
+        let hasAssignedToFlag = kvStorage.getValue(forKey: ionicAssignedToKey) != nil
+        let hasDeintegratedFlag = kvStorage.getValue(forKey: ionicDeintegratedKey) != nil
+        
+        return hasIntegratedFlag || hasAssignedToFlag || hasDeintegratedFlag
+    }
+    
     // MARK: - Private Helper Methods
     
     /// Creates a UserDefaults key for an integration with the given account ID
