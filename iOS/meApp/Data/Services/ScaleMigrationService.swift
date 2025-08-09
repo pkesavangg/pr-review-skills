@@ -2,7 +2,7 @@
 //  ScaleMigrationService.swift
 //  meApp
 //
-//  Created by AI Assistant on 08/01/25.
+//  Created by Kesavan Panchabakesan on 08/01/25.
 //
 
 import Foundation
@@ -48,7 +48,6 @@ final class ScaleMigrationService {
                 // Save device to SwiftData
                 migratedDevices.append(device)
                 let _ = try await self.scaleService.createDevice(device)
-                await self.scaleService.syncAllScalesWithRemote()
                 logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
                 logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
@@ -56,7 +55,7 @@ final class ScaleMigrationService {
                 // Continue with other scales even if one fails
             }
         }
-        
+        await self.scaleService.syncAllScalesWithRemote()
         logger.log(level: .info, tag: tag, message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales")
         
         return migratedDevices
@@ -145,7 +144,7 @@ final class ScaleMigrationService {
             sku: ionicScale.sku,
             mac: ionicScale.mac,
             password: ionicScale.password.map { Int64($0) },
-            isDeleted:  ionicScale.isDeleted, // Migrated scales are not deleted
+            isDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
             deviceName: ionicScale.name,
             deviceType: "scale",
             broadcastId: ionicScale.broadcastId.map { Int64($0) },
@@ -154,7 +153,7 @@ final class ScaleMigrationService {
             protocolType: determineProtocolType(for: ionicScale),
             createdAt: ionicScale.createdAt,
             lastModified: nil,
-            isSynced: !(ionicScale.isTemporary ?? false), // Mark as synced since it came from server originally
+            isSynced: !(ionicScale.isTemporary ?? false), // Is synced if not temporary
             hasServerID: !(ionicScale.isTemporary ?? false), // Has server ID from Ionic app
             isConnected: false, // Default to not connected
             wifiMac: nil, // Not available in Ionic data

@@ -6,6 +6,7 @@ import SwiftData
 @MainActor
 final class SQLiteMigrationService {
     @Injector private var logger: LoggerService
+    private let migrationLogBatchSize = 100 // Number of entries to log in batch during migration
     private let tag = "SQLiteMigrationService"
     
     /// Initialize the service
@@ -173,7 +174,7 @@ final class SQLiteMigrationService {
                 migratedData[userId] = (migratedData[userId] ?? 0) + 1
                 
                 let totalMigrated = migratedData.values.reduce(0, +)
-                if totalMigrated % 100 == 0 {
+                if totalMigrated % migrationLogBatchSize == 0 {
                     logger.log(level: .info, tag: tag, message: "Migrated \(totalMigrated) entries across \(migratedData.count) users...")
                 }
             } catch {
