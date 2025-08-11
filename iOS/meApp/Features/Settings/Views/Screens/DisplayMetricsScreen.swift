@@ -10,12 +10,17 @@ import SwiftUI
 struct DisplayMetricsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @StateObject private var scaleStore = ScaleStore()
-    @State private var isWeightOnlyModeOn: Bool = true
-    @State private var isHeartRateOn: Bool = true
+    @StateObject private var viewModel: DisplayMetricsViewModel
     let lang = ScaleModesStrings.self
     
     let scale: Device
+    let isWeighOnlyModeEnabledByOthers: Bool
+    
+    init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
+        self.scale = scale
+        self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
+        _viewModel = StateObject(wrappedValue: DisplayMetricsViewModel(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
+    }
     
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
@@ -30,7 +35,8 @@ struct DisplayMetricsScreen: View {
                         isDisabled: false,
                         action: {
                             Task {
-                                await scaleStore.saveDisplayMetrics()
+                                await viewModel.saveDisplayMetrics()
+                                router.navigateBack()
                             }
                         }
                     )
@@ -49,15 +55,15 @@ struct DisplayMetricsScreen: View {
                 // Body Metrics Section
                 MetricsSectionView(
                     metrics: Binding(
-                        get: { scaleStore.metrics },
-                        set: { scaleStore.updateMetrics($0) }
+                        get: { viewModel.metrics },
+                        set: { viewModel.updateMetrics($0) }
                     ),
-                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onValueChanged: { viewModel.updateDisplayMetricsValue() },
                     onMove: { indices, newOffset in
-                        var updatedMetrics = scaleStore.metrics
+                        var updatedMetrics = viewModel.metrics
                         updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
-                        scaleStore.updateMetrics(updatedMetrics)
-                        scaleStore.updateDisplayMetricsValue()
+                        viewModel.updateMetrics(updatedMetrics)
+                        viewModel.updateDisplayMetricsValue()
                     },
                     showIcon: true
                 )
@@ -65,15 +71,15 @@ struct DisplayMetricsScreen: View {
                 // Progress Metrics Section
                 MetricsSectionView(
                     metrics: Binding(
-                        get: { scaleStore.progressMetrics },
-                        set: { scaleStore.updateProgressMetrics($0) }
+                        get: { viewModel.progressMetrics },
+                        set: { viewModel.updateProgressMetrics($0) }
                     ),
-                    onValueChanged: { scaleStore.updateDisplayMetricsValue() },
+                    onValueChanged: { viewModel.updateDisplayMetricsValue() },
                     onMove: { indices, newOffset in
-                        var updatedMetrics = scaleStore.progressMetrics
+                        var updatedMetrics = viewModel.progressMetrics
                         updatedMetrics.move(fromOffsets: indices, toOffset: newOffset)
-                        scaleStore.updateProgressMetrics(updatedMetrics)
-                        scaleStore.updateDisplayMetricsValue()
+                        viewModel.updateProgressMetrics(updatedMetrics)
+                        viewModel.updateDisplayMetricsValue()
                     },
                     showIcon: false
                 )
@@ -86,22 +92,19 @@ struct DisplayMetricsScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        .onAppear {
-            Task {
-                await scaleStore.loadScale(scale)
-                scaleStore.loadDisplayMetrics()
-            }
+        .task {
+            await viewModel.loadDisplayMetricsData()
         }
     }
     
     // MARK: - Sections as Functions
     private func bannerSection() -> some View {
         Section {
-            if scaleStore.showWeightOnlyBanner || scaleStore.showWeightOnlyInfo || scaleStore.showHeartRateBanner {
+            if viewModel.showWeightOnlyBanner || viewModel.showWeightOnlyInfo || viewModel.showHeartRateBanner {
                 VStack(spacing: .spacingSM) {
-                    if scaleStore.showWeightOnlyBanner { weightOnlyBanner() }
-                    if scaleStore.showWeightOnlyInfo { weightOnlyInfo() }
-                    if scaleStore.showHeartRateBanner { heartRateBanner() }
+                    if viewModel.showWeightOnlyBanner { weightOnlyBanner() }
+                    if viewModel.showWeightOnlyInfo { weightOnlyInfo() }
+                    if viewModel.showHeartRateBanner { heartRateBanner() }
                 }
             }
         }
@@ -129,13 +132,12 @@ struct DisplayMetricsScreen: View {
                 StatusRowView(
                     iconName: AppAssets.weightOnlyMode,
                     label: lang.weightOnlyLabel,
-                    statusText: isWeightOnlyModeOn ? commonLang.on.uppercased() : commonLang.off.uppercased()
+                    statusText: viewModel.isWeightOnlyModeOn ? commonLang.on.uppercased() : commonLang.off.uppercased()
                 )
                 .fontWeight(.regular)
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    // Navigate to scale modes screen where user can change their mode
-                    router.navigate(to: .scaleModes(scale: scale))
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 })
             }
         }
@@ -163,24 +165,25 @@ struct DisplayMetricsScreen: View {
     
     private func heartRateBanner() -> some View {
         let commonLang = CommonStrings.self
-        let iconAndLabelColor = isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
+        let iconAndLabelColor = viewModel.isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
         
         return NoteBox {
             HStack(spacing: .spacingSM) {
                 StatusRowView(
                     iconName: AppAssets.heartIcon,
                     label: commonLang.heartRateLabel,
-                    statusText: isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
+                    statusText: viewModel.isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
                     foregroundColor: iconAndLabelColor
                 )
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    scaleStore.updateHeartRateEnabled(!scaleStore.isHeartRateEnabled)
+                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 })
             }
         }
     }
 }
+
 
 #Preview {
     DisplayMetricsScreen(scale: Device(

@@ -26,16 +26,7 @@ class GoalCardCell: UICollectionViewCell {
     override init(frame: CGRect) {
         // Create a placeholder view that will be configured later
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         
         self.hostingController = UIHostingController(rootView: placeholderView)
@@ -84,18 +75,9 @@ class GoalCardCell: UICollectionViewCell {
         // Set the removal state
         isRemoved = store.state.ui.isGoalCardRemoved
         
-        let goalCardView = GoalProgressCardView(
-            delta: store.state.goal.goalDelta,
-            startWeight: store.state.goal.goalStartWeight,
-            goalWeight: store.state.goal.goalWeight,
-            unit: store.currentUnitText,
-            isRemoved: store.state.ui.isGoalCardRemoved,
-            progress: store.state.goal.goalProgress,
-            goalType: store.state.goal.goalType,
-            isWeightlessMode: store.isWeightlessModeEnabled
-        )
+        let goalCardView = GoalProgressView()
         
-        // Apply EditModeOverlay to the GoalProgressCardView
+        // Apply EditModeOverlay to the GoalProgressView
         let viewWithOverlay = AnyView(
             goalCardView
                 .editModeOverlay(
@@ -120,16 +102,7 @@ class GoalCardCell: UICollectionViewCell {
         super.prepareForReuse()
         // Reset to placeholder view
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         hostingController?.rootView = placeholderView
     }
@@ -222,5 +195,19 @@ class GoalCardCell: UICollectionViewCell {
         snapshot?.backgroundColor = .clear
         
         return snapshot ?? UIView()
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            // Disable highlight visual
+            contentView.backgroundColor = .clear
+        }
+    }
+
+    override var isSelected: Bool {
+        didSet {
+            // Disable selection visual
+            contentView.backgroundColor = .clear
+        }
     }
 } 

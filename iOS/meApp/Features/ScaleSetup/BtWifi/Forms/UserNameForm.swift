@@ -10,7 +10,7 @@ struct ScaleUser {
 
 /// Form for handling username input with validation
 class UserNameForm: ObservableForm {
-    var displayName = FormControl("", validators: [.required, .noWhiteSpace, .namePattern, .userNameUnavailable])
+    var displayName = FormControl("", validators: [.required, .noWhiteSpace, .namePattern, .userNameUnavailable, .maxLength(20)])
     @Published var userList: [ScaleUser] = []
     private let errorMessages = FormErrorMessages.self
     
@@ -46,6 +46,7 @@ class UserNameForm: ObservableForm {
         if control.errors[.required] { return errorMessages.required }
         if control.errors[.noWhiteSpace] { return errorMessages.noWhiteSpace }
         if control.errors[.namePattern] { return errorMessages.namePattern }
+        if control.errors[.maxLength] { return errorMessages.maxLength(20) }
         if control.errors[.userNameUnavailable] { return errorMessages.userNameUnavailable }
         if control.errors[.duplicate] { return errorMessages.duplicate }
         

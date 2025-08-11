@@ -18,6 +18,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     @ObservedObject var store: DashboardStore
     @State private var isDragging: Bool = false
     @State private var draggedItemId: String?
+    var onMetricLongPress: ((String) -> Void)? = nil
     
     // MARK: - UIViewRepresentable
     
@@ -67,7 +68,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     private func createCollectionView(with layout: LeadingAlignedFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        collectionView.dragInteractionEnabled = true
+        collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         
         // Disable selection to prevent visual feedback
@@ -123,9 +124,34 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
             let item = store.metricsToShow[indexPath.item]
-            cell.configure(with: item, dashboardType: store.state.metrics.dashboardType, store: store)
+            
+            // Check if this cell is currently being dragged
+            let isBeingDragged = draggedItemId == item.id.uuidString
+            
+            cell.configure(
+                with: item,
+                dashboardType: store.state.metrics.dashboardType,
+                store: store,
+                isBeingDragged: isBeingDragged, // Pass drag state to cell
+                onMetricLongPress: parent.onMetricLongPress,
+                onSelectMetric: { label in
+                    if label.isEmpty {
+                        self.store.state.ui.selectedMetricLabel = nil
+                    } else {
+                        self.store.state.ui.selectedMetricLabel = label
+                    }
+                }
+            )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
+            cell.gestureRecognizers?.forEach { cell.removeGestureRecognizer($0) }
+            if store.state.ui.isEditMode {
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricDragLongPress(_:)))
+                longPress.minimumPressDuration = 0.5
+                cell.addGestureRecognizer(longPress)
+                cell.tag = indexPath.item
+            }
+            cell.isUserInteractionEnabled = true
             
             // Set up delete callback (EditModeOverlay handles the UI)
             cell.onDeleteTapped = {
@@ -138,6 +164,14 @@ extension MetricGridUIKitView {
             }
             
             return cell
+        }
+        
+        @objc func handleMetricDragLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began,
+                  let cell = gesture.view as? MetricCell,
+                  let item = cell.representedItem,
+                  store.state.ui.isEditMode else { return }
+            // UIKit grid will handle drag-and-drop
         }
         
         // MARK: - UICollectionViewDelegateFlowLayout
@@ -164,6 +198,8 @@ extension MetricGridUIKitView {
                 return [] // Return empty array to prevent drag
             }
             
+            if !store.state.ui.isEditMode { return [] } // Prevent drag if not in edit mode
+            
             let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             let dragItem = UIDragItem(itemProvider: itemProvider)
             dragItem.localObject = item
@@ -177,12 +213,9 @@ extension MetricGridUIKitView {
             // Update store drag state for EditModeOverlay visibility IMMEDIATELY
             store.startDraggingMetric(item)
             
-            // Immediately reconfigure the dragged cell to hide EditModeOverlay
+            // Immediately hide EditModeOverlay on the dragged cell
             if let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
-                // Force immediate reconfiguration to update EditModeOverlay
-                DispatchQueue.main.async {
-                    cell.configure(with: item, dashboardType: self.store.state.metrics.dashboardType, store: self.store)
-                }
+                cell.updateDragState(true) // Use the new method for more reliable state management
             }
             
             // Provide haptic feedback
@@ -193,14 +226,8 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView,
                             dragPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
             let parameters = UIDragPreviewParameters()
-            parameters.backgroundColor = .clear
-
-            if let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
-                // Only show the main content area, not the entire cell
-                let contentFrame = cell.contentView.frame
-                parameters.visiblePath = UIBezierPath(roundedRect: contentFrame, cornerRadius: 8)
-            }
-
+            parameters.backgroundColor = .clear // Make the preview transparent
+            parameters.visiblePath = UIBezierPath(rect: .zero) // Remove shadow effect
             return parameters
         }
         
@@ -220,10 +247,6 @@ extension MetricGridUIKitView {
             let previewView = UIView(frame: metricCell.contentView.frame)
             previewView.backgroundColor = metricCell.contentView.backgroundColor
             previewView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-            previewView.layer.shadowColor = metricCell.contentView.layer.shadowColor
-            previewView.layer.shadowOffset = metricCell.contentView.layer.shadowOffset
-            previewView.layer.shadowRadius = metricCell.contentView.layer.shadowRadius
-            previewView.layer.shadowOpacity = metricCell.contentView.layer.shadowOpacity
             previewView.alpha = 1.0 // Ensure full opacity
             
             // Add the content to the preview
@@ -255,11 +278,11 @@ extension MetricGridUIKitView {
             // Immediately hide EditModeOverlay on the dragged cell
             if let draggedItem = session.items.first,
                let dragItem = draggedItem.localObject as? MetricItem {
-                // Find and reconfigure the dragged metric cell to hide EditModeOverlay
+                // Find and hide EditModeOverlay on the dragged metric cell
                 for cell in collectionView.visibleCells {
                     if let metricCell = cell as? MetricCell,
                        metricCell.representedItem?.id == dragItem.id {
-                        metricCell.configure(with: dragItem, dashboardType: store.state.metrics.dashboardType, store: store)
+                        metricCell.updateDragState(true) // Use the new method for more reliable state management
                         break
                     }
                 }
@@ -270,17 +293,15 @@ extension MetricGridUIKitView {
             parent.isDragging = false
             draggedItemId = nil
             
-            // Restore EditModeOverlay visibility on all cells if in edit mode
+            // Clear the store's drag state
+            store.endDragging()
+            
+            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
             if store.state.ui.isEditMode {
-                DispatchQueue.main.async {
-                    // Reconfigure all visible cells to restore EditModeOverlay visibility
-                    for cell in collectionView.visibleCells {
-                        if let metricCell = cell as? MetricCell,
-                           let indexPath = collectionView.indexPath(for: cell),
-                           indexPath.item < self.store.metricsToShow.count {
-                            let item = self.store.metricsToShow[indexPath.item]
-                            metricCell.configure(with: item, dashboardType: self.store.state.metrics.dashboardType, store: self.store)
-                        }
+                // Update all visible cells to restore EditModeOverlay visibility
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false) // Use the new method for more reliable state management
                     }
                 }
             }
@@ -299,17 +320,15 @@ extension MetricGridUIKitView {
                 // Clear the dragged item ID when drag is cancelled
                 self.draggedItemId = nil
                 
-                // Restore EditModeOverlay visibility on all cells if in edit mode
+                // Clear the store's drag state
+                self.store.endDragging()
+                
+                // Immediately restore EditModeOverlay visibility on all cells if in edit mode
                 if self.store.state.ui.isEditMode {
-                    DispatchQueue.main.async {
-                        // Reconfigure all visible cells to restore EditModeOverlay visibility
-                        for cell in collectionView.visibleCells {
-                            if let metricCell = cell as? MetricCell,
-                               let indexPath = collectionView.indexPath(for: cell),
-                               indexPath.item < self.store.metricsToShow.count {
-                                let item = self.store.metricsToShow[indexPath.item]
-                                metricCell.configure(with: item, dashboardType: self.store.state.metrics.dashboardType, store: self.store)
-                            }
+                    // Update all visible cells to restore EditModeOverlay visibility
+                    for cell in collectionView.visibleCells {
+                        if let metricCell = cell as? MetricCell {
+                            metricCell.updateDragState(false) // Use the new method for more reliable state management
                         }
                     }
                 }
@@ -323,6 +342,11 @@ extension MetricGridUIKitView {
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
+            // Immediately clear any existing drag state when drop session enters
+            store.endDragging()
+            draggedItemId = nil
+            parent.isDragging = false
+            
             // Disable animations when drop session enters
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -356,11 +380,27 @@ extension MetricGridUIKitView {
                 })
             }
             CATransaction.commit()
-    
+            
+            // Immediately clear drag state after drop is executed
+            parent.isDragging = false
+            draggedItemId = nil
+            store.endDragging()
+            
+            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
+            if store.state.ui.isEditMode {
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false)
+                    }
+                }
+            }
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+            // Immediately clear drag state when drop session ends
+            parent.isDragging = false
             draggedItemId = nil
+            store.endDragging()
             
             CATransaction.begin()
             CATransaction.setDisableActions(true)
@@ -375,6 +415,15 @@ extension MetricGridUIKitView {
                 }
             }
             CATransaction.commit()
+            
+            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
+            if store.state.ui.isEditMode {
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false)
+                    }
+                }
+            }
         }
     }
 } 

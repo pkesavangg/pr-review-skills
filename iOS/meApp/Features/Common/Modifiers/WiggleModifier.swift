@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-// MARK: - Animation Constants
-
 struct WiggleModifier: ViewModifier {
     let shouldWiggle: Bool
     let rowIndex: Int
@@ -52,96 +50,147 @@ struct WiggleModifier: ViewModifier {
     }
 
     private func startWiggleAnimation() {
-        // Calculate duration based on row index for alternating timing (matching movingGridsLearning exactly)
-        let finalEvenRowDuration = evenRowDuration ?? WiggleAnimationConstants.wiggleDurationEven
-        let finalOddRowDuration = oddRowDuration ?? WiggleAnimationConstants.wiggleDurationOdd
+        stopWiggleAnimation()
+        
+        let finalEvenRowDuration = evenRowDuration ?? WiggleAnimationConstants.wiggleRotateDuration
+        let finalOddRowDuration = oddRowDuration ?? WiggleAnimationConstants.wiggleRotateDuration
         let animationDuration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
             ? finalEvenRowDuration 
             : finalOddRowDuration
         
-        let targetRotationAngle = wiggleAngle ?? WiggleAnimationConstants.wiggleRotationAngle
+        let targetRotationAngle = wiggleAngle ?? WiggleAnimationConstants.wiggleRotateAngle
         
         withAnimation(
             Animation
                 .easeInOut(duration: animationDuration)
                 .repeatForever(autoreverses: true)
-                .speed(1.0) // Balanced speed
+                .speed(1.0)
         ) {
             currentRotation = targetRotationAngle
         }
     }
 
     private func stopWiggleAnimation() {
-        withAnimation(.easeOut(duration: 0.095)) { // Perfect middle ground stop animation
+        withAnimation(.easeOut(duration: 0.095)) {
             currentRotation = 0
         }
     }
 }
 
-// MARK: - UIView Extension for Direct Layer Animation (for UIKit components)
-
 extension UIView {
-    /// Starts the iOS home screen-style wiggle animation using CAKeyframeAnimation
-    /// Matches the movingGridsLearning implementation exactly
+    // Static cache for randomized intervals per rowIndex and animation type
+    private static var intervalCache: [String: Double] = [:]
+    
+    // Helper to get cached or new interval
+    private func cachedRandomizedInterval(forKey key: String, baseInterval: Double, variance: Double) -> Double {
+        if let cached = UIView.intervalCache[key] {
+            return cached
+        }
+        let randomFactor = Double.random(in: -1.0...1.0)
+        let interval = baseInterval + (randomFactor * variance)
+        UIView.intervalCache[key] = interval
+        return interval
+    }
+    
+    // Clear the interval cache when needed (e.g., when app becomes active)
+    static func clearWiggleIntervalCache() {
+        intervalCache.removeAll()
+    }
+    
     func startWiggle() {
-        let animation = createWiggleAnimation(
-            duration: WiggleAnimationConstants.wiggleDurationEven,
-            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle // Already in radians
-        )
-        layer.add(animation, forKey: "wiggle")
+        layer.removeAnimation(forKey: "rotation")
+        layer.removeAnimation(forKey: "bounce")
+        
+        layer.add(createRotationAnimation(), forKey: "rotation")
+        layer.add(createBounceAnimation(), forKey: "bounce")
     }
     
-    /// Starts wiggle animation with alternating durations based on row index (app icons)
-    /// - Parameter rowIndex: The row index to determine animation timing
     func startWiggleWithRowIndex(_ rowIndex: Int) {
-        let duration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
-            ? WiggleAnimationConstants.wiggleDurationEven 
-            : WiggleAnimationConstants.wiggleDurationOdd
+        layer.removeAnimation(forKey: "rotation")
+        layer.removeAnimation(forKey: "bounce")
         
-        let animation = createWiggleAnimation(
-            duration: duration,
-            rotationAngle: WiggleAnimationConstants.wiggleRotationAngle // Already in radians
-        )
-        layer.add(animation, forKey: "wiggle")
+        layer.add(createRotationAnimationWithRowIndex(rowIndex), forKey: "rotation")
+        layer.add(createBounceAnimationWithRowIndex(rowIndex), forKey: "bounce")
     }
     
-    /// Starts widget wiggle animation with alternating durations based on row index (widgets)
-    /// - Parameter rowIndex: The row index to determine animation timing
-    func startWidgetWiggleWithRowIndex(_ rowIndex: Int) {
-        let duration = (Double(rowIndex).truncatingRemainder(dividingBy: 2)) == 0 
-            ? WiggleAnimationConstants.widgetWiggleDurationEven 
-            : WiggleAnimationConstants.widgetWiggleDurationOdd
-        
-        let animation = createWiggleAnimation(
-            duration: duration,
-            rotationAngle: WiggleAnimationConstants.widgetWiggleRotationAngle // Already in radians
-        )
-        layer.add(animation, forKey: "wiggle")
-    }
-    
-    /// Stops the wiggle animation
     func stopWiggle() {
-        layer.removeAnimation(forKey: "wiggle")
+        layer.removeAnimation(forKey: "rotation")
+        layer.removeAnimation(forKey: "bounce")
     }
     
-    /// Creates a wiggle animation with specified parameters (matching movingGridsLearning exactly)
-    /// - Parameters:
-    ///   - duration: Animation duration
-    ///   - rotationAngle: Rotation angle in radians
-    /// - Returns: Configured CAKeyframeAnimation
-    private func createWiggleAnimation(duration: Double, rotationAngle: Double) -> CAKeyframeAnimation {
-        let transformAnim = CAKeyframeAnimation(keyPath: "transform")
+    private func createRotationAnimationWithRowIndex(_ rowIndex: Int) -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: "transform.rotation.z")
         
-        // Use the exact same values as movingGridsLearning for consistency
-        transformAnim.values = [
-            NSValue(caTransform3D: CATransform3DMakeRotation(rotationAngle, 0.0, 0.0, 1.0)),
-            NSValue(caTransform3D: CATransform3DMakeRotation(-rotationAngle, 0.0, 0.0, 1.0))
+        animation.values = [
+            NSNumber(value: -WiggleAnimationConstants.wiggleRotateAngle),
+            NSNumber(value: WiggleAnimationConstants.wiggleRotateAngle)
         ]
         
-        transformAnim.autoreverses = true
-        transformAnim.duration = duration
-        transformAnim.repeatCount = Float.infinity
+        animation.autoreverses = true
+        animation.duration = cachedRandomizedInterval(
+            forKey: "rotation_\(rowIndex)",
+            baseInterval: WiggleAnimationConstants.wiggleRotateDuration,
+            variance: WiggleAnimationConstants.wiggleRotateDurationVariance
+        )
+        animation.repeatCount = Float.infinity
         
-        return transformAnim
+        return animation
+    }
+    
+    private func createBounceAnimationWithRowIndex(_ rowIndex: Int) -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        
+        animation.values = [
+            NSNumber(value: WiggleAnimationConstants.wiggleBounceY),
+            NSNumber(value: 0.0)
+        ]
+        
+        animation.autoreverses = true
+        animation.duration = cachedRandomizedInterval(
+            forKey: "bounce_\(rowIndex)",
+            baseInterval: WiggleAnimationConstants.wiggleBounceDuration,
+            variance: WiggleAnimationConstants.wiggleBounceDurationVariance
+        )
+        animation.repeatCount = Float.infinity
+        
+        return animation
+    }
+    
+    private func createRotationAnimation() -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        
+        animation.values = [
+            NSNumber(value: -WiggleAnimationConstants.wiggleRotateAngle),
+            NSNumber(value: WiggleAnimationConstants.wiggleRotateAngle)
+        ]
+        
+        animation.autoreverses = true
+        animation.duration = cachedRandomizedInterval(
+            forKey: "rotation_default",
+            baseInterval: WiggleAnimationConstants.wiggleRotateDuration,
+            variance: WiggleAnimationConstants.wiggleRotateDurationVariance
+        )
+        animation.repeatCount = Float.infinity
+        
+        return animation
+    }
+    
+    private func createBounceAnimation() -> CAKeyframeAnimation {
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        
+        animation.values = [
+            NSNumber(value: WiggleAnimationConstants.wiggleBounceY),
+            NSNumber(value: 0.0)
+        ]
+        
+        animation.autoreverses = true
+        animation.duration = cachedRandomizedInterval(
+            forKey: "bounce_default",
+            baseInterval: WiggleAnimationConstants.wiggleBounceDuration,
+            variance: WiggleAnimationConstants.wiggleBounceDurationVariance
+        )
+        animation.repeatCount = Float.infinity
+        
+        return animation
     }
 }

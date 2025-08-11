@@ -226,6 +226,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
     
+    @discardableResult
     func createGoal(_ goal: Goal) async throws -> Account {
         guard let accountId = activeAccount?.accountId, let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
             throw AccountError.noActiveAccount
@@ -244,8 +245,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                return localAccount
+            } else {
+                throw error
             }
-            throw error
         }
     }
     
@@ -610,6 +613,22 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                !isSynced {
                 try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
+            
+            // Handle Goal Settings
+            if let goalType = account.goalSettings?.goalType,
+               let initialWeight = account.goalSettings?.initialWeight,
+               let goalWeight = account.goalSettings?.goalWeight,
+               account.goalSettings?.isSynced == false {
+                let goal = Goal(
+                    type: goalType,
+                    goalWeight: Int(goalWeight),
+                    initialWeight: Int(initialWeight),
+                    goalType: goalType
+                )
+                try await createGoal(goal)
+            }
+        
+            
             // Handle Integration Settings
             if let integrationSettings = account.integrationSettings,
                !isSynced {
@@ -757,6 +776,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
+                localAccount.weightlessSettings?.isWeightlessOn = isWeightlessOn
+                localAccount.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
+                localAccount.weightlessSettings?.weightlessWeight = isWeightlessOn ? weightlessWeight : nil
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 return localAccount

@@ -63,6 +63,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
     }
+    /// Publisher for live measurement data.
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> {
+        liveMeasurementSubject.eraseToAnyPublisher()
+    }
     
     var skipDevices: [String] = []
     
@@ -72,6 +76,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     private let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
     private let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
+    /// Subject for live measurement data events.
+    private let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -264,7 +270,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             clearDevices()
             return
         }
-
+        
         let scalesToSync = devices.isEmpty ? bluetoothScales : devices
         let ggDevices = scalesToSync.map { device in
             GGBTDevice(
@@ -467,6 +473,46 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
     
+    // MARK: - Live Measurement
+    
+    /**
+     Starts live measurement for the given device.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    @discardableResult
+    func startLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggBleSDK.startLiveMeasurement(ggDevice)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.startLiveMeasurementFailed(error))
+        }
+    }
+    
+    /**
+     Stops live measurement for the given device.
+     - Returns: Result<Void, BluetoothServiceError>
+     */
+    @discardableResult
+    func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> {
+        do {
+            guard let ggDevice = mapToGGBTDevice(device) else {
+                throw BluetoothServiceError.invalidBroadcastId
+            }
+            ggBleSDK.stopLiveMeasurement(ggDevice)
+            return .success(())
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.startLiveMeasurementFailed(error))
+        }
+    }
+    
     // MARK: - Settings & Firmware
     /**
      Updates a list of settings on the device.
@@ -625,7 +671,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return .failure(.updateProfileFailed(error))
         }
     }
-
+    
     /**
      Retrieves device logs from the scale.
      - Returns: Result<DeviceLogs, BluetoothServiceError>
@@ -759,7 +805,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Handle device wake up
             break
         case .LIVE_MEASUREMENT:
-            // Handle live measurement data
+            if let liveData = data.data as? GGWeightEntry {
+                liveMeasurementSubject.send(liveData)
+            } else {
+                logger.log(level: .error, tag: tag, message: "Failed to get live measurement data")
+            }
             break
         }
     }
@@ -854,7 +904,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func convertIntToHex(_ value: Int64, protocolType: ProtocolType) -> String {
         // Convert to hex string without leading 0x
         var hex = String(value, radix: 16)
-
+        
         switch protocolType {
         case .R4:
             // Pad to 12 characters (6 bytes)
@@ -866,7 +916,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 hex = String(repeating: "0", count: 12 - hex.count) + hex
             }
         }
-
+        
         // Split into 2-character chunks
         var bytes: [String] = []
         for i in stride(from: 0, to: hex.count, by: 2) {
@@ -874,10 +924,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             let end = hex.index(start, offsetBy: 2)
             bytes.append(String(hex[start..<end]))
         }
-
+        
         // Reverse and join to simulate little-endian format
         let reversedHex = bytes.reversed().joined().uppercased()
-
+        
         return reversedHex
     }
     
@@ -1014,7 +1064,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }()
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
-
+    
     
     /// Creates ScanData from Account using proper conversions and types
     func createScanData(from account: Account?) -> ScanData? {
@@ -1076,9 +1126,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             metrics: nil
         )
     }
-    
-    
-    
+        
     /// Returns the weight value for a GGEntry based on protocol type
     private func getWeightByProtocolType(protocolType: ProtocolType, weightInKg: Float, weight: Float) -> Int? {
         switch protocolType {
@@ -1161,7 +1209,7 @@ private extension BluetoothService {
               preference.modelContext != nil else {
             return nil
         }
-
+        
         return GGDevicePreference(
             displayName: preference.displayName,
             displayMetrics: preference.displayMetrics,
