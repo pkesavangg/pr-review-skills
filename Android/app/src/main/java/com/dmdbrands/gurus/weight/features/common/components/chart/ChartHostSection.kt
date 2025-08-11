@@ -53,6 +53,7 @@ internal fun ChartHostSection(
 ) {
   key(segment) {
     val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+
     val primaryChart =
       rememberCartesianChart(
         primaryLayer,
@@ -128,12 +129,13 @@ internal fun ChartHostSection(
     CartesianChartHost(
       chart = primaryChart,
       modelProducer = modelProducer,
-      modifier =
-        modifier,
+      modifier = modifier,
       animationSpec = null,
+      animateIn = false,
       scrollState = scrollState,
       zoomState = rememberVicoZoomState(zoomEnabled = false),
       consumeMoveEvents = true,
-    )
+
+      )
   }
 }

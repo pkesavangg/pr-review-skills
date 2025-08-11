@@ -41,6 +41,7 @@ internal fun bottomAxis(
         thickness = 1.dp,
       ),
       separators = { separators },
+      visibleLabelCount = 0,
     )
   else
     HorizontalAxis.rememberBottom(

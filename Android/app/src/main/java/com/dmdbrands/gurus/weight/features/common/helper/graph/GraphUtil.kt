@@ -316,7 +316,7 @@ object GraphUtil {
     startMillis: Long?,
     endMillis: Long?,
     zone: ZoneId = ZoneId.systemDefault(),
-    weekStart: DayOfWeek = DayOfWeek.MONDAY
+    weekStart: DayOfWeek = DayOfWeek.SUNDAY
   ): List<Double> {
     if (startMillis == null || endMillis == null) return emptyList()
     require(startMillis <= endMillis) { "startMillis must be <= endMillis" }
