@@ -62,6 +62,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Broadcast change
 
         await syncUnsyncedEntries()
+        await checkGoalAlerts()
     }
 
     func saveNewEntries(_ entries: [Entry]) async throws {
@@ -314,7 +315,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // 6. Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
-            await checkGoalAlerts()
 
             logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
 

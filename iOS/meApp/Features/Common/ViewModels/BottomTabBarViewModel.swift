@@ -56,12 +56,12 @@ class BottomTabBarViewModel: ObservableObject {
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
-        get { 
+        get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
             let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
             return (KvStorageService.shared.getValue(forKey: key) as? Bool) ?? false
         }
-        set { 
+        set {
             guard let accountId = accountService.activeAccount?.accountId else { return }
             let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
             KvStorageService.shared.setValue(newValue, forKey: key)
@@ -97,9 +97,12 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
         
         // Perform Apple Health integration check on launch
-        Task { [weak self] in
-            await self?.checkAppleHealthIntegrationStatus()
-            await self?.checkSetGoalCardPrompt()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            Task { [weak self] in
+                await self?.checkAppleHealthIntegrationStatus()
+                await self?.checkSetGoalCardPrompt()
+            }
         }
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list

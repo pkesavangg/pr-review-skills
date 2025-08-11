@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 
-
 /// Singleton class responsible for managing the current color scheme and dark mode settings of the app.
 final class Theme: ObservableObject {
     static let shared = Theme()
@@ -20,6 +19,9 @@ final class Theme: ObservableObject {
     
     /// Currently active account ID for theme persistence
     private var activeAccountId: String?
+    
+    /// KvStorage service for persistence
+    private let kvStorage = KvStorageService.shared
         
     @Published var appearanceMode: AppearanceMode {
         didSet {
@@ -75,7 +77,7 @@ final class Theme: ObservableObject {
         }
         
         let key = appearanceModeKey(for: accountId)
-        if let savedMode = UserDefaults.standard.string(forKey: key),
+        if let savedMode = kvStorage.getValue(forKey: key) as? String,
            let mode = AppearanceMode(rawValue: savedMode) {
             // Account has saved preference, use it
             appearanceMode = mode
@@ -87,7 +89,7 @@ final class Theme: ObservableObject {
     
     /// Loads global appearance mode setting
     private func loadGlobalAppearanceMode() {
-        if let savedMode = UserDefaults.standard.string(forKey: "appearanceMode"),
+        if let savedMode = kvStorage.getValue(forKey: KvStorageKeys.appearanceMode.rawValue) as? String,
            let mode = AppearanceMode(rawValue: savedMode) {
             appearanceMode = mode
         } else {
@@ -100,16 +102,16 @@ final class Theme: ObservableObject {
         if let accountId = activeAccountId {
             // Save account-specific preference
             let key = appearanceModeKey(for: accountId)
-            UserDefaults.standard.set(appearanceMode.rawValue, forKey: key)
+            kvStorage.setValue(appearanceMode.rawValue, forKey: key)
         } else {
             // Save global preference
-            UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
+            kvStorage.setValue(appearanceMode.rawValue, forKey: KvStorageKeys.appearanceMode.rawValue)
         }
     }
     
     /// Generates account-specific UserDefaults key for appearance mode
     private func appearanceModeKey(for accountId: String) -> String {
-        return "appearanceMode_\(accountId)"
+        return KvStorageKeys.appearanceModeKey(for: accountId)
     }
     
     /// Applies the interface style to the window

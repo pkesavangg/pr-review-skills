@@ -13,11 +13,11 @@ public final class HealthKitService: HealthKitServiceProtocol {
     private let tag = "HealthKitService"
     private let context: ModelContext
     private let kvStore = KvStorageService.shared
-    private let addHKModalFlagKeyBase = "hasSeenAddAppleHealthIntegrationModal"
+    private let addHKModalFlagKeyBase = KvStorageKeys.addAppleHealthModalBase
     /// Local storage flag indicating the *Finish Adding Apple Health* prompt has already been shown on this device.
-    private let finishHKModalFlagKeyBase = "hasSeenFinishAddingAppleHealthModal"
+    private let finishHKModalFlagKeyBase = KvStorageKeys.finishAppleHealthModalBase
     /// Local storage flag indicating the *Out of Sync* Apple Health prompt has already been shown on this device.
-    private let outOfSyncHKModalFlagKeyBase = "hasSeenOutOfSyncAppleHealthModal"
+    private let outOfSyncHKModalFlagKeyBase = KvStorageKeys.outOfSyncAppleHealthModalBase
     
     // MARK: - Initialization
     
@@ -231,7 +231,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                    integrationInfo.isIntegrated,
                    integrationInfo.type == .healthKit {
                     let accountId = try? await accountService.getActiveAccount()?.accountId
-                    let scopedOutOfSyncKey = scopedKey(outOfSyncHKModalFlagKeyBase, accountId: accountId)
+                    let scopedOutOfSyncKey = KvStorageKeys.scopedHealthKitModalKey(outOfSyncHKModalFlagKeyBase, accountId: accountId)
                     if (kvStore.getValue(forKey: scopedOutOfSyncKey) as? Bool) != true {
                         kvStore.setValue(true, forKey: scopedOutOfSyncKey)
                         return .outOfSync
@@ -245,7 +245,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // Show when HealthKit permissions have been granted (≥1) but we don't yet
             // have a stored integration record for the current device/account.
             let accountId = try? await accountService.getActiveAccount()?.accountId
-            let scopedFinishKey = scopedKey(finishHKModalFlagKeyBase, accountId: accountId)
+            let scopedFinishKey = KvStorageKeys.scopedHealthKitModalKey(finishHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedFinishKey) as? Bool) != true {
                 let approvedPermissions = getApprovedPermissionList()
                 if !approvedPermissions.isEmpty {
@@ -265,7 +265,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // ------------------------------------------------------------
             // 2️⃣  Add Apple Health Integration (fresh install / new device)
             // ------------------------------------------------------------
-            let scopedAddKey = scopedKey(addHKModalFlagKeyBase, accountId: accountId)
+            let scopedAddKey = KvStorageKeys.scopedHealthKitModalKey(addHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedAddKey) as? Bool) != true {
                 guard let account = try await accountService.getActiveAccount() else {
                     return nil
@@ -293,10 +293,6 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
     }
     
-    /// Generates a per-account key for storing modal flags so that each account can be treated independently.
-    private func scopedKey(_ base: String, accountId: String?) -> String {
-        guard let id = accountId, !id.isEmpty else { return base }
-        return "\(base)_\(id)"
-    }
+
 }
 

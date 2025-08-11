@@ -145,7 +145,7 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting goal alert data migration for account: \(accountId)")
         
         let ionicGoalAlertKey = MigrationKey.goalAlertKey(for: accountId)
-        let nativeGoalAlertKey = "\(accountId)-goalMetFlag"
+        let nativeGoalAlertKey = KvStorageKeys.goalMetFlagKey(for: accountId)
         
         // Check if Ionic goal alert flag exists
         if let ionicGoalAlertValue = kvStorage.getValue(forKey: ionicGoalAlertKey) as? String {
@@ -177,7 +177,7 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting appearance data migration for account: \(accountId)")
         
         let ionicAppearanceKey = MigrationKey.appearanceKey(for: accountId)
-        let nativeAppearanceKey = "appearanceMode_\(accountId)"
+        let nativeAppearanceKey = KvStorageKeys.appearanceModeKey(for: accountId)
         
         // Check if Ionic appearance setting exists
         if let ionicAppearanceValue = kvStorage.getValue(forKey: ionicAppearanceKey) as? String {
@@ -291,7 +291,7 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting notification alert data migration for account: \(accountId)")
         
         let ionicNotificationAlertKey = MigrationKey.notificationAlertViewedKey(for: accountId)
-        let nativeNotificationAlertKey = "notificationOnlyAlertShown_\(accountId)"
+        let nativeNotificationAlertKey = KvStorageKeys.notificationOnlyAlertShownKey(for: accountId)
         
         // Check if Ionic notification alert flag exists
         if let ionicNotificationAlertValue = kvStorage.getValue(forKey: ionicNotificationAlertKey) as? String {

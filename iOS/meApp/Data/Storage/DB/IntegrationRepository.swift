@@ -11,13 +11,13 @@ import Foundation
 final class IntegrationRepository: IntegrationRepositoryProtocol {
     // MARK: - Properties
     
-    private let userDefaults: UserDefaults
+    private let kvStorage: KvStorageService
     private let logger = LoggerService.shared
         
     // MARK: - Initialization
     
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init(kvStorage: KvStorageService = .shared) {
+        self.kvStorage = kvStorage
     }
     
     // MARK: - IntegrationRepositoryProtocol
@@ -27,7 +27,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// - Returns: The stored IntegratedDeviceInfo, if any.
     func getIntegrationData(accountId: String) throws -> IntegrationInfo? {
         let key = makeIntegrationKey(for: accountId)
-        guard let data = userDefaults.data(forKey: key) else {
+        guard let data = kvStorage.getValue(forKey: key) as? Data else {
             return nil
         }
         
@@ -51,14 +51,14 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
             do {
                 let encoder = JSONEncoder()
                 let data = try encoder.encode(info)
-                userDefaults.set(data, forKey: key)
+                kvStorage.setValue(data, forKey: key)
                 addIntegrationKey(key)
             } catch {
                 logger.log(level: .error, tag: "IntegrationRepository", message: "Failed to encode integration info: \(error.localizedDescription)")
                 throw error
             }
         } else {
-            userDefaults.removeObject(forKey: key)
+            kvStorage.clearValue(forKey: key)
             removeIntegrationKey(key)
         }
     }
@@ -72,7 +72,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
         let integrationKeys = getIntegrationKeys()
         
         for key in integrationKeys {
-            guard let data = userDefaults.data(forKey: key) else {
+            guard let data = kvStorage.getValue(forKey: key) as? Data else {
                 continue
             }
             
@@ -93,9 +93,9 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     
     /// Clears the integration status for the given account (e.g., on account deletion).
     /// - Parameter accountId: The account/user ID.
-    func clearIntegrationStatus(accountId: String) throws {
+    func clearIntegrationStatus(accountId: String) async throws {
         let key = makeIntegrationKey(for: accountId)
-        userDefaults.removeObject(forKey: key)
+        kvStorage.clearValue(forKey: key)
         removeIntegrationKey(key)
     }
     
@@ -103,7 +103,7 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// - Parameter accountId: The account/user ID.
     /// - Returns: True if HealthKit integration data exists in Ionic format and needs migration.
     func isHealthKitMigrationNeeded(accountId: String) -> Bool {
-        let kvStorage = KvStorageService.shared
+        // Using the existing kvStorage instance
         
         // Check for any Ionic HealthKit integration keys
         let ionicHealthKitKey = "\(accountId)-healthKitIntegrated"
@@ -123,25 +123,28 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     /// - Parameter accountId: The account/user ID
     /// - Returns: The constructed key string
     private func makeIntegrationKey(for accountId: String) -> String {
-        return Keys.integrationInfo + "_" + accountId
+        return KvStorageKeys.integrationInfoKey(for: accountId)
     }
     
-    /// Gets the set of all integration keys stored in UserDefaults
+    /// Gets the set of all integration keys stored in KvStorage
     private func getIntegrationKeys() -> Set<String> {
-        return userDefaults.stringArray(forKey: Keys.integrationKeys)?.reduce(into: Set<String>()) { $0.insert($1) } ?? Set<String>()
+        guard let keysArray = kvStorage.getValue(forKey: KvStorageKeys.integrationKeys.rawValue) as? [String] else {
+            return Set<String>()
+        }
+        return Set(keysArray)
     }
     
     /// Adds a new integration key to the stored set
     private func addIntegrationKey(_ key: String) {
         var keys = getIntegrationKeys()
         keys.insert(key)
-        userDefaults.set(Array(keys), forKey: Keys.integrationKeys)
+        kvStorage.setValue(Array(keys), forKey: KvStorageKeys.integrationKeys.rawValue)
     }
     
     /// Removes an integration key from the stored set
     private func removeIntegrationKey(_ key: String) {
         var keys = getIntegrationKeys()
         keys.remove(key)
-        userDefaults.set(Array(keys), forKey: Keys.integrationKeys)
+        kvStorage.setValue(Array(keys), forKey: KvStorageKeys.integrationKeys.rawValue)
     }
 }
