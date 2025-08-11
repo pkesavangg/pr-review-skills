@@ -75,7 +75,6 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
             guard let data = kvStorage.getValue(forKey: key) as? Data else {
                 continue
             }
-            
             do {
                 let info = try JSONDecoder().decode(IntegrationInfo.self, from: data)
                 if info.type == type && info.isIntegrated && info.assignedTo != accountId {

@@ -55,9 +55,11 @@ public final class HealthKitService: HealthKitServiceProtocol {
             if permissions.isEmpty {
                 return false
             }
+            let accountID = accountService.activeAccount?.accountId ?? ""
             let integrationInfo = IntegrationInfo(
                 type: .healthKit,
-                isIntegrated: true
+                isIntegrated: true,
+                assignedTo: accountID
             )
             do {
                 try await self.integrationService.setStoredIntegrationData(integrationInfo)

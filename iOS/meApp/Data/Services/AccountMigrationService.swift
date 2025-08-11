@@ -251,13 +251,13 @@ final class AccountMigrationService {
         if isIntegrated || assignedTo != nil || deIntegrated != nil {
             let integrationInfo = IntegrationInfo(
                 type: .healthKit,
-                isIntegrated: isIntegrated,
+                isIntegrated: isIntegrated || assignedTo != nil,
                 assignedTo: assignedTo,
                 deIntegrated: deIntegrated
             )
             
             do {
-                try integrationRepository.setIntegrationData(accountId: accountId, info: integrationInfo)
+                try integrationRepository.setIntegrationData(accountId: assignedTo ?? accountId, info: integrationInfo)
                 logger.log(level: .info, tag: tag, message: "Successfully migrated HealthKit integration data for account: \(accountId) - integrated: \(isIntegrated), assignedTo: \(assignedTo ?? "nil"), deIntegrated: \(deIntegrated ?? "nil")")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)")

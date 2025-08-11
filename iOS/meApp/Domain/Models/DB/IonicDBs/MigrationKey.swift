@@ -15,7 +15,7 @@ public enum MigrationKey: String {
     /// HealthKit integration status key used by the Ionic app (per account)
     case healthKitIntegrated = "healthKitIntegrated"
     /// HealthKit assigned account key used by the Ionic app (global)
-    case healthKitAssignedTo = "healthKitIntegratedAssignedTo"
+    case healthKitAssignedTo = "CapacitorStorage.healthKitIntegratedAssignedTo"
     /// HealthKit deintegration flag used by the Ionic app (per account)
     case healthKitDeintegrated = "healthKitDeintegrated"
     /// Notification alert viewed flag used by the Ionic app (per account)
