@@ -52,135 +52,135 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  */
 @Composable
 fun WeightlessScreen() {
-    val viewmodel: WeightlessViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
-    BackHandler {
-        viewmodel.handleIntent(WeightlessIntent.OnBack)
-    }
-    WeightlessContent(state, viewmodel::handleIntent)
+  val viewmodel: WeightlessViewModel = hiltViewModel()
+  val state by viewmodel.state.collectAsState()
+  BackHandler {
+    viewmodel.handleIntent(WeightlessIntent.OnBack)
+  }
+  WeightlessContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessIntent) -> Unit) {
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val weightFocusRequester = remember { FocusRequester() }
+  val keyboardController = LocalSoftwareKeyboardController.current
+  val focusManager = LocalFocusManager.current
+  val interactionSource = remember { MutableInteractionSource() }
+  val weightFocusRequester = remember { FocusRequester() }
 
-    // Get weight unit from state
-    val weightUnit = state.weightUnit
+  // Get weight unit from state
+  val weightUnit = state.weightUnit
 
-    AppScaffold(
-        title = WeightlessStrings.PageTitle,
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { handleIntent(WeightlessIntent.OnBack) }
-        },
-        actions = {
-            AppButton(
-                ChangePasswordStrings.SaveButton,
-                type = ButtonType.InlineTextPrimary,
-                size = ButtonSize.Small,
-                enabled = (state.form.isValid && state.form.isDirty) || state.hasToggleChanged,
-            ) {
-                keyboardController?.hide()
-                handleIntent.invoke(WeightlessIntent.Submit)
-            }
-        },
-        containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground,
-        borderColor = Color.Transparent,
-    ) { scaffoldModifier ->
+  AppScaffold(
+    title = WeightlessStrings.PageTitle,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) { handleIntent(WeightlessIntent.OnBack) }
+    },
+    actions = {
+      AppButton(
+        ChangePasswordStrings.SaveButton,
+        type = ButtonType.InlineTextPrimary,
+        size = ButtonSize.Small,
+        enabled = ((state.form.isValid && state.form.isDirty) || state.hasToggleChanged) && (state.isWeightlessOn && state.form.controls.weightlessWeight.value != "0.0"),
+      ) {
+        keyboardController?.hide()
+        handleIntent.invoke(WeightlessIntent.Submit)
+      }
+    },
+    containerColor = colorScheme.secondaryBackground,
+    appBarColor = colorScheme.secondaryBackground,
+    borderColor = Color.Transparent,
+  ) { scaffoldModifier ->
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Top,
+    ) {
+      AppStyledCard {
+        Spacer(Modifier.height(spacing.md))
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { focusManager.clearFocus() },
+              ),
+          horizontalAlignment = Alignment.Start,
         ) {
-            AppStyledCard {
-                Spacer(Modifier.height(spacing.md))
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = { focusManager.clearFocus() },
-                            ),
-                    horizontalAlignment = Alignment.Start,
-                ) {
-                    AppText(
-                        text = WeightlessStrings.Title,
-                        textType = TextType.Title,
-                    )
+          AppText(
+            text = WeightlessStrings.Title,
+            textType = TextType.Title,
+          )
 
-                    Spacer(Modifier.height(spacing.sm))
-                    AppText(
-                        text = WeightlessStrings.Description,
-                        textType = TextType.Subtitle,
-                    )
-                    Spacer(Modifier.height(spacing.lg))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val toggleStatus = if (state.isWeightlessOn) {
-                            WeightlessStrings.WeightlessOn
-                        } else {
-                            WeightlessStrings.WeightlessOff
-                        }
-                        AppText(
-                            text = "${WeightlessStrings.WeightlessToggleLabel} $toggleStatus",
-                            textType = TextType.Body,
-                        )
-                        AppToggle(
-                            checked = state.isWeightlessOn,
-                            onCheckedChange = {
-                                handleIntent(WeightlessIntent.ToggleWeightless)
-                            },
-                        )
-                    }
-
-                    Spacer(Modifier.height(spacing.md))
-
-                    // Weight Input (only shown when weightless mode is enabled)
-                        AppInput(
-                            formControl = state.form.controls.weightlessWeight,
-                            enabled = state.isWeightlessOn,
-                            label = "${WeightlessStrings.WeightlessWeightLabel} ($weightUnit)",
-                            placeHolder = "Enter weight in $weightUnit",
-                            type = AppInputType.BODY_COMP,
-                            showTrailingIcon = false,
-                            imeAction = ImeAction.Done,
-                            onImeAction = {
-                                handleIntent(WeightlessIntent.Submit)
-                                focusManager.clearFocus()
-                                keyboardController?.hide()
-                            },
-                            modifier = Modifier.focusRequester(weightFocusRequester),
-                        )
-                    Spacer(Modifier.height(spacing.lg))
-                }
+          Spacer(Modifier.height(spacing.sm))
+          AppText(
+            text = WeightlessStrings.Description,
+            textType = TextType.Subtitle,
+          )
+          Spacer(Modifier.height(spacing.lg))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            val toggleStatus = if (state.isWeightlessOn) {
+              WeightlessStrings.WeightlessOn
+            } else {
+              WeightlessStrings.WeightlessOff
             }
+            AppText(
+              text = "${WeightlessStrings.WeightlessToggleLabel} $toggleStatus",
+              textType = TextType.Body,
+            )
+            AppToggle(
+              checked = state.isWeightlessOn,
+              onCheckedChange = {
+                handleIntent(WeightlessIntent.ToggleWeightless)
+              },
+            )
+          }
+
+          Spacer(Modifier.height(spacing.md))
+
+          // Weight Input (only shown when weightless mode is enabled)
+          AppInput(
+            formControl = state.form.controls.weightlessWeight,
+            enabled = state.isWeightlessOn,
+            label = "${WeightlessStrings.WeightlessWeightLabel} ($weightUnit)",
+            placeHolder = "Enter weight in $weightUnit",
+            type = AppInputType.BODY_COMP,
+            showTrailingIcon = false,
+            imeAction = ImeAction.Done,
+            onImeAction = {
+              handleIntent(WeightlessIntent.Submit)
+              focusManager.clearFocus()
+              keyboardController?.hide()
+            },
+            modifier = Modifier.focusRequester(weightFocusRequester),
+          )
+          Spacer(Modifier.height(spacing.lg))
         }
+      }
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun WeightlessScreenPreview() {
-    MeAppTheme {
-        val dummyWeightlessState = WeightlessState(
-            form = FormGroup(
-                controls = WeightlessFormControls(
-                    weightlessWeight = FormControl.create(
-                        initialValue = "150.0",
-                        validators = emptyList(),
-                    ),
-                ),
-            ),
-            isWeightlessOn = true,
-            hasToggleChanged = false,
-        )
-        WeightlessContent(dummyWeightlessState) {}
-    }
+  MeAppTheme {
+    val dummyWeightlessState = WeightlessState(
+      form = FormGroup(
+        controls = WeightlessFormControls(
+          weightlessWeight = FormControl.create(
+            initialValue = "150.0",
+            validators = emptyList(),
+          ),
+        ),
+      ),
+      isWeightlessOn = true,
+      hasToggleChanged = false,
+    )
+    WeightlessContent(dummyWeightlessState) {}
+  }
 }
