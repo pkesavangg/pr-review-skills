@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -119,6 +120,7 @@ internal fun ChartHostSection(
           } else {
             null
           },
+        visibleLabelsCount = segment.intervalCount(),
         getXStep = {
           GraphUtil.calculateXStep(
             segment,

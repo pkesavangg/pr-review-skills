@@ -1,11 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -98,7 +94,6 @@ internal fun rememberLineLayerWithConnection(
           return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
         }
       },
-    pointSpacing = pointSpacing(segment, 10.dp),
   )
 }
 
@@ -140,29 +135,4 @@ internal fun secondaryLayer(
     maxYTarget = maxYTarget,
     initialTimeStamp = initialTimeStamp,
   )
-}
-
-/**
- * Calculates the point spacing for the graph based on the segment and axis padding.
- * UI-only logic, not business/data transformation.
- */
-@Composable
-fun pointSpacing(
-  segment: GraphSegment,
-  axisPadding: Dp = 0.dp
-): Dp {
-  val windowInfo = LocalWindowInfo.current
-  val screenWidthPx = windowInfo.containerSize.width
-  val density = LocalDensity.current
-  val intervalCount = remember(segment) {
-    when (segment) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 6
-      GraphSegment.YEAR -> 12
-      else -> 32
-    }
-  }
-  return remember(segment, screenWidthPx, intervalCount, axisPadding) {
-    with(density) { (screenWidthPx / intervalCount).toDp() - axisPadding }
-  }
 }
