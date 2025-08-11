@@ -6,7 +6,11 @@ import SwiftData
 @MainActor
 final class SQLiteMigrationService {
     @Injector private var logger: LoggerService
+    private let migrationLogBatchSize = 100 // Number of entries to log in batch during migration
     private let tag = "SQLiteMigrationService"
+    
+    /// Initialize the service
+    init() {}
     
     /// SQLite database connection
     private var db: OpaquePointer?
@@ -27,11 +31,10 @@ final class SQLiteMigrationService {
     
     // MARK: - Migration Interface
     
-    /// Migrates all unsynced opStack operations from SQLite to SwiftData
-    /// - Parameter accountId: The account ID to associate with migrated operations
-    /// - Returns: Number of operations migrated
-    func migrateEntryData(accountId: String) async throws -> Int {
-        logger.log(level: .info, tag: tag, message: "Starting SQLite opStack to SwiftData migration for account: \(accountId)")
+    /// Migrates all unsynced opStack operations from SQLite to SwiftData for all users
+    /// - Returns: Dictionary with userId as key and number of migrated operations as value
+    func migrateAllUsersEntryData() async throws -> [String: Int] {
+        logger.log(level: .info, tag: tag, message: "Starting SQLite opStack to SwiftData migration for all users")
         
         guard openDatabase() else {
             throw MigrationError.databaseConnectionFailed
@@ -43,20 +46,23 @@ final class SQLiteMigrationService {
             // Check if opStack tables exist
             guard try checkTablesExist() else {
                 logger.log(level: .error, tag: tag, message: "SQLite opStack tables not found - no data to migrate")
-                return 0
+                return [:]
             }
             
-            // Migrate unsynced operations from opStack
-            let migratedCount = try await migrateEntries(accountId: accountId)
+            // Migrate unsynced operations from opStack for all users
+            let migratedData = try await migrateAllUsersEntries()
             
-            logger.log(level: .info, tag: tag, message: "OpStack migration completed successfully. Migrated \(migratedCount) unsynced operations")
-            return migratedCount
+            let totalMigrated = migratedData.values.reduce(0, +)
+            logger.log(level: .info, tag: tag, message: "OpStack migration completed successfully. Migrated \(totalMigrated) operations for \(migratedData.count) users")
+            return migratedData
             
         } catch {
             logger.log(level: .error, tag: tag, message: "OpStack migration failed: \(error.localizedDescription)")
             throw error
         }
     }
+    
+
     
     /// Checks if migration is needed by looking for the SQLite database
     func isMigrationNeeded() -> Bool {
@@ -121,13 +127,11 @@ final class SQLiteMigrationService {
     
 
     
-    private func migrateEntries(accountId: String) async throws -> Int {
+    private func migrateAllUsersEntries() async throws -> [String: Int] {
         let entryRepository = EntryRepository()
-        var migratedCount = 0
+        var migratedData: [String: Int] = [:]
         
-
-        
-        // Query to fetch unsynced operations with metrics joined - using direct string substitution instead of parameter binding
+        // Query to fetch ALL unsynced operations with metrics joined - no user filter
         let query = """
             SELECT 
                 o.id, o.userId, o.entryTimestamp, NULL as serverTimestamp, o.operationType,
@@ -137,11 +141,10 @@ final class SQLiteMigrationService {
                 o.attempts
             FROM opStack o
             LEFT JOIN opStack_metric m ON o.userId = m.userId AND o.entryTimestamp = m.entryTimestamp
-            WHERE o.userId = '\(accountId)'
-            ORDER BY o.entryTimestamp DESC
+            ORDER BY o.userId, o.entryTimestamp DESC
         """
         
-        logger.log(level: .debug, tag: tag, message: "Preparing to migrate unsynced operations for account: \(accountId)")
+        logger.log(level: .debug, tag: tag, message: "Preparing to migrate unsynced operations for all users")
         
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
@@ -149,7 +152,6 @@ final class SQLiteMigrationService {
             logger.log(level: .error, tag: tag, message: "Query preparation failed: \(errorMessage)")
             throw MigrationError.queryPreparationFailed
         }
-
         
         defer { sqlite3_finalize(statement) }
         
@@ -157,18 +159,23 @@ final class SQLiteMigrationService {
             throw MigrationError.queryPreparationFailed
         }
         
-        logger.log(level: .debug, tag: tag, message: "Executing main migration query...")
+        logger.log(level: .debug, tag: tag, message: "Executing migration query for all users...")
         var rowsFound = 0
         while sqlite3_step(statement) == SQLITE_ROW {
             rowsFound += 1
             
             do {
-                let entry = try createEntryFromSQLiteRow(statement: statement, accountId: accountId)
+                // Get the userId from the current row
+                let userId = String(cString: sqlite3_column_text(statement, 1))
+                let entry = try createEntryFromSQLiteRow(statement: statement, accountId: userId)
                 try await entryRepository.saveEntry(entry)
-                migratedCount += 1
                 
-                if migratedCount % 100 == 0 {
-                    logger.log(level: .info, tag: tag, message: "Migrated \(migratedCount) entries...")
+                // Track migration count per user
+                migratedData[userId] = (migratedData[userId] ?? 0) + 1
+                
+                let totalMigrated = migratedData.values.reduce(0, +)
+                if totalMigrated % migrationLogBatchSize == 0 {
+                    logger.log(level: .info, tag: tag, message: "Migrated \(totalMigrated) entries across \(migratedData.count) users...")
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate entry: \(error.localizedDescription)")
@@ -176,9 +183,18 @@ final class SQLiteMigrationService {
             }
         }
         
-        logger.log(level: .info, tag: tag, message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(migratedCount)")
-        return migratedCount
+        let totalMigrated = migratedData.values.reduce(0, +)
+        logger.log(level: .info, tag: tag, message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(totalMigrated) entries for \(migratedData.count) users")
+        
+        // Log per-user migration counts
+        for (userId, count) in migratedData {
+            logger.log(level: .info, tag: tag, message: "User \(userId): \(count) entries migrated")
+        }
+        
+        return migratedData
     }
+    
+
     
 
     
@@ -233,24 +249,5 @@ final class SQLiteMigrationService {
         }
         
         return entry
-    }
-}
-
-// MARK: - Migration Errors
-
-enum MigrationError: LocalizedError {
-    case databaseConnectionFailed
-    case queryPreparationFailed
-    case dataConversionFailed
-    
-    var errorDescription: String? {
-        switch self {
-        case .databaseConnectionFailed:
-            return "Failed to connect to SQLite database"
-        case .queryPreparationFailed:
-            return "Failed to prepare SQLite query"
-        case .dataConversionFailed:
-            return "Failed to convert SQLite data to SwiftData format"
-        }
     }
 }

@@ -13,7 +13,4 @@ enum IntegrationType: String, Codable {
     case healthKit = "healthkit"
 }
 
-enum Keys {
-    static let integrationInfo = "integration_info"
-    static let integrationKeys = "integration_keys"
-}
+

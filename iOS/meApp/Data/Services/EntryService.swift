@@ -5,6 +5,7 @@ import Combine
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var goalAlertService: GoalAlertService
+    @Injector var integrationService: IntegrationsService
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
@@ -61,6 +62,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Broadcast change
 
         await syncUnsyncedEntries()
+        await checkGoalAlerts()
     }
 
     func saveNewEntries(_ entries: [Entry]) async throws {
@@ -239,6 +241,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Migration Logic
     /// Migrates data from Ionic app's SQLite database to SwiftData if needed
     /// Should be called once on app startup before other operations
+    /// This method migrates data for ALL users found in the opStack tables
     public func migrateFromSQLiteIfNeeded() async {
         guard migrationService.isMigrationNeeded() else {
             logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
@@ -246,15 +249,30 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         
         do {
-            let accountId = try await getAccountId()
-            logger.log(level: .info, tag: tag, message: "Starting SQLite migration for account: \(accountId)")
+            logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
             
-            let migratedCount = try await migrationService.migrateEntryData(accountId: accountId)
-            logger.log(level: .info, tag: tag, message: "SQLite migration completed: \(migratedCount) entries migrated")
+            // Migrate data for all users found in the opStack tables
+            let migratedData = try await migrationService.migrateAllUsersEntryData()
             
-            // Update dashboard data after migration
-            await loadDashboardData()
-            await updateProgressAndStreakInternal()
+            let totalMigrated = migratedData.values.reduce(0, +)
+            logger.log(level: .info, tag: tag, message: "SQLite migration completed: \(totalMigrated) entries migrated for \(migratedData.count) users")
+            
+            // Log migration details per user
+            for (userId, count) in migratedData {
+                logger.log(level: .info, tag: tag, message: "User \(userId): \(count) entries migrated")
+            }
+            
+            // Update dashboard data after migration (only for current active user if available)
+            do {
+                let accountId = try await getAccountId()
+                if migratedData[accountId] != nil {
+                    await loadDashboardData()
+                    await updateProgressAndStreakInternal()
+                    logger.log(level: .info, tag: tag, message: "Dashboard data updated for current user: \(accountId)")
+                }
+            } catch {
+                logger.log(level: .info, tag: tag, message: "No active account found, skipping dashboard update")
+            }
             
             // Clean up SQLite database after successful migration
             try migrationService.cleanupAfterMigration()
@@ -297,7 +315,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // 6. Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
-            await checkGoalAlerts()
 
             logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
 
@@ -684,6 +701,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
         entrySaved.send(entry)
+        
+        // Trigger integration sync for the new entry (e.g., HealthKit)
+        do {
+            try await integrationService.syncNewEntry(entry)
+        } catch {
+            // Log error but don't fail the entry creation process
+            logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+        }
+        
         logger.log(level: .info, tag: tag, message: "Entry addition handled successfully")
     }
 
@@ -729,6 +755,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
 
         entryDeleted.send(entry)
+        
+        // Trigger integration delete for the removed entry (e.g., HealthKit)
+        do {
+            try await integrationService.deleteEntry(entry)
+        } catch {
+            // Log error but don't fail the entry deletion process
+            logger.log(level: .error, tag: tag, message: "Failed to delete entry from integrations: \(error.localizedDescription)")
+        }
+        
         logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
     }
 

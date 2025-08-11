@@ -49,20 +49,29 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
-    /// Key used to store whether the *notification-only* permissions alert has been shown across launches.
-    private let notificationOnlyAlertKey = "notificationOnlyAlertShown"
+    /// Base key used to store whether the *notification-only* permissions alert has been shown across launches.
+    private let notificationOnlyAlertKeyBase = "notificationOnlyAlertShown"
     /// Indicates whether the *notification-only* permissions alert has already been shown (persisted via `KvStorageService`).
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
-        get { (KvStorageService.shared.getValue(forKey: notificationOnlyAlertKey) as? Bool) ?? false }
-        set { KvStorageService.shared.setValue(newValue, forKey: notificationOnlyAlertKey) }
+        get {
+            guard let accountId = accountService.activeAccount?.accountId else { return false }
+            let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
+            return (KvStorageService.shared.getValue(forKey: key) as? Bool) ?? false
+        }
+        set {
+            guard let accountId = accountService.activeAccount?.accountId else { return }
+            let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
+            KvStorageService.shared.setValue(newValue, forKey: key)
+        }
     }
     
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
+    private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -89,9 +98,12 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
         
         // Perform Apple Health integration check on launch
-        Task { [weak self] in
-            await self?.checkAppleHealthIntegrationStatus()
-            await self?.checkSetGoalCardPrompt()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) {
+            Task { [weak self] in
+                await self?.checkAppleHealthIntegrationStatus()
+                await self?.checkSetGoalCardPrompt()
+            }
         }
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list
