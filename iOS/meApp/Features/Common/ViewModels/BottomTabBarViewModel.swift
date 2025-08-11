@@ -71,6 +71,7 @@ class BottomTabBarViewModel: ObservableObject {
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
+    private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -98,7 +99,7 @@ class BottomTabBarViewModel: ObservableObject {
         
         // Perform Apple Health integration check on launch
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) {
             Task { [weak self] in
                 await self?.checkAppleHealthIntegrationStatus()
                 await self?.checkSetGoalCardPrompt()
