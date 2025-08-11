@@ -5,6 +5,7 @@ import Combine
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var goalAlertService: GoalAlertService
+    @Injector var integrationService: IntegrationsService
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
@@ -61,6 +62,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Broadcast change
 
         await syncUnsyncedEntries()
+        await checkGoalAlerts()
     }
 
     func saveNewEntries(_ entries: [Entry]) async throws {
@@ -313,7 +315,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // 6. Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
-            await checkGoalAlerts()
 
             logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
 
@@ -700,6 +701,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
         entrySaved.send(entry)
+        
+        // Trigger integration sync for the new entry (e.g., HealthKit)
+        do {
+            try await integrationService.syncNewEntry(entry)
+        } catch {
+            // Log error but don't fail the entry creation process
+            logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+        }
+        
         logger.log(level: .info, tag: tag, message: "Entry addition handled successfully")
     }
 
@@ -745,6 +755,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
 
         entryDeleted.send(entry)
+        
+        // Trigger integration delete for the removed entry (e.g., HealthKit)
+        do {
+            try await integrationService.deleteEntry(entry)
+        } catch {
+            // Log error but don't fail the entry deletion process
+            logger.log(level: .error, tag: tag, message: "Failed to delete entry from integrations: \(error.localizedDescription)")
+        }
+        
         logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
     }
 

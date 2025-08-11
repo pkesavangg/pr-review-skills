@@ -108,6 +108,8 @@ Ionic Capacitor Preferences → iOS UserDefaults → SwiftData
 activeAccountKey              → Account + Settings entities
 offlineAccount_{accountId}    → (cleanup only)
 scale_{accountId}            → Device + BathScale + R4ScalePreference entities
+{accountId}-hasSeenSetNewGoal → {accountId}-goalMetFlag (KV storage)
+{accountId}-colorMode           → {accountId}-appearanceMode (KV storage)
 ```
 
 ### SQLite Tables (Ionic → Native)

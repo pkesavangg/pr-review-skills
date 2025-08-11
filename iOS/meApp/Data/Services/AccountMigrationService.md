@@ -12,6 +12,12 @@ Since both apps use the same bundle identifier, the native app can access the Us
 The Ionic app (using Capacitor Preferences) stores account data in iOS UserDefaults with these keys:
 - `activeAccountKey`: Contains the active account JSON string
 - `offlineAccount_{accountId}`: Contains offline account data per user
+- `{accountId}-hasSeenSetNewGoal`: Contains goal alert flag per user
+- `{accountId}-colorMode`: Contains appearance/theme preference per user
+- `{accountId}-healthKitIntegrated`: Contains HealthKit integration status per user
+- `healthKitIntegratedAssignedTo`: Contains the account ID that HealthKit is assigned to (global)
+- `healthKitDeintegrated-{accountId}`: Contains HealthKit deintegration flag per user
+- `notificationOnlyAlertShown_{accountId}`: Contains notification alert viewed flag per user
 
 ### 2. Migration Process
 When the native app launches:
@@ -19,7 +25,11 @@ When the native app launches:
 2. **Parse JSON Data**: If found, it parses the JSON string to extract account information
 3. **Convert to SwiftData**: Transforms the Ionic account structure to the native Account model
 4. **Save to SwiftData**: Inserts the converted account into the SwiftData persistence layer
-5. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
+5. **Migrate Goal Alert Data**: Transfers goal alert flags from Ionic format to native format
+6. **Migrate Appearance Data**: Transfers appearance/theme preferences from Ionic format to native format
+7. **Migrate HealthKit Integration Data**: Transfers HealthKit integration settings from Ionic format to native format
+8. **Migrate Notification Alert Data**: Transfers notification alert viewed flag from Ionic format to native format
+9. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
 
 ### 3. Data Mapping
 
@@ -71,7 +81,7 @@ The Ionic data is converted to:
 - **IntegrationSettings**: Third-party integration flags
 
 ### 4. Comprehensive Migration Support
-The AccountMigrationService also supports comprehensive migration that includes both account and scale data:
+The AccountMigrationService also supports comprehensive migration that includes account, scale, and goal alert data:
 
 ```swift
 /// Migrates both account and scale data from Ionic app to SwiftUI app
@@ -81,8 +91,12 @@ func migrateAccountAndScaleData() async throws -> (account: Account?, scalesCoun
 This method:
 1. First migrates account data using `migrateAccountData()`
 2. Then migrates scale data for the account using `ScaleMigrationService`
-3. Performs cleanup for both account and scale data
-4. Returns both the migrated account and the number of scales migrated
+3. Migrates goal alert storage keys from Ionic to native format
+4. Migrates appearance/theme preferences from Ionic to native format
+5. Migrates HealthKit integration settings from Ionic to native format
+6. Migrates notification alert viewed flag from Ionic to native format
+7. Performs cleanup for account, scale, goal alert, appearance, HealthKit integration, and notification alert data
+8. Returns both the migrated account and the number of scales migrated
 
 ### 5. Migration Timing
 - Migration runs automatically on app startup before other account operations
@@ -100,7 +114,81 @@ This method:
 After successful migration:
 - Removes `activeAccountKey` from UserDefaults
 - Removes `offlineAccount_{accountId}` for the migrated account
+- Removes `{accountId}-hasSeenSetNewGoal` goal alert flags
+- Removes `{accountId}-colorMode` appearance preferences
+- Removes `{accountId}-healthKitIntegrated` HealthKit integration status
+- Removes `healthKitIntegratedAssignedTo` if it matches the migrated account
+- Removes `healthKitDeintegrated-{accountId}` HealthKit deintegration flags
+- Removes `notificationOnlyAlertShown_{accountId}` notification alert viewed flags
 - Ensures no leftover Ionic app data remains
+
+### 8. HealthKit Integration Migration
+
+The service handles migration of HealthKit integration settings from the Ionic app to the native app using the `IntegrationRepository` system:
+
+#### Ionic HealthKit Storage Format
+The Ionic app stores HealthKit integration data in three keys:
+- `{accountId}-healthKitIntegrated`: String value ("true"/"false") indicating if HealthKit is integrated
+- `healthKitIntegratedAssignedTo`: String value containing the account ID that HealthKit is assigned to
+- `healthKitDeintegrated-{accountId}`: String value ("true"/"false") indicating if HealthKit was deintegrated
+
+#### Native HealthKit Storage Format
+The native app uses `IntegrationRepository` to store `IntegrationInfo` objects:
+```swift
+struct IntegrationInfo: Codable, Equatable {
+    let type: IntegrationType        // .healthKit
+    let isIntegrated: Bool          // Migrated from {accountId}-healthKitIntegrated
+    var assignedTo: String?         // Migrated from healthKitIntegratedAssignedTo
+    var deIntegrated: String?       // Migrated from healthKitDeintegrated-{accountId}
+}
+```
+
+#### Migration Process
+1. **Check for Ionic HealthKit Data**: Looks for any of the three Ionic HealthKit keys
+2. **Parse Integration Status**: Converts string values to appropriate types
+3. **Create IntegrationInfo**: Builds the native integration object
+4. **Store in Repository**: Uses `IntegrationRepository.setIntegrationData()` to persist
+5. **Cleanup Ionic Data**: Removes all Ionic HealthKit keys after successful migration
+
+#### Migration Method
+```swift
+func migrateHealthKitIntegrationData(for accountId: String)
+```
+
+This method:
+- Reads Ionic HealthKit integration flags from UserDefaults
+- Converts string values to native format
+- Creates and stores `IntegrationInfo` object if any HealthKit data exists
+- Logs the migration process for debugging
+
+### 9. Notification Alert Migration
+
+The service handles migration of the notification alert viewed flag from the Ionic app to the native app.
+
+#### Ionic Notification Alert Storage Format
+The Ionic app stores notification alert data as:
+- `notificationOnlyAlertShown_{accountId}`: JSON string value ("true"/"false") indicating if the notification-only alert has been shown for the specific account
+
+#### Native Notification Alert Storage Format  
+The native app stores the same data as:
+- `notificationOnlyAlertShown_{accountId}`: Boolean value indicating if the notification-only alert has been shown for the specific account
+
+#### Migration Process
+1. **Check for Ionic Notification Data**: Looks for the `notificationOnlyAlertShown_{accountId}` key for the specific account
+2. **Parse JSON Value**: Converts JSON string to boolean
+3. **Store in Native Format**: Uses the same account-scoped key but stores as Bool instead of JSON string
+4. **Cleanup Ionic Data**: Removes the Ionic notification alert key after successful migration
+
+#### Migration Method
+```swift
+func migrateNotificationAlertData(for accountId: String)
+```
+
+This method:
+- Reads the Ionic notification alert flag from UserDefaults for the specific account
+- Parses the JSON string value to extract the boolean
+- Stores the boolean value using the same account-scoped key in native format
+- Logs the migration process for debugging
 
 ## Usage
 
