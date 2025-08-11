@@ -674,8 +674,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             convertWeight: convertWeight,
             chartHeight: chartHeight
         )
-        state.cachedYAxisDomain = yAxisScale.domain
-        state.cachedYAxisTicks = yAxisScale.ticks
+        let newDomain = yAxisScale.domain
+        let newTicks = yAxisScale.ticks
+
+        // Skip if nothing actually changed to avoid unnecessary re-layout churn
+        if let cachedDomain = state.cachedYAxisDomain,
+           let cachedTicks = state.cachedYAxisTicks,
+           cachedDomain == newDomain,
+           cachedTicks == newTicks {
+            return
+        }
+        state.cachedYAxisDomain = newDomain
+        state.cachedYAxisTicks = newTicks
     }
 
     private func enforceScrollBoundaries(_ position: Date, from operations: [BathScaleWeightSummary]) -> Date {

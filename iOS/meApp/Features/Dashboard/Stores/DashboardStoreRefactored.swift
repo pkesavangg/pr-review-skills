@@ -154,7 +154,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst() 
+            .dropFirst()
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
@@ -642,12 +642,12 @@ class DashboardStore: ObservableObject {
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
     }
-    
+
     /// Restarts wiggle animations for all visible cells when app becomes active from background
     func restartWiggleAnimations() {
         // Clear the interval cache to ensure fresh randomization
         UIView.clearWiggleIntervalCache()
-        
+
         state.ui.gridLayoutId = UUID()
         objectWillChange.send()
         logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
@@ -916,14 +916,15 @@ class DashboardStore: ObservableObject {
         // For TOTAL period, use all data to ensure Y-axis reflects complete range
         let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
 
-        graphManager.calculateAndCacheYAxisDomain(
-            from: operationsForYAxis,
-            goalWeight: goalWeightForDisplay,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
-        )
+        // Apply cache update in a transaction that disables animations to prevent layout jumps
+       graphManager.calculateAndCacheYAxisDomain(
+                from: operationsForYAxis,
+                goalWeight: goalWeightForDisplay,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay,
+                chartHeight: state.graph.chartHeight
+            )
 
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
