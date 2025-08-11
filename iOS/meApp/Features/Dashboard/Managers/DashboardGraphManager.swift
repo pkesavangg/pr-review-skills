@@ -314,7 +314,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         logger.log(level: .info, tag: "DashboardGraphManager",
                   message: "Generated chart data with Y-axis domain: \(series.count) points, " +
-                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none")")
+                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
+                          "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
     }
 
@@ -444,10 +445,23 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     continue
                 }
 
-                // Ensure normalized value is within weight bounds
-                guard normalizedValue >= weightMin && normalizedValue <= weightMax else {
+                // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
+                let epsilon = (weightMax - weightMin) * 0.001 // 0.1% of weight range
+                let safeMin = weightMin + epsilon
+                let safeMax = weightMax - epsilon
+
+                // Ensure normalized value is within safe bounds
+                guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
                     logger.log(level: .info, tag: "DashboardGraphManager",
-                              message: "Normalized value \(normalizedValue) out of weight range for \(selectedMetric)")
+                              message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
+
+                    // Use fallback value within safe bounds
+                    let fallbackValue = (safeMin + safeMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
                     continue
                 }
 
@@ -479,12 +493,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double
     ) -> [GraphSeries] {
 
-        // FIXED: Use ALL operations to determine metric range for consistent trends
-        // Using visible operations was causing metric trends to change with scroll position
-        let operationsToAnalyze = allOperations
+        let operationsToAnalyze = visibleOperations
 
-        // Collect metric values from ALL operations to calculate consistent dynamic range
-        // This ensures the same metric value always maps to the same relative position
         let metricValues = operationsToAnalyze.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
@@ -518,24 +528,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             effectiveMetricMax = metricMax + padding
         }
 
-        // FIXED: Calculate weight range from the same data used for metric range (all operations)
-        // This ensures consistent relative positioning between weight and metric lines
-        let weightValues = allOperations.map { summary -> Double in
-            if isWeightlessMode {
-                guard let anchorWeight = anchorWeight else { return 0 }
-                let currentWeight = convertWeight(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return convertWeight(Int(summary.weight))
-            }
-        }
-
-        guard let weightMin = weightValues.min(),
-              let weightMax = weightValues.max(),
-              weightMax > weightMin else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for metric normalization")
-            return []
-        }
+        // Use dynamic y-axis domain for metric normalization to enable dynamic scaling
+        // This allows metrics to scale with the visible data range like weight lines
+        let weightMin = yAxisDomain.lowerBound
+        let weightMax = yAxisDomain.upperBound
 
         var normalizedSeries: [GraphSeries] = []
 
@@ -546,14 +542,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 // Clamp the metric value to the effective range
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
-                // Step 1: Normalize metric to consistent weight range
+                // Directly normalize metric to dynamic y-axis domain for dynamic scaling
                 let metricRange = effectiveMetricMax - effectiveMetricMin
                 guard metricRange > 0 else {
-                    // If no metric variation, use middle of weight range
-                    let normalizedToWeightRange = (weightMin + weightMax) / 2
-                    let yAxisMin = yAxisDomain.lowerBound
-                    let yAxisMax = yAxisDomain.upperBound
-                    let finalValue = (yAxisMin + yAxisMax) / 2
+                    // If no metric variation, use middle of y-axis domain
+                    let finalValue = (weightMin + weightMax) / 2
 
                     normalizedSeries.append(GraphSeries(
                         date: summary.date,
@@ -563,39 +556,36 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     continue
                 }
 
-                let normalizedToWeightRange = weightMin + (clampedValue - effectiveMetricMin) *
-                                            (weightMax - weightMin) / metricRange
+                // Directly map metric value to y-axis domain range
+                let yAxisSpan = weightMax - weightMin
+                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                                    yAxisSpan / metricRange
 
-                // Step 2: Map to Y-axis domain for visibility while preserving relationships
-                let yAxisMin = yAxisDomain.lowerBound
-                let yAxisMax = yAxisDomain.upperBound
-                let yAxisSpan = yAxisMax - yAxisMin
-                let weightSpan = weightMax - weightMin
+                // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
+                let epsilon = yAxisSpan * 0.1 // 0.1% of y-axis span
+                let safeMin = weightMin + epsilon
+                let safeMax = weightMax - epsilon
 
-                guard weightSpan > 0, yAxisSpan > 0 else {
-                    // If no weight or axis variation, use middle values
-                    let finalValue = (yAxisMin + yAxisMax) / 2
-
-                    normalizedSeries.append(GraphSeries(
-                        date: summary.date,
-                        value: finalValue,
-                        series: selectedMetric
-                    ))
-                    continue
-                }
-
-                // Calculate the relative position within weight range
-                let relativePosition = (normalizedToWeightRange - weightMin) / weightSpan
-
-                // Map this relative position to Y-axis domain
-                let finalValue = yAxisMin + (relativePosition * yAxisSpan)
-
-                // Clamp to Y-axis bounds for safety and validate
-                let clampedFinalValue = max(yAxisMin, min(yAxisMax, finalValue))
+                // Clamp to safe bounds to ensure metrics stay well within visible range
+                let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
 
                 // Additional safety check for NaN/infinite values
                 guard clampedFinalValue.isFinite else {
-                    let fallbackValue = (yAxisMin + yAxisMax) / 2
+                    let fallbackValue = (weightMin + weightMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
+                // Final validation: ensure the value is definitely within safe bounds
+                guard clampedFinalValue >= safeMin && clampedFinalValue <= safeMax else {
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                              message: "Metric value \(clampedFinalValue) still out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
+                    let fallbackValue = (safeMin + safeMax) / 2
 
                     normalizedSeries.append(GraphSeries(
                         date: summary.date,
@@ -613,11 +603,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
 
-                        logger.log(level: .info, tag: "DashboardGraphManager",
-                  message: "Generated metric series with consistent relative positioning for \(selectedMetric): \(normalizedSeries.count) points, " +
-                          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
-                          "weightRange: \(weightMin)...\(weightMax), " +
-                          "yAxisDomain: \(yAxisDomain)")
+        logger.log(level: .info, tag: "DashboardGraphManager",
+  message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
+          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+          "weightRange: \(weightMin)...\(weightMax), " +
+          "yAxisDomain: \(yAxisDomain)")
 
         return normalizedSeries
     }
