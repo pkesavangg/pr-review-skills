@@ -92,28 +92,10 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
     
     /// Clears the integration status for the given account (e.g., on account deletion).
     /// - Parameter accountId: The account/user ID.
-    func clearIntegrationStatus(accountId: String) async throws {
+    func clearIntegrationStatus(accountId: String) throws {
         let key = makeIntegrationKey(for: accountId)
         kvStorage.clearValue(forKey: key)
         removeIntegrationKey(key)
-    }
-    
-    /// Checks if HealthKit integration migration is needed for the given account.
-    /// - Parameter accountId: The account/user ID.
-    /// - Returns: True if HealthKit integration data exists in Ionic format and needs migration.
-    func isHealthKitMigrationNeeded(accountId: String) -> Bool {
-        // Using the existing kvStorage instance
-        
-        // Check for any Ionic HealthKit integration keys
-        let ionicHealthKitKey = "\(accountId)-healthKitIntegrated"
-        let ionicAssignedToKey = "healthKitIntegratedAssignedTo"
-        let ionicDeintegratedKey = "healthKitDeintegrated-\(accountId)"
-        
-        let hasIntegratedFlag = kvStorage.getValue(forKey: ionicHealthKitKey) != nil
-        let hasAssignedToFlag = kvStorage.getValue(forKey: ionicAssignedToKey) != nil
-        let hasDeintegratedFlag = kvStorage.getValue(forKey: ionicDeintegratedKey) != nil
-        
-        return hasIntegratedFlag || hasAssignedToFlag || hasDeintegratedFlag
     }
     
     // MARK: - Private Helper Methods
