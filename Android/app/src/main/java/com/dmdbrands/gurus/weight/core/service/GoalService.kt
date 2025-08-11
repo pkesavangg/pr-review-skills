@@ -235,22 +235,22 @@ constructor(
    *
    * @param account The newly created account
    * @param goalType The selected goal type from signup form
-   * @param currentWeight Current weight in display format
+   * @param startingWeight Current weight in display format
    * @param goalWeight Goal weight in display format
    * @return Updated account with goal settings or null if failed
    */
   override suspend fun createGoalForSignup(
     account: Account,
     goalType: String,
-    currentWeight: Double,
+    startingWeight: Double,
     goalWeight: Double,
   ): Account? =
     try {
-      AppLog.d(TAG, "Creating goal for signup: type=$goalType, current=$currentWeight, goal=$goalWeight")
+      AppLog.d(TAG, "Creating goal for signup: type=$goalType, current=$startingWeight, goal=$goalWeight")
 
       // Create Goal object and convert to stored format (LB) for API using helper
       val goal = GoalHelper.createGoal(
-        currentWeight = currentWeight,
+        startingWeight = startingWeight,
         goalWeight = goalWeight,
         goalType = goalType,
         fromUnit = account.weightUnit,

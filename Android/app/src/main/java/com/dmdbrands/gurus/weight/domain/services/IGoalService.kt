@@ -68,14 +68,14 @@ interface IGoalService {
    *
    * @param account The newly created account
    * @param goalType The selected goal type from signup form
-   * @param currentWeight Current weight in display format
+   * @param startingWeight Current weight in display format
    * @param goalWeight Goal weight in display format
    * @return Updated account with goal settings or null if failed
    */
   suspend fun createGoalForSignup(
     account: Account,
     goalType: String,
-    currentWeight: Double,
+    startingWeight: Double,
     goalWeight: Double,
   ): Account?
 }

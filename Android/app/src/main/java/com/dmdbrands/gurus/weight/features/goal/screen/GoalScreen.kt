@@ -98,7 +98,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         title = if (canShowTitle) GoalStrings.Title else null,
         subtitle = GoalStrings.Subtitle,
         goalTypeControl = state.form.controls.goalType,
-        currentWeightControl = state.form.controls.currentWeight,
+        currentWeightControl = state.form.controls.startingWeight,
         goalWeightControl = state.form.controls.goalWeight,
         onGoalTypeChange = { goalType ->
           handleIntent(GoalIntent.ChangeGoalType(goalType))

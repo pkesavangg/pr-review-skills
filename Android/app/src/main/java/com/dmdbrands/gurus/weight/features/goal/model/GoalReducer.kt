@@ -12,7 +12,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
  */
 data class GoalFormControls(
   val goalType: FormControl<String>,
-  val currentWeight: FormControl<String>,
+  val startingWeight: FormControl<String>,
   val goalWeight: FormControl<String>,
 ) {
   companion object {
@@ -23,7 +23,7 @@ data class GoalFormControls(
             initialValue = goalType.value,
             validators = listOf(FormValidations.required()),
           ),
-        currentWeight =
+        startingWeight =
           FormControl.create(
             initialValue = "0.0",
             validators =
@@ -59,7 +59,7 @@ data class GoalState(
   val isLoading: Boolean = false,
   val error: String? = null,
   val account: Account? = null,
-  val latestWeight: Double? = null,
+  val latestWeight: Double? = 0.0,
 ) : IReducer.State
 
 /**
@@ -73,9 +73,6 @@ sealed class GoalIntent : IReducer.Intent {
   data class ChangeGoalType(
     val goalType: GoalType,
   ) : GoalIntent()
-
-  /** Open help modal. */
-  object OpenHelpModal : GoalIntent()
 
   /** Navigate back. */
   object OnBack : GoalIntent()
@@ -147,17 +144,13 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
             initialValue = intent.goalType.value,
             validators = listOf(FormValidations.required()),
           ),
-          currentWeight = FormControl.create(
-            initialValue = currentControls.currentWeight.value,
+          startingWeight = FormControl.create(
+            initialValue = currentControls.startingWeight.value,
             validators = currentWeightValidators,
           ),
           goalWeight = currentControls.goalWeight,
         )
         state.copy(form = FormGroup(newControls))
-      }
-
-      is GoalIntent.OpenHelpModal -> {
-        state.copy(isLoading = false, error = null)
       }
 
       is GoalIntent.Error -> {

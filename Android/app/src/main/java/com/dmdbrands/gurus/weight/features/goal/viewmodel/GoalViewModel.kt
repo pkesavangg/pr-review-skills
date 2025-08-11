@@ -90,10 +90,7 @@ constructor(
       type = goalType.value,
     ).process(targetUnit, null) // Process with target unit, no weightless needed for goals
 
-    // Calculate goal percentage using GoalService, just like Angular
     calculateGoalPercentage(currentAccount, state.value.latestWeight)
-
-    // For maintain goal, current weight input is hidden, so no validation needed
     val currentWeightValidators =
       if (goalType != GoalType.MAINTAIN) { // Changed from LOSE_GAIN to != MAINTAIN
         listOf(FormValidations.required(), FormValidations.weightValidator())
@@ -123,7 +120,7 @@ constructor(
                   initialValue = goalType.value,
                   validators = listOf(FormValidations.required()),
                 ),
-              currentWeight =
+              startingWeight =
                 FormControl.create(
                   initialValue = formattedCurrentWeight,
                   validators = currentWeightValidators,
@@ -153,7 +150,6 @@ constructor(
     super.handleIntent(intent)
     when (intent) {
       is GoalIntent.Submit -> onSubmit()
-      is GoalIntent.OpenHelpModal -> openHelpModal()
       is GoalIntent.OnBack -> onBack()
       is GoalIntent.Success -> onSuccess()
       is GoalIntent.HandleGoalMet -> onHandleGoalMet(intent.setNewGoal)
@@ -177,15 +173,11 @@ constructor(
     )
 
     val account = state.value.account ?: return
-
-    // Convert form values to Goal model using helper with proper unit conversion
     val goal = state.value.form.controls.toGoal(
       fromUnit = account.weightUnit,
-      toUnit = WeightUnit.LB, // We store weights in LB format
+      toUnit = WeightUnit.LB,
     )
-
     AppLog.d(tag, "Goal settings: type=${goal.type}, current=${goal.initialWeight}, goal=${goal.goalWeight}")
-
     viewModelScope.launch {
       try {
         goalService.updateGoal(
@@ -204,20 +196,6 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
-  }
-
-  /**
-   * Opens the Help modal with goal information.
-   */
-  private fun openHelpModal() {
-    AppLog.d(tag, "Opening goal help modal")
-    dialogQueueService.enqueue(
-      DialogModel.Alert(
-        title = GoalStrings.GoalInfoTitle,
-        message = GoalStrings.GoalInfoMessage,
-        onDismiss = {},
-      ),
-    )
   }
 
   /**
