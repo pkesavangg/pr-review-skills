@@ -9,6 +9,7 @@ import SwiftUI
 
 struct WifiConnectionConfirmView: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
     let sku: String
     let userNumber: Int?
     let selectedOption: WifiSetupOption
@@ -72,11 +73,15 @@ struct WifiConnectionConfirmView: View {
         VStack(alignment: .center) {
             if let userNumber = self.userNumber {
                 GifView(
-                    gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
+                    gifName: appAssets.wifiSetupCompleteGifName(
+                        user: userNumber,
+                        isFilled: selectedOption == .complete,
+                        isDarkMode: themeManager.isDarkMode
+                    ),
                     width: 120,
-                    height: 120
+                    height: 100
                 )
-                .frame(width: 120, height: 120)
+                .frame(width: 120, height: 100)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -102,16 +107,18 @@ struct WifiConnectionConfirmView: View {
                 } else {
                     if let userNumber = self.userNumber {
                         GifView(
-                            gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
-                            width: imageSize,
-                            height: imageSize
+                            gifName: appAssets.wifiSetupCompleteGifName(
+                                user: userNumber,
+                                isFilled: selectedOption == .complete,
+                                isDarkMode: themeManager.isDarkMode
+                            ),
+                            width: 120,
+                            height: 100
                         )
-                        .frame(width: imageSize, height: imageSize)
+                        .frame(width: 120, height: 100)
                     }
                 }
             }
-            
-            selectionIndicator(for: .complete)
         }
     }
     
@@ -120,22 +127,13 @@ struct WifiConnectionConfirmView: View {
             Button(action: handleApModeSelection) {
                 apModeImage
             }
-            selectionIndicator(for: .apMode)
         }
     }
     
     private var apModeImage: some View {
-        Image(appAssets.wifiApMode(sku))
+        Image(appAssets.apModeImageName(sku: sku, isFilled: selectedOption == .apMode, isDarkMode: themeManager.isDarkMode))
             .resizable()
-            .frame(width: imageSize, height: imageSize)
-    }
-    
-    private func selectionIndicator(for option: WifiSetupOption) -> some View {
-        AppIconView(
-            icon: selectedOption == option ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
-            size: IconSize(width: 24, height: 24)
-        )
-        .foregroundColor(theme.statusIconPrimary)
+            .frame(width: 120, height: 100)
     }
     
     private var noteSection: some View {
