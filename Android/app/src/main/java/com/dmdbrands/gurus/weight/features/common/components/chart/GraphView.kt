@@ -19,8 +19,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.periodStarts
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -35,6 +38,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -79,6 +83,7 @@ fun GraphView(
     mutableStateOf(listOf())
   }
   val stableGraphLines = rememberStable(graphLines)
+  val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
   if (stableGraphLines.isEmpty() || stableGraphLines.all { it.points.isEmpty() }) {
     GraphEmptyState(modifier = modifier, placeHolder = placeHolder)
     return
@@ -100,14 +105,24 @@ fun GraphView(
   var minTarget by remember { mutableStateOf<Long?>(null) }
   var maxTarget by remember { mutableStateOf<Long?>(null) }
   var minYTarget by remember { mutableDoubleStateOf(0.0) }
+  var secondaryMinYTarget by remember { mutableDoubleStateOf(0.0) }
   var maxYTarget by remember { mutableDoubleStateOf(220.0) }
+  var secondaryMaxYTarget by remember { mutableDoubleStateOf(220.0) }
 
   val animatedMinTarget by animateIntAsState(
     targetValue = minYTarget.toInt(),
     animationSpec = tween(300),
   )
+  val animatedSecondaryMinTarget by animateIntAsState(
+    targetValue = secondaryMinYTarget.toInt(),
+    animationSpec = tween(300),
+  )
   val animatedMaxTarget by animateIntAsState(
     targetValue = maxYTarget.toInt(),
+    animationSpec = tween(300),
+  )
+  val animatedSecondaryMaxTarget by animateIntAsState(
+    targetValue = secondaryMaxYTarget.toInt(),
     animationSpec = tween(300),
   )
   var selectedTarget by remember { mutableStateOf<Long?>(null) }
@@ -121,7 +136,7 @@ fun GraphView(
   val maxTargetState = rememberUpdatedState(maxTarget)
   var stepSize by remember { mutableDoubleStateOf(10.0) }
 
-  LaunchedEffect(graphKey, secondaryGraphLines) {
+  LaunchedEffect(graphKey, stableSecondaryGraphLines) {
     modelProducer.runTransaction {
       lineSeries {
         ySeries.forEach { y ->
@@ -131,13 +146,21 @@ fun GraphView(
           )
         }
       }
-      if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+      if (stableSecondaryGraphLines != null && stableSecondaryGraphLines!!.points.isNotEmpty()) {
         lineSeries {
           series(
-            x = secondaryGraphLines.points.map { it.x.value as Long },
-            y = secondaryGraphLines.points.map { it.y.value },
+            x = stableSecondaryGraphLines!!.points.map { it.x.value as Long },
+            y = stableSecondaryGraphLines!!.points.map { it.y.value },
           )
         }
+        val secondaryYAxis = stableSecondaryGraphLines!!.points.map { it.y.value.toDouble() }
+        val secondaryGraphMeta = generateNiceScale(
+          floor(secondaryYAxis.min()),
+          ceil(secondaryYAxis.max()),
+          goalWeight = 80.0,
+        )
+        secondaryMinYTarget = secondaryGraphMeta.min
+        secondaryMaxYTarget = secondaryGraphMeta.max
       }
     }
   }
@@ -208,9 +231,9 @@ fun GraphView(
     }
   }
   LaunchedEffect(Unit) {
-    snapshotFlow { minTargetState.value to maxTargetState.value }
-      .debounce(500) // wait for 500ms of inactivity
-      .collect { (min, max) ->
+    snapshotFlow { Triple(minTargetState.value, maxTargetState.value, stableSecondaryGraphLines) }
+      .debounce(500)
+      .collect { (min, max, stable) ->
         // Run your logic here after the debounce period
         computationJob = launch(Dispatchers.Default) {
           val formattedRange = GraphUtil.formatDateRange(
@@ -235,7 +258,15 @@ fun GraphView(
             maxTarget ?: 0L,
           )
           onMetricUpdate(graphLines.flatMap { it.points })
-          val yAxis = graphLines.flatMap { graphLine -> graphLine.points.map { it.y.value as Double } }
+          val intervalCount = segment.intervalCount().div(2)
+          val paddedMinTarget = minTarget?.minus(ONE_DAY_MILLIS * intervalCount)
+          val paddedMaxTarget = maxTarget?.plus(ONE_DAY_MILLIS * intervalCount)
+          val paddedGraphLines = filterXValuesInRange(
+            stableGraphLines,
+            paddedMinTarget ?: 0L,
+            paddedMaxTarget ?: 0L,
+          )
+          val yAxis = paddedGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value as Double } }
           if (yAxis.isNotEmpty()) {
             var tempMax = 0.0
             var tempMin = 0.0
@@ -252,6 +283,22 @@ fun GraphView(
             )
             minYTarget = graphMeta.min
             maxYTarget = graphMeta.max
+            if (stable != null) {
+              val paddedSecondaryGraphLines = filterXValuesInRange(
+                listOf(stable),
+                paddedMinTarget ?: 0L,
+                paddedMaxTarget ?: 0L,
+              )
+              val secondaryYAxis =
+                paddedSecondaryGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } }
+              val secondaryGraphMeta = generateNiceScale(
+                floor(secondaryYAxis.min()),
+                ceil(secondaryYAxis.max()),
+                goalWeight = 80.0,
+              )
+              secondaryMinYTarget = secondaryGraphMeta.min
+              secondaryMaxYTarget = secondaryGraphMeta.max
+            }
             stepSize = graphMeta.step
           }
 
@@ -261,10 +308,29 @@ fun GraphView(
       }
   }
 
+  val initialTimeStamp = xLabels.minOf { it.value as Long }
   val primaryLayer = primaryLayer(
     segment, animatedMinTarget, animatedMaxTarget,
-    xLabels.minOf { it.value as Long },
+    initialTimeStamp,
   )
+  val secondaryLayer = secondaryLayer(
+    segment = segment,
+    minYTarget = animatedSecondaryMinTarget,
+    maxYTarget = animatedSecondaryMaxTarget,
+    initialTimeStamp = initialTimeStamp,
+  )
+  val todayMills = Calendar.getInstance().timeInMillis
+
+  val startRangeX = GraphUtil.getStartRange(segment, initialTimeStamp)
+
+  val endRangeX = GraphUtil.getEndRange(segment, todayMills)
+  val separators = periodStarts(
+    segment,
+    startRangeX,
+    endRangeX,
+
+    )
+
   val defaultMarker = rememberDefaultMarker(xLabels, markerIndex, segment)
   val decorations = rememberHorizontalLine()
 
@@ -324,6 +390,7 @@ fun GraphView(
     segment = segment,
     stepSize = stepSize,
     primaryLayer = primaryLayer,
+    secondaryLayer = secondaryLayer,
     markerListener = markerListener,
     defaultMarker = defaultMarker,
     decorations = decorations,
@@ -334,6 +401,7 @@ fun GraphView(
     modelProducer = modelProducer,
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
+    separators = separators,
   )
 }
 

@@ -2,12 +2,13 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -22,14 +23,17 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import java.util.Calendar
 
 /**
- * Internal helper to remember the primary layer for the graph.
+ * Common composable for creating line layers with connection condition.
+ * Used for both primary and secondary layers with configurable color and axis position.
  */
 @Composable
-internal fun primaryLayer(
+internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
+  lineColor: Color,
+  verticalAxisPosition: Axis.Position.Vertical,
   minYTarget: Int,
   maxYTarget: Int,
-  initialTimeStamp: Long
+  initialTimeStamp: Long? = null
 ): LineCartesianLayer {
 
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
@@ -50,23 +54,12 @@ internal fun primaryLayer(
 
   val todayMills = Calendar.getInstance().timeInMillis
 
-  val startRangeX = when (segment) {
-    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(initialTimeStamp).start
-    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(initialTimeStamp).start
-    GraphSegment.YEAR -> DateTimeConverter.getYearRange(initialTimeStamp).start
-    else -> null
-  }
-
-  val endRangeX = when (segment) {
-    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(todayMills).end
-    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(todayMills).end
-    GraphSegment.YEAR -> DateTimeConverter.getYearRange(todayMills).end
-    else -> null
-  }
+  val startRangeX = initialTimeStamp?.let { GraphUtil.getStartRange(segment, it) }
+  val endRangeX = GraphUtil.getEndRange(segment, todayMills)
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
-      listOf(MeTheme.colorScheme.primaryAction).map {
+      listOf(lineColor).map {
         LineCartesianLayer.rememberLineWithConnectionCondition(
           fill = LineCartesianLayer.LineFill.single(fill(it)),
           stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
@@ -86,25 +79,66 @@ internal fun primaryLayer(
         )
       },
     ),
-    verticalAxisPosition = Axis.Position.Vertical.End,
-    rangeProvider = object : CartesianLayerRangeProvider {
-      override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-        return minYTarget.toDouble()
-      }
+    verticalAxisPosition = verticalAxisPosition,
+    rangeProvider =
+      object : CartesianLayerRangeProvider {
+        override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+          return minYTarget.toDouble()
+        }
 
-      override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-        return maxYTarget.toDouble()
-      }
+        override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+          return maxYTarget.toDouble()
+        }
 
-      override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
-        return endRangeX?.toDouble() ?: super.getMaxX(minX, maxX, extraStore)
-      }
+        override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+          return endRangeX?.toDouble() ?: super.getMaxX(minX, maxX, extraStore)
+        }
 
-      override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
-        return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
-      }
-    },
+        override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+          return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
+        }
+      },
     pointSpacing = pointSpacing(segment, 10.dp),
+  )
+}
+
+/**
+ * Convenience function for creating primary layer.
+ */
+@Composable
+internal fun primaryLayer(
+  segment: GraphSegment,
+  minYTarget: Int,
+  maxYTarget: Int,
+  initialTimeStamp: Long
+): LineCartesianLayer {
+  return rememberLineLayerWithConnection(
+    segment = segment,
+    lineColor = MeTheme.colorScheme.primaryAction,
+    verticalAxisPosition = Axis.Position.Vertical.End,
+    minYTarget = minYTarget,
+    maxYTarget = maxYTarget,
+    initialTimeStamp = initialTimeStamp,
+  )
+}
+
+/**
+ * Convenience function for creating secondary layer.
+ */
+@Composable
+internal fun secondaryLayer(
+  segment: GraphSegment,
+  minYTarget: Int,
+  maxYTarget: Int,
+  initialTimeStamp: Long? = null
+): LineCartesianLayer {
+  return rememberLineLayerWithConnection(
+    segment = segment,
+    lineColor = MeTheme.colorScheme.secondaryAction,
+    verticalAxisPosition = Axis.Position.Vertical.Start,
+    minYTarget = minYTarget,
+    maxYTarget = maxYTarget,
+    initialTimeStamp = initialTimeStamp,
   )
 }
 

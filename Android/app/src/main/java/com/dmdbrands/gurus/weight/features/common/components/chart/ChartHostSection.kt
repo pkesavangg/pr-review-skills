@@ -16,16 +16,11 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponen
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
-import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
-import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
@@ -35,8 +30,6 @@ import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
-import com.patrykandpatrick.vico.core.common.Position
-import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlin.math.roundToInt
 
 @Composable
@@ -44,6 +37,7 @@ internal fun ChartHostSection(
   modifier: Modifier = Modifier,
   segment: GraphSegment,
   primaryLayer: LineCartesianLayer,
+  secondaryLayer: LineCartesianLayer,
   markerListener: CartesianMarkerVisibilityListener?,
   stepSize: Double,
   defaultMarker: CartesianMarker,
@@ -55,35 +49,10 @@ internal fun ChartHostSection(
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   decorations: Decoration,
+  separators: List<Double>
 ) {
   key(segment) {
-    val secondaryLayer =
-      rememberLineCartesianLayer(
-        lineProvider =
-          LineCartesianLayer.LineProvider.series(
-            listOf(MeTheme.colorScheme.secondaryAction).map {
-              LineCartesianLayer.rememberLine(
-                fill = LineCartesianLayer.LineFill.single(fill(it)),
-                stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
-                pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-                pointProvider =
-                  LineCartesianLayer.PointProvider.single(
-                    point =
-                      LineCartesianLayer.Point(
-                        rememberShapeComponent(
-                          fill(it),
-                          CorneredShape.Pill,
-                          strokeThickness = 2.dp,
-                        ),
-                      ),
-                  ),
-              )
-            },
-          ),
-        verticalAxisPosition = Axis.Position.Vertical.Start,
-        pointSpacing = pointSpacing(segment, 10.dp),
-      )
-    val bottomAxis = bottomAxis(segment, horizontalItemPlacer)
+    val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
     val primaryChart =
       rememberCartesianChart(
         primaryLayer,
@@ -134,7 +103,6 @@ internal fun ChartHostSection(
                 color = MeTheme.colorScheme.textSubheading,
                 margins = insets(horizontal = 10.dp),
               ),
-            verticalLabelPosition = Position.Vertical.Center,
             tickLength = 0.dp,
           ),
         bottomAxis = bottomAxis,
