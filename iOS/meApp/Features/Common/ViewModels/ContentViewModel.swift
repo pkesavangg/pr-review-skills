@@ -77,6 +77,10 @@ final class ContentViewModel: ObservableObject {
     private func loadData() async {
         await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
+        
+        // Migrate SQLite data from Ionic app if needed (should run before sync)
+        await entryService.migrateFromSQLiteIfNeeded()
+        
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
         bluetoothService.initialize()
