@@ -10,6 +10,7 @@ struct ErrorCodeButtonGrid: View {
     private let buttonSize = CGFloat(100)
     private let lang = WifiScaleSetupStrings.ErrorCodeSelectionViewStrings.self
     private let sku0384 = "0384"
+    private let sku0396 = "0396"
     var body: some View {
         VStack(spacing: .spacingMD) {
             ForEach(errorCodes, id: \.self) { row in
@@ -39,25 +40,10 @@ struct ErrorCodeButtonGrid: View {
     /// Generates the appropriate image name based on error code, selection state, and theme
     private func getImageName(for errorCode: WifiErrorCode, isSelected: Bool) -> String {
         return AppAssets.errorCodeImageName(
-            sku: sku,
+            sku: sku == sku0384 ? sku0384 : sku0396,
             errorCode: errorCode.rawValue,
             isFilled: isSelected,
             isDarkMode: themeManager.isDarkMode
         )
     }
 }
-
-//#Preview {
-//    ErrorCodeButtonGrid(
-//        errorCodes: [
-//            [.t163, .t164, .t165],
-//            [.t204, .t205, .t206],
-//            [.t315, .t323, .t325]
-//        ],
-//        selectedError: .constant(.t164),
-//        sku: "0384"
-//    ) { code in
-//        print("Selected error: \(code)")
-//    }
-//    .environmentObject(Theme.shared)
-//} 

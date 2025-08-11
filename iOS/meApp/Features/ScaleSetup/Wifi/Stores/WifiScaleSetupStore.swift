@@ -115,7 +115,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
-                return AnyView(WifiPasswordView(allowEditSsid: scaleItem.setupType != .espTouchWifi) {
+                return AnyView(WifiPasswordView(allowEditSsid: (scaleItem.setupType != .espTouchWifi || permissionsSkipped)) {
                     self.openWifiSettings()
                 })
             case .selectUser:

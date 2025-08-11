@@ -21,7 +21,9 @@ struct WifiConnectionConfirmView: View {
     private let lang = WifiScaleSetupStrings.UserConfirmationViewStrings.self
     private let appAssets = AppAssets.self
     private let sku0384 = "0384"
-    private let imageSize: CGFloat = 120
+    private let sku0396 = "0396"
+    private let imageSize120: CGFloat = 120
+    private let imageSize100: CGFloat = 100
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -71,17 +73,23 @@ struct WifiConnectionConfirmView: View {
     
     private var apModeConnectionView: some View {
         VStack(alignment: .center) {
-            if let userNumber = self.userNumber {
+            if sku != sku0384 {
+                let sku = sku == sku0384 ? sku0384 : sku0396
+                Image(appAssets.stepOnImageName(sku: sku,
+                                                isFilled: true,
+                                                isDarkMode: themeManager.isDarkMode))
+                .resizable()
+                .frame(width: imageSize100, height: imageSize100)
+            } else {
                 GifView(
-                    gifName: appAssets.wifiSetupCompleteGifName(
-                        user: userNumber,
-                        isFilled: selectedOption == .complete,
+                    gifName: appAssets.wifiSetupStepOnGifName(
+                        isFilled: true,
                         isDarkMode: themeManager.isDarkMode
                     ),
-                    width: 120,
-                    height: 100
+                    width: imageSize120,
+                    height: imageSize100
                 )
-                .frame(width: 120, height: 100)
+                .frame(width: imageSize120, height: imageSize100)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -101,9 +109,9 @@ struct WifiConnectionConfirmView: View {
         VStack {
             Button(action: handleCompleteSelection) {
                 if sku != sku0384 {
-                    Image(appAssets.wifiSetupComplete)
+                    Image(appAssets.completeImageName(isFilled: selectedOption == .complete, isDarkMode: themeManager.isDarkMode))
                         .resizable()
-                        .frame(width: imageSize, height: imageSize)
+                        .frame(width: imageSize100, height: imageSize100)
                 } else {
                     if let userNumber = self.userNumber {
                         GifView(
@@ -112,10 +120,10 @@ struct WifiConnectionConfirmView: View {
                                 isFilled: selectedOption == .complete,
                                 isDarkMode: themeManager.isDarkMode
                             ),
-                            width: 120,
-                            height: 100
+                            width: imageSize120,
+                            height: imageSize100
                         )
-                        .frame(width: 120, height: 100)
+                        .frame(width: imageSize120, height: imageSize100)
                     }
                 }
             }
@@ -131,9 +139,10 @@ struct WifiConnectionConfirmView: View {
     }
     
     private var apModeImage: some View {
-        Image(appAssets.apModeImageName(sku: sku, isFilled: selectedOption == .apMode, isDarkMode: themeManager.isDarkMode))
+        let sku = sku == sku0384 ? sku0384 : sku0396
+        return  Image(appAssets.apModeImageName(sku: sku, isFilled: selectedOption == .apMode, isDarkMode: themeManager.isDarkMode))
             .resizable()
-            .frame(width: 120, height: 100)
+            .frame(width: sku == sku0384 ? imageSize120 : imageSize100, height: imageSize100)
     }
     
     private var noteSection: some View {

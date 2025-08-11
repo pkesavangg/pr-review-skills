@@ -822,14 +822,13 @@ struct AppAssets {
     
     /// Generates complete setup image asset names based on SKU, filled state, and theme
     /// - Parameters:
-    ///   - sku: Scale SKU (e.g., "0396")
     ///   - isFilled: Whether to use filled or outlined version
     ///   - isDarkMode: Whether to use dark mode variant
     /// - Returns: Asset name string
-    static func completeImageName(sku: String, isFilled: Bool, isDarkMode: Bool) -> String {
+    static func completeImageName(isFilled: Bool, isDarkMode: Bool) -> String {
         let fillType = isFilled ? "Filled" : "Outlined"
         let themeVariant = isDarkMode ? "_dark" : ""
-        return "\(sku)_Complete_\(fillType)\(themeVariant)"
+        return "0396_Complete_\(fillType)\(themeVariant)"
     }
     
     /// Generates step on image asset names based on SKU, filled state, and theme
@@ -873,10 +872,14 @@ struct AppAssets {
     }
     
     /// Legacy function for backward compatibility - generates step on GIF name
-    /// - Parameter user: User number (1-8)
-    /// - Returns: Asset name string for the step on GIF
-    static func wifiSetupStepOnGifName(user: Int) -> String {
-        return "0384-Setup-u\(user)Complete"
+    /// Parameters:
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string for the GIF
+    static func wifiSetupStepOnGifName( isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "0384_StepOn_\(fillType)\(themeVariant)"
     }
 
 }
