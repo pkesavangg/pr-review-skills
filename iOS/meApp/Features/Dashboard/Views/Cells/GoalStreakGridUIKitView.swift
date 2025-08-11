@@ -45,10 +45,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         if contentChanged {
             coordinator.gridModel = newModel
+            collectionView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
-                collectionView.performBatchUpdates({
-                    collectionView.reloadData()
-                }, completion: nil)
+                collectionView.reloadData()
             }
         } else {
             // Only wiggle state might have changed; update visible cells without reload
@@ -89,6 +88,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     private func createCollectionView(with layout: UICollectionViewFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
+        collectionView.hideDragPlatter = false // show system drag preview platter
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
         
@@ -237,8 +237,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             case .goalCard:
                 return CGSize(width: contentWidth, height: 120) // Large widget spans full width
             case .streak:
-                // 2 columns per row, gap between columns is 16px
-                let itemWidth = (contentWidth - interItemSpacing) / 2.0
+
+                let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
+                let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
                 return CGSize(width: itemWidth, height: 70) // Small widget
             }
         }
@@ -256,6 +257,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // MARK: - Drag & Drop
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
+            guard store.state.ui.isEditMode else { return [] }
             let widget = gridModel.mileStones[indexPath.item]
             let itemProvider: NSItemProvider
             switch widget {
@@ -277,10 +279,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
+            guard store.state.ui.isEditMode else {
+                return UICollectionViewDropProposal(operation: .forbidden)
+            }
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
+            guard store.state.ui.isEditMode else { return }
             guard let destinationIndexPath = coordinator.destinationIndexPath,
                   let item = coordinator.items.first,
                   let sourceIndexPath = item.sourceIndexPath else { return }

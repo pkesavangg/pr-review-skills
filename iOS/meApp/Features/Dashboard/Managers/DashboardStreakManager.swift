@@ -294,7 +294,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func getStreakGridColumns() -> [GridItem] {
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: DashboardConstants.UI.streakGridColumns)
+        // Always use 4 columns on iPad
+        let columnCount = DevicePlatform.isTablet ? 4 : DashboardConstants.UI.streakGridColumns
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 
     // MARK: - Streak Reordering

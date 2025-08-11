@@ -60,10 +60,15 @@ struct MetricsState {
 
     /// Returns grid columns configuration based on dashboard type
     var gridColumns: [GridItem] {
-        let columnCount = dashboardType == .dashboard4 ?
-            DashboardConstants.UI.fourMetricGridColumns :
-            DashboardConstants.UI.twelveMetricGridColumns
-
+        // Force 4 columns on iPad irrespective of dashboard type
+        let columnCount: Int
+        if DevicePlatform.isTablet {
+            columnCount = 4
+        } else {
+            columnCount = dashboardType == .dashboard4 ?
+                DashboardConstants.UI.fourMetricGridColumns :
+                DashboardConstants.UI.twelveMetricGridColumns
+        }
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 }

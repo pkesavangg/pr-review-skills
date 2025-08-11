@@ -119,8 +119,12 @@ struct DashboardScreen: View {
                     .contentShape(Rectangle())
                 if !store.allContentRemoved {
                     if !store.metricsToShow.isEmpty {
-                        MetricGridUIKitView(store: store)
-                            .frame(minHeight: 200)
+                        MetricGridUIKitView(store: store, onMetricLongPress: { label in
+                            // Select and open info sheet for long-pressed metric
+                            store.state.ui.selectedMetricLabel = label
+                            openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                        })
+                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
                             .padding(.top, .spacingSM)
                             .id(store.state.ui.gridLayoutId)
                             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
@@ -143,15 +147,6 @@ struct DashboardScreen: View {
                     .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
             .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded({
-                if store.state.ui.isEditMode {
-                    store.cancelEdit()
-                    // Force a lightweight refresh of visible cells to clear overlay/wiggle without full reload
-                    DispatchQueue.main.async {
-                        store.objectWillChange.send()
-                    }
-                }
-            }))
         }
         .padding(.top, .zero)
     }
@@ -181,15 +176,10 @@ struct DashboardScreen: View {
                     tabViewModel.navigateToGoalSetting()
                 })
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
-                
-                // Add button to switch to 12 metrics if currently showing 4 metrics
-                if store.state.metrics.dashboardType == .dashboard4 {
-                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                        store.switchTo12MetricsDashboard()
-                    })
-                }
+
             }
         }
         .padding(.bottom, .spacingLG)
