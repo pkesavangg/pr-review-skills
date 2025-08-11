@@ -231,9 +231,9 @@ fun GraphView(
     }
   }
   LaunchedEffect(Unit) {
-    snapshotFlow { Triple(minTargetState.value, maxTargetState.value, stableSecondaryGraphLines) }
+    snapshotFlow { minTargetState.value to maxTargetState.value }
       .debounce(500)
-      .collect { (min, max, stable) ->
+      .collect { (min, max) ->
         // Run your logic here after the debounce period
         computationJob = launch(Dispatchers.Default) {
           val formattedRange = GraphUtil.formatDateRange(
@@ -283,9 +283,9 @@ fun GraphView(
             )
             minYTarget = graphMeta.min
             maxYTarget = graphMeta.max
-            if (stable != null) {
+            if (stableSecondaryGraphLines != null) {
               val paddedSecondaryGraphLines = filterXValuesInRange(
-                listOf(stable),
+                listOf(stableSecondaryGraphLines!!),
                 paddedMinTarget ?: 0L,
                 paddedMaxTarget ?: 0L,
               )
