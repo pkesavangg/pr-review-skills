@@ -612,10 +612,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
 
             // Handle Goal Settings
-            if let goalType = account.goalSettings?.goalType,
-               let initialWeight = account.goalSettings?.initialWeight,
-               let goalWeight = account.goalSettings?.goalWeight,
-               account.goalSettings?.isSynced == false {
+            if let goalType = localAccount.goalSettings?.goalType,
+               let initialWeight = localAccount.goalSettings?.initialWeight,
+               let goalWeight = localAccount.goalSettings?.goalWeight,
+               localAccount.goalSettings?.isSynced == false {
                 let goal = Goal(
                     type: goalType,
                     goalWeight: Int(goalWeight),
