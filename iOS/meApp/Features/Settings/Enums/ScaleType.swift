@@ -13,6 +13,19 @@ enum ScaleType: String {
     case bluetoothR4 = "BLUETOOTH_R4"
     case appsync = "APPSYNC"
     case wifi = "WIFI"
+    
+    var displayName: String {
+        switch self {
+        case .bluetoothA3, .bluetoothA6:
+            return "Bluetooth"
+        case .bluetoothR4:
+            return "Bluetooth/Wi-Fi"
+        case .appsync:
+            return "Appsync"
+        case .wifi:
+            return "Wi-Fi"
+        }
+    }
 }
 
 

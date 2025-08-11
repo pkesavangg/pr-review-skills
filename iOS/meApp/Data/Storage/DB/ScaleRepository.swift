@@ -20,7 +20,15 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         try context.save()
     }
 
-    /// Fetches all scales stored locally.
+    /// Fetches all scales stored locally for a specific account.
+    /// - Parameter accountId: The account ID to filter scales by.
+    /// - Returns: An array of Device objects for the account.
+    func listScales(forAccountId accountId: String) async throws -> [Device] {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.accountId == accountId })
+        return try context.fetch(descriptor)
+    }
+    
+    /// Fetches all scales stored locally (legacy method).
     /// - Returns: An array of all Device objects.
     func listScales() async throws -> [Device] {
         let descriptor = FetchDescriptor<Device>()

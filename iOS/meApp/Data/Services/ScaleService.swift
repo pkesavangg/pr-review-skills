@@ -167,8 +167,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
-        // Simply return local devices - main sync handles server communication
-        let localDevices = try await localRepository.listScales()
+        let accountId = try await getAccountId()
+
+        // Get devices for the current account
+        let localDevices = try await localRepository.listScales(forAccountId: accountId)
 
         // Filter out deleted devices for the UI
         let activeDevices = localDevices.filter { device in
@@ -426,7 +428,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     // MARK: - Internal Helpers
     private func refreshScalesFromLocal() async {
         do {
-            self.scales = try await localRepository.listScales().filter { $0.isDeleted != true }
+            let accountId = try await getAccountId()
+            self.scales = try await localRepository.listScales(forAccountId: accountId).filter { $0.isDeleted != true }
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
         }
@@ -489,8 +492,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     // Edit existing device on server
                     do {
                         if device.isSynced == false {
-                            let properties = createPropertiesFromDTO(dto)
-                            _ = try await remoteRepo.editScale(device.id, properties: properties)
+                            _ = try await remoteRepo.editScale(device.id, properties: dto)
                         }
                         // Update scale meta data and preference
                         if let metaData = device.metaData, metaData.isSynced == false {
@@ -510,9 +512,18 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 } else {
                     // Create new device on server
                     do {
-                        let createdDTO = try await remoteRepo.createScale(dto)
+                        var createdDTO: ScaleDTO? = nil
+                        if device.isSynced == false  && device.hasServerID == true {
+                            do {
+                                _ = try await remoteRepo.editScale(device.id, properties: dto)
+                            } catch {
+                                logger.log(level: .error, tag: tag, message: "Failed to edit scale on server: \(error.localizedDescription)")
+                            }
+                        } else {
+                            createdDTO = try await remoteRepo.createScale(dto)
+                        }
                         // Update local device with server ID
-                        device.id = createdDTO.id ?? device.id
+                        device.id = createdDTO?.id ?? device.id
                         device.hasServerID = true // Mark as having server ID
                         // Update scale meta data and preference
                         if let metaData = device.metaData, metaData.isSynced == false {

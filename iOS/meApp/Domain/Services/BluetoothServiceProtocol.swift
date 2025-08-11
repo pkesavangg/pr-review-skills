@@ -119,6 +119,15 @@ protocol BluetoothServiceProtocol {
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
     /// - Returns: Result<String, BluetoothServiceError>
     func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError>
+
+    /// Starts live measurement for the given device.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func startLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError>
+
+    /// Stops live measurement for the given device.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError>
+
     /// Retrieves live measurement data while a user is on the scale.
     /// - Returns: Result<MeasurementLiveData, BluetoothServiceError>
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>

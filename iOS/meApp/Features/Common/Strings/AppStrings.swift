@@ -41,7 +41,7 @@ struct CommonStrings {
     static let date = "Date"
     static let weight = "Weight"
     static let resources = "Resources"
-    static let heartRateLabel = "Heart Rate: "
+    static let heartRateLabel = "Heart Rate:"
     static let update = "Update"
     static let appVersion = "App Version"
     static let yes = "Yes"
@@ -128,6 +128,8 @@ struct ToastStrings {
     static let userDeleted = "User deleted successfully."
     static let errorDeletingUser = "Failed to delete user."
     static let scaleDeleted = "Scale deleted."
+    static let errorDeletingScale = "Error deleting scale."
+    static let errorEditingScale = "Error editing scale."
     static let nicknameUpdated = "Nickname updated."
     static let deleted = "Deleted"
     static let saved = "Saved"
@@ -529,6 +531,20 @@ struct AlertStrings {
         static let deleteButton = "Delete"
     }
     
+    // MARK: - Goal Alerts
+    struct GoalMetAlert {
+        static let header = "Congratulations! You've hit your goal weight!"
+        static let message = "Would you like to set a new goal or maintain this goal weight?"
+        static let newGoal = "NEW GOAL"
+        static let maintain = "MAINTAIN"
+    }
+    
+    struct GoalLeaveAlert {
+        static let message = "It looks like you’re moving away from your target weight. Do you want to set a new goal to get back on track?"
+        static let no = "NO"
+        static let yes = "YES"
+    }
+    
     struct knownScaleDiscoveredAlert {
         static let title = "Known Scale Discovered"
         static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
@@ -562,6 +578,13 @@ struct AlertStrings {
         static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
         static let restoreButton = "Restore"
         static let backButton = "Back"
+    }
+    
+    struct EnableBodyMetricsAlert {
+        static let title = "Enable Body Metrics"
+        static let message = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
+        static let enableButton = "Enable"
+        static let cancelButton = "Cancel"
     }
     
     struct ConfirmDeleteUserAlert {
@@ -600,6 +623,13 @@ struct AlertStrings {
         static let message = "Doing so makes necessary a more in-depth, time consuming setup process."
         static let skipButton = "YES, SKIP"
         static let goBackButton = "GO BACK"
+    }
+    
+    struct UpdateAccountFailedAlert {
+        static let title = "Update Can't Be Saved"
+        static let message = "The scale is currently busy. Wait a few moments and try again."
+        static let tryAgainButton = "Try Again"
+        static let cancelButton = "Cancel"
     }
 }
 
@@ -716,6 +746,7 @@ struct AppAssets {
     static let grid = "grid"
     static let scale = "scale"
     static let metric = "metric"
+    static let export = "export"
     
     // MARK: - Scale images
     // MARK: - AppSync series
@@ -793,5 +824,12 @@ struct AppSyncEntryCardStrings {
     static let muscleMass = "Muscle Mass"
     static let waterWeight = "Water Weight"
     static let bmi = "BMI"
+}
+
+/// Constants used in the Set A Goal card
+struct SetGoalCardStrings {
+    static let title = "Set a Goal"
+    static let description = "A great tool for tracking your journey that can always be changed in the app settings."
+    static let buttonTitle = "LET'S DO IT"
 }
 

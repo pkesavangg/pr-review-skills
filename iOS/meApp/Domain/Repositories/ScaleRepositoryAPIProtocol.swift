@@ -19,7 +19,7 @@ protocol ScaleRepositoryAPIProtocol {
     ///   - scaleId: The ID of the scale to edit.
     ///   - properties: The properties to update (nickname, etc.).
     /// - Returns: The updated Scale.
-    func editScale(_ scaleId: String, properties: [String: Any]) async throws -> ScaleDTO
+    func editScale(_ scaleId: String, properties: ScaleDTO) async throws -> ScaleDTO
 
     /// Deletes a paired scale. (DELETE /paired-scale/:scaleId)
     /// - Parameter scaleId: The ID of the scale to delete.

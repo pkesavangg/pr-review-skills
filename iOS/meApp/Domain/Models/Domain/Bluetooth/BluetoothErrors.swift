@@ -31,6 +31,8 @@ enum BluetoothServiceError: Error, LocalizedError {
     case firmwareUpdateFailed(Error)
     case clearDataFailed(Error)
     case updateProfileFailed(Error)
+    case startLiveMeasurementFailed(Error)
+    case stopLiveMeasurementFailed(Error)
     case getDeviceLogsFailed(Error)
     case getScaleUserListFailed(Error)
     case getDeviceInfoFailed(Error)
@@ -131,6 +133,10 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Device is already connected"
         case .getDeviceLogsFailed(_):
             return "Get device logs failed"
+        case .startLiveMeasurementFailed(let error):
+            return "Start live measurement failed \(error.localizedDescription)"
+        case .stopLiveMeasurementFailed(let error):
+            return "Stop live measurement failed \(error.localizedDescription)"
         }
     }
 }
