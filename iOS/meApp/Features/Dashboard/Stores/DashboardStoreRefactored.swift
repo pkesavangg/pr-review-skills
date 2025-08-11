@@ -24,6 +24,15 @@ class DashboardStore: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
+    // MARK: - Edit Session Snapshot
+    private var snapshotMetrics: [MetricItem] = []
+    private var snapshotActiveMetricsCount: Int = 0
+    private var snapshotStreakItems: [MetricItem] = []
+    private var snapshotActiveStreakItemsCount: Int = 0
+    private var snapshotGoalCardRemoved: Bool = false
+    private var snapshotGoalCardPosition: Int = 0
+    private var snapshotStreakGridOrder: [String] = []
+    private var hasEditSnapshot: Bool = false
 
     // MARK: - Constants
     let lang = LoaderStrings.self
@@ -641,6 +650,13 @@ class DashboardStore: ObservableObject {
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
+    }
+
+    /// Clears drag-related flags without bumping `gridLayoutId` to avoid ScrollView jump
+    private func clearDragStateNonDestructive() {
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
     }
     
     /// Restarts wiggle animations for all visible cells when app becomes active from background
@@ -1331,11 +1347,50 @@ class DashboardStore: ObservableObject {
         // Handle any settings changes
         handleSettingsChange()
        // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
+            // Force both grids to rebuild and recalc intrinsic size after re-appearing (fixes half-height issue)
+            self.state.ui.gridLayoutId = UUID()
             self.objectWillChange.send()
         }
-
+ 
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
+
+    /// Begins an edit session by snapshotting the current state for synchronous revert.
+    func beginEdit() {
+        guard !hasEditSnapshot else { return }
+        snapshotMetrics = metricsManager.state.metrics
+        snapshotActiveMetricsCount = metricsManager.state.activeMetricsCount
+        snapshotStreakItems = streakManager.state.streakItems
+        snapshotActiveStreakItemsCount = streakManager.state.activeStreakItemsCount
+        snapshotGoalCardRemoved = state.ui.isGoalCardRemoved
+        snapshotGoalCardPosition = state.ui.goalCardPosition
+        snapshotStreakGridOrder = state.ui.streakGridOrder
+        hasEditSnapshot = true
+        logger.log(level: .info, tag: "DashboardStore", message: "Edit snapshot captured")
+    }
+
+    /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
+    func cancelEdit() {
+        logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
+        // Restore synchronous snapshots first to immediately revert UI/state
+        if hasEditSnapshot {
+            metricsManager.state.metrics = snapshotMetrics
+            metricsManager.state.activeMetricsCount = snapshotActiveMetricsCount
+            streakManager.state.streakItems = snapshotStreakItems
+            streakManager.state.activeStreakItemsCount = snapshotActiveStreakItemsCount
+            state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
+            state.ui.goalCardPosition = snapshotGoalCardPosition
+            state.ui.streakGridOrder = snapshotStreakGridOrder
+        }
+        // Clear selection/drag and exit edit mode without forcing relayout
+        state.ui.selectedMetricLabel = nil
+        clearDragStateNonDestructive()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            state.ui.isEditMode = false
+        }
+        hasEditSnapshot = false
+        objectWillChange.send()
     }
 }
