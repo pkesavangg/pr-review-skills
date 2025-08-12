@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
@@ -30,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
+import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -976,7 +976,7 @@ constructor(
       val weightlessWeight = account.weightlessWeight
       if (weightlessWeight != null) {
         val displayWeight =
-          ConversionTools.convertStoredToDisplay(weightlessWeight.toDouble(), account.isMetric)
+          WeightlessHelper.processStoredWeightToDisplay(weightlessWeight.toDouble(), account.weightUnit)
         val formattedWeight = String.format("%.1f", displayWeight)
         "On - $formattedWeight"
       } else {

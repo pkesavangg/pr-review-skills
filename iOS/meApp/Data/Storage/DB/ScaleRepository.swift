@@ -180,7 +180,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - accountId: The account ID to filter devices by.
     ///   - serverDevices: Array of fresh Device objects from the server.
     ///   - preserveUnsynced: Array of unsynced local devices to preserve.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device], preserveUnsynced unsyncedDevices: [Device]) async throws {
+    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
             $0.accountId == accountId && ($0.isSynced ?? false) == true
@@ -206,26 +206,23 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 return false
             }
 
+            let device = Device(from: serverDevice)
+
             // Only insert server device if it doesn't conflict with unsynced local changes
             if !hasUnsyncedConflict {
-                serverDevice.isSynced = true // Mark as synced since they come from server
-                serverDevice.hasServerID = true
-                if let pref = serverDevice.r4ScalePreference {
-                    pref.id = serverDevice.id
-                    serverDevice.r4ScalePreference = pref
+                device.isSynced = true // Mark as synced since they come from server
+                device.hasServerID = true
+                context.insert(device)
+                if let pref = device.r4ScalePreference {
+                    pref.id = device.id
+                    device.r4ScalePreference = pref
                     pref.isSynced = true
                 }
-                context.insert(serverDevice)
                 try context.save()
             }
         }
 
 
-    }
-
-    /// Legacy method for backward compatibility - replaces all devices without preserving unsynced.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [Device]) async throws {
-        try await replaceAllDevicesForAccount(accountId, with: serverDevices, preserveUnsynced: [])
     }
 
     /// Marks a device as deleted locally (for server sync).

@@ -51,13 +51,6 @@ interface IGoalService {
   ): Int?
 
   /**
-   * Checks if goal completion alert should be shown.
-   * @param currentWeight Current weight to check against goal
-   * @return True if goal completion alert should be shown
-   */
-  suspend fun shouldShowGoalCompletionAlert(currentWeight: Double): Boolean
-
-  /**
    * Shows goal completion alert based on goal type.
    * @param currentWeight Current weight that triggered the alert
    */
@@ -75,14 +68,14 @@ interface IGoalService {
    *
    * @param account The newly created account
    * @param goalType The selected goal type from signup form
-   * @param currentWeight Current weight in display format
+   * @param startingWeight Current weight in display format
    * @param goalWeight Goal weight in display format
    * @return Updated account with goal settings or null if failed
    */
   suspend fun createGoalForSignup(
     account: Account,
     goalType: String,
-    currentWeight: Double,
+    startingWeight: Double,
     goalWeight: Double,
   ): Account?
 }
