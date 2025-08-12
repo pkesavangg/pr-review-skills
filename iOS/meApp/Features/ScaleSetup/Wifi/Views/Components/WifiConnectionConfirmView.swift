@@ -74,8 +74,7 @@ struct WifiConnectionConfirmView: View {
     private var apModeConnectionView: some View {
         VStack(alignment: .center) {
             if sku != sku0384 {
-                let sku = sku == sku0384 ? sku0384 : sku0396
-                Image(appAssets.stepOnImageName(sku: sku,
+                Image(appAssets.stepOnImageName(sku: sku0396,
                                                 isFilled: true,
                                                 isDarkMode: themeManager.isDarkMode))
                 .resizable()
@@ -139,10 +138,19 @@ struct WifiConnectionConfirmView: View {
     }
     
     private var apModeImage: some View {
-        let sku = sku == sku0384 ? sku0384 : sku0396
-        return  Image(appAssets.apModeImageName(sku: sku, isFilled: selectedOption == .apMode, isDarkMode: themeManager.isDarkMode))
-            .resizable()
-            .frame(width: sku == sku0384 ? imageSize120 : imageSize100, height: imageSize100)
+        let displaySku = sku == sku0384 ? sku0384 : sku0396
+        return Image(
+            appAssets.apModeImageName(
+                sku: displaySku,
+                isFilled: selectedOption == .apMode,
+                isDarkMode: themeManager.isDarkMode
+            )
+        )
+        .resizable()
+        .frame(
+            width: displaySku == sku0384 ? imageSize120 : imageSize100,
+            height: imageSize100
+        )
     }
     
     private var noteSection: some View {
