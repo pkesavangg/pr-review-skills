@@ -38,10 +38,11 @@ struct GraphView: View {
 
     var body: some View {
         VStack(alignment: .leading){
-            // Hide weight label when there is a selection
-            Text(dashboardStore.state.graph.selectedPoint == nil ? dashboardStore.weightLabel : "")
+            // Preserve layout height: fade the label out instead of removing it to avoid jump
+            Text(dashboardStore.weightLabel)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+                    .opacity(dashboardStore.state.graph.selectedPoint == nil ? 1 : 0)
                     .padding(.leading, .spacingSM)
                     .padding(.vertical, .spacingXS)
             if hasEntries {
@@ -146,7 +147,6 @@ struct GraphView: View {
                 .onPreferenceChange(AnnotationHeightKey.self) { height in
                     dashboardStore.state.graph.annotationHeight = height
                 }
-                .accessibilityLabel(Text("Weight chart"))
                 .onAppear {
                     dashboardStore.initializeChart()
                 }
@@ -187,14 +187,16 @@ struct GraphView: View {
            let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight),
            chartFrame.width > 0 {
 
+            // Base positioning relative to the selected point
             let isOnLeftSide = chartPosition.x < chartFrame.width / 2
-            let textOffset: CGFloat = isOnLeftSide ? 0 : -25 // Offset from the line
-            let finalXPosition = chartPosition.x + textOffset
+            let baseOffset: CGFloat = isOnLeftSide ? 0 : -40
+            let finalXPosition = chartPosition.x + baseOffset
             Text(dashboardStore.weightLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
-                    x: max(50, min(chartFrame.width - 50, finalXPosition)), // Prevent cropping with 50pt padding
+                    //for year and total subract 60 else 100
+                    x: max(50, min(chartFrame.width - (dashboardStore.state.graph.selectedPeriod == .year || dashboardStore.state.graph.selectedPeriod == .total ? 85 : 100), finalXPosition)), // Prevent cropping with 50pt padding
                     y: -15 // Position above chart boundary
                 )
         }

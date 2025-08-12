@@ -822,6 +822,9 @@ class DashboardStore: ObservableObject {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
+        // End any scrolling immediately so new period computes fresh domain/x-axis
+        graphManager.endScrollingImmediately()
+
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(

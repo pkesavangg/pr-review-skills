@@ -860,113 +860,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return years.count == 1
     }
 
-    // MARK: - X-Axis Generation Methods
-    private func generateWeeklyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-            for dayOffset in 0..<7 {
-                if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
-                    dates.append(dayDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.week * 0.5
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-            let totalWeeks = Int(ceil(maxAllowedDate.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week))
-            for weekOffset in 0..<totalWeeks {
-                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
-                    for dayOffset in 0..<7 {
-                        if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekDate) {
-                            if dayDate <= maxAllowedDate {
-                                dates.append(dayDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateMonthlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-            for weekOffset in 0..<5 {
-                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthStart) {
-                    dates.append(weekDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.week * 2
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-            let totalMonths = Int(ceil(maxAllowedDate.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month))
-            for monthOffset in 0..<totalMonths {
-                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
-                    for weekOffset in 0..<5 {
-                        if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthDate) {
-                            if weekDate <= maxAllowedDate {
-                                dates.append(weekDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateYearlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-            for monthOffset in 0..<12 {
-                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearStart) {
-                    dates.append(monthDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.month * 2
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-            let totalYears = Int(ceil(maxAllowedDate.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year))
-            for yearOffset in 0..<totalYears {
-                if let yearDate = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
-                    for monthOffset in 0..<12 {
-                        if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearDate) {
-                            if monthDate <= maxAllowedDate {
-                                dates.append(monthDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateTotalXAxis(minDate: Date, maxDate: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        if areEntriesInSameEra(operations) {
-            return generateYearlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.month * 3
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
-            let totalQuarters = Int(ceil(maxAllowedDate.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter))
-            var dates: [Date] = []
-            for quarterOffset in 0..<totalQuarters {
-                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                    if quarterDate <= maxAllowedDate {
-                        dates.append(quarterDate)
-                    }
-                }
-            }
-            return dates
-        }
-    }
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
         // NEVER recalculate X-axis values during scrolling to prevent axis jumping
@@ -979,10 +872,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         let domainLength = visibleDomainLength(for: period)
         let allDates = operations.map(\.date)
-        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
+        guard let overallMinDate = allDates.min() else { return [] }
         let buffer = domainLength * 2
+        let currentDate = Date()
         let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(overallMaxDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
         let xAxisValues: [Date]
@@ -1337,5 +1231,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 resetMetrics()
             }
         }
+    }
+
+    func endScrollingImmediately() {
+        state.scrollEndTimer?.invalidate()
+        state.isScrolling = false
+        state.hasDetectedScrollInCurrentGesture = false
+        latestScrollPosition = nil
     }
 }
