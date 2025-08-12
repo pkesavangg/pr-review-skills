@@ -631,6 +631,20 @@ struct AlertStrings {
         static let tryAgainButton = "Try Again"
         static let cancelButton = "Cancel"
     }
+    
+    struct ReconnectDeviceAlert {
+        static let header = "Scale is at Its User Limit"
+        static let message = "Your connection was deactivated by another user. Reconnect now or delete the scale from your account by visiting scale settings."
+        static let reconnectButton = "Reconnect"
+        static let cancelButton = "Cancel"
+    }
+    
+    struct DuplicateUserAlert {
+        static let header = "Duplicate Scale User Name"
+        static let message = "Reconnect the scale with a new user name."
+        static let reconnectButton = "Reconnect"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {

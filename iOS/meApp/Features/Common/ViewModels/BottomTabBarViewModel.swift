@@ -136,6 +136,11 @@ class BottomTabBarViewModel: ObservableObject {
         goalAlertService.onNavigateToGoalSetting = { [weak self] in
             self?.navigateToGoalSetting()
         }
+        
+        // Connect BluetoothService scale setup navigation callback
+        bluetoothService.onOpenScaleSetup = { [weak self] scale, event in
+            self?.openScaleSetup(scale: scale, event: event)
+        }
     }
     
     // MARK: - Permission Disabled Alert Helpers
