@@ -13,6 +13,7 @@ data class AppState(
   val fcmToken: String = "",
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
   val isScaleDiscovered: Boolean = false,
+  val hasScanStarted: Boolean = false,
   val sku: String = "0412",
 ) : IReducer.State
 
@@ -22,7 +23,7 @@ data class AppState(
 sealed interface AppIntent : IReducer.Intent {
   data class SetScaleDiscovered(val isScaleDiscovered: Boolean) : AppIntent
   data class SetSku(val sku: String) : AppIntent
-
+  data class SetScanStatus(val hasScanStarted: Boolean) : AppIntent
   data object OnPopUpConnect : AppIntent
   data object OnPopUpDismiss : AppIntent
 }
@@ -41,6 +42,7 @@ class AppReducer() : IReducer<AppState, AppIntent> {
     return when (intent) {
       is AppIntent.SetSku -> state.copy(sku = intent.sku)
       is AppIntent.SetScaleDiscovered -> state.copy(isScaleDiscovered = intent.isScaleDiscovered)
+      is AppIntent.SetScanStatus -> state.copy(hasScanStarted = intent.hasScanStarted)
       else -> state
     }
   }
