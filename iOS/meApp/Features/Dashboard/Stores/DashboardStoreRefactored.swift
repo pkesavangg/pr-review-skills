@@ -36,7 +36,7 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-
+static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
@@ -964,7 +964,8 @@ class DashboardStore: ObservableObject {
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
         let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
         // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
-        let numericChars = raw.filter { "0123456789.-".contains($0) }
+        let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
+        let numericChars = String(String.UnicodeScalarView(numericScalars))
         if let number = Double(numericChars), number == 0 {
             return DashboardStrings.placeholder
         }
@@ -1374,7 +1375,10 @@ class DashboardStore: ObservableObject {
         }
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
-        clearDragStateNonDestructive()
+        // Inline non-destructive drag state clearing to avoid layout jumps
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
         withAnimation(.easeInOut(duration: 0.2)) {
             state.ui.isEditMode = false
         }

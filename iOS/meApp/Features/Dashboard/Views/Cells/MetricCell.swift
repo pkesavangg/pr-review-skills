@@ -159,24 +159,23 @@ class MetricCell: UICollectionViewCell {
         hostingController?.rootView = viewWithOverlay
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
-                 if store.state.ui.isEditMode {
-             let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
-             self.addGestureRecognizer(tapGesture)
-         } else {
-                         // Non-edit: use a small delay so taps select reliably; long-press on selected opens info
-             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
-             longPress.minimumPressDuration = 0.5
-             self.addGestureRecognizer(longPress)
+        if store.state.ui.isEditMode {
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
+            self.addGestureRecognizer(tapGesture)
+        } else {
 
-             // Non-edit: add an explicit tap recognizer to toggle selection reliably
-             let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
-             selectTap.cancelsTouchesInView = true
-             self.addGestureRecognizer(selectTap)
+            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
+            longPress.minimumPressDuration = 0.5
+            self.addGestureRecognizer(longPress)
 
-             self.tag = item.id.hashValue
-             self.onMetricLongPressCallback = onMetricLongPress
-             self.onSelectMetricCallback = onSelectMetric
-         }
+            let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
+            selectTap.cancelsTouchesInView = true
+            self.addGestureRecognizer(selectTap)
+
+            self.tag = item.id.hashValue
+            self.onMetricLongPressCallback = onMetricLongPress
+            self.onSelectMetricCallback = onSelectMetric
+        }
     }
     
     // MARK: - Reuse

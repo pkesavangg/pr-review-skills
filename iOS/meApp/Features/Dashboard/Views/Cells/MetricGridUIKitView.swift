@@ -234,8 +234,7 @@ extension MetricGridUIKitView {
                 : MetricCardView.fourCardVerticalPadding
             
             
-            // Force 3 columns for metrics grid for consistency across devices
-            let columns: Int = DashboardConstants.UI.twelveMetricGridColumns
+            let columns: Int = 3
             let totalSpacing = 40 + CGFloat((columns - 1)) * .spacingSM
             let itemWidth = (collectionView.bounds.width - totalSpacing) / CGFloat(columns)
             let itemHeight = 70 + (verticalPadding * 2) // Base height + padding
