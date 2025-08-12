@@ -66,6 +66,9 @@ struct DashboardScreen: View {
         .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
         }
+        .onChange(of: store.state.data.latestWeightStored) { _, _ in
+            store.resetMetricsToLatestEntry()
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             // Restart wiggle animations when app becomes active from background
             if store.state.ui.isEditMode {
