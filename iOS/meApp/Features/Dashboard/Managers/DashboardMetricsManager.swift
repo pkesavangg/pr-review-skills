@@ -70,10 +70,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             guard let account = accountService.activeAccount else {
                 throw DashboardError.noActiveAccount
             }
+          
             if let dashboardTypeString = account.dashboardSettings?.dashboardType,
                let dashboardType = DashboardType(rawValue: dashboardTypeString) {
                 updateDashboardType(dashboardType)
                 logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded dashboard type from API: \(dashboardType.rawValue)")
+            } else if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
+                let metricsCount = metricsCSV.split(separator: ",").count
+                updateDashboardType(metricsCount >= 12 ? .dashboard12 : .dashboard4)
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Inferred dashboard type from metrics count: \(state.dashboardType.rawValue)")
             }
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
@@ -148,35 +153,52 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType) -> [MetricItem] {
+        let allowedFour: Set<String> = [
+            DashboardStrings.bmi,
+            DashboardStrings.bodyFat,
+            DashboardStrings.muscle,
+            DashboardStrings.water
+        ]
+
         if isEditMode {
-            if dashboardType == .dashboard4 {
-                // Show only the four allowed metrics (active and removed) in edit mode
-                let allowedLabels: Set<String> = [
-                    DashboardStrings.bmi,
-                    DashboardStrings.bodyFat,
-                    DashboardStrings.muscle,
-                    DashboardStrings.water
-                ]
-                return state.metrics.filter { allowedLabels.contains($0.label) }
+            // In edit mode, strictly follow dashboard type
+            switch dashboardType {
+            case .dashboard4:
+                // Show only the four allowed metrics (regardless of active ordering)
+                return state.metrics.filter { allowedFour.contains($0.label) }
+            case .dashboard12:
+                // Show all metrics (active + removed) so user can add/remove
+                return state.metrics
             }
-            return state.metrics
         } else {
-            return Array(state.metrics.prefix(state.activeMetricsCount))
+            // In non-edit mode, show ONLY active metrics (removed items hidden), capped by dashboard type
+            let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
+            switch dashboardType {
+            case .dashboard4:
+                // Show only allowed labels from active list (hidden if removed)
+                return Array(activeMetrics.filter { allowedFour.contains($0.label) }.prefix(4))
+            case .dashboard12:
+                // Show up to 12 active metrics
+                return Array(activeMetrics.prefix(12))
+            }
         }
     }
 
     func getMetricGridColumns(for dashboardType: DashboardType) -> [GridItem] {
-        // Use columns strictly based on dashboard type
-        // - dashboard4 → 2 columns
-        // - dashboard12 → 3 columns
-        let columnCount: Int
-        switch dashboardType {
-        case .dashboard4:
-            columnCount = DashboardConstants.UI.fourMetricGridColumns
-        case .dashboard12:
-            columnCount = DashboardConstants.UI.twelveMetricGridColumns
-        }
+        let columnCount = getMetricGridColumnCount(for: dashboardType)
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
+    }
+
+    /// Returns the number of columns for the metric grid based on the real device and dashboard type.
+    /// - Uses `DevicePlatform.isTablet` (UIDevice.current.model) to detect iPad.
+    /// - iPad: always 4 columns.
+    /// - iPhone: 2 columns for 4-metric, 3 columns for 12-metric.
+    func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
+        if DevicePlatform.isTablet { return 4 }
+        switch dashboardType {
+        case .dashboard4: return 2
+        case .dashboard12: return 3
+        }
     }
 
     // MARK: - Metric Updates

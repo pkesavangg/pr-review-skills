@@ -134,6 +134,12 @@ struct MetricGridUIKitView: UIViewRepresentable {
         collectionView.dataSource = context.coordinator
         collectionView.dragDelegate = context.coordinator
         collectionView.dropDelegate = context.coordinator
+
+        let tapBlocker = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.consumeTap))
+        tapBlocker.cancelsTouchesInView = false
+        tapBlocker.delaysTouchesBegan = false
+        tapBlocker.delaysTouchesEnded = false
+        collectionView.addGestureRecognizer(tapBlocker)
     }
 }
 
@@ -194,14 +200,8 @@ extension MetricGridUIKitView {
             )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
-            cell.gestureRecognizers?.forEach { cell.removeGestureRecognizer($0) }
-            if store.state.ui.isEditMode {
-                // No long-press delay drag start
-                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricDragLongPress(_:)))
-                longPress.minimumPressDuration = 0.0
-                cell.addGestureRecognizer(longPress)
-                cell.tag = indexPath.item
-            }
+            // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
+            // Drag & drop is handled by UICollectionViewDragDelegate without custom recognizers.
             cell.isUserInteractionEnabled = true
             
             // Set up delete callback (EditModeOverlay handles the UI)
@@ -217,28 +217,32 @@ extension MetricGridUIKitView {
             return cell
         }
         
-        @objc func handleMetricDragLongPress(_ gesture: UILongPressGestureRecognizer) {
-            guard gesture.state == .began,
-                  let cell = gesture.view as? MetricCell,
-                  let item = cell.representedItem,
-                  store.state.ui.isEditMode else { return }
-            // UIKit grid will handle drag-and-drop
-        }
+        // Removed custom long-press recognizer; drag is handled by system drag interaction
         
         // MARK: - UICollectionViewDelegateFlowLayout
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-            // Calculate item size based on dashboard type
-            let verticalPadding = store.state.metrics.dashboardType == .dashboard12 
-                ? MetricCardView.twelveCardVerticalPadding 
+            // Calculate item size based on device type and dashboard type
+            let verticalPadding = store.state.metrics.dashboardType == .dashboard12
+                ? MetricCardView.twelveCardVerticalPadding
                 : MetricCardView.fourCardVerticalPadding
-            
-            
-            let columns: Int = 3
-            let totalSpacing = 40 + CGFloat((columns - 1)) * .spacingSM
+
+            // Determine columns using centralized helper
+            let columns: Int = store.metricsManager.getMetricGridColumnCount(for: store.effectiveDashboardType)
+
+            // Spacing and insets from layout if available
+            let (horizontalInsets, interItemSpacing): (CGFloat, CGFloat) = {
+                if let flow = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+                    return (flow.sectionInset.left + flow.sectionInset.right, flow.minimumInteritemSpacing)
+                } else {
+                    return (40, .spacingSM) // Fallback to defaults used in createLayout()
+                }
+            }()
+
+            let totalSpacing = horizontalInsets + CGFloat(max(columns - 1, 0)) * interItemSpacing
             let itemWidth = (collectionView.bounds.width - totalSpacing) / CGFloat(columns)
             let itemHeight = 70 + (verticalPadding * 2) // Base height + padding
-            
+
             return CGSize(width: itemWidth, height: itemHeight)
         }
         
@@ -480,6 +484,12 @@ extension MetricGridUIKitView {
                     }
                 }
             }
+        }
+
+        // MARK: - Gesture Sink
+        @objc func consumeTap(_ sender: UITapGestureRecognizer) {
+            // No-op; presence of this recognizer ensures taps in the grid are handled here
+            // and not propagated to parent background .onTapGesture that cancels edit mode.
         }
     }
 } 

@@ -120,16 +120,18 @@ class MetricCell: UICollectionViewCell {
                 }
             },
             onTap: {
-                                 // Only allow selection if not in edit mode
-                 if !store.state.ui.isEditMode {
-                     if store.state.ui.selectedMetricLabel == item.label {
-                         // Deselect if already selected
-                         onSelectMetric?("")
-                     } else {
-                         // Select if not selected
-                         onSelectMetric?(item.label)
-                     }
-                 }
+                // Only allow selection if not in edit mode
+                if !store.state.ui.isEditMode {
+                    if store.state.ui.selectedMetricLabel == item.label {
+                        // Deselect if already selected
+                        store.state.ui.selectedMetricLabel = nil
+                        onSelectMetric?("")
+                    } else {
+                        // Select if not selected
+                        store.state.ui.selectedMetricLabel = item.label
+                        onSelectMetric?(item.label)
+                    }
+                }
             },
             isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onDrop: { _, _ in false }, // Drag and drop handled by UIKit
@@ -160,8 +162,7 @@ class MetricCell: UICollectionViewCell {
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
-            self.addGestureRecognizer(tapGesture)
+            // In edit mode, rely on SwiftUI overlay buttons for add/remove; avoid intercepting taps here
         } else {
 
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
@@ -366,24 +367,7 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
-    @objc private func handleMetricTap(_ gesture: UITapGestureRecognizer) {
-        switch gesture.state {
-        case .began:
-            isTapped = true
-            // Reconfigure to hide overlay during tap
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
-            }
-        case .ended, .cancelled:
-            isTapped = false
-            // Reconfigure to show overlay after tap ends
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
-            }
-        default:
-            break
-        }
-    }
+    // Removed edit-mode tap handler to avoid swallowing SwiftUI overlay button taps
 
     @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, let item = representedItem else { return }
