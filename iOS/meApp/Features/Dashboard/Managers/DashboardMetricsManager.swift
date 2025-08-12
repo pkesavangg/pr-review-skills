@@ -166,14 +166,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func getMetricGridColumns(for dashboardType: DashboardType) -> [GridItem] {
-        // Always use 4 columns on iPad irrespective of dashboard type
+        // Use columns strictly based on dashboard type
+        // - dashboard4 → 2 columns
+        // - dashboard12 → 3 columns
         let columnCount: Int
-        if DevicePlatform.isTablet {
-            columnCount = 4
-        } else {
-            columnCount = dashboardType == .dashboard4 ?
-                DashboardConstants.UI.fourMetricGridColumns :
-                DashboardConstants.UI.twelveMetricGridColumns
+        switch dashboardType {
+        case .dashboard4:
+            columnCount = DashboardConstants.UI.fourMetricGridColumns
+        case .dashboard12:
+            columnCount = DashboardConstants.UI.twelveMetricGridColumns
         }
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }

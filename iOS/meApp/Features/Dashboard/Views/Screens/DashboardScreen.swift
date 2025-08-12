@@ -124,7 +124,8 @@ struct DashboardScreen: View {
                             store.state.ui.selectedMetricLabel = label
                             openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                         })
-                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
+                            // Use a consistent minimum height; drop iPad-specific override
+                            .frame(minHeight: 200)
                             .padding(.top, .spacingSM)
                             .id(store.state.ui.gridLayoutId)
                             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)

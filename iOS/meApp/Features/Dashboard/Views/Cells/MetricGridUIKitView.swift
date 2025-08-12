@@ -234,18 +234,8 @@ extension MetricGridUIKitView {
                 : MetricCardView.fourCardVerticalPadding
             
             
-            let columns: Int
-            if DevicePlatform.isTablet {
-                columns = 4
-            } else {
-                // Use shared constants and add a safe fallback on item count to ensure
-                // 3 columns for the 12-metric dashboard on mobile
-                if store.state.metrics.dashboardType == .dashboard12 || store.metricsToShow.count >= 12 {
-                    columns = DashboardConstants.UI.twelveMetricGridColumns
-                } else {
-                    columns = DashboardConstants.UI.fourMetricGridColumns
-                }
-            }
+            // Force 3 columns for metrics grid for consistency across devices
+            let columns: Int = DashboardConstants.UI.twelveMetricGridColumns
             let totalSpacing = 40 + CGFloat((columns - 1)) * .spacingSM
             let itemWidth = (collectionView.bounds.width - totalSpacing) / CGFloat(columns)
             let itemHeight = 70 + (verticalPadding * 2) // Base height + padding
