@@ -220,6 +220,7 @@ fun WifiScaleSetupScreenContent(
                 subtitle = WifiScaleSetupStrings.ChooseUser.Message,
                 selectButtonItems = userButtons,
                 isSelectable = true,
+                sku = state.sku,
                 onItemSelected = { value ->
                   onIntent(WifiScaleSetupIntent.SelectUser(value.toInt()))
                   onIntent(WifiScaleSetupIntent.SetUserNumber(value.toInt()))
@@ -232,7 +233,7 @@ fun WifiScaleSetupScreenContent(
                 title = WifiScaleSetupStrings.ActivateScaleSlide.Title,
                 subtitle = WifiScaleSetupStrings.ActivateScaleSlide.Message,
                 isGifImage = true,
-                supportingImage = AppIcons.Setup.WifiPair,
+                supportingImage = if (state.sku == "0384") AppIcons.Setup.WifiPair else AppIcons.Setup.WifiPair0396,
               )
             }
 
@@ -265,7 +266,11 @@ fun WifiScaleSetupScreenContent(
 
                 else -> {
                   // Normal flow: Both modes available
-                  SelectButtonHelper.createWifiModeButtons(selectedMode = state.selectedWifiMode)
+                  SelectButtonHelper.createWifiModeButtons(
+                    selectedMode = state.selectedWifiMode,
+                    state.sku,
+                    state.selectedUser,
+                  )
                 }
               }
 
@@ -282,6 +287,7 @@ fun WifiScaleSetupScreenContent(
                 },
                 selectButtonItems = wifiButtons,
                 isSelectable = true,
+                sku = state.sku,
                 onItemSelected = { value ->
                   onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
                 },
@@ -304,6 +310,7 @@ fun WifiScaleSetupScreenContent(
                 subtitle = WifiScaleSetupStrings.Error.Message,
                 selectButtonItems = errorButtons,
                 isSelectable = true,
+                sku = state.sku,
                 onItemSelected = { value ->
                   onIntent(WifiScaleSetupIntent.SelectErrorCode(value))
                 },
@@ -333,7 +340,7 @@ fun WifiScaleSetupScreenContent(
                 title = WifiScaleSetupStrings.ScaleCount.Title,
                 subtitle = WifiScaleSetupStrings.ScaleCount.Message,
                 isGifImage = true,
-                supportingImage = AppIcons.Setup.WifiCountOn,
+                supportingImage = AppIcons.Setup.WifiStepOnApMode,
               )
             }
 

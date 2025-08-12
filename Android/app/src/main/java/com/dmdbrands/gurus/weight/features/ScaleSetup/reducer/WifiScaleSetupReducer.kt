@@ -38,7 +38,7 @@ data class WifiScalePasswordFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
-          FormValidations.minLength(6, LoginStrings.PasswordLabel),
+          FormValidations.minLength(1, LoginStrings.PasswordLabel),
           FormValidations.maxLength(50, LoginStrings.PasswordLabel),
         ),
       ),
@@ -297,6 +297,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         currentStep = intent.step,
         isNavigating = false, // Clear navigation state after direct step change
       )
+
       is WifiScaleSetupIntent.SetLoading -> state.copy(
         isLoading = intent.isLoading,
         isNavigating = if (!intent.isLoading) false else state.isNavigating, // Clear navigation state when loading finishes
@@ -327,6 +328,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
                   state.steps[state.currentStepIndex + 1]
                 } else null
               }
+
               else -> {
                 // Skip SWITCH_WIFI step and go directly to SCALE_COUNTS
                 WifiScaleSetupStep.SCALE_COUNTS
@@ -397,8 +399,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         if (nextStep != null) {
           // Clear error state when returning to normal flow from error flows
           val updatedState = if (state.currentStep == WifiScaleSetupStep.ERROR_CODE_SELECTED &&
-           nextStep == WifiScaleSetupStep.WIFI_MODE
-           ) {
+            nextStep == WifiScaleSetupStep.WIFI_MODE
+          ) {
             state.copy(
               selectedErrorCode = null,
               showError = false,
@@ -530,7 +532,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           val finalState = if (state.currentStep == WifiScaleSetupStep.ACTIVATE_SCALE && state.showError) {
             updatedState.copy(
               showError = false,
-              selectedErrorCode = null
+              selectedErrorCode = null,
             )
           } else {
             updatedState
