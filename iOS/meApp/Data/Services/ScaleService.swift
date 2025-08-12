@@ -171,7 +171,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
         let accountId = try await getAccountId()
-        
+
         // Get devices for the current account
         let localDevices = try await localRepository.listScales(forAccountId: accountId)
 
@@ -319,7 +319,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
 
     func createDevice(_ device: Device) async throws -> Device {
-        let dto = device.toDTO()
         let existingDevices = try await localRepository.listScales()
 
         // Check for existing device more thoroughly
@@ -327,8 +326,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Check by ID first
             if localDevice.id == device.id { return true }
             // Then check by other identifiers
-            if let localBroadcastId = localDevice.broadcastIdString, let newBroadcastId = dto.broadcastIdString, localBroadcastId == newBroadcastId { return true }
-            if let localMac = localDevice.mac, let newMac = dto.mac, localMac == newMac { return true }
+            if let localBroadcastId = localDevice.broadcastIdString, let newBroadcastId = device.broadcastIdString, localBroadcastId == newBroadcastId { return true }
+            if let localMac = localDevice.mac, let newMac = device.mac, localMac == newMac { return true }
             return false
         }
 
@@ -518,7 +517,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                             }
                         } else {
                             createdDTO = try await remoteRepo.createScale(dto)
-                        }                        
+                        }
                         // Update local device with server ID
                         device.id = createdDTO?.id ?? device.id
                         device.hasServerID = true // Mark as having server ID
@@ -553,16 +552,13 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private func pullServerStateAndReplace(accountId: String) async {
         do {
             let serverScales = try await remoteRepo.listScales()
-            print("serverScales: \(serverScales)")
-            let serverDevices = serverScales.map { Device(from: $0, accountId: accountId) }
-
             // Get any unsynced local devices to preserve them
             let unsyncedDevices = try await localRepository.getUnsyncedDevices()
 
             // Replace synced devices with server state, preserve unsynced local devices
-            try await localRepository.replaceAllDevicesForAccount(accountId, with: serverDevices, preserveUnsynced: unsyncedDevices)
+            try await localRepository.replaceAllDevicesForAccount(accountId, with: serverScales, preserveUnsynced: unsyncedDevices)
             await refreshScalesFromLocal()
-            logger.log(level: .info, tag: tag, message: "Successfully replaced local storage with \(serverDevices.count) devices from server, preserved \(unsyncedDevices.count) unsynced local devices")
+            logger.log(level: .info, tag: tag, message: "Successfully replaced local storage with \(serverScales.count) devices from server, preserved \(unsyncedDevices.count) unsynced local devices")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: \(error.localizedDescription)")
         }

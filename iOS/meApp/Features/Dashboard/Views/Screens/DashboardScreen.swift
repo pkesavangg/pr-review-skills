@@ -66,7 +66,7 @@ struct DashboardScreen: View {
             // Only rebuild layout when entering edit to start wiggle animations
             if isEdit { store.resetDragState() }
         }
-        .onChange(of: store.currentUnit) { _, _ in 
+        .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
@@ -125,13 +125,13 @@ struct DashboardScreen: View {
                             .id(store.state.ui.gridLayoutId)
                             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
                     }
-                    
+
                     if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
                         Divider()
                             .padding(.horizontal, .spacingLG)
                             .padding(.vertical, .spacingSM)
                     }
-                    
+
                     if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
                         GoalStreakGridUIKitView(store: store)
                             .frame(minHeight: 200)
@@ -183,7 +183,7 @@ struct DashboardScreen: View {
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                 })
-                
+
                 // Add button to switch to 12 metrics if currently showing 4 metrics
                 if store.state.metrics.dashboardType == .dashboard4 {
                     ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {

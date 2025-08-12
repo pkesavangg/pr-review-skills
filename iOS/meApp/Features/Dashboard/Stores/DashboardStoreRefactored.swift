@@ -98,7 +98,7 @@ class DashboardStore: ObservableObject {
                 self?.state.data = dataState
             }
             .store(in: &cancellables)
-        
+
 
     }
 
@@ -163,7 +163,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst() 
+            .dropFirst()
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
@@ -632,13 +632,13 @@ class DashboardStore: ObservableObject {
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
     }
-    
+
     /// Updates the goal card position in the grid (like a large widget)
     /// - Parameter newPosition: The new position after the divider (0 = first position)
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
         let clampedPosition = max(0, min(newPosition, maxPosition))
-        
+
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .info, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
@@ -652,18 +652,11 @@ class DashboardStore: ObservableObject {
         state.ui.gridLayoutId = UUID()
     }
 
-    /// Clears drag-related flags without bumping `gridLayoutId` to avoid ScrollView jump
-    private func clearDragStateNonDestructive() {
-        state.ui.draggingMetric = nil
-        state.ui.draggingStreak = nil
-        state.ui.dropHoverId = nil
-    }
-    
     /// Restarts wiggle animations for all visible cells when app becomes active from background
     func restartWiggleAnimations() {
         // Clear the interval cache to ensure fresh randomization
         UIView.clearWiggleIntervalCache()
-        
+
         state.ui.gridLayoutId = UUID()
         objectWillChange.send()
         logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
@@ -778,7 +771,7 @@ class DashboardStore: ObservableObject {
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
         state.ui.resetDragState()
-        
+
         // Reset the saved order to restore default order
         resetGridOrder()
 
@@ -820,7 +813,7 @@ class DashboardStore: ObservableObject {
             }
         }
     }
-    
+
     /// Resets the saved grid order to restore default order
     private func resetGridOrder() {
         state.ui.streakGridOrder = []
@@ -847,6 +840,9 @@ class DashboardStore: ObservableObject {
     func updateSelectedPeriod(_ period: TimePeriod) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
+
+        // End any scrolling immediately so new period computes fresh domain/x-axis
+        graphManager.endScrollingImmediately()
 
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
@@ -942,14 +938,15 @@ class DashboardStore: ObservableObject {
         // For TOTAL period, use all data to ensure Y-axis reflects complete range
         let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
 
-        graphManager.calculateAndCacheYAxisDomain(
-            from: operationsForYAxis,
-            goalWeight: goalWeightForDisplay,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
-        )
+        // Apply cache update in a transaction that disables animations to prevent layout jumps
+       graphManager.calculateAndCacheYAxisDomain(
+                from: operationsForYAxis,
+                goalWeight: goalWeightForDisplay,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay,
+                chartHeight: state.graph.chartHeight
+            )
 
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
@@ -1077,12 +1074,12 @@ class DashboardStore: ObservableObject {
     func startDraggingStreak(_ streak: MetricItem) {
         state.ui.draggingStreak = streak
     }
-    
+
     /// Start dragging the goal card
     func startDraggingGoalCard() {
         state.ui.isGoalCardBeingDragged = true
     }
-    
+
     /// Update drop target during drag
     func updateDropTarget(_ targetId: String?) {
         state.ui.dropHoverId = targetId
@@ -1138,18 +1135,18 @@ class DashboardStore: ObservableObject {
            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
             return
         }
-        
+
         // Move the metric in the data source
         let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
         metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
-        
+
         // Update active metrics count if needed
         let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
         metricsManager.state.activeMetricsCount = currentActiveCount
-        
+
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
-        
+
         logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
     }
 
@@ -1353,7 +1350,7 @@ class DashboardStore: ObservableObject {
             self.state.ui.gridLayoutId = UUID()
             self.objectWillChange.send()
         }
- 
+
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
     }
 
