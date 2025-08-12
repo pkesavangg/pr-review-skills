@@ -52,6 +52,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
+    private let migrationService = ScaleMigrationService()
     private var isSyncing = false
 
     // MARK: - Published State
@@ -101,7 +102,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// 1. Push local changes (creates, edits, deletes) to server
     /// 2. Fetch fresh server state
     /// 3. Replace only synced devices with server state, preserve unsynced local devices
-    public func syncAllScalesWithRemote() async {
+    public func syncAllScalesWithRemote() async { 
         let accountId: String
         do {
             accountId = try await getAccountId()
@@ -109,6 +110,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Scale sync started")
         if isSyncing {
             logger.log(level: .info, tag: tag, message: "Sync already in progress, skipping")
             return
@@ -122,8 +124,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         await pullServerStateAndReplace(accountId: accountId)
 
         // Step 3: Refresh published scales
-
+        await refreshScalesFromLocal()
         isSyncing = false
+        logger.log(level: .info, tag: tag, message: "Scale sync completed")
     }
 
     // MARK: - DeviceServiceProtocol Implementation
@@ -440,7 +443,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         guard let account = try await accountService.getActiveAccount() else {
             throw AccountError.noActiveAccount
         }
-        return String(describing: account.id)
+        return account.accountId
     }
 
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
@@ -456,13 +459,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     public func pushLocalChangesToServer() async {
         do {
             logger.log(level: .info, tag: tag, message: "Pushing local changes to server")
-            let accountId: String
-            do {
-                accountId = try await getAccountId()
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to get account ID for sync: \(error.localizedDescription)")
-                return
-            }
             // Handle deletions first
             let devicesMarkedForDeletion = try await localRepository.getDevicesMarkedForDeletion()
             for device in devicesMarkedForDeletion {
@@ -576,5 +572,4 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         //Add Properties here in order to update the device
         return properties
     }
-
 }

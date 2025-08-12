@@ -49,7 +49,10 @@ final class GoalAlertService: ObservableObject {
               let goalWeight = goalSettings.goalWeight else { return }
 
         let storageKey = goalAlertStorageKey(for: account.accountId)
-        let alertAlreadyShown = (kv.getValue(forKey: storageKey) as? Bool) ?? false
+        guard let alertAlreadyShown = (kv.getValue(forKey: storageKey) as? Bool) else {
+            kv.setValue(false, forKey: storageKey)
+            return
+        }
         guard !alertAlreadyShown else { return }
         let hasMetGoal: Bool = {
             switch goalType {

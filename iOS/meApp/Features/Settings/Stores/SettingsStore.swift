@@ -43,7 +43,7 @@ class SettingsStore: ObservableObject {
     private let loaderLang = LoaderStrings.self
     private let legalURLs = AppConstants.LegalURLs.self
     
-    private let hasSeenAddMultipleAccountsModalKey = "hasSeenAddMultipleAccountsModal"
+    private let hasSeenAddMultipleAccountsModalKey = KvStorageKeys.addMultipleAccountsModal.rawValue
     
     let tag = "SettingsStore"
     
@@ -1075,6 +1075,25 @@ class SettingsStore: ObservableObject {
     func resetGoalForm() {
         goalForm = GoalForm()
         populateGoalFormIfNeeded()
+    }
+    
+    /// Handles goal type segment changes and ensures proper form state
+    func handleGoalTypeChange(_ newSegment: GoalTypeSegment) {
+        selectedSegment = newSegment
+        let newGoalTypeValue = newSegment.goalTypeValue
+        
+        // Only update if the value is actually different
+        if goalForm.goalType.value != newGoalTypeValue {
+            goalForm.goalType.value = newGoalTypeValue
+            // Explicitly mark as dirty to ensure the form recognizes the change
+            goalForm.goalType.markAsDirty()
+        }
+        
+        // Force form validation to update computed properties
+        goalForm.validate()
+        
+        // Trigger UI update by sending objectWillChange
+        objectWillChange.send()
     }
     
     /// Notifies other components about goal type changes

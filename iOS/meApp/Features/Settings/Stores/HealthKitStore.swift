@@ -54,7 +54,7 @@ final class HealthKitStore: ObservableObject {
         Task {
             do {
                 let result = try await self.integrationService.getStoredIntegrationData()
-                isIntegrated = result?.isIntegrated ?? false
+                isIntegrated = (result?.isIntegrated ?? false && (result?.assignedTo == accountService.activeAccount?.accountId))
                 self.isOutOfSync = await self.healthKitService.isHKOutOfSync()
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)

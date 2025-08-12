@@ -24,6 +24,9 @@ struct UIState {
     
     // Goal card position management (like large widget)
     var goalCardPosition: Int = 0 // Position after divider (0 = first position)
+    
+    // Streak grid order management - saves the order of streak items as array of IDs
+    var streakGridOrder: [String] = [] // Array of MetricItem.id.uuidString to preserve order
 
     // Drag & Drop State
     var draggingMetric: MetricItem? = nil
