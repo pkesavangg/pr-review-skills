@@ -12,7 +12,7 @@ data class SelectButtonItem(
   val id: String,
   val displayValue: SelectButtonDisplayValue,
   val emitValue: String,
-  val isSelected: Boolean = false
+  var isSelected: Boolean = false
 )
 
 /**

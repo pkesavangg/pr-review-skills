@@ -117,6 +117,52 @@ final class IntegrationsService: IntegrationServiceProtocol {
         }
     }
     
+    // MARK: - Entry Sync Operations ------------------------------------------------
+    
+    /// Syncs a new entry to the integrated health service (e.g., HealthKit) if integration is active.
+    /// This method checks if HealthKit integration is active and delegates to the appropriate service.
+    func syncNewEntry(_ entry: Entry) async throws {
+        guard let integrationInfo = try await getStoredIntegrationData(),
+              integrationInfo.isIntegrated else {
+            // No integration active, nothing to sync
+            return
+        }
+        
+        switch integrationInfo.type {
+        case .healthKit:
+            // Delegate to HealthKit service for syncing
+            try await HealthKitService.shared.syncNewData(entry: entry)
+            logger.log(level: .info, tag: "IntegrationService", message: "Successfully synced new entry to HealthKit: \(entry.id)")
+        default:
+            // Other integrations not implemented for entry sync yet
+            logger.log(level: .debug, tag: "IntegrationService", message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)")
+        }
+    }
+    
+    /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
+    /// This method checks if HealthKit integration is active and delegates to the appropriate service.
+    func deleteEntry(_ entry: Entry) async throws {
+        guard let integrationInfo = try await getStoredIntegrationData(),
+              integrationInfo.isIntegrated else {
+            // No integration active, nothing to delete
+            return
+        }
+        
+        switch integrationInfo.type {
+        case .healthKit:
+            // Delegate to HealthKit service for deletion
+            let success = try await HealthKitService.shared.deleteEntry(entry: entry)
+            if success {
+                logger.log(level: .info, tag: "IntegrationService", message: "Successfully deleted entry from HealthKit: \(entry.id)")
+            } else {
+                logger.log(level: .error, tag: "IntegrationService", message: "Failed to delete entry from HealthKit: \(entry.id)")
+            }
+        default:
+            // Other integrations not implemented for entry deletion yet
+            logger.log(level: .debug, tag: "IntegrationService", message: "Entry deletion not implemented for integration type: \(integrationInfo.type.rawValue)")
+        }
+    }
+    
     // MARK: - Health Integration Logging ------------------------------------------------
     /// Sends the newly-created `Entry` to the `/integrations/health/log` endpoint when the
     /// current account is integrated with Apple Health and at least one permission is granted.
