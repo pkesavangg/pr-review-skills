@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight
 
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import com.dmdbrands.gurus.weight.core.di.AppEntryPoint
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager
 import dagger.hilt.android.EntryPointAccessors
@@ -12,11 +14,23 @@ import android.app.Application
  * Handles application-level initialization and configuration.
  */
 @HiltAndroidApp
-class MeAppApplication : Application() {
+class MeAppApplication : Application(), Configuration.Provider {
 
   @Inject
   lateinit var notificationManager: NotificationManager
-  override fun onCreate() {
+
+  @Inject
+  lateinit var workerFactory: HiltWorkerFactory
+
+
+
+  override val workManagerConfiguration: Configuration
+    get() =
+      Configuration.Builder()
+        .setWorkerFactory(workerFactory)
+        .build()
+
+    override fun onCreate() {
     super.onCreate()
 
     // Initialize services needed for the app

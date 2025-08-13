@@ -259,7 +259,6 @@ constructor(
    */
   private suspend fun checkLoginStatus(): Boolean =
     try {
-      // Check active account first
       val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
       // Then check other logged-in accounts
       val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
@@ -287,7 +286,7 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
-    navigationService.replaceStack(route = route)
+    navigationService.navigateTo(route = route)
   }
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
