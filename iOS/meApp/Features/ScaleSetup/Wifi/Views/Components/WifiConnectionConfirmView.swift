@@ -9,6 +9,7 @@ import SwiftUI
 
 struct WifiConnectionConfirmView: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
     let sku: String
     let userNumber: Int?
     let selectedOption: WifiSetupOption
@@ -20,7 +21,9 @@ struct WifiConnectionConfirmView: View {
     private let lang = WifiScaleSetupStrings.UserConfirmationViewStrings.self
     private let appAssets = AppAssets.self
     private let sku0384 = "0384"
-    private let imageSize: CGFloat = 120
+    private let sku0396 = "0396"
+    private let imageSize120: CGFloat = 120
+    private let imageSize100: CGFloat = 100
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -70,13 +73,22 @@ struct WifiConnectionConfirmView: View {
     
     private var apModeConnectionView: some View {
         VStack(alignment: .center) {
-            if let userNumber = self.userNumber {
+            if sku != sku0384 {
+                Image(appAssets.stepOnImageName(sku: sku0396,
+                                                isFilled: true,
+                                                isDarkMode: themeManager.isDarkMode))
+                .resizable()
+                .frame(width: imageSize100, height: imageSize100)
+            } else {
                 GifView(
-                    gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
-                    width: 120,
-                    height: 120
+                    gifName: appAssets.wifiSetupStepOnGifName(
+                        isFilled: true,
+                        isDarkMode: themeManager.isDarkMode
+                    ),
+                    width: imageSize120,
+                    height: imageSize100
                 )
-                .frame(width: 120, height: 120)
+                .frame(width: imageSize120, height: imageSize100)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -96,22 +108,24 @@ struct WifiConnectionConfirmView: View {
         VStack {
             Button(action: handleCompleteSelection) {
                 if sku != sku0384 {
-                    Image(appAssets.wifiSetupComplete)
+                    Image(appAssets.completeImageName(isFilled: selectedOption == .complete, isDarkMode: themeManager.isDarkMode))
                         .resizable()
-                        .frame(width: imageSize, height: imageSize)
+                        .frame(width: imageSize100, height: imageSize100)
                 } else {
                     if let userNumber = self.userNumber {
                         GifView(
-                            gifName: appAssets.wifiSetupCompleteGifName(user: userNumber),
-                            width: imageSize,
-                            height: imageSize
+                            gifName: appAssets.wifiSetupCompleteGifName(
+                                user: userNumber,
+                                isFilled: selectedOption == .complete,
+                                isDarkMode: themeManager.isDarkMode
+                            ),
+                            width: imageSize120,
+                            height: imageSize100
                         )
-                        .frame(width: imageSize, height: imageSize)
+                        .frame(width: imageSize120, height: imageSize100)
                     }
                 }
             }
-            
-            selectionIndicator(for: .complete)
         }
     }
     
@@ -120,22 +134,23 @@ struct WifiConnectionConfirmView: View {
             Button(action: handleApModeSelection) {
                 apModeImage
             }
-            selectionIndicator(for: .apMode)
         }
     }
     
     private var apModeImage: some View {
-        Image(appAssets.wifiApMode(sku))
-            .resizable()
-            .frame(width: imageSize, height: imageSize)
-    }
-    
-    private func selectionIndicator(for option: WifiSetupOption) -> some View {
-        AppIconView(
-            icon: selectedOption == option ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
-            size: IconSize(width: 24, height: 24)
+        let displaySku = sku == sku0384 ? sku0384 : sku0396
+        return Image(
+            appAssets.apModeImageName(
+                sku: displaySku,
+                isFilled: selectedOption == .apMode,
+                isDarkMode: themeManager.isDarkMode
+            )
         )
-        .foregroundColor(theme.statusIconPrimary)
+        .resizable()
+        .frame(
+            width: displaySku == sku0384 ? imageSize120 : imageSize100,
+            height: imageSize100
+        )
     }
     
     private var noteSection: some View {

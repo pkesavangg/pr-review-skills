@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ErrorCodeSelectionView: View {
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
+    let sku: String
     private let lang = WifiScaleSetupStrings.ErrorCodeSelectionViewStrings.self
     private let wifiSetuplang = WifiScaleSetupStrings.self
     @State var selectedError: WifiErrorCode? = nil
@@ -23,7 +25,6 @@ struct ErrorCodeSelectionView: View {
         [.t204, .t205, .t206],
         [.t315, .t323, .t325]
     ]
-    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: .spacingLG) {
@@ -43,7 +44,8 @@ struct ErrorCodeSelectionView: View {
                 ErrorCodeButtonGrid(
                     errorCodes: errorCodes,
                     selectedError: $selectedError,
-                    onErrorSelected: onErrorSelected
+                    onErrorSelected: onErrorSelected,
+                    sku: sku
                 )
                 
                 ButtonView(text: wifiSetuplang.seeSomethingElse, type: .inlineTextPrimary, size: .large, isDisabled: false) {
@@ -58,8 +60,10 @@ struct ErrorCodeSelectionView: View {
 }
 
 #Preview {
-    ErrorCodeSelectionView() { errorCode in
-        print("Selected error: \(String(describing: errorCode))")
-    }
+    ErrorCodeSelectionView(
+        sku: "0384", onErrorSelected: { errorCode in
+            print("Selected error: \(String(describing: errorCode))")
+        }
+    )
     .environmentObject(Theme.shared)
 }
