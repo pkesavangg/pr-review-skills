@@ -43,7 +43,6 @@ struct LandingScreen: View {
                                     router.navigate(to: .login(nil))
                                 }
                             }
-                            .frame(minWidth: 96)
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .signup)

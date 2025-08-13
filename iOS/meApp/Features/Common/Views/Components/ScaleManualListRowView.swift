@@ -26,17 +26,15 @@ struct ScaleManualListRowView: View {
                 Text(scale.productName.lowercased())
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textSubheading)
-                Spacer()
-                HStack(spacing: .spacingXS) {
-                    AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 20, height: 20))
-                        .foregroundColor(theme.statusIconSecondary)
-                    Text(connectivityText(for: scale.setupType))
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                
             }
             .frame(height: 75)
+
             Spacer()
+            AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 24, height: 24))
+                .foregroundColor(theme.actionPrimary)
             Image(AppAssets.chevronRight)
                 .foregroundColor(theme.actionPrimary)
         }
@@ -59,7 +57,7 @@ struct ScaleManualListRowView: View {
             return "BtWifi"
         }
     }
-
+    
     private func iconName(for type: ScaleSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt:

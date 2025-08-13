@@ -35,12 +35,16 @@ struct LoginScreen: View {
         VStack {
             NavbarHeaderView(
                 title: isFromAccountSwitching ? commonLang.logIn.capitalized : "",
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: {
+                    Image(AppAssets.xmark)
+                        .frame(width: 24, height: 24)
+                },
                 trailingContent: {
                     Button {
                         store.openHelp()
                     } label: {
                         Image(AppAssets.helpCircle)
+                            .frame(width: 24, height: 24)
                     }
                 },
                 onLeadingTap: {
@@ -59,6 +63,13 @@ struct LoginScreen: View {
                 VStack {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .center) {
+                            
+                            // Only show spacer when keyboard is not visible
+                            if keyboardHeight == 0 {
+                                Spacer()
+                                    .frame(minHeight: geometry.size.height * 0.15)
+                            }
+                            
                             VStack(spacing: 0) {
                                 Text(lang.welcomeBack)
                                     .fontOpenSans(.heading4)
@@ -105,7 +116,7 @@ struct LoginScreen: View {
                                 }
                                 .padding(.bottom, .spacingSM)
                                 
-                                VStack(spacing: .spacingSM) {
+                                VStack(spacing: .spacingMD) {
                                     ButtonView(
                                         text: commonLang.logIn,
                                         type: .filledPrimary,
