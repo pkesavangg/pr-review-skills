@@ -135,7 +135,8 @@ class PushNotificationService: NSObject {
         
         // If permission is not enabled, optionally present the disabled alert
         if permissionResult != .ENABLED {
-            let viewedKey = key(for: "hasViewedNotificationAlert")
+            let accountId = accountService.activeAccount?.accountId ?? ""
+            let viewedKey = KvStorageKeys.notificationOnlyAlertShownKey(for: accountId)
             let hasViewedAlert = (KvStorageService.shared.getValue(forKey: viewedKey) as? Bool) ?? false
             if !hasViewedAlert || isFromScaleSetup {
                 permissionResult = await permissionsService.handlePermission(.notification)

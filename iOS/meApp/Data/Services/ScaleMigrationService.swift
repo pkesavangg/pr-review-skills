@@ -17,6 +17,10 @@ final class ScaleMigrationService {
     
     private let tag = "ScaleMigrationService"
     
+    init() {
+        // Initialize with dependency injection
+    }
+    
     // Using shared public MigrationKey enum for key composition
     
     /// Checks if scale migration is needed by looking for Ionic app scale data
