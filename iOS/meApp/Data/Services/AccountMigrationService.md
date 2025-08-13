@@ -13,6 +13,7 @@ The Ionic app (using Capacitor Preferences) stores account data in iOS UserDefau
 - `activeAccountKey`: Contains the active account JSON string
 - `offlineAccount_{accountId}`: Contains offline account data per user
 - `{accountId}-hasSeenSetNewGoal`: Contains goal alert flag per user
+- `{accountId}_goalCardStatus`: Contains goal card viewed flag per user
 - `{accountId}-colorMode`: Contains appearance/theme preference per user
 - `{accountId}-healthKitIntegrated`: Contains HealthKit integration status per user
 - `healthKitIntegratedAssignedTo`: Contains the account ID that HealthKit is assigned to (global)
@@ -28,11 +29,12 @@ When the native app launches:
 3. **Convert to SwiftData**: Transforms the Ionic account structure to the native Account model
 4. **Save to SwiftData**: Inserts the converted account into the SwiftData persistence layer
 5. **Migrate Goal Alert Data**: Transfers goal alert flags from Ionic format to native format
-6. **Migrate Appearance Data**: Transfers appearance/theme preferences from Ionic format to native format
-7. **Migrate HealthKit Integration Data**: Transfers HealthKit integration settings from Ionic format to native format
-8. **Migrate Notification Alert Data**: Transfers notification alert viewed flag from Ionic format to native format
-9. **Migrate Feed Data**: Transfers feed notification settings and last triggered timestamps from Ionic format to native format
-10. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
+6. **Migrate Goal Card Status Data**: Transfers goal card viewed flags from Ionic format to native format
+7. **Migrate Appearance Data**: Transfers appearance/theme preferences from Ionic format to native format
+8. **Migrate HealthKit Integration Data**: Transfers HealthKit integration settings from Ionic format to native format
+9. **Migrate Notification Alert Data**: Transfers notification alert viewed flag from Ionic format to native format
+10. **Migrate Feed Data**: Transfers feed notification settings and last triggered timestamps from Ionic format to native format
+11. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
 
 ### 3. Data Mapping
 
@@ -95,12 +97,13 @@ This method:
 1. First migrates account data using `migrateAccountData()`
 2. Then migrates scale data for **ALL accounts** using `migrateAllScaleData()` (not just the current account)
 3. Migrates goal alert storage keys from Ionic to native format for all accounts
-4. Migrates appearance/theme preferences from Ionic to native format for all accounts
-5. Migrates HealthKit integration settings from Ionic to native format
-6. Migrates notification alert viewed flag from Ionic to native format for all accounts
-7. Migrates feed data (settings and timestamps) from Ionic to native format for all accounts
-8. Performs cleanup for account, scale, goal alert, appearance, HealthKit integration, notification alert, and feed data for all accounts
-9. Returns both the migrated account and the total number of scales migrated across all accounts
+4. Migrates goal card status from Ionic to native format for all accounts
+5. Migrates appearance/theme preferences from Ionic to native format for all accounts
+6. Migrates HealthKit integration settings from Ionic to native format
+7. Migrates notification alert viewed flag from Ionic to native format for all accounts
+8. Migrates feed data (settings and timestamps) from Ionic to native format for all accounts
+9. Performs cleanup for account, scale, goal alert, goal card status, appearance, HealthKit integration, notification alert, and feed data for all accounts
+10. Returns both the migrated account and the total number of scales migrated across all accounts
 
 ### 5. Scale Migration for All Accounts
 The service now includes methods to migrate scales for all accounts that have scale data stored in the Ionic app:
@@ -142,6 +145,7 @@ After successful migration:
 - Removes `CapacitorStorage.activeAccountKey` from UserDefaults
 - Removes `CapacitorStorage.offlineAccount_{accountId}` for the migrated account
 - **Removes `CapacitorStorage.{accountId}-hasSeenSetNewGoal` goal alert flags for ALL accounts found in UserDefaults**
+- **Removes `CapacitorStorage.{accountId}_goalCardStatus` goal card status flags for ALL accounts found in UserDefaults**
 - **Removes `CapacitorStorage.{accountId}-colorMode` appearance preferences for ALL accounts found in UserDefaults**
 - Removes `CapacitorStorage.{accountId}-healthKitIntegrated` HealthKit integration status
 - Removes `CapacitorStorage.healthKitIntegratedAssignedTo` if it matches the migrated account
@@ -155,6 +159,7 @@ After successful migration:
 
 **Notes**: 
 - The goal alert cleanup now scans for and removes goal alert keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
+- The goal card status cleanup now scans for and removes goal card status keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
 - The appearance cleanup now scans for and removes appearance/color mode keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
 - The notification alert cleanup removes both account-scoped notification alert keys for all accounts and the global notification alert key from the Ionic app.
 - The feed data cleanup removes both feed settings and feed timestamp keys for all accounts that were previously logged into the Ionic app.
@@ -279,7 +284,42 @@ The main method `migrateAllGoalAlertData()`:
 
 This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had goal alerts shown for each, all of those states are preserved when migrating to the native app.
 
-### 11. Appearance Mode Migration
+### 11. Goal Card Status Migration
+
+The service handles migration of the goal card status (goalCardStatus) flags from the Ionic app to the native app **for all accounts** that have data stored.
+
+#### Ionic Goal Card Status Storage Format
+The Ionic app stores goal card status data as:
+- `CapacitorStorage.{accountId}_goalCardStatus`: String value ("true"/"false") indicating if the goal card has been viewed for the specific account
+
+#### Native Goal Card Status Storage Format  
+The native app stores the same data as:
+- `{accountId}_setAGoalCardViewed`: Boolean value indicating if the goal card has been viewed for the specific account
+
+#### Migration Process
+1. **Scan UserDefaults**: Finds all account IDs that have goal card status keys stored
+2. **Migrate All Accounts**: For each found account ID:
+   - Reads the Ionic goal card status flag from UserDefaults
+   - Parses the string value to extract the boolean
+   - Stores the boolean value using the native account-scoped key format
+3. **Cleanup All Data**: Removes all Ionic goal card status keys after successful migration
+
+#### Migration Methods
+```swift
+func migrateAllGoalCardStatusData()
+func migrateGoalCardStatusData(for accountId: String)
+func cleanupAllGoalCardStatusData()
+```
+
+The main method `migrateAllGoalCardStatusData()`:
+- Scans UserDefaults for all account IDs that have goal card status data
+- Migrates each account's goal card status flag individually
+- Ensures no account's goal card status is lost during migration
+- Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had goal cards viewed for each, all of those states are preserved when migrating to the native app.
+
+### 12. Appearance Mode Migration
 
 The service handles migration of the appearance/color mode settings from the Ionic app to the native app **for all accounts** that have data stored.
 
@@ -319,7 +359,7 @@ The main method `migrateAllAppearanceData()`:
 
 This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had different appearance preferences for each, all of those preferences are preserved when migrating to the native app.
 
-### 12. Feed Data Migration
+### 13. Feed Data Migration
 
 The service handles migration of feed notification settings and last triggered timestamps from the Ionic app to the native app **for all accounts** that have data stored.
 

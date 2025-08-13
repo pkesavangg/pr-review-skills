@@ -10,6 +10,7 @@ public enum MigrationKey: String {
     case pairedScalesKey = "pairedScalesKey"
     /// Goal alert flag key suffix used by the Ionic app, namespaced per account
     case goalAlertKey = "hasSeenSetNewGoal"
+    case setAGoalCardStatus = "goalCardStatus"
     /// Appearance/color mode key suffix used by the Ionic app, namespaced per account
     case appearanceKey = "colorMode"
     /// HealthKit integration status key used by the Ionic app (per account)
@@ -38,8 +39,15 @@ public enum MigrationKey: String {
     /// Builds the full goal alert storage key for the given account id
     /// - Parameter accountId: The account identifier
     /// - Returns: The full Capacitor storage key for goal alert flag
-    public static func goalAlertKey(for accountId: String) -> String {
+    public static func goalMetAlertKey(for accountId: String) -> String {
         return Self.capacitorPrefix.rawValue + "\(accountId)-" + Self.goalAlertKey.rawValue
+    }
+    
+    /// Builds the full goal alert storage key for the given account id
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full Capacitor storage key for goal alert flag
+    public static func setAGoalCardViewedKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + "\(accountId)_" + Self.setAGoalCardStatus.rawValue
     }
     
     /// Builds the full appearance storage key for the given account id

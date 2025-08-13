@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import ggInAppMessagingPackage
+
 /// Service to migrate account data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
 @MainActor
 final class AccountMigrationService {
@@ -68,6 +69,9 @@ final class AccountMigrationService {
         // Migrate goal alert storage keys for all accounts (not just current account)
         migrateAllGoalAlertData()
         
+        // Migrate goal card status for all accounts (not just current account)
+        migrateAllGoalCardStatusData()
+        
         // Migrate appearance settings for all accounts (not just current account)
         migrateAllAppearanceData()
         
@@ -89,6 +93,7 @@ final class AccountMigrationService {
         cleanupAfterMigration()
         cleanupOfflineData(for: account.accountId)
         cleanupAllGoalAlertData() // Clean up goal alert data for all accounts
+      //  cleanupAllGoalCardStatusData() // Clean up goal card status data for all accounts
         cleanupAllAppearanceData() // Clean up appearance data for all accounts
         cleanupHealthKitIntegrationData(for: account.accountId)
         cleanupAllNotificationAlertData() // Clean up notification alert data for all accounts
@@ -160,7 +165,7 @@ final class AccountMigrationService {
     func migrateGoalAlertData(for accountId: String) {
         logger.log(level: .info, tag: tag, message: "Starting goal alert data migration for account: \(accountId)")
         
-        let ionicGoalAlertKey = MigrationKey.goalAlertKey(for: accountId)
+        let ionicGoalAlertKey = MigrationKey.goalMetAlertKey(for: accountId)
         let nativeGoalAlertKey = KvStorageKeys.goalMetFlagKey(for: accountId)
         
         // Check if Ionic goal alert flag exists
@@ -195,9 +200,67 @@ final class AccountMigrationService {
     
     /// Removes goal alert data for specific account ID after migration
     func cleanupGoalAlertData(for accountId: String) {
-       let ionicGoalAlertKey = MigrationKey.goalAlertKey(for: accountId)
+       let ionicGoalAlertKey = MigrationKey.goalMetAlertKey(for: accountId)
        kvStorage.clearValue(forKey: ionicGoalAlertKey)
        logger.log(level: .info, tag: tag, message: "Cleaned up goal alert data for account: \(accountId)")
+    }
+    
+    /// Migrates goal card status for all accounts found in UserDefaults
+    func migrateAllGoalCardStatusData() {
+        logger.log(level: .info, tag: tag, message: "Starting goal card status migration for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+            migrateGoalCardStatusData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed goal card status migration for \(allAccountIds.count) accounts")
+    }
+    
+    /// Migrates goal card status for a specific account
+    /// - Parameter accountId: The account ID to migrate goal card status data for
+    func migrateGoalCardStatusData(for accountId: String) {
+        logger.log(level: .info, tag: tag, message: "Starting goal card status migration for account: \(accountId)")
+        
+        let ionicGoalCardStatusKey = MigrationKey.setAGoalCardViewedKey(for: accountId)
+        let nativeGoalCardStatusKey = KvStorageKeys.setAGoalModalFlagKey(for: accountId)
+        
+        // Check if Ionic goal card status flag exists
+        if let ionicGoalCardStatusValue = kvStorage.getValue(forKey: ionicGoalCardStatusKey) as? String {
+            logger.log(level: .info, tag: tag, message: "Found Ionic goal card status for account: \(accountId), value: \(ionicGoalCardStatusValue)")
+            
+            // Convert string value to boolean for native app
+            // Ionic stores as "true"/"false" strings, native uses Bool
+            let boolValue = ionicGoalCardStatusValue.lowercased() == "true"
+            
+            // Set the value in the native format
+            kvStorage.setValue(boolValue, forKey: nativeGoalCardStatusKey)
+            
+            logger.log(level: .info, tag: tag, message: "Migrated goal card status for account: \(accountId) from '\(ionicGoalCardStatusValue)' to \(boolValue)")
+        } else {
+            logger.log(level: .info, tag: tag, message: "No goal card status found for account: \(accountId)")
+        }
+    }
+    
+    /// Removes goal card status data for all accounts after migration
+    func cleanupAllGoalCardStatusData() {
+        logger.log(level: .info, tag: tag, message: "Starting cleanup of goal card status data for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+           cleanupGoalCardStatusData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed cleanup of goal card status data for \(allAccountIds.count) accounts")
+    }
+    
+    /// Removes goal card status data for specific account ID after migration
+    func cleanupGoalCardStatusData(for accountId: String) {
+        let ionicGoalCardStatusKey = MigrationKey.setAGoalCardViewedKey(for: accountId)
+        kvStorage.clearValue(forKey: ionicGoalCardStatusKey)
+        logger.log(level: .info, tag: tag, message: "Cleaned up goal card status data for account: \(accountId)")
     }
     
     /// Migrates appearance settings for all accounts found in UserDefaults
@@ -597,6 +660,7 @@ final class AccountMigrationService {
         let patterns = [
             MigrationKey.notificationAlertViewed.rawValue, // notificationAlertViewed (account-scoped)
             MigrationKey.goalAlertKey.rawValue, // hasSeenSetNewGoal
+            MigrationKey.setAGoalCardStatus.rawValue, // goalCardStatus
             MigrationKey.appearanceKey.rawValue, // colorMode
             MigrationKey.healthKitIntegrated.rawValue, // healthKitIntegrated
             MigrationKey.healthKitDeintegrated.rawValue, // healthKitDeintegrated
@@ -650,11 +714,27 @@ final class AccountMigrationService {
             }
         } else if pattern == MigrationKey.notificationAlertViewed.rawValue || 
            pattern == MigrationKey.feedSettingsInfo.rawValue || 
-           pattern == MigrationKey.feedLastTriggered.rawValue {
-            // Format: CapacitorStorage.PATTERN_ACCOUNT_ID
-            let prefix = MigrationKey.capacitorPrefix.rawValue + pattern + "_"
-            if key.hasPrefix(prefix) {
-                return String(key.dropFirst(prefix.count))
+           pattern == MigrationKey.feedLastTriggered.rawValue ||
+           pattern == MigrationKey.setAGoalCardStatus.rawValue {
+            // Format: CapacitorStorage.PATTERN_ACCOUNT_ID or CapacitorStorage.ACCOUNT_ID_PATTERN
+            if pattern == MigrationKey.setAGoalCardStatus.rawValue {
+                // Special case for goalCardStatus: CapacitorStorage.ACCOUNT_ID_goalCardStatus
+                let prefix = MigrationKey.capacitorPrefix.rawValue
+                let suffix = "_" + pattern
+                
+                if key.hasPrefix(prefix) && key.hasSuffix(suffix) {
+                    let startIndex = key.index(key.startIndex, offsetBy: prefix.count)
+                    let endIndex = key.index(key.endIndex, offsetBy: -suffix.count)
+                    if startIndex < endIndex {
+                        return String(key[startIndex..<endIndex])
+                    }
+                }
+            } else {
+                // Format: CapacitorStorage.PATTERN_ACCOUNT_ID
+                let prefix = MigrationKey.capacitorPrefix.rawValue + pattern + "_"
+                if key.hasPrefix(prefix) {
+                    return String(key.dropFirst(prefix.count))
+                }
             }
         } else if pattern == MigrationKey.healthKitDeintegrated.rawValue {
             // Format: CapacitorStorage.healthKitDeintegrated-ACCOUNT_ID

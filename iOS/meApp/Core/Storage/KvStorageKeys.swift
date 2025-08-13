@@ -35,6 +35,7 @@ public enum KvStorageKeys: String {
     case feedInfo = "feedInfo"
     /// Feed last triggered at timestamp key suffix (per account)
     case feedLastTriggeredAt = "feedLastTriggeredAt"
+    case setAGoalCardViewed = "setAGoalCardViewed"
     
     // MARK: - Helper Methods
     
@@ -95,6 +96,13 @@ public enum KvStorageKeys: String {
     public static func scopedHealthKitModalKey(_ baseKey: KvStorageKeys, accountId: String?) -> String {
         guard let id = accountId, !id.isEmpty else { return baseKey.rawValue }
         return "\(baseKey.rawValue)_\(id)"
+    }
+    
+    /// Creates an account-scoped key for "set a goal" card viewed flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for goal met flag storage
+    public static func setAGoalModalFlagKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
 }
 
