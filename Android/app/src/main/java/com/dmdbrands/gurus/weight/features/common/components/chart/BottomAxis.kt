@@ -17,6 +17,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 @Composable
 internal fun bottomAxis(
   segment: GraphSegment,
+  separators: List<Double>,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer
 ): Axis<Axis.Position.Horizontal.Bottom> {
   return if (segment != GraphSegment.TOTAL)
@@ -39,6 +40,7 @@ internal fun bottomAxis(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
+      separators = { separators },
     )
   else
     HorizontalAxis.rememberBottom(
@@ -50,5 +52,6 @@ internal fun bottomAxis(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
+      separators = { separators },
     )
 }

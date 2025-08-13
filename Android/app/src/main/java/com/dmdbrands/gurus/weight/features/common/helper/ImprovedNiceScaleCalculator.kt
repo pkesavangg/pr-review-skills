@@ -63,7 +63,7 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return GraphMeta(evenMin, evenMax, step, ticks.distinct().sorted(), evenMin..evenMax)
+      return GraphMeta(maxOf(evenMin, 0.0), evenMax, step, ticks.distinct().sorted(), evenMin..evenMax)
     } else {
       step = 1.0
       var current = finalMin
@@ -71,7 +71,7 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return GraphMeta(finalMin, finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+      return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
     }
   }
 
@@ -100,7 +100,7 @@ object ImprovedNiceScaleCalculator {
       current += step
     }
 
-    return GraphMeta(finalMin, finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
   }
 
   private fun handleNormalRange(
@@ -155,7 +155,7 @@ object ImprovedNiceScaleCalculator {
       }
     }
 
-    return GraphMeta(finalMin, finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
   }
 
   private fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {
