@@ -157,9 +157,9 @@ dependencies {
 
   // Vico charts
 
-  implementation("com.dmdbrands.lib:vico-core:1.1.0-alpha8")
-  implementation("com.dmdbrands.lib:vico-compose:1.1.0-alpha8")
-  implementation("com.dmdbrands.lib:vico-compose-m3:1.1.0-alpha8")
+  implementation(libs.vico.core)
+  implementation(libs.lib.vico.compose)
+  implementation(libs.lib.vico.compose.m3)
 
   // Gif Image
   implementation(libs.coil.compose)       // For Jetpack Compose

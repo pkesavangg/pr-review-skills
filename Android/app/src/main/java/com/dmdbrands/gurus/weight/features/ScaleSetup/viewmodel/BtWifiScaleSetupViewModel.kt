@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -530,7 +531,6 @@ constructor(
           device = ggBtDevice,
         ) {
           when (it) {
-
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
@@ -801,6 +801,7 @@ constructor(
     }
   }
 
+  // USER NAVIGATES TO UPDATE SETTINGS SLIDE AFTER CUSTOMISED SCALE SETTINGS WHILE 0412 SETUP
   private fun updateSettings() {
     AppLog.d(TAG, "Starting settings update process")
 
@@ -814,6 +815,7 @@ constructor(
   }
 
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
+    Log.d(TAG, preferences.toString())
     viewModelScope.launch {
       try {
         if (dashboardKeys != null) {

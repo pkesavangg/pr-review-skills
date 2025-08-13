@@ -1579,7 +1579,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 hasCustomizeChanges = false
                 
                 LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
-                bluetoothService.syncDevices([])
+        bluetoothService.syncDevices([])
                 // Clear the selected items since they're now saved
                 selectedCustomizeItems.removeAll()
                 scaleSetupError = .none

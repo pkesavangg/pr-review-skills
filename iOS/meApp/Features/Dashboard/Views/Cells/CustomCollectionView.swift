@@ -12,6 +12,7 @@ import UIKit
 public class CustomCollectionView: UICollectionView {
     private var contentSizeObserver: NSKeyValueObservation?
     private var lastBoundsSize: CGSize = .zero
+    public var hideDragPlatter: Bool = false
     
     public override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
         super.init(frame: frame, collectionViewLayout: layout)
@@ -25,7 +26,7 @@ public class CustomCollectionView: UICollectionView {
     
     override public func didAddSubview(_ subview: UIView) {
         super.didAddSubview(subview)
-        if "\(type(of: subview))" == "_UIPlatterView" {
+        if hideDragPlatter && "\(type(of: subview))" == "_UIPlatterView" {
             subview.alpha = 0
         }
     }

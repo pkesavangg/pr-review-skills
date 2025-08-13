@@ -18,6 +18,7 @@ struct DashboardScreen: View {
     @State private var selectedMetric: BodyMetric? = nil
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
+    @State private var suppressOutsideCancel = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,8 +48,6 @@ struct DashboardScreen: View {
                 await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
                 // Clear the selectedMetricInfo after handling
                 selectedMetricInfo = nil
-                // Clear selection after info sheet is dismissed
-                store.state.ui.selectedMetricLabel = nil
             }
         }
         .onChange(of: store.state.ui.selectedMetricLabel) { _, newValue in
@@ -59,8 +58,6 @@ struct DashboardScreen: View {
         }
         .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
             store.handleMetricInfoSheetDismiss(newValue)
-            // Clear selection after info sheet is dismissed
-            store.state.ui.selectedMetricLabel = nil
         }
         .onChange(of: store.state.ui.isEditMode) { _, isEdit in
             // Only rebuild layout when entering edit to start wiggle animations
@@ -68,6 +65,9 @@ struct DashboardScreen: View {
         }
         .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
+        }
+        .onChange(of: store.state.data.latestWeightStored) { _, _ in
+            store.resetMetricsToLatestEntry()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             // Restart wiggle animations when app becomes active from background
@@ -117,10 +117,18 @@ struct DashboardScreen: View {
             VStack(spacing: 0) {
                 WeightTrendView(dashboardStore: store)
                     .contentShape(Rectangle())
+                    .onTapGesture {
+                        if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                            store.cancelEdit()
+                        }
+                    }
                 if !store.allContentRemoved {
                     if !store.metricsToShow.isEmpty {
-                        MetricGridUIKitView(store: store)
-                            .frame(minHeight: 200)
+                        MetricGridUIKitView(store: store, onMetricLongPress: { label in
+                            store.state.ui.selectedMetricLabel = label
+                            openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                        })
+                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
                             .padding(.top, .spacingSM)
                             .id(store.state.ui.gridLayoutId)
                             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
@@ -128,8 +136,8 @@ struct DashboardScreen: View {
 
                     if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
                         Divider()
+                            .foregroundColor(theme.statusUtilityPrimary)
                             .padding(.horizontal, .spacingLG)
-                            .padding(.vertical, .spacingSM)
                     }
 
                     if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
@@ -142,17 +150,16 @@ struct DashboardScreen: View {
                 actionButtonsSection()
                     .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
-            .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded({
-                if store.state.ui.isEditMode {
-                    store.cancelEdit()
-                    // Force a lightweight refresh of visible cells to clear overlay/wiggle without full reload
-                    DispatchQueue.main.async {
-                        store.objectWillChange.send()
+        }
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && suppressOutsideCancel == false {
+                        store.cancelEdit()
                     }
                 }
-            }))
-        }
+        )
         .padding(.top, .zero)
     }
 
@@ -181,15 +188,10 @@ struct DashboardScreen: View {
                     tabViewModel.navigateToGoalSetting()
                 })
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
 
-                // Add button to switch to 12 metrics if currently showing 4 metrics
-                if store.state.metrics.dashboardType == .dashboard4 {
-                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                        store.switchTo12MetricsDashboard()
-                    })
-                }
             }
         }
         .padding(.bottom, .spacingLG)

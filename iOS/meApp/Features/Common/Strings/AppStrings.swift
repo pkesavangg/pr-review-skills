@@ -794,6 +794,55 @@ struct AppAssets {
     static let accuCheck = "accuCheck"
     static let accuCheckTickLarge = "accuCheckTickLarge"
     
+    // MARK: - Error Code Images
+    /// Generates error code image asset names based on SKU, error code, filled state, and theme
+    /// - Parameters:
+    ///   - sku: Scale SKU (e.g., "0384", "0396")
+    ///   - errorCode: Error code raw value (e.g., "t163", "t164")
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string
+    static func errorCodeImageName(sku: String, errorCode: String, isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "\(sku)_Err_\(errorCode)_\(fillType)\(themeVariant)"
+    }
+    
+    /// Generates AP mode image asset names based on SKU, filled state, and theme
+    /// - Parameters:
+    ///   - sku: Scale SKU (e.g., "0384", "0396")
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string
+    static func apModeImageName(sku: String, isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "\(sku)_AP_\(fillType)\(themeVariant)"
+    }
+    
+    /// Generates complete setup image asset names based on SKU, filled state, and theme
+    /// - Parameters:
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string
+    static func completeImageName(isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "0396_Complete_\(fillType)\(themeVariant)"
+    }
+    
+    /// Generates step on image asset names based on SKU, filled state, and theme
+    /// - Parameters:
+    ///   - sku: Scale SKU (e.g., "0396")
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string
+    static func stepOnImageName(sku: String, isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "\(sku)_StepOn_\(fillType)\(themeVariant)"
+    }
+    
     // MARK: - Bluetooth Setup
     static let setupPressUnitButtonGifName: (String) -> String = { sku in
         "\(sku)-Setup-PressUnitButton"
@@ -810,8 +859,27 @@ struct AppAssets {
         sku == "0384" ? "0384-Setup-Ap" : "0396-Setup-Ap"
     }
     static let wifiSetupComplete = "0396-Setup-Complete"
-    static func wifiSetupCompleteGifName(user: Int) -> String {
-        return "0384-Setup-u\(user)Complete"
+    /// Generates WiFi setup complete GIF asset names based on user number, filled state, and theme
+    /// - Parameters:
+    ///   - user: User number (1-8)
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string for the GIF
+    static func wifiSetupCompleteGifName(user: Int, isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "0384_U\(user)_\(fillType)\(themeVariant)"
+    }
+    
+    /// Legacy function for backward compatibility - generates step on GIF name
+    /// Parameters:
+    ///   - isFilled: Whether to use filled or outlined version
+    ///   - isDarkMode: Whether to use dark mode variant
+    /// - Returns: Asset name string for the GIF
+    static func wifiSetupStepOnGifName( isFilled: Bool, isDarkMode: Bool) -> String {
+        let fillType = isFilled ? "Filled" : "Outlined"
+        let themeVariant = isDarkMode ? "_dark" : ""
+        return "0384_StepOn_\(fillType)\(themeVariant)"
     }
 
 }

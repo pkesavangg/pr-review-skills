@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.data.services.EntryService
 import com.dmdbrands.gurus.weight.data.services.ExportService
 import com.dmdbrands.gurus.weight.data.storage.datastore.BaseProtoDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
+import com.dmdbrands.gurus.weight.data.storage.datastore.GoalAlertDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
@@ -176,7 +177,8 @@ object ServiceModule {
     entryRepository: IEntryRepository,
     goalRepository: IGoalRepository,
     accountRepository: IAccountRepository,
-  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository)
+    goalService: IGoalService
+  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository, goalService)
 
   @Provides
   @Singleton
@@ -309,7 +311,18 @@ object ServiceModule {
     goalRepository: IGoalRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
-  ): IGoalService = GoalService(goalRepository, connectivityObserver, dialogQueueService)
+    appNavigationService: IAppNavigationService,
+    goalAlertDataStore: GoalAlertDataStore,
+    accountRepository: IAccountRepository
+  ): IGoalService =
+    GoalService(
+      goalRepository,
+      connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
+      goalAlertDataStore,
+      accountRepository,
+    )
 
   @Provides
   @Singleton
@@ -326,8 +339,9 @@ object ServiceModule {
   @Singleton
   fun provideDeviceService(
     @ApplicationContext context: Context,
-    deviceRepository: IDeviceRepository
-  ): IDeviceService = DeviceService(deviceRepository, context)
+    deviceRepository: IDeviceRepository,
+    dialogQueueService: IDialogQueueService
+  ): IDeviceService = DeviceService(deviceRepository, dialogQueueService, context)
 
   @Provides
   @Singleton

@@ -7,19 +7,19 @@
 
 import Foundation
 
-struct WifiScaleSetupStrings {
-    static let seeSomethingElse = "I see something else?"
-    struct ActivatePairingModeViewStrings {
-        static let title = "Activate Pairing Mode"
-        static let description = "On the back of your scale, press and hold the UNIT button. When SET UP 1 appears on the scale’s screen, tap NEXT."
-        static let boldWords = ["UNIT","SET UP 1"]
+public struct WifiScaleSetupStrings {
+    public static let seeSomethingElse = "I see something else?"
+    public struct ActivatePairingModeViewStrings {
+        public static let title = "Activate Pairing Mode"
+        public static let description = "On the back of your scale, press and hold the UNIT button. When SET UP 1 appears on the scale's screen, tap NEXT."
+        public static let boldWords = ["UNIT","SET UP 1"]
     }
     
-    struct ErrorCodeSelectionViewStrings {
-        static let title = "Tap the screen you see:"
-        static let description = "Select the error message that you see on your scale and then tap NEXT."
-        static let boldWords = ["NEXT"]
-        static let err = "Err"
+    public struct ErrorCodeSelectionViewStrings {
+        public static let title = "Tap the screen you see:"
+        public static let description = "Select the error message that you see on your scale and then tap NEXT."
+        public static let boldWords = ["NEXT"]
+        public static let err = "Err"
     }
     struct WifiPasswordViewStrings {
         static let title = "What network should your scale connect to?"

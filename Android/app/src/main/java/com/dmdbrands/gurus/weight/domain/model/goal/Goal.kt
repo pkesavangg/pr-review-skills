@@ -1,25 +1,47 @@
 package com.dmdbrands.gurus.weight.domain.model.goal
 
+import com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
+import kotlin.math.round
+
 /**
- * Domain model representing a user's weight goal.
- * Based on Angular Goal interface from goal.service.ts
+ * Data class representing a user's weight goal.
  */
 data class Goal(
-    /** The target weight for the goal */
-    val goalWeight: Double,
+  val goalWeight: Double,
+  val initialWeight: Double,
+  val type: String,
+  val goalType: String? = null,
+  val metPreviousGoal: Boolean = false,
+  val percent: Double? = 0.0
+) : IUnitProcessable<Goal> {
 
-    /** The initial weight when the goal was set */
-    val initialWeight: Double,
+  override fun process(unit: WeightUnit?, weightLess: Weightless?): Goal {
+    // Convert from stored format (LB) to display format
+    val baseGoalWeight = goalWeight / 10.0
+    val baseInitialWeight = initialWeight / 10.0
 
-    /** The type of goal: 'lose', 'gain', or 'maintain' */
-    val type: String,
+    // Convert to target unit if needed (stored weight is always in LB)
+    val convertedGoalWeight = if (unit == WeightUnit.KG) {
+      baseGoalWeight / 2.20462
+    } else {
+      baseGoalWeight
+    }
 
-    /** Legacy field for backward compatibility */
-    val goalType: String = type,
+    val convertedInitialWeight = if (unit == WeightUnit.KG) {
+      baseInitialWeight / 2.20462
+    } else {
+      baseInitialWeight
+    }
 
-    /** Whether the previous goal was met */
-    val metPreviousGoal: Boolean? = null,
+    // Round to one decimal place
+    val roundedGoalWeight = round(convertedGoalWeight * 10) / 10
+    val roundedInitialWeight = round(convertedInitialWeight * 10) / 10
 
-    /** Percentage completion of the goal (calculated based on current weight) */
-    val percent: Int? = null
-)
+    return copy(
+      goalWeight = roundedGoalWeight,
+      initialWeight = roundedInitialWeight,
+    )
+  }
+}

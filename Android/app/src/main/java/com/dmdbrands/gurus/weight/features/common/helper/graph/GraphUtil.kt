@@ -13,9 +13,12 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounde
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
@@ -144,7 +147,7 @@ object GraphUtil {
   /**
    * Returns the number of intervals for the given [GraphSegment].
    */
-  private fun GraphSegment.intervalCount(): Int =
+  fun GraphSegment.intervalCount(): Int =
     when (this) {
       GraphSegment.WEEK -> 7
       GraphSegment.MONTH -> 6
@@ -293,5 +296,73 @@ object GraphUtil {
       }
     }
   }
+
+  fun getStartRange(segment: GraphSegment, timeStamp: Long): Long? = when (segment) {
+    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).start
+    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).start
+    GraphSegment.YEAR -> DateTimeConverter.getYearRange(timeStamp).start
+    else -> null
+  }
+
+  fun getEndRange(segment: GraphSegment, timeStamp: Long): Long? = when (segment) {
+    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).end
+    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).end
+    GraphSegment.YEAR -> DateTimeConverter.getYearRange(timeStamp).end
+    else -> null
+  }
+
+  fun periodStarts(
+    segment: GraphSegment,
+    startMillis: Long?,
+    endMillis: Long?,
+    zone: ZoneId = ZoneId.systemDefault(),
+    weekStart: DayOfWeek = DayOfWeek.SUNDAY
+  ): List<Double> {
+    if (startMillis == null || endMillis == null) return emptyList()
+    require(startMillis <= endMillis) { "startMillis must be <= endMillis" }
+
+    val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
+    val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+
+    // Align to the first boundary >= startDate
+    var cursor = when (segment) {
+      GraphSegment.WEEK -> startDate.with(TemporalAdjusters.nextOrSame(weekStart))
+      GraphSegment.MONTH -> startDate.withDayOfMonth(1)
+      GraphSegment.YEAR -> startDate.withDayOfYear(1)
+      else -> startDate.withDayOfYear(1)
+    }
+    if (segment == GraphSegment.WEEK && cursor.isBefore(startDate)) {
+      cursor = cursor.plusWeeks(1)
+    }
+    if (segment == GraphSegment.MONTH && cursor.isBefore(startDate)) {
+      cursor = cursor.plusMonths(1)
+    }
+    if (segment == GraphSegment.YEAR && cursor.isBefore(startDate)) {
+      cursor = cursor.plusYears(1)
+    }
+
+    val lastBoundary = when (segment) {
+      GraphSegment.WEEK -> endDate.with(TemporalAdjusters.previousOrSame(weekStart))
+      GraphSegment.MONTH -> endDate.withDayOfMonth(1)
+      GraphSegment.YEAR -> endDate.withDayOfYear(1)
+      else -> endDate.withDayOfYear(1)
+    }
+
+    val step = when (segment) {
+      GraphSegment.WEEK -> Period.ofWeeks(1)
+      GraphSegment.MONTH -> Period.ofMonths(1)
+      GraphSegment.YEAR -> Period.ofYears(1)
+      else -> Period.ofYears(1)
+    }
+
+    val out = mutableListOf<Double>()
+    while (!cursor.isAfter(lastBoundary)) {
+      val ms = cursor.atStartOfDay(zone).toInstant().toEpochMilli()
+      if (ms in startMillis..endMillis) out.add(ms.toDouble())
+      cursor = cursor.plus(step)
+    }
+    return out
+  }
+
   // endregion
 }

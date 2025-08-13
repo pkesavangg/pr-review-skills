@@ -60,10 +60,10 @@ struct MetricsState {
 
     /// Returns grid columns configuration based on dashboard type
     var gridColumns: [GridItem] {
-        let columnCount = dashboardType == .dashboard4 ?
-            DashboardConstants.UI.fourMetricGridColumns :
-            DashboardConstants.UI.twelveMetricGridColumns
-
+        // Columns strictly follow dashboard type
+        let columnCount: Int = (dashboardType == .dashboard4)
+            ? DashboardConstants.UI.fourMetricGridColumns
+            : DashboardConstants.UI.twelveMetricGridColumns
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 }

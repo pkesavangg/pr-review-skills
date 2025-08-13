@@ -114,7 +114,6 @@ fun <T> SetupForm(
       AppInput(
         formControl = it,
         label = secondaryLabel,
-        type = inputType,
         imeAction = ImeAction.Done,
         onImeAction = onImeAction ?: {
           focusManager.clearFocus()
