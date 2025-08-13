@@ -18,6 +18,8 @@ The Ionic app (using Capacitor Preferences) stores account data in iOS UserDefau
 - `healthKitIntegratedAssignedTo`: Contains the account ID that HealthKit is assigned to (global)
 - `healthKitDeintegrated-{accountId}`: Contains HealthKit deintegration flag per user
 - `notificationOnlyAlertShown_{accountId}`: Contains notification alert viewed flag per user
+- `feedInfo_{accountId}`: Contains feed notification settings per user
+- `feedLastTriggeredAt_{accountId}`: Contains feed last triggered timestamp per user
 
 ### 2. Migration Process
 When the native app launches:
@@ -29,7 +31,8 @@ When the native app launches:
 6. **Migrate Appearance Data**: Transfers appearance/theme preferences from Ionic format to native format
 7. **Migrate HealthKit Integration Data**: Transfers HealthKit integration settings from Ionic format to native format
 8. **Migrate Notification Alert Data**: Transfers notification alert viewed flag from Ionic format to native format
-9. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
+9. **Migrate Feed Data**: Transfers feed notification settings and last triggered timestamps from Ionic format to native format
+10. **Cleanup**: After successful migration, removes the Ionic app data from UserDefaults
 
 ### 3. Data Mapping
 
@@ -90,13 +93,37 @@ func migrateAccountAndScaleData() async throws -> (account: Account?, scalesCoun
 
 This method:
 1. First migrates account data using `migrateAccountData()`
-2. Then migrates scale data for the account using `ScaleMigrationService`
-3. Migrates goal alert storage keys from Ionic to native format
-4. Migrates appearance/theme preferences from Ionic to native format
+2. Then migrates scale data for **ALL accounts** using `migrateAllScaleData()` (not just the current account)
+3. Migrates goal alert storage keys from Ionic to native format for all accounts
+4. Migrates appearance/theme preferences from Ionic to native format for all accounts
 5. Migrates HealthKit integration settings from Ionic to native format
-6. Migrates notification alert viewed flag from Ionic to native format
-7. Performs cleanup for account, scale, goal alert, appearance, HealthKit integration, and notification alert data
-8. Returns both the migrated account and the number of scales migrated
+6. Migrates notification alert viewed flag from Ionic to native format for all accounts
+7. Migrates feed data (settings and timestamps) from Ionic to native format for all accounts
+8. Performs cleanup for account, scale, goal alert, appearance, HealthKit integration, notification alert, and feed data for all accounts
+9. Returns both the migrated account and the total number of scales migrated across all accounts
+
+### 5. Scale Migration for All Accounts
+The service now includes methods to migrate scales for all accounts that have scale data stored in the Ionic app:
+
+```swift
+/// Migrates scale data for all accounts found in UserDefaults
+func migrateAllScaleData() async -> [(accountId: String, scalesCount: Int)]
+
+/// Removes scale data for all accounts after migration
+func cleanupAllScaleData()
+
+/// Removes scale data for specific account ID after migration
+func cleanupScaleData(for accountId: String)
+```
+
+The `migrateAllScaleData()` method:
+- Scans UserDefaults for all account IDs that have scale data stored with keys like `scale_{accountId}`
+- Migrates each account's scale data individually using the existing `ScaleMigrationService`
+- Returns an array of results showing how many scales were migrated per account
+- Ensures no account's scale data is lost during migration
+- Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had paired scales for each, all of those scales are preserved when migrating to the native app.
 
 ### 5. Migration Timing
 - Migration runs automatically on app startup before other account operations
@@ -119,13 +146,19 @@ After successful migration:
 - Removes `CapacitorStorage.{accountId}-healthKitIntegrated` HealthKit integration status
 - Removes `CapacitorStorage.healthKitIntegratedAssignedTo` if it matches the migrated account
 - Removes `CapacitorStorage.healthKitDeintegrated-{accountId}` HealthKit deintegration flags
-- **Removes `CapacitorStorage.notificationOnlyAlertShown_{accountId}` notification alert keys for ALL accounts found in UserDefaults**
+- **Removes `CapacitorStorage.notificationAlertViewed_{accountId}` notification alert keys for ALL accounts found in UserDefaults**
+- **Removes `CapacitorStorage.notificationOnlyAlertShown` global notification alert key**
+- **Removes `CapacitorStorage.feedInfo_{accountId}` feed settings keys for ALL accounts found in UserDefaults**
+- **Removes `CapacitorStorage.feedLastTriggeredAt_{accountId}` feed timestamp keys for ALL accounts found in UserDefaults**
+- **Removes `scale_{accountId}` scale data keys for ALL accounts found in UserDefaults**
 - Ensures no leftover Ionic app data remains
 
 **Notes**: 
 - The goal alert cleanup now scans for and removes goal alert keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
 - The appearance cleanup now scans for and removes appearance/color mode keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
-- The notification alert cleanup now scans for and removes notification alert keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
+- The notification alert cleanup removes both account-scoped notification alert keys for all accounts and the global notification alert key from the Ionic app.
+- The feed data cleanup removes both feed settings and feed timestamp keys for all accounts that were previously logged into the Ionic app.
+- The scale data cleanup removes scale data keys for all accounts that were previously logged into the Ionic app, ensuring all paired scales are migrated to the native app.
 
 ### 8. HealthKit Integration Migration
 
@@ -168,38 +201,48 @@ This method:
 
 ### 9. Notification Alert Migration
 
-The service handles migration of the notification alert viewed flag from the Ionic app to the native app **for all accounts** that have data stored.
+The service handles migration of **two different types** of notification alert flags from the Ionic app to the native app:
 
-#### Ionic Notification Alert Storage Format
-The Ionic app stores notification alert data as:
-- `CapacitorStorage.notificationOnlyAlertShown_{accountId}`: String value ("true"/"false") indicating if the notification-only alert has been shown for the specific account
+#### 9.1. Account-Scoped Notification Alert Migration
 
-#### Native Notification Alert Storage Format  
+##### Ionic Storage Format
+The Ionic app stores account-scoped notification alert data as:
+- `CapacitorStorage.notificationAlertViewed_{accountId}`: String value ("true"/"false") indicating if the notification alert has been viewed for the specific account
+
+##### Native Storage Format  
 The native app stores the same data as:
-- `notificationOnlyAlertShown_{accountId}`: Boolean value indicating if the notification-only alert has been shown for the specific account
+- `notificationOnlyAlertShown_{accountId}`: Boolean value indicating if the notification alert has been shown for the specific account
 
-#### Migration Process
-1. **Scan UserDefaults**: Finds all account IDs that have notification alert keys stored
-2. **Migrate All Accounts**: For each found account ID:
-   - Reads the Ionic notification alert flag from UserDefaults
-   - Parses the string value to extract the boolean
-   - Stores the boolean value using the native account-scoped key format
-3. **Cleanup All Data**: Removes all Ionic notification alert keys after successful migration
-
-#### Migration Methods
+##### Migration Methods
 ```swift
 func migrateAllNotificationAlertData()
 func migrateNotificationAlertData(for accountId: String)
 func cleanupAllNotificationAlertData()
+func cleanupNotificationAlertData(for accountId: String)
 ```
 
-The main method `migrateAllNotificationAlertData()`:
-- Scans UserDefaults for all account IDs that have notification alert data
-- Migrates each account's notification alert flag individually
-- Ensures no account's notification alert state is lost during migration
-- Logs the migration process for debugging
+#### 9.2. Global Notification Alert Migration
 
-This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had notification alerts shown for each, all of those states are preserved when migrating to the native app.
+##### Ionic Storage Format
+The Ionic app stores global notification alert data as:
+- `CapacitorStorage.notificationOnlyAlertShown`: String value ("true"/"false") indicating if the notification-only permission alert has been shown (global, not per account)
+
+##### Native Storage Format  
+The native app stores the same data as:
+- `notificationOnlyPermAlertShown_{accountId}`: Boolean value indicating if the notification-only permission alert has been shown for the specific account
+
+##### Migration Methods
+```swift
+func migrateGlobalNotificationAlertData(for accountId: String)
+func cleanupGlobalNotificationAlertData()
+```
+
+#### Combined Migration Process
+1. **Migrate Account-Scoped Keys**: Scans UserDefaults for all account IDs that have account-scoped notification alert data and migrates each one
+2. **Migrate Global Key**: Looks for the global Ionic notification alert flag and migrates it to the active account
+3. **Cleanup All Data**: Removes both account-scoped and global Ionic notification alert keys after successful migration
+
+**Note**: The global notification alert flag is migrated to the currently active account being migrated, ensuring users don't see duplicate permission alerts after migration.
 
 ### 10. Goal Alert Migration
 
@@ -276,6 +319,45 @@ The main method `migrateAllAppearanceData()`:
 
 This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had different appearance preferences for each, all of those preferences are preserved when migrating to the native app.
 
+### 12. Feed Data Migration
+
+The service handles migration of feed notification settings and last triggered timestamps from the Ionic app to the native app **for all accounts** that have data stored.
+
+#### Ionic Feed Storage Format
+The Ionic app stores feed data as:
+- `CapacitorStorage.feedInfo_{accountId}`: Contains feed notification settings (JSON) for the specific account
+- `CapacitorStorage.feedLastTriggeredAt_{accountId}`: Contains the last triggered timestamp (Double or String) for the specific account
+
+#### Native Feed Storage Format  
+The native app stores the same data as:
+- `feedInfo_{accountId}`: Feed notification settings for the specific account
+- `feedLastTriggeredAt_{accountId}`: Last triggered timestamp for the specific account
+
+#### Migration Process
+1. **Scan UserDefaults**: Finds all account IDs that have feed data stored
+2. **Migrate All Accounts**: For each found account ID:
+   - Reads the Ionic feed settings from UserDefaults
+   - Copies the value directly to the native format (no conversion needed)
+   - Reads the Ionic feed last triggered timestamp from UserDefaults
+   - Copies the timestamp directly to the native format (supports both Double and String)
+3. **Cleanup All Data**: Removes all Ionic feed keys after successful migration
+
+#### Migration Methods
+```swift
+func migrateAllFeedData()
+func migrateFeedData(for accountId: String)
+func cleanupAllFeedData()
+func cleanupFeedData(for accountId: String)
+```
+
+The main method `migrateAllFeedData()`:
+- Scans UserDefaults for all account IDs that have feed data
+- Migrates each account's feed settings and timestamps individually
+- Ensures no account's feed data is lost during migration
+- Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had feed data for each, all of that data is preserved when migrating to the native app.
+
 ## Usage
 
 The migration service is automatically used by `AccountService` and requires no manual intervention:
@@ -292,9 +374,15 @@ private func migrateFromIonicAppIfNeeded() async throws {
     }
 }
 
-// Comprehensive migration (account + scales)
-let (account, scalesCount) = try await migrationService.migrateAccountAndScaleData()
-print("Migrated account: \(account?.email ?? "none"), scales: \(scalesCount)")
+// Comprehensive migration (account + scales for all accounts)
+let (account, totalScales) = try await migrationService.migrateAccountAndScaleData()
+print("Migrated account: \(account?.email ?? "none"), total scales across all accounts: \(totalScales)")
+
+// Migrate scales for all accounts independently
+let scaleResults = await migrationService.migrateAllScaleData()
+for result in scaleResults {
+    print("Account \(result.accountId): migrated \(result.scalesCount) scales")
+}
 ```
 
 ## Testing Migration

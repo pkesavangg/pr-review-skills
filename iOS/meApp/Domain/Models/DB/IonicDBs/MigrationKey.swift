@@ -20,6 +20,11 @@ public enum MigrationKey: String {
     case healthKitDeintegrated = "healthKitDeintegrated"
     /// Notification alert viewed flag used by the Ionic app (per account)
     case notificationAlertViewed = "notificationAlertViewed"
+    /// Notification only alert shown flag used by the Ionic app (global key, not per account)
+    case notificationOnlyAlertShown = "CapacitorStorage.notificationOnlyAlertShown"
+    
+    case feedSettingsInfo = "feedInfo"
+    case feedLastTriggered = "feedLastTriggeredAt"
     /// Common Capacitor storage prefix used by the Ionic app
     case capacitorPrefix = "CapacitorStorage."
 
@@ -63,5 +68,13 @@ public enum MigrationKey: String {
     /// - Returns: The full storage key for notification alert viewed flag
     public static func notificationAlertViewedKey(for accountId: String) -> String {
         return Self.capacitorPrefix.rawValue + Self.notificationAlertViewed.rawValue + "_\(accountId)"
+    }
+    
+    public static func feedSettingsInfoKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + Self.feedSettingsInfo.rawValue + "_\(accountId)"
+    }
+    
+    public static func feedLastTriggeredAtKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + Self.feedLastTriggered.rawValue + "_\(accountId)"
     }
 }

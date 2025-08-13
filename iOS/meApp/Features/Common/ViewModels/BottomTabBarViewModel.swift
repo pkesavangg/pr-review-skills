@@ -49,21 +49,18 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
-    /// Base key used to store whether the *notification-only* permissions alert has been shown across launches.
-    private let notificationOnlyAlertKeyBase = "notificationOnlyAlertShown"
-    /// Indicates whether the *notification-only* permissions alert has already been shown (persisted via `KvStorageService`).
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
-            let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
+            let key = KvStorageKeys.notificationOnlyPermAlertShownKey(for: accountId)
             return (KvStorageService.shared.getValue(forKey: key) as? Bool) ?? false
         }
         set {
             guard let accountId = accountService.activeAccount?.accountId else { return }
-            let key = "\(notificationOnlyAlertKeyBase)_\(accountId)"
+            let key = KvStorageKeys.notificationOnlyPermAlertShownKey(for: accountId)
             KvStorageService.shared.setValue(newValue, forKey: key)
         }
     }
@@ -103,6 +100,14 @@ class BottomTabBarViewModel: ObservableObject {
             Task { [weak self] in
                 await self?.checkAppleHealthIntegrationStatus()
                 await self?.checkSetGoalCardPrompt()
+                // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
+                self?.evaluateAndShowPermissionAlert()
+                let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications)
+                if notificationsRequired ?? false {
+                    await self?.pushNotificationService.setupPushNotifications()
+                } else {
+                    await self?.pushNotificationService.updateDeviceInfo()
+                }
             }
         }
         
@@ -119,18 +124,7 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
-        
-        // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
-        self.evaluateAndShowPermissionAlert()
-        
-        Task {
-            let notificationsRequired = permissionsService.requiredCategories.contains(.notifications)
-            if notificationsRequired {
-                await pushNotificationService.setupPushNotifications()
-            } else {
-                await pushNotificationService.updateDeviceInfo()
-            }
-        }
+
         
         // Connect GoalAlertService navigation callback
         goalAlertService.onNavigateToGoalSetting = { [weak self] in
