@@ -1,9 +1,6 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
-import com.greatergoods.blewrapper.GGDeviceService
-import com.greatergoods.blewrapper.GGPermissionService
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -25,6 +22,9 @@ import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleNameDialogF
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleDetailsStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleNameDialogStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.WifiMacAddressStrings
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.greatergoods.blewrapper.GGDeviceService
+import com.greatergoods.blewrapper.GGPermissionService
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

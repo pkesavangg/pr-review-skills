@@ -339,8 +339,9 @@ object ServiceModule {
   @Singleton
   fun provideDeviceService(
     @ApplicationContext context: Context,
-    deviceRepository: IDeviceRepository
-  ): IDeviceService = DeviceService(deviceRepository, context)
+    deviceRepository: IDeviceRepository,
+    dialogQueueService: IDialogQueueService
+  ): IDeviceService = DeviceService(deviceRepository, dialogQueueService, context)
 
   @Provides
   @Singleton

@@ -1,14 +1,15 @@
 package com.dmdbrands.gurus.weight.features.home.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
-import com.greatergoods.blewrapper.GGPermissionService
-import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
+import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
@@ -22,7 +23,17 @@ import com.dmdbrands.gurus.weight.features.home.reducer.HomeReducer
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleApiEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
+import com.dmdbrands.library.ggbluetooth.enums.GGBTSettingType
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.model.GGBTSetting
+import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.greatergoods.blewrapper.GGDeviceService
+import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,6 +43,7 @@ class HomeViewModel
 @Inject
 constructor(
   private val deviceService: IDeviceService,
+  private val ggDeviceService: GGDeviceService,
   private val ggPermissionService: GGPermissionService,
   private val dialogUtility: IDialogUtility,
   private val entryService: com.dmdbrands.gurus.weight.domain.services.IEntryService,
@@ -42,8 +54,11 @@ constructor(
   override fun provideInitialState(): HomeState = HomeState()
 
   init {
+    provideInitialState()
     observeAppSyncStatus()
     observePermissions()
+    subscribeToWeightOnlyModeEvents()
+    subscribeToWeightOnlyModeAlertDismissed()
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -55,9 +70,24 @@ constructor(
 
       is HomeIntent.HandleAppSyncResult -> handleAppSyncResult(intent.result)
 
-      // Handle toggle appsync logic if needed
+      is HomeIntent.OnWeightOnlyModeEnable -> onWeightOnlyModeEnable()
+
+      is HomeIntent.OnWeightOnlyModeAlertDismiss -> onWeightOnlyModeAlertDismiss()
 
       else -> {}
+    }
+  }
+
+  fun enableSessionImpedence(device: Device) {
+    CoroutineScope(Dispatchers.IO).launch {
+      ggDeviceService.updateSettings(
+        device.toGGBTDevice(),
+        GGBTSetting(
+          key = GGBTSettingType.SESSION_IMPEDANCE,
+          value = GGBTSettingValue.Boolean(true),
+        ),
+      )
+
     }
   }
 
@@ -113,23 +143,23 @@ constructor(
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
-    if(result.weight != null && !result.canceled){
+    if (result.weight != null && !result.canceled) {
       handleNewEntry(result)
-    }
-    else if (result.manual) {
+    } else if (result.manual) {
       navigateToManualEntry()
     } else {
     }
   }
 
-  private fun handleNewEntry(result: AppSyncResult){
+  private fun handleNewEntry(result: AppSyncResult) {
     viewModelScope.launch {
       try {
         val currentAccount = accountService.activeAccountFlow.first()
         val accountId = currentAccount?.id ?: return@launch
         val storedEntry = result.toScaleApiEntry(accountId)
         // Create ScaleEntry directly from AppSyncResult with calculated BMI
-        val scaleEntry = result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
+        val scaleEntry =
+          result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
         appSyncService.setAppSyncDataForEditing(scaleEntry)
         appSyncService.setAppSyncData(storedEntry)
         dialogUtility.showEntrySyncPopup(
@@ -142,15 +172,16 @@ constructor(
           },
           onSave = {
             viewModelScope.launch {
-              val saveEntry = result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height, true)
+              val saveEntry =
+                result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height, true)
               appSyncService.handleSaveAppSyncData(saveEntry)
             }
-          }
+          },
         )
       } catch (e: Exception) {
         AppLog.e("HomeViewModel", "Error handling new entry: ${e.message}", e)
         dialogQueueService.showToast(
-          Toast(message = "Failed to process AppSync data: ${e.message}")
+          Toast(message = "Failed to process AppSync data: ${e.message}"),
         )
       }
     }
@@ -160,5 +191,104 @@ constructor(
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home)
     }
+  }
+
+  /**
+   * Subscribes to weight-only mode events for showing/hiding bottom sheet.
+   */
+  private fun subscribeToWeightOnlyModeEvents() {
+    viewModelScope.launch {
+      WeightOnlyModeEventService.events.collect { event ->
+        when (event) {
+          WeightOnlyModeEventType.SHOW_ALERT -> {
+            handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(true))
+            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be shown")
+          }
+
+          WeightOnlyModeEventType.HIDE_ALERT -> {
+            handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
+            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be hidden")
+          }
+
+          else -> {
+            // Handle other events if needed
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Subscribe to DeviceService's isWeightOnlyModeAlertShown flow to update HomeState.
+   */
+  private fun subscribeToWeightOnlyModeAlertDismissed() {
+    viewModelScope.launch {
+      deviceService.isWeightOnlyModeAlertShown.collect { isAlertShown ->
+        handleIntent(HomeIntent.SetWeightOnlyModeDismissed(isAlertShown))
+        AppLog.d("HomeViewModel", "Weight-only mode alert dismissed state updated: $isAlertShown")
+      }
+    }
+  }
+
+  /**
+   * Handles enabling weight-only mode for connected scales.
+   * Delegates to AppViewModel for the actual implementation.
+   */
+  private fun onWeightOnlyModeEnable() {
+    viewModelScope.launch {
+      try {
+        AppLog.d("HomeViewModel", "Enabling weight-only mode via AppViewModel")
+
+        val pairedScales = deviceService.pairedScales.first()
+        val scalesToUpdate = pairedScales.filter { device ->
+          device.connectionStatus == BLEStatus.CONNECTED &&
+            device.isWeighOnlyModeEnabledByOthers
+        }
+
+        if (scalesToUpdate.isNotEmpty()) {
+          // Show loading toast
+          dialogQueueService.showToast(
+            Toast(message = "Updating scale settings..."),
+          )
+
+          for (scale in scalesToUpdate) {
+            // Update scale settings to enable body metrics
+            try {
+              enableSessionImpedence(scale)
+              WeightOnlyModeEventService.events.emit(WeightOnlyModeEventType.HIDE_ALERT)
+              handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
+              // This would call the scale service to update settings
+              // ggDeviceService.updateSetting(...) - implementation depends on your scale service
+              AppLog.d("HomeViewModel", "Updated settings for scale: ${scale.device?.deviceName}")
+            } catch (e: Exception) {
+              AppLog.e("HomeViewModel", "Failed to update scale settings", e.toString())
+            }
+          }
+
+          // Show success toast
+          dialogQueueService.showToast(
+            Toast(message = "Body metrics enabled successfully!"),
+          )
+        }
+
+        // Dismiss the bottom sheet
+      } catch (e: Exception) {
+        AppLog.e("HomeViewModel", "Failed to enable weight-only mode", e.toString())
+        dialogQueueService.showToast(
+          Toast(message = "Failed to update scale settings"),
+        )
+      }
+    }
+  }
+  fun handleWeightOnlyDismiss(){
+    handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
+    handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
+  }
+  /**
+   * Handles dismissing the weight-only mode bottom sheet.
+   */
+  private fun onWeightOnlyModeAlertDismiss() {
+    deviceService.weightOnlyModeDismissAlert { handleWeightOnlyDismiss() }
+    AppLog.d("HomeViewModel", "Weight-only mode bottom sheet dismissed")
   }
 }

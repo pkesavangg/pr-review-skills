@@ -175,7 +175,7 @@ fun ScaleModeSettingsScreen(
 
 @PreviewTheme
 @Composable
-fun caleModeSettingsScreenPreview() {
+fun ScaleModeSettingsScreenPreview() {
   ScaleModeSettingsScreen(
     isAllBodyMetrics = true,
     isHeartRateOn = false,

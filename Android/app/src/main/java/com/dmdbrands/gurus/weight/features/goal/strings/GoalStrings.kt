@@ -43,7 +43,7 @@ object GoalStrings {
     "Setting a realistic goal helps track your progress. You can change your goal at any time."
 
   // Milestone Display
-  const val GoalReached = "Goal Reached!"
+  const val GoalReached = "goal reached!"
   const val To = " to "
   const val Goal = " to goal"
   const val GoalWeight = "goal weight"

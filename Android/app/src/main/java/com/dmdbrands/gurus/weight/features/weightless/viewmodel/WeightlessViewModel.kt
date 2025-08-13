@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.weightless.strings.WeightlessStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the Weightless screen. Handles form state, validation, weightless logic, and navigation.

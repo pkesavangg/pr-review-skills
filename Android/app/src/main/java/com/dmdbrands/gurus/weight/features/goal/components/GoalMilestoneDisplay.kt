@@ -132,18 +132,15 @@ private fun calculateGoalPercentage(
     GoalType.LOSE -> {
       progressPercentage = ((latestWeight - goalWeight) / (initialWeight - goalWeight) * 100)
       percent = 100 - floor(progressPercentage).toInt()
-      Log.d("goal-pp", percent.toString())
     }
 
     GoalType.GAIN -> {
       progressPercentage = ((latestWeight - initialWeight) / (goalWeight - initialWeight) * 100)
-      Log.d("goal-progressPercentage", progressPercentage.toString())
       percent = floor(progressPercentage).toInt()
     }
 
     else -> return null // Maintain goals don't have percentage
   }
-  Log.d("goal-percent", percent.toDouble().toString())
   return if (percent < 0) 0.0 else percent.toDouble()
 }
 
@@ -172,9 +169,9 @@ private fun MaintainGoalDisplay(
     GoalDisplayHelper.computeToGoal(
       displayGoalWeight,
       displayCurrentWeight,
-      GoalType.MAINTAIN,
       weightless,
     )
+  Log.d("distancetext", distanceText.toString())
   AppStyledCard(
     modifier =
       Modifier
@@ -222,7 +219,7 @@ private fun LoseGainGoalDisplay(
   val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay(currentWeight * 10, account.weightUnit)
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
   val goalType = if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
-  var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, goalType, weightless)
+  var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
   AppStyledCard(
     modifier =
       Modifier
@@ -232,45 +229,49 @@ private fun LoseGainGoalDisplay(
   ) {
     Row(
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.Center,
-      modifier = Modifier.padding(horizontal = spacing.sm),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = spacing.sm),
     ) {
-      AppText(
-        textType = TextType.Title,
-        text =
-          if (progressPercentage >= 100) {
-            toGoal = 0.toString()
-            toGoal
-          } else if (toGoal
-              .startsWith('-')
-          ) {
-            "$toGoal"
-          } else {
-            "+$toGoal"
-          },
-        // Always show negative for lose goal
-        color = colorScheme.textHeading,
-        textAlign = TextAlign.Start,
-        modifier = Modifier.alignByBaseline(),
-      )
-      AppText(
-        text = " $weightUnit ${GoalStrings.Goal}",
-        textType = TextType.Body,
-        color = colorScheme.textBody,
-        textAlign = TextAlign.End,
-        modifier = Modifier
-          .alignByBaseline()
-          .padding(top = spacing.x3s),
-      )
-      AppText(
-        text = GoalStrings.GoalReached,
-        textType = TextType.Body,
-        color = colorScheme.textBody,
-        textAlign = TextAlign.End,
-        modifier = Modifier
-          .alignByBaseline()
-          .padding(top = spacing.x3s),
-      )
+      Row {
+        AppText(
+          textType = TextType.Title,
+          text =
+            if (progressPercentage >= 100) {
+              toGoal = 0.toString()
+              toGoal
+            } else if (toGoal
+                .startsWith('-')
+            ) {
+              toGoal
+            } else {
+              "+$toGoal"
+            },
+          // Always show negative for lose goal
+          color = colorScheme.textHeading,
+        )
+        AppText(
+          text = " $weightUnit ${GoalStrings.Goal}",
+          textType = TextType.Body,
+          color = colorScheme.textBody,
+          modifier = Modifier
+            .padding(top = spacing.x3s),
+        )
+      }
+      if(progressPercentage >= 100){
+        Row {
+          AppText(
+            text = GoalStrings.GoalReached,
+            textType = TextType.Body,
+            color = colorScheme.textBody,
+            textAlign = TextAlign.Start,
+            modifier = Modifier
+              .padding(top = spacing.x3s),
+          )
+        }
+
+      }
     }
 
     // Progress Slider using AppLinearProgressIndicator

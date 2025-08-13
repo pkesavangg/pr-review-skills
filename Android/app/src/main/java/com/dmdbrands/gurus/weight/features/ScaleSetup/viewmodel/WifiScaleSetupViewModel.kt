@@ -92,16 +92,7 @@ constructor(
       "change" -> WifiSetupType.CHANGE
       else -> WifiSetupType.FIRST
     }
-
-    // If scaleInfo is provided, use it directly; otherwise load from SKU
-    if (scaleInfo != null) {
-      handleIntent(WifiScaleSetupIntent.SetScaleSku(scaleInfo.sku))
-      // Set additional scale info if needed
-      AppLog.d(TAG, "Using provided scale info: ${scaleInfo.productName} (${scaleInfo.sku})")
-    } else {
-      loadScaleInfo()
-    }
-
+    loadScaleInfo()
     observePermissions()
     observeStepChanges()
     getNetworkInfo()
@@ -142,6 +133,7 @@ constructor(
       is WifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
       is WifiScaleSetupIntent.GoToWifiSettings -> goToWifiSettings()
       is WifiScaleSetupIntent.CheckScaleWifiConnection -> checkScaleWifiConnection()
+      is WifiScaleSetupIntent.OnGetScaleMacAddress -> onGetScaleMacAddress()
       else -> {}
     }
     super.handleIntent(intent)
@@ -168,8 +160,8 @@ constructor(
    * Observes step changes and triggers appropriate functions when steps change.
    * Handles the three flows:
    * 1. MAC setup: SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS -> EXIT
-   * 2. Permissions skipped: SCALE_INFO -> WIFI_PASSWORD -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
-   * 3. Normal flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
+   * 2. Permissions skipped: SCALE_INFO -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
+   * 3. Normal flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI/SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
    */
   private fun observeStepChanges() {
     viewModelScope.launch {
@@ -181,9 +173,11 @@ constructor(
         if (previousStep != null && previousStep != currentStep) {
           AppLog.d(TAG, "Step changed from $previousStep to $currentStep")
 
+          // Clear navigation state after step change
+          handleIntent(WifiScaleSetupIntent.ClearNavigationState)
+
           when (currentStep) {
             WifiScaleSetupStep.SCALE_INFO -> {
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Start"))
               updateNetworkStatus()
             }
 
@@ -201,13 +195,11 @@ constructor(
               }
               val canProceed = isWifiPasswordFormValid()
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              // handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
             }
 
             WifiScaleSetupStep.SELECT_USER -> {
               val canProceed = isUserSelected()
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              // handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
             }
 
             WifiScaleSetupStep.ACTIVATE_SCALE -> {
@@ -222,14 +214,15 @@ constructor(
             }
 
             WifiScaleSetupStep.WIFI_MODE -> {
-              if (currentState.isGetMACSetup) {
+              if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
+                // Only AP mode available for MAC setup and permission skipped flows
                 val canProceed = currentState.selectedWifiMode == "apmode"
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
                 handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
               } else {
+                // Normal flow - both modes available
                 val canProceed = isWifiModeSelected()
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Continue"))
               }
             }
 
@@ -240,6 +233,7 @@ constructor(
               } else {
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               }
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.MAC_ADDRESS -> {
@@ -257,17 +251,21 @@ constructor(
                   }
                 }
                 handleIntent(WifiScaleSetupIntent.SetNextButtonText("Close"))
+                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               } else {
                 handleIntent(WifiScaleSetupIntent.SetNextButtonText("Save"))
+                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               }
             }
 
             WifiScaleSetupStep.SCALE_COUNTS -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.STEP_ON -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.SETUP_FINISHED -> {
@@ -277,15 +275,20 @@ constructor(
 
             WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
             }
 
             WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Finish))
+              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
+            }
+
+            WifiScaleSetupStep.ERROR_GUIDE -> {
+              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(false))
+              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             else -> {
-              // No automatic action needed for other steps
               AppLog.d(TAG, "No automatic action for step: $currentStep")
             }
           }
@@ -793,252 +796,102 @@ constructor(
   }
 
   /**
-   * Enhanced next() method following the three flows:
-   * 1. MAC setup: SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS -> EXIT
-   * 2. Permissions skipped: SCALE_INFO -> WIFI_PASSWORD ->SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
-   * 3. Normal flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
+   * Simplified next() method - special navigation logic is now in the reducer
    */
   private fun onNext() {
     val currentState = state.value
+
+    // Prevent double-clicks during navigation
+    if (currentState.isNavigating || currentState.isLoading) {
+      AppLog.d(TAG, "Ignoring next click - navigation in progress")
+      return
+    }
+
     AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
 
-    // Handle MAC setup flow
-    if (currentState.isGetMACSetup) {
-      macSetupNext()
-      return
-    }
-
-    // Handle scale info step - check if we can skip to WiFi password step
-    if (currentState.currentStep == WifiScaleSetupStep.SCALE_INFO) {
-      handleIntent(WifiScaleSetupIntent.SetIsGetMACSetup(false))
-    }
-
-    // Handle permissions step
-    if (currentState.currentStep == WifiScaleSetupStep.PERMISSIONS) {
-      if (!checkScaleToken()) {
-        return
-      }
-    }
-
-    // Handle activate scale step
-    if (currentState.currentStep == WifiScaleSetupStep.ACTIVATE_SCALE) {
-      handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
-      handleIntent(WifiScaleSetupIntent.SetSetupResult(null))
-    }
-    if (currentState.currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
-      startApMode()
-    }
-
-    if (currentState.currentStep == WifiScaleSetupStep.SCALE_COUNTS) {
-      saveScale()
-      notificationPermission()
-      return
-    }
-
-    // Handle WiFi mode step
-    if (currentState.currentStep == WifiScaleSetupStep.WIFI_MODE) {
-      when (currentState.selectedWifiMode) {
-        "apmode" -> {
-          handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
-        }
-
-        else -> {
-          AppLog.w(TAG, "Unknown WiFi mode selected: ${currentState.selectedWifiMode}")
-        }
-      }
-    }
-
-    // Handle button text actions
-    when (currentState.nextButtonText) {
-      "Pair" -> {
-        // Check the selected WiFi mode to determine which connection method to use
-        startSmartConnect()
-      }
-
-      "Save" -> saveScale()
-
-      "Finish", "close", "exit" -> {
-        startExitSetup()
-        return
-      }
-    }
-  }
-
-  /**
-   * Enhanced back() method following the three flows:
-   * 1. MAC setup: SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS -> EXIT
-   * 2. Permissions skipped: SCALE_INFO -> WIFI_PASSWORD -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
-   * 3. Normal flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_CONNECTED -> STEP_ON -> EXIT
-   */
-  private fun onBack() {
-    val currentState = state.value
-
-    // Handle MAC setup back navigation
-    if (currentState.isGetMACSetup) {
-      when (currentState.currentStep) {
-        WifiScaleSetupStep.PERMISSIONS -> {
-          handleIntent(WifiScaleSetupIntent.SetIsGetMACSetup(false))
-          return
-        }
-
-        WifiScaleSetupStep.ACTIVATE_SCALE -> {
-          if (currentState.showError) {
-            handleIntent(WifiScaleSetupIntent.SetShowError(false))
-            handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
-          }
-          return
-        }
-
-        else -> {}
-      }
-    }
-
-    // Handle permissions skipped back navigation
-    if (currentState.permissionsSkipped) {
-      when (currentState.currentStep) {
-        WifiScaleSetupStep.WIFI_PASSWORD -> {
-          handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
-          handleIntent(WifiScaleSetupIntent.SetSetupResult(null))
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          return
-        }
-
-        WifiScaleSetupStep.ACTIVATE_SCALE -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          return
-        }
-
-        WifiScaleSetupStep.WIFI_MODE -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText("Continue"))
-          return
-        }
-
-        WifiScaleSetupStep.SWITCH_WIFI -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-          return
-        }
-
-        WifiScaleSetupStep.MAC_ADDRESS -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          return
-        }
-
-        WifiScaleSetupStep.STEP_ON -> {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          return
-        }
-
-        else -> {
-        }
-      }
-    }
-
-    // Handle normal flow back navigation
+    // Handle actions that need to happen before/during navigation
     when (currentState.currentStep) {
       WifiScaleSetupStep.PERMISSIONS -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText("Start"))
-        return
-      }
-
-      WifiScaleSetupStep.WIFI_PASSWORD -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        return
-      }
-
-      WifiScaleSetupStep.SELECT_USER -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        return
+        if (!checkScaleToken()) {
+          return
+        }
       }
 
       WifiScaleSetupStep.ACTIVATE_SCALE -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        return
+        handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
       }
 
       WifiScaleSetupStep.WIFI_MODE -> {
-        if (currentState.isGetMACSetup) {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        } else {
-          handleIntent(WifiScaleSetupIntent.SetNextButtonText("Pair"))
+        when (currentState.selectedWifiMode) {
+          "apmode" -> {
+            handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
+          }
         }
-        return
       }
 
       WifiScaleSetupStep.SWITCH_WIFI -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        return
-      }
-
-      WifiScaleSetupStep.MAC_ADDRESS -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        return
-      }
-
-      WifiScaleSetupStep.STEP_ON -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-        return
+        if (!currentState.isGetMACSetup) {
+          // For normal setup, start AP mode
+          startApMode()
+        }
       }
 
       WifiScaleSetupStep.SCALE_COUNTS -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        return
+        saveScale()
+        notificationPermission()
       }
 
-      WifiScaleSetupStep.ERROR_GUIDE -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Continue))
-        return
+      WifiScaleSetupStep.MAC_ADDRESS -> {
+        if (currentState.isGetMACSetup) {
+          // End MAC setup flow
+          startExitSetup(true)
+          return
+        }
       }
 
       WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+        // Clear error state and exit
+        handleIntent(WifiScaleSetupIntent.SetShowError(false))
+        handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
+        startExitSetup(true)
         return
       }
 
       WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-        handleIntent(WifiScaleSetupIntent.SetNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+        // From troubleshooting, user wants to exit
+        startExitSetup(true)
         return
       }
 
       else -> {
+        // Handle button text actions for backward compatibility
+        when (currentState.nextButtonText) {
+          "Pair" -> {
+            startSmartConnect()
+            return // Don't proceed to next step yet
+          }
+          "Finish", "close", "exit", "Close" -> {
+            startExitSetup(true)
+            return
+          }
+        }
       }
     }
   }
 
   /**
-   * MAC setup next method following the flow:
-   * SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS -> EXIT
+   * Simplified back() method - special navigation logic is now in the reducer
    */
-  private fun macSetupNext() {
+  private fun onBack() {
     val currentState = state.value
 
-    when (currentState.currentStep) {
-
-      WifiScaleSetupStep.SWITCH_WIFI -> {
-        // From SWITCH_WIFI, go to MAC_ADDRESS
-        viewModelScope.launch {
-          try {
-            AppLog.d(TAG, "Getting MAC address in MAC setup mode")
-            val macAddress = getMacAddress()
-            if (macAddress != null) {
-              AppLog.d(TAG, "MAC address retrieved: $macAddress")
-              handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
-              // Exit setup after getting MAC address
-            } else {
-              AppLog.w(TAG, "Failed to get MAC address")
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error getting MAC address", e.toString())
-          }
-        }
-      }
-
-      WifiScaleSetupStep.MAC_ADDRESS -> {
-        navigateBack()
-      }
-
-      else -> {
-      }
+    // Prevent double-clicks during navigation
+    if (currentState.isNavigating || currentState.isLoading) {
+      AppLog.d(TAG, "Ignoring back click - navigation in progress")
+      return
     }
+
+    AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
   private fun checkAndSaveScale() {
@@ -1090,19 +943,18 @@ constructor(
    * Starts exit setup process.
    * Equivalent to TypeScript startExitSetup()
    */
-  private fun startExitSetup() {
+  private fun startExitSetup(canExit: Boolean = false) {
     val currentState = state.value
-
-    if (currentState.saved) {
-      navigateBack()
-      return
-    }
-
     try {
       wifiScaleService.stop()
     } catch (e: Exception) {
       AppLog.e(TAG, "Error stopping WiFi service", e.toString())
     }
+    if (currentState.saved || canExit) {
+      navigateBack()
+      return
+    }
+
 
     dialogQueueService.enqueue(
       DialogModel.Confirm(
@@ -1309,6 +1161,15 @@ constructor(
     if (canRequestNotifPermission) {
       requestPermission(GGPermissionType.NOTIFICATION)
     }
+  }
+
+  /**
+   * Handles the "Get Scale MAC Address" button click
+   */
+  private fun onGetScaleMacAddress() {
+    AppLog.d(TAG, "MAC address setup requested")
+    handleIntent(WifiScaleSetupIntent.SetShouldGetMacAddress(true))
+    // The intent is already handled by the reducer to set MAC setup flags
   }
 
   /**
