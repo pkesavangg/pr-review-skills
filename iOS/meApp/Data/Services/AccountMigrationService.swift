@@ -605,7 +605,7 @@ final class AccountMigrationService {
         
         let allAccountIds = findAllAccountIdsInUserDefaults()
         
-                for accountId in allAccountIds {
+        for accountId in allAccountIds {
            cleanupFeedData(for: accountId)
         }
         
