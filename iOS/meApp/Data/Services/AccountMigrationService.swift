@@ -93,7 +93,7 @@ final class AccountMigrationService {
         cleanupAfterMigration()
         cleanupOfflineData(for: account.accountId)
         cleanupAllGoalAlertData() // Clean up goal alert data for all accounts
-      //  cleanupAllGoalCardStatusData() // Clean up goal card status data for all accounts
+        cleanupAllGoalCardStatusData() // Clean up goal card status data for all accounts
         cleanupAllAppearanceData() // Clean up appearance data for all accounts
         cleanupHealthKitIntegrationData(for: account.accountId)
         cleanupAllNotificationAlertData() // Clean up notification alert data for all accounts
