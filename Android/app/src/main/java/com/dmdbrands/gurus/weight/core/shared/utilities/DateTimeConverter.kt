@@ -1,13 +1,17 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.Period
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-
+import java.time.temporal.TemporalAdjusters
+data class TimeRange(val start: Long, val end: Long)
 /**
  * Utility class for converting between ISO date-time strings and timestamps.
  */
@@ -68,5 +72,32 @@ object DateTimeConverter {
     val dob = ZonedDateTime.parse(dobString, formatter).toLocalDate()
     val today = LocalDate.now()
     return Period.between(dob, today).years
+  }
+
+  fun getWeekRange(referenceMillis: Long): TimeRange {
+    val zone = ZoneId.systemDefault()
+    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
+    val startOfWeek = referenceDate.with(DayOfWeek.SUNDAY).atStartOfDay(zone).toInstant().toEpochMilli()
+    val endOfWeek = referenceDate.with(DayOfWeek.SATURDAY).atTime(LocalTime.MAX).atZone(zone).toInstant().toEpochMilli()
+    return TimeRange(startOfWeek, endOfWeek)
+  }
+
+  fun getMonthRange(referenceMillis: Long): TimeRange {
+    val zone = ZoneId.systemDefault()
+    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
+    val yearMonth = YearMonth.from(referenceDate)
+    val startOfMonth = yearMonth.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    val endOfMonth = yearMonth.atEndOfMonth().atTime(LocalTime.MAX).atZone(zone).toInstant().toEpochMilli()
+    return TimeRange(startOfMonth, endOfMonth)
+  }
+
+  fun getYearRange(referenceMillis: Long): TimeRange {
+    val zone = ZoneId.systemDefault()
+    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
+    val startOfYear =
+      referenceDate.with(TemporalAdjusters.firstDayOfYear()).atStartOfDay(zone).toInstant().toEpochMilli()
+    val endOfYear = referenceDate.with(TemporalAdjusters.lastDayOfYear()).atTime(LocalTime.MAX).atZone(zone).toInstant()
+      .toEpochMilli()
+    return TimeRange(startOfYear, endOfYear)
   }
 }
