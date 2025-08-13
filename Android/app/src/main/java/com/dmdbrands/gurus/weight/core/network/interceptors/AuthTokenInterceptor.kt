@@ -10,7 +10,6 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Interceptor that adds Authorization headers to HTTP requests.
@@ -43,8 +42,6 @@ class AuthTokenInterceptor @Inject constructor(
         tokenManager.getAccessToken()
       }
     }
-    Log.d(TAG, "accessToken: $accessToken")
-
     // Build a new request with the Authorization header
     val newRequest = request.newBuilder()
       .addHeader(AppConfig.AUTHORIZATION_HEADER, "Bearer $accessToken")

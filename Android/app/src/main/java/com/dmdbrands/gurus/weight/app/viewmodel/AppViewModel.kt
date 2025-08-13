@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.app.viewmodel
 
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -42,11 +44,13 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.content.Context
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -70,7 +74,8 @@ constructor(
   private val ggPermissionService: GGPermissionService,
   private val ggDeviceService: GGDeviceService,
   private val healthConnectService: IHealthConnectService,
-  private val deviceInfoService: IDeviceInfoService
+  private val deviceInfoService: IDeviceInfoService,
+  private val workManager: WorkManager
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -108,10 +113,25 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e.toString())
       }
+      initialize()
+    }
+  }
 
-      val account = accountService.getCurrentAccount()
-      initLoadingData(account)
-      initEvents()
+  private fun initialize() {
+    viewModelScope.launch {
+      workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().collect { workInfos ->
+        if (workInfos.isEmpty()) {
+          val account = accountService.getCurrentAccount()
+          initLoadingData(account)
+          initEvents()
+        } else {
+          if (workInfos.all { it.state.isFinished }) {
+            val account = accountService.getCurrentAccount()
+            initLoadingData(account)
+            initEvents()
+          }
+        }
+      }
     }
   }
 
@@ -286,7 +306,7 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
-    navigationService.navigateTo(route = route)
+    navigationService.replaceStack(route = route)
   }
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
