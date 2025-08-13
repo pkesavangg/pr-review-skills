@@ -44,18 +44,18 @@ fun DashboardMilestoneGrid(
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
 ) {
-  var localVisibleMilestones by remember(visibleMilestones) { mutableStateOf(visibleMilestones) }
+  var localVisibleMilestones by remember(visibleMilestones) { mutableStateOf(visibleMilestones.reorderGrid()) }
   val hapticFeedback = LocalHapticFeedback.current
   val lazyGridState = rememberLazyGridState()
 
   val reorderableState = rememberReorderableLazyGridState(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
-      // Direct reordering with adjusted index
+      // Direct reordering with adjusted index, then normalize layout for span-2 item
       localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
         val item = removeAt(from.index)
         add(to.index, item)
-      }
+      }.reorderGrid()
 
       hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
 
@@ -78,7 +78,7 @@ fun DashboardMilestoneGrid(
   ) {
     // Visible milestones (reorderable)
     items(
-      items = localVisibleMilestones,
+      items = localVisibleMilestones.reorderGrid(),
       key = { getMilestoneKey(it, isVisible = true) },
       span = { milestone ->
         if (isGoalProgressMilestone(milestone)) {

@@ -101,12 +101,14 @@ fun GoalStep(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceAround,
     ) {
+      val selectedOption = when (goalTypeControl.value) {
+        GoalType.MAINTAIN.value -> goalTypeOptions[0]
+        GoalType.LOSE_GAIN.value -> goalTypeOptions[1]
+        else -> goalTypeOptions[1] // Fallback to Lose/Gain if unknown
+      }
       SegmentButtonGroup(
         data = goalTypeOptions,
-        selectedData =
-          goalTypeOptions.find {
-            if (goalTypeControl.value == GoalType.MAINTAIN.value) it.id == 0 else it.id == 1
-          } ?: goalTypeOptions[1],
+        selectedData = selectedOption,
         onSelected = { selectedOption ->
           val goalType = if (selectedOption.id == 0) GoalType.MAINTAIN else GoalType.LOSE_GAIN
           val value = goalType.value
@@ -114,7 +116,7 @@ fun GoalStep(
           onGoalTypeChange(goalType) // Trigger the callback
         },
         size = SegmentButtonSize.Small,
-        type = SegmentButtonType.Single,
+        type = SegmentButtonType.Scrollable,
         key = SegmentButtonData::label,
       )
     }
@@ -134,7 +136,8 @@ fun GoalStep(
         imeAction = ImeAction.Next,
         nextFocusRequester = goalWeightFocusRequester,
         modifier = Modifier.focusRequester(currentWeightFocusRequester),
-        enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
+        // Enable for any non-maintain variant (lose, gain, lose_gain)
+        enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
       )
     }
 

@@ -143,6 +143,11 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           }
           inEditMode = editMode
         },
+        onUpdateGoalClick = {
+          scope.launch {
+            navBackStack.addRoute(AppRoute.AccountSettings.Goal)
+          }
+        },
         onMetricInfoClick = {
           scope.launch {
             navBackStack.addRoute(

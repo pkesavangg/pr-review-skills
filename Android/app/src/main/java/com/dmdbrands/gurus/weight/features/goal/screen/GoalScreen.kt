@@ -65,7 +65,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         GoalStrings.SaveGoalButton,
         type = ButtonType.InlineTextPrimary,
         size = ButtonSize.Small,
-        enabled = state.form.isValid && state.form.isDirty,
+        enabled = state.form.isDirty,
       ) {
         keyboardController?.hide()
         handleIntent.invoke(GoalIntent.Submit)
@@ -107,6 +107,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
           keyboardController?.hide()
           focusManager.clearFocus()
         },
+        // For Goal screen, show current weight field and enable unless MAINTAIN
         showCurrentWeightForMaintain = false,
         showMetricToggle = false,
       )

@@ -35,7 +35,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlin.math.floor
-import android.util.Log
 
 /**
  * Milestone display composable showing current goal progress similar to Angular milestone page.
@@ -171,7 +170,6 @@ private fun MaintainGoalDisplay(
       displayCurrentWeight,
       weightless,
     )
-  Log.d("distancetext", distanceText.toString())
   AppStyledCard(
     modifier =
       Modifier
@@ -218,7 +216,7 @@ private fun LoseGainGoalDisplay(
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, account.weightUnit)
   val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay(currentWeight * 10, account.weightUnit)
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
-  val goalType = if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
+  if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
   var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
   AppStyledCard(
     modifier =
@@ -256,21 +254,21 @@ private fun LoseGainGoalDisplay(
           textType = TextType.Body,
           color = colorScheme.textBody,
           modifier = Modifier
-            .padding(top = spacing.x3s),
+            .alignByBaseline()
+            .padding(top = spacing.x2s),
         )
       }
-      if(progressPercentage >= 100){
+      if (progressPercentage >= 100) {
         Row {
           AppText(
             text = GoalStrings.GoalReached,
             textType = TextType.Body,
             color = colorScheme.textBody,
-            textAlign = TextAlign.Start,
+            textAlign = TextAlign.End,
             modifier = Modifier
-              .padding(top = spacing.x3s),
+              // .padding(top = spacing.x3s),
           )
         }
-
       }
     }
 
