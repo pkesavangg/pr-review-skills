@@ -34,9 +34,11 @@ import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppScaleImage
+import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.SettingsSection
+import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
@@ -185,11 +187,12 @@ fun ScaleDetailsScreenContent(
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale?.preferences?.shouldMeasureImpedance == false) {
+        AppText(text = device?.isWeighOnlyModeEnabledByOthers.toString(), textType = TextType.Title)
+        if (device?.isWeighOnlyModeEnabledByOthers == true) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
-            buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.UpdateButton,
+            buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.EnableBodyMetrics,
             onButtonClick = {
               handleIntent(ScaleDetailsIntent.OpenScaleMode)
             },

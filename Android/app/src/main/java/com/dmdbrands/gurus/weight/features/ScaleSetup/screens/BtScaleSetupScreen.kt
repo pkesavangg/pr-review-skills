@@ -137,6 +137,7 @@ fun BtScaleSetupScreenContent(
                 subtitle = BtScaleSetupStrings.ChooseUser.Message,
                 selectButtonItems = userButtons,
                 isSelectable = true,
+                sku = sku,
                 modifier = Modifier.padding(vertical = spacing.sm, horizontal = spacing.md),
                 onItemSelected = { value ->
                   onIntent(BtScaleSetupIntent.SetUser(value.toInt()))

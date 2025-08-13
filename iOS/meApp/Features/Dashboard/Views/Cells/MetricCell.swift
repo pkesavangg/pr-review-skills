@@ -124,9 +124,11 @@ class MetricCell: UICollectionViewCell {
                 if !store.state.ui.isEditMode {
                     if store.state.ui.selectedMetricLabel == item.label {
                         // Deselect if already selected
+                        store.state.ui.selectedMetricLabel = nil
                         onSelectMetric?("")
                     } else {
                         // Select if not selected
+                        store.state.ui.selectedMetricLabel = item.label
                         onSelectMetric?(item.label)
                     }
                 }
@@ -140,32 +142,37 @@ class MetricCell: UICollectionViewCell {
         )
         
         let viewWithOverlay = AnyView(
-            metricCardView
-                .editModeOverlay(
-                    isEditMode: store.state.ui.isEditMode,
-                    isRemoved: itemIsRemoved,
-                    onToggleRemoval: {
-                        if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                            store.toggleMetricRemovalInReorderedArray(at: index)
-                        }
-                    },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
-                    isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
-                    rowIndex: rowIndex,
-                    disableWiggle: false
-                )
+                         metricCardView
+                 .editModeOverlay(
+                     isEditMode: store.state.ui.isEditMode,
+                     isRemoved: itemIsRemoved,
+                     onToggleRemoval: {
+                         if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
+                             store.toggleMetricRemovalInReorderedArray(at: index)
+                         }
+                     },
+                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
+                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                     rowIndex: rowIndex,
+                     disableWiggle: itemIsRemoved // removed items must not wiggle
+                 )
         )
         
         hostingController?.rootView = viewWithOverlay
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
-            self.addGestureRecognizer(tapGesture)
+            // In edit mode, rely on SwiftUI overlay buttons for add/remove; avoid intercepting taps here
         } else {
+
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
             self.addGestureRecognizer(longPress)
+
+            let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
+            selectTap.cancelsTouchesInView = true
+            self.addGestureRecognizer(selectTap)
+
             self.tag = item.id.hashValue
             self.onMetricLongPressCallback = onMetricLongPress
             self.onSelectMetricCallback = onSelectMetric
@@ -245,7 +252,8 @@ class MetricCell: UICollectionViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        if isWiggling && !isRemoved {
+        // Wiggle only in edit mode and only if not removed
+        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -359,22 +367,15 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
-    @objc private func handleMetricTap(_ gesture: UITapGestureRecognizer) {
-        switch gesture.state {
-        case .began:
-            isTapped = true
-            // Reconfigure to hide overlay during tap
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
-            }
-        case .ended, .cancelled:
-            isTapped = false
-            // Reconfigure to show overlay after tap ends
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
-            }
-        default:
-            break
+    // Removed edit-mode tap handler to avoid swallowing SwiftUI overlay button taps
+
+    @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended, let item = representedItem else { return }
+        // Toggle selection: deselect if same, otherwise select tapped
+        if currentStore?.state.ui.selectedMetricLabel == item.label {
+            onSelectMetricCallback?("")
+        } else {
+            onSelectMetricCallback?(item.label)
         }
     }
 
@@ -392,5 +393,21 @@ class MetricCell: UICollectionViewCell {
             backgroundView?.alpha = 1.0
             layer.shadowOpacity = 0.0
         }
+    }
+
+    func snapshotForPreview() -> UIView {
+        guard let hostingController = hostingController else {
+            let fallbackView = UIView(frame: contentView.bounds)
+            fallbackView.backgroundColor = UIColor.systemBackground
+            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.masksToBounds = true
+            return fallbackView
+        }
+        let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
+        snapshot?.frame = contentView.bounds
+        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.masksToBounds = true
+        snapshot?.backgroundColor = .clear
+        return snapshot ?? UIView(frame: contentView.bounds)
     }
 }

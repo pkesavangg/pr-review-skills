@@ -13,7 +13,6 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
-import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
 import com.dmdbrands.gurus.weight.features.signup.model.SignupStep
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
@@ -21,125 +20,126 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 @Composable
 fun SignupPager(
-    pagerState: PagerState,
-    state: SignupState,
-    onNext: () -> Unit,
-    onBack: () -> Unit,
-    onSkip: () -> Unit,
-    onUrlOpen: (String) -> Unit,
-    onMetricToggle: (Boolean) -> Unit = {},
+  pagerState: PagerState,
+  state: SignupState,
+  onNext: () -> Unit,
+  onBack: () -> Unit,
+  onSkip: () -> Unit,
+  onUrlOpen: (String) -> Unit,
+  onMetricToggle: (Boolean) -> Unit = {},
 ) {
-    val focusManager = LocalFocusManager.current
-    HorizontalPagerWithBottomNavigation(
-        steps = state.steps,
-        containerColor = MeTheme.colorScheme.secondaryBackground,
-        pagerState = pagerState,
-        leadingContent = {
-            AppButton(
-                type = ButtonType.TextPrimary,
-                label = SignupStrings.backButton,
-                size = ButtonSize.Small,
-                enabled = !state.isFirstStep,
-                onClick = onBack,
-            )
+  val focusManager = LocalFocusManager.current
+  HorizontalPagerWithBottomNavigation(
+    steps = state.steps,
+    containerColor = MeTheme.colorScheme.secondaryBackground,
+    pagerState = pagerState,
+    leadingContent = {
+      AppButton(
+        type = ButtonType.TextPrimary,
+        label = SignupStrings.backButton,
+        size = ButtonSize.Small,
+        enabled = !state.isFirstStep,
+        onClick = onBack,
+      )
+    },
+    middleContent = {
+      if (state.showSkipButton) {
+        AppButton(
+          type = ButtonType.TextTertiary,
+          label = SignupStrings.skipButton,
+          size = ButtonSize.Small,
+          enabled = !state.isLoading,
+          onClick = onSkip,
+        )
+      }
+    },
+    trailingContent = {
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
+        size = ButtonSize.Small,
+        enabled = state.isCurrentStepValid,
+        onClick = {
+          focusManager.clearFocus()
+          onNext()
         },
-        middleContent = {
-            if (state.showSkipButton) {
-                AppButton(
-                    type = ButtonType.TextTertiary,
-                    label = SignupStrings.skipButton,
-                    size = ButtonSize.Small,
-                    enabled = !state.isLoading,
-                    onClick = onSkip,
-                )
-            }
-        },
-        trailingContent = {
-            AppButton(
-                type = ButtonType.PrimaryFilled,
-                label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = state.isCurrentStepValid,
-                onClick = {
+      )
+    },
+    pageContent =
+      {
+        Crossfade(targetState = state.currentStep) { step ->
+          val formControls = state.form.controls
+
+          Column(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+          ) {
+            when (step) {
+              SignupStep.NAME ->
+                NameStep(
+                  firstNameControl = formControls.firstName,
+                  lastNameControl = formControls.lastName,
+                  onNext = {
                     focusManager.clearFocus()
                     onNext()
-                },
-            )
-        },
-        pageContent =
-            {
-                Crossfade(targetState = state.currentStep) { step ->
-                    val formControls = state.form.controls
+                  },
+                )
 
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                    ) {
-                        when (step) {
-                            SignupStep.NAME ->
-                                NameStep(
-                                    firstNameControl = formControls.firstName,
-                                    lastNameControl = formControls.lastName,
-                                    onNext = {
-                                        focusManager.clearFocus()
-                                        onNext()
-                                    },
-                                )
+              SignupStep.BIRTHDAY ->
+                BirthdayStep(
+                  birthdayControl = formControls.birthday,
+                )
 
-                            SignupStep.BIRTHDAY ->
-                                BirthdayStep(
-                                    birthdayControl = formControls.birthday,
-                                )
+              SignupStep.GENDER ->
+                GenderStep(
+                  genderControl = formControls.sex,
+                )
 
-                            SignupStep.GENDER ->
-                                GenderStep(
-                                    genderControl = formControls.sex,
-                                )
+              SignupStep.HEIGHT ->
+                HeightStep(
+                  heightControl = formControls.height,
+                )
 
-                            SignupStep.HEIGHT ->
-                                HeightStep(
-                                    heightControl = formControls.height,
-                                )
+              SignupStep.GOAL ->
+                GoalStep(
+                  title = SignupStrings.goalStepTitle,
+                  goalTypeControl = formControls.goalType,
+                  currentWeightControl = formControls.currentWeight,
+                  goalWeightControl = formControls.goalWeight,
+                  useMetricControl = formControls.useMetric,
+                  onMetricToggle = onMetricToggle,
+                  onGoalTypeChange = {}, // Empty callback for signup flow
+                  onNext = {
+                    focusManager.clearFocus()
+                    onNext()
+                  },
+                )
 
-                            SignupStep.GOAL ->
-                                GoalStep(
-                                    goalTypeControl = formControls.goalType,
-                                    currentWeightControl = formControls.currentWeight,
-                                    goalWeightControl = formControls.goalWeight,
-                                    useMetricControl = formControls.useMetric,
-                                    onMetricToggle = onMetricToggle,
-                                    onGoalTypeChange = {}, // Empty callback for signup flow
-                                    onNext = {
-                                        focusManager.clearFocus()
-                                        onNext()
-                                    },
-                                )
+              SignupStep.EMAIL ->
+                EmailStep(
+                  emailControl = formControls.email,
+                  onNext = {
+                    focusManager.clearFocus()
+                    onNext()
+                  },
+                )
 
-                            SignupStep.EMAIL ->
-                                EmailStep(
-                                    emailControl = formControls.email,
-                                    onNext = {
-                                        focusManager.clearFocus()
-                                        onNext()
-                                    },
-                                )
-
-                            SignupStep.PASSWORD ->
-                                PasswordStep(
-                                    passwordControl = formControls.password,
-                                    confirmPasswordControl = formControls.confirmPassword,
-                                    zipcodeControl = formControls.zipcode,
-                                    onUrlOpen = onUrlOpen,
-                                    onSubmit = {
-                                        focusManager.clearFocus()
-                                        onNext()
-                                    },
-                                )
-                        }
-                    }
-                }
-            },
-    )
+              SignupStep.PASSWORD ->
+                PasswordStep(
+                  passwordControl = formControls.password,
+                  confirmPasswordControl = formControls.confirmPassword,
+                  zipcodeControl = formControls.zipcode,
+                  onUrlOpen = onUrlOpen,
+                  onSubmit = {
+                    focusManager.clearFocus()
+                    onNext()
+                  },
+                )
+            }
+          }
+        }
+      },
+  )
 }

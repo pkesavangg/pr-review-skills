@@ -87,4 +87,12 @@ object ScaleSetupStrings {
       const val Enable = "Enable"
     }
   }
+
+  object WeightOnlyModeAlertDismiss {
+    const val Title = "Are you sure?"
+    const val Message =
+      "The alert will be dismissed for this session. Visit scale settings to enable and/or review users"
+    const val Dismiss = "Dismiss"
+    const val Cancel = "Cancel"
+  }
 }

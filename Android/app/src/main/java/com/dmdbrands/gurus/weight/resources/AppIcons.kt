@@ -128,6 +128,34 @@ object AppIcons {
       }
     }
 
+    fun ShowWifiModeFilled(userNumber: Int): Int {
+      return when (userNumber) {
+        1 -> R.raw.u1_filled_0384
+        2 -> R.raw.u2_filled_0384
+        3 -> R.raw.u3_filled_0384
+        4 -> R.raw.u4_filled_0384
+        5 -> R.raw.u5_filled_0384
+        6 -> R.raw.u6_filled_0384
+        7 -> R.raw.u7_filled_0384
+        8 -> R.raw.u8_filled_0384
+        else -> R.raw.u1_filled_0384
+      }
+    }
+
+    fun ShowWifiModeOutlined(userNumber: Int): Int {
+      return when (userNumber) {
+        1 -> R.raw.u1_outlined_0384
+        2 -> R.raw.u2_outlined_0384
+        3 -> R.raw.u3_outlined_0384
+        4 -> R.raw.u4_outlined_0384
+        5 -> R.raw.u5_outlined_0384
+        6 -> R.raw.u6_outlined_0384
+        7 -> R.raw.u7_outlined_0384
+        8 -> R.raw.u8_outlined_0384
+        else -> R.raw.u1_outlined_0384
+      }
+    }
+
     val MetricCard = R.drawable.ic_card_grid
     val Graph = R.drawable.ic_graph_bar
     val Scale = R.drawable.ic_scale
@@ -139,7 +167,11 @@ object AppIcons {
     val WifiAPModeSelected = R.drawable.wifi_ap_mode_filled
     val WifiSmartConnectSelected = R.drawable.wifi_smart_connect_filled
     val WifiPair = R.raw.pair_0384
-    val WifiStepOn = R.raw.step_on_0384
+    val WifiPair0396 = R.raw.set_pair_mode_0396
+    val WifiStepOnApMode = R.raw.stepon_filled_0384
+    val WifiStepOn = R.raw.step_on
     val WifiCountOn = R.raw.scale_counts_wifi
+    val WifiAPModeFilled0384 = R.drawable.ap_filled_0384
+    val WifiAPModeOutlined0384 = R.drawable.ap_outlined_0384
   }
 }

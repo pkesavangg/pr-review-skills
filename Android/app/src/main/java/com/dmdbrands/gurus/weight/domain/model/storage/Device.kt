@@ -1,9 +1,9 @@
 package com.dmdbrands.gurus.weight.domain.model.storage
 
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.blewrapper.GGCacheDevice
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.Calendar
@@ -67,9 +67,9 @@ data class Preferences(
   @SerialName("timeFormat") val timeFormat: String? = null,
   @SerialName("displayName") val displayName: String? = null,
   @SerialName("displayMetrics") val displayMetrics: List<String>? = null,
-  @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = null,
-  @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = null,
-  @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = null,
+  @SerialName("shouldMeasurePulse") val shouldMeasurePulse: Boolean? = false,
+  @SerialName("shouldMeasureImpedance") val shouldMeasureImpedance: Boolean? = false,
+  @SerialName("shouldFactoryReset") val shouldFactoryReset: Boolean? = false,
   @SerialName("wifiFotaScheduleTime") val wifiFotaScheduleTime: Long? = null,
   val isSynced: Boolean = false
 )

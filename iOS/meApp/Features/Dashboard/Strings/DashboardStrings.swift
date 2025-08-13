@@ -14,7 +14,6 @@ struct DashboardStrings {
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
-    static let switchTo12Metrics = "Switch to 12 Metrics"
 
     // Metrics labels, units, preLabels
     static let weight = "weight"

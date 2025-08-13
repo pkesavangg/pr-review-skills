@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,7 @@ constructor(
   private val entryRepository: IEntryRepository,
   private val goalRepository: IGoalRepository,
   private val accountRepository: IAccountRepository,
+  private val goalService: IGoalService,
 ) : IEntryService {
   private val _isUpdating = MutableStateFlow(false)
   override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
@@ -179,6 +181,7 @@ constructor(
     // Update account-related flows
     try {
       this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
+
       // Update latest entry - use first() to get the first value without blocking
       entryRepository.getLatestEntry(accountId)?.first()?.let { latest ->
         _latestEntry.value = latest
@@ -388,8 +391,15 @@ constructor(
           .maxByOrNull { it.entry.entryTimestamp }
 
       lastValidOperation?.let {
+        // Get weight from the latest entry if it's a ScaleEntry
+        val latestWeight = when (val latest = _latestEntry.value) {
+          is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
+          else -> null
+        }
         // Trigger goal alert if needed
-        // TODO: Implement goal alert service
+        latestWeight?.let { weight ->
+          goalService.showGoalCompletionAlert(weight)
+        }
       }
 
       // 5. Get operations from API
@@ -439,7 +449,7 @@ constructor(
   private suspend fun updateLatestEntry(accountId: String) {
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
-        // _latestEntry.value = latest
+        _latestEntry.value = latest
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating latest entry", e.toString())

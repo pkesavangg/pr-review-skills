@@ -195,6 +195,7 @@ fun CustomizeScaleSettings(
           ScaleMetricsSettingScreen(
             currentMetrics = scaleMetrics,
             onMetricsChanged = { metrics ->
+              // UPDATING DISPLAY METRICS ALONE
               updatedPreference = updatedPreference.copy(displayMetrics = metrics)
               scaleMetrics = metrics
             },
@@ -211,6 +212,7 @@ fun CustomizeScaleSettings(
             isAllBodyMetrics = true,
             isHeartRateOn = true,
             onModeSelected = {
+              // UPDATE SCALE MODE OF WEIGHT ONLY MODE CHANGES
               updatedPreference = updatedPreference.copy(shouldMeasureImpedance = it)
             },
             onHeartRateToggle = {

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package com.dmdbrands.gurus.weight.proto;
+
+option java_multiple_files = true;
+option java_package = "com.dmdbrands.gurus.weight.proto";
+
+message GoalAlertProto {
+  // Map of account ID to alert shown state
+  map<string, bool> account_alerts = 1;
+}

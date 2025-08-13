@@ -14,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.nav3integration.rememberTopLevelBackStack
 import com.dmdbrands.gurus.weight.app.components.NavHost
 import com.dmdbrands.gurus.weight.app.viewmodel.AppIntent
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
@@ -24,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.example.nav3integration.rememberTopLevelBackStack
 import kotlinx.coroutines.delay
 
 /**
@@ -55,7 +55,7 @@ fun MeApp() {
         NavHost(topLevelBackStack, appViewModel)
       }
     }
-    if (uiState.isScaleDiscovered) {
+    if (uiState.isScaleDiscovered && uiState.hasScanStarted) {
       val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
       LaunchedEffect(Unit) {
         delay(15 * 1000)

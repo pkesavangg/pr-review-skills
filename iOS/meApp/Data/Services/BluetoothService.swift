@@ -88,6 +88,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var activeAccount: Account?
     private var isSmartScanStarted = false
     private var bluetoothScales: [Device] = []
+    private var connectedGgDevices: [GGBTDevice] = []
     private var isWeightOnlyModeAlertDismissed = false
     private var lastProfileUpdateAccountId: String?
     
@@ -152,7 +153,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     private func handleScalesUpdate(_ scales: [Device]?) async {
         guard let scales = scales, !scales.isEmpty else {
-            syncDevices([])
             bluetoothScales = []
             return
         }
@@ -274,11 +274,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Parameter devices: The devices to sync. Passing an empty array clears the list.
      */
     func syncDevices(_ devices: [Device]) {
-        if (bluetoothScales.isEmpty && devices.isEmpty) {
-            clearDevices()
-            return
-        }
-        
         let scalesToSync = devices.isEmpty ? bluetoothScales : devices
         let ggDevices = scalesToSync.map { device in
             GGBTDevice(
@@ -956,10 +951,36 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Handle known device discovery
             break
         case .DEVICE_CONNECTED:
-           await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            // Maintain SDK device list from connection events (PackageTest behavior)
+            if let details = data.data as? GGDeviceDetails {
+                let gg = GGBTDevice(
+                    name: details.deviceName,
+                    broadcastId: details.broadcastIdString,
+                    password: details.password,
+                    token: "",
+                    userNumber: details.userNumber,
+                    preference: nil,
+                    syncAllData: true,
+                    batteryLevel: details.batteryLevel,
+                    protocolType: details.protocolType,
+                    macAddress: details.macAddress
+                )
+                if !connectedGgDevices.contains(where: { $0.broadcastId == gg.broadcastId }) {
+                    connectedGgDevices.append(gg)
+                    ggBleSDK.syncDevices(connectedGgDevices)
+                }
+            }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
             await scaleService.updateConnectedDevices(device: data.data, isConnected: false)
+            if let details = data.data as? GGDeviceDetails {
+                let before = connectedGgDevices.count
+                connectedGgDevices.removeAll { $0.broadcastId == details.broadcastIdString }
+                if connectedGgDevices.count != before {
+                    ggBleSDK.syncDevices(connectedGgDevices)
+                }
+            }
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
             }

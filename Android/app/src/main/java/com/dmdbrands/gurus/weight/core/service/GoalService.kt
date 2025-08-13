@@ -1,20 +1,29 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.storage.datastore.GoalAlertDataStore
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.goal.GoalData
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
-import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.convertDisplayWeightToStored
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
+import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.floor
@@ -31,8 +40,12 @@ constructor(
   private val goalRepository: IGoalRepository,
   private val connectivityObserver: IConnectivityObserver,
   private val dialogQueueService: IDialogQueueService,
+  private val appNavigationService: IAppNavigationService,
+  private val goalAlertDataStore: GoalAlertDataStore,
+  private val accountRepository: IAccountRepository,
 ) : IGoalService {
   private val TAG = "GoalService"
+  private var isShowingAlert = false
 
   private val _goalStatusFlow = MutableStateFlow<Goal?>(null)
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
@@ -145,41 +158,127 @@ constructor(
   }
 
   /**
-   * Checks if goal completion alert should be shown.
-   * Based on Angular's showGoalMetMessage logic.
-   * @param currentWeight Current weight to check against goal
-   * @return True if goal completion alert should be shown
-   */
-  override suspend fun shouldShowGoalCompletionAlert(currentWeight: Double): Boolean {
-    // TODO: Implement goal completion alert logic
-    // This would check:
-    // 1. If alert hasn't been shown yet for this goal
-    // 2. If current weight meets the goal criteria
-    // 3. If not currently in setup process
-    // Similar to Angular's showGoalMetMessage method
-    return false
-  }
-
-  /**
    * Shows goal completion alert based on goal type.
-   * Based on Angular's showGoalMetAlert and showGoalLeaveAlert methods.
+   * Based on Angular's showGoalMetMessage method.
    * @param currentWeight Current weight that triggered the alert
    */
   override suspend fun showGoalCompletionAlert(currentWeight: Double) {
-    val currentGoal = getCurrentGoal()?.first() ?: return
+    try {
+      val currentGoal = getCurrentGoal().first() ?: return
+      val account = accountRepository.getActiveAccount().first() ?: return
+      val hasShownAlert = goalAlertDataStore.hasShownAlert(account.id)
 
-    when (currentGoal.type.lowercase()) {
-      "maintain" -> {
-        // Show goal leave alert for maintain goals
-        showGoalLeaveAlert()
-      }
+      // Match Angular's conditions (removed bluetooth check for now)
+      if (!isShowingAlert && !hasShownAlert) {
+        val shouldShowAlert = when (currentGoal.type.lowercase()) {
+          "gain" -> currentWeight >= currentGoal.goalWeight
+          "lose" -> currentWeight <= currentGoal.goalWeight
+          "maintain" -> currentWeight != currentGoal.goalWeight
+          else -> false
+        }
 
-      "lose", "gain" -> {
-        // Show goal met alert for lose/gain goals
-        showGoalMetAlert()
+        if (shouldShowAlert) {
+          // Set flag before showing dialog (matching Angular)
+          goalAlertDataStore.setAlertShown(account.id, true)
+
+          // Show appropriate dialog based on goal type
+          if (currentGoal.type.lowercase() == "maintain") {
+            showGoalLeaveAlert()
+          } else {
+            showGoalMetAlert()
+          }
+        }
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error showing goal met message", e.toString())
     }
   }
+
+  private suspend fun handleGoalMet(setNewGoal: Boolean) {
+    try {
+      val account = accountRepository.getActiveAccount().first() ?: return
+      // Reset goal alert flag
+      goalAlertDataStore.setAlertShown(account.id, false)
+
+      if (!setNewGoal) {
+        // User chose maintain - update goal to maintain at current weight
+        val currentGoal = getCurrentGoal().first() ?: return
+        updateGoal(
+          goalWeight = currentGoal.goalWeight,
+          initialWeight = currentGoal.goalWeight, // Use goal weight as initial weight for maintain
+          goalType = GoalType.MAINTAIN.value,
+          wasMet = true,
+        )
+      }
+      // If setNewGoal is true, we're already navigating to goal screen
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error handling goal met", e.toString())
+    }
+  }
+
+  private suspend fun handleGoalLeave(updateGoal: Boolean) {
+    if (updateGoal) {
+      val currentGoal = getCurrentGoal().first() ?: return
+      // Update goal with met status
+      updateGoal(
+        goalWeight = currentGoal.goalWeight,
+        initialWeight = currentGoal.initialWeight,
+        goalType = currentGoal.type,
+        wasMet = true,
+      )
+    }
+  }
+
+  /**
+   * Creates a goal for a newly created account during signup.
+   * Converts display weights to stored format and determines the correct goal type.
+   *
+   * @param account The newly created account
+   * @param goalType The selected goal type from signup form
+   * @param startingWeight Current weight in display format
+   * @param goalWeight Goal weight in display format
+   * @return Updated account with goal settings or null if failed
+   */
+  override suspend fun createGoalForSignup(
+    account: Account,
+    goalType: String,
+    startingWeight: Double,
+    goalWeight: Double,
+  ): Account? =
+    try {
+      AppLog.d(TAG, "Creating goal for signup: type=$goalType, current=$startingWeight, goal=$goalWeight")
+
+      // Create Goal object and convert to stored format (LB) for API using helper
+      val goal = GoalHelper.createGoal(
+        startingWeight = startingWeight,
+        goalWeight = goalWeight,
+        goalType = goalType,
+        fromUnit = account.weightUnit,
+        toUnit = WeightUnit.LB, // We store weights in LB format
+      )
+
+      AppLog.d(
+        TAG,
+        "Goal settings: type=${goal.type}, current=${goal.initialWeight}, goal=${goal.goalWeight}",
+      )
+
+      // Update goal using converted values
+      val updatedAccount = updateGoal(
+        goalWeight = goal.goalWeight,
+        initialWeight = goal.initialWeight,
+        goalType = goal.type,
+        wasMet = false, // New goals are never met initially
+      )
+
+      AppLog.i(
+        TAG,
+        "Goal created successfully for signup: type=${goal.type}, goal=${goal.goalWeight}, initial=${goal.initialWeight}",
+      )
+      updatedAccount
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to create goal during signup", e.toString())
+      null
+    }
 
   /**
    * Gets the current goal or null if none is set.
@@ -201,21 +300,29 @@ constructor(
    * Shows goal met alert dialog.
    * Based on Angular's showGoalMetAlert method.
    */
+  @OptIn(DelicateCoroutinesApi::class)
   private fun showGoalMetAlert() {
+    isShowingAlert = true
     dialogQueueService.enqueue(
       DialogModel.Confirm(
-        title = "Congratulations!",
-        message = "You've reached your goal! Would you like to set a new goal or maintain your current weight?",
-        confirmText = "New Goal",
-        cancelText = "Maintain",
+        title = GoalStrings.GoalMetTitle,
+        message = GoalStrings.GoalMetMessage,
+        confirmText = GoalStrings.SetNewGoalButton,
+        cancelText = GoalStrings.MaintainButton,
         onConfirm = {
-          // TODO: Navigate to goal setting screen
-          AppLog.d(TAG, "User chose to set new goal")
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.IO).launch {
+            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
+            handleGoalMet(setNewGoal = true)
+          }
         },
         onCancel = {
-          // Set maintain goal
-          // TODO: Set maintain goal at current weight
-          AppLog.d(TAG, "User chose to maintain current weight")
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.IO).launch {
+            handleGoalMet(setNewGoal = false)
+          }
         },
       ),
     )
@@ -225,75 +332,29 @@ constructor(
    * Shows goal leave alert dialog.
    * Based on Angular's showGoalLeaveAlert method.
    */
-  private suspend fun showGoalLeaveAlert() {
+  private fun showGoalLeaveAlert() {
+    isShowingAlert = true
     dialogQueueService.enqueue(
       DialogModel.Confirm(
-        title = "Goal Change",
-        message = "Your weight has changed from your maintain goal. Would you like to update your goal?",
-        confirmText = "Yes",
-        cancelText = "No",
+        title = GoalStrings.GoalLeaveTitle,
+        message = GoalStrings.GoalLeaveMessage,
+        confirmText = GoalStrings.UpdateGoalButton,
+        cancelText = GoalStrings.KeepGoalButton,
         onConfirm = {
-          // TODO: Navigate to goal setting screen
-          AppLog.d(TAG, "User chose to update goal")
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.IO).launch {
+            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
+          }
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.IO).launch {
+            handleGoalLeave(updateGoal = false)
+          }
         },
       ),
     )
   }
-
-  /**
-   * Creates a goal for a newly created account during signup.
-   * Converts display weights to stored format and determines the correct goal type.
-   *
-   * @param account The newly created account
-   * @param goalType The selected goal type from signup form
-   * @param currentWeight Current weight in display format
-   * @param goalWeight Goal weight in display format
-   * @return Updated account with goal settings or null if failed
-   */
-  override suspend fun createGoalForSignup(
-    account: Account,
-    goalType: String,
-    currentWeight: Double,
-    goalWeight: Double,
-  ): Account? =
-    try {
-      AppLog.d(TAG, "Creating goal for signup: type=$goalType, current=$currentWeight, goal=$goalWeight")
-      val convertedCurrentWeight = account.convertDisplayWeightToStored(currentWeight)
-      val convertedGoalWeight = account.convertDisplayWeightToStored(goalWeight)
-
-      val (finalGoalType, finalGoalWeight, finalInitialWeight) =
-        when (goalType) {
-          GoalType.MAINTAIN.value -> {
-            Triple(GoalType.MAINTAIN.value, convertedGoalWeight, convertedGoalWeight)
-          }
-
-          else -> {
-            val determinedGoalType =
-              if (convertedGoalWeight > convertedCurrentWeight) {
-                GoalType.GAIN.value
-              } else {
-                GoalType.LOSE.value
-              }
-            Triple(determinedGoalType, convertedGoalWeight, convertedCurrentWeight)
-          }
-        }
-
-      // Update the goal using the existing updateGoal method
-      val updatedAccount =
-        updateGoal(
-          goalWeight = finalGoalWeight,
-          initialWeight = finalInitialWeight,
-          goalType = finalGoalType,
-          wasMet = false, // New goals are never met initially
-        )
-
-      AppLog.i(
-        TAG,
-        "Goal created successfully for signup: type=$finalGoalType, goal=$finalGoalWeight, initial=$finalInitialWeight",
-      )
-      updatedAccount
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to create goal during signup", e.toString())
-      null
-    }
 }

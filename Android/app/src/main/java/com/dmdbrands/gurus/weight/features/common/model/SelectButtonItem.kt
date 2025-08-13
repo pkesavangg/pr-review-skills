@@ -11,6 +11,7 @@ package com.dmdbrands.gurus.weight.features.common.model
 data class SelectButtonItem(
   val id: String,
   val displayValue: SelectButtonDisplayValue,
+  val isGif: Boolean = false,
   val emitValue: String,
   var isSelected: Boolean = false
 )
@@ -41,4 +42,6 @@ sealed class SelectButtonDisplayValue {
    * @param errorCode The error code (e.g., "t163", "t204")
    */
   data class ErrorCode(val errorCode: String) : SelectButtonDisplayValue()
+
+  data class Gif(val imageResId: Int) : SelectButtonDisplayValue()
 }

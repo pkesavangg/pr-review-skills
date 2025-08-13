@@ -314,7 +314,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         logger.log(level: .info, tag: "DashboardGraphManager",
                   message: "Generated chart data with Y-axis domain: \(series.count) points, " +
-                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none")")
+                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
+                          "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
     }
 
@@ -418,13 +419,49 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
                 // Normalize to weight range using the dynamic approach from demo project
-                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                                    (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+                let metricRange = effectiveMetricMax - effectiveMetricMin
+                guard metricRange > 0 else {
+                    // If no metric variation, use middle of weight range
+                    let normalizedValue = (weightMin + weightMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: normalizedValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
 
-                // Ensure normalized value is within weight bounds
-                guard normalizedValue >= weightMin && normalizedValue <= weightMax else {
+                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                                    (weightMax - weightMin) / metricRange
+
+                // Additional safety check for NaN/infinite values
+                guard normalizedValue.isFinite else {
+                    let fallbackValue = (weightMin + weightMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
+                // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
+                let epsilon = (weightMax - weightMin) * 0.001 // 0.1% of weight range
+                let safeMin = weightMin + epsilon
+                let safeMax = weightMax - epsilon
+
+                // Ensure normalized value is within safe bounds
+                guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
                     logger.log(level: .info, tag: "DashboardGraphManager",
-                              message: "Normalized value \(normalizedValue) out of weight range for \(selectedMetric)")
+                              message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
+
+                    // Use fallback value within safe bounds
+                    let fallbackValue = (safeMin + safeMax) / 2
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
                     continue
                 }
 
@@ -456,12 +493,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double
     ) -> [GraphSeries] {
 
-        // FIXED: Use ALL operations to determine metric range for consistent trends
-        // Using visible operations was causing metric trends to change with scroll position
-        let operationsToAnalyze = allOperations
+        let operationsToAnalyze = visibleOperations
 
-        // Collect metric values from ALL operations to calculate consistent dynamic range
-        // This ensures the same metric value always maps to the same relative position
         let metricValues = operationsToAnalyze.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
@@ -495,24 +528,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             effectiveMetricMax = metricMax + padding
         }
 
-        // FIXED: Calculate weight range from the same data used for metric range (all operations)
-        // This ensures consistent relative positioning between weight and metric lines
-        let weightValues = allOperations.map { summary -> Double in
-            if isWeightlessMode {
-                guard let anchorWeight = anchorWeight else { return 0 }
-                let currentWeight = convertWeight(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return convertWeight(Int(summary.weight))
-            }
-        }
-
-        guard let weightMin = weightValues.min(),
-              let weightMax = weightValues.max(),
-              weightMax > weightMin else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for metric normalization")
-            return []
-        }
+        // Use dynamic y-axis domain for metric normalization to enable dynamic scaling
+        // This allows metrics to scale with the visible data range like weight lines
+        let weightMin = yAxisDomain.lowerBound
+        let weightMax = yAxisDomain.upperBound
 
         var normalizedSeries: [GraphSeries] = []
 
@@ -523,24 +542,58 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 // Clamp the metric value to the effective range
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
-                                // Step 1: Normalize metric to consistent weight range
-                let normalizedToWeightRange = weightMin + (clampedValue - effectiveMetricMin) *
-                                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+                // Directly normalize metric to dynamic y-axis domain for dynamic scaling
+                let metricRange = effectiveMetricMax - effectiveMetricMin
+                guard metricRange > 0 else {
+                    // If no metric variation, use middle of y-axis domain
+                    let finalValue = (weightMin + weightMax) / 2
 
-                // Step 2: Map to Y-axis domain for visibility while preserving relationships
-                let yAxisMin = yAxisDomain.lowerBound
-                let yAxisMax = yAxisDomain.upperBound
-                let yAxisSpan = yAxisMax - yAxisMin
-                let weightSpan = weightMax - weightMin
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: finalValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
 
-                // Calculate the relative position within weight range
-                let relativePosition = (normalizedToWeightRange - weightMin) / weightSpan
+                // Directly map metric value to y-axis domain range
+                let yAxisSpan = weightMax - weightMin
+                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                                    yAxisSpan / metricRange
 
-                // Map this relative position to Y-axis domain
-                let finalValue = yAxisMin + (relativePosition * yAxisSpan)
+                // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
+                let epsilon = yAxisSpan * 0.1 // 0.1% of y-axis span
+                let safeMin = weightMin + epsilon
+                let safeMax = weightMax - epsilon
 
-                // Clamp to Y-axis bounds for safety
-                let clampedFinalValue = max(yAxisMin, min(yAxisMax, finalValue))
+                // Clamp to safe bounds to ensure metrics stay well within visible range
+                let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
+
+                // Additional safety check for NaN/infinite values
+                guard clampedFinalValue.isFinite else {
+                    let fallbackValue = (weightMin + weightMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
+
+                // Final validation: ensure the value is definitely within safe bounds
+                guard clampedFinalValue >= safeMin && clampedFinalValue <= safeMax else {
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                              message: "Metric value \(clampedFinalValue) still out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
+                    let fallbackValue = (safeMin + safeMax) / 2
+
+                    normalizedSeries.append(GraphSeries(
+                        date: summary.date,
+                        value: fallbackValue,
+                        series: selectedMetric
+                    ))
+                    continue
+                }
 
                 normalizedSeries.append(GraphSeries(
                     date: summary.date,
@@ -550,11 +603,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
 
-                        logger.log(level: .info, tag: "DashboardGraphManager",
-                  message: "Generated metric series with consistent relative positioning for \(selectedMetric): \(normalizedSeries.count) points, " +
-                          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
-                          "weightRange: \(weightMin)...\(weightMax), " +
-                          "yAxisDomain: \(yAxisDomain)")
+        logger.log(level: .info, tag: "DashboardGraphManager",
+  message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
+          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+          "weightRange: \(weightMin)...\(weightMax), " +
+          "yAxisDomain: \(yAxisDomain)")
 
         return normalizedSeries
     }
@@ -611,8 +664,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             convertWeight: convertWeight,
             chartHeight: chartHeight
         )
-        state.cachedYAxisDomain = yAxisScale.domain
-        state.cachedYAxisTicks = yAxisScale.ticks
+        let newDomain = yAxisScale.domain
+        let newTicks = yAxisScale.ticks
+
+        // Skip if nothing actually changed to avoid unnecessary re-layout churn
+        if let cachedDomain = state.cachedYAxisDomain,
+           let cachedTicks = state.cachedYAxisTicks,
+           cachedDomain == newDomain,
+           cachedTicks == newTicks {
+            return
+        }
+        state.cachedYAxisDomain = newDomain
+        state.cachedYAxisTicks = newTicks
     }
 
     private func enforceScrollBoundaries(_ position: Date, from operations: [BathScaleWeightSummary]) -> Date {
@@ -797,113 +860,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return years.count == 1
     }
 
-    // MARK: - X-Axis Generation Methods
-    private func generateWeeklyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-            for dayOffset in 0..<7 {
-                if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
-                    dates.append(dayDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.week * 0.5
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-            let totalWeeks = Int(ceil(maxAllowedDate.timeIntervalSince(weekStart) / DashboardConstants.TimeInterval.week))
-            for weekOffset in 0..<totalWeeks {
-                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStart) {
-                    for dayOffset in 0..<7 {
-                        if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekDate) {
-                            if dayDate <= maxAllowedDate {
-                                dates.append(dayDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateMonthlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-            for weekOffset in 0..<5 {
-                if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthStart) {
-                    dates.append(weekDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.week * 2
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-            let totalMonths = Int(ceil(maxAllowedDate.timeIntervalSince(monthStart) / DashboardConstants.TimeInterval.month))
-            for monthOffset in 0..<totalMonths {
-                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: monthStart) {
-                    for weekOffset in 0..<5 {
-                        if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: monthDate) {
-                            if weekDate <= maxAllowedDate {
-                                dates.append(weekDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateYearlyXAxis(minDate: Date, maxDate: Date, shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        var dates: [Date] = []
-        if !shouldRepeat {
-            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-            for monthOffset in 0..<12 {
-                if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearStart) {
-                    dates.append(monthDate)
-                }
-            }
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.month * 2
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let yearStart = calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-            let totalYears = Int(ceil(maxAllowedDate.timeIntervalSince(yearStart) / DashboardConstants.TimeInterval.year))
-            for yearOffset in 0..<totalYears {
-                if let yearDate = calendar.date(byAdding: .year, value: yearOffset, to: yearStart) {
-                    for monthOffset in 0..<12 {
-                        if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: yearDate) {
-                            if monthDate <= maxAllowedDate {
-                                dates.append(monthDate)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return dates
-    }
-
-    private func generateTotalXAxis(minDate: Date, maxDate: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool, entryCount: Int) -> [Date] {
-        if areEntriesInSameEra(operations) {
-            return generateYearlyXAxis(minDate: minDate, maxDate: maxDate, shouldRepeat: shouldRepeat, entryCount: entryCount)
-        } else {
-            let centeringBuffer = DashboardConstants.TimeInterval.month * 3
-            let maxAllowedDate = maxDate.addingTimeInterval(centeringBuffer)
-            let quarterStart = calendar.date(from: calendar.dateComponents([.year, .month], from: minDate)) ?? minDate
-            let totalQuarters = Int(ceil(maxAllowedDate.timeIntervalSince(quarterStart) / DashboardConstants.TimeInterval.quarter))
-            var dates: [Date] = []
-            for quarterOffset in 0..<totalQuarters {
-                if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStart) {
-                    if quarterDate <= maxAllowedDate {
-                        dates.append(quarterDate)
-                    }
-                }
-            }
-            return dates
-        }
-    }
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
         // NEVER recalculate X-axis values during scrolling to prevent axis jumping
@@ -916,10 +872,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         let domainLength = visibleDomainLength(for: period)
         let allDates = operations.map(\.date)
-        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
+        guard let overallMinDate = allDates.min() else { return [] }
         let buffer = domainLength * 2
+        let currentDate = Date()
         let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(overallMaxDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
         let xAxisValues: [Date]
@@ -1274,5 +1231,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 resetMetrics()
             }
         }
+    }
+
+    func endScrollingImmediately() {
+        state.scrollEndTimer?.invalidate()
+        state.isScrolling = false
+        state.hasDetectedScrollInCurrentGesture = false
+        latestScrollPosition = nil
     }
 }
