@@ -41,7 +41,7 @@ fun AppHelpModal(
       },
       imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
     ) {
-      Spacer(Modifier.height(MeTheme.spacing.md))
+      Spacer(Modifier.height(MeTheme.spacing.x6s))
       // Phone row
       val phoneNumber = AppHelpModalStrings.Phone
 

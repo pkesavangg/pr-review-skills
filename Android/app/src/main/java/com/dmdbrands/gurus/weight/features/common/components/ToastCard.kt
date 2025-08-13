@@ -14,11 +14,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
+import android.graphics.BlurMaskFilter
 
 /**
  * Stateless UI for displaying a toast card.
@@ -28,58 +34,100 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
  */
 @Composable
 fun ToastCard(
-    modifier: Modifier = Modifier,
-    toast: Toast,
-    clearToast: () -> Unit = {},
+  modifier: Modifier = Modifier,
+  toast: Toast,
+  clearToast: () -> Unit = {},
 ) {
-    Card(
-        modifier =
-            modifier
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-        shape = RoundedCornerShape(10.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = colorScheme.toastBackground,
-            ),
+  Card(
+    modifier =
+      modifier
+        .statusBarsPadding()
+        .padding(horizontal = 16.dp, vertical = 16.dp)
+        .boxShadow(
+          shadowColor = colorScheme.glow,
+          offsetY = 4.dp,
+          blurRadius = 8.dp,
+          cornerRadius = 10.dp,
+        ),
+    shape = RoundedCornerShape(10.dp),
+    colors =
+      CardDefaults.cardColors(
+        containerColor = colorScheme.toastBackground,
+      ),
+  ) {
+    Column(
+      modifier = Modifier.padding(16.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            toast.title?.let {
-                Text(
-                    text = it,
-                    style = MeTheme.typography.heading5,
-                    color = colorScheme.textBody,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = toast.message,
-                    style = MeTheme.typography.body2,
-                    color = colorScheme.textBody,
-                )
-            }
-            toast.action?.let {
-                Text(
-                    text = it.text.uppercase(),
-                    style = MeTheme.typography.button2,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.primaryAction,
-                    modifier =
-                        Modifier
-                            .padding(vertical = 6.dp, horizontal = 2.dp)
-                            .clickable {
-                                it.action()
-                                clearToast()
-                            },
-                )
-            }
-        }
+      toast.title?.let {
+        Text(
+          text = it,
+          style = MeTheme.typography.heading5,
+          color = colorScheme.textBody,
+        )
+      }
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text(
+          text = toast.message,
+          style = MeTheme.typography.body2,
+          color = colorScheme.textBody,
+        )
+      }
+      toast.action?.let {
+        Text(
+          text = it.text.uppercase(),
+          style = MeTheme.typography.button2,
+          fontWeight = FontWeight.Bold,
+          color = colorScheme.primaryAction,
+          modifier =
+            Modifier
+              .padding(vertical = 6.dp, horizontal = 2.dp)
+              .clickable {
+                it.action()
+                clearToast()
+              },
+        )
+      }
     }
+  }
 }
+
+private fun Modifier.boxShadow(
+  shadowColor: Color,
+  offsetY: Dp,
+  blurRadius: Dp,
+  cornerRadius: Dp,
+): Modifier =
+  this.drawBehind {
+    val paint = android.graphics.Paint().apply {
+      isAntiAlias = true
+      color = android.graphics.Color.argb(
+        (shadowColor.alpha * 255).toInt(),
+        (shadowColor.red * 255).toInt(),
+        (shadowColor.green * 255).toInt(),
+        (shadowColor.blue * 255).toInt(),
+      )
+      maskFilter = BlurMaskFilter(blurRadius.toPx(), BlurMaskFilter.Blur.NORMAL)
+    }
+
+    drawIntoCanvas { canvas ->
+      val left = 0f
+      val top = offsetY.toPx()
+      val right = size.width
+      val bottom = size.height + offsetY.toPx()
+      val frameworkPaint = paint
+      canvas.nativeCanvas.drawRoundRect(
+        left,
+        top,
+        right,
+        bottom,
+        cornerRadius.toPx(),
+        cornerRadius.toPx(),
+        frameworkPaint,
+      )
+    }
+  }

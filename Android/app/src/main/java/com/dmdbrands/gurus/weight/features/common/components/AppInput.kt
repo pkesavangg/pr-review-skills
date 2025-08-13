@@ -426,7 +426,7 @@ fun <T> InputFieldBase(
                 errorCursorColor = colorScheme.textError,
             ),
     )
-    Box(modifier = Modifier.padding(top = spacing.x2s, start = spacing.sm)) {
+    Box(modifier = Modifier.padding(top = spacing.none, start = spacing.sm)) {
         val errorMessage = formControl?.error?.message.orEmpty()
         when {
             isError ->
@@ -471,6 +471,7 @@ fun AppInputPreview() {
                 label = "Disabled Input",
                 type = AppInputType.TEXT,
                 enabled = false,
+                supportingText = "must not be left blank"
             )
         }
     }
