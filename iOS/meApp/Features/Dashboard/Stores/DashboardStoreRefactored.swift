@@ -159,11 +159,9 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             }
             .store(in: &cancellables)
 
-        // Subscribe to dashboard type changes
-        accountService.$activeAccount
+                accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst()
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
@@ -180,14 +178,21 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     var metricGridColumns: [GridItem] {
-        return metricsManager.getMetricGridColumns(for: state.metrics.dashboardType)
+        let effectiveType = determineDashboardTypeFromAccount()
+        return metricsManager.getMetricGridColumns(for: effectiveType)
     }
 
     var metricsToShow: [MetricItem] {
+        let effectiveType = determineDashboardTypeFromAccount()
         return metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: state.metrics.dashboardType
+            dashboardType: effectiveType
         )
+    }
+
+    // Expose effective dashboard type based on the active account only
+    var effectiveDashboardType: DashboardType {
+        determineDashboardTypeFromAccount()
     }
 
     var streakColumns: [GridItem] {
@@ -471,11 +476,12 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         }
 
         if let dashboardTypeString = account.dashboardSettings?.dashboardType {
-            if dashboardTypeString == DashboardType.dashboard12.rawValue {
+            // Support canonical raw values and legacy stored values
+            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "dashboard12" {
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
                 return .dashboard12
             }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue {
+            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "dashboard4" {
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
                 return .dashboard4
             }
@@ -732,6 +738,8 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
                         self.state.ui.selectedMetricLabel = nil
+                        // Clear edit snapshot so next edit session starts fresh
+                        self.hasEditSnapshot = false
                     }
                 }
             } catch {
@@ -743,6 +751,8 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
                         self.state.ui.selectedMetricLabel = nil
+                        // Clear edit snapshot so next edit session starts fresh even on error
+                        self.hasEditSnapshot = false
                     }
                 }
             }
@@ -795,6 +805,8 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
                 self.state.ui.gridLayoutId = UUID()
+                // Reset snapshot after a full dashboard reset
+                self.hasEditSnapshot = false
             }
         }
     }
@@ -1285,7 +1297,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     func handleSelectedMetricLabelChange(_ newValue: String?) {
         if newValue == nil {
             // Clear selection state
-            // Note: This is handled by the UI layer since it manages the selectedEntry and selectedMetric state
+            state.ui.selectedMetricLabel = nil
         }
     }
 
