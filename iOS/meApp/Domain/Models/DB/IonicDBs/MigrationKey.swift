@@ -19,7 +19,7 @@ public enum MigrationKey: String {
     /// HealthKit deintegration flag used by the Ionic app (per account)
     case healthKitDeintegrated = "healthKitDeintegrated"
     /// Notification alert viewed flag used by the Ionic app (per account)
-    case notificationAlertViewed = "notificationOnlyAlertShown"
+    case notificationAlertViewed = "notificationAlertViewed"
     /// Common Capacitor storage prefix used by the Ionic app
     case capacitorPrefix = "CapacitorStorage."
 
@@ -65,4 +65,3 @@ public enum MigrationKey: String {
         return Self.capacitorPrefix.rawValue + Self.notificationAlertViewed.rawValue + "_\(accountId)"
     }
 }
-

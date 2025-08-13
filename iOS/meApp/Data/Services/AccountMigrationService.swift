@@ -70,27 +70,27 @@ final class AccountMigrationService {
             // Don't throw error here - account migration was successful
         }
         
-        // Migrate goal alert storage keys
-        migrateGoalAlertData(for: account.accountId)
+        // Migrate goal alert storage keys for all accounts (not just current account)
+        migrateAllGoalAlertData()
         
-        // Migrate appearance settings
-        migrateAppearanceData(for: account.accountId)
+        // Migrate appearance settings for all accounts (not just current account)
+        migrateAllAppearanceData()
         
         // Migrate HealthKit integration data
         migrateHealthKitIntegrationData(for: account.accountId)
         
-        // Migrate notification alert data
-        migrateNotificationAlertData(for: account.accountId)
+        // Migrate notification alert data for all accounts (global key to account-scoped for all accounts)
+        migrateAllNotificationAlertData()
         
         logger.log(level: .info, tag: tag, message: "Comprehensive migration completed for account: \(account.email) with \(scalesCount) scales")
         
         // Clean up Ionic data after successful migration
         cleanupAfterMigration()
         cleanupOfflineData(for: account.accountId)
-        cleanupGoalAlertData(for: account.accountId)
-        cleanupAppearanceData(for: account.accountId)
+        cleanupAllGoalAlertData() // Clean up goal alert data for all accounts
+        cleanupAllAppearanceData() // Clean up appearance data for all accounts
         cleanupHealthKitIntegrationData(for: account.accountId)
-        cleanupNotificationAlertData(for: account.accountId)
+        cleanupAllNotificationAlertData() // Clean up notification alert data for all accounts
         scaleMigrationService.cleanupAfterMigration(for: account.accountId)
         
         return (account, scalesCount)
@@ -139,6 +139,19 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Cleaned up offline data for account: \(accountId)")
     }
     
+    /// Migrates goal alert storage keys for all accounts found in UserDefaults
+    func migrateAllGoalAlertData() {
+        logger.log(level: .info, tag: tag, message: "Starting goal alert data migration for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+            migrateGoalAlertData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed goal alert data migration for \(allAccountIds.count) accounts")
+    }
+    
     /// Migrates goal alert storage keys for a specific account
     /// - Parameter accountId: The account ID to migrate goal alert data for
     func migrateGoalAlertData(for accountId: String) {
@@ -164,11 +177,37 @@ final class AccountMigrationService {
         }
     }
     
+    /// Removes goal alert data for all accounts after migration
+    func cleanupAllGoalAlertData() {
+        logger.log(level: .info, tag: tag, message: "Starting cleanup of goal alert data for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+           cleanupGoalAlertData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed cleanup of goal alert data for \(allAccountIds.count) accounts")
+    }
+    
     /// Removes goal alert data for specific account ID after migration
     func cleanupGoalAlertData(for accountId: String) {
-        let ionicGoalAlertKey = MigrationKey.goalAlertKey(for: accountId)
-        kvStorage.clearValue(forKey: ionicGoalAlertKey)
-        logger.log(level: .info, tag: tag, message: "Cleaned up goal alert data for account: \(accountId)")
+       let ionicGoalAlertKey = MigrationKey.goalAlertKey(for: accountId)
+       kvStorage.clearValue(forKey: ionicGoalAlertKey)
+       logger.log(level: .info, tag: tag, message: "Cleaned up goal alert data for account: \(accountId)")
+    }
+    
+    /// Migrates appearance settings for all accounts found in UserDefaults
+    func migrateAllAppearanceData() {
+        logger.log(level: .info, tag: tag, message: "Starting appearance data migration for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+            migrateAppearanceData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed appearance data migration for \(allAccountIds.count) accounts")
     }
     
     /// Migrates appearance settings for a specific account
@@ -178,6 +217,7 @@ final class AccountMigrationService {
         
         let ionicAppearanceKey = MigrationKey.appearanceKey(for: accountId)
         let nativeAppearanceKey = KvStorageKeys.appearanceModeKey(for: accountId)
+        
         
         // Check if Ionic appearance setting exists
         if let ionicAppearanceValue = kvStorage.getValue(forKey: ionicAppearanceKey) as? String {
@@ -204,6 +244,19 @@ final class AccountMigrationService {
         } else {
             logger.log(level: .info, tag: tag, message: "No appearance setting found for account: \(accountId)")
         }
+    }
+    
+    /// Removes appearance data for all accounts after migration
+    func cleanupAllAppearanceData() {
+        logger.log(level: .info, tag: tag, message: "Starting cleanup of appearance data for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+           cleanupAppearanceData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed cleanup of appearance data for \(allAccountIds.count) accounts")
     }
     
     /// Removes appearance data for specific account ID after migration
@@ -285,7 +338,20 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Cleaned up HealthKit integration data for account: \(accountId)")
     }
     
-    /// Migrates notification alert viewed setting from Ionic app to native app
+    /// Migrates notification alert settings for all accounts found in UserDefaults
+    func migrateAllNotificationAlertData() {
+        logger.log(level: .info, tag: tag, message: "Starting notification alert data migration for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+            migrateNotificationAlertData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed notification alert data migration for \(allAccountIds.count) accounts")
+    }
+    
+    /// Migrates notification alert settings for a specific account
     /// - Parameter accountId: The account ID to migrate notification alert data for
     func migrateNotificationAlertData(for accountId: String) {
         logger.log(level: .info, tag: tag, message: "Starting notification alert data migration for account: \(accountId)")
@@ -297,19 +363,11 @@ final class AccountMigrationService {
         if let ionicNotificationAlertValue = kvStorage.getValue(forKey: ionicNotificationAlertKey) as? String {
             logger.log(level: .info, tag: tag, message: "Found Ionic notification alert flag for account: \(accountId), value: \(ionicNotificationAlertValue)")
             
-            // Parse JSON string to get boolean value
-            // Ionic stores as JSON string: "true" or "false"
-            let boolValue: Bool
-            if ionicNotificationAlertValue.contains("true") {
-                boolValue = true
-            } else if ionicNotificationAlertValue.contains("false") {
-                boolValue = false
-            } else {
-                // Fallback: try parsing as direct boolean string
-                boolValue = ionicNotificationAlertValue.lowercased() == "true"
-            }
+            // Convert string value to boolean for native app
+            // Ionic stores as "true"/"false" strings, native uses Bool
+            let boolValue = ionicNotificationAlertValue.lowercased() == "true"
             
-            // Set the value in the native format (account-scoped key, but as Bool instead of JSON string)
+            // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeNotificationAlertKey)
             
             logger.log(level: .info, tag: tag, message: "Migrated notification alert flag for account: \(accountId) from '\(ionicNotificationAlertValue)' to \(boolValue)")
@@ -318,15 +376,104 @@ final class AccountMigrationService {
         }
     }
     
+    /// Removes notification alert data for all accounts after migration
+    func cleanupAllNotificationAlertData() {
+        logger.log(level: .info, tag: tag, message: "Starting cleanup of notification alert data for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+          cleanupNotificationAlertData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed cleanup of notification alert data for \(allAccountIds.count) accounts")
+    }
+    
     /// Removes notification alert data for specific account ID after migration
-    /// - Parameter accountId: The account ID whose notification alert data should be cleaned up
     func cleanupNotificationAlertData(for accountId: String) {
-        let ionicNotificationAlertKey = MigrationKey.notificationAlertViewedKey(for: accountId)
-        kvStorage.clearValue(forKey: ionicNotificationAlertKey)
-        logger.log(level: .info, tag: tag, message: "Cleaned up notification alert data for account: \(accountId)")
+       let ionicNotificationAlertKey = MigrationKey.notificationAlertViewedKey(for: accountId)
+       kvStorage.clearValue(forKey: ionicNotificationAlertKey)
+       logger.log(level: .info, tag: tag, message: "Cleaned up notification alert data for account: \(accountId)")
     }
     
     // MARK: - Private Methods
+    
+    /// Finds all account IDs that have keys stored in UserDefaults
+    /// This scans for account-scoped keys to identify all accounts that have migrateable data
+    private func findAllAccountIdsInUserDefaults() -> Set<String> {
+        var accountIds = Set<String>()
+        
+        // Get all UserDefaults keys for the app
+        guard let allKeys = UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "")?.keys else {
+            logger.log(level: .info, tag: tag, message: "No UserDefaults keys found")
+            return accountIds
+        }
+        
+        // Pattern to extract account IDs from various Capacitor storage keys
+        let patterns = [
+            MigrationKey.notificationAlertViewed.rawValue, // notificationOnlyAlertShown
+            MigrationKey.goalAlertKey.rawValue, // hasSeenSetNewGoal
+            MigrationKey.appearanceKey.rawValue, // colorMode
+            MigrationKey.healthKitIntegrated.rawValue, // healthKitIntegrated
+            MigrationKey.healthKitDeintegrated.rawValue // healthKitDeintegrated
+        ]
+        
+        for key in allKeys {
+            // Check for Capacitor storage keys with account IDs
+            if key.hasPrefix(MigrationKey.capacitorPrefix.rawValue) {
+                for pattern in patterns {
+                    if key.contains(pattern) {
+                        // Extract account ID from key
+                        if let accountId = extractAccountIdFromKey(key, pattern: pattern) {
+                            accountIds.insert(accountId)
+                            logger.log(level: .debug, tag: tag, message: "Found account ID: \(accountId) from key: \(key)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Found \(accountIds.count) unique account IDs in UserDefaults: \(Array(accountIds))")
+        return accountIds
+    }
+    
+    /// Extracts account ID from a Capacitor storage key
+    /// - Parameters:
+    ///   - key: The full UserDefaults key
+    ///   - pattern: The pattern to match against
+    /// - Returns: The extracted account ID if found
+    private func extractAccountIdFromKey(_ key: String, pattern: String) -> String? {
+        // For keys like "CapacitorStorage.notificationOnlyAlertShown_4EBA3nhaJwRCTJ9Veooo9U"
+        // or "CapacitorStorage.4EBA3nhaJwRCTJ9Veooo9U-hasSeenSetNewGoal"
+        
+        if pattern == MigrationKey.notificationAlertViewed.rawValue {
+            // Format: CapacitorStorage.notificationOnlyAlertShown_ACCOUNT_ID
+            let prefix = MigrationKey.capacitorPrefix.rawValue + pattern + "_"
+            if key.hasPrefix(prefix) {
+                return String(key.dropFirst(prefix.count))
+            }
+        } else if pattern == MigrationKey.healthKitDeintegrated.rawValue {
+            // Format: CapacitorStorage.healthKitDeintegrated-ACCOUNT_ID
+            let prefix = MigrationKey.capacitorPrefix.rawValue + pattern + "-"
+            if key.hasPrefix(prefix) {
+                return String(key.dropFirst(prefix.count))
+            }
+        } else {
+            // Format: CapacitorStorage.ACCOUNT_ID-PATTERN
+            let prefix = MigrationKey.capacitorPrefix.rawValue
+            let suffix = "-" + pattern
+            
+            if key.hasPrefix(prefix) && key.hasSuffix(suffix) {
+                let startIndex = key.index(key.startIndex, offsetBy: prefix.count)
+                let endIndex = key.index(key.endIndex, offsetBy: -suffix.count)
+                if startIndex < endIndex {
+                    return String(key[startIndex..<endIndex])
+                }
+            }
+        }
+        
+        return nil
+    }
     
     /// Gets stored Ionic account data from UserDefaults/Preferences
     private func getStoredIonicAccountData() -> IonicAccountData? {

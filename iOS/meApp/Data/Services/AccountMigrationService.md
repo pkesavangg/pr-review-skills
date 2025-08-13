@@ -112,15 +112,20 @@ This method:
 
 ### 7. Data Cleanup
 After successful migration:
-- Removes `activeAccountKey` from UserDefaults
-- Removes `offlineAccount_{accountId}` for the migrated account
-- Removes `{accountId}-hasSeenSetNewGoal` goal alert flags
-- Removes `{accountId}-colorMode` appearance preferences
-- Removes `{accountId}-healthKitIntegrated` HealthKit integration status
-- Removes `healthKitIntegratedAssignedTo` if it matches the migrated account
-- Removes `healthKitDeintegrated-{accountId}` HealthKit deintegration flags
-- Removes `notificationOnlyAlertShown_{accountId}` notification alert viewed flags
+- Removes `CapacitorStorage.activeAccountKey` from UserDefaults
+- Removes `CapacitorStorage.offlineAccount_{accountId}` for the migrated account
+- **Removes `CapacitorStorage.{accountId}-hasSeenSetNewGoal` goal alert flags for ALL accounts found in UserDefaults**
+- **Removes `CapacitorStorage.{accountId}-colorMode` appearance preferences for ALL accounts found in UserDefaults**
+- Removes `CapacitorStorage.{accountId}-healthKitIntegrated` HealthKit integration status
+- Removes `CapacitorStorage.healthKitIntegratedAssignedTo` if it matches the migrated account
+- Removes `CapacitorStorage.healthKitDeintegrated-{accountId}` HealthKit deintegration flags
+- **Removes `CapacitorStorage.notificationOnlyAlertShown_{accountId}` notification alert keys for ALL accounts found in UserDefaults**
 - Ensures no leftover Ionic app data remains
+
+**Notes**: 
+- The goal alert cleanup now scans for and removes goal alert keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
+- The appearance cleanup now scans for and removes appearance/color mode keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
+- The notification alert cleanup now scans for and removes notification alert keys for all accounts that were previously logged into the Ionic app, not just the currently active account.
 
 ### 8. HealthKit Integration Migration
 
@@ -163,32 +168,113 @@ This method:
 
 ### 9. Notification Alert Migration
 
-The service handles migration of the notification alert viewed flag from the Ionic app to the native app.
+The service handles migration of the notification alert viewed flag from the Ionic app to the native app **for all accounts** that have data stored.
 
 #### Ionic Notification Alert Storage Format
 The Ionic app stores notification alert data as:
-- `notificationOnlyAlertShown_{accountId}`: JSON string value ("true"/"false") indicating if the notification-only alert has been shown for the specific account
+- `CapacitorStorage.notificationOnlyAlertShown_{accountId}`: String value ("true"/"false") indicating if the notification-only alert has been shown for the specific account
 
 #### Native Notification Alert Storage Format  
 The native app stores the same data as:
 - `notificationOnlyAlertShown_{accountId}`: Boolean value indicating if the notification-only alert has been shown for the specific account
 
 #### Migration Process
-1. **Check for Ionic Notification Data**: Looks for the `notificationOnlyAlertShown_{accountId}` key for the specific account
-2. **Parse JSON Value**: Converts JSON string to boolean
-3. **Store in Native Format**: Uses the same account-scoped key but stores as Bool instead of JSON string
-4. **Cleanup Ionic Data**: Removes the Ionic notification alert key after successful migration
+1. **Scan UserDefaults**: Finds all account IDs that have notification alert keys stored
+2. **Migrate All Accounts**: For each found account ID:
+   - Reads the Ionic notification alert flag from UserDefaults
+   - Parses the string value to extract the boolean
+   - Stores the boolean value using the native account-scoped key format
+3. **Cleanup All Data**: Removes all Ionic notification alert keys after successful migration
 
-#### Migration Method
+#### Migration Methods
 ```swift
+func migrateAllNotificationAlertData()
 func migrateNotificationAlertData(for accountId: String)
+func cleanupAllNotificationAlertData()
 ```
 
-This method:
-- Reads the Ionic notification alert flag from UserDefaults for the specific account
-- Parses the JSON string value to extract the boolean
-- Stores the boolean value using the same account-scoped key in native format
+The main method `migrateAllNotificationAlertData()`:
+- Scans UserDefaults for all account IDs that have notification alert data
+- Migrates each account's notification alert flag individually
+- Ensures no account's notification alert state is lost during migration
 - Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had notification alerts shown for each, all of those states are preserved when migrating to the native app.
+
+### 10. Goal Alert Migration
+
+The service handles migration of the goal alert (hasSeenSetNewGoal) flags from the Ionic app to the native app **for all accounts** that have data stored.
+
+#### Ionic Goal Alert Storage Format
+The Ionic app stores goal alert data as:
+- `CapacitorStorage.{accountId}-hasSeenSetNewGoal`: String value ("true"/"false") indicating if the goal alert has been shown for the specific account
+
+#### Native Goal Alert Storage Format  
+The native app stores the same data as:
+- `{accountId}_goalMetFlag`: Boolean value indicating if the goal alert has been shown for the specific account
+
+#### Migration Process
+1. **Scan UserDefaults**: Finds all account IDs that have goal alert keys stored
+2. **Migrate All Accounts**: For each found account ID:
+   - Reads the Ionic goal alert flag from UserDefaults
+   - Parses the string value to extract the boolean
+   - Stores the boolean value using the native account-scoped key format
+3. **Cleanup All Data**: Removes all Ionic goal alert keys after successful migration
+
+#### Migration Methods
+```swift
+func migrateAllGoalAlertData()
+func migrateGoalAlertData(for accountId: String)
+func cleanupAllGoalAlertData()
+```
+
+The main method `migrateAllGoalAlertData()`:
+- Scans UserDefaults for all account IDs that have goal alert data
+- Migrates each account's goal alert flag individually
+- Ensures no account's goal alert state is lost during migration
+- Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had goal alerts shown for each, all of those states are preserved when migrating to the native app.
+
+### 11. Appearance Mode Migration
+
+The service handles migration of the appearance/color mode settings from the Ionic app to the native app **for all accounts** that have data stored.
+
+#### Ionic Appearance Storage Format
+The Ionic app stores appearance data as:
+- `CapacitorStorage.{accountId}-colorMode`: String value ("light", "dark", "system", etc.) indicating the appearance preference for the specific account
+
+#### Native Appearance Storage Format  
+The native app stores the same data as:
+- `appearanceMode_{accountId}`: String value ("Light", "Dark", "System Settings") indicating the appearance preference for the specific account
+
+#### Migration Process
+1. **Scan UserDefaults**: Finds all account IDs that have appearance/color mode keys stored
+2. **Migrate All Accounts**: For each found account ID:
+   - Reads the Ionic appearance setting from UserDefaults
+   - Maps Ionic values to native format:
+     - `"light"` or `"system_light"` → `"Light"`
+     - `"dark"` or `"system_dark"` → `"Dark"`
+     - `"system"` → `"System Settings"`
+     - Default fallback → `"System Settings"`
+   - Stores the mapped value using the native account-scoped key format
+3. **Cleanup All Data**: Removes all Ionic appearance keys after successful migration
+
+#### Migration Methods
+```swift
+func migrateAllAppearanceData()
+func migrateAppearanceData(for accountId: String)
+func cleanupAllAppearanceData()
+```
+
+The main method `migrateAllAppearanceData()`:
+- Scans UserDefaults for all account IDs that have appearance data
+- Migrates each account's appearance setting individually
+- Maps Ionic appearance values to native equivalents
+- Ensures no account's appearance preference is lost during migration
+- Logs the migration process for debugging
+
+This approach ensures that if a user previously logged into multiple accounts in the Ionic app and had different appearance preferences for each, all of those preferences are preserved when migrating to the native app.
 
 ## Usage
 
