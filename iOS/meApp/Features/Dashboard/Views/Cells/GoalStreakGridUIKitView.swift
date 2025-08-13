@@ -238,8 +238,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return CGSize(width: contentWidth, height: 120) // Large widget spans full width
             case .streak:
 
-                // Use consistent column count without iPad-specific override
-                let columns: CGFloat = 2
+                // Device-aware columns: iPad=4, iPhone=2
+                let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
                 let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
                 return CGSize(width: itemWidth, height: 70) // Small widget
             }

@@ -377,7 +377,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
         do {
-            localAccount.dashboardSettings?.dashboardType = String(describing: type)
+            // Persist canonical rawValue (e.g., "dashboard_12_metrics")
+            localAccount.dashboardSettings?.dashboardType = type.rawValue
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
@@ -909,7 +910,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func updatePublishedState() async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
-        // Only publish when the active account actually changes to prevent unnecessary Combine emissions.
         if activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
             // Update theme with new active account
