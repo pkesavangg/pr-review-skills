@@ -120,16 +120,16 @@ class MetricCell: UICollectionViewCell {
                 }
             },
             onTap: {
-                // Only allow selection if not in edit mode
-                if !store.state.ui.isEditMode {
-                    if store.state.ui.selectedMetricLabel == item.label {
-                        // Deselect if already selected
-                        onSelectMetric?("")
-                    } else {
-                        // Select if not selected
-                        onSelectMetric?(item.label)
-                    }
-                }
+                                 // Only allow selection if not in edit mode
+                 if !store.state.ui.isEditMode {
+                     if store.state.ui.selectedMetricLabel == item.label {
+                         // Deselect if already selected
+                         onSelectMetric?("")
+                     } else {
+                         // Select if not selected
+                         onSelectMetric?(item.label)
+                     }
+                 }
             },
             isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onDrop: { _, _ in false }, // Drag and drop handled by UIKit
@@ -140,20 +140,20 @@ class MetricCell: UICollectionViewCell {
         )
         
         let viewWithOverlay = AnyView(
-            metricCardView
-                .editModeOverlay(
-                    isEditMode: store.state.ui.isEditMode,
-                    isRemoved: itemIsRemoved,
-                    onToggleRemoval: {
-                        if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                            store.toggleMetricRemovalInReorderedArray(at: index)
-                        }
-                    },
-                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
-                    isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
-                    rowIndex: rowIndex,
-                    disableWiggle: false
-                )
+                         metricCardView
+                 .editModeOverlay(
+                     isEditMode: store.state.ui.isEditMode,
+                     isRemoved: itemIsRemoved,
+                     onToggleRemoval: {
+                         if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
+                             store.toggleMetricRemovalInReorderedArray(at: index)
+                         }
+                     },
+                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
+                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                     rowIndex: rowIndex,
+                     disableWiggle: itemIsRemoved // removed items must not wiggle
+                 )
         )
         
         hostingController?.rootView = viewWithOverlay
@@ -163,9 +163,15 @@ class MetricCell: UICollectionViewCell {
             let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleMetricTap(_:)))
             self.addGestureRecognizer(tapGesture)
         } else {
+
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
             self.addGestureRecognizer(longPress)
+
+            let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
+            selectTap.cancelsTouchesInView = true
+            self.addGestureRecognizer(selectTap)
+
             self.tag = item.id.hashValue
             self.onMetricLongPressCallback = onMetricLongPress
             self.onSelectMetricCallback = onSelectMetric
@@ -245,7 +251,8 @@ class MetricCell: UICollectionViewCell {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        if isWiggling && !isRemoved {
+        // Wiggle only in edit mode and only if not removed
+        if let store = currentStore, store.state.ui.isEditMode, isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
@@ -378,6 +385,16 @@ class MetricCell: UICollectionViewCell {
         }
     }
 
+    @objc private func handleNonEditSelectTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended, let item = representedItem else { return }
+        // Toggle selection: deselect if same, otherwise select tapped
+        if currentStore?.state.ui.selectedMetricLabel == item.label {
+            onSelectMetricCallback?("")
+        } else {
+            onSelectMetricCallback?(item.label)
+        }
+    }
+
     override var isHighlighted: Bool {
         didSet {
             contentView.alpha = 1.0
@@ -392,5 +409,21 @@ class MetricCell: UICollectionViewCell {
             backgroundView?.alpha = 1.0
             layer.shadowOpacity = 0.0
         }
+    }
+
+    func snapshotForPreview() -> UIView {
+        guard let hostingController = hostingController else {
+            let fallbackView = UIView(frame: contentView.bounds)
+            fallbackView.backgroundColor = UIColor.systemBackground
+            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.masksToBounds = true
+            return fallbackView
+        }
+        let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
+        snapshot?.frame = contentView.bounds
+        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.masksToBounds = true
+        snapshot?.backgroundColor = .clear
+        return snapshot ?? UIView(frame: contentView.bounds)
     }
 }

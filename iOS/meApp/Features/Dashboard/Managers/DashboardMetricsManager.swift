@@ -149,6 +149,16 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
     func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType) -> [MetricItem] {
         if isEditMode {
+            if dashboardType == .dashboard4 {
+                // Show only the four allowed metrics (active and removed) in edit mode
+                let allowedLabels: Set<String> = [
+                    DashboardStrings.bmi,
+                    DashboardStrings.bodyFat,
+                    DashboardStrings.muscle,
+                    DashboardStrings.water
+                ]
+                return state.metrics.filter { allowedLabels.contains($0.label) }
+            }
             return state.metrics
         } else {
             return Array(state.metrics.prefix(state.activeMetricsCount))
@@ -156,9 +166,16 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func getMetricGridColumns(for dashboardType: DashboardType) -> [GridItem] {
-        let columnCount = dashboardType == .dashboard4 ?
-            DashboardConstants.UI.fourMetricGridColumns :
-            DashboardConstants.UI.twelveMetricGridColumns
+        // Use columns strictly based on dashboard type
+        // - dashboard4 → 2 columns
+        // - dashboard12 → 3 columns
+        let columnCount: Int
+        switch dashboardType {
+        case .dashboard4:
+            columnCount = DashboardConstants.UI.fourMetricGridColumns
+        case .dashboard12:
+            columnCount = DashboardConstants.UI.twelveMetricGridColumns
+        }
         return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 

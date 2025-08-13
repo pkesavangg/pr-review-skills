@@ -36,6 +36,7 @@ enum DashboardConstants {
         static let chartAnimationDuration: Double = 0.3
         static let scrollEndDebounceDelay: Double = 0.3
         static let loaderDelay: Double = 1.5
+        static let dragPreviewScale: CGFloat = 0.92
         
         // MARK: - Grid Layout Constants
         static let fourMetricGridColumns: Int = 2

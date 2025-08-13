@@ -37,18 +37,19 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let newIds = store.metricsToShow.map { $0.id }
         let newDashboardType = store.state.metrics.dashboardType
         let newIsEditMode = store.state.ui.isEditMode
+        let newSelectedLabel = store.state.ui.selectedMetricLabel
         let contentChanged = newIds != coordinator.lastItemIds
         let layoutChanged = newDashboardType != coordinator.lastDashboardType
+        let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
 
         // Keep drag interaction in sync with edit mode
         uiView.dragInteractionEnabled = newIsEditMode
 
         if contentChanged || layoutChanged {
-            // Apply minimal updates; fallback to reload if complex changes
+            // When item count or layout changes, avoid batch updates; do a full, animation-less reload
+            uiView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
-                uiView.performBatchUpdates({
-                    uiView.reloadData()
-                }, completion: nil)
+                uiView.reloadData()
             }
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
@@ -70,9 +71,24 @@ struct MetricGridUIKitView: UIViewRepresentable {
                     }
                 }
             }
+
+            // If selection changed, reconfigure visible cells to update highlight immediately
+            if selectionChanged {
+                uiView.visibleCells.forEach { cell in
+                    if let metricCell = cell as? MetricCell, let item = metricCell.representedItem {
+                        metricCell.configure(
+                            with: item,
+                            dashboardType: store.state.metrics.dashboardType,
+                            store: store,
+                            isBeingDragged: false
+                        )
+                    }
+                }
+            }
         }
 
         coordinator.lastIsEditMode = newIsEditMode
+        coordinator.lastSelectedMetricLabel = newSelectedLabel
     }
     
     func makeCoordinator() -> Coordinator {
@@ -84,8 +100,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
     /// Creates the collection view layout with proper spacing and insets
     private func createLayout() -> LeadingAlignedFlowLayout {
         let layout = LeadingAlignedFlowLayout()
-        layout.minimumInteritemSpacing = 16
-        layout.minimumLineSpacing = 16
+        layout.minimumInteritemSpacing = .spacingSM
+        layout.minimumLineSpacing = .spacingSM
         layout.sectionInset = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
         return layout
     }
@@ -95,6 +111,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
+        collectionView.hideDragPlatter = false // show system drag preview platter
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         
         // Disable selection to prevent visual feedback
@@ -130,6 +147,7 @@ extension MetricGridUIKitView {
         var lastItemIds: [UUID] = []
         var lastDashboardType: DashboardType = .dashboard12
         var lastIsEditMode: Bool = false
+        var lastSelectedMetricLabel: String? = nil
         
         // MARK: - Properties
         
@@ -170,14 +188,17 @@ extension MetricGridUIKitView {
                     } else {
                         self.store.state.ui.selectedMetricLabel = label
                     }
+                    // Publish selection change so the grid reconfigures visible cells immediately
+                    self.store.objectWillChange.send()
                 }
             )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
             cell.gestureRecognizers?.forEach { cell.removeGestureRecognizer($0) }
             if store.state.ui.isEditMode {
+                // No long-press delay drag start
                 let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricDragLongPress(_:)))
-                longPress.minimumPressDuration = 0.5
+                longPress.minimumPressDuration = 0.0
                 cell.addGestureRecognizer(longPress)
                 cell.tag = indexPath.item
             }
@@ -212,7 +233,10 @@ extension MetricGridUIKitView {
                 ? MetricCardView.twelveCardVerticalPadding 
                 : MetricCardView.fourCardVerticalPadding
             
-            let itemWidth = (collectionView.bounds.width - 40 - 32) / 3 // 3 columns with spacing
+            
+            let columns: Int = 3
+            let totalSpacing = 40 + CGFloat((columns - 1)) * .spacingSM
+            let itemWidth = (collectionView.bounds.width - totalSpacing) / CGFloat(columns)
             let itemHeight = 70 + (verticalPadding * 2) // Base height + padding
             
             return CGSize(width: itemWidth, height: itemHeight)
@@ -256,50 +280,48 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView,
                             dragPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
             let parameters = UIDragPreviewParameters()
-            parameters.backgroundColor = .clear // Make the preview transparent
-            parameters.visiblePath = UIBezierPath(rect: .zero) // Remove shadow effect
+            parameters.backgroundColor = .clear
+            if let cell = collectionView.cellForItem(at: indexPath) {
+                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+            }
             return parameters
         }
         
         func collectionView(_ collectionView: UICollectionView,
                             dragPreviewForLiftingItem item: UIDragItem,
                             session: UIDragSession) -> UITargetedDragPreview? {
-            
-            guard let metricCell = collectionView.visibleCells.first(where: {
+            if let indexPath = session.localContext as? IndexPath,
+               let metricCell = collectionView.cellForItem(at: indexPath) as? MetricCell {
+                let previewView = metricCell.snapshotForPreview()
+                let parameters = UIDragPreviewParameters()
+                parameters.backgroundColor = .clear
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                let s = DashboardConstants.UI.dragPreviewScale
+                let target = UIDragPreviewTarget(
+                    container: collectionView,
+                    center: metricCell.center,
+                    transform: CGAffineTransform(scaleX: s, y: s)
+                )
+                return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
+            }
+            if let metricCell = collectionView.visibleCells.first(where: {
                 guard let cellItem = ($0 as? MetricCell)?.representedItem,
                       let dragItem = item.localObject as? MetricItem else { return false }
                 return cellItem.id.uuidString == dragItem.id.uuidString
-            }) as? MetricCell else {
-                return nil
+            }) as? MetricCell {
+                let previewView = metricCell.snapshotForPreview()
+                let parameters = UIDragPreviewParameters()
+                parameters.backgroundColor = .clear
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                let s = DashboardConstants.UI.dragPreviewScale
+                let target = UIDragPreviewTarget(
+                    container: collectionView,
+                    center: metricCell.center,
+                    transform: CGAffineTransform(scaleX: s, y: s)
+                )
+                return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
             }
-
-            // Create a custom preview view that shows only the content (no delete button)
-            let previewView = UIView(frame: metricCell.contentView.frame)
-            previewView.backgroundColor = metricCell.contentView.backgroundColor
-            previewView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-            previewView.alpha = 1.0 // Ensure full opacity
-            
-            // Add the content to the preview
-            let contentView = UIView(frame: metricCell.contentView.frame)
-            contentView.backgroundColor = metricCell.contentView.backgroundColor
-            contentView.layer.cornerRadius = metricCell.contentView.layer.cornerRadius
-            previewView.addSubview(contentView)
-            
-            // Center the content in the preview
-            contentView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                contentView.centerXAnchor.constraint(equalTo: previewView.centerXAnchor),
-                contentView.centerYAnchor.constraint(equalTo: previewView.centerYAnchor),
-                contentView.widthAnchor.constraint(equalTo: previewView.widthAnchor),
-                contentView.heightAnchor.constraint(equalTo: previewView.heightAnchor)
-            ])
-
-            let parameters = UIDragPreviewParameters()
-            parameters.backgroundColor = .clear
-            parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 8)
-
-            let target = UIDragPreviewTarget(container: collectionView, center: metricCell.center)
-            return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
+            return nil
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
@@ -368,6 +390,9 @@ extension MetricGridUIKitView {
         // MARK: - UICollectionViewDropDelegate
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
+            guard store.state.ui.isEditMode else {
+                return UICollectionViewDropProposal(operation: .forbidden)
+            }
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
@@ -384,6 +409,7 @@ extension MetricGridUIKitView {
         }
         
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
+            guard store.state.ui.isEditMode else { return }
             guard let destinationIndexPath = coordinator.destinationIndexPath,
                   let item = coordinator.items.first,
                   let sourceIndexPath = item.sourceIndexPath else {

@@ -36,7 +36,7 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-
+static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
@@ -441,11 +441,6 @@ class DashboardStore: ObservableObject {
         state.metrics.dashboardType = dashboardType
         metricsManager.updateDashboardType(dashboardType)
 
-        // Force update dashboard type to 12 metrics if it's currently 4 metrics
-        if dashboardType == .dashboard4 {
-            await forceUpdateDashboardTypeTo12()
-        }
-
         // Initialize data manager to set up bindings
         await initializeDataManager()
 
@@ -462,53 +457,41 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Dashboard Type Management
 
-    /// Forces the dashboard type to be 12 metrics (3 columns) by updating the account settings
-    private func forceUpdateDashboardTypeTo12() async {
-        do {
-            logger.log(level: .info, tag: "DashboardStore", message: "Forcing dashboard type to 12 metrics")
 
-            // Update the account settings to use 12 metrics
-            _ = try await accountService.updateDashboardType(type: .dashboard12)
 
-            // Update the local state
-            state.metrics.dashboardType = .dashboard12
-            metricsManager.updateDashboardType(.dashboard12)
 
-            logger.log(level: .info, tag: "DashboardStore", message: "Successfully updated dashboard type to 12 metrics")
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to update dashboard type to 12 metrics: \(error)")
-        }
-    }
-
-    /// Public method to manually switch to 12 metrics dashboard
-    func switchTo12MetricsDashboard() {
-        Task {
-            await forceUpdateDashboardTypeTo12()
-
-            // Force UI update
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        }
-    }
 
     // MARK: - Dashboard Type Logic
 
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
-        guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
-            logger.log(level: .info, tag: "DashboardStore", message: "No dashboard type found in account, defaulting to 4 metrics")
+        guard let account = accountService.activeAccount else {
+            logger.log(level: .info, tag: "DashboardStore", message: "No active account, defaulting to 4 metrics")
             return .dashboard4
         }
 
-        // Convert string to DashboardType enum
-        guard let dashboardType = DashboardType(rawValue: dashboardTypeString) else {
-            return .dashboard4
+        if let dashboardTypeString = account.dashboardSettings?.dashboardType {
+            if dashboardTypeString == DashboardType.dashboard12.rawValue {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
+                return .dashboard12
+            }
+            if dashboardTypeString == DashboardType.dashboard4.rawValue {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
+                return .dashboard4
+            }
         }
 
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to \(dashboardType.rawValue) (from account dashboardType)")
-        return dashboardType
+        // Fallback: infer from dashboardMetrics count if type string is missing or unexpected
+        if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
+            let metricsCount = metricsCSV.split(separator: ",").count
+            if metricsCount >= 12 {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
+                return .dashboard12
+            }
+        }
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type defaulted to 4 metrics")
+        return .dashboard4
     }
 
     // MARK: - Data Loading Methods
@@ -739,7 +722,7 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await metricsManager.saveMetricsToAPI()
-
+               
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -748,6 +731,7 @@ class DashboardStore: ObservableObject {
                         self.state.ui.loaderOverride = nil
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
+                        self.state.ui.selectedMetricLabel = nil
                     }
                 }
             } catch {
@@ -758,6 +742,7 @@ class DashboardStore: ObservableObject {
                         self.state.ui.loaderOverride = nil
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
+                        self.state.ui.selectedMetricLabel = nil
                     }
                 }
             }
@@ -977,7 +962,14 @@ class DashboardStore: ObservableObject {
     }
 
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
-        metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+        let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
+        let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
+        let numericChars = String(String.UnicodeScalarView(numericScalars))
+        if let number = Double(numericChars), number == 0 {
+            return DashboardStrings.placeholder
+        }
+        return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
     // Delegate entry creation to MetricsManager
@@ -1383,7 +1375,10 @@ class DashboardStore: ObservableObject {
         }
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
-        clearDragStateNonDestructive()
+        // Inline non-destructive drag state clearing to avoid layout jumps
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
         withAnimation(.easeInOut(duration: 0.2)) {
             state.ui.isEditMode = false
         }

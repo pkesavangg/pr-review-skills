@@ -294,7 +294,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func getStreakGridColumns() -> [GridItem] {
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: DashboardConstants.UI.streakGridColumns)
+       
+        let columnCount = DashboardConstants.UI.streakGridColumns
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
     }
 
     // MARK: - Streak Reordering
