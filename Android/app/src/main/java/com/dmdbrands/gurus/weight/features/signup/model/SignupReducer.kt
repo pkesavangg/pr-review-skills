@@ -49,6 +49,21 @@ data class SignupFormControls(
             }
 
         /**
+         * Requires current weight unless goal type is MAINTAIN. When MAINTAIN, the field may be
+         * hidden/disabled and should not block validation/submission.
+         */
+        private fun createRequiredCurrentWeightValidator(
+            formGroup: () -> FormGroup<SignupFormControls>,
+        ): Validator<String> = { value ->
+            val currentGoalType = formGroup().controls.goalType.value
+            if (currentGoalType == GoalType.MAINTAIN.value) {
+                null
+            } else {
+                FormValidations.required().invoke(value)
+            }
+        }
+
+        /**
          * Creates a new instance of SignupFormControls with default values and validations.
          */
         fun create(): SignupFormControls {
@@ -137,7 +152,7 @@ data class SignupFormControls(
                     currentWeight =
                         FormControl.create(
                             signupData.currentWeight,
-                            listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
+                            listOf(weightValidator(WeightUnit.LB)),
                         ),
                     goalWeight =
                         FormControl.create(
@@ -159,7 +174,7 @@ data class SignupFormControls(
             // Add dynamic weight validators
             controls.currentWeight.addValidator(createDynamicWeightValidator { formGroup })
             controls.goalWeight.addValidator(createDynamicWeightValidator { formGroup })
-            controls.currentWeight.addValidator(FormValidations.required())
+            controls.currentWeight.addValidator(createRequiredCurrentWeightValidator { formGroup })
             controls.goalWeight.addValidator(FormValidations.required())
 
             // Set up validation trigger - when password changes, validate confirm password
@@ -386,6 +401,11 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
         when (intent) {
             is SignupIntent.Next -> {
                 if (state.isLastStep) {
+                    // On submit, if goal type is maintain, clear starting weight (currentWeight)
+                    val controls = state.form.controls
+                    if (controls.goalType.value == GoalType.MAINTAIN.value) {
+                        controls.currentWeight.reset("")
+                    }
                     state.copy(isLoading = true, error = null)
                 } else {
                     val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)

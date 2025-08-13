@@ -23,42 +23,42 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun GenderStep(
-    genderControl: FormControl<String>,
-    modifier: Modifier = Modifier,
+  genderControl: FormControl<String>,
+  modifier: Modifier = Modifier,
 ) {
-    AppStyledCard(
-        cardAlignmentType = LocalCardAlignment.current,
+  AppStyledCard(
+    cardAlignmentType = LocalCardAlignment.current,
+  ) {
+    AppText(SignupStrings.genderStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+    AppText(
+      SignupStrings.genderStepSubtitle,
+      TextType.Subtitle,
+      spacing = MeTheme.spacing.x2l,
+    )
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        AppText(SignupStrings.genderStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
-        AppText(
-            SignupStrings.genderStepSubtitle,
-            TextType.Subtitle,
-            spacing = MeTheme.spacing.lg,
-        )
+      CircularSelectButton(
+        text = SignupStrings.genderMale,
+        isSelected = genderControl.value.equals(Gender.MALE.name, ignoreCase = true),
+      ) { genderControl.onValueChange(Gender.MALE.value) }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            CircularSelectButton(
-                text = SignupStrings.genderMale,
-                isSelected = genderControl.value.equals(Gender.MALE.name, ignoreCase = true),
-            ) { genderControl.onValueChange(Gender.MALE.value) }
-
-            CircularSelectButton(
-                text = SignupStrings.genderFemale,
-                isSelected = genderControl.value.equals(Gender.FEMALE.name, ignoreCase = true),
-            ) { genderControl.onValueChange(Gender.FEMALE.value) }
-        }
+      CircularSelectButton(
+        text = SignupStrings.genderFemale,
+        isSelected = genderControl.value.equals(Gender.FEMALE.name, ignoreCase = true),
+      ) { genderControl.onValueChange(Gender.FEMALE.value) }
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun GenderStepPreview() {
-    MeAppTheme {
-        GenderStep(
-            genderControl = FormControl.create("", listOf(FormValidations.required())),
-        )
-    }
+  MeAppTheme {
+    GenderStep(
+      genderControl = FormControl.create("", listOf(FormValidations.required())),
+    )
+  }
 }

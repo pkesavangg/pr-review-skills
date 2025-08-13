@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -192,8 +191,7 @@ fun AppText(
           if (index != text.lastIndex) append(" ")
         }
       }
-    }
-    else {
+    } else {
       AnnotatedString(text)
     }
   }
@@ -226,7 +224,7 @@ fun AppText(
         textAlign = textAlign,
         modifier =
           modifier.then(
-            if (onClick != null) Modifier.clickable { onClick() } else Modifier,
+            if (onClick != null) Modifier.debounceClick { onClick() } else Modifier,
           ),
       )
     }

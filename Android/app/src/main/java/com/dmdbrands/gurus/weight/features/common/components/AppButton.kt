@@ -17,6 +17,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -125,7 +130,7 @@ object AppButtonDefaults {
   // Button height by size
   fun height(size: ButtonSize): Dp =
     when (size) {
-      ButtonSize.Small -> 30.dp
+      ButtonSize.Small -> 35.dp
       ButtonSize.Medium -> 45.dp
       ButtonSize.Large -> 40.dp
     }
@@ -149,7 +154,7 @@ object AppButtonDefaults {
   // Minimum width by size
   fun minWidth(size: ButtonSize): Dp =
     when (size) {
-      ButtonSize.Small -> 75.dp
+      ButtonSize.Small -> 80.dp
       ButtonSize.Medium -> 130.dp
       ButtonSize.Large -> 160.dp
     }
@@ -173,6 +178,29 @@ object AppButtonDefaults {
       TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
       TextTransform.NONE -> text
     }
+}
+
+/**
+ * Returns a throttled click lambda that implements RxJS throttleTime-like behavior.
+ * Emits immediately on first click, then throttles subsequent clicks for [throttleTime].
+ */
+@Composable
+private fun rememberThrottledClick(
+  throttleTime: Long = 500L,
+  onClick: () -> Unit,
+): () -> Unit {
+  // Persist across recompositions and process death safe defaults
+  var lastEmitTime by rememberSaveable { mutableStateOf(0L) }
+  val onClickState = rememberUpdatedState(onClick)
+
+  return {
+    // Use monotonic clock to avoid time changes affecting logic
+    val currentTime = android.os.SystemClock.elapsedRealtime()
+    if (currentTime - lastEmitTime >= throttleTime) {
+      lastEmitTime = currentTime
+      onClickState.value()
+    }
+  }
 }
 
 /**
@@ -225,8 +253,10 @@ fun AppButton(
       disabledContentColor = contentColor,
     )
 
+  val throttledClick = rememberThrottledClick { onClick() }
+
   Button(
-    onClick = onClick,
+    onClick = throttledClick,
     enabled = enabled,
     shape = shape,
     colors = buttonColors,

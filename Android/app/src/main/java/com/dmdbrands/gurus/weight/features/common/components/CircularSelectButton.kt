@@ -2,6 +2,8 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
@@ -17,47 +19,45 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 object CircularButtonDefaults {
 
-    @Composable
-    fun containerColor(
-        isSelected: Boolean,
-        selectedColor: Color? = null,
-        unselectedColor: Color = Color.Transparent
-    ): Color = if (isSelected) selectedColor ?: MeTheme.colorScheme.primaryAction else unselectedColor
+  @Composable
+  fun containerColor(
+    isSelected: Boolean,
+    selectedColor: Color? = null,
+    unselectedColor: Color = Color.Transparent
+  ): Color = if (isSelected) selectedColor ?: MeTheme.colorScheme.primaryAction else unselectedColor
 
-    @Composable
-    fun contentColor(
-        isSelected: Boolean,
-        selectedColor: Color? = null,
-        unselectedColor: Color? = null
-    ): Color =
-        if (isSelected) selectedColor ?: MeTheme.colorScheme.inverseAction
-        else unselectedColor ?: MeTheme.colorScheme.primaryAction
+  @Composable
+  fun contentColor(
+    isSelected: Boolean,
+    selectedColor: Color? = null,
+    unselectedColor: Color? = null
+  ): Color =
+    if (isSelected) selectedColor ?: MeTheme.colorScheme.inverseAction
+    else unselectedColor ?: MeTheme.colorScheme.primaryAction
 
-    @Composable
-    fun borderColor(
-        isSelected: Boolean,
-        customColor: Color? = null
-    ): Color = customColor ?: MeTheme.colorScheme.primaryAction
+  @Composable
+  fun borderColor(
+    isSelected: Boolean,
+    customColor: Color? = null
+  ): Color = customColor ?: MeTheme.colorScheme.primaryAction
 
-    fun borderStroke(color: Color): BorderStroke =
-        BorderStroke(2.dp, color)
+  fun borderStroke(color: Color): BorderStroke =
+    BorderStroke(2.dp, color)
 
-    val defaultSize: Dp = 128.dp
+  val defaultSize: Dp = 100.dp
 
-    // Applies text transformation
-    fun transformText(
-        text: String,
-        transform: TextTransform,
-    ): String =
-        when (transform) {
-            TextTransform.UPPERCASE -> text.uppercase()
-            TextTransform.LOWERCASE -> text.lowercase()
-            TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
-            TextTransform.NONE -> text
-        }
+  // Applies text transformation
+  fun transformText(
+    text: String,
+    transform: TextTransform,
+  ): String =
+    when (transform) {
+      TextTransform.UPPERCASE -> text.uppercase()
+      TextTransform.LOWERCASE -> text.lowercase()
+      TextTransform.CAPITALIZE -> text.replaceFirstChar { it.uppercase() }
+      TextTransform.NONE -> text
+    }
 }
-
-
 
 /**
  * A circular button that shows a selected state (filled) and unselected state (outlined).
@@ -69,46 +69,50 @@ object CircularButtonDefaults {
  */
 @Composable
 fun CircularSelectButton(
-    text: String,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier,
-    textTransform: TextTransform = TextTransform.UPPERCASE,
-    selectedBackgroundColor: Color? = null,
-    unselectedContentColor: Color? = null,
-    borderColor: Color? = null,
-    onClick: () -> Unit,
+  text: String,
+  isSelected: Boolean,
+  modifier: Modifier = Modifier,
+  textTransform: TextTransform = TextTransform.UPPERCASE,
+  selectedBackgroundColor: Color? = null,
+  unselectedContentColor: Color? = null,
+  borderColor: Color? = null,
+  onClick: () -> Unit,
 ) {
-    val containerColor = CircularButtonDefaults.containerColor(isSelected, selectedBackgroundColor)
-    val contentColor = CircularButtonDefaults.contentColor(isSelected, selectedColor = null, unselectedColor = unselectedContentColor)
-    val resolvedBorderColor = CircularButtonDefaults.borderColor(isSelected, customColor = borderColor)
+  val containerColor = CircularButtonDefaults.containerColor(isSelected, selectedBackgroundColor)
+  val contentColor =
+    CircularButtonDefaults.contentColor(isSelected, selectedColor = null, unselectedColor = unselectedContentColor)
+  val resolvedBorderColor = CircularButtonDefaults.borderColor(isSelected, customColor = borderColor)
 
-    val text = CircularButtonDefaults.transformText(text, textTransform)
-    OutlinedButton(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        border = CircularButtonDefaults.borderStroke(resolvedBorderColor),
-        modifier = modifier.size(CircularButtonDefaults.defaultSize)
-    ) {
-        Text(
-            text = text,
-            style = MeTheme.typography.button1
-        )
-    }
+  val text = CircularButtonDefaults.transformText(text, textTransform)
+  OutlinedButton(
+    onClick = onClick,
+    shape = CircleShape,
+    colors = ButtonDefaults.outlinedButtonColors(
+      containerColor = containerColor,
+      contentColor = contentColor,
+    ),
+    contentPadding = PaddingValues(0.dp),
+    border = CircularButtonDefaults.borderStroke(resolvedBorderColor),
+    modifier = modifier
+      .size(CircularButtonDefaults.defaultSize)
+      .padding(0.dp),
+  ) {
+    Text(
+      text = text,
+      style = MeTheme.typography.button1,
+      modifier = Modifier,
+    )
+  }
 }
-
 
 @PreviewTheme
 @Composable
 private fun CircularSelectButtonSelectedPreview() {
-    MeAppTheme {
-        Column {
-            CircularSelectButton(text = "SELECTED", isSelected = true, onClick = {})
-            CircularSelectButton(text = "UNSELECTED", isSelected = false, onClick = {})
-        }
+  MeAppTheme {
+    Column {
+      CircularSelectButton(text = "FEMALE", isSelected = true, onClick = {})
+      CircularSelectButton(text = "UNSELECTED", isSelected = false, onClick = {})
     }
+  }
 }
 

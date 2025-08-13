@@ -71,7 +71,7 @@ fun AppHelpModal(
           onClick = {
             val intent =
               Intent(Intent.ACTION_SENDTO).apply {
-                data = "mailto:$AppHelpModalStrings.Email".toUri()
+                data = "mailto:${AppHelpModalStrings.Email}".toUri()
               }
             context.startActivity(intent)
           },
