@@ -42,6 +42,7 @@ enum class TextType {
   Body,
   Message,
   Link,
+  Link2,
   SubHeading,
   ListTitle1,
   ListTitle2,
@@ -88,6 +89,10 @@ object TextTypeDefaults {
           color = colorScheme.primaryAction,
         )
 
+      TextType.Link2 -> TextAppearance(
+        style = typography.link2,
+        color = colorScheme.primaryAction,
+      )
       TextType.SubHeading ->
         TextAppearance(
           style = typography.body3,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,9 +29,30 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+
+/**
+ * Helper function to update weight validators when metric toggle changes
+ */
+private fun updateWeightValidators(
+  control: FormControl<String>,
+  isMetric: Boolean
+) {
+  // Remove existing weight and body comp validators
+  control.removeValidator(ValidationType.NOT_IN_RANGE)
+
+  // Add the appropriate weight validator based on unit
+  val weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
+  control.addValidator(FormValidations.weightValidator(weightUnit))
+
+  // Re-validate to show updated error message if control has a value and is touched
+  if (control.value.isNotEmpty() && control.touched) {
+    control.validate()
+  }
+}
 
 /**
  * Step for collecting user's weight goals with metric/imperial toggle
@@ -54,6 +76,12 @@ fun GoalStep(
 
   val isMetric = useMetricControl?.value ?: false
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
+
+  // Update weight validators when metric toggle changes
+  LaunchedEffect(isMetric) {
+    updateWeightValidators(currentWeightControl, isMetric)
+    updateWeightValidators(goalWeightControl, isMetric)
+  }
 
   // Goal type options
   val goalTypeOptions =

@@ -97,17 +97,17 @@ fun PasswordStep(
                 ) {
                     AppText(
                         text = SignupStrings.TermsOfService,
-                        textType = TextType.Link,
+                        textType = TextType.Link2,
                         onClick = {
                             onUrlOpen(SignupStrings.TermsOfServiceUrl)
                         },
                     )
-                    Spacer(Modifier.padding(start = spacing.sm))
-                    Text(SignupStrings.And, style = typography.body4, color = colorScheme.textBody)
-                    Spacer(Modifier.padding(end = spacing.sm))
+                    Spacer(Modifier.padding(start = spacing.x3s))
+                    Text(SignupStrings.And, style = typography.subHeading2, color = colorScheme.textBody)
+                    Spacer(Modifier.padding(end = spacing.x3s))
                     AppText(
                         text = SignupStrings.PrivacyPolicy,
-                        textType = TextType.Link,
+                        textType = TextType.Link2,
                         onClick = {
                             onUrlOpen(SignupStrings.PrivacyPolicyUrl)
                         },

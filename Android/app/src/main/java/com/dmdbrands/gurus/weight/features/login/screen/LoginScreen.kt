@@ -96,8 +96,11 @@ private fun LoginContent(
     appBarColor = colorScheme.secondaryBackground,
     borderColor = Color.Transparent,
   ) { scaffoldModifier ->
-    Column(modifier = scaffoldModifier.fillMaxSize()
-      .verticalScroll(rememberScrollState())) {
+    Column(
+      modifier = scaffoldModifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState()),
+    ) {
       Spacer(Modifier.weight(1f))
       AppText(
         text = LoginStrings.WelcomeBack,
@@ -170,7 +173,7 @@ private fun LoginContent(
       Column(
         modifier = Modifier
           .fillMaxWidth()
-          .padding( bottom = spacing.x2l),
+          .padding(bottom = spacing.x2l),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         AppText(
@@ -184,17 +187,17 @@ private fun LoginContent(
         ) {
           AppText(
             text = LoginStrings.TermsOfService,
-            textType = TextType.Link,
+            textType = TextType.Link2,
             onClick = {
               handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.TermsOfServiceUrl))
             },
           )
-          Spacer(Modifier.padding(start = spacing.sm))
-          Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
-          Spacer(Modifier.padding(end = spacing.sm))
+          Spacer(Modifier.padding(start = spacing.x3s))
+          Text(LoginStrings.And, style = typography.subHeading2, color = colorScheme.textBody)
+          Spacer(Modifier.padding(end = spacing.x3s))
           AppText(
             text = LoginStrings.PrivacyPolicy,
-            textType = TextType.Link,
+            textType = TextType.Link2,
             onClick = {
               handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.PrivacyPolicyUrl))
             },
