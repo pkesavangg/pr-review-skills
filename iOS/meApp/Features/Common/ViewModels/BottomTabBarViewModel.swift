@@ -102,8 +102,8 @@ class BottomTabBarViewModel: ObservableObject {
                 await self?.checkSetGoalCardPrompt()
                 // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
                 self?.evaluateAndShowPermissionAlert()
-                let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications)
-                if notificationsRequired ?? false {
+                let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
+                if notificationsRequired {
                     await self?.pushNotificationService.setupPushNotifications()
                 } else {
                     await self?.pushNotificationService.updateDeviceInfo()
@@ -389,7 +389,7 @@ class BottomTabBarViewModel: ObservableObject {
         guard entryCount >= 3 else { return }
         
         // 3. Check KvStorage flag to see if popup already shown for this account
-        let key = "\(account.accountId)_goalCardStatus"
+        let key = KvStorageKeys.setAGoalModalFlagKey(for: account.accountId)
         if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
             return // Already shown previously
         }
