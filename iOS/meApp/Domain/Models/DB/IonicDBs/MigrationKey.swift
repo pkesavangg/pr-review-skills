@@ -10,6 +10,7 @@ public enum MigrationKey: String {
     case pairedScalesKey = "pairedScalesKey"
     /// Goal alert flag key suffix used by the Ionic app, namespaced per account
     case goalAlertKey = "hasSeenSetNewGoal"
+    case setAGoalCardStatus = "goalCardStatus"
     /// Appearance/color mode key suffix used by the Ionic app, namespaced per account
     case appearanceKey = "colorMode"
     /// HealthKit integration status key used by the Ionic app (per account)
@@ -19,7 +20,12 @@ public enum MigrationKey: String {
     /// HealthKit deintegration flag used by the Ionic app (per account)
     case healthKitDeintegrated = "healthKitDeintegrated"
     /// Notification alert viewed flag used by the Ionic app (per account)
-    case notificationAlertViewed = "notificationOnlyAlertShown"
+    case notificationAlertViewed = "notificationAlertViewed"
+    /// Notification only alert shown flag used by the Ionic app (global key, not per account)
+    case notificationOnlyAlertShown = "CapacitorStorage.notificationOnlyAlertShown"
+    
+    case feedSettingsInfo = "feedInfo"
+    case feedLastTriggered = "feedLastTriggeredAt"
     /// Common Capacitor storage prefix used by the Ionic app
     case capacitorPrefix = "CapacitorStorage."
 
@@ -33,8 +39,15 @@ public enum MigrationKey: String {
     /// Builds the full goal alert storage key for the given account id
     /// - Parameter accountId: The account identifier
     /// - Returns: The full Capacitor storage key for goal alert flag
-    public static func goalAlertKey(for accountId: String) -> String {
+    public static func goalMetAlertKey(for accountId: String) -> String {
         return Self.capacitorPrefix.rawValue + "\(accountId)-" + Self.goalAlertKey.rawValue
+    }
+    
+    /// Builds the full goal alert storage key for the given account id
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full Capacitor storage key for goal alert flag
+    public static func setAGoalCardViewedKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + "\(accountId)_" + Self.setAGoalCardStatus.rawValue
     }
     
     /// Builds the full appearance storage key for the given account id
@@ -64,5 +77,12 @@ public enum MigrationKey: String {
     public static func notificationAlertViewedKey(for accountId: String) -> String {
         return Self.capacitorPrefix.rawValue + Self.notificationAlertViewed.rawValue + "_\(accountId)"
     }
+    
+    public static func feedSettingsInfoKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + Self.feedSettingsInfo.rawValue + "_\(accountId)"
+    }
+    
+    public static func feedLastTriggeredAtKey(for accountId: String) -> String {
+        return Self.capacitorPrefix.rawValue + Self.feedLastTriggered.rawValue + "_\(accountId)"
+    }
 }
-

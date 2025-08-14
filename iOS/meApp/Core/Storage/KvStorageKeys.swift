@@ -29,6 +29,13 @@ public enum KvStorageKeys: String {
     case goalMetFlag = "goalMetFlag"
     /// Notification only alert shown flag suffix (per account)
     case notificationOnlyAlertShown = "notificationOnlyAlertShown"
+    /// Notification only permission alert shown flag suffix (per account)
+    case notificationOnlyPermAlertShown = "notificationOnlyPermAlertShown"
+    /// Feed info settings key suffix (per account)
+    case feedInfo = "feedInfo"
+    /// Feed last triggered at timestamp key suffix (per account)
+    case feedLastTriggeredAt = "feedLastTriggeredAt"
+    case setAGoalCardViewed = "setAGoalCardViewed"
     
     // MARK: - Helper Methods
     
@@ -60,6 +67,27 @@ public enum KvStorageKeys: String {
         return "\(Self.notificationOnlyAlertShown.rawValue)_\(accountId)"
     }
     
+    /// Creates an account-scoped key for notification only permission alert shown flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for notification only permission alert shown flag storage
+    public static func notificationOnlyPermAlertShownKey(for accountId: String) -> String {
+        return "\(Self.notificationOnlyPermAlertShown.rawValue)_\(accountId)"
+    }
+    
+    /// Creates an account-scoped key for feed info settings
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for feed info settings storage
+    public static func feedInfoKey(for accountId: String) -> String {
+        return "\(Self.feedInfo.rawValue)_\(accountId)"
+    }
+    
+    /// Creates an account-scoped key for feed last triggered at timestamp
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for feed last triggered at timestamp storage
+    public static func feedLastTriggeredAtKey(for accountId: String) -> String {
+        return "\(Self.feedLastTriggeredAt.rawValue)_\(accountId)"
+    }
+    
     /// Creates an account-scoped key for HealthKit modal flags
     /// - Parameters:
     ///   - baseKey: The base key (e.g., addAppleHealthModalBase)
@@ -68,6 +96,13 @@ public enum KvStorageKeys: String {
     public static func scopedHealthKitModalKey(_ baseKey: KvStorageKeys, accountId: String?) -> String {
         guard let id = accountId, !id.isEmpty else { return baseKey.rawValue }
         return "\(baseKey.rawValue)_\(id)"
+    }
+    
+    /// Creates an account-scoped key for "set a goal" card viewed flag
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for goal met flag storage
+    public static func setAGoalModalFlagKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
 }
 

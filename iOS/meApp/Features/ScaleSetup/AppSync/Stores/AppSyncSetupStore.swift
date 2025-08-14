@@ -240,7 +240,7 @@ final class AppSyncSetupStore: ObservableObject {
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
-                await self.scaleService.pushLocalChangesToServer()
+                await self.scaleService.syncAllScalesWithRemote()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
                 
                 // Post notification that scale was added
