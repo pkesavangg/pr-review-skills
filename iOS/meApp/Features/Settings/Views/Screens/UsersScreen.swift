@@ -10,7 +10,6 @@ import SwiftUI
 struct UsersScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
-    @StateObject private var userNameForm = UserNameForm()
     @StateObject private var viewModel: UsersViewModel
     @State private var focusedField: FocusField?
     let scale: Device
@@ -26,8 +25,8 @@ struct UsersScreen: View {
     
     var canDisableSaveButton: Bool {
         viewModel.isLoadingUsers ||
-        !userNameForm.displayName.isValid ||
-        userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (viewModel.currentDeviceUser?.name ?? "")
+        !viewModel.isFormValid ||
+        viewModel.userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines) == (viewModel.currentDeviceUser?.name ?? "")
     }
     
     var body: some View {
@@ -59,12 +58,15 @@ struct UsersScreen: View {
                                 label: lang.userNameLabel,
                                 placeholder: viewModel.currentDeviceUser?.name ?? lang.enterUserName,
                                 inputType: .text,
-                                errorMessage: userNameForm.getError(for: userNameForm.displayName),
+                                errorMessage: viewModel.displayNameError,
                                 focusField: .userName
                             ),
                             value: Binding(
-                                get: { userNameForm.displayName.value },
-                                set: { userNameForm.displayName.value = $0 }
+                                get: { viewModel.userNameForm.displayName.value },
+                                set: { 
+                                    viewModel.userNameForm.displayName.value = $0
+                                    viewModel.setDisplayNameTouched()
+                                }
                             ),
                             focusedField: $focusedField
                         ) {
@@ -108,18 +110,6 @@ struct UsersScreen: View {
                 .navigationBarBackButtonHidden(true)
             }
         }
-        .onAppear {
-            Task {
-                await MainActor.run {
-                    let currentName = viewModel.currentDeviceUser?.name ?? ""
-                    userNameForm.setDisplayName(currentName)
-                    let scaleUsers = viewModel.otherDeviceUsersList.map { deviceUser in
-                        ScaleUser(name: deviceUser.name, token: deviceUser.token)
-                    }
-                    userNameForm.updateUserList(scaleUsers)
-                }
-            }
-        }
     }
     
     private func formatLastActiveTimestamp(_ timestamp: Int) -> String {
@@ -128,8 +118,11 @@ struct UsersScreen: View {
     
     private func saveName() {
         Task {
+            // Mark field as dirty to show validation errors
+            viewModel.setDisplayNameTouched()
+            
             if !canDisableSaveButton {
-                let trimmedName = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                let trimmedName = viewModel.userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
                 await viewModel.saveUsers(newName: trimmedName) {
                     router.navigateBack()
                 }

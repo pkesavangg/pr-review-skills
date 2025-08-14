@@ -78,7 +78,7 @@ class ScaleStore: ObservableObject {
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
         bluetoothService.clearScaleDiscoveredInfo()
         Task {
-            try await scaleService.syncDevices(tempDevice: nil)
+            bluetoothService.syncDevices([])
         }
     }
     
@@ -98,7 +98,21 @@ class ScaleStore: ObservableObject {
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
-                self?.scales = devices
+                // Sort scales by createdAt timestamp in descending order (latest first)
+                let sortedDevices = devices.sorted { device1, device2 in
+                    guard let createdAt1 = device1.createdAt,
+                          let createdAt2 = device2.createdAt else {
+                        // If one or both createdAt values are nil, put nil values at the end
+                        return device1.createdAt != nil && device2.createdAt == nil
+                    }
+                    
+                    // Parse the date strings and compare
+                    let date1 = DateTimeTools.parse(createdAt1) ?? Date.distantPast
+                    let date2 = DateTimeTools.parse(createdAt2) ?? Date.distantPast
+                    
+                    return date1 > date2 // Descending order (latest first)
+                }
+                self?.scales = sortedDevices
             }
             .store(in: &cancellables)
     }

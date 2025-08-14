@@ -30,4 +30,22 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
+
+    /// Updates connected device information including connection status and WiFi configuration.
+    /// - Parameters:
+    ///   - device: The device data (can be dictionary or GGDeviceDetails).
+    ///   - isConnected: Whether the device is connected.
+    func updateConnectedDevices(device: Any, isConnected: Bool) async
+
+    /// Updates WiFi configuration status for a connected device.
+    /// - Parameters:
+    ///   - broadcastId: The broadcast ID of the device.
+    ///   - isConfigured: Whether WiFi is configured.
+    func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async
+
+    /// Updates the weight-only mode status for a connected device.
+    /// - Parameters:
+    ///   - broadcastId: The broadcast ID of the device.
+    ///   - isWeightOnlyModeEnabledByOthers: Whether weight-only mode is enabled by other users.
+    func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async
 }

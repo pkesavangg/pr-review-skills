@@ -6,6 +6,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
     @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
+    @Injector var bluetoothService: BluetoothService
 
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
@@ -185,6 +186,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Switch account requested to accountId=\(account.accountId)")
             let responseAccount = try await refreshAccount(accountId: account.accountId)
+            activeAccount = nil
+            await bluetoothService.disconnectConnectedScales()
             try await setActiveAccount(responseAccount)
             logger.log(level: .info, tag: tag, message: "Switched active account to accountId=\(responseAccount.accountId)")
         } catch {
@@ -271,6 +274,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.update(from: response)
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
+            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Create goal successful for accountId=\(accountId)")
             return localAccount
         } catch {
@@ -281,6 +285,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId)")
                 return localAccount
             } else {
@@ -302,6 +307,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.update(from: response)
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
+            notifyActiveAccountChanged()
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update profile successful for accountId=\(accountId)")
             return localAccount
@@ -310,6 +316,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.isSynced = false
                 localAccount.update(from: profile)
                 try await localRepo.updateAccount(localAccount)
+                notifyActiveAccountChanged()
+
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Update profile saved offline for accountId=\(accountId)")
                 return localAccount
@@ -332,6 +340,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
+            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update bodyComp successful for accountId=\(accountId)")
             return localAccount
         } catch {
@@ -342,6 +351,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId)")
                 return localAccount
             } else {
@@ -471,6 +481,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
+            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update notifications successful for accountId=\(accountId)")
             return localAccount
         } catch {
@@ -480,6 +491,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId)")
                 return localAccount
             } else {
@@ -855,6 +867,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
+            notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update weightless successful for accountId=\(accountId)")
             return localAccount
         } catch {
@@ -865,6 +878,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.weightlessSettings?.weightlessWeight = isWeightlessOn ? weightlessWeight : nil
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
+                notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId)")
                 return localAccount
             } else {
@@ -907,15 +921,27 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Updates the published state of active and all accounts.
-    func updatePublishedState() async throws {
+    /// - Parameter forceRefresh: If true, always assign activeAccount even if accountId hasn't changed
+    func updatePublishedState(forceRefresh: Bool = false) async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
-        if activeAccount?.accountId != nextActive?.accountId {
+        
+        if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
-            // Update theme with new active account
-            Theme.shared.setActiveAccount(nextActive?.accountId)
+            // Only update theme if account ID actually changed
+            if activeAccount?.accountId != nextActive?.accountId {
+                Theme.shared.setActiveAccount(nextActive?.accountId)
+            }
         }
-        logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil")")
+        logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil"), forceRefresh=\(forceRefresh)")
+    }
+    
+    /// Forces the activeAccount publisher to notify subscribers of changes to account properties.
+    /// Call this after updating account properties that don't trigger automatic @Published notifications.
+    func notifyActiveAccountChanged() {
+        Task {
+            try await updatePublishedState(forceRefresh: true)
+        }
     }
 
     // MARK: - Private Helpers

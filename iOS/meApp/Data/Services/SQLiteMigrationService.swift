@@ -202,7 +202,7 @@ final class SQLiteMigrationService {
         // Extract basic opStack operation data
         let entryTimestamp = String(cString: sqlite3_column_text(statement, 2))
         let operationType = sqlite3_column_text(statement, 4) != nil ? String(cString: sqlite3_column_text(statement, 4)) : "create"
-        let attempts = sqlite3_column_type(statement, 22) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 22)) : 0
+        _ = sqlite3_column_type(statement, 22) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 22)) : 0
         
         // Create the main entry (this will be treated as an unsynced operation)
         let entry = Entry(

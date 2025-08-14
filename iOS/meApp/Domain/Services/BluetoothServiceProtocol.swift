@@ -68,7 +68,7 @@ protocol BluetoothServiceProtocol {
     // MARK: - Device CRUD
     /// Adds a newly discovered scale to persistent storage and returns the saved model.
     /// - Returns: Result<Device, BluetoothServiceError>
-    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async -> Result<Device, BluetoothServiceError>
+    func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError>
     /// Confirms a smart pairing operation with the specified device.
     /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError>
