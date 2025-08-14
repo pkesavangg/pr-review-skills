@@ -7,7 +7,6 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.dmdbrands.gurus.weight.data.services.IonicMigrationWorker
 import com.dmdbrands.gurus.weight.data.storage.db.converter.DateConverter
 import com.dmdbrands.gurus.weight.data.storage.db.converter.JsonConverter
 import com.dmdbrands.gurus.weight.data.storage.db.converter.WeightUnitConverter
@@ -34,6 +33,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMet
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
+import com.dmdbrands.gurus.weight.migration.IonicMigrationWorker
 import android.content.Context
 import android.util.Log
 

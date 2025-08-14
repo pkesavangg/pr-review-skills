@@ -1,10 +1,8 @@
-package com.dmdbrands.gurus.weight.data.services
+package com.dmdbrands.gurus.weight.migration
 
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.dmdbrands.gurus.weight.data.repository.MigrationRepository
-import com.dmdbrands.gurus.weight.data.repository.MigrationResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import android.content.Context
@@ -12,33 +10,47 @@ import android.util.Log
 
 /**
  * Worker that handles migration from Ionic database to Room database.
- * Uses clean architecture with MigrationRepository.
+ * Uses clean architecture with MigrationService for business logic.
+ *
+ * This worker is responsible for:
+ * - Executing the migration process in the background
+ * - Handling success and failure scenarios
+ * - Coordinating with the MigrationService for actual migration logic
  */
 @HiltWorker
 class IonicMigrationWorker @AssistedInject constructor(
   @Assisted val appContext: Context,
-  @Assisted val params: WorkerParameters
+  @Assisted val params: WorkerParameters,
+  private val migrationService: MigrationService
 ) : CoroutineWorker(appContext, params) {
 
   companion object {
     private const val TAG = "IonicMigrationWorker"
   }
 
+  /**
+   * Performs the migration work in the background.
+   * Delegates actual migration logic to MigrationService.
+   */
   override suspend fun doWork(): Result {
     return try {
-      val migrationRepository = MigrationRepository(applicationContext)
+      Log.i(TAG, "🚀 Starting Ionic migration worker")
 
-      val migrationResult = migrationRepository.performIonicMigration(applicationContext)
+      val migrationResult = migrationService.performIonicMigration(applicationContext)
+
       when {
         migrationResult.isSuccess -> {
           val successResult = migrationResult as MigrationResult.Success
-          Log.i(TAG, "✅ Migration completed successfully: ${successResult.migratedCount} entries migrated")
+          Log.i(
+            TAG,
+            "✅ Migration completed successfully: ${successResult.migratedCount} entries migrated, account migrated: ${successResult.accountMigrated}",
+          )
           Result.success()
         }
 
         else -> {
           Log.e(TAG, "❌ Migration failed: ${migrationResult.errorMessage}")
-          migrationRepository.performEmergencyCleanup(applicationContext)
+          migrationService.performEmergencyCleanup(applicationContext)
           Result.retry()
         }
       }
