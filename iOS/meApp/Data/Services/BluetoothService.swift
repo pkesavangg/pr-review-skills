@@ -1110,7 +1110,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /// Clears the weight-only mode status when device disconnects
     private func clearWeightOnlyModeStatusOnDisconnect(_ deviceDetails: GGDeviceDetails) async {
-        guard let broadcastId = deviceDetails.broadcastId   else {
+        guard let broadcastId = deviceDetails.broadcastId else {
             return
         }
         

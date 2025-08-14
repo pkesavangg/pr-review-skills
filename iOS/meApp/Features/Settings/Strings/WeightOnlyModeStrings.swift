@@ -2,7 +2,7 @@
 //  WeightOnlyModeStrings.swift
 //  meApp
 //
-//  Created by AI Assistant on 17/01/25.
+//  Created by AI Assistant on 14/08/25.
 //
 
 import Foundation
