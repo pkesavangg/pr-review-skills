@@ -66,6 +66,7 @@ struct BottomTabBarView: View {
                 .border(sides: [.top], thickness: 0.5)
             }
         }
+        .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
         // Half-sheet shown when a new scale is discovered via Bluetooth

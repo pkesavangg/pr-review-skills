@@ -293,6 +293,24 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
         }
     }
+
+    nonisolated func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
+        await MainActor.run {
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
+            do {
+                if let device = try localRepository.context.fetch(descriptor).first {
+                    device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
+                    device.isSynced = false // Mark as unsynced since we updated the device
+                    try localRepository.context.save()
+                    logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
+                } else {
+                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId)")
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
+            }
+        }
+    }
     // MARK: - Public Sync Methods
     
     /// Manually triggers a full sync with the server.

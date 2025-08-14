@@ -9,9 +9,15 @@
 import SwiftUI
 
 struct DeviceDiscoverSheetModifier: ViewModifier {
+    var height: CGFloat
+
+    init(height: CGFloat = 400) {
+        self.height = height
+    }
+
     func body(content: Content) -> some View {
         content
-            .presentationDetents([.height(400)])
+            .presentationDetents([.height(height)])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(.radiusXL)
             .interactiveDismissDisabled(true)
