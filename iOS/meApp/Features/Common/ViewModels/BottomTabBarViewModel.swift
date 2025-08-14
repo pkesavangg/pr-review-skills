@@ -132,8 +132,8 @@ class BottomTabBarViewModel: ObservableObject {
         }
         
         // Connect BluetoothService scale setup navigation callback
-        bluetoothService.onOpenScaleSetup = { [weak self] scale, event in
-            self?.openScaleSetup(scale: scale, event: event)
+        bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
+            self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         }
     }
     
@@ -248,13 +248,17 @@ class BottomTabBarViewModel: ObservableObject {
     
     // MARK: - Connect Action from Scale Discovered Sheet
     func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
+        openScaleSetup(scale: scale, event: event, isReconnect: false, isDuplicated: false)
+    }
+    
+    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
         bluetoothService.isSetupInProgress = true
         
         switch setupType {
         case .lcbt, .btWifiR4:
-            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         default:
             // Handle other setup types if needed
             bluetoothService.isSetupInProgress = false
