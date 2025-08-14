@@ -151,8 +151,8 @@ struct GraphView: View {
                     dashboardStore.initializeChart()
                 }
                 // Synchronized animations for chart components
-                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
-                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeOut(duration: 0.1), value: dashboardStore.yAxisDomain)
+                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeOut(duration: 0.1), value: dashboardStore.yAxisTicks)
 
                 // Apply decision window modifier first, then scroll detection
                 .modifier(DecisionWindowModifier(
@@ -377,13 +377,10 @@ struct GraphView: View {
         let yAxisTicks = dashboardStore.yAxisTicks
 
         ForEach(yAxisTicks, id: \.self) { tick in
-            // Only show grid lines for non-goal weight ticks
-            if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
-                RuleMark(y: .value("YGrid", tick))
+              RuleMark(y: .value("YGrid", tick))
                     .lineStyle(StrokeStyle(lineWidth: 1))
                     .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
                     .zIndex(-1)
-            }
         }
     }
 
