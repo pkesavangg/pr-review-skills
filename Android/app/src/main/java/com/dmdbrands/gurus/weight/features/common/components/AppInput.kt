@@ -289,7 +289,7 @@ fun <T> InputFieldBase(
         }
     }
 
-    val iconColor = if (isError) AppIconType.Danger else AppIconType.Primary
+    val clearIconColor = if (isError) AppIconType.Danger else AppIconType.Primary
     val trailingIcon: (@Composable (() -> Unit))? =
         when {
             showPasswordToggle -> {
@@ -301,7 +301,7 @@ fun <T> InputFieldBase(
                     AppIcon(
                         id = iconResId,
                         contentDescription = contentDescription,
-                        type = iconColor,
+                        type = AppIconType.Primary, // Always use primary color for eye icon
                         onClick = { passwordVisible = !passwordVisible },
                     )
                 }
@@ -312,7 +312,7 @@ fun <T> InputFieldBase(
                     AppIcon(
                         trailingIconId,
                         contentDescription = "Clear",
-                        type = iconColor,
+                        type = clearIconColor, // Use error color for clear icon when in error state
                         onClick = { onTrailingAction?.invoke() ?: clearValueAndNotify() },
                     )
                 }

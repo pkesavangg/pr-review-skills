@@ -98,6 +98,15 @@ private fun LoginContent(
     Column(modifier = scaffoldModifier.fillMaxSize()
       .verticalScroll(rememberScrollState())) {
       Spacer(Modifier.weight(1f))
+      AppText(
+        text = LoginStrings.WelcomeBack,
+        textType = TextType.Title,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = spacing.sm),
+      )
+      Spacer(Modifier.height(spacing.xl))
       Column(
         modifier =
           Modifier
@@ -109,12 +118,6 @@ private fun LoginContent(
               onClick = { focusManager.clearFocus() },
             ),
       ) {
-        AppText(
-          text = LoginStrings.WelcomeBack,
-          textType = TextType.Title,
-          textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(spacing.md))
         AppInput(
           formControl = state.form.controls.email,
           label = LoginStrings.EmailLabel,
@@ -143,7 +146,7 @@ private fun LoginContent(
               .semantics { contentType = ContentType.Password }
               .focusRequester(passwordFocusRequester),
         )
-        Spacer(Modifier.height(spacing.xs))
+        Spacer(Modifier.height(spacing.xl))
         AppButton(
           label = LoginStrings.LoginButton,
           enabled = state.form.isValid,
@@ -153,11 +156,11 @@ private fun LoginContent(
             handleIntent(LoginIntent.Submit)
           },
         )
-        Spacer(Modifier.height(spacing.sm))
+        Spacer(Modifier.height(spacing.md))
         AppButton(
           label = LoginStrings.ForgotPassword,
           type = ButtonType.TextPrimary,
-          size = ButtonSize.Medium,
+          size = ButtonSize.Small,
           modifier = Modifier.align(Alignment.CenterHorizontally),
           onClick = { handleIntent(LoginIntent.OpenForgotPasswordModal) },
         )
