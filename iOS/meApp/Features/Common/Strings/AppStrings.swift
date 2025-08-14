@@ -648,7 +648,7 @@ struct AlertStrings {
         static let title = "Weight Only Mode"
         static let message = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
         static let enableButton = "Enable"
-    
+    }
     struct ReconnectDeviceAlert {
         static let header = "Scale is at Its User Limit"
         static let message = "Your connection was deactivated by another user. Reconnect now or delete the scale from your account by visiting scale settings."

@@ -282,11 +282,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Parameter devices: The devices to sync. Passing an empty array clears the list.
      */
     func syncDevices(_ devices: [Device]) {
-        if (bluetoothScales.isEmpty && devices.isEmpty) {
-            clearDevices()
-        }
-
         let scalesToSync = devices.isEmpty ? bluetoothScales : devices
+        let ggDevices = scalesToSync.map { device in
+            GGBTDevice(
                 name: device.deviceName ?? "",
                 broadcastId: device.broadcastIdString ?? "",
                 password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
@@ -757,11 +755,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 _ = await disconnectDevice(broadcastId: broadcastId)
             }
         }
-        skipDevices.removeAll()
-    }
-    
-    
-    func clearScaleDiscoveredInfo() {
         skipDevices.removeAll()
     }
     
