@@ -23,24 +23,24 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.animation
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 
 enum class AppLinearProgressType {
-    Primary,
-    Success,
+  Primary,
+  Success,
 }
 
 object AppLinearProgressDefaults {
-    @Composable
-    fun getProgressColor(type: AppLinearProgressType): Color =
-        when (type) {
-            AppLinearProgressType.Primary -> colorScheme.primaryAction
-            AppLinearProgressType.Success -> colorScheme.success
-        }
+  @Composable
+  fun getProgressColor(type: AppLinearProgressType): Color =
+    when (type) {
+      AppLinearProgressType.Primary -> colorScheme.primaryAction
+      AppLinearProgressType.Success -> colorScheme.success
+    }
 
-    @Composable
-    fun getTrackColor(type: AppLinearProgressType): Color =
-        when (type) {
-            AppLinearProgressType.Primary -> colorScheme.utility
-            AppLinearProgressType.Success -> colorScheme.utility
-        }
+  @Composable
+  fun getTrackColor(type: AppLinearProgressType): Color =
+    when (type) {
+      AppLinearProgressType.Primary -> colorScheme.utility
+      AppLinearProgressType.Success -> colorScheme.utility
+    }
 }
 
 /**
@@ -60,56 +60,55 @@ object AppLinearProgressDefaults {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppLinearProgressIndicator(
-    modifier: Modifier = Modifier,
-    progress: Float = 0f,
-    type: AppLinearProgressType = AppLinearProgressType.Primary,
-    height: Dp = 12.dp,
+  modifier: Modifier = Modifier,
+  progress: Float = 0f,
+  type: AppLinearProgressType = AppLinearProgressType.Primary,
+  height: Dp = 12.dp,
 ) {
-    val progressColor: Color = AppLinearProgressDefaults.getProgressColor(type)
-    val trackColor: Color = AppLinearProgressDefaults.getTrackColor(type)
-    val strokeCap: StrokeCap = ProgressIndicatorDefaults.LinearStrokeCap
-    val gapSize: Dp = ProgressIndicatorDefaults.LinearIndicatorTrackGapSize
+  val progressColor: Color = AppLinearProgressDefaults.getProgressColor(type)
+  val trackColor: Color = AppLinearProgressDefaults.getTrackColor(type)
+  val strokeCap: StrokeCap = ProgressIndicatorDefaults.LinearStrokeCap
+  val gapSize: Dp = ProgressIndicatorDefaults.LinearIndicatorTrackGapSize
+  val animatedProgress by animateFloatAsState(
+    targetValue = progress.coerceIn(0f, 1f),
+    animationSpec =
+      tween(
+        durationMillis = animation.mediumDuration,
+        easing = FastOutSlowInEasing,
+      ),
+    label = "Progress Animation",
+  )
 
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0f, 1f),
-        animationSpec =
-            tween(
-                durationMillis = animation.mediumDuration,
-                easing = FastOutSlowInEasing,
-            ),
-        label = "Progress Animation",
+  Box(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .height(height),
+    contentAlignment = Alignment.CenterStart,
+  ) {
+    LinearProgressIndicator(
+      progress = { animatedProgress },
+      color = progressColor,
+      trackColor = trackColor,
+      strokeCap = strokeCap,
+      gapSize = gapSize,
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .height(height),
     )
-
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(height),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            color = progressColor,
-            trackColor = trackColor,
-            strokeCap = strokeCap,
-            gapSize = gapSize,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(height),
-        )
-    }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun AppLinearProgressIndicatorPreview() {
-    MeAppTheme {
-        Column {
-            AppLinearProgressIndicator(progress = 0.25f)
-            AppLinearProgressIndicator(progress = 0.5f)
-            AppLinearProgressIndicator(progress = 0.75f)
-            AppLinearProgressIndicator(progress = 1.0f)
-        }
+  MeAppTheme {
+    Column {
+      AppLinearProgressIndicator(progress = 0.25f)
+      AppLinearProgressIndicator(progress = 0.5f)
+      AppLinearProgressIndicator(progress = 0.75f)
+      AppLinearProgressIndicator(progress = 1.0f)
     }
+  }
 }

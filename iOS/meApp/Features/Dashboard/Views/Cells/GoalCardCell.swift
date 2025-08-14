@@ -21,21 +21,18 @@ class GoalCardCell: UICollectionViewCell {
     
     var onDeleteTapped: (() -> Void)?
     
+    // MARK: - Private Properties for Configuration
+    
+    private var currentStore: DashboardStore?
+    private var isLongPressed: Bool = false
+    private var isTapped: Bool = false
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
         // Create a placeholder view that will be configured later
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         
         self.hostingController = UIHostingController(rootView: placeholderView)
@@ -81,21 +78,14 @@ class GoalCardCell: UICollectionViewCell {
     /// Configures the cell with dashboard store data
     /// - Parameter store: The dashboard store
     func configure(with store: DashboardStore) {
+        currentStore = store
+        
         // Set the removal state
         isRemoved = store.state.ui.isGoalCardRemoved
         
-        let goalCardView = GoalProgressCardView(
-            delta: store.state.goal.goalDelta,
-            startWeight: store.state.goal.goalStartWeight,
-            goalWeight: store.state.goal.goalWeight,
-            unit: store.currentUnitText,
-            isRemoved: store.state.ui.isGoalCardRemoved,
-            progress: store.state.goal.goalProgress,
-            goalType: store.state.goal.goalType,
-            isWeightlessMode: store.isWeightlessModeEnabled
-        )
+        let goalCardView = GoalProgressView()
         
-        // Apply EditModeOverlay to the GoalProgressCardView
+        // Apply EditModeOverlay to the GoalProgressView
         let viewWithOverlay = AnyView(
             goalCardView
                 .editModeOverlay(
@@ -104,7 +94,7 @@ class GoalCardCell: UICollectionViewCell {
                     onToggleRemoval: {
                         store.toggleGoalCardRemoval()
                     },
-                    isBeingDragged: store.state.ui.isGoalCardBeingDragged,
+                    isBeingDragged: store.state.ui.isGoalCardBeingDragged || isLongPressed || isTapped,
                     isDropTarget: store.state.ui.dropHoverId == "goalCard",
                     rowIndex: rowIndex,
                     disableWiggle: false
@@ -118,18 +108,13 @@ class GoalCardCell: UICollectionViewCell {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        currentStore = nil
+        isLongPressed = false
+        isTapped = false
+        
         // Reset to placeholder view
         let placeholderView = AnyView(
-            GoalProgressCardView(
-                delta: 0.0,
-                startWeight: 0.0,
-                goalWeight: 0.0,
-                unit: "lbs",
-                isRemoved: false,
-                progress: 0.0,
-                goalType: .gain,
-                isWeightlessMode: false
-            )
+            GoalProgressView()
         )
         hostingController?.rootView = placeholderView
     }
@@ -143,10 +128,24 @@ class GoalCardCell: UICollectionViewCell {
         case .none:
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
+            // Clear interaction states
+            isLongPressed = false
+            isTapped = false
+            // Reconfigure to show overlay after drag ends
+            if let store = currentStore {
+                configure(with: store)
+            }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
             // This prevents items from appearing "removed" during drag operations
             hostingController?.view.alpha = 1.0
+            // Set interaction states to hide overlay during drag
+            isLongPressed = true
+            isTapped = true
+            // Reconfigure to hide overlay during drag
+            if let store = currentStore {
+                configure(with: store)
+            }
         @unknown default:
             break
         }
@@ -158,10 +157,22 @@ class GoalCardCell: UICollectionViewCell {
         super.layoutSubviews()
         // Only wiggle if not removed and in wiggle mode
         if isWiggling && !isRemoved {
-            contentView.startWiggleWithRowIndex(rowIndex)
+            startWiggleAnimation()
         } else {
-            contentView.stopWiggle()
+            stopWiggleAnimation()
         }
+    }
+    
+    /// Starts the widget wiggle animation (same behavior as reference WidgetCell)
+    private func startWiggleAnimation() {
+        // Remove any existing animations before starting
+        layer.removeAllAnimations()
+        contentView.startWiggleWithRowIndex(rowIndex)
+    }
+    
+    /// Stops the widget wiggle animation (same behavior as reference WidgetCell)
+    private func stopWiggleAnimation() {
+        contentView.stopWiggle()
     }
     
     /// Controls whether the cell is in wiggle mode
@@ -222,5 +233,19 @@ class GoalCardCell: UICollectionViewCell {
         snapshot?.backgroundColor = .clear
         
         return snapshot ?? UIView()
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            // Disable highlight visual
+            contentView.backgroundColor = .clear
+        }
+    }
+
+    override var isSelected: Bool {
+        didSet {
+            // Disable selection visual
+            contentView.backgroundColor = .clear
+        }
     }
 } 

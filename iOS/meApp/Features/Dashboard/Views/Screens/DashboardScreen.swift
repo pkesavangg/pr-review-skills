@@ -4,13 +4,6 @@
 //
 //  Created by Lakshmi Priya on 30/06/25.
 //
-//  Wiggle Animation Implementation:
-//  - Metric grid uses app icon-style wiggle (0.135s/0.125s duration, 0.04 radians)
-//  - Goal card uses medium-speed wiggle (0.18s duration, 0.045 radians)
-//  - Streak grid uses medium-speed wiggle with alternating timing (0.18s/0.16s duration, 0.045 radians)
-//  - Widget wiggle uses alternating timing (0.35s/0.33s duration, 0.045 radians)
-//  - This provides a balanced wiggle that's faster than widgets but gentler than app icons
-//
 
 import SwiftUI
 import UniformTypeIdentifiers
@@ -18,16 +11,24 @@ import UniformTypeIdentifiers
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject var store = DashboardStore()
     let lang = DashboardStrings.self
     @State private var selectedEntry: Entry? = nil
     @State private var selectedMetric: BodyMetric? = nil
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
+    @State private var suppressOutsideCancel = false
 
     var body: some View {
         VStack(spacing: 0) {
             navbarHeaderSection()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if store.state.ui.isEditMode {
+                        store.cancelEdit()
+                    }
+                }
             dashboardScrollView()
         }
         .onAppear(perform: store.onAppearActions)
@@ -58,12 +59,48 @@ struct DashboardScreen: View {
         .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
             store.handleMetricInfoSheetDismiss(newValue)
         }
-        .onChange(of: store.state.ui.isEditMode) { _, _ in store.resetDragState() }
-        .onChange(of: store.currentUnit) { _, _ in 
+        .onChange(of: store.state.ui.isEditMode) { _, isEdit in
+            // Only rebuild layout when entering edit to start wiggle animations
+            if isEdit { store.resetDragState() }
+        }
+        .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
+        }
+        .onChange(of: store.state.data.latestWeightStored) { _, _ in
+            store.resetMetricsToLatestEntry()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Restart wiggle animations when app becomes active from background
+            if store.state.ui.isEditMode {
+                // Force a small delay to ensure the view is fully loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
+                    store.restartWiggleAnimations()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            if store.state.ui.isEditMode { store.cancelEdit() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            if store.state.ui.isEditMode { store.cancelEdit() }
         }
         .presentAlert(alertData: $store.state.ui.alertData)
         .presentLoader(loaderData: store.loaderData)
+        .onChange(of: scenePhase) { _, newPhase in
+            if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
+                store.cancelEdit()
+            }
+        }
+        .onChange(of: tabViewModel.selectedTab) { _, newTab in
+            if store.state.ui.isEditMode && newTab != .dash {
+                store.cancelEdit()
+            }
+            if newTab == .dash {
+                DispatchQueue.main.async {
+                    store.state.ui.gridLayoutId = UUID()
+                }
+            }
+        }
     }
 
     // MARK: - Sections split for type-checking
@@ -77,18 +114,52 @@ struct DashboardScreen: View {
     @ViewBuilder
     private func dashboardScrollView() -> some View {
         ScrollView(showsIndicators: false) {
-            WeightTrendView(dashboardStore: store)
-            if !store.allContentRemoved {
-                // Use single combined layout view for all items
-                DashboardCombinedLayoutView(store: store)
-                    .frame(minHeight: 600)
-                    .padding(.top, .spacingSM)
-                    .id(store.state.ui.gridLayoutId)
-                    .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+            VStack(spacing: 0) {
+                WeightTrendView(dashboardStore: store)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                            store.cancelEdit()
+                        }
+                    }
+                if !store.allContentRemoved {
+                    if !store.metricsToShow.isEmpty {
+                        MetricGridUIKitView(store: store, onMetricLongPress: { label in
+                            store.state.ui.selectedMetricLabel = label
+                            openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                        })
+                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
+                            .padding(.top, .spacingSM)
+                            .id(store.state.ui.gridLayoutId)
+                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                    }
+
+                    if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
+                        Divider()
+                            .foregroundColor(theme.statusUtilityPrimary)
+                            .padding(.horizontal, .spacingLG)
+                    }
+
+                    if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+                        GoalStreakGridUIKitView(store: store)
+                            .frame(minHeight: 200)
+                            .id(store.state.ui.gridLayoutId)
+                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                    }
+                }
+                actionButtonsSection()
+                    .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
             }
-            actionButtonsSection()
-                .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
         }
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && suppressOutsideCancel == false {
+                        store.cancelEdit()
+                    }
+                }
+        )
         .padding(.top, .zero)
     }
 
@@ -105,6 +176,9 @@ struct DashboardScreen: View {
                 })
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                    if !store.state.ui.isEditMode {
+                        store.beginEdit()
+                    }
                     store.state.ui.isEditMode.toggle()
                     if store.state.ui.isEditMode {
                         store.resetDragState()
@@ -114,15 +188,10 @@ struct DashboardScreen: View {
                     tabViewModel.navigateToGoalSetting()
                 })
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    selectedMetricInfo = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
+                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
-                
-                // Add button to switch to 12 metrics if currently showing 4 metrics
-                if store.state.metrics.dashboardType == .dashboard4 {
-                    ButtonView(text: lang.switchTo12Metrics, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                        store.switchTo12MetricsDashboard()
-                    })
-                }
+
             }
         }
         .padding(.bottom, .spacingLG)

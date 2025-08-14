@@ -197,7 +197,7 @@ constructor(
     viewModelScope.launch {
       try {
         deviceService.onDeviceUpdate(
-          macAddress = discoveredScale!!.device?.macAddress,
+          discoveredScale?.device!!,
           connectionStatus = BLEStatus.CONNECTED,
         )
         clearBluetoothTimeout() // Cancel timeout on success

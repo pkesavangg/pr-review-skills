@@ -208,7 +208,7 @@ struct YAxisCalculator {
         }
 
         // Adjust if too many ticks (> 8)
-        while ticks.count > 8 {
+        while ticks.count > 6 {
             step *= 2 // Double the step size
             ticks = []
             currentTick = min

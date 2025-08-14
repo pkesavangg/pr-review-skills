@@ -28,7 +28,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 @Composable
-fun SelectButton(
+fun  SelectButton(
   title: String,
   modifier: Modifier = Modifier,
   selectButtonItems: List<SelectButtonItem>,
@@ -40,6 +40,7 @@ fun SelectButton(
   onItemSelected: ((String) -> Unit)? = null,
   content: (@Composable () -> Unit)? = null,
   onSupportingButtonClick: (() -> Unit)? = null,
+  sku: String? = null,
 ) {
   Column(
     modifier = modifier
@@ -71,6 +72,7 @@ fun SelectButton(
         isSelectable = isSelectable,
         onItemSelected = onItemSelected,
         modifier = Modifier.fillMaxWidth(),
+        sku = sku,
       )
     }
 
@@ -122,7 +124,7 @@ fun SelectButton(
 private fun SelectButtonWithWifiModesPreview() {
   MeAppTheme {
     var selectedMode by remember { mutableStateOf<String?>(null) }
-    val wifiButtons = SelectButtonHelper.createWifiModeButtons(selectedMode = selectedMode)
+    val wifiButtons = SelectButtonHelper.createWifiModeButtons(selectedMode = "espTouchWifi")
 
     SelectButton(
       title = WifiScaleSetupStrings.WifiMode.Title,
@@ -148,8 +150,8 @@ private fun SelectButtonWithWifiModesPreview() {
 //     val errorButtons = SelectButtonHelper.createDefaultErrorCodeButtons(selectedErrorCode = selectedErrorCode)
 //
 //     SelectButton(
-//       title = WifiSetupStrings.Error.Title,
-//       subtitle =  WifiSetupStrings.Error.Message,
+//       title = WifiScaleSetupStrings.Error.Title,
+//       subtitle = WifiScaleSetupStrings.Error.Message,
 //       selectButtonItems = errorButtons,
 //       isSelectable = true,
 //       onItemSelected = { value ->
@@ -157,7 +159,7 @@ private fun SelectButtonWithWifiModesPreview() {
 //         // Handle error code selection
 //       },
 //       supportingButtonLabel = ScaleSetupStrings.SetupButtons.SomethingElse,
-//       onSupportingButtonClick = {}
+//       onSupportingButtonClick = {},
 //     )
 //   }
 // }

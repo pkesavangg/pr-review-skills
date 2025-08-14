@@ -131,8 +131,8 @@ constructor(
           goalWeight = activeAccount.goalWeight ?: 0.0,
           initialWeight = activeAccount.initialWeight,
           type = activeAccount.goalType ?: "",
-          percent = activeAccount.goalPercent?.toInt(),
-          metPreviousGoal = activeAccount.metPreviousGoal,
+          percent = activeAccount.goalPercent,
+          metPreviousGoal = activeAccount.metPreviousGoal ?: false,
         )
       }
       .catch { e ->

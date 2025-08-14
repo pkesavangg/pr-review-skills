@@ -64,7 +64,7 @@ struct GoalSettingScreen: View {
                         selectedSegment: $settingsStore.selectedSegment
                     )
                     .onChange(of: settingsStore.selectedSegment) {
-                        settingsStore.goalForm.goalType.value = settingsStore.selectedSegment.goalTypeValue
+                        settingsStore.handleGoalTypeChange(settingsStore.selectedSegment)
                     }
                     .padding(.horizontal, .spacing2XL)
                     
@@ -111,7 +111,9 @@ struct GoalSettingScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onAppear {
             settingsStore.populateGoalFormIfNeeded()
-            settingsStore.selectedSegment = GoalTypeSegment.fromGoalType(settingsStore.goalForm.goalType.value)
+            // Sync the selected segment with the current goal type value
+            let currentSegment = GoalTypeSegment.fromGoalType(settingsStore.goalForm.goalType.value)
+            settingsStore.selectedSegment = currentSegment
             
             registerDeactivation {
                 // Allow immediate tab switch when no changes.

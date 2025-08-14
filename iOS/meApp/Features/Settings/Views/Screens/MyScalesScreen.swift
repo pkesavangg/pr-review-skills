@@ -185,7 +185,7 @@ struct MyScalesScreen: View {
                             A6ScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
                         case .btWifiR4:
-                            BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil)
+                            BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil, isReconnect: false, isDuplicated: false)
                                 .interactiveDismissDisabled(true)
                         case .bluetooth:
                             BluetoothScaleSetupScreen(sku: scale.sku)
@@ -212,7 +212,6 @@ struct MyScalesScreen: View {
                 
                 if !scaleStore.scales.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
-                        
                         Text(lang.myScales)
                             .fontOpenSans(.heading4)
                             .fontWeight(.bold)

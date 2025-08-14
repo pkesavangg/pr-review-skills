@@ -24,10 +24,19 @@ class DashboardStore: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
+    // MARK: - Edit Session Snapshot
+    private var snapshotMetrics: [MetricItem] = []
+    private var snapshotActiveMetricsCount: Int = 0
+    private var snapshotStreakItems: [MetricItem] = []
+    private var snapshotActiveStreakItemsCount: Int = 0
+    private var snapshotGoalCardRemoved: Bool = false
+    private var snapshotGoalCardPosition: Int = 0
+    private var snapshotStreakGridOrder: [String] = []
+    private var hasEditSnapshot: Bool = false
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-
+static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
@@ -89,7 +98,7 @@ class DashboardStore: ObservableObject {
                 self?.state.data = dataState
             }
             .store(in: &cancellables)
-        
+
 
     }
 
@@ -110,7 +119,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightSettings?.weightUnit }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] newWeightUnit in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
                 self?.handleSettingsChange()
@@ -121,7 +130,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.isWeightlessOn }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] isWeightlessOn in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
                 self?.handleSettingsChange()
@@ -132,18 +141,27 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.weightlessSettings?.weightlessWeight }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
+            .dropFirst()
             .sink { [weak self] weightlessWeight in
                 self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
 
-        // Subscribe to dashboard type changes
+        // Subscribe to goal settings changes
         accountService.$activeAccount
+            .compactMap { $0?.goalSettings }
+            .removeDuplicates()
+            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
+            .sink { [weak self] goalSettings in
+                self?.logger.log(level: .info, tag: "DashboardStore", message: "Goal settings changed - type: \(goalSettings.goalType?.rawValue ?? "nil"), goal weight: \(goalSettings.goalWeight ?? 0)")
+                self?.handleSettingsChange()
+            }
+            .store(in: &cancellables)
+
+                accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .dropFirst() // Skip initial value
             .sink { [weak self] dashboardType in
                 self?.handleDashboardTypeChange()
             }
@@ -160,14 +178,21 @@ class DashboardStore: ObservableObject {
     }
 
     var metricGridColumns: [GridItem] {
-        return metricsManager.getMetricGridColumns(for: state.metrics.dashboardType)
+        let effectiveType = determineDashboardTypeFromAccount()
+        return metricsManager.getMetricGridColumns(for: effectiveType)
     }
 
     var metricsToShow: [MetricItem] {
+        let effectiveType = determineDashboardTypeFromAccount()
         return metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: state.metrics.dashboardType
+            dashboardType: effectiveType
         )
+    }
+
+    // Expose effective dashboard type based on the active account only
+    var effectiveDashboardType: DashboardType {
+        determineDashboardTypeFromAccount()
     }
 
     var streakColumns: [GridItem] {
@@ -421,11 +446,6 @@ class DashboardStore: ObservableObject {
         state.metrics.dashboardType = dashboardType
         metricsManager.updateDashboardType(dashboardType)
 
-        // Force update dashboard type to 12 metrics if it's currently 4 metrics
-        if dashboardType == .dashboard4 {
-            await forceUpdateDashboardTypeTo12()
-        }
-
         // Initialize data manager to set up bindings
         await initializeDataManager()
 
@@ -442,53 +462,42 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Dashboard Type Management
 
-    /// Forces the dashboard type to be 12 metrics (3 columns) by updating the account settings
-    private func forceUpdateDashboardTypeTo12() async {
-        do {
-            logger.log(level: .info, tag: "DashboardStore", message: "Forcing dashboard type to 12 metrics")
 
-            // Update the account settings to use 12 metrics
-            _ = try await accountService.updateDashboardType(type: .dashboard12)
 
-            // Update the local state
-            state.metrics.dashboardType = .dashboard12
-            metricsManager.updateDashboardType(.dashboard12)
 
-            logger.log(level: .info, tag: "DashboardStore", message: "Successfully updated dashboard type to 12 metrics")
-        } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to update dashboard type to 12 metrics: \(error)")
-        }
-    }
-
-    /// Public method to manually switch to 12 metrics dashboard
-    func switchTo12MetricsDashboard() {
-        Task {
-            await forceUpdateDashboardTypeTo12()
-
-            // Force UI update
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        }
-    }
 
     // MARK: - Dashboard Type Logic
 
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
-        guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
-            logger.log(level: .info, tag: "DashboardStore", message: "No dashboard type found in account, defaulting to 4 metrics")
+        guard let account = accountService.activeAccount else {
+            logger.log(level: .info, tag: "DashboardStore", message: "No active account, defaulting to 4 metrics")
             return .dashboard4
         }
 
-        // Convert string to DashboardType enum
-        guard let dashboardType = DashboardType(rawValue: dashboardTypeString) else {
-            return .dashboard4
+        if let dashboardTypeString = account.dashboardSettings?.dashboardType {
+            // Support canonical raw values and legacy stored values
+            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "dashboard12" {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
+                return .dashboard12
+            }
+            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "dashboard4" {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
+                return .dashboard4
+            }
         }
 
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to \(dashboardType.rawValue) (from account dashboardType)")
-        return dashboardType
+        // Fallback: infer from dashboardMetrics count if type string is missing or unexpected
+        if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
+            let metricsCount = metricsCSV.split(separator: ",").count
+            if metricsCount >= 12 {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
+                return .dashboard12
+            }
+        }
+
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type defaulted to 4 metrics")
+        return .dashboard4
     }
 
     // MARK: - Data Loading Methods
@@ -612,13 +621,13 @@ class DashboardStore: ObservableObject {
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
     }
-    
+
     /// Updates the goal card position in the grid (like a large widget)
     /// - Parameter newPosition: The new position after the divider (0 = first position)
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
         let clampedPosition = max(0, min(newPosition, maxPosition))
-        
+
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .info, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
@@ -630,6 +639,16 @@ class DashboardStore: ObservableObject {
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
         state.ui.gridLayoutId = UUID()
+    }
+
+    /// Restarts wiggle animations for all visible cells when app becomes active from background
+    func restartWiggleAnimations() {
+        // Clear the interval cache to ensure fresh randomization
+        UIView.clearWiggleIntervalCache()
+
+        state.ui.gridLayoutId = UUID()
+        objectWillChange.send()
+        logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
 
     func selectMetric(_ label: String) {
@@ -709,7 +728,7 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await metricsManager.saveMetricsToAPI()
-
+               
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -718,6 +737,9 @@ class DashboardStore: ObservableObject {
                         self.state.ui.loaderOverride = nil
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
+                        self.state.ui.selectedMetricLabel = nil
+                        // Clear edit snapshot so next edit session starts fresh
+                        self.hasEditSnapshot = false
                     }
                 }
             } catch {
@@ -728,6 +750,9 @@ class DashboardStore: ObservableObject {
                         self.state.ui.loaderOverride = nil
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
+                        self.state.ui.selectedMetricLabel = nil
+                        // Clear edit snapshot so next edit session starts fresh even on error
+                        self.hasEditSnapshot = false
                     }
                 }
             }
@@ -741,6 +766,9 @@ class DashboardStore: ObservableObject {
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
         state.ui.resetDragState()
+
+        // Reset the saved order to restore default order
+        resetGridOrder()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -777,8 +805,17 @@ class DashboardStore: ObservableObject {
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
                 self.state.ui.gridLayoutId = UUID()
+                // Reset snapshot after a full dashboard reset
+                self.hasEditSnapshot = false
             }
         }
+    }
+
+    /// Resets the saved grid order to restore default order
+    private func resetGridOrder() {
+        state.ui.streakGridOrder = []
+        state.ui.goalCardPosition = 0
+        logger.log(level: .info, tag: "DashboardStore", message: "Reset grid order to default")
     }
 
     func showResetDashboardAlert() {
@@ -800,6 +837,9 @@ class DashboardStore: ObservableObject {
     func updateSelectedPeriod(_ period: TimePeriod) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
+
+        // End any scrolling immediately so new period computes fresh domain/x-axis
+        graphManager.endScrollingImmediately()
 
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
@@ -895,14 +935,15 @@ class DashboardStore: ObservableObject {
         // For TOTAL period, use all data to ensure Y-axis reflects complete range
         let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
 
-        graphManager.calculateAndCacheYAxisDomain(
-            from: operationsForYAxis,
-            goalWeight: goalWeightForDisplay,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
-        )
+        // Apply cache update in a transaction that disables animations to prevent layout jumps
+       graphManager.calculateAndCacheYAxisDomain(
+                from: operationsForYAxis,
+                goalWeight: goalWeightForDisplay,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay,
+                chartHeight: state.graph.chartHeight
+            )
 
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
@@ -933,7 +974,14 @@ class DashboardStore: ObservableObject {
     }
 
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
-        metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+        let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
+        let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
+        let numericChars = String(String.UnicodeScalarView(numericScalars))
+        if let number = Double(numericChars), number == 0 {
+            return DashboardStrings.placeholder
+        }
+        return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
     // Delegate entry creation to MetricsManager
@@ -1030,12 +1078,12 @@ class DashboardStore: ObservableObject {
     func startDraggingStreak(_ streak: MetricItem) {
         state.ui.draggingStreak = streak
     }
-    
+
     /// Start dragging the goal card
     func startDraggingGoalCard() {
         state.ui.isGoalCardBeingDragged = true
     }
-    
+
     /// Update drop target during drag
     func updateDropTarget(_ targetId: String?) {
         state.ui.dropHoverId = targetId
@@ -1091,18 +1139,18 @@ class DashboardStore: ObservableObject {
            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
             return
         }
-        
+
         // Move the metric in the data source
         let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
         metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
-        
+
         // Update active metrics count if needed
         let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
         metricsManager.state.activeMetricsCount = currentActiveCount
-        
+
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
-        
+
         logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
     }
 
@@ -1249,7 +1297,7 @@ class DashboardStore: ObservableObject {
     func handleSelectedMetricLabelChange(_ newValue: String?) {
         if newValue == nil {
             // Clear selection state
-            // Note: This is handled by the UI layer since it manages the selectedEntry and selectedMetric state
+            state.ui.selectedMetricLabel = nil
         }
     }
 
@@ -1300,11 +1348,53 @@ class DashboardStore: ObservableObject {
         // Handle any settings changes
         handleSettingsChange()
        // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
+            // Force both grids to rebuild and recalc intrinsic size after re-appearing (fixes half-height issue)
+            self.state.ui.gridLayoutId = UUID()
             self.objectWillChange.send()
         }
 
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
+
+    /// Begins an edit session by snapshotting the current state for synchronous revert.
+    func beginEdit() {
+        guard !hasEditSnapshot else { return }
+        snapshotMetrics = metricsManager.state.metrics
+        snapshotActiveMetricsCount = metricsManager.state.activeMetricsCount
+        snapshotStreakItems = streakManager.state.streakItems
+        snapshotActiveStreakItemsCount = streakManager.state.activeStreakItemsCount
+        snapshotGoalCardRemoved = state.ui.isGoalCardRemoved
+        snapshotGoalCardPosition = state.ui.goalCardPosition
+        snapshotStreakGridOrder = state.ui.streakGridOrder
+        hasEditSnapshot = true
+        logger.log(level: .info, tag: "DashboardStore", message: "Edit snapshot captured")
+    }
+
+    /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
+    func cancelEdit() {
+        logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
+        // Restore synchronous snapshots first to immediately revert UI/state
+        if hasEditSnapshot {
+            metricsManager.state.metrics = snapshotMetrics
+            metricsManager.state.activeMetricsCount = snapshotActiveMetricsCount
+            streakManager.state.streakItems = snapshotStreakItems
+            streakManager.state.activeStreakItemsCount = snapshotActiveStreakItemsCount
+            state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
+            state.ui.goalCardPosition = snapshotGoalCardPosition
+            state.ui.streakGridOrder = snapshotStreakGridOrder
+        }
+        // Clear selection/drag and exit edit mode without forcing relayout
+        state.ui.selectedMetricLabel = nil
+        // Inline non-destructive drag state clearing to avoid layout jumps
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+        withAnimation(.easeInOut(duration: 0.2)) {
+            state.ui.isEditMode = false
+        }
+        hasEditSnapshot = false
+        objectWillChange.send()
     }
 }

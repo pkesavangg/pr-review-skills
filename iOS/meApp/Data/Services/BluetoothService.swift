@@ -70,6 +70,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     var skipDevices: [String] = []
 
+    
+    // MARK: - Navigation Callback
+    /// Callback to handle scale setup navigation. Set by the UI layer (e.g. BottomTabBarViewModel).
+    var onOpenScaleSetup: ((Device, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
+    
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     private let newEntryReceivedSubject = PassthroughSubject<Entry, Never>()
@@ -84,6 +89,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var activeAccount: Account?
     private var isSmartScanStarted = false
     private var bluetoothScales: [Device] = []
+    private var connectedGgDevices: [GGBTDevice] = []
     private var isWeightOnlyModeAlertDismissed = false
     private var lastProfileUpdateAccountId: String?
 
@@ -96,6 +102,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let tag = "BluetoothService"
 
+    
+    // MARK: - Alert Dependencies (injected via shared instances for now)
+    private var notificationService: NotificationHelperService { NotificationHelperService.shared }
+    private var scaleInfoUtils: ScaleInfoUtils { ScaleInfoUtils.shared }
+    
     // MARK: - Initialization
     /**
      Initializes the BluetoothService with all required dependencies.
@@ -116,6 +127,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         self.entryService = entryService
         self.logger = logger
         setupSubscriptions()
+        initialize()
     }
 
     // MARK: - Setup
@@ -137,14 +149,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
-                Task { await self?.handleAccountUpdate(account) }
+                Task { await self?.handleAccountUpdate(account)
+                    let _ = await self?.updateUserProfileForR4Scales()
+                }
             }
             .store(in: &cancellables)
     }
 
     private func handleScalesUpdate(_ scales: [Device]?) async {
         guard let scales = scales, !scales.isEmpty else {
-            syncDevices([])
             bluetoothScales = []
             return
         }
@@ -175,7 +188,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if let account = account {
             self.activeAccount = account
             if !isSmartScanStarted {
+                clearDevices()
                 await scan()
+                syncDevices([])
             }
             // do {
             //     _ = try await updateUserProfileForR4Scales()
@@ -201,6 +216,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Clears all devices from the underlying Bluetooth plugin / cache.
      */
     func clearDevices() {
+        skipDevices = []
         ggBleSDK.clearDevices()
     }
 
@@ -268,12 +284,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func syncDevices(_ devices: [Device]) {
         if (bluetoothScales.isEmpty && devices.isEmpty) {
             clearDevices()
-            return
         }
 
         let scalesToSync = devices.isEmpty ? bluetoothScales : devices
-        let ggDevices = scalesToSync.map { device in
-            GGBTDevice(
                 name: device.deviceName ?? "",
                 broadcastId: device.broadcastIdString ?? "",
                 password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
@@ -293,7 +306,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Adds a newly discovered scale to persistent storage and returns the saved model.
      - Returns: Result<Device, BluetoothServiceError>
      */
-    func addNewDevice(_ scale: Device, metaData deviceDetails: DeviceMetaData?) async -> Result<Device, BluetoothServiceError> {
+    func addNewDevice(_ scale: Device, metaData deviceDetails: DeviceMetaData?, _ skipDuplicateCheck: Bool? = false) async -> Result<Device, BluetoothServiceError> {
         do {
             guard let userId = activeAccount?.accountId else {
                 throw BluetoothServiceError.noActiveAccount
@@ -335,7 +348,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 }
             }
             scaleToSave.metaData = metaData
-            let savedScale = try await scaleService.createDevice(scaleToSave)
+            let savedScale = try await scaleService.createDevice(scaleToSave, skipDuplicateCheck ?? false)
             try await scaleService.syncDevices(tempDevice: nil)
             return .success(savedScale)
         } catch let error as BluetoothServiceError {
@@ -737,6 +750,193 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         skipDevices.removeAll()
     }
 
+    
+    func disconnectConnectedScales() async {
+        for scale in bluetoothScales where scale.isConnected == true {
+            if let broadcastId = scale.broadcastIdString {
+                _ = await disconnectDevice(broadcastId: broadcastId)
+            }
+        }
+        skipDevices.removeAll()
+    }
+    
+    
+    func clearScaleDiscoveredInfo() {
+        skipDevices.removeAll()
+    }
+    
+    // MARK: - Device Event Alert Handling
+    
+    /**
+     Handles device event alerts for scale user limit reached or duplicate user errors.
+     Similar to the Angular/TypeScript implementation but adapted for SwiftUI patterns.
+     
+     - Parameters:
+     - scale: The discovered scale device
+     - isDuplicateUserError: Whether this is a duplicate user error (true) or user limit error (false)
+     */
+    private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async {
+        guard let deviceDetails = deviceData as? GGDeviceDetails, !isSetupInProgress else {
+            logger.log(level: .error, tag: tag, message: "Invalid device data for event alert")
+            return
+        }
+        
+        // Get scale info and create discovered scale
+        let scaleInfo = scaleInfoUtils.getScaleInfo(byScaleName: deviceDetails.deviceName)
+        guard  let discoveredScale = bluetoothScales.first(where: {$0.broadcastIdString == deviceDetails.broadcastIdString}) else {
+            logger.log(level: .error, tag: tag, message: "Discovered scale not found in bluetoothScales")
+            return
+        }
+        
+        // Get user list from the scale
+        let userListResult = await getScaleUserList(for: discoveredScale)
+        guard case .success(let userList) = userListResult else {
+            logger.log(level: .error, tag: tag, message: "Failed to get scale user list for device event alert")
+            return
+        }
+        
+        // Find user to delete (matching current scale preferences)
+        let userToDelete = findUserToDelete(userList: userList, discoveredScale: discoveredScale)
+        
+        // Create scale setup navigation closure
+        let openScaleSetup: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                // Dismiss all modals first
+                self.notificationService.dismissAllModals()
+                
+                // Delete the existing user if found
+                if let userToDelete = userToDelete, let token = userToDelete.token, !token.isEmpty {
+                    let response = await self.deleteScaleByBroadcastId(
+                        broadcastId: discoveredScale.broadcastIdString ?? "",
+                        token: token,
+                        disconnect: false
+                    )
+                    
+                    switch response {
+                    case .failure(_):
+                        self.logger.log(level: .error, tag: self.tag, message: "Failed to delete user from scale during event alert")
+                        return
+                    default:
+                        break
+                    }
+                }
+                
+                // Navigate to scale setup
+                let deviceDiscoveryEvent = DeviceDiscoveryEvent(
+                    device: discoveredScale,
+                    deviceInfo: scaleInfo ?? ScaleItemInfo(
+                        productName: deviceDetails.deviceName,
+                        sku: "0412", // Default R4 SKU
+                        imgPath: AppAssets.meLogoDark,
+                        setupType: .btWifiR4,
+                        bodyComp: true
+                    ),
+                    protocolType: ProtocolType(rawValue: deviceDetails.protocolType ?? "") ?? .R4,
+                    isNew: true
+                )
+                
+                // Pass the reconnect and duplicate user flags
+                self.onOpenScaleSetup?(discoveredScale, deviceDiscoveryEvent, true, isDuplicateUserError)
+            }
+        }
+        
+        // Disable scale discovered modal temporarily
+        canShowScaleDiscoveredModal = false
+        
+        // Create alert based on error type
+        let alertStrings = AlertStrings.self
+        let alert: AlertModel
+        
+        if isDuplicateUserError {
+            alert = AlertModel(
+                title: alertStrings.DuplicateUserAlert.header,
+                message: alertStrings.DuplicateUserAlert.message,
+                buttons: [
+                    AlertButtonModel(title: alertStrings.DuplicateUserAlert.cancelButton, type: .secondary) { _ in
+                        // Skip this device
+                        Task {
+                            if let broadcastId = discoveredScale.broadcastIdString {
+                                _ = await self.disconnectDevice(broadcastId: broadcastId)
+                            }
+                        }
+                        
+                    },
+                    AlertButtonModel(title: alertStrings.DuplicateUserAlert.reconnectButton, type: .primary) { _ in
+                        openScaleSetup()
+                    }
+                ]
+            )
+        } else {
+            alert = AlertModel(
+                title: alertStrings.ReconnectDeviceAlert.header,
+                message: alertStrings.ReconnectDeviceAlert.message,
+                buttons: [
+                    AlertButtonModel(title: alertStrings.ReconnectDeviceAlert.cancelButton, type: .secondary) { _ in
+                        // Skip this device
+                        Task {
+                            if let broadcastId = discoveredScale.broadcastIdString {
+                                _ = await self.disconnectDevice(broadcastId: broadcastId)
+                            }
+                        }
+                    },
+                    AlertButtonModel(title: alertStrings.ReconnectDeviceAlert.reconnectButton, type: .primary) { _ in
+                        openScaleSetup()
+                    }
+                ]
+            )
+        }
+        
+        // Present the alert
+        notificationService.showAlert(alert)
+    }
+    
+    /**
+     Finds a user to delete from the scale user list based on matching scale preferences.
+     
+     - Parameters:
+     - userList: List of users from the scale
+     - discoveredScale: The discovered scale device
+     - Returns: The user to delete, if found
+     */
+    private func findUserToDelete(userList: [DeviceUser], discoveredScale: Device) -> DeviceUser? {
+        return userList.first { user in
+            bluetoothScales.contains { scale in
+                let isR4Scale = scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue
+                let namesMatch = user.name.lowercased() == (scale.r4ScalePreference?.displayName.lowercased() ?? "")
+                let idsMatch = discoveredScale.broadcastId == scale.broadcastId
+                
+                return isR4Scale && namesMatch && idsMatch
+            }
+        }
+    }
+    
+    /**
+     Deletes a scale user by broadcast ID and token.
+     
+     - Parameters:
+     - broadcastId: The broadcast ID of the scale
+     - token: The user token to delete
+     - disconnect: Whether to disconnect after deletion
+     - Returns: Result indicating success or failure
+     */
+    private func deleteScaleByBroadcastId(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        // Create a temporary device for the deletion
+        let tempDevice = Device(
+            id: UUID().uuidString,
+            accountId: activeAccount?.accountId ?? "",
+            mac: nil,
+            deviceName: nil,
+            broadcastId: nil,
+            broadcastIdString: broadcastId,
+            isConnected: false
+        )
+        tempDevice.token = token
+        
+        return await deleteDevice(tempDevice, disconnect: disconnect)
+    }
+    
     // MARK: - Private Helper Methods
 
     private func startSmartScan() async throws {
@@ -1020,12 +1220,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         entry.scaleEntryMetric = scaleMetric
         return entry
     }
-
-    private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async {
-        // Log the alert for now - in a full implementation this could trigger UI alerts
-        print("Device alert")
-    }
-
+    
+    // Note: This method is now implemented above in the "Device Event Alert Handling" section
+    
     private func disconnectDeletedScales(currentScales: [Device], newScales: [Device]) async {
         let deletedScales = currentScales.filter { currentScale in
             !newScales.contains { newScale in
@@ -1073,8 +1270,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }()
         return ConversionTools.convertStoredHeightToCm(storedHeight)
     }
-
-
     /// Creates ScanData from Account using proper conversions and types
     func createScanData(from account: Account?) -> ScanData? {
         guard let account = account else { return nil }
@@ -1135,7 +1330,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             metrics: nil
         )
     }
-
+    
     /// Returns the weight value for a GGEntry based on protocol type
     private func getWeightByProtocolType(protocolType: ProtocolType, weightInKg: Float, weight: Float) -> Int? {
         switch protocolType {

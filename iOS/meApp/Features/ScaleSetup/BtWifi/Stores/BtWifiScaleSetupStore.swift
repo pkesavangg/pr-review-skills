@@ -46,6 +46,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Public accessor used by views to know whether the current flow is Wi-Fi-only (opened from Settings).
     var isWifiSetupOnlyMode: Bool { isWifiSetupOnly }
     
+    /// Indicates if this is a reconnect flow
+    private var isReconnect: Bool = false
+    /// Public accessor for reconnect mode
+    var isReconnectMode: Bool { isReconnect }
+    
+    /// Indicates if this is handling a duplicate user error
+    private var isDuplicated: Bool = false
+    /// Public accessor for duplicate user mode
+    var isDuplicatedMode: Bool { isDuplicated }
+    
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
@@ -421,16 +431,30 @@ final class BtWifiScaleSetupStore: ObservableObject {
     ///   - sku: The model/SKU (e.g. "\(SettingsConstants.defaultR4Sku)").
     ///   - discoveredScale: The scale object discovered by Bluetooth (optional).
     ///   - discoveryEvent: The raw discovery event emitted by `BluetoothService` (optional).
+    ///   - saveScale: Previously saved scale for Wi-Fi only setup (optional).
+    ///   - isReconnect: Indicates if this is a reconnect flow (optional).
+    ///   - isDuplicated: Indicates if this is handling a duplicate user error (optional).
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
-                   discoveryEvent: DeviceDiscoveryEvent? = nil, saveScale: Device? = nil) {
+                   discoveryEvent: DeviceDiscoveryEvent? = nil, 
+                   saveScale: Device? = nil,
+                   isReconnect: Bool = false,
+                   isDuplicated: Bool = false) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
+        
+        // Store reconnect and duplicate flags
+        self.isReconnect = isReconnect
+        self.isDuplicated = isDuplicated
+        
+        // Log setup state similar to Angular version
+        LoggerService.shared.log(level: .info, tag: tag, message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)")
         
         // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
         if let savedScaleParam = saveScale {
             self.savedScale = savedScaleParam
-            self.isWifiSetupOnly = true
+            self.scaleToken = savedScaleParam.token
+            self.isWifiSetupOnly = !isReconnect
             self.bluetoothService.isSetupInProgress = true
         } else {
             self.isWifiSetupOnly = false
@@ -452,7 +476,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
-            if isWifiSetupOnly {
+            if isReconnect && !isDuplicated {
+                Task {
+                    await self.getUserList()
+                    self.scaleSetupError = .maxUserReached
+                }
+                return .gatheringNetwork
+            } else if isWifiSetupOnly {
                 // Directly enter the Wi-Fi flow when setting up Wi-Fi only.
                 return .gatheringNetwork
             } else if discoveredScale != nil && discoveryEvent != nil {
@@ -1127,6 +1157,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
+            let isWifiConfigured = await checkDeviceInfoAfterWifiSetup(scale: scale)
+
             // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
@@ -1143,6 +1175,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             scale.token = scaleToken
             scale.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
             scale.nickname = scale.nickname ?? "AccuCheck Verve Smart Scale"
+            scale.isConnected = true
+            scale.isWifiConfigured = isWifiConfigured
             
             // Set up bath scale with proper scale type
             scale.bathScale = BathScale(
@@ -1174,7 +1208,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try await accountService.updateDashboardType(type: .dashboard12)
             
             
-            let result = await bluetoothService.addNewDevice(scale, metaData: nil)
+            let result = await bluetoothService.addNewDevice(scale, metaData: nil, isReconnect)
             switch result {
             case .success(let savedScale):
                 self.savedScale = savedScale
@@ -1295,11 +1329,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
                 }
                 
-                // Check device info and WiFi configuration for scale SKU 0412
-                if scale.sku == SettingsConstants.defaultR4Sku {
-                    await checkDeviceInfoAfterWifiSetup(scale: scale)
-                }
-                
                 // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
                 let delay: TimeInterval = 2.0
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -1328,17 +1357,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Checks device info and WiFi configuration after WiFi setup for scale SKU 0412
-    private func checkDeviceInfoAfterWifiSetup(scale: Device) async {
-        do {
-            let result = await bluetoothService.getDeviceInfo(for: scale)
-            switch result {
-            case .success(let deviceInfo):
-                let isWifiConfigured = deviceInfo.isWifiConfigured
-                LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
-            case .failure(let error):
-                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
-            }
+    private func checkDeviceInfoAfterWifiSetup(scale: Device) async -> Bool {
+        var isWifiConfigured = false
+        let result = await bluetoothService.getDeviceInfo(for: scale)
+        switch result {
+        case .success(let deviceInfo):
+            isWifiConfigured = deviceInfo.isWifiConfigured ?? false// Assuming this property exists in the DeviceInfo model
+            LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
         }
+        return isWifiConfigured
     }
     
     // MARK: - Device Discovery Handling
@@ -1494,6 +1523,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
+        
         do {
             // Check which customize settings pages need to be saved
             let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
@@ -1579,7 +1609,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 hasCustomizeChanges = false
                 
                 LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
-                bluetoothService.syncDevices([])
+        bluetoothService.syncDevices([])
                 // Clear the selected items since they're now saved
                 selectedCustomizeItems.removeAll()
                 scaleSetupError = .none

@@ -129,4 +129,11 @@ object AppPopupStrings {
     const val SaveButton = "Save"
     const val EditButton = "Edit"
   }
+
+  object WeightOnlyModeEnabledPopup {
+    const val Title = "A User has Weight Only Mode on"
+    const val Message = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
+    const val ConfirmButton = "Enable"
+    const val CancelButton = "Dismiss"
+  }
 }

@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.weightless.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -46,6 +47,7 @@ data class WeightlessState(
     val error: String? = null,
     val weightUnit: WeightUnit = WeightUnit.LB,
     val isMetric: Boolean = false,
+    val account: Account? = null, // Added to match GoalViewModel pattern
 ) : IReducer.State
 
 /**

@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -15,16 +16,12 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
-import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
-import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
@@ -34,8 +31,6 @@ import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
-import com.patrykandpatrick.vico.core.common.Position
-import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlin.math.roundToInt
 
 @Composable
@@ -43,7 +38,8 @@ internal fun ChartHostSection(
   modifier: Modifier = Modifier,
   segment: GraphSegment,
   primaryLayer: LineCartesianLayer,
-  markerListener: CartesianMarkerVisibilityListener,
+  secondaryLayer: LineCartesianLayer,
+  markerListener: CartesianMarkerVisibilityListener?,
   stepSize: Double,
   defaultMarker: CartesianMarker,
   xLabels: List<Label>,
@@ -54,35 +50,11 @@ internal fun ChartHostSection(
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   decorations: Decoration,
+  separators: List<Double>
 ) {
   key(segment) {
-    val secondaryLayer =
-      rememberLineCartesianLayer(
-        lineProvider =
-          LineCartesianLayer.LineProvider.series(
-            listOf(MeTheme.colorScheme.secondaryAction).map {
-              LineCartesianLayer.rememberLine(
-                fill = LineCartesianLayer.LineFill.single(fill(it)),
-                stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
-                pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-                pointProvider =
-                  LineCartesianLayer.PointProvider.single(
-                    point =
-                      LineCartesianLayer.Point(
-                        rememberShapeComponent(
-                          fill(it),
-                          CorneredShape.Pill,
-                          strokeThickness = 2.dp,
-                        ),
-                      ),
-                  ),
-              )
-            },
-          ),
-        verticalAxisPosition = Axis.Position.Vertical.Start,
-        pointSpacing = pointSpacing(segment, 10.dp),
-      )
-    val bottomAxis = bottomAxis(segment, horizontalItemPlacer)
+    val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+
     val primaryChart =
       rememberCartesianChart(
         primaryLayer,
@@ -90,7 +62,20 @@ internal fun ChartHostSection(
         startAxis =
           VerticalAxis.rememberStart(
             label = null,
-            line = null,
+            line = rememberAxisLineComponent(
+              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+              thickness = 1.dp,
+            ),
+            guideline = null,
+            tickLength = 0.dp,
+          ),
+        topAxis =
+          HorizontalAxis.rememberTop(
+            label = null,
+            line = rememberAxisLineComponent(
+              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+              thickness = 1.dp,
+            ),
             guideline = null,
             tickLength = 0.dp,
           ),
@@ -120,7 +105,6 @@ internal fun ChartHostSection(
                 color = MeTheme.colorScheme.textSubheading,
                 margins = insets(horizontal = 10.dp),
               ),
-            verticalLabelPosition = Position.Vertical.Center,
             tickLength = 0.dp,
           ),
         bottomAxis = bottomAxis,
@@ -128,15 +112,15 @@ internal fun ChartHostSection(
         decorations = listOf(decorations),
         markerVisibilityListener = markerListener,
         persistentMarkers =
-          key(markerIndex) {
-            if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
-              {
-                defaultMarker at xLabels[markerIndex].value
-              }
-            } else {
-              null
+
+          if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
+            {
+              defaultMarker at xLabels[markerIndex].value
             }
+          } else {
+            null
           },
+        visibleLabelsCount = segment.intervalCount(),
         getXStep = {
           GraphUtil.calculateXStep(
             segment,
@@ -147,12 +131,13 @@ internal fun ChartHostSection(
     CartesianChartHost(
       chart = primaryChart,
       modelProducer = modelProducer,
-      modifier =
-        modifier,
+      modifier = modifier,
       animationSpec = null,
+      animateIn = false,
       scrollState = scrollState,
       zoomState = rememberVicoZoomState(zoomEnabled = false),
       consumeMoveEvents = true,
-    )
+
+      )
   }
 }

@@ -4,6 +4,7 @@ object ScaleMetricsSettingStrings {
   object WeightOnlyNotes {
     const val Message = "Weight Only: ON"
     const val UpdateButton = "update"
+    const val EnableBodyMetrics = "Enable body metrics"
   }
 
   object OtherUserWeightOnlyModeNote {

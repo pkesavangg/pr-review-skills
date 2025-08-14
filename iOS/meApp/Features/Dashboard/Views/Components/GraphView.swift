@@ -4,6 +4,14 @@
 //
 //  Created by Lakshmi Priya on 10/06/25.
 //
+//  Y-Axis Tick Animation Fix:
+//  Uses selective animation strategy: animates chart data and domain changes
+//  while keeping ticks stable to prevent jump animations.
+//
+//  X-Axis Height Fix:
+//  Properly positions goal chip and chart elements accounting for X-axis height
+//  in week/month/year periods while maintaining correct positioning for total period.
+//
 
 import SwiftUI
 import Charts
@@ -14,9 +22,6 @@ struct GraphView: View {
 
     // Local state variables for chart selection (like WeightGraph)
     @State private var selectedXValue: Date?
-
-    // Animation trigger for smooth transitions
-    @State private var animationTrigger = UUID()
 
     // Scroll detection state
     @State private var hasDetectedScrollInCurrentGesture = false
@@ -41,11 +46,11 @@ struct GraphView: View {
 
     var body: some View {
         VStack(alignment: .leading){
-            // Hide weight label when there is a selection
-
-            Text(dashboardStore.state.graph.selectedPoint == nil ? dashboardStore.weightLabel : "")
+            // Preserve layout height: fade the label out instead of removing it to avoid jump
+            Text(dashboardStore.weightLabel)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+                    .opacity(dashboardStore.state.graph.selectedPoint == nil ? 1 : 0)
                     .padding(.leading, .spacingSM)
                     .padding(.vertical, .spacingXS)
             if hasEntries {
@@ -60,11 +65,6 @@ struct GraphView: View {
 
         }
 
-        .onChange(of: dashboardStore.chartSeriesData) { _, _ in
-            // Ensure chart data changes are animated smoothly
-            withAnimation(.easeOut(duration: 0.6)) {
-            }
-        }
     }
 
     // MARK: - Chart View
@@ -102,6 +102,11 @@ struct GraphView: View {
                 ])
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
+                // Add internal bottom padding only for TOTAL to mimic an invisible X-axis
+                .chartPlotStyle { plotArea in
+                    plotArea
+                        .padding(.bottom, dashboardStore.state.graph.selectedPeriod == .total ? 18 : 0)
+                }
                 .chartXAxis {
                     if dashboardStore.state.graph.selectedPeriod != .total {
                         AxisMarks(values: dashboardStore.xAxisValuesWithBuffer(for: dashboardStore.state.graph.selectedPeriod)) { value in
@@ -155,15 +160,15 @@ struct GraphView: View {
                 .onPreferenceChange(AnnotationHeightKey.self) { height in
                     dashboardStore.state.graph.annotationHeight = height
                 }
-                .accessibilityLabel(Text("Weight chart"))
                 .onAppear {
                     dashboardStore.initializeChart()
                 }
                 // Synchronized animations for chart components
-                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisDomain)
-                .animation(dashboardStore.state.graph.isScrolling ? .none : .easeInOut(duration: 0.3), value: dashboardStore.yAxisTicks)
+                // .animation(dashboardStore.state.graph.isScrolling ? .none : .easeOut(duration: 0.1), value: dashboardStore.yAxisDomain)
+                //.animation(dashboardStore.state.graph.isScrolling ? .none : .easeOut(duration: 0.1), value: dashboardStore.yAxisTicks)
                 .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
                 .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
+
                 // Apply decision window modifier first, then scroll detection
                 .modifier(DecisionWindowModifier(
                     touchInteractionMode: $touchInteractionMode,
@@ -182,50 +187,53 @@ struct GraphView: View {
                 }
 
                 // Goal chip overlay - shows goal weight chip positioned based on ticks
-                goalChipCallout()
+                if dashboardStore.goalWeightForDisplay != 0 {
+                    goalChipCallout()
+                }
             }
         }
 
     }
 
-                                 // MARK: - Selection Callout
+    // MARK: - Selection Callout
     @ViewBuilder
     private func selectionCallout(for selectedPoint: BathScaleWeightSummary) -> some View {
         if let displayWeight = dashboardStore.displayWeight,
-           let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight) {
+           let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight),
+           chartFrame.width > 0 {
 
+            // Base positioning relative to the selected point
             let isOnLeftSide = chartPosition.x < chartFrame.width / 2
-            let textOffset: CGFloat = isOnLeftSide ? 0 : -25 // Offset from the line
-            let finalXPosition = chartPosition.x + textOffset
+            let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
+            let finalXPosition = chartPosition.x + baseOffset
             Text(dashboardStore.weightLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
-                    x: max(50, min(chartFrame.width - 50, finalXPosition)), // Prevent cropping with 50pt padding
+                    //for year and total subract 60 else 100
+                    x: max(50, min(chartFrame.width - (dashboardStore.state.graph.selectedPeriod == .year || dashboardStore.state.graph.selectedPeriod == .total ? 85 : 100), finalXPosition)), // Prevent cropping with 50pt padding
                     y: -15 // Position above chart boundary
                 )
-                .animation(.easeInOut(duration: 0.2), value: finalXPosition)
         }
-        }
+      }
 
             // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalWeight = dashboardStore.goalWeightForDisplay
-        let yAxisTicks = dashboardStore.yAxisTicks
         let yAxisDomain = dashboardStore.yAxisDomain
 
-                                // Always show goal chip - it has special significance even if it matches a tick
-        let goalPosition = getGoalChipPosition(goalWeight: goalWeight, ticks: yAxisTicks, domain: yAxisDomain)
+        // Always show goal chip - it has special significance even if it matches a tick
+        let goalPosition = getGoalChipPosition(goalWeight: goalWeight, ticks: [], domain: yAxisDomain)
 
-                let xOffset = getGoalChipXOffset(for: goalWeight)
+        let xOffset = getGoalChipXOffset(for: goalWeight)
 
         goalWeightChip(goalWeight)
             .position(
                 x: chartFrame.width > 0 ? chartFrame.width - xOffset : 320,
                 y: goalPosition.yPosition
             )
-            .animation(.easeInOut(duration: 0.2), value: goalPosition.yPosition)
+            .animation(shouldAnimateChartData ? .easeOut(duration: 0.3) : .none, value: goalPosition.yPosition)
     }
 
     // MARK: - Goal Chip Positioning
@@ -242,19 +250,34 @@ struct GraphView: View {
 
     private func getGoalChipPosition(goalWeight: Double, ticks: [Double], domain: ClosedRange<Double>) -> (yPosition: CGFloat, placement: GoalPlacement) {
 
-        // If goal weight is higher than all ticks, show at top
-        if let maxTick = ticks.max(), goalWeight > maxTick {
+        // Goal weight positioning based on domain only (no ticks dependency)
+        let domainRange = domain.upperBound - domain.lowerBound
+        guard domainRange > 0, chartFrame.height > 0 else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
+
+        // Account for X-axis height for periods that have X-axis (week, month, year)
+        // Total period has no X-axis, so no height adjustment needed
+        let availableChartHeight = chartFrame.height - 18
+
+        // If goal weight is higher than domain, show at top
+        if goalWeight > domain.upperBound {
             return (yPosition: -25, placement: .top)
         }
 
-        // If goal weight is lower than all ticks, show at bottom
-        if let minTick = ticks.min(), goalWeight < minTick {
+        // If goal weight is lower than domain, show at bottom
+        if goalWeight < domain.lowerBound {
             return (yPosition: chartFrame.height + 20, placement: .bottom)
         }
 
-        // Goal weight is within tick range, calculate proportional position
-        let yRatio = (goalWeight - domain.lowerBound) / (domain.upperBound - domain.lowerBound)
-        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
+        // Goal weight is within domain range, calculate proportional position
+        let yRatio = (goalWeight - domain.lowerBound) / domainRange
+        guard yRatio.isFinite else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
+
+        // Calculate position within the available chart area (excluding X-axis)
+        let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
 
         return (yPosition: yPosition, placement: .middle)
     }
@@ -293,21 +316,35 @@ struct GraphView: View {
                 let xRatio = timeFromStart / totalTimeRange
                 xPosition = chartFrame.width * xRatio
             } else {
-                xPosition = chartFrame.width / 2 // Single point, center it
+                xPosition = chartFrame.width > 0 ? chartFrame.width / 2 : 0 // Single point, center it
             }
         } else {
             // For other periods, use scroll-based calculation
             let xScrollPosition = dashboardStore.state.graph.xScrollPosition
             let visibleDomainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
-
+            guard visibleDomainLength.isFinite && visibleDomainLength > 0 else { return nil }
             let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
             let xRatio = timeFromScrollPosition / visibleDomainLength
             xPosition = chartFrame.width * xRatio
         }
 
         // Calculate y position relative to y-axis domain
-        let yRatio = (value - yAxisDomain.lowerBound) / (yAxisDomain.upperBound - yAxisDomain.lowerBound)
-        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
+        let domainRange = yAxisDomain.upperBound - yAxisDomain.lowerBound
+        guard domainRange > 0, chartFrame.height > 0 else {
+            return CGPoint(x: 0, y: chartFrame.height / 2)
+        }
+
+        // Account for X-axis height for periods that have X-axis (week, month, year)
+        // Total period has no X-axis, so no height adjustment needed
+        let availableChartHeight = chartFrame.height + 18
+
+        let yRatio = (value - yAxisDomain.lowerBound) / domainRange
+        guard yRatio.isFinite else {
+            return CGPoint(x: 0, y: chartFrame.height / 2)
+        }
+
+        // Calculate position within the available chart area (excluding X-axis)
+        let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
 
         // Add padding offsets
         let adjustedX = xPosition + (isAtLeftBoundary ? .spacingXS : 0)
@@ -317,7 +354,15 @@ struct GraphView: View {
     }
     // MARK: - Computed Properties
 
-        /// Determines if the chart is scrolled to the leftmost boundary of the data
+    /// Determines if chart data should animate based on data stability
+    private var shouldAnimateChartData: Bool {
+        // Only animate when not scrolling and data is stable
+        return !dashboardStore.state.graph.isScrolling &&
+               !dashboardStore.continuousOperations.isEmpty
+    }
+
+
+    /// Determines if the chart is scrolled to the leftmost boundary of the data
     private var isAtLeftBoundary: Bool {
         //if total period, return true
         if dashboardStore.state.graph.selectedPeriod == .total { return true }
@@ -365,13 +410,10 @@ struct GraphView: View {
         let yAxisTicks = dashboardStore.yAxisTicks
 
         ForEach(yAxisTicks, id: \.self) { tick in
-            // Only show grid lines for non-goal weight ticks
-            if abs(tick - dashboardStore.goalWeightForDisplay) > 0.01 {
-                RuleMark(y: .value("YGrid", tick))
+              RuleMark(y: .value("YGrid", tick))
                     .lineStyle(StrokeStyle(lineWidth: 1))
                     .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
                     .zIndex(-1)
-            }
         }
     }
 
@@ -423,7 +465,7 @@ struct GraphView: View {
             series: .value("Series", "\(point.series)-\(segmentIndex)")
         )
         .foregroundStyle(by: .value("Series", point.series))
-        .interpolationMethod(.catmullRom)
+        .interpolationMethod(.monotone)
         .lineStyle(StrokeStyle(lineWidth: 3))
     }
 
@@ -515,20 +557,13 @@ struct GraphView: View {
 
         return AxisMarks(values: yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
-                // Commented out goal weight bubble label - using goal chip callout instead
-                // if abs(doubleValue - dashboardStore.goalWeightForDisplay) < 0.01 {
-                //     AxisValueLabel {
-                //         goalWeightBubbleLabel(doubleValue)
-                //     }
-                // } else {
-                    AxisValueLabel {
-                        Text(dashboardStore.formatYAxisTickLabel(doubleValue))
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(theme.textSubheading)
-                            .padding(.horizontal, .spacingXS)
-                    }
-                // }
+                AxisValueLabel {
+                  Text(dashboardStore.formatYAxisTickLabel(doubleValue))
+                      .font(.body)
+                      .fontWeight(.medium)
+                      .foregroundColor(theme.textSubheading)
+                      .padding(.horizontal, .spacingXS)
+                }
             }
         }
     }
@@ -551,7 +586,14 @@ struct GraphView: View {
         case .week, .month, .year:
             return dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
         case .total:
-            return nil // Show all data points without domain restriction
+            // Use full data range to avoid zero-length domain which collapses axes
+            let operations = dashboardStore.continuousOperations
+            let dates = operations.map { $0.date }
+            if let minDate = dates.min(), let maxDate = dates.max() {
+                let length = maxDate.timeIntervalSince(minDate)
+                return length > 0 ? length : nil
+            }
+            return nil
         }
     }
 
@@ -565,25 +607,6 @@ struct GraphView: View {
         }
     }
 
-    // MARK: - Axis Label Helpers
-    // Commented out - using goal chip callout instead
-    // @ViewBuilder
-    // private func goalWeightBubbleLabel(_ value: Double) -> some View {
-    //     Text(dashboardStore.formatYAxisTickLabel(value))
-    //         .fontWeight(.bold)
-    //         .font(.body)
-    //         .foregroundColor(.white)
-    //         .padding(.horizontal, 5)
-    //         .padding(.vertical, 1)
-    //         .background(Capsule().fill(theme.statusSuccess))
-    //         .background(
-    //             GeometryReader { bubbleGeo in
-    //                 Color.clear
-    //                     .preference(key: AnnotationHeightKey.self, value: bubbleGeo.size.height)
-    //             }
-    //         )
-    //         .zIndex(100)
-    // }
 }
 
 // MARK: - Goal Placement Enum

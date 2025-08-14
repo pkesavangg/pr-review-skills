@@ -16,10 +16,16 @@ final class Theme: ObservableObject {
 
     /// Currently active app color scheme.
     @Published var currentColorScheme: AppColorScheme = .primary
+    
+    /// Currently active account ID for theme persistence
+    private var activeAccountId: String?
+    
+    /// KvStorage service for persistence
+    private let kvStorage = KvStorageService.shared
         
     @Published var appearanceMode: AppearanceMode {
         didSet {
-            UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
+            saveAppearanceMode()
             updateWindowInterfaceStyle()
         }
     }
@@ -50,15 +56,62 @@ final class Theme: ObservableObject {
 
     /// Private initializer to enforce singleton pattern. Loads saved appearance mode from UserDefaults.
     private init() {
-        // Load initial value from UserDefaults
-        if let savedMode = UserDefaults.standard.string(forKey: "appearanceMode"),
+        // Initialize with system default, will be updated when account is set
+        appearanceMode = .system
+        loadGlobalAppearanceMode()
+        updateWindowInterfaceStyle()
+    }
+    
+    /// Sets the active account and loads account-specific theme preferences
+    func setActiveAccount(_ accountId: String?) {
+        self.activeAccountId = accountId
+        loadAppearanceModeForAccount()
+    }
+    
+    /// Loads appearance mode for the current active account
+    func loadAppearanceModeForAccount() {
+        guard let accountId = activeAccountId else {
+            // No account, load global setting
+            loadGlobalAppearanceMode()
+            return
+        }
+        
+        let key = appearanceModeKey(for: accountId)
+        if let savedMode = kvStorage.getValue(forKey: key) as? String,
+           let mode = AppearanceMode(rawValue: savedMode) {
+            // Account has saved preference, use it
+            appearanceMode = mode
+        } else {
+            // New account, use default system setting (not current setting)
+            appearanceMode = .system
+        }
+    }
+    
+    /// Loads global appearance mode setting
+    private func loadGlobalAppearanceMode() {
+        if let savedMode = kvStorage.getValue(forKey: KvStorageKeys.appearanceMode.rawValue) as? String,
            let mode = AppearanceMode(rawValue: savedMode) {
             appearanceMode = mode
         } else {
-            // Default to system mode if no saved preference
             appearanceMode = .system
         }
-        updateWindowInterfaceStyle()
+    }
+    
+    /// Saves the current appearance mode for the active account
+    private func saveAppearanceMode() {
+        if let accountId = activeAccountId {
+            // Save account-specific preference
+            let key = appearanceModeKey(for: accountId)
+            kvStorage.setValue(appearanceMode.rawValue, forKey: key)
+        } else {
+            // Save global preference
+            kvStorage.setValue(appearanceMode.rawValue, forKey: KvStorageKeys.appearanceMode.rawValue)
+        }
+    }
+    
+    /// Generates account-specific UserDefaults key for appearance mode
+    private func appearanceModeKey(for accountId: String) -> String {
+        return KvStorageKeys.appearanceModeKey(for: accountId)
     }
     
     /// Applies the interface style to the window

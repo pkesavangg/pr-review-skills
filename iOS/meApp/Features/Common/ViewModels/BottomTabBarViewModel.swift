@@ -49,20 +49,26 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
-    /// Key used to store whether the *notification-only* permissions alert has been shown across launches.
-    private let notificationOnlyAlertKey = "notificationOnlyAlertShown"
-    /// Indicates whether the *notification-only* permissions alert has already been shown (persisted via `KvStorageService`).
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
     private var notificationOnlyAlertShown: Bool {
-        get { (KvStorageService.shared.getValue(forKey: notificationOnlyAlertKey) as? Bool) ?? false }
-        set { KvStorageService.shared.setValue(newValue, forKey: notificationOnlyAlertKey) }
+        get {
+            guard let accountId = accountService.activeAccount?.accountId else { return false }
+            let key = KvStorageKeys.notificationOnlyPermAlertShownKey(for: accountId)
+            return (KvStorageService.shared.getValue(forKey: key) as? Bool) ?? false
+        }
+        set {
+            guard let accountId = accountService.activeAccount?.accountId else { return }
+            let key = KvStorageKeys.notificationOnlyPermAlertShownKey(for: accountId)
+            KvStorageService.shared.setValue(newValue, forKey: key)
+        }
     }
     
     private let toastLang = ToastStrings.self
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
+    private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -89,9 +95,20 @@ class BottomTabBarViewModel: ObservableObject {
             .store(in: &cancellables)
         
         // Perform Apple Health integration check on launch
-        Task { [weak self] in
-            await self?.checkAppleHealthIntegrationStatus()
-            await self?.checkSetGoalCardPrompt()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) {
+            Task { [weak self] in
+                await self?.checkAppleHealthIntegrationStatus()
+                await self?.checkSetGoalCardPrompt()
+                // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
+                self?.evaluateAndShowPermissionAlert()
+                let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
+                if notificationsRequired {
+                    await self?.pushNotificationService.setupPushNotifications()
+                } else {
+                    await self?.pushNotificationService.updateDeviceInfo()
+                }
+            }
         }
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list
@@ -107,22 +124,16 @@ class BottomTabBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
-        
-        // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
-        self.evaluateAndShowPermissionAlert()
-        
-        Task {
-            let notificationsRequired = permissionsService.requiredCategories.contains(.notifications)
-            if notificationsRequired {
-                await pushNotificationService.setupPushNotifications()
-            } else {
-                await pushNotificationService.updateDeviceInfo()
-            }
-        }
+
         
         // Connect GoalAlertService navigation callback
         goalAlertService.onNavigateToGoalSetting = { [weak self] in
             self?.navigateToGoalSetting()
+        }
+        
+        // Connect BluetoothService scale setup navigation callback
+        bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
+            self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         }
     }
     
@@ -237,13 +248,17 @@ class BottomTabBarViewModel: ObservableObject {
     
     // MARK: - Connect Action from Scale Discovered Sheet
     func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?) {
+        openScaleSetup(scale: scale, event: event, isReconnect: false, isDuplicated: false)
+    }
+    
+    func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
         bluetoothService.isSetupInProgress = true
         
         switch setupType {
         case .lcbt, .btWifiR4:
-            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event)
+            setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         default:
             // Handle other setup types if needed
             bluetoothService.isSetupInProgress = false
@@ -374,7 +389,7 @@ class BottomTabBarViewModel: ObservableObject {
         guard entryCount >= 3 else { return }
         
         // 3. Check KvStorage flag to see if popup already shown for this account
-        let key = "\(account.accountId)_goalCardStatus"
+        let key = KvStorageKeys.setAGoalModalFlagKey(for: account.accountId)
         if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
             return // Already shown previously
         }
