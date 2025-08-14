@@ -79,6 +79,49 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         try context.save()
     }
 
+    /// Updates a device with a new ID (used when server assigns a new ID to a locally created device).
+    /// - Parameters:
+    ///   - oldId: The current ID of the device in the database.
+    ///   - updatedDevice: The device object with updated properties including the new ID.
+    func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == oldId })
+        guard let managedDevice = try context.fetch(descriptor).first else {
+            logger.log(level: .error, tag: "ScaleRepository", message: "Device not found with old ID: \(oldId)")
+            throw NSError(domain: "ScaleService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Device not found"])
+        }
+        
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Updating device ID from \(oldId) to \(updatedDevice.id)")
+        
+        // Update all properties including the new ID
+        managedDevice.id = updatedDevice.id
+        managedDevice.isSynced = updatedDevice.isSynced
+        managedDevice.hasServerID = updatedDevice.hasServerID
+        managedDevice.nickname = updatedDevice.nickname
+        managedDevice.deviceName = updatedDevice.deviceName
+        managedDevice.deviceType = updatedDevice.deviceType
+        managedDevice.isDeleted = updatedDevice.isDeleted
+        managedDevice.isConnected = updatedDevice.isConnected
+        managedDevice.isWifiConfigured = updatedDevice.isWifiConfigured
+        managedDevice.mac = updatedDevice.mac
+        managedDevice.sku = updatedDevice.sku
+        managedDevice.broadcastId = updatedDevice.broadcastId
+        managedDevice.broadcastIdString = updatedDevice.broadcastIdString
+        managedDevice.userNumber = updatedDevice.userNumber
+        managedDevice.protocolType = updatedDevice.protocolType
+        managedDevice.password = updatedDevice.password
+        managedDevice.accountId = updatedDevice.accountId
+        managedDevice.peripheralIdentifier = updatedDevice.peripheralIdentifier
+        managedDevice.createdAt = updatedDevice.createdAt
+        managedDevice.lastModified = updatedDevice.lastModified
+        managedDevice.token = updatedDevice.token
+        managedDevice.metaData = updatedDevice.metaData
+        managedDevice.r4ScalePreference = updatedDevice.r4ScalePreference
+        managedDevice.bathScale = updatedDevice.bathScale
+        
+        try context.save()
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Successfully updated device with new ID: \(updatedDevice.id)")
+    }
+
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
@@ -181,16 +224,20 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - serverDevices: Array of fresh Device objects from the server.
     ///   - preserveUnsynced: Array of unsynced local devices to preserve.
     func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices")
+        
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
             $0.accountId == accountId && ($0.isSynced ?? false) == true
         })
         let syncedDevices = try context.fetch(syncedDescriptor)
-
+        
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting \(syncedDevices.count) synced devices for account \(accountId)")
         for device in syncedDevices {
+            logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting synced device: \(device.id), sku: \(device.sku ?? "nil")")
             context.delete(device)
-            try context.save()
         }
+        try context.save()
 
         // Insert server devices, but skip any that conflict with unsynced local devices
         for serverDevice in serverDevices {
@@ -206,23 +253,27 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                 return false
             }
 
-            let device = Device(from: serverDevice)
+            if hasUnsyncedConflict {
+                logger.log(level: .debug, tag: "ScaleRepository", message: "Skipping server device \(serverDevice.id ?? "nil") due to unsynced conflict")
+                continue
+            }
 
-            // Only insert server device if it doesn't conflict with unsynced local changes
-            if !hasUnsyncedConflict {
-                device.isSynced = true // Mark as synced since they come from server
-                device.hasServerID = true
-                context.insert(device)
-                if let pref = device.r4ScalePreference {
-                    pref.id = device.id
-                    device.r4ScalePreference = pref
-                    pref.isSynced = true
-                }
-                try context.save()
+            logger.log(level: .debug, tag: "ScaleRepository", message: "Inserting server device: \(serverDevice.id ?? "nil"), sku: \(serverDevice.sku ?? "nil")")
+            let device = Device(from: serverDevice, accountId: accountId)
+
+            device.isSynced = true // Mark as synced since they come from server
+            device.hasServerID = true
+            context.insert(device)
+            
+            if let pref = device.r4ScalePreference {
+                pref.id = device.id
+                device.r4ScalePreference = pref
+                pref.isSynced = true
             }
         }
-
-
+        
+        try context.save()
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Completed replaceAllDevicesForAccount")
     }
 
     /// Marks a device as deleted locally (for server sync).
