@@ -41,6 +41,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.VersionText
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.login.model.LoginFormControls
@@ -199,6 +200,8 @@ private fun LoginContent(
             },
           )
         }
+        Spacer(Modifier.height(spacing.sm))
+        VersionText()
       }
     }
   }
