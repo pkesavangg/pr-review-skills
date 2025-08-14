@@ -971,9 +971,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             break
         case .DEVICE_CONNECTED:
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            // Update weight-only mode status when device connects
+            if let deviceDetails = data.data as? GGDeviceDetails {
+                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+            }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
             await scaleService.updateConnectedDevices(device: data.data, isConnected: false)
+            // Clear weight-only mode status when device disconnects
+            if let deviceDetails = data.data as? GGDeviceDetails {
+                await clearWeightOnlyModeStatusOnDisconnect(deviceDetails)
+            }
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
             }
@@ -983,11 +991,20 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await handleDeviceEventAlert(scanData, isDuplicateUserError: true)
         case .WIFI_STATUS_UPDATE:
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
+            // Update weight-only mode status when WiFi status changes
+            if let deviceDetails = data.data as? GGDeviceDetails {
+                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+            }
             await handleWifiStatusUpdate(scanData)
         case .DEVICE_INFO_UPDATE:
             await scaleService.updateConnectedDevices(device: scanData, isConnected: true)
             let deviceDetails = data.data as! GGDeviceDetails
             let deviceInfo = DeviceInfo(sdk: deviceDetails)
+            
+            if let deviceDetails = data.data as? GGDeviceDetails {
+                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+            }
+            
             deviceInfoUpdatedSubject.send(deviceInfo)
             if !isWeightOnlyModeAlertDismissed {
                 await checkCanShowWeightOnlyModeAlert()
@@ -1008,13 +1025,23 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     private func checkCanShowWeightOnlyModeAlert() async {
-        let scale = bluetoothScales.filter { scale in
+        // Get connected scales that have weight-only mode enabled by others
+        let connectedScales = bluetoothScales.filter { scale in
             (scale.isConnected ?? false)
         }
-
-        if !scale.isEmpty {
+        
+        var hasWeightOnlyModeEnabledByOthers = false
+        
+        // Check each connected scale for weight-only mode condition
+        for scale in connectedScales {
+            if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
+                hasWeightOnlyModeEnabledByOthers = true
+                break
+            }
+        }
+        
+        if hasWeightOnlyModeEnabledByOthers && !isWeightOnlyModeAlertDismissed {
             showWeightOnlyModeAlertSubject.send(true)
-            isWeightOnlyModeAlertDismissed = false
         } else {
             showWeightOnlyModeAlertSubject.send(false)
         }
@@ -1023,6 +1050,85 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     public func handleWeightOnlyModeAlertDismissed() {
         isWeightOnlyModeAlertDismissed = true
         showWeightOnlyModeAlertSubject.send(false)
+    }
+
+    /// Updates the weight-only mode status for a connected scale based on device info
+    /// Uses the condition: !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
+    private func updateWeightOnlyModeStatus(deviceDetails: GGDeviceDetails, deviceInfo: DeviceInfo) async {
+        guard let broadcastId = deviceDetails.broadcastId  else {
+            logger.log(level: .error, tag: tag, message: "Cannot update weight-only mode status: missing broadcast ID")
+            return
+        }
+        
+        // Find the scale in our local collection
+        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
+            logger.log(level: .error, tag: tag, message: "Scale not found for broadcast ID: \(broadcastId)")
+            return
+        }
+        
+        // Calculate weight-only mode status using the specified condition
+        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        let shouldMeasureImpedance = scale.r4ScalePreference?.shouldMeasureImpedance ?? false
+        let isWeightOnlyModeEnabledByOthers = !impedanceSwitchState && shouldMeasureImpedance
+        
+        // Update the scale's weight-only mode status
+        scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
+        
+        // Update via scale service to persist the change
+        await scaleService.updateConnectedDeviceWeightOnlyMode(
+            broadcastId: broadcastId, 
+            isWeightOnlyModeEnabledByOthers: isWeightOnlyModeEnabledByOthers
+        )
+        
+        logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for scale \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
+    }
+
+    /// Updates the weight-only mode status from device details (when we don't have full DeviceInfo)
+    /// This is used for connection events where we only have GGDeviceDetails
+    private func updateWeightOnlyModeStatusFromDeviceDetails(_ deviceDetails: GGDeviceDetails) async {
+        guard let broadcastId = deviceDetails.broadcastId else {
+            logger.log(level: .error, tag: tag, message: "Cannot update weight-only mode status: missing broadcast ID")
+            return
+        }
+        
+        // Find the scale in our local collection
+        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
+            logger.log(level: .error, tag: tag, message: "Scale not found for broadcast ID: \(broadcastId)")
+            return
+        }
+        
+        // For connection events, we need to get device info to calculate weight-only mode status
+        // Since we don't have full DeviceInfo here, we'll get it from the scale
+        let deviceInfoResult = await getDeviceInfo(for: scale)
+        switch deviceInfoResult {
+        case .success(let deviceInfo):
+            await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to get device info for weight-only mode calculation: \(error)")
+        }
+    }
+
+    /// Clears the weight-only mode status when device disconnects
+    private func clearWeightOnlyModeStatusOnDisconnect(_ deviceDetails: GGDeviceDetails) async {
+        guard let broadcastId = deviceDetails.broadcastId   else {
+            return
+        }
+        
+        // Find the scale in our local collection
+        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
+            return
+        }
+        
+        // Clear the weight-only mode status when device disconnects
+        scale.isWeighOnlyModeEnabledByOthers = false
+        
+        // Update via scale service to persist the change
+        await scaleService.updateConnectedDeviceWeightOnlyMode(
+            broadcastId: broadcastId, 
+            isWeightOnlyModeEnabledByOthers: false
+        )
+        
+        logger.log(level: .debug, tag: tag, message: "Cleared weight-only mode status for disconnected scale \(broadcastId)")
     }
 
     private func handleWifiStatusUpdate(_ deviceData: GGScanResponseData) async {

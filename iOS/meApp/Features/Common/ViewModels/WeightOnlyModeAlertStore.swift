@@ -76,12 +76,18 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     func handleEnableBodyMetrics() {
         Task {
-            do {
-                // TODO: Implement the actual enabling logic based on scale type
-                // This would typically involve calling the bluetooth service
-                // to temporarily enable body metrics for the session
-
-
+            // Enable body metrics for all connected scales that have weight-only mode enabled
+            let connectedScales = weightOnlyScales.filter { $0.isConnected == true }
+            
+            guard !connectedScales.isEmpty else {
+                return
+            }
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.updatingMode))
+            // Use the same logic as ScaleSettingsStore - call updateWeightOnlyMode for connected scales
+            let result = await bluetoothService.updateWeightOnlyMode(on: nil) // nil means all connected scales
+            notificationService.dismissLoader()
+            switch result {
+            case .success:
                 await MainActor.run {
                     notificationService.showToast(
                         ToastModel(
@@ -89,7 +95,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                         )
                     )
                 }
-            } catch {
+            case .failure(let error):
                 await MainActor.run {
                     notificationService.showToast(
                         ToastModel(

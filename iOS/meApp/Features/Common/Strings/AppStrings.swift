@@ -685,6 +685,7 @@ struct LoaderStrings {
     static let pleaseWait = "Please wait..."
     /// Loader shown while retrieving the scale's MAC address.
     static let gettingMacAddress = "Getting MAC address..."
+    static let updatingMode = "Updating Mode..."
 }
 
 struct URLStrings {
@@ -757,6 +758,7 @@ struct AppAssets {
     static let weightOnlyMode = "weightOnlyMode"
     static let scaleWeightOnlyMode = "scaleWeightOnlyMode"
     static let weightOnlyModeAlertIcon = "weightOnlyMode"
+    static let weightOnlyModeAlertIconLarge = "weightOnlyModeLarge"
     static let scaleIcon = "scaleIcon"
     static let  skuNumberSticker = "skuNumberSticker"
     static let userProfile = "userProfile"

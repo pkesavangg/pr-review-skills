@@ -95,7 +95,7 @@ struct WeightOnlyModeIndicator: View {
                     showWeightOnlyAlert = false
                 }
             )
-            .deviceDiscoverSheetStyle()
+            .deviceDiscoverSheetStyle(height: 420)
         }
     }
 

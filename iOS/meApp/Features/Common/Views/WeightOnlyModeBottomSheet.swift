@@ -59,7 +59,7 @@ struct WeightOnlyModeBottomSheet: View {
 
     private var headerView: some View {
         VStack(spacing: .spacingMD) {
-           AppIconView(icon: AppAssets.weightOnlyModeAlertIcon, size: IconSize(width: 100, height: 100))
+           AppIconView(icon: AppAssets.weightOnlyModeAlertIconLarge, size: IconSize(width: 100, height: 100))
             .foregroundColor(theme.actionPrimary)
 
             VStack(spacing: .spacingXS) {
@@ -67,6 +67,7 @@ struct WeightOnlyModeBottomSheet: View {
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
                     .multilineTextAlignment(.center)
+                    .lineLimit(2)
 
                 Text(weightOnlyModeAlertLang.enableAllBodyMetrics)
                     .fontOpenSans(.body2)
