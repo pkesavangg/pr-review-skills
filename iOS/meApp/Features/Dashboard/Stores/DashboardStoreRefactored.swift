@@ -1304,17 +1304,14 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     /// Handle selected entry change
     /// Clears metric selection when entry is cleared
     func handleSelectedEntryChange(_ newValue: Entry?) {
-        if newValue == nil {
-            state.ui.selectedMetricLabel = nil
-        }
+  
+        _ = newValue 
     }
 
     /// Handle metric info sheet dismiss
     /// Clears metric selection when sheet is dismissed
     func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
-        if newValue == nil {
-            state.ui.selectedMetricLabel = nil
-        }
+        _ = newValue 
     }
 
 
