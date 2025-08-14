@@ -1157,6 +1157,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
+            let isWifiConfigured = await checkDeviceInfoAfterWifiSetup(scale: scale)
+
             // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
@@ -1173,6 +1175,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             scale.token = scaleToken
             scale.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
             scale.nickname = scale.nickname ?? "AccuCheck Verve Smart Scale"
+            scale.isConnected = true
+            scale.isWifiConfigured = isWifiConfigured
             
             // Set up bath scale with proper scale type
             scale.bathScale = BathScale(
@@ -1325,11 +1329,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
                 }
                 
-                // Check device info and WiFi configuration for scale SKU 0412
-                if scale.sku == SettingsConstants.defaultR4Sku {
-                    await checkDeviceInfoAfterWifiSetup(scale: scale)
-                }
-                
                 // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
                 let delay: TimeInterval = 2.0
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -1358,17 +1357,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Checks device info and WiFi configuration after WiFi setup for scale SKU 0412
-    private func checkDeviceInfoAfterWifiSetup(scale: Device) async {
-        do {
-            let result = await bluetoothService.getDeviceInfo(for: scale)
-            switch result {
-            case .success(let deviceInfo):
-                let isWifiConfigured = deviceInfo.isWifiConfigured
-                LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
-            case .failure(let error):
-                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
-            }
+    private func checkDeviceInfoAfterWifiSetup(scale: Device) async -> Bool {
+        var isWifiConfigured = false
+        let result = await bluetoothService.getDeviceInfo(for: scale)
+        switch result {
+        case .success(let deviceInfo):
+            isWifiConfigured = deviceInfo.isWifiConfigured ?? false// Assuming this property exists in the DeviceInfo model
+            LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
+        case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
         }
+        return isWifiConfigured
     }
     
     // MARK: - Device Discovery Handling
@@ -1523,6 +1522,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             return
         }
+        
         
         do {
             // Check which customize settings pages need to be saved
