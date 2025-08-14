@@ -63,8 +63,13 @@ fun SettingsScreenContent(
           .verticalScroll(rememberScrollState())
           .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
     ) {
-      UserProfileSection(state.account) {
-      }
+      UserProfileSection(
+        account = state.account,
+        onEditProfileClick = { },
+        onAvatarLongPress = {
+          handleIntent(SettingsIntent.SwitchAccount)
+        }
+      )
       Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
       // Account Settings Section
       SettingsSection(

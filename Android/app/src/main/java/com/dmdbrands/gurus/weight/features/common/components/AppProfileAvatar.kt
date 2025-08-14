@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -34,6 +36,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
  * @param isInfoIcon Whether to display an info icon overlay.
  * @param isActive Whether the user is active, which determines the avatar's style.
  * @param enabled Disable the avatar.
+ * @param onLongPress Callback triggered when the avatar is long pressed.
  */
 @Composable
 fun AppProfileAvatar(
@@ -43,6 +46,7 @@ fun AppProfileAvatar(
     isInfoIcon: Boolean = false,
     isActive: Boolean = true,
     enabled: Boolean = true,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val backgroundColor = when {
         isActive -> MeTheme.colorScheme.iconPrimary
@@ -59,12 +63,24 @@ fun AppProfileAvatar(
         else -> Modifier
     }
 
+    // Create gesture modifier for long press
+    val gestureModifier = if (enabled && onLongPress != null) {
+        Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onLongPress = { onLongPress() }
+            )
+        }
+    } else {
+        Modifier
+    }
+
     if (!isInfoIcon) {
         // Default single avatar
         Box(
             modifier = modifier
                 .size(size)
                 .then(borderModifier)
+                .then(gestureModifier)
                 .clip(CircleShape)
                 .background(backgroundColor),
             contentAlignment = Alignment.Center,
@@ -80,7 +96,8 @@ fun AppProfileAvatar(
         Box(
             modifier = modifier
                 .width(size * 2f) // more space for separation
-                .height(size),
+                .height(size)
+                .then(gestureModifier),
             contentAlignment = Alignment.CenterStart,
         ) {
             AppIcon(
@@ -116,9 +133,9 @@ fun AppProfileImagePreview() {
     MeAppTheme {
         AppScaffold("") {
             Column {
-                AppProfileAvatar(text = "Kevin", isActive = true, enabled = true)
+                AppProfileAvatar(text = "Kevin", isActive = true, enabled = true, onLongPress = {})
                 Spacer(Modifier.height(8.dp))
-                AppProfileAvatar(text = "Kevin", isActive = false, enabled = true)
+                AppProfileAvatar(text = "Kevin", isActive = false, enabled = true, onLongPress = {})
                 Spacer(Modifier.height(8.dp))
                 AppProfileAvatar(text = "Kevin", isActive = false, enabled = false)
             }
