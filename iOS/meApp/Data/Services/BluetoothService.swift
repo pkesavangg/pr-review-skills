@@ -125,6 +125,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         self.entryService = entryService
         self.logger = logger
         setupSubscriptions()
+        initialize()
     }
     
     // MARK: - Setup
@@ -146,7 +147,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
-                Task { await self?.handleAccountUpdate(account) }
+                Task { await self?.handleAccountUpdate(account)
+                    let _ = await self?.updateUserProfileForR4Scales()
+                }
             }
             .store(in: &cancellables)
     }
