@@ -13,7 +13,7 @@ struct SelectableCircleButton: View {
     let label: String
     let isSelected: Bool
     let action: () -> Void
-    let size: CGFloat = 125
+    let size: CGFloat = 100
     var body: some View {
         Button(action: action) {
             Text(label)
