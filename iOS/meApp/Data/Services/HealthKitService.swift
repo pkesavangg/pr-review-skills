@@ -9,6 +9,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     @Injector private var integrationService: IntegrationsService
     @Injector private var logger: LoggerService
     @Injector private var accountService: AccountService
+    @Injector private var entryService: EntryService
     private let hkPackage = ggHealthKitPackage.AppleHealthHandler.shared
     private let tag = "HealthKitService"
     private let context: ModelContext
@@ -135,12 +136,15 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     // MARK: - Private Helpers ------------------------------------------------
     
-    /// Fetches all entries from the local database ordered chronologically.
+    /// Fetches all entries from the local database.
     private func fetchAllEntries() async throws -> [Entry] {
-        let descriptor = FetchDescriptor<Entry>(
-            sortBy: [SortDescriptor(\.entryTimestamp, order: .forward)]
-        )
-        return try context.fetch(descriptor)
+        do {
+           let entries = try await entryService.getAllEntries()
+           return entries
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch entries", data: error.localizedDescription)
+        }
+        return []
     }
     
     /// Converts entries into `HealthKitData` payloads ready for saving.

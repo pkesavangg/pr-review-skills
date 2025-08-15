@@ -72,8 +72,6 @@ final class EntryStore: ObservableObject {
         initializeObservers()
         setupBmiObservers()
         updateWeightValidators()
-        // TODO: Update the canShowOtherBodyMetrics based on 0412 availability in the paired scales.
-        canShowOtherBodyMetrics = true
     }
     
     // MARK: - Public helpers
@@ -155,7 +153,6 @@ final class EntryStore: ObservableObject {
             resetForm()
             notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
-            // TODO: handle save failure (e.g., show toast)
             logger.log(level: .error, tag: self.tag, message: "Failed to save manual entry", data: error)
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
         }

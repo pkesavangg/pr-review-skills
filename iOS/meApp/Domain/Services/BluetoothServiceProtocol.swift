@@ -142,4 +142,9 @@ protocol BluetoothServiceProtocol {
     /// Triggers the in-app alert required when weight-only mode is enabled by another user.
     /// - Returns: Result<Void, BluetoothServiceError>
     func updateWeightOnlyMode(on device: Device?) async -> Result<Void, BluetoothServiceError>
+    
+    /// Deletes all connected R4 scales from the device and disconnects them.
+    /// This method is typically called during account deletion to clean up scale connections.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func deleteR4Scales() async -> Result<Void, BluetoothServiceError>
 }

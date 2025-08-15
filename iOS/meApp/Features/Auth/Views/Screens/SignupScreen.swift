@@ -104,16 +104,6 @@ struct SignupScreen: View {
             
             Spacer()
             
-            if signupStore.currentStep == SignupStep.goal {
-                ButtonView(text: commonLang.skip, type: .textPrimary, size: .small, isDisabled: false, action: {
-                    withAnimation {
-                        hideKeyboard()
-                        signupStore.handleSkip()
-                    }
-                })
-                .padding(.trailing, .spacingSM)
-            }
-            
             ButtonView(text: signupStore.currentStep == SignupStep.password ? commonLang.complete : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
@@ -124,6 +114,20 @@ struct SignupScreen: View {
                     signupStore.moveToNextStep()
                 }
             })
+        }
+        .overlay {
+            HStack {
+                Spacer()
+                if signupStore.currentStep == SignupStep.goal {
+                    ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false, action: {
+                        withAnimation {
+                            hideKeyboard()
+                            signupStore.handleSkip()
+                        }
+                    })
+                }
+                Spacer()
+            }
         }
     }
 }

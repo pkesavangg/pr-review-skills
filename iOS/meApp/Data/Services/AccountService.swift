@@ -43,6 +43,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                         ServiceRegistry.shared.deregisterSessionServices()
                     } else {
                         ServiceRegistry.shared.registerSessionServices()
+                        Theme.shared.setActiveAccount(data?.accountId)
                     }
                 })
                 .store(in: &cancellables)
