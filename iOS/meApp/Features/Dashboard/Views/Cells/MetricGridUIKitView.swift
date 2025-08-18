@@ -89,6 +89,9 @@ struct MetricGridUIKitView: UIViewRepresentable {
 
         coordinator.lastIsEditMode = newIsEditMode
         coordinator.lastSelectedMetricLabel = newSelectedLabel
+        
+        // Ensure drag interaction is properly managed
+        uiView.dragInteractionEnabled = newIsEditMode
     }
     
     func makeCoordinator() -> Coordinator {
@@ -260,7 +263,9 @@ extension MetricGridUIKitView {
             
             let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             let dragItem = UIDragItem(itemProvider: itemProvider)
-            dragItem.localObject = item
+            
+            // Mark this as a metric grid item to prevent cross-grid dragging
+            dragItem.localObject = DragItemWrapper(type: DragItemWrapper.ItemType.metric, item: item)
             
             // Store the source index path for use in drag preview
             session.localContext = indexPath
@@ -308,10 +313,20 @@ extension MetricGridUIKitView {
                 )
                 return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
             }
-            if let metricCell = collectionView.visibleCells.first(where: {
-                guard let cellItem = ($0 as? MetricCell)?.representedItem,
-                      let dragItem = item.localObject as? MetricItem else { return false }
-                return cellItem.id.uuidString == dragItem.id.uuidString
+            
+            // Fallback: find cell by matching the dragged item
+            let metricItem: MetricItem?
+            if let wrapper = item.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.metric {
+                metricItem = wrapper.item as? MetricItem
+            } else {
+                metricItem = item.localObject as? MetricItem
+            }
+            
+            if let metricItem = metricItem,
+               let metricCell = collectionView.visibleCells.first(where: {
+                guard let cellItem = ($0 as? MetricCell)?.representedItem else { return false }
+                return cellItem.id.uuidString == metricItem.id.uuidString
             }) as? MetricCell {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
@@ -331,15 +346,29 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
             parent.isDragging = true
             
+            // Disable animations during drag to prevent flickering
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            CATransaction.commit()
+            
             // Immediately hide EditModeOverlay on the dragged cell
-            if let draggedItem = session.items.first,
-               let dragItem = draggedItem.localObject as? MetricItem {
-                // Find and hide EditModeOverlay on the dragged metric cell
-                for cell in collectionView.visibleCells {
-                    if let metricCell = cell as? MetricCell,
-                       metricCell.representedItem?.id == dragItem.id {
-                        metricCell.updateDragState(true) // Use the new method for more reliable state management
-                        break
+            if let draggedItem = session.items.first {
+                let metricItem: MetricItem?
+                if let wrapper = draggedItem.localObject as? DragItemWrapper,
+                   wrapper.type == DragItemWrapper.ItemType.metric {
+                    metricItem = wrapper.item as? MetricItem
+                } else {
+                    metricItem = draggedItem.localObject as? MetricItem
+                }
+                
+                if let metricItem = metricItem {
+                    // Find and hide EditModeOverlay on the dragged metric cell
+                    for cell in collectionView.visibleCells {
+                        if let metricCell = cell as? MetricCell,
+                           metricCell.representedItem?.id == metricItem.id {
+                            metricCell.updateDragState(true) // Use the new method for more reliable state management
+                            break
+                        }
                     }
                 }
             }
@@ -348,6 +377,11 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, dragSessionDidEnd session: UIDragSession) {
             parent.isDragging = false
             draggedItemId = nil
+            
+            // Re-enable animations after drag ends
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            CATransaction.commit()
             
             // Clear the store's drag state
             store.endDragging()
@@ -397,6 +431,26 @@ extension MetricGridUIKitView {
             guard store.state.ui.isEditMode else {
                 return UICollectionViewDropProposal(operation: .forbidden)
             }
+            
+            // Only accept drops from the metric grid
+            guard let items = session.items as? [UIDragItem] else {
+                return UICollectionViewDropProposal(operation: .forbidden)
+            }
+            
+            // Check if all items are from the metric grid
+            for dragItem in items {
+                if let wrapper = dragItem.localObject as? DragItemWrapper {
+                    if wrapper.type != DragItemWrapper.ItemType.metric {
+                        return UICollectionViewDropProposal(operation: .forbidden)
+                    }
+                } else {
+                    // Legacy support for direct MetricItem objects
+                    if !(dragItem.localObject is MetricItem) {
+                        return UICollectionViewDropProposal(operation: .forbidden)
+                    }
+                }
+            }
+            
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
@@ -417,6 +471,21 @@ extension MetricGridUIKitView {
             guard let destinationIndexPath = coordinator.destinationIndexPath,
                   let item = coordinator.items.first,
                   let sourceIndexPath = item.sourceIndexPath else {
+                return 
+            }
+            
+            // Validate that this is a valid metric item drop
+            let metricItem: MetricItem?
+            if let wrapper = item.dragItem.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.metric {
+                metricItem = wrapper.item as? MetricItem
+            } else if let directItem = item.dragItem.localObject as? MetricItem {
+                metricItem = directItem
+            } else {
+                return // Invalid drop item
+            }
+            
+            guard metricItem != nil else {
                 return 
             }
             

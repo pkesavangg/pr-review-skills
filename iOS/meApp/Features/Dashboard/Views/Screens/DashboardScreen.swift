@@ -100,7 +100,7 @@ struct DashboardScreen: View {
             }
             if newTab == .dash {
                 DispatchQueue.main.async {
-                    store.state.ui.gridLayoutId = UUID()
+                    store.resetGridLayout()
                 }
             }
         }
@@ -172,7 +172,7 @@ struct DashboardScreen: View {
             if store.state.ui.isEditMode {
                 ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.saveChanges()
-                    store.resetDragState()
+                    store.resetDragState() 
                 })
                 ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.showResetDashboardAlert()
@@ -184,7 +184,7 @@ struct DashboardScreen: View {
                     }
                     store.state.ui.isEditMode.toggle()
                     if store.state.ui.isEditMode {
-                        store.resetDragState()
+                        store.resetDragState() 
                     }
                 })
                 ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
