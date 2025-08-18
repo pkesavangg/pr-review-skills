@@ -148,13 +148,20 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             }
             .store(in: &cancellables)
 
-        // Subscribe to goal settings changes
+        // Consolidated goal fields subscription (weight, initial, type) with explicit tuple typing to help type-checker
         accountService.$activeAccount
             .compactMap { $0?.goalSettings }
-            .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
-            .sink { [weak self] goalSettings in
-                self?.logger.log(level: .info, tag: "DashboardStore", message: "Goal settings changed - type: \(goalSettings.goalType?.rawValue ?? "nil"), goal weight: \(goalSettings.goalWeight ?? 0)")
+            .map { settings -> (Double?, Double?, GoalType?) in
+                let gw: Double? = settings.goalWeight
+                let iw: Double? = settings.initialWeight
+                let gt: GoalType? = settings.goalType
+                return (gw, iw, gt)
+            }
+            .removeDuplicates { (lhs: (Double?, Double?, GoalType?), rhs: (Double?, Double?, GoalType?)) -> Bool in
+                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2
+            }
+            .dropFirst()
+            .sink { [weak self] _ in
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -678,9 +685,21 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     func handleSettingsChange() {
-        loadGoalCardData()
-        objectWillChange.send()
-        self.updateYAxisCache()
+        // Ensure Y-axis ticks and goal chip reflect the updated goal weight
+        // by first reloading goal data and then recalculating the axis.
+        Task {
+            do {
+                try await self.goalManager.loadGoalData()
+                self.logger.log(level: .info, tag: "DashboardStore", message: "Goal data reloaded after settings change")
+            } catch {
+                self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reload goal data after settings change: \(error)")
+            }
+
+            await MainActor.run {
+                self.updateYAxisCache()
+                self.objectWillChange.send()
+            }
+        }
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
