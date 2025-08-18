@@ -143,8 +143,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
            return entries
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch entries", data: error.localizedDescription)
+            throw error
         }
-        return []
     }
     
     /// Converts entries into `HealthKitData` payloads ready for saving.

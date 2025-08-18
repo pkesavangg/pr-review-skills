@@ -773,8 +773,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Delete the scale from the device
             let deleteResult = await deleteDevice(scale, disconnect: false)
             switch deleteResult {
-            case .success(_):
-                logger.log(level: .info, tag: tag, message: "Successfully deleted R4 scale: \(scale.deviceName ?? "Unknown")")
+            case .success(let result):
+                logger.log(level: .info, tag: tag, message: "Successfully deleted R4 scale: \(scale.deviceName ?? "Unknown")", data: result)
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to delete R4 scale \(scale.deviceName ?? "Unknown"): \(error.localizedDescription)")
             }
@@ -783,8 +783,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             if let broadcastId = scale.broadcastIdString {
                 let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
                 switch disconnectResult {
-                case .success(_):
-                    logger.log(level: .info, tag: tag, message: "Successfully disconnected R4 scale: \(broadcastId)")
+                case .success(let result):
+                    logger.log(level: .info, tag: tag, message: "Successfully disconnected R4 scale: \(broadcastId)", data: result)
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to disconnect R4 scale \(broadcastId): \(error.localizedDescription)")
                 }

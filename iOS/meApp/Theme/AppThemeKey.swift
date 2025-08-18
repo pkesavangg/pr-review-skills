@@ -29,13 +29,13 @@ struct ThemeableModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         let theme = themeFrom(themeManager.currentColorScheme)
-        let modified = content
+        let themedContent = content
             .environment(\.appTheme, theme.palette)
 #if canImport(ggInAppMessagingPackage)
             .environment(\.iamColorPalette, theme.palette)
             .environment(\.iamTypography, AppTypographyTokens())
 #endif
-        return modified
+        return themedContent
     }
     
     private func themeFrom(_ scheme: AppColorScheme) -> AppColors.Theme {
