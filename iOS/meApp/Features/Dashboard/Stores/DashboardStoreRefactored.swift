@@ -148,7 +148,6 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             }
             .store(in: &cancellables)
 
-        // Consolidated goal fields subscription (weight, initial, type) with explicit tuple typing to help type-checker
         accountService.$activeAccount
             .compactMap { $0?.goalSettings }
             .map { settings -> (Double?, Double?, GoalType?) in
@@ -685,8 +684,6 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     func handleSettingsChange() {
-        // Ensure Y-axis ticks and goal chip reflect the updated goal weight
-        // by first reloading goal data and then recalculating the axis.
         Task {
             do {
                 try await self.goalManager.loadGoalData()
