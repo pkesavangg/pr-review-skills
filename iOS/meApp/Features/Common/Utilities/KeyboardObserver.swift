@@ -34,9 +34,9 @@ class KeyboardObserver: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             // This closure is nonisolated; hop to the main actor.
-            guard let self else { return }
+            guard let strongSelf = self else { return }
             Task { @MainActor in
-                self.keyboardWillShow(notification)
+                strongSelf.keyboardWillShow(notification)
             }
         }
 
@@ -46,9 +46,9 @@ class KeyboardObserver: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             // This closure is nonisolated; hop to the main actor.
-            guard let self else { return }
+            guard let strongSelf = self else { return }
             Task { @MainActor in
-                self.keyboardWillHide()
+                strongSelf.keyboardWillHide()
             }
         }
     }
