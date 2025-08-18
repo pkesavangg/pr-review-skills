@@ -242,7 +242,7 @@ struct SwipeableModifier: ViewModifier {
 
         // Determine final state based on position and velocity
         let absOffset = abs(totalTranslation)
-        let hasStrongVelocity = abs(gestureVelocity) > velocityThreshold
+        let _ = abs(gestureVelocity) > velocityThreshold
         let velocityTowardsOpen = gestureVelocity < -velocityThreshold
         let velocityTowardsClose = gestureVelocity > velocityThreshold
 

@@ -163,6 +163,29 @@ final class IntegrationsService: IntegrationServiceProtocol {
         }
     }
     
+    // MARK: - Account Management Operations ------------------------------------------------
+    
+    /// Clears all integration data if integration is active (used during account deletion).
+    /// This method checks if integration is active and delegates to the appropriate service.
+    func clearIntegration() async throws {
+        guard let integrationInfo = try await getStoredIntegrationData(),
+              integrationInfo.isIntegrated else {
+            // No integration active, nothing to clear
+            logger.log(level: .debug, tag: "IntegrationService", message: "No integration found, skipping clear operation")
+            return
+        }
+        
+        switch integrationInfo.type {
+        case .healthKit:
+            // Delegate to HealthKit service for clearing all data
+            try await HealthKitService.shared.clearHealthKit()
+            logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared HealthKit data during account deletion")
+        default:
+            // Other integrations not implemented for data clearing yet
+            logger.log(level: .debug, tag: "IntegrationService", message: "Data clearing not implemented for integration type: \(integrationInfo.type.rawValue)")
+        }
+    }
+    
     // MARK: - Health Integration Logging ------------------------------------------------
     /// Sends the newly-created `Entry` to the `/integrations/health/log` endpoint when the
     /// current account is integrated with Apple Health and at least one permission is granted.

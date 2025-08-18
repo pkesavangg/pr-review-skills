@@ -26,22 +26,30 @@ class KeyboardObserver: ObservableObject {
         setupObservers()
     }
     
-    /// Sets up the keyboard notification observers
+    /// Sets up the keyboard notification observers.
     private func setupObservers() {
         keyboardWillShowObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification,
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            self?.keyboardWillShow(notification)
+            // This closure is nonisolated; hop to the main actor.
+            guard let strongSelf = self else { return }
+            Task { @MainActor in
+                strongSelf.keyboardWillShow(notification)
+            }
         }
-        
+
         keyboardWillHideObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillHideNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.keyboardWillHide()
+            // This closure is nonisolated; hop to the main actor.
+            guard let strongSelf = self else { return }
+            Task { @MainActor in
+                strongSelf.keyboardWillHide()
+            }
         }
     }
     

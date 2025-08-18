@@ -19,6 +19,8 @@ class SettingsStore: ObservableObject {
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
     @Injector var goalAlertService: GoalAlertService
+    @Injector var bluetoothService: BluetoothService
+    @Injector var integrationService: IntegrationsService
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
@@ -210,12 +212,39 @@ class SettingsStore: ObservableObject {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingAccount ))
             do {
+                // Delete connected R4 scales before deleting account
+                await deleteConnectedR4Scales()
+                
+                // Clear appearance settings for the account being deleted
+                let accountId = activeAccount?.accountId
+                if let accountId = accountId {
+                    // Clear account-specific appearance key
+                    let appearanceKey = KvStorageKeys.appearanceModeKey(for: accountId)
+                    kvStore.clearValue(forKey: appearanceKey)
+                    theme.loadAppearanceModeForAccount()
+                }
+                
+                // Clear integration data (HealthKit, etc.) before deleting account
+                try await integrationService.clearIntegration()
+                
                 try await accountService.deleteAccount()
-                // TODO: Need to clear all the connected scales and integrated entries to health kit and clear appearance choice
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Delete account failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()
+        }
+    }
+    
+    /// Deletes all connected R4 scales during account deletion process.
+    /// This method handles the cleanup of scale connections before account deletion.
+    private func deleteConnectedR4Scales() async {
+        let result = await bluetoothService.deleteR4Scales()
+        switch result {
+        case .success():
+            logger.log(level: .info, tag: tag, message: "Successfully deleted connected R4 scales")
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to delete connected R4 scales: \(error.localizedDescription)")
+            // Continue with account deletion even if scale deletion fails
         }
     }
     

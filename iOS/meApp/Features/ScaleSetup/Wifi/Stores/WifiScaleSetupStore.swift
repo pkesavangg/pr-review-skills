@@ -599,7 +599,6 @@ final class WifiScaleSetupStore: ObservableObject {
             self.connectedSsid = setupInfo.ssid
             self.connectedBssid = setupInfo.bssid
             if scaleItem?.setupType == .espTouchWifi {
-                // TODO: Enable once ESP-Touch support lands.
                 try await wifiScaleService.espSmartConnect(setupInfo)
             } else {
                 try await wifiScaleService.smartConnect(setupInfo)

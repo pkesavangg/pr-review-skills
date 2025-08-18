@@ -32,7 +32,7 @@ struct IonicAccountData: Codable {
     let isStreakOn: Bool?
     let dashboardType: String
     let dashboardMetrics: [String]
-    let goalType: String
+    let goalType: String? // was non-optional
     let goalWeight: Int?
     let initialWeight: Int?
     let shouldSendEntryNotifications: Bool

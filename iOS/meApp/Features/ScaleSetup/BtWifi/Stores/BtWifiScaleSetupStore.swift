@@ -1529,7 +1529,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            let saveDashboardMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            let _ = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
             
             // Get current preference or create default
             let currentPreference = savedScale.r4ScalePreference ?? {
