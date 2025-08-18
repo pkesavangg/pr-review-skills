@@ -722,26 +722,20 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<Void, BluetoothServiceError>
      */
     func updateWeightOnlyMode(on connectedScale: Device?) async -> Result<Void, BluetoothServiceError> {
-        do {
-            var scales: [Device] = []
-            if let connectedScale = connectedScale {
-                scales.append(connectedScale)
-            } else {
-                scales = bluetoothScales.filter { scale in
-                    (scale.isConnected ?? false)
-                }
+        var scales: [Device] = []
+        if let connectedScale = connectedScale {
+            scales.append(connectedScale)
+        } else {
+            scales = bluetoothScales.filter { scale in
+                (scale.isConnected ?? false)
             }
-            for scale in scales {
-                _ = await updateSetting(on: scale, settings: [
-                    DeviceSetting(key: "SESSION_IMPEDANCE", value: DeviceSettingValue.bool(true))
-                ])
-            }
-            return .success(())
-        } catch let error as BluetoothServiceError {
-            return .failure(error)
-        } catch {
-            return .failure(.updateProfileFailed(error))
         }
+        for scale in scales {
+            _ = await updateSetting(on: scale, settings: [
+                DeviceSetting(key: "SESSION_IMPEDANCE", value: DeviceSettingValue.bool(true))
+            ])
+        }
+        return .success(())
     }
     
     

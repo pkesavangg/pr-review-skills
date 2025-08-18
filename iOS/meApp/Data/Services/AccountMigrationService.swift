@@ -19,12 +19,12 @@ final class AccountMigrationService {
     /// Checks if migration is needed by looking for Ionic app account data
     func isMigrationNeeded() -> Bool {
         // First check if migration has already been completed
-        let migrationCompleted = kvStorage.getValue(forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue) as? Bool ?? false
-        if migrationCompleted {
+        let key = KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue
+        let completed = (kvStorage.getValue(forKey: key) as? Bool) == true
+        if completed {
             logger.log(level: .info, tag: tag, message: "Migration already completed, skipping")
-            return false
         }
-        return !migrationCompleted
+        return !completed
     }
     
     /// Migrates account data from Ionic app to SwiftUI app

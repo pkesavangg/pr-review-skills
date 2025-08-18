@@ -95,7 +95,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                         )
                     )
                 }
-            case .failure(let error):
+            case .failure(_):
                 await MainActor.run {
                     notificationService.showToast(
                         ToastModel(
