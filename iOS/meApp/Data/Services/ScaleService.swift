@@ -369,10 +369,15 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
         
         // Create locally and mark as unsynced - sync will handle server creation
-        let createdDevice = try await localRepository.createScale(device)
+        let createdDevice = try await createScaleInLocal(device)
         logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
         await refreshScalesFromLocal()
         return createdDevice
+    }
+    
+    func createScaleInLocal(_ device: Device) async throws -> Device {
+        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
+        return try await localRepository.createScale(device)
     }
     
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {

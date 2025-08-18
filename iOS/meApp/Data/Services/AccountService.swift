@@ -43,6 +43,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                         ServiceRegistry.shared.deregisterSessionServices()
                     } else {
                         ServiceRegistry.shared.registerSessionServices()
+                        Theme.shared.setActiveAccount(data?.accountId)
                     }
                 })
                 .store(in: &cancellables)
@@ -1025,7 +1026,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Should be called once on app startup before other operations
     private func migrateFromIonicAppIfNeeded() async throws {
         guard migrationService.isMigrationNeeded() else {
-            LoggerService.shared.log(level: .info, tag: tag, message: "No Ionic app migration needed")
+            LoggerService.shared.log(level: .info, tag: tag, message: "No Ionic app migration needed (already completed or no data found)")
             return
         }
 

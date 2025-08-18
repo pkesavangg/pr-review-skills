@@ -19,28 +19,28 @@ struct HistoryMonthListScreen: View {
     @State private var showDeleteAlert = false
     @State private var entryToDelete: Entry? = nil
     @State private var openItemID: UUID? = nil
-
+    
     let month: HistoryMonth
-
+    
     // Computed Properties
-
+    
     private var title: String {
         let firstEntry = historyStore.entries.first
         return DateTimeTools.getMonthDayYearShort(firstEntry?.entryTimestamp ?? "")
     }
-
+    
     // MARK: - Body
-
+    
     var body: some View {
         VStack(spacing: 0) {
-          NavbarHeaderView<Image, Image>(
+            NavbarHeaderView<Image, Image>(
                 title: title,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 onLeadingTap: { router.navigateBack() }
             )
             .background(theme.backgroundPrimary)
-
-             content
+            
+            content
                 .background(theme.backgroundSecondary)
                 .edgesIgnoringSafeArea(.bottom)
         }
@@ -49,50 +49,56 @@ struct HistoryMonthListScreen: View {
         .onAppear {
             historyStore.selectMonth(month)
         }
+        .onChange(of: historyStore.entries) {
+            // Navigate back if all entries are deleted
+            if historyStore.entries.isEmpty {
+                router.navigateBack()
+            }
+        }
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }
     }
-
+    
     @ViewBuilder
     private var content: some View {
-          if historyStore.isEmptyState {
-              NoEntryView(
+        if historyStore.isEmptyState {
+            NoEntryView(
                 onButtonTap: {
-
+                    
                 }
-              )
-
-          } else {
-              ScrollView {
-                  LazyVStack(spacing: 0) {
-                      ForEach(historyStore.entries.sorted {
-                          DateTimeTools.getTimestamp($0.entryTimestamp) > DateTimeTools.getTimestamp($1.entryTimestamp)
-                      }, id: \.id) { entry in
-                          HistoryEntryItem(
-                              entry: entry,
-                              isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
-                              onTap: {
-                                  historyStore.toggleEntry(entry)
-                              },
-                              onDelete: {
-                                  historyStore.showDeleteEntryAlert(entry: entry, onCancel: {
+            )
+            
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(historyStore.entries.sorted {
+                        DateTimeTools.getTimestamp($0.entryTimestamp) > DateTimeTools.getTimestamp($1.entryTimestamp)
+                    }, id: \.id) { entry in
+                        HistoryEntryItem(
+                            entry: entry,
+                            isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
+                            onTap: {
+                                historyStore.toggleEntry(entry)
+                            },
+                            onDelete: {
+                                historyStore.showDeleteEntryAlert(entry: entry, onCancel: {
                                     // Let the swipe modifier handle closing naturally
-                                  })
-                              },
-                              onMetricTap: { entry, metric in
-                                  selectedEntry = entry
-                                  selectedMetric = metric
-                              },
-                              openItemID: $openItemID
-                          )
-                      }
-                  }
-              }
-              .refreshable {
-                  await historyStore.refreshSelectedMonth()
-              }
-          }
+                                })
+                            },
+                            onMetricTap: { entry, metric in
+                                selectedEntry = entry
+                                selectedMetric = metric
+                            },
+                            openItemID: $openItemID
+                        )
+                    }
+                }
+            }
+            .refreshable {
+                await historyStore.refreshSelectedMonth()
+            }
+        }
     }
 }
 
@@ -119,7 +125,7 @@ struct HistoryMonthListScreen_Previews: PreviewProvider {
             min: nil,
             max: nil
         )
-
+        
         HistoryMonthListScreen(month: month)
             .themeable()
             .environmentObject(Theme.shared)

@@ -397,8 +397,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             // Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
-            await checkGoalAlerts()
-
         }  catch {
             logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: \(error.localizedDescription)")
         }

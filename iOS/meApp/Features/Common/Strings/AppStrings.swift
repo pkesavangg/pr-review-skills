@@ -286,7 +286,7 @@ struct InputFieldLabels {
         return isKg ? "goal weight (kg)" : "goal weight (lbs)"
     }
     static let goalWeight = "goal weight"
-    static let useMetric = "Use Metric"
+    static let useMetric = "Use Metric Units"
     static let zipCode = "zipcode"
     static let birthday = "birthday"
     static let weightLabel: (Bool) -> String = { isKg in

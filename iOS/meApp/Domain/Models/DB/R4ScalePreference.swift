@@ -58,7 +58,7 @@ final class R4ScalePreference {
         self.shouldMeasurePulse = shouldMeasurePulse
         self.timeFormat = timeFormat
         self.tzOffset = tzOffset
-        self.wifiFotaScheduleTime = wifiFotaScheduleTime ?? 0
+        self.wifiFotaScheduleTime = wifiFotaScheduleTime
         self.updatedAt = updatedAt
         self.device = device
     }

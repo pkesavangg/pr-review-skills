@@ -47,4 +47,7 @@ protocol IntegrationServiceProtocol {
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// - Parameter entry: The entry to delete from the health service.
     func deleteEntry(_ entry: Entry) async throws
+    
+    /// Clears all integration data if integration is active (used during account deletion).
+    func clearIntegration() async throws
 }
