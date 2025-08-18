@@ -18,9 +18,13 @@ final class AccountMigrationService {
     
     /// Checks if migration is needed by looking for Ionic app account data
     func isMigrationNeeded() -> Bool {
-        let hasActiveAccount = kvStorage.getValue(forKey: MigrationKey.activeAccount.rawValue) != nil
-        logger.log(level: .info, tag: tag, message: "Migration check - Active account exists: \(hasActiveAccount)")
-        return hasActiveAccount
+        // First check if migration has already been completed
+        let migrationCompleted = kvStorage.getValue(forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue) as? Bool ?? false
+        if migrationCompleted {
+            logger.log(level: .info, tag: tag, message: "Migration already completed, skipping")
+            return false
+        }
+        return !migrationCompleted
     }
     
     /// Migrates account data from Ionic app to SwiftUI app
@@ -55,51 +59,71 @@ final class AccountMigrationService {
     func migrateAccountAndScaleData() async throws -> (account: Account?, scalesCount: Int) {
         logger.log(level: .info, tag: tag, message: "Starting comprehensive migration (account + scales) from Ionic app")
         
-        // First migrate account data
-        guard let account = try await migrateAccountData() else {
-            logger.log(level: .error, tag: tag, message: "Account migration failed, skipping scale migration")
-            return (nil, 0)
-        }
-        
-        // Then migrate scale data for ALL accounts (not just the current account)
+        // Migrate scale data for ALL accounts (independent of account migration)
         let scaleResults = await migrateAllScaleData()
         let totalScales = scaleResults.reduce(0) { $0 + $1.scalesCount }
         logger.log(level: .info, tag: tag, message: "Scale migration completed. Migrated \(totalScales) scales across \(scaleResults.count) accounts")
         
-        // Migrate goal alert storage keys for all accounts (not just current account)
+        // Migrate goal alert storage keys for all accounts (independent of account migration)
         migrateAllGoalAlertData()
         
-        // Migrate goal card status for all accounts (not just current account)
+        // Migrate goal card status for all accounts (independent of account migration)
         migrateAllGoalCardStatusData()
         
-        // Migrate appearance settings for all accounts (not just current account)
+        // Migrate appearance settings for all accounts (independent of account migration)
         migrateAllAppearanceData()
         
-        // Migrate HealthKit integration data
-        migrateHealthKitIntegrationData(for: account.accountId)
-        
-        // Migrate notification alert data for all accounts (account-scoped keys)
+        // Migrate notification alert data for all accounts (account-scoped keys, independent of account migration)
         migrateAllNotificationAlertData()
         
-        // Migrate global notification alert data to account-scoped for active account
-        migrateGlobalNotificationAlertData(for: account.accountId)
-        
-        // Migrate feed data for all accounts (not just current account)
+        // Migrate feed data for all accounts (independent of account migration)
         migrateAllFeedData()
         
-        logger.log(level: .info, tag: tag, message: "Comprehensive migration completed for account: \(account.email) with \(totalScales) total scales")
+        // Migrate integration data for all accounts (independent of account migration)
+        migrateAllIntegrationData()
         
-        // Clean up Ionic data after successful migration
+        // Now attempt account migration
+        let account: Account?
+        do {
+            account = try await migrateAccountData()
+            if let migratedAccount = account {
+                logger.log(level: .info, tag: tag, message: "Account migration successful for: \(migratedAccount.email)")
+                
+                // Migrate HealthKit integration data (requires account ID)
+                migrateHealthKitIntegrationData(for: migratedAccount.accountId)
+                
+                // Migrate global notification alert data to account-scoped for active account
+                migrateGlobalNotificationAlertData(for: migratedAccount.accountId)
+            } else {
+                logger.log(level: .info, tag: tag, message: "Account migration returned nil, but other migrations completed successfully")
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Account migration failed: \(error.localizedDescription), but other migrations completed successfully")
+            account = nil
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Comprehensive migration completed. Account: \(account?.email ?? "none"), Total scales: \(totalScales)")
+        
+        // Mark migration as completed to prevent future runs
+        kvStorage.setValue(true, forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue)
+        logger.log(level: .info, tag: tag, message: "Migration completion flag set")
+        
+        // Clean up Ionic data after migration (cleanup all data regardless of account migration success)
         cleanupAfterMigration()
-        cleanupOfflineData(for: account.accountId)
         cleanupAllGoalAlertData() // Clean up goal alert data for all accounts
         cleanupAllGoalCardStatusData() // Clean up goal card status data for all accounts
         cleanupAllAppearanceData() // Clean up appearance data for all accounts
-        cleanupHealthKitIntegrationData(for: account.accountId)
         cleanupAllNotificationAlertData() // Clean up notification alert data for all accounts
         cleanupGlobalNotificationAlertData() // Clean up global notification alert data
         cleanupAllFeedData() // Clean up feed data for all accounts
+        cleanupAllIntegrationData() // Clean up integration data for all accounts
         cleanupAllScaleData() // Clean up scale data for all accounts
+        
+        // Clean up account-specific data only if account migration was successful
+        if let migratedAccount = account {
+            cleanupOfflineData(for: migratedAccount.accountId)
+            cleanupHealthKitIntegrationData(for: migratedAccount.accountId)
+        }
         
         return (account, totalScales)
     }
@@ -145,6 +169,12 @@ final class AccountMigrationService {
         let offlineKey = "\(MigrationKey.offlineAccountPrefix.rawValue)\(accountId)"
         kvStorage.clearValue(forKey: offlineKey)
         logger.log(level: .info, tag: tag, message: "Cleaned up offline data for account: \(accountId)")
+    }
+    
+    /// Resets the migration completion flag (for testing purposes)
+    func resetMigrationFlag() {
+        kvStorage.clearValue(forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue)
+        logger.log(level: .info, tag: tag, message: "Migration completion flag reset")
     }
     
     /// Migrates goal alert storage keys for all accounts found in UserDefaults
@@ -381,7 +411,7 @@ final class AccountMigrationService {
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)")
             }
-        } else {
+        } else { 
             logger.log(level: .info, tag: tag, message: "No HealthKit integration data found for account: \(accountId)")
         }
     }
@@ -497,6 +527,19 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Cleaned up global notification alert data")
     }
     
+    /// Migrates integration data for all accounts found in UserDefaults
+    func migrateAllIntegrationData() {
+        logger.log(level: .info, tag: tag, message: "Starting integration data migration for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+            migrateHealthKitIntegrationData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed integration data migration for \(allAccountIds.count) accounts")
+    }
+
     /// Migrates feed data for all accounts found in UserDefaults
     func migrateAllFeedData() {
         logger.log(level: .info, tag: tag, message: "Starting feed data migration for all accounts")
@@ -599,6 +642,19 @@ final class AccountMigrationService {
         }
     }
     
+    /// Removes integration data for all accounts after migration
+    func cleanupAllIntegrationData() {
+        logger.log(level: .info, tag: tag, message: "Starting cleanup of integration data for all accounts")
+        
+        let allAccountIds = findAllAccountIdsInUserDefaults()
+        
+        for accountId in allAccountIds {
+           cleanupHealthKitIntegrationData(for: accountId)
+        }
+        
+        logger.log(level: .info, tag: tag, message: "Completed cleanup of integration data for \(allAccountIds.count) accounts")
+    }
+
     /// Removes feed data for all accounts after migration
     func cleanupAllFeedData() {
         logger.log(level: .info, tag: tag, message: "Starting cleanup of feed data for all accounts")
@@ -805,7 +861,7 @@ final class AccountMigrationService {
             streakTimestamp: nil, // Not in the provided data
             dashboardType: DashboardType(rawValue: ionicData.dashboardType.replacingOccurrences(of: "_", with: "")) ?? .dashboard4,
             dashboardMetrics: ionicData.dashboardMetrics.compactMap { BodyMetric(rawValue: $0) },
-            goalType: GoalType(rawValue: ionicData.goalType) ?? .maintain,
+            goalType: GoalType(rawValue: ionicData.goalType ?? "") ?? .maintain,
             goalWeight: ionicData.goalWeight != nil ? Double(ionicData.goalWeight!) : nil,
             goalPercent: nil,
             initialWeight: ionicData.initialWeight != nil ? Double(ionicData.initialWeight!) : nil,
@@ -829,7 +885,7 @@ final class AccountMigrationService {
         account.isLoggedIn = true
         account.isActiveAccount = true
         account.isExpired = false
-        account.isSynced = true
+        account.isSynced = false
         account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
         
         logger.log(level: .info, tag: tag, message: "Successfully converted Ionic data to Account model")

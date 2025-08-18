@@ -24,6 +24,10 @@ public enum KvStorageKeys: String {
     /// Key for "has seen add multiple accounts modal" flag
     case addMultipleAccountsModal = "hasSeenAddMultipleAccountsModal"
     
+    // MARK: - Migration Keys
+    /// Key for tracking if Ionic to native app migration has been completed
+    case ionicToNativeAppMigrationCompleted = "ionicToNativeAppMigrationCompleted"
+    
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)
     case goalMetFlag = "goalMetFlag"
