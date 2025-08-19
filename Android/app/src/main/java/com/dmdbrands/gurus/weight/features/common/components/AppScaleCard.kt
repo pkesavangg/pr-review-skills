@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
@@ -37,6 +38,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 fun AppScaleCard(
   scale: ScaleInfo,
   modifier: Modifier = Modifier,
+  horizontalSpacing: Dp? = null,
   isSavedScale: Boolean,
   enabled: Boolean = true,
   onClick: (ScaleInfo) -> Unit,
@@ -66,7 +68,7 @@ fun AppScaleCard(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(horizontal = cardSpacing, vertical = cardSpacing),
+          .padding(horizontal = horizontalSpacing ?: cardSpacing, vertical = cardSpacing),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
