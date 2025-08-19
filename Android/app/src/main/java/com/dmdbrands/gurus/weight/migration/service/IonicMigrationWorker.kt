@@ -1,12 +1,14 @@
-package com.dmdbrands.gurus.weight.migration
+package com.dmdbrands.gurus.weight.migration.service
 
+import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.dmdbrands.gurus.weight.migration.service.MigrationRepository
+import com.dmdbrands.gurus.weight.migration.model.MigrationResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import android.content.Context
-import android.util.Log
 
 /**
  * Worker that handles migration from Ionic database to Room database.
@@ -19,9 +21,8 @@ import android.util.Log
  */
 @HiltWorker
 class IonicMigrationWorker @AssistedInject constructor(
-  @Assisted val appContext: Context,
-  @Assisted val params: WorkerParameters,
-  private val migrationService: MigrationService
+    @Assisted val appContext: Context,
+    @Assisted val params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
   companion object {
@@ -35,6 +36,8 @@ class IonicMigrationWorker @AssistedInject constructor(
   override suspend fun doWork(): Result {
     return try {
       Log.i(TAG, "🚀 Starting Ionic migration worker")
+      val migrationRepository = MigrationRepository(appContext)
+      val migrationService = MigrationService(migrationRepository)
 
       val migrationResult = migrationService.performIonicMigration(applicationContext)
 

@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.migration
+package com.dmdbrands.gurus.weight.migration.helper
 
 import android.content.Context
 import android.util.Log
@@ -12,7 +12,8 @@ object CapacitorStorageHelper {
   private const val TAG = "CapacitorStorageHelper"
 
   // Capacitor Preferences keys used by Ionic app
-  private const val ACTIVE_ACCOUNT_KEY = "activeAccountKey"
+  const val ACTIVE_ACCOUNT_KEY = "activeAccountKey"
+  private const val PAIRED_SCALES_KEY = "pairedScalesKey"
   private const val CAPACITOR_STORAGE_FILENAME = "preferences"
 
   /**
@@ -32,6 +33,44 @@ object CapacitorStorageHelper {
       Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
     }
     return null
+  }
+
+  fun locateAndReadIntegrationSettings(context: Context, integrationKey: String): Map<String, String> {
+    return try {
+      val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+      val resultMap = sharedPrefs.all.filter { it.key.contains(integrationKey) }
+      val result = resultMap.keys
+        .mapNotNull { key ->
+          sharedPrefs.getString(key, null)?.let { value ->
+            key.removeSuffix("-${integrationKey}") to value
+          }
+        }
+        .toMap()
+      Log.d(TAG, "Found ${result.size} paired scales entries")
+      result
+    } catch (e: Exception) {
+      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      emptyMap()
+    }
+  }
+
+  fun locateAndReadPairedScalesFromCapacitorStorage(context: Context): Map<String, String> {
+    return try {
+      val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+      val pairedScalesKey = sharedPrefs.all.filter { it.key.contains(PAIRED_SCALES_KEY) }
+      val pairedScales = pairedScalesKey.keys
+        .mapNotNull { key ->
+          sharedPrefs.getString(key, null)?.let { value ->
+            key.removeSuffix("-pairedScalesKey") to value
+          }
+        }
+        .toMap()
+      Log.d(TAG, "Found ${pairedScales.size} paired scales entries")
+      pairedScales
+    } catch (e: Exception) {
+      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      emptyMap()
+    }
   }
 
   /**

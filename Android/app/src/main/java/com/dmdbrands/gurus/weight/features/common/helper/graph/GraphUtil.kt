@@ -319,7 +319,7 @@ object GraphUtil {
     weekStart: DayOfWeek = DayOfWeek.SUNDAY
   ): List<Double> {
     if (startMillis == null || endMillis == null) return emptyList()
-    require(startMillis <= endMillis) { "startMillis must be <= endMillis" }
+    require(startMillis <= endMillis) { "startMillis must be <= endMillis as $startMillis > $endMillis" }
 
     val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
     val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()

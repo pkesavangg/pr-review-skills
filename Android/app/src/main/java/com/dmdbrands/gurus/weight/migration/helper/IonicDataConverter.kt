@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.migration
+package com.dmdbrands.gurus.weight.migration.helper
 
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
+import com.dmdbrands.gurus.weight.migration.model.IonicAccount
+import com.dmdbrands.gurus.weight.migration.model.IonicScale
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
@@ -64,16 +66,49 @@ object IonicDataConverter {
   fun parseAccountWithGson(jsonString: String): IonicAccount? {
     return try {
       Log.d(TAG, "🔄 Parsing account JSON with Gson...")
+      Log.d(TAG, "JSON preview: ${jsonString.take(200)}...")
+
       val gson = Gson()
       val ionicAccount = gson.fromJson(jsonString, IonicAccount::class.java)
-      Log.d(TAG, "✅ Successfully parsed IonicAccount with ID: ${ionicAccount.id}")
+      Log.d(TAG, "✅ Successfully parsed IonicAccount with ID: ${ionicAccount?.id}")
       ionicAccount
     } catch (e: JsonSyntaxException) {
       Log.e(TAG, "❌ JSON syntax error when parsing account: ${e.message}")
+      Log.e(TAG, "❌ JSON content around error: ${getJsonContextAroundError(jsonString, e.message ?: "")}")
       null
     } catch (e: Exception) {
       Log.e(TAG, "❌ Error parsing account with Gson: ${e.message}")
       null
+    }
+  }
+
+  /**
+   * Helper function to get context around JSON parsing errors.
+   */
+  private fun getJsonContextAroundError(jsonString: String, errorMessage: String): String {
+    return try {
+      // Extract position information from error message if available
+      val positionRegex = "line (\\d+) column (\\d+)".toRegex()
+      val match = positionRegex.find(errorMessage)
+
+      if (match != null) {
+        val line = match.groupValues[1].toInt()
+        val column = match.groupValues[2].toInt()
+
+        // Find approximate character position
+        val lines = jsonString.split('\n')
+        if (line <= lines.size) {
+          val targetLine = lines[line - 1]
+          val start = maxOf(0, column - 50)
+          val end = minOf(targetLine.length, column + 50)
+          return "Line $line: ${targetLine.substring(start, end)}"
+        }
+      }
+
+      // Fallback: show first 300 characters
+      jsonString.take(300)
+    } catch (e: Exception) {
+      "Unable to extract context: ${e.message}"
     }
   }
 
@@ -85,16 +120,13 @@ object IonicDataConverter {
       Log.d(TAG, "🔄 Converting IonicAccount to AccountEntity...")
 
       val id = ionicAccount.id ?: UUID.randomUUID().toString()
-      val profile = ionicAccount.profile
-      val firstName = profile?.firstName ?: ""
-      val lastName = profile?.lastName ?: ""
-      val email = profile?.email ?: ""
-      val gender = profile?.gender?.name?.lowercase() ?: "male"
-      val dob = profile?.dob ?: ""
-      val zipcode = profile?.zipcode ?: ""
-      val tokens = ionicAccount.tokens
-      val expiresAt = tokens?.expiresAt ?: ""
-      val isLoggedIn = (ionicAccount.loggedIn ?: 0) == 1
+      val firstName = ionicAccount.firstName ?: ""
+      val lastName = ionicAccount.lastName ?: ""
+      val email = ionicAccount.email ?: ""
+      val gender = ionicAccount.gender ?: "male"
+      val dob = ionicAccount.dob ?: ""
+      val zipcode = ionicAccount.zipcode ?: ""
+      val expiresAt = ionicAccount.expiresAt ?: ""
 
       // Validation
       if (email.isEmpty() || firstName.isEmpty()) {
@@ -112,7 +144,7 @@ object IonicDataConverter {
         fcmToken = null, // Will be set by the app later
         gender = gender,
         isActiveAccount = true, // Since this was the active account
-        isLoggedIn = isLoggedIn,
+        isLoggedIn = true,
         isExpired = false,
         isSynced = true, // Will be synced later
         lastActiveTime = System.currentTimeMillis().toString(),
@@ -131,10 +163,9 @@ object IonicDataConverter {
    * Converts IonicAccount to UserAccount.
    */
   fun convertIonicAccountToUserAccount(ionicAccount: IonicAccount): UserAccount? {
-    val tokens = ionicAccount.tokens
-    val accessToken = tokens?.accessToken?.replace("\\u003d", "=") ?: ""
-    val refreshToken = tokens?.refreshToken?.replace("\\u003d", "=") ?: ""
-    val expiresAt = tokens?.expiresAt ?: ""
+    val accessToken = ionicAccount.accessToken ?: ""
+    val refreshToken = ionicAccount.refreshToken?.replace("\\u003d", "=") ?: ""
+    val expiresAt = ionicAccount.expiresAt ?: ""
 
     val userAccount = UserAccount.newBuilder()
       .setAccessToken(accessToken)
@@ -143,6 +174,41 @@ object IonicDataConverter {
       .build()
 
     return userAccount
+  }
+
+  /**
+   * Parses devices JSON string that can be either an array of scales,
+   * a wrapper object with devices array, or a map of devices.
+   * Handles various JSON formats from the Ionic app data.
+   */
+  fun parseDevicesWithGson(devicesJsonString: String): List<IonicScale> {
+    return try {
+      Log.d(TAG, "🔄 Parsing devices JSON with Gson...")
+      Log.d(TAG, "JSON preview: ${devicesJsonString.take(200)}...")
+      val gson = Gson()
+      val scaleArray = gson.fromJson(devicesJsonString, Array<IonicScale>::class.java)
+      scaleArray.toList()
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ Error parsing devices with Gson: ${e.message}")
+      Log.e(TAG, "❌ JSON content: ${devicesJsonString.take(500)}")
+      emptyList()
+    }
+  }
+
+  /**
+   * Legacy function for backward compatibility with Map<String, String> input.
+   */
+  fun parseDevicesWithGson(devicesJsonMap: Map<String, String>): Map<String, List<IonicScale>> {
+    return try {
+      Gson()
+      devicesJsonMap.mapValues { (_, jsonString) ->
+        // Use the main parsing function for each JSON string
+        parseDevicesWithGson(jsonString)
+      }
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ Error parsing devices map with Gson: ${e.message}")
+      emptyMap()
+    }
   }
 
   /**

@@ -33,7 +33,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMet
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
-import com.dmdbrands.gurus.weight.migration.IonicMigrationWorker
+import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
 import android.content.Context
 import android.util.Log
 

@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
-import com.dmdbrands.gurus.weight.migration.DatabaseAnalysis
+import com.dmdbrands.gurus.weight.migration.model.DatabaseAnalysis
 import java.io.File
 import android.content.Context
 import android.database.Cursor

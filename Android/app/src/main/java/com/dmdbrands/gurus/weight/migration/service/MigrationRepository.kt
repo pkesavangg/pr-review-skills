@@ -1,7 +1,8 @@
-package com.dmdbrands.gurus.weight.migration
+package com.dmdbrands.gurus.weight.migration.service
 
 import android.content.Context
 import android.util.Log
+import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
@@ -9,7 +10,10 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSet
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
+import com.dmdbrands.gurus.weight.migration.helper.toHealthConnectData
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +28,21 @@ class MigrationRepository @Inject constructor(
 
   companion object {
     private const val TAG = "MigrationRepository"
+  }
+
+  suspend fun insertDevice(devices: List<DeviceDetails>) {
+    val appDatabase = AppDatabase.Companion.getInstance(context)
+    devices.forEach { device ->
+      appDatabase.deviceDao().insertDevice(device)
+    }
+  }
+
+  suspend fun saveIntegrationSettings(settings: Map<String, IonicHealthConnectData>) {
+    val healthConnectData = HealthConnectDataStore(context)
+    settings.map { (accountID, ionicHealthData) ->
+      val healthData = ionicHealthData.toHealthConnectData(accountID)
+      healthConnectData.setHealthConnectData(accountID, healthData)
+    }
   }
 
   /**

@@ -1,14 +1,14 @@
-package com.dmdbrands.gurus.weight.core.di
+package com.dmdbrands.gurus.weight.migration.di
 
-import com.dmdbrands.gurus.weight.migration.MigrationRepository
-import com.dmdbrands.gurus.weight.migration.MigrationService
+import android.content.Context
+import com.dmdbrands.gurus.weight.migration.service.MigrationRepository
+import com.dmdbrands.gurus.weight.migration.service.MigrationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import android.content.Context
 
 /**
  * Dependency injection module for migration-related classes.

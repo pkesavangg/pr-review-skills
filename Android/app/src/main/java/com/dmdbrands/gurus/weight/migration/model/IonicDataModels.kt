@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.migration
+package com.dmdbrands.gurus.weight.migration.model
 
 import com.google.gson.annotations.SerializedName
 
@@ -189,13 +189,6 @@ data class Tokens(
 )
 
 /**
- * DashboardMetrics interface equivalent
- */
-data class DashboardMetrics(
-  @SerializedName("dashboardMetrics") val dashboardMetrics: List<BodyMetric>? = null
-)
-
-/**
  * UpdateDashboardType interface equivalent
  */
 data class UpdateDashboardType(
@@ -212,15 +205,57 @@ data class IonicAccount(
   @SerializedName("loggedIn") val loggedIn: Int? = null,
   @SerializedName("dashboardType") val dashboardType: DashboardType? = null,
 
-  // Composed domain objects
-  @SerializedName("goal") val goal: Goal? = null,
-  @SerializedName("profile") val profile: Profile? = null,
-  @SerializedName("weightless") val weightless: Weightless? = null,
-  @SerializedName("streakStatus") val streakStatus: StreakStatus? = null,
-  @SerializedName("notifications") val notifications: Notifications? = null,
-  @SerializedName("integrations") val integrations: Integrations? = null,
-  @SerializedName("tokens") val tokens: Tokens? = null,
-  @SerializedName("dashboardMetrics") val dashboardMetrics: DashboardMetrics? = null
+  // Goal fields
+  @SerializedName("goalWeight") val goalWeight: Double? = null,
+  @SerializedName("goalType") val goalType: GoalType? = null,
+  @SerializedName("type") val type: GoalType? = null, // Bug workaround
+  @SerializedName("initialWeight") val initialWeight: Double? = null,
+  @SerializedName("metPreviousGoal") val metPreviousGoal: Boolean? = null,
+  @SerializedName("percent") val percent: Double? = null,
+
+  // Profile fields (includes BodyComp)
+  @SerializedName("email") val email: String? = null,
+  @SerializedName("firstName") val firstName: String? = null,
+  @SerializedName("lastName") val lastName: String? = null,
+  @SerializedName("gender") val gender: String? = null, // Using String for flexibility
+  @SerializedName("zipcode") val zipcode: String? = null,
+  @SerializedName("dob") val dob: String? = null,
+  @SerializedName("weightUnit") val weightUnit: String? = null, // Using String for flexibility
+  @SerializedName("height") val height: Double? = null,
+  @SerializedName("activityLevel") val activityLevel: String? = null, // Using String for flexibility
+
+  // Weightless fields
+  @SerializedName("isWeightlessOn") val isWeightlessOn: Boolean? = null,
+  @SerializedName("weightlessWeight") val weightlessWeight: Double? = null,
+  @SerializedName("weightlessTimestamp") val weightlessTimestamp: String? = null,
+
+  // StreakStatus fields
+  @SerializedName("isStreakOn") val isStreakOn: Boolean? = null,
+  @SerializedName("streakTimestamp") val streakTimestamp: String? = null,
+
+  // Notifications fields
+  @SerializedName("shouldSendEntryNotifications") val shouldSendEntryNotifications: Boolean? = null,
+  @SerializedName("shouldSendWeightInEntryNotifications") val shouldSendWeightInEntryNotifications: Boolean? = null,
+
+  // Integrations fields
+  @SerializedName("isFitbitOn") val isFitbitOn: Boolean? = null,
+  @SerializedName("isGoogleFitOn") val isGoogleFitOn: Boolean? = null,
+  @SerializedName("isMFPOn") val isMFPOn: Boolean? = null,
+  @SerializedName("isUAOn") val isUAOn: Boolean? = null,
+  @SerializedName("isFitbitValid") val isFitbitValid: Boolean? = null,
+  @SerializedName("isGoogleFitValid") val isGoogleFitValid: Boolean? = null,
+  @SerializedName("isMFPValid") val isMFPValid: Boolean? = null,
+  @SerializedName("isUAValid") val isUAValid: Boolean? = null,
+  @SerializedName("healthkit") val healthkit: Boolean? = null,
+  @SerializedName("isHealthConnectOn") val isHealthConnectOn: Boolean? = null,
+
+  // Tokens fields
+  @SerializedName("accessToken") val accessToken: String? = null,
+  @SerializedName("refreshToken") val refreshToken: String? = null,
+  @SerializedName("expiresAt") val expiresAt: String? = null,
+
+  // DashboardMetrics fields
+  @SerializedName("dashboardMetrics") val dashboardMetrics: List<String>? = null // Using List<String> for flexibility
 )
 
 /**
