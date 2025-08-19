@@ -103,8 +103,8 @@ class MetricCell: UICollectionViewCell {
         currentDashboardType = dashboardType
         currentIsBeingDragged = isBeingDragged
         
-        // Determine if this item is removed
-        let itemIsRemoved = store.isMetricRemovedInReorderedArray(at: store.metricsToShow.firstIndex(where: { $0.id == item.id }) ?? 0)
+        // Determine if this item is removed using the new removal state
+        let itemIsRemoved = store.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
         let metricCardView = MetricCardView(
@@ -115,9 +115,7 @@ class MetricCell: UICollectionViewCell {
             isRemoved: itemIsRemoved,
             isSelected: store.state.ui.selectedMetricLabel == item.label,
             onToggleRemoval: {
-                if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                    store.toggleMetricRemovalInReorderedArray(at: index)
-                }
+                store.toggleMetricRemoval(item.label)
             },
             onTap: {
                 // Only allow selection if not in edit mode
@@ -147,9 +145,7 @@ class MetricCell: UICollectionViewCell {
                      isEditMode: store.state.ui.isEditMode,
                      isRemoved: itemIsRemoved,
                      onToggleRemoval: {
-                         if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                             store.toggleMetricRemovalInReorderedArray(at: index)
-                         }
+                         store.toggleMetricRemoval(item.label)
                      },
                      isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
                      isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
@@ -195,6 +191,10 @@ class MetricCell: UICollectionViewCell {
         isWiggling = false
         isRemoved = false
         rowIndex = 0
+        
+        // Reset callbacks
+        onMetricLongPressCallback = nil
+        onSelectMetricCallback = nil
         
         // Reset to placeholder view
         let placeholderView = AnyView(

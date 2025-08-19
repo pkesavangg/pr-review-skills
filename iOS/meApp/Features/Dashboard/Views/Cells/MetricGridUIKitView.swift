@@ -38,14 +38,16 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let newDashboardType = store.state.metrics.dashboardType
         let newIsEditMode = store.state.ui.isEditMode
         let newSelectedLabel = store.state.ui.selectedMetricLabel
+        let newRemovedMetrics = store.state.ui.removedMetrics
         let contentChanged = newIds != coordinator.lastItemIds
         let layoutChanged = newDashboardType != coordinator.lastDashboardType
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
+        let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
 
         // Keep drag interaction in sync with edit mode
         uiView.dragInteractionEnabled = newIsEditMode
 
-        if contentChanged || layoutChanged {
+        if contentChanged || layoutChanged || removalStateChanged {
             // When item count or layout changes, avoid batch updates; do a full, animation-less reload
             uiView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
@@ -89,6 +91,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
 
         coordinator.lastIsEditMode = newIsEditMode
         coordinator.lastSelectedMetricLabel = newSelectedLabel
+        coordinator.lastRemovedMetrics = newRemovedMetrics
         
         // Ensure drag interaction is properly managed
         uiView.dragInteractionEnabled = newIsEditMode
@@ -157,6 +160,7 @@ extension MetricGridUIKitView {
         var lastDashboardType: DashboardType = .dashboard12
         var lastIsEditMode: Bool = false
         var lastSelectedMetricLabel: String? = nil
+        var lastRemovedMetrics: Set<String> = []
         
         // MARK: - Properties
         
@@ -253,7 +257,7 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             let item = store.metricsToShow[indexPath.item]
-            let isRemoved = store.isMetricRemovedInReorderedArray(at: indexPath.item)
+            let isRemoved = store.isMetricRemoved(item.label)
             
             if isRemoved {
                 return [] // Return empty array to prevent drag
@@ -496,8 +500,10 @@ extension MetricGridUIKitView {
             UIView.performWithoutAnimation {
                 collectionView.performBatchUpdates({
                     // Check if both source and destination are not removed
-                    let sourceIsRemoved = store.isMetricRemovedInReorderedArray(at: sourceIndexPath.item)
-                    let destIsRemoved = store.isMetricRemovedInReorderedArray(at: destinationIndexPath.item)
+                    let sourceItem = store.metricsToShow[sourceIndexPath.item]
+                    let destItem = store.metricsToShow[destinationIndexPath.item]
+                    let sourceIsRemoved = store.isMetricRemoved(sourceItem.label)
+                    let destIsRemoved = store.isMetricRemoved(destItem.label)
   
                     // Only allow move if neither source nor destination is removed
                     if !sourceIsRemoved && !destIsRemoved {

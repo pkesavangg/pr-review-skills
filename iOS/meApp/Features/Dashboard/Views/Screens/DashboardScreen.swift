@@ -62,10 +62,7 @@ struct DashboardScreen: View {
         .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
             store.handleMetricInfoSheetDismiss(newValue)
         }
-        .onChange(of: store.state.ui.isEditMode) { _, isEdit in
-            // Only rebuild layout when entering edit to start wiggle animations
-            if isEdit { store.resetDragState() }
-        }
+        
         .onChange(of: store.currentUnit) { _, _ in
             store.handleUnitChange()
         }
@@ -179,13 +176,7 @@ struct DashboardScreen: View {
                 })
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    if !store.state.ui.isEditMode {
-                        store.beginEdit()
-                    }
-                    store.state.ui.isEditMode.toggle()
-                    if store.state.ui.isEditMode {
-                        store.resetDragState() 
-                    }
+                    store.toggleEditMode()
                 })
                 ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     tabViewModel.navigateToGoalSetting()

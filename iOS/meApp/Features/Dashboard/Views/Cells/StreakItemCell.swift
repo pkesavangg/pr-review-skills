@@ -45,7 +45,7 @@ class StreakCardCell: UICollectionViewCell {
         currentStore = store
         
         // Set the removal state
-        isRemoved = store.isStreakRemovedInReorderedArray(at: store.streakItemsToShow.firstIndex(where: { $0.id == item.id }) ?? 0)
+        isRemoved = store.isStreakRemoved(item.label)
         
         let streakCardView = StreakCardView(
             value: item.value,
@@ -55,9 +55,7 @@ class StreakCardCell: UICollectionViewCell {
             isRemoved: isRemoved,
             isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onToggleRemoval: {
-                if let index = store.streakItemsToShow.firstIndex(where: { $0.id == item.id }) {
-                    store.toggleStreakRemovalInReorderedArray(at: index)
-                }
+                store.toggleStreakRemoval(item.label)
             },
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in }
@@ -69,9 +67,7 @@ class StreakCardCell: UICollectionViewCell {
                     isEditMode: store.state.ui.isEditMode,
                     isRemoved: isRemoved,
                     onToggleRemoval: {
-                        if let index = store.streakItemsToShow.firstIndex(where: { $0.id == item.id }) {
-                            store.toggleStreakRemovalInReorderedArray(at: index)
-                        }
+                        store.toggleStreakRemoval(item.label)
                     },
                     isBeingDragged: store.state.ui.draggingStreak?.id == item.id || isLongPressed || isTapped,
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,

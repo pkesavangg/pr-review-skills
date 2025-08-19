@@ -27,6 +27,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
         let newIsEditMode = store.state.ui.isEditMode
+        let newRemovedStreaks = store.state.ui.removedStreaks
 
         let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
             switch widget {
@@ -42,8 +43,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         let contentChanged = oldIds != newIds
+        let removalStateChanged = newRemovedStreaks != coordinator.lastRemovedStreaks
 
-        if contentChanged {
+        if contentChanged || removalStateChanged {
             coordinator.gridModel = newModel
             collectionView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
@@ -67,6 +69,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         coordinator.lastIsEditMode = newIsEditMode
+        coordinator.lastRemovedStreaks = newRemovedStreaks
         
         // Update drag interaction enabled state
         collectionView.dragInteractionEnabled = newIsEditMode
@@ -138,14 +141,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             orderedStreaks.append(contentsOf: missing)
         }
 
-        // Partition streaks into non-removed and removed
+        // Partition streaks into non-removed and removed using new removal state
         let nonRemovedStreaks = orderedStreaks.filter { streak in
-            let index = orderedStreaks.firstIndex(where: { $0.id == streak.id }) ?? 0
-            return !store.isStreakRemovedInReorderedArray(at: index)
+            return !store.isStreakRemoved(streak.label)
         }
         let removedStreaks = orderedStreaks.filter { streak in
-            let index = orderedStreaks.firstIndex(where: { $0.id == streak.id }) ?? 0
-            return store.isStreakRemovedInReorderedArray(at: index)
+            return store.isStreakRemoved(streak.label)
         }
 
         // In edit mode, show all items (including removed ones)
@@ -197,6 +198,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
         var lastIsEditMode: Bool = false
+        var lastRemovedStreaks: Set<String> = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
         
