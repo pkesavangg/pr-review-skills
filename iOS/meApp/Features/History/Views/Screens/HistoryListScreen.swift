@@ -14,25 +14,32 @@ struct HistoryListScreen: View {
     @StateObject private var router = Router<HistoryRoute>()
     @StateObject private var store = HistoryStore()
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    
+    // iOS 17 fix: Prevent duplicate lifecycle calls
+    @State private var hasAppeared = false
+    @State private var lastTabCheck: BottomTab? = nil
+    
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
-              NavbarHeaderView<EmptyView, _>(
+              NavbarHeaderView<EmptyView, AnyView>(
                   title: HistoryListStrings.title,
                   trailingContent: {
-                      Group {
-                          if !store.isEmptyState {
-                              Button {
-                                  store.handleExport()
-                              } label: {
-                                  AppIconView(icon: AppAssets.export)
-                                      .foregroundColor(theme.statusIconPrimary)
-                                      .frame(width: 24, height: 24)
+                      AnyView(
+                          Group {
+                              if !store.isEmptyState {
+                                  Button {
+                                      store.handleExport()
+                                  } label: {
+                                      AppIconView(icon: AppAssets.export)
+                                          .foregroundColor(theme.statusIconPrimary)
+                                          .frame(width: 24, height: 24)
+                                  }
+                              } else {
+                                  EmptyView()
                               }
-                          } else {
-                              EmptyView()
                           }
-                      }
+                      )
                   },
                   canShowBorder: true
               )
@@ -43,13 +50,18 @@ struct HistoryListScreen: View {
                   .edgesIgnoringSafeArea(.bottom)
           }
           .background(theme.backgroundSecondary)
-          .onAppear {
-              store.loadMonths()
-          }
-          // Re-evaluate modal presentation whenever the selected tab changes.
+
           .onChange(of: tabViewModel.selectedTab) {
+              guard tabViewModel.selectedTab != lastTabCheck else { return }
+              lastTabCheck = tabViewModel.selectedTab
+              
               if tabViewModel.selectedTab == .history {
-                  store.loadMonths()
+                  Task {
+                      try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                      if tabViewModel.selectedTab == .history {
+                          store.loadMonths()
+                      }
+                  }
               }
           }
         }
@@ -70,21 +82,22 @@ struct HistoryListScreen: View {
         } else {
           ScrollView {
             LazyVStack(spacing: 0) {
+
                 ForEach(store.months, id: \.id) { month in
-                    ZStack {
-                        MonthSummaryItem(month: month)
-                            .contentShape(Rectangle())
-                    }
-                    .onTapGesture {
-                        store.selectMonth(month)
-                        router.navigate(to: .historyMonthList(month: month))
-                    }
-                    .background(theme.backgroundSecondary)
+                    MonthSummaryItem(month: month)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            store.setSelectedMonth(selectedMonth: month)
+                            router.navigate(to: .historyMonthList(month: month))
+                        }
+                        .background(theme.backgroundSecondary)
                 }
             }
           }
           .refreshable {
-              await store.refreshAllEntries()
+              Task {
+                  await store.refreshAllEntries()
+              }
           }
         }
     }

@@ -61,6 +61,10 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             await initializeDashboard()
         }
     }
+    
+    func syncEntries() async {
+        await entryService.syncAllEntriesWithRemote()
+    }
 
     // MARK: - Reactive Bindings
     private func setupBindings() {

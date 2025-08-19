@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Reusable view that displays a single history entry with expandable metrics
 /// Supports selection, expansion, and swipe-to-delete functionality
@@ -20,42 +21,26 @@ struct HistoryEntryItem: View {
     let onDelete: () -> Void
     let onMetricTap: (Entry, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
+    
+    // iOS 17 fix: Stable animation state
+    @State private var animationPhase: UUID = UUID()
+    @State private var isAnimating = false
 
     // MARK: - Computed Properties
 
-    private var dateText: String {
-      return DateTimeTools.getFormattedDay(entry.entryTimestamp)
-    }
-
-    private var timeText: String {
-        return DateTimeTools.getFormattedTime(entry.entryTimestamp)
-    }
-
-    private var weightText: String {
-      let weight = WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
-      return weight
-    }
-
-    private var backgroundColor: Color {
-        if isExpanded {
-            return theme.actionSecondary
-        }
-        return .clear
-    }
-
     // MARK: - Body
-
+ 
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
                 // Date and time
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(dateText)
+                    Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor( isExpanded ? theme.textInverse : theme.textHeading)
 
-                    Text(timeText)
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundColor( isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -63,7 +48,7 @@ struct HistoryEntryItem: View {
 
                 // Weight value
                 HStack(spacing: .spacingXS) {
-                    Text(weightText)
+                    Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
 
@@ -77,13 +62,14 @@ struct HistoryEntryItem: View {
                     AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .padding(.leading, .spacingSM)
-                        .animation(.easeOut, value: isExpanded)
+                        // iOS 17 fix: Remove conflicting animations
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
-            .background(backgroundColor)
+            .background(isExpanded ? theme.actionSecondary : Color.clear)
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
@@ -104,34 +90,51 @@ struct HistoryEntryItem: View {
                 openItemID: openItemID
             )
 
-
             Divider()
                 .foregroundColor(theme.actionPrimary)
-            // Expanded metrics section
+            
+//            // iOS 17 fix: Stable expanded metrics section with proper animation
             if isExpanded, !entry.metricItems.isEmpty {
-                VStack() {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(entry.metricItems.enumerated()), id: \ .0) { index, item in
-                            HistoryMetricItem(
-                                metric: BodyMetrics.config[item.metric]!,
-                                value: item.value,
-                                isAlternate: index % 2 == 1,
-                                onTap: { onMetricTap(entry, item.metric) }
-                            )
-                        }
+                VStack(spacing: 0) {
+                    // iOS 17 fix: Use regular VStack instead of LazyVStack to prevent layout churn
+                    ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
+                        HistoryMetricItem(
+                            metric: BodyMetrics.config[item.metric]!,
+                            value: item.value,
+                            isAlternate: index % 2 == 1,
+                            onTap: { onMetricTap(entry, item.metric) }
+                        )
+                        .id("\(entry.id.uuidString)-metric-\(index)") // iOS 17 fix: Stable metric IDs
                     }
                 }
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .top)),
+                    removal: .opacity.combined(with: .move(edge: .top))
+                ))
             }
         }
-
-        .animation(.easeOut, value: isExpanded)
+        // iOS 17 fix: Single consolidated animation with stable value tracking
+        .animation(.easeOut(duration: 0.25), value: animationPhase)
         .contentShape(Rectangle())
         .onTapGesture {
-            if !entry.metricItems.isEmpty {
-                onTap()
-            }
+            guard !entry.metricItems.isEmpty else { return }
+            
+            // iOS 17 fix: Simplified animation handling
+           // isAnimating = true
+            onTap()
+            
+            // Reset animation flag quickly to prevent lag
+//            Task {
+////                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms - reduced from 300ms
+//                //isAnimating = false
+//            }
         }
-
+//        .onChange(of: isExpanded) { _, newValue in
+//            // iOS 17 fix: Update animation phase when expansion state changes
+//            // Only trigger if actually changing to prevent unnecessary animations
+//            guard newValue != isExpanded else { return }
+//            animationPhase = UUID()
+//        }
     }
 }
 
@@ -196,5 +199,6 @@ struct HistoryEntryItem_Previews: PreviewProvider {
     }
 }
 #endif
+
 
 

@@ -12,7 +12,7 @@ struct LoginScreen: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.appTheme) var theme
     @StateObject private var store = LoginStore()
-    @FocusState private var focusedField: FocusField?
+    @State private var focusedField: FocusField?
     @State private var keyboardHeight: CGFloat = 0
     
     /// Optional e-mail address passed from previous screen to pre-populate the form
@@ -23,13 +23,6 @@ struct LoginScreen: View {
     let commonLang = CommonStrings.self
     let lang = LoginScreenStrings.self
     let legalStrings = LegalStrings.self
-    
-    private var focusBinding: Binding<FocusField?> {
-        Binding(
-            get: { focusedField },
-            set: { focusedField = $0 }
-        )
-    }
     
     var body: some View {
         VStack {
@@ -86,7 +79,7 @@ struct LoginScreen: View {
                                             focusField: .email
                                         ),
                                         value: $store.loginForm.email.value,
-                                        focusedField: focusBinding
+                                        focusedField: $focusedField
                                     ) {
                                         store.setEmailTouched()
                                         focusedField = .password
@@ -99,10 +92,11 @@ struct LoginScreen: View {
                                             placeholder: lang.passwordPlaceholder,
                                             inputType: store.showPassword ? .text : .password,
                                             submitLabel: .done,
-                                            errorMessage: store.passwordError
+                                            errorMessage: store.passwordError,
+                                            focusField: .password
                                         ),
                                         value: $store.loginForm.password.value,
-                                        focusedField: focusBinding
+                                        focusedField: $focusedField
                                     ) {
                                         store.setPasswordTouched()
                                         focusedField = nil
