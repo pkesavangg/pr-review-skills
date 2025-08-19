@@ -97,6 +97,10 @@ fun DialogQueueHost(
                             dialog.onDismiss?.let { it() }
                             dialogQueueViewModel.dismissCurrent()
                         },
+                        properties = DialogProperties(
+                            dismissOnBackPress = false,
+                            dismissOnClickOutside = false,
+                        ),
                         content = {
                             customDialogContent(
                                 dialog,
@@ -121,6 +125,10 @@ fun DialogQueueHost(
                                 Text("OK")
                             }
                         },
+                        properties = DialogProperties(
+                            dismissOnBackPress = false,
+                            dismissOnClickOutside = false,
+                        ),
                     )
                 }
             }

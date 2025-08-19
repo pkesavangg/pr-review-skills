@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.domain.model.goal
 
 import com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import kotlin.math.round
 
@@ -14,7 +15,8 @@ data class Goal(
   val type: String,
   val goalType: String? = null,
   val metPreviousGoal: Boolean = false,
-  val percent: Double? = 0.0
+  val percent: Double? = 0.0,
+  val account: Account? = null,
 ) : IUnitProcessable<Goal> {
 
   override fun process(unit: WeightUnit?, weightLess: Weightless?): Goal {

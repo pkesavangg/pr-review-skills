@@ -22,16 +22,25 @@ struct BtWifiScaleSetupScreen: View {
     let discoveredScale: Device?
     let discoveryEvent: DeviceDiscoveryEvent?
     let savedScale: Device? // if the scale was previously saved in settings open the BtWifiScaleSetup for the wifi setup
+    let isReconnect: Bool // indicates if this is a reconnect flow
+    let isDuplicated: Bool // indicates if this is handling a duplicate user error
     let commonLang = CommonStrings.self
     
     private let scaleSetupLang = ScaleSetupStrings.self
     
     // Custom init so callers can omit optional params.
-    init(sku: String, discoveredScale: Device? = nil, discoveryEvent: DeviceDiscoveryEvent? = nil, savedScale: Device? = nil) {
+    init(sku: String, 
+         discoveredScale: Device? = nil, 
+         discoveryEvent: DeviceDiscoveryEvent? = nil, 
+         savedScale: Device? = nil,
+         isReconnect: Bool = false,
+         isDuplicated: Bool = false) {
         self.sku = sku
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
         self.savedScale = savedScale
+        self.isReconnect = isReconnect
+        self.isDuplicated = isDuplicated
     }
     
     private var stepViews: [AnyView] { setupStore.stepViews }
@@ -85,7 +94,9 @@ struct BtWifiScaleSetupScreen: View {
             setupStore.configure(with: sku,
                                  discoveredScale: discoveredScale,
                                  discoveryEvent: discoveryEvent,
-                                 saveScale: savedScale)
+                                 saveScale: savedScale,
+                                 isReconnect: isReconnect,
+                                 isDuplicated: isDuplicated)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
@@ -147,6 +158,6 @@ struct BtWifiScaleSetupScreen: View {
 }
 
 #Preview {
-    BtWifiScaleSetupScreen(sku: SettingsConstants.defaultR4Sku, discoveredScale: nil, discoveryEvent: nil)
+    BtWifiScaleSetupScreen(sku: SettingsConstants.defaultR4Sku, discoveredScale: nil, discoveryEvent: nil, isReconnect: false, isDuplicated: false)
         .environmentObject(Theme.shared)
 }

@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -42,6 +41,7 @@ enum class TextType {
   Body,
   Message,
   Link,
+  Link2,
   SubHeading,
   ListTitle1,
   ListTitle2,
@@ -88,6 +88,10 @@ object TextTypeDefaults {
           color = colorScheme.primaryAction,
         )
 
+      TextType.Link2 -> TextAppearance(
+        style = typography.link2,
+        color = colorScheme.primaryAction,
+      )
       TextType.SubHeading ->
         TextAppearance(
           style = typography.body3,
@@ -187,8 +191,7 @@ fun AppText(
           if (index != text.lastIndex) append(" ")
         }
       }
-    }
-    else {
+    } else {
       AnnotatedString(text)
     }
   }
@@ -221,7 +224,7 @@ fun AppText(
         textAlign = textAlign,
         modifier =
           modifier.then(
-            if (onClick != null) Modifier.clickable { onClick() } else Modifier,
+            if (onClick != null) Modifier.debounceClick { onClick() } else Modifier,
           ),
       )
     }

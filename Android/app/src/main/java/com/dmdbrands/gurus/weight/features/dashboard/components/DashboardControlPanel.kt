@@ -18,7 +18,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun DashboardControlPanel(
   inEditMode: Boolean = false,
   onEditClick: (Boolean) -> Unit = {},
-  onMetricInfoClick: () -> Unit = {}
+  onMetricInfoClick: () -> Unit = {},
+  onUpdateGoalClick: () -> Unit = {}
 ) {
   val string = DashboardString.ControlPanel
   Column(
@@ -31,7 +32,9 @@ fun DashboardControlPanel(
       AppButton(label = string.EditDashboard, type = ButtonType.PrimaryOutlined, size = ButtonSize.Large) {
         onEditClick(true)
       }
-      AppButton(label = string.UpdateGoal, type = ButtonType.TextPrimary, size = ButtonSize.Large) { }
+      AppButton(label = string.UpdateGoal, type = ButtonType.TextPrimary, size = ButtonSize.Large) {
+        onUpdateGoalClick()
+      }
       AppButton(label = string.MetricInfo, type = ButtonType.TextPrimary, size = ButtonSize.Large) {
         onMetricInfoClick()
       }

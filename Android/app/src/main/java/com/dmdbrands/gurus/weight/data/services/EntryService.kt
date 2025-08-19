@@ -116,6 +116,7 @@ constructor(
           weightSettings.weightUnit,
           weightSettings.weightless,
         ),
+        account = accountRepository.getActiveAccount().first(),
       ),
     )
   }

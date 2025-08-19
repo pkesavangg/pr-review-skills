@@ -21,7 +21,7 @@ object SignupStrings {
   const val genderStepTitle = "What is your biological sex?"
   const val genderStepSubtitle =
     "This is also important in determining body metrics and healthy ranges according to CDC and AHA health guidelines." +
-      " We use this information to provide you with the most accurate metrics and health ranges. Your information is private and secure."
+      " Please choose what mostly closely reflects your body type and makes you most comfortable."
   const val genderMale = "Male"
   const val genderFemale = "Female"
 
@@ -31,7 +31,7 @@ object SignupStrings {
     "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
   const val goalStepMaintain = "Maintain"
   const val goalStepLoseGain = "Lose/Gain"
-  const val goalStepUseMetric = "Use Metric"
+  const val goalStepUseMetric = "Use Metric Units"
 
   // Goal step dynamic weight labels
   const val goalStepCurrentWeightDynamic = "starting weight (%s)"

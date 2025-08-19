@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun UserProfileSection(
     account: Account?,
     onEditProfileClick: () -> Unit,
+    onAvatarLongPress: (() -> Unit)? = null,
 ) {
     val firstName = account?.firstName ?: " "
     val email = account?.email ?: ""
@@ -28,7 +29,10 @@ fun UserProfileSection(
         modifier = Modifier.fillMaxWidth(),
     ) {
         // Profile Image Placeholder
-        AppProfileAvatar(firstName)
+        AppProfileAvatar(
+            text = firstName,
+            onLongPress = onAvatarLongPress
+        )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         Text(
             text = firstName,
@@ -73,8 +77,10 @@ fun UserProfileSectionPreview() {
             weightlessWeight = null,
             isStreakOn = false,
             dashboardType = null,
-            dashboardMetrics = null
+            dashboardMetrics = null,
             ),
-        ) { }
+            onEditProfileClick = {},
+            onAvatarLongPress = null
+        )
     }
 }

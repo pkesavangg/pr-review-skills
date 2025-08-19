@@ -5,6 +5,7 @@
 //  Created by Kesavan Panchabakesan on 06/08/25.
 //
 import Foundation
+import Combine
 
 @MainActor
 final class UsersViewModel: ObservableObject {
@@ -12,13 +13,14 @@ final class UsersViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothService
     @Injector var scaleService: ScaleService
     @Injector var logger: LoggerService
-    
+    @Published var userNameForm = UserNameForm()
     @Published var deviceUsers: [DeviceUser] = []
     @Published var currentDeviceUser: DeviceUser?
     @Published var isLoadingUsers: Bool = false
     
     private let scale: Device
     private let tag = "UsersViewModel"
+    private var cancellables = Set<AnyCancellable>()
     
     var otherDeviceUsersList: [DeviceUser] {
         return deviceUsers.filter { $0.token != currentDeviceUser?.token }
@@ -29,20 +31,17 @@ final class UsersViewModel: ObservableObject {
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
             self.currentDeviceUser = initialUsersList.filter({$0.token == scale.token}).first
-        } else {
-            Task {
-                await loadUsers()
-            }
+        }
+        
+        setupFormObservers()
+        
+        Task {
+            await loadUsers()
         }
     }
     
     func loadUsers() async {
         // If users were already provided during initialization, don't fetch again
-        guard deviceUsers.isEmpty else {
-            logger.log(level: .info, tag: tag, message: "Users already loaded from initial list")
-            return
-        }
-        
         guard scale.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Scale is not connected, cannot load users")
             return
@@ -61,12 +60,20 @@ final class UsersViewModel: ObservableObject {
                 // Find current user (typically the first one or the one that matches our account)
                 self.currentDeviceUser = users.filter({$0.token == scale.token}).first
                 logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
+                let currentName = currentDeviceUser?.name ?? ""
+                userNameForm.setDisplayName(currentName)
+                let scaleUsers = otherDeviceUsersList.map { deviceUser in
+                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
+                }
+                userNameForm.updateUserList(scaleUsers)
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")
                 self.deviceUsers = []
                 self.currentDeviceUser = nil
             }
             isLoadingUsers = false
+            
+
         }
     }
     
@@ -144,10 +151,43 @@ final class UsersViewModel: ObservableObject {
             deviceUsers.removeAll { $0.token == user.token }
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
             logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
+            Task {
+                await loadUsers()
+            }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
         }
         notificationService.dismissLoader()
+    }
+    
+    // MARK: - Form Validation & Observers
+    
+    /// Setup form observers to trigger UI updates when form changes
+    private func setupFormObservers() {
+        userNameForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Form Helper Methods
+    
+    /// Get error message for the display name field
+    var displayNameError: String? {
+        userNameForm.getError(for: userNameForm.displayName)
+    }
+    
+    /// Check if form is valid
+    var isFormValid: Bool {
+        userNameForm.isValid
+    }
+    
+    /// Mark display name field as touched/dirty
+    func setDisplayNameTouched() {
+        userNameForm.displayName.markAsDirty()
+        objectWillChange.send()
     }
 }

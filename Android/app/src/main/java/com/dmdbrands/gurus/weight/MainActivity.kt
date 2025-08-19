@@ -64,14 +64,20 @@ class MainActivity : AppCompatActivity() {
     applyInitialTheme()
     initializeSplashScreen()
     super.onCreate(savedInstanceState)
+
+    // Enable edge-to-edge display and proper system bar handling
     WindowCompat.setDecorFitsSystemWindows(window, false)
     enableEdgeToEdge()
+
+    // Initialize services
     healthConnectService.initializeHealthConnect(this)
     gGBLEService.createInstance(this)
     wifiScaleService.initialise(this)
+
     setContent {
       MeApp()
     }
+
     observeThemeChanges()
     // Handle initial intent
     handleHealthConnectIntent(intent)

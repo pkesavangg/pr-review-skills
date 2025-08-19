@@ -66,9 +66,6 @@ fun BaseListItem(
         .background(colorScheme.primaryBackground, shape)
         .clip(shape)
         .debounceClick(
-          // interactionSource = interactionSource,
-          // indication = LocalIndication.current,
-          // enabled = enabled,
           onClick = { onClick?.invoke() },
         )
         .padding(

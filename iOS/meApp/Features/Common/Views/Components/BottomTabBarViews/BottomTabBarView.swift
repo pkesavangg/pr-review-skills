@@ -66,6 +66,7 @@ struct BottomTabBarView: View {
                 .border(sides: [.top], thickness: 0.5)
             }
         }
+        .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
         // Half-sheet shown when a new scale is discovered via Bluetooth
@@ -97,7 +98,9 @@ struct BottomTabBarView: View {
             case .btWifiR4:
                 BtWifiScaleSetupScreen(sku: payload.sku,
                                        discoveredScale: payload.scale,
-                                       discoveryEvent: payload.event)
+                                       discoveryEvent: payload.event,
+                                       isReconnect: payload.isReconnect,
+                                       isDuplicated: payload.isDuplicated)
                 .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types

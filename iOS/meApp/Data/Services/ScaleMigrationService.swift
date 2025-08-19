@@ -47,7 +47,7 @@ final class ScaleMigrationService {
                 
                 // Save device to SwiftData
                 migratedDevices.append(device)
-                let _ = try await self.scaleService.createDevice(device)
+                let _ = try await self.scaleService.createScaleInLocal(device)
                 logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
                 logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {

@@ -29,6 +29,13 @@ fun SignupPager(
   onMetricToggle: (Boolean) -> Unit = {},
 ) {
   val focusManager = LocalFocusManager.current
+  // Ensure IME Next/Done actions only advance when the current step is valid
+  val guardedOnNext: () -> Unit = {
+    if (state.isCurrentStepValid) {
+      focusManager.clearFocus()
+      onNext()
+    }
+  }
   HorizontalPagerWithBottomNavigation(
     steps = state.steps,
     containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -42,6 +49,7 @@ fun SignupPager(
         onClick = onBack,
       )
     },
+    shouldCenterMiddleContent = true,
     middleContent = {
       if (state.showSkipButton) {
         AppButton(
@@ -59,10 +67,7 @@ fun SignupPager(
         label = if (state.isLastStep) SignupStrings.completeButton else SignupStrings.nextButton,
         size = ButtonSize.Small,
         enabled = state.isCurrentStepValid,
-        onClick = {
-          focusManager.clearFocus()
-          onNext()
-        },
+        onClick = guardedOnNext,
       )
     },
     pageContent =
@@ -81,10 +86,7 @@ fun SignupPager(
                 NameStep(
                   firstNameControl = formControls.firstName,
                   lastNameControl = formControls.lastName,
-                  onNext = {
-                    focusManager.clearFocus()
-                    onNext()
-                  },
+                  onNext = guardedOnNext,
                 )
 
               SignupStep.BIRTHDAY ->
@@ -111,19 +113,14 @@ fun SignupPager(
                   useMetricControl = formControls.useMetric,
                   onMetricToggle = onMetricToggle,
                   onGoalTypeChange = {}, // Empty callback for signup flow
-                  onNext = {
-                    focusManager.clearFocus()
-                    onNext()
-                  },
+                  onNext = guardedOnNext,
+                  showCurrentWeightForMaintain = false,
                 )
 
               SignupStep.EMAIL ->
                 EmailStep(
                   emailControl = formControls.email,
-                  onNext = {
-                    focusManager.clearFocus()
-                    onNext()
-                  },
+                  onNext = guardedOnNext,
                 )
 
               SignupStep.PASSWORD ->
@@ -132,10 +129,7 @@ fun SignupPager(
                   confirmPasswordControl = formControls.confirmPassword,
                   zipcodeControl = formControls.zipcode,
                   onUrlOpen = onUrlOpen,
-                  onSubmit = {
-                    focusManager.clearFocus()
-                    onNext()
-                  },
+                  onSubmit = guardedOnNext,
                 )
             }
           }

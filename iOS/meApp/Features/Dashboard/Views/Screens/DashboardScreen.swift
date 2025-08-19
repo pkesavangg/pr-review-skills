@@ -31,6 +31,9 @@ struct DashboardScreen: View {
                 }
             dashboardScrollView()
         }
+        .refreshable {
+            // TODO: Implement refresh logic if needed
+        }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)

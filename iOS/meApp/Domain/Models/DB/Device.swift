@@ -54,6 +54,8 @@ final class Device {
     var wifiMac: String? // Wifi MAC (R4 scales)
     var isWifiConfigured: Bool? // If WiFi is configured
     var token: String? // Token for scale authentication
+    var isWeighOnlyModeEnabledByOthers: Bool? = false // If weight-only mode is enabled by other users
+
     // Relationships
     @Relationship(deleteRule: .cascade, inverse: \BathScale.device) var bathScale: BathScale?
     @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
@@ -82,6 +84,7 @@ final class Device {
          wifiMac: String? = nil,
          isWifiConfigured: Bool? = nil,
          token: String? = nil,
+         isWeighOnlyModeEnabledByOthers: Bool? = nil,
          bathScale: BathScale? = nil,
          r4ScalePreference: R4ScalePreference? = nil,
          metaData: DeviceMetaData? = nil) {
@@ -107,6 +110,7 @@ final class Device {
         self.wifiMac = wifiMac
         self.isWifiConfigured = isWifiConfigured
         self.token = token
+        self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         self.bathScale = bathScale
         self.r4ScalePreference = r4ScalePreference
         self.metaData = metaData
@@ -169,6 +173,7 @@ final class Device {
             wifiMac: dto.metaData?.wifiMac,
             isWifiConfigured: dto.isWifiConfigured,
             token: dto.scaleToken,
+            isWeighOnlyModeEnabledByOthers: dto.isWeighOnlyModeEnabledByOthers,
             bathScale: bathScale,
             r4ScalePreference: r4Preference,
             metaData: metaData
@@ -205,7 +210,7 @@ final class Device {
             isConnected: self.isConnected,
             isDeleted: self.isDeleted,
             isTemporary: nil,
-            isWeighOnlyModeEnabledByOthers: nil,
+            isWeighOnlyModeEnabledByOthers: self.isWeighOnlyModeEnabledByOthers,
             isWifiConfigured: self.isWifiConfigured,
             latestVersion: self.metaData?.latestVersion,
             mac: self.mac,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,9 +29,30 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+
+/**
+ * Helper function to update weight validators when metric toggle changes
+ */
+private fun updateWeightValidators(
+  control: FormControl<String>,
+  isMetric: Boolean
+) {
+  // Remove existing weight and body comp validators
+  control.removeValidator(ValidationType.NOT_IN_RANGE)
+
+  // Add the appropriate weight validator based on unit
+  val weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
+  control.addValidator(FormValidations.weightValidator(weightUnit))
+
+  // Re-validate to show updated error message if control has a value and is touched
+  if (control.value.isNotEmpty() && control.touched) {
+    control.validate()
+  }
+}
 
 /**
  * Step for collecting user's weight goals with metric/imperial toggle
@@ -55,6 +77,12 @@ fun GoalStep(
   val isMetric = useMetricControl?.value ?: false
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
+  // Update weight validators when metric toggle changes
+  LaunchedEffect(isMetric) {
+    updateWeightValidators(currentWeightControl, isMetric)
+    updateWeightValidators(goalWeightControl, isMetric)
+  }
+
   // Goal type options
   val goalTypeOptions =
     listOf(
@@ -73,12 +101,14 @@ fun GoalStep(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceAround,
     ) {
+      val selectedOption = when (goalTypeControl.value) {
+        GoalType.MAINTAIN.value -> goalTypeOptions[0]
+        GoalType.LOSE_GAIN.value -> goalTypeOptions[1]
+        else -> goalTypeOptions[1] // Fallback to Lose/Gain if unknown
+      }
       SegmentButtonGroup(
         data = goalTypeOptions,
-        selectedData =
-          goalTypeOptions.find {
-            if (goalTypeControl.value == GoalType.MAINTAIN.value) it.id == 0 else it.id == 1
-          } ?: goalTypeOptions[1],
+        selectedData = selectedOption,
         onSelected = { selectedOption ->
           val goalType = if (selectedOption.id == 0) GoalType.MAINTAIN else GoalType.LOSE_GAIN
           val value = goalType.value
@@ -86,7 +116,7 @@ fun GoalStep(
           onGoalTypeChange(goalType) // Trigger the callback
         },
         size = SegmentButtonSize.Small,
-        type = SegmentButtonType.Single,
+        type = SegmentButtonType.Scrollable,
         key = SegmentButtonData::label,
       )
     }
@@ -106,7 +136,8 @@ fun GoalStep(
         imeAction = ImeAction.Next,
         nextFocusRequester = goalWeightFocusRequester,
         modifier = Modifier.focusRequester(currentWeightFocusRequester),
-        enabled = goalTypeControl.value == GoalType.LOSE_GAIN.value,
+        // Enable for any non-maintain variant (lose, gain, lose_gain)
+        enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
       )
     }
 

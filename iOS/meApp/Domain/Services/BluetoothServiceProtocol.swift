@@ -68,7 +68,7 @@ protocol BluetoothServiceProtocol {
     // MARK: - Device CRUD
     /// Adds a newly discovered scale to persistent storage and returns the saved model.
     /// - Returns: Result<Device, BluetoothServiceError>
-    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async -> Result<Device, BluetoothServiceError>
+    func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError>
     /// Confirms a smart pairing operation with the specified device.
     /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError>
@@ -142,4 +142,9 @@ protocol BluetoothServiceProtocol {
     /// Triggers the in-app alert required when weight-only mode is enabled by another user.
     /// - Returns: Result<Void, BluetoothServiceError>
     func updateWeightOnlyMode(on device: Device?) async -> Result<Void, BluetoothServiceError>
+    
+    /// Deletes all connected R4 scales from the device and disconnects them.
+    /// This method is typically called during account deletion to clean up scale connections.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func deleteR4Scales() async -> Result<Void, BluetoothServiceError>
 }

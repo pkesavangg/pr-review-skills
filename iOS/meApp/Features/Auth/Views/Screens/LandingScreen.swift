@@ -38,12 +38,25 @@ struct LandingScreen: View {
                             .padding(.bottom, 55)
                         
                         VStack(alignment: .center, spacing: .spacingSM){
-                            ButtonView(text: commonLang.logIn, type: .filledSecondary, size: .large, isDisabled: false) {
+                            
+                            Button(action: {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .login(nil))
                                 }
-                            }
-                            .frame(minWidth: 96)
+
+                            }, label:{
+                                Text(commonLang.logIn.uppercased())
+                                    .fontOpenSans(.button1)
+                                    .fontWeight(.bold)
+                                    .frame(minWidth: 96)
+                                    .padding(.vertical, .spacingXS)
+                                    .padding(.horizontal, .spacingLG)
+                                    .foregroundColor(theme.actionPrimary)
+                                    .background(theme.textInverse)
+                                    .cornerRadius(.radiusPill)
+                                    .contentShape(Rectangle())
+                            })
+   
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .signup)

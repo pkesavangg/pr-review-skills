@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 
 /**
  * Controls for Goal form.
@@ -127,30 +128,28 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
   override fun reduce(state: GoalState, intent: GoalIntent): GoalState {
     return when (intent) {
       is GoalIntent.Submit -> {
+        // If goal type is maintain, clear starting weight at submission time
+        val controls = state.form.controls
+        if (controls.goalType.value == GoalType.MAINTAIN.value) {
+          controls.startingWeight.reset("")
+        }
         state.copy(isLoading = true, error = null)
       }
 
       is GoalIntent.ChangeGoalType -> {
-        // Update goal type and current weight input state
-        val currentControls = state.form.controls
-        val currentWeightValidators = if (intent.goalType != GoalType.MAINTAIN) {
-          listOf(FormValidations.required(), FormValidations.weightValidator())
+        // Update goal type and validators IN-PLACE so form remains dirty and Save stays enabled
+        val controls = state.form.controls
+        // Mark goalType as changed (dirty) and set new value
+        controls.goalType.onValueChange(intent.goalType.value)
+
+        // Toggle required validator for startingWeight based on goal type
+        if (intent.goalType != GoalType.MAINTAIN) {
+          controls.startingWeight.addValidator(FormValidations.required())
         } else {
-          emptyList() // No validation for hidden field in maintain mode
+          controls.startingWeight.removeValidator(ValidationType.REQUIRED)
         }
 
-        val newControls = GoalFormControls(
-          goalType = FormControl.create(
-            initialValue = intent.goalType.value,
-            validators = listOf(FormValidations.required()),
-          ),
-          startingWeight = FormControl.create(
-            initialValue = currentControls.startingWeight.value,
-            validators = currentWeightValidators,
-          ),
-          goalWeight = currentControls.goalWeight,
-        )
-        state.copy(form = FormGroup(newControls))
+        state.copy() // same form reference; UI observes updated controls
       }
 
       is GoalIntent.Error -> {

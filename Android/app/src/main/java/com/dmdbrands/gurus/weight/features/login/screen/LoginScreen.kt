@@ -41,6 +41,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.VersionText
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.login.model.LoginFormControls
@@ -95,9 +96,21 @@ private fun LoginContent(
     appBarColor = colorScheme.secondaryBackground,
     borderColor = Color.Transparent,
   ) { scaffoldModifier ->
-    Column(modifier = scaffoldModifier.fillMaxSize()
-      .verticalScroll(rememberScrollState())) {
+    Column(
+      modifier = scaffoldModifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState()),
+    ) {
       Spacer(Modifier.weight(1f))
+      AppText(
+        text = LoginStrings.WelcomeBack,
+        textType = TextType.Title,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = spacing.sm),
+      )
+      Spacer(Modifier.height(spacing.xl))
       Column(
         modifier =
           Modifier
@@ -109,12 +122,6 @@ private fun LoginContent(
               onClick = { focusManager.clearFocus() },
             ),
       ) {
-        AppText(
-          text = LoginStrings.WelcomeBack,
-          textType = TextType.Title,
-          textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(spacing.md))
         AppInput(
           formControl = state.form.controls.email,
           label = LoginStrings.EmailLabel,
@@ -143,7 +150,7 @@ private fun LoginContent(
               .semantics { contentType = ContentType.Password }
               .focusRequester(passwordFocusRequester),
         )
-        Spacer(Modifier.height(spacing.xs))
+        Spacer(Modifier.height(spacing.xl))
         AppButton(
           label = LoginStrings.LoginButton,
           enabled = state.form.isValid,
@@ -153,11 +160,11 @@ private fun LoginContent(
             handleIntent(LoginIntent.Submit)
           },
         )
-        Spacer(Modifier.height(spacing.sm))
+        Spacer(Modifier.height(spacing.md))
         AppButton(
           label = LoginStrings.ForgotPassword,
           type = ButtonType.TextPrimary,
-          size = ButtonSize.Medium,
+          size = ButtonSize.Small,
           modifier = Modifier.align(Alignment.CenterHorizontally),
           onClick = { handleIntent(LoginIntent.OpenForgotPasswordModal) },
         )
@@ -166,7 +173,7 @@ private fun LoginContent(
       Column(
         modifier = Modifier
           .fillMaxWidth()
-          .padding( bottom = spacing.x2l),
+          .padding(bottom = spacing.x2l),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         AppText(
@@ -180,22 +187,24 @@ private fun LoginContent(
         ) {
           AppText(
             text = LoginStrings.TermsOfService,
-            textType = TextType.Link,
+            textType = TextType.Link2,
             onClick = {
               handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.TermsOfServiceUrl))
             },
           )
-          Spacer(Modifier.padding(start = spacing.sm))
-          Text(LoginStrings.And, style = typography.body4, color = colorScheme.textBody)
-          Spacer(Modifier.padding(end = spacing.sm))
+          Spacer(Modifier.padding(start = spacing.x3s))
+          Text(LoginStrings.And, style = typography.subHeading2, color = colorScheme.textBody)
+          Spacer(Modifier.padding(end = spacing.x3s))
           AppText(
             text = LoginStrings.PrivacyPolicy,
-            textType = TextType.Link,
+            textType = TextType.Link2,
             onClick = {
               handleIntent(LoginIntent.OpenInAppBrowser(LoginStrings.PrivacyPolicyUrl))
             },
           )
         }
+        Spacer(Modifier.height(spacing.sm))
+        VersionText()
       }
     }
   }

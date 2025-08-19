@@ -14,7 +14,7 @@ import Combine
 final class GoalForm: ObservableForm {
     // MARK: - Controls
     /// Goal type string (see `GoalTypeSegment.goalTypeValue`).
-    var goalType = FormControl(GoalType.maintain.rawValue, validators: [.required])
+    var goalType = FormControl(GoalType.lose.rawValue, validators: [.required])
     /// Current weight as string (display units).
     var currentWeight = FormControl("", validators: [.required, .minValue()])
     /// Goal weight as string (display units).
