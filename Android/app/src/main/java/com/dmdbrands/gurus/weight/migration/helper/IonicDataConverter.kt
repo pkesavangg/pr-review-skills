@@ -213,11 +213,14 @@ object IonicDataConverter {
 
   /**
    * Converts a cursor row to ScaleEntry object.
+   * This method handles both opStack and regular entries from the Ionic database.
+   * It detects the cursor structure by checking if attempts column exists.
    */
-  fun convertCursorToScaleEntry(cursor: Cursor): ScaleEntry? {
+  fun convertCursorToScaleEntry(cursor: Cursor, isOpStack: Boolean = false): ScaleEntry? {
     return try {
       val userId = cursor.getString(1) ?: return null
       val timestampStr = cursor.getString(2) ?: return null
+      val operationType = cursor.getString(3) ?: "create"
       val weight = cursor.getInt(4)
 
       // Basic validation
@@ -245,13 +248,14 @@ object IonicDataConverter {
         id = 0, // Will be auto-generated
         accountId = userId,
         entryTimestamp = timestampString,
-        serverTimestamp = timestampString,
+        serverTimestamp = timestampString, // Use same timestamp as fallback
         opTimestamp = timestampString,
-        operationType = "CREATE",
+        operationType = operationType,
         deviceType = "scale",
         deviceId = UUID.randomUUID().toString(),
         unit = WeightUnit.LB, // Default to pounds
-        isSynced = false,
+        attempts = cursor.getIntOrNull(20) ?: 0,
+        isSynced = !isOpStack,
       )
 
       // Create BodyScaleEntryEntity
@@ -276,8 +280,23 @@ object IonicDataConverter {
         subcutaneousFatPercent = cursor.getIntOrNull(16)?.toDouble(),
         visceralFatLevel = cursor.getIntOrNull(17)?.toDouble(),
         boneMass = cursor.getIntOrNull(18)?.toDouble(),
-        impedance = null, // Not available in Ionic data
+        impedance = cursor.getIntOrNull(19), // Available in entry_metric, null in opStack_metric
       )
+
+      // Get unit from metrics if available (may be null for opStack entries)
+      val unit = try {
+        val unitStr = cursor.getString(20)
+        when (unitStr?.lowercase()) {
+          "kg" -> WeightUnit.KG
+          "lb", "lbs" -> WeightUnit.LB
+          else -> WeightUnit.LB // Default to pounds
+        }
+      } catch (e: Exception) {
+        WeightUnit.LB
+      }
+
+      // Update entry entity with correct unit
+      val updatedEntryEntity = entryEntity.copy(unit = unit)
 
       // Create ScaleEntryWithMetrics
       val scaleWithMetrics = ScaleEntryWithMetrics(
@@ -287,11 +306,11 @@ object IonicDataConverter {
 
       // Create the final ScaleEntry
       ScaleEntry(
-        entry = entryEntity,
+        entry = updatedEntryEntity,
         scale = scaleWithMetrics,
       )
     } catch (e: Exception) {
-      Log.w(TAG, "Error converting cursor to ScaleEntry: ${e.message}")
+      Log.w(TAG, "Error converting cursor to Entry ScaleEntry: ${e.message}")
       null
     }
   }
