@@ -32,7 +32,7 @@ struct DashboardScreen: View {
             dashboardScrollView()
         }
         .refreshable {
-            // TODO: Implement refresh logic if needed
+            store.syncEntries()
         }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
