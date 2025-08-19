@@ -45,10 +45,12 @@ fun ToastCard(
         .padding(horizontal = 16.dp, vertical = 16.dp)
         .boxShadow(
           shadowColor = colorScheme.glow,
-          offsetY = 4.dp,
+          offsetX = 2.dp,
+          offsetY = 2.dp,
           blurRadius = 8.dp,
           cornerRadius = 10.dp,
         ),
+
     shape = RoundedCornerShape(10.dp),
     colors =
       CardDefaults.cardColors(
@@ -98,7 +100,8 @@ fun ToastCard(
 
 private fun Modifier.boxShadow(
   shadowColor: Color,
-  offsetY: Dp,
+  offsetX: Dp = 0.dp,
+  offsetY: Dp = 0.dp,
   blurRadius: Dp,
   cornerRadius: Dp,
 ): Modifier =
@@ -111,23 +114,22 @@ private fun Modifier.boxShadow(
         (shadowColor.green * 255).toInt(),
         (shadowColor.blue * 255).toInt(),
       )
+      // Gaussian-like blur to emulate Figma's drop shadow
       maskFilter = BlurMaskFilter(blurRadius.toPx(), BlurMaskFilter.Blur.NORMAL)
     }
 
     drawIntoCanvas { canvas ->
-      val left = 0f
-      val top = offsetY.toPx()
-      val right = size.width
-      val bottom = size.height + offsetY.toPx()
-      val frameworkPaint = paint
+      val ox = offsetX.toPx()
+      val oy = offsetY.toPx()
       canvas.nativeCanvas.drawRoundRect(
-        left,
-        top,
-        right,
-        bottom,
-        cornerRadius.toPx(),
-        cornerRadius.toPx(),
-        frameworkPaint,
+        /* left   = */ ox,
+        /* top    = */ oy,
+        /* right  = */ size.width + ox,
+        /* bottom = */ size.height + oy,
+        /* rx     = */ cornerRadius.toPx(),
+        /* ry     = */ cornerRadius.toPx(),
+        /* paint  = */ paint,
       )
     }
   }
+
