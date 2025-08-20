@@ -19,6 +19,7 @@ struct HistoryMonthListScreen: View {
     @State private var showDeleteAlert = false
     @State private var entryToDelete: Entry? = nil
     @State private var openItemID: UUID? = nil
+    @State private var isOnboardingComplete: Bool = false
 
     let month: HistoryMonth
     
@@ -60,9 +61,14 @@ struct HistoryMonthListScreen: View {
         }
         .background(theme.backgroundSecondary)
         .navigationBarBackButtonHidden(true)
-        .task {
-           await self.historyStore.loadEntries(for: month)
-        }
+        .onAppear(perform: {
+            if !isOnboardingComplete {
+                Task {
+                    await self.historyStore.loadEntries(for: month)
+                    isOnboardingComplete = true
+                }
+            }
+         })
         .onChange(of: historyStore.isEmptyState) { _, isEmpty in
             if isEmpty {
                 dismiss()
@@ -73,6 +79,7 @@ struct HistoryMonthListScreen: View {
         }
         .onDisappear(perform: {
             historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
+            historyStore.resetSelectedMonth()
         })
         .refreshable {
             await historyStore.loadEntries(for: month)
@@ -81,6 +88,7 @@ struct HistoryMonthListScreen: View {
     
     @ViewBuilder
     private var content: some View {
+        
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(historyStore.entries, id: \.id) { entry in
@@ -99,6 +107,7 @@ struct HistoryMonthListScreen: View {
                         },
                         openItemID: $openItemID
                     )
+                    .id(entry.id) // Use entry ID for stable identity
                     // Removed dynamic id to preserve view identity and avoid full view rebuild
                 }
             }
@@ -136,5 +145,3 @@ struct HistoryMonthListScreen_Previews: PreviewProvider {
     }
 }
 #endif
-
-

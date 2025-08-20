@@ -84,6 +84,11 @@ final class HistoryStore: ObservableObject {
         self.selectedMonth = selectedMonth
         entries = []
     }
+    
+    func resetSelectedMonth() {
+        selectedMonth = nil
+        entries = []
+    }
 
     /// User tapped a metric inside an expanded entry.
     func selectMetric(_ metric: BodyMetric) {
@@ -140,6 +145,7 @@ final class HistoryStore: ObservableObject {
     // MARK: - Internal helpers -------------------------------------------
 
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
+        print("Loading months...", canShowLoader ? "Showing loader" : "Not showing loader")
         if canShowLoader {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
         }
@@ -173,7 +179,9 @@ final class HistoryStore: ObservableObject {
         } catch {
             entries = []
         }
-        notificationService.dismissLoader()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.notificationService.dismissLoader()
+        }
     }
     
     private func deleteEntryInternal(_ entry: Entry) async {
