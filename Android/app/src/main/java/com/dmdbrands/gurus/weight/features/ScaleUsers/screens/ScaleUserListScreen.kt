@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.ScaleUsers.components.ScaleUserList
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListIntent
@@ -25,6 +24,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,8 +77,7 @@ fun ScaleUserListScreenContent(
       userList = state.scaleUserList,
       userFormControl = state.usernameForm.username,
       onDeleteUser = { user -> handleIntent(ScaleUserListIntent.DeleteUser(user)) },
-
-      )
+    )
   }
 }
 
@@ -87,7 +86,7 @@ fun ScaleUserListScreenContent(
 fun ScaleUserListScreenPreview() {
   val dummyState = ScaleUserListState(
     scaleUserList = listOf(
-      GGBTUser (
+      GGBTUser(
         name = "Poongs",
         token = "424443432323424324",
         lastActive = 1656720000, // July 02, 2022

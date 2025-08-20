@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleUsers.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import com.greatergoods.blewrapper.GGDeviceService
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -14,12 +12,14 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import com.greatergoods.blewrapper.GGDeviceService
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import android.util.Log
 
 @HiltViewModel(
   assistedFactory = ScaleUserListViewModel.Factory::class,
@@ -46,6 +46,7 @@ constructor(
       ScaleUserListIntent.Back -> onBack()
       ScaleUserListIntent.Save -> updateScaleUsername()
       is ScaleUserListIntent.DeleteUser -> deleteUser(intent.user)
+      ScaleUserListIntent.RefreshUserList -> refreshUserList()
       else -> {}
     }
   }
@@ -76,8 +77,23 @@ constructor(
     viewModelScope.launch {
       try {
         val device = state.value.scale!!.toGGBTDevice()
-        ggDeviceService.getUsers(device) {
-          handleIntent(ScaleUserListIntent.SetUserList(it.user))
+        val currentUserDisplayName = state.value.scale!!.preferences?.displayName
+
+        ggDeviceService.getUsers(device) { response ->
+          // Filter out the current connected user to prevent duplication
+          val filteredUsers = if (currentUserDisplayName != null) {
+            response.user.filter { user ->
+              !user.name.equals(currentUserDisplayName, ignoreCase = true)
+            }
+          } else {
+            response.user
+          }
+
+          Log.d(
+            "ScaleUserList",
+            "Current user: $currentUserDisplayName, Total users: ${response.user.size}, Filtered users: ${filteredUsers.size}",
+          )
+          handleIntent(ScaleUserListIntent.SetUserList(filteredUsers))
         }
       } catch (err: Exception) {
         handleIntent(ScaleUserListIntent.SetUserList(emptyList()))
@@ -128,33 +144,63 @@ constructor(
         confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
         cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
         onConfirm = {
-          // Delete user and update the list
-          state.value.usernameForm.username.reset()
+          performDeleteUser(user)
         },
       ),
     )
   }
 
-  private fun onBack() {
-    if (state.value.usernameForm.username.isValueValid()) {
-      dialogQueueService.enqueue(
-        DialogModel.Confirm(
-          title = AppPopupStrings.UnsavedExitPopup.Title,
-          message = AppPopupStrings.UnsavedExitPopup.Message,
-          confirmText = AppPopupStrings.UnsavedExitPopup.Leave,
-          cancelText = AppPopupStrings.UnsavedExitPopup.Cancel,
-          onConfirm = {
-            navigateBack()
-            state.value.usernameForm.username.reset()
-          },
-        ),
-      )
-    } else {
-      navigateBack()
+  /**
+   * Performs the actual user deletion by calling the GGDeviceService.
+   * Similar to the implementation in BtWifiScaleSetupViewModel.
+   *
+   * @param user The user to delete from the scale
+   */
+  private fun performDeleteUser(user: GGBTUser) {
+    val currentScale = state.value.scale
+    if (currentScale == null) {
+      showToast(ScaleUsersStrings.Toast.Error)
+      return
+    }
+
+    viewModelScope.launch {
+      try {
+        dialogQueueService.showLoader(message = ScaleUsersStrings.Loading)
+
+        // Create a device copy with the user's information for deletion
+        // Similar to BtWifiScaleSetupViewModel's deleteUser implementation
+        val deleteDevice = currentScale.copy(
+          preferences = currentScale.preferences?.copy(
+            displayName = user.name,
+            shouldMeasureImpedance = user.isBodyMetricsEnabled,
+          ),
+          token = user.token,
+        )
+
+        // Delete the user account from the scale
+        ggDeviceService.deleteAccount(deleteDevice.toGGBTDevice()) { response ->
+          viewModelScope.launch {
+            dialogQueueService.dismissLoader()
+            loadScaleUsers()
+          }
+        }
+      } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
+        showToast(ScaleUsersStrings.Toast.Error)
+      }
     }
   }
 
-  private fun showDeleteUserAlert() {
+  /**
+   * Refreshes the user list by reloading from the scale.
+   * Public method that can be called from the UI to refresh the list.
+   */
+  fun refreshUserList() {
+    loadScaleUsers()
+  }
+
+  private fun onBack() {
+    navigateBack()
   }
 
   private fun navigateBack() {

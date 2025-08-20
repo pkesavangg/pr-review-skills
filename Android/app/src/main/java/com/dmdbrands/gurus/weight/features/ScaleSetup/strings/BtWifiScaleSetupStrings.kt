@@ -75,7 +75,15 @@ object BtWifiScaleSetupStrings {
     const val Subtitle = "Choose a new user name to proceed. Or, if this is you, restore the existing account."
     const val UsernameLabel = "User name"
     const val RestoreAccountButton = "Restore Account"
+    const val ErrorMessage = "The scale can't have duplicate user names"
     fun LastActive(date: String?) = "last active $date"
+
+    object RestoreConfirmation {
+      const val Title = "Restore Account"
+      const val Message = "This will replace the existing user account on the scale. Are you sure you want to continue?"
+      const val Restore = "Restore"
+      const val GoBack = "Go Back"
+    }
   }
 
   object CustomizeSettings {

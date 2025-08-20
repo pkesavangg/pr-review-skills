@@ -275,7 +275,7 @@ private fun LoseGainGoalDisplay(
     // Progress Slider using AppLinearProgressIndicator
     AppLinearProgressIndicator(
       progress = (progressPercentage / 100.0).toFloat().coerceIn(0f, 1f),
-      type = AppLinearProgressType.Primary,
+      type = AppLinearProgressType.Success,
       height = 8.dp,
       modifier =
         Modifier

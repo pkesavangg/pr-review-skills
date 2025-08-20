@@ -80,24 +80,26 @@ fun CustomizeScaleSettings(
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
     shouldCenterMiddleContent = true,
-    leadingContent =
-      {
-        AppButton(
-          type = ButtonType.TextPrimary,
-          label = ScaleSetupStrings.backButton,
-          size = ButtonSize.Small,
-          onClick = {
-            scope.launch {
-              pagerState.scrollToPage(0)
-            }
-          },
-        )
-      },
+          leadingContent =
+        {
+          AppButton(
+            type = ButtonType.TextPrimary,
+            label = ScaleSetupStrings.backButton,
+            size = ButtonSize.Small,
+            // Disable back button when on main settings screen (NONE)
+            enabled = pagerState.currentPage != CustomizeSettings.NONE.ordinal,
+            onClick = {
+              scope.launch {
+                pagerState.scrollToPage(0)
+              }
+            },
+          )
+        },
     trailingContent =
       {
         if (pagerState.currentPage == CustomizeSettings.NONE.ordinal) {
           AppButton(
-            type = ButtonType.TextPrimary,
+            type = ButtonType.PrimaryFilled,
             label = ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
             enabled = !(pagerState.currentPage == CustomizeSettings.SCALE_USERNAME.ordinal && state.usernameForm.username.isValueValid()),
@@ -209,16 +211,20 @@ fun CustomizeScaleSettings(
           title = CustomizeSettingsStrings.ScaleMode.Title,
         ) {
           ScaleModeSettingsScreen(
-            isAllBodyMetrics = true,
-            isHeartRateOn = true,
-            onModeSelected = {
-              // UPDATE SCALE MODE OF WEIGHT ONLY MODE CHANGES
-              updatedPreference = updatedPreference.copy(shouldMeasureImpedance = it)
+            isAllBodyMetrics = state.isAllBodyMetrics,
+            isHeartRateOn = state.isHeartRateOn,
+            onModeSelected = { newAllBodyMetrics ->
+              // Update scale mode preference in state and updatedPreference
+              onIntent(BtWifiScaleSetupIntent.SetAllBodyMetrics(newAllBodyMetrics))
+              updatedPreference = updatedPreference.copy(shouldMeasureImpedance = newAllBodyMetrics)
             },
-            onHeartRateToggle = {
-              updatedPreference = updatedPreference.copy(shouldMeasurePulse = it)
+            onHeartRateToggle = { newHeartRateState ->
+              // Update heart rate preference in state and updatedPreference
+              onIntent(BtWifiScaleSetupIntent.SetHeartRateMode(newHeartRateState))
+              updatedPreference = updatedPreference.copy(shouldMeasurePulse = newHeartRateState)
             },
             onBioimpedanceClick = {
+              // Handle bioimpedance modal - can be implemented if needed
             },
           )
         }
@@ -226,14 +232,17 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_USERNAME -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_USERNAME)
-        SetupForm(
-          formControl = state.usernameForm.username,
-          title = ScaleFormStrings.UserNameTitle,
-          subtitle = ScaleFormStrings.UserNameSubtitle,
-          label = ScaleFormStrings.UserNameLabel,
-          inputType = AppInputType.TEXT,
-          supportingImage = AppIcons.Setup.UserNameScale, // Placeholder
-        )
+        CustomizationLayout {
+          SetupForm(
+            formControl = state.usernameForm.username,
+            title = ScaleFormStrings.UserNameTitle,
+            subtitle = ScaleFormStrings.UserNameSubtitle,
+            label = ScaleFormStrings.UserNameLabel,
+            inputType = AppInputType.TEXT,
+            supportingImage = AppIcons.Setup.UserNameScale,
+            enableScroll = false,
+          )
+        }
       }
     }
   }
