@@ -71,45 +71,36 @@ struct HistoryMonthListScreen: View {
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }
+        .onDisappear(perform: {
+            historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
+        })
+        .refreshable {
+            await historyStore.loadEntries(for: month)
+        }
     }
     
     @ViewBuilder
     private var content: some View {
-        if historyStore.isEmptyState {
-            Text("No entries found for this month")
-                .foregroundColor(theme.textBody)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(historyStore.entries, id: \.id) { entry in
-                        HistoryEntryItem(
-                            entry: entry,
-                            isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
-                            onTap: {
-
-                                toggleEntry(entry)
-                            },
-                            onDelete: {
-                                historyStore.showDeleteEntryAlert(entry: entry, onCancel: {
-                                    // Let the swipe modifier handle closing naturally
-                                })
-                            },
-                            onMetricTap: { entry, metric in
-                                selectedEntry = entry
-                                selectedMetric = metric
-                            },
-                            openItemID: $openItemID
-                        )
-                        .id("\(entry.id.uuidString)-\(historyStore.expandedEntries.contains(entry.id.uuidString))") 
-                    }
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(historyStore.entries, id: \.id) { entry in
+                    HistoryEntryItem(
+                        entry: entry,
+                        isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
+                        onTap: {
+                            toggleEntry(entry)
+                        },
+                        onDelete: {
+                            historyStore.showDeleteEntryAlert(entry: entry)
+                        },
+                        onMetricTap: { entry, metric in
+                            selectedEntry = entry
+                            selectedMetric = metric
+                        },
+                        openItemID: $openItemID
+                    )
+                    // Removed dynamic id to preserve view identity and avoid full view rebuild
                 }
-            }
-            .onDisappear(perform: {
-                historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
-            })
-            .refreshable {
-                await historyStore.loadEntries(for: month)
             }
         }
     }
