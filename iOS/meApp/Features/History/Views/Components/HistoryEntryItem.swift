@@ -14,7 +14,7 @@ struct HistoryEntryItem: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
-
+    
     let entry: Entry
     let isExpanded: Bool
     let onTap: () -> Void
@@ -25,11 +25,11 @@ struct HistoryEntryItem: View {
     // iOS 17 fix: Stable animation state
     @State private var animationPhase: UUID = UUID()
     @State private var isAnimating = false
-
+    
     // MARK: - Computed Properties
-
+    
     // MARK: - Body
- 
+    
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -39,30 +39,30 @@ struct HistoryEntryItem: View {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor( isExpanded ? theme.textInverse : theme.textHeading)
-
+                    
                     Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundColor( isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
+                
                 // Weight value
                 HStack(spacing: .spacingXS) {
                     Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-
+                    
                     Text(weightUnit.rawValue)
                         .fontOpenSans(.body2)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
-
+                
                 // Expansion chevron (only if metrics exist)
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .padding(.leading, .spacingSM)
-                        // iOS 17 fix: Remove conflicting animations
+                    // iOS 17 fix: Remove conflicting animations
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
             }
@@ -79,9 +79,9 @@ struct HistoryEntryItem: View {
                         label: {
                             AnyView(
                                 Text(CommonStrings.delete)
-                                .fontOpenSans(.button1)
-                                .fontWeight(.bold)
-                                .foregroundColor(theme.textInverse)
+                                    .fontOpenSans(.button1)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textInverse)
                             )
                         }
                     )
@@ -89,11 +89,11 @@ struct HistoryEntryItem: View {
                 itemID: entry.id,
                 openItemID: openItemID
             )
-
+            
             Divider()
                 .foregroundColor(theme.actionPrimary)
             
-//            // iOS 17 fix: Stable expanded metrics section with proper animation
+            //            // iOS 17 fix: Stable expanded metrics section with proper animation
             if isExpanded, !entry.metricItems.isEmpty {
                 VStack(spacing: 0) {
                     // iOS 17 fix: Use regular VStack instead of LazyVStack to prevent layout churn
@@ -118,23 +118,8 @@ struct HistoryEntryItem: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard !entry.metricItems.isEmpty else { return }
-            
-            // iOS 17 fix: Simplified animation handling
-           // isAnimating = true
             onTap()
-            
-            // Reset animation flag quickly to prevent lag
-//            Task {
-////                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms - reduced from 300ms
-//                //isAnimating = false
-//            }
         }
-//        .onChange(of: isExpanded) { _, newValue in
-//            // iOS 17 fix: Update animation phase when expansion state changes
-//            // Only trigger if actually changing to prevent unnecessary animations
-//            guard newValue != isExpanded else { return }
-//            animationPhase = UUID()
-//        }
     }
 }
 
@@ -152,14 +137,14 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             deviceType: "scale",
             isSynced: true
         )
-
+        
         entry.scaleEntry = BathScaleEntry(
             weight: 1492,
             bodyFat: 50,
             muscleMass: 569,
             water: 53
         )
-
+        
         entry.scaleEntryMetric = BathScaleMetric(
             bmr: 1862,
             metabolicAge: 28,
@@ -171,7 +156,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             impedance: 100,
             unit: "kg"
         )
-
+        
         @State var openItemID: UUID? = nil
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
@@ -182,7 +167,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 onMetricTap: { _, _ in },
                 openItemID: .constant(nil)
             )
-
+            
             HistoryEntryItem(
                 entry: entry,
                 isExpanded: true,
