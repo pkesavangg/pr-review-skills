@@ -38,14 +38,16 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
+    static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
     private let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
     private let dataManager: DashboardDataManager
-
+    var shouldShowGoalCardOrStreaks: Bool {
+            !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
+        }
     // MARK: - Initialization
     init() {
         // Initialize managers
@@ -186,15 +188,14 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     var metricGridColumns: [GridItem] {
-        let effectiveType = determineDashboardTypeFromAccount()
-        return metricsManager.getMetricGridColumns(for: effectiveType)
+        // Use the in-memory dashboard type rather than re-inferring from account
+        return metricsManager.getMetricGridColumns(for: state.metrics.dashboardType)
     }
 
     var metricsToShow: [MetricItem] {
-        let effectiveType = determineDashboardTypeFromAccount()
         let baseMetrics = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: effectiveType,
+            dashboardType: state.metrics.dashboardType,
             removedMetrics: state.ui.removedMetrics
         )
         
@@ -210,7 +211,8 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
-        determineDashboardTypeFromAccount()
+        // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
+        state.metrics.dashboardType
     }
 
     var streakColumns: [GridItem] {
@@ -534,6 +536,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             let metricsCount = metricsCSV.split(separator: ",").count
             if metricsCount >= 12 {
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
+                return .dashboard12
+            }
+            // If there are zero configured metrics, keep the dashboard at 12 so the grid shows 3 columns
+            if metricsCount == 0 {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
                 return .dashboard12
             }
         }

@@ -8,8 +8,13 @@
 import SwiftUI
 import UIKit
 
-/// A SwiftUI wrapper around UICollectionView that displays goal card and streak items with drag-and-drop functionality
-/// Expands to fit content, does not have its own scroll view, and is placed inside the dashboard's ScrollView
+/// UIKit-based grid view for goal and streak items with improved drag-and-drop
+/// 
+/// COMPLETE HAPTIC FEEDBACK ELIMINATION:
+/// - NO haptic feedback during dragging - eliminates ALL vibration spam
+/// - Haptic feedback ONLY when actual drop occurs (confirmation feedback)
+/// - No more vibration when overlaying cells or moving between grid sections
+/// - Maintains all existing drag, drop, and reordering functionality
 struct GoalStreakGridUIKitView: UIViewRepresentable {
     @ObservedObject var store: DashboardStore
     
@@ -88,6 +93,54 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         layout.minimumLineSpacing = 32              // gap between rows
         layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16) // outer margin
         return layout
+    }
+    
+    /// Configuration constants for drop target detection
+    /// ONLY haptic feedback for meaningful changes - NO vibration spam
+    /// 
+    /// KEY IMPROVEMENTS:
+    /// - changeThreshold: 2.0s - Much longer to prevent rapid feedback
+    /// - hapticFeedbackThreshold: 2.5s - Significantly reduces vibration spam
+    /// - zoneSize: 6 - Much larger zones for minimal sensitivity
+    /// - minimumGridPositionChange: 8 - Much less sensitive feedback
+    /// - minimumDistanceThreshold: 12 - Significantly reduced sensitivity
+    private struct DropTargetConfig {
+        /// Minimum time between drop target changes to prevent excessive haptic feedback
+        /// IMPROVED: Increased to 2.0s for minimal feedback
+        static let changeThreshold: TimeInterval = 2.0
+        
+        /// Minimum distance change to consider a drop target change meaningful
+        /// IMPROVED: Increased to 12 for much less sensitivity
+        static let minimumDistanceThreshold: Int = 12
+        
+        /// Whether to enable smart drop target detection (reduces haptic feedback)
+        static let enableSmartDetection = true
+        
+        /// Whether to show drop indicators only at valid grid boundaries
+        static let showOnlyAtBoundaries = true
+        
+        /// Minimum grid position change to trigger haptic feedback
+        /// IMPROVED: Increased to 8 for minimal feedback
+        static let minimumGridPositionChange: Int = 8
+        
+        /// Whether to use zone-based detection instead of individual cell detection
+        static let useZoneBasedDetection = true
+        
+        /// Zone size for grouping nearby cells (reduces feedback frequency)
+        /// IMPROVED: Increased to 6 for much larger zones
+        static let zoneSize: Int = 6
+        
+        /// Additional optimizations
+        /// Minimum time between haptic feedback events to prevent vibration spam
+        /// IMPROVED: Increased to 2.5s for minimal vibration
+        static let hapticFeedbackThreshold: TimeInterval = 2.5
+        
+        /// Whether to use iOS Home Screen-style drop target validation
+        static let useHomeScreenValidation = true
+        
+        /// Minimum movement distance before considering drop target changes
+        /// IMPROVED: Increased to 40.0 for much less sensitivity
+        static let minimumMovementThreshold: CGFloat = 40.0
     }
     
     /// Creates and configures the collection view with drag-and-drop support
@@ -202,6 +255,23 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         var store: DashboardStore
         var gridModel: MileStoneGridModel
         
+        // Improved drop target tracking to reduce haptic feedback
+        private var lastDropTargetIndexPath: IndexPath?
+        private var lastDropTargetItemType: MileStoneType?
+        private var dropTargetChangeThreshold: TimeInterval = GoalStreakGridUIKitView.DropTargetConfig.changeThreshold
+        private var lastDropTargetChangeTime: Date?
+        
+        // Minimal haptic feedback tracking
+        private var lastHapticFeedbackTime: Date?
+        
+        /// iOS Home Screen Logic: Track position changes for intelligent haptic feedback
+        /// Prevents vibration spam during smooth dragging operations
+        private var lastHapticFeedbackRow: Int?
+        private var lastHapticFeedbackZone: Int?
+        // Cache last drop proposal to avoid oscillation that can trigger system haptics
+        private var lastProposalIntent: UICollectionViewDropProposal.Intent?
+        private var lastProposalIndexPath: IndexPath?
+        
         init(store: DashboardStore, gridModel: MileStoneGridModel) {
             self.store = store
             self.gridModel = gridModel
@@ -313,20 +383,394 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
 
+            // Neutralize haptics when hovering over the goal card by using an unspecified intent
+            if let indexPath = destinationIndexPath, indexPath.item >= 0, indexPath.item < gridModel.mileStones.count {
+                let target = gridModel.mileStones[indexPath.item]
+                if case .goalCard = target {
+                    let intent: UICollectionViewDropProposal.Intent = .unspecified
+                    // Avoid changing proposal repeatedly while staying on goal card
+                    if lastProposalIntent == intent && lastProposalIndexPath == indexPath {
+                        return UICollectionViewDropProposal(operation: .move, intent: intent)
+                    } else {
+                        lastProposalIntent = intent
+                        lastProposalIndexPath = indexPath
+                        return UICollectionViewDropProposal(operation: .move, intent: intent)
+                    }
+                }
+            }
+
+            // Improved drop target detection with reduced sensitivity
             if let destinationIndexPath = destinationIndexPath {
-                // Show drop target indicator
-                showDropTargetIndicator(at: destinationIndexPath, in: collectionView)
+                // Only show drop target indicator when there's a meaningful change
+                let shouldShowIndicator = shouldShowDropTargetIndicator(
+                    at: destinationIndexPath,
+                    in: collectionView,
+                    for: session
+                )
+                
+                if shouldShowIndicator {
+                    showDropTargetIndicator(at: destinationIndexPath, in: collectionView)
+                }
+                // Cache proposal for non-goal targets to avoid frequent system changes
+                lastProposalIntent = .insertAtDestinationIndexPath
+                lastProposalIndexPath = destinationIndexPath
             }
             
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
+        /// Intelligent drop target detection that considers user's drag pattern
+        /// Reduces feedback for small movements and rapid changes
+        private func shouldShowDropTargetIndicator(
+            at indexPath: IndexPath,
+            in collectionView: UICollectionView,
+            for session: UIDropSession
+        ) -> Bool {
+            // Get the current drag item to determine its type
+            guard let dragItem = session.items.first,
+                  let wrapper = dragItem.localObject as? DragItemWrapper,
+                  wrapper.type == DragItemWrapper.ItemType.goalStreak else {
+                return false
+            }
+            
+            let widget = wrapper.item as! MileStoneType
+            
+            // Check if this is a meaningful drop target change
+            let isMeaningfulChange = isDropTargetMeaningfullyChanged(
+                newIndexPath: indexPath,
+                newItemType: widget
+            )
+            
+            // If not a meaningful change, don't show indicator
+            guard isMeaningfulChange else {
+                return false
+            }
+            
+            // Additional validation: Check if the drop target is in a valid logical area
+            let isValidLogicalArea = isDropTargetInValidLogicalArea(
+                at: indexPath,
+                for: widget
+            )
+            
+            // Only show indicator if both conditions are met
+            return isValidLogicalArea
+        }
+        
+        /// Enhanced drop target detection with pattern recognition
+        /// Considers the user's drag direction and speed to reduce unnecessary feedback
+        /// IMPROVED: Much less sensitive to grid boundaries, only triggers for meaningful changes
+        private func isDropTargetMeaningfullyChanged(
+            newIndexPath: IndexPath,
+            newItemType: MileStoneType
+        ) -> Bool {
+            let now = Date()
+            
+            // If this is the first drop target, it's meaningful
+            guard let lastIndexPath = lastDropTargetIndexPath,
+                  let lastItemType = lastDropTargetItemType else {
+                updateDropTargetTracking(newIndexPath: newIndexPath, newItemType: newItemType, timestamp: now)
+                return true
+            }
+            
+            // IMPROVED: Much longer time threshold to prevent rapid feedback
+            if let lastChangeTime = lastDropTargetChangeTime,
+               now.timeIntervalSince(lastChangeTime) < DropTargetConfig.changeThreshold {
+                return false
+            }
+            
+            // Check if the target actually changed meaningfully
+            let hasIndexChanged = newIndexPath.item != lastIndexPath.item
+            
+            // If no index change, no meaningful change
+            guard hasIndexChanged else { return false }
+            
+            // IMPROVED: Use much larger zones and higher thresholds for less sensitivity
+            if DropTargetConfig.useZoneBasedDetection {
+                let isZoneChange = isZoneMeaningfullyChanged(
+                    from: lastIndexPath,
+                    to: newIndexPath,
+                    itemType: newItemType
+                )
+                
+                if isZoneChange {
+                    updateDropTargetTracking(newIndexPath: newIndexPath, newItemType: newItemType, timestamp: now)
+                    return true
+                }
+                return false
+            }
+            
+            // IMPROVED: Much higher threshold for individual cell detection
+            return isIndividualCellMeaningfullyChanged(
+                from: lastIndexPath,
+                to: newIndexPath,
+                itemType: newItemType,
+                timestamp: now
+            )
+        }
+        
+        /// Zone-based detection: Groups nearby cells into zones to reduce feedback frequency
+        /// IMPROVED: Much larger zones and higher thresholds for minimal feedback
+        private func isZoneMeaningfullyChanged(
+            from lastIndexPath: IndexPath,
+            to newIndexPath: IndexPath,
+            itemType: MileStoneType
+        ) -> Bool {
+            let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+            let zoneSize = DropTargetConfig.zoneSize
+            
+            // Calculate zone coordinates (group cells into 3x3 zones for iOS Home Screen-like behavior)
+            let lastZone = (lastIndexPath.item / (gridColumns * zoneSize * 2), (lastIndexPath.item % gridColumns) / zoneSize)
+            let newZone = (newIndexPath.item / (gridColumns * zoneSize * 2), (newIndexPath.item % gridColumns) / zoneSize)
+            
+            // Only trigger if moving to a different zone
+            let hasZoneChanged = lastZone != newZone
+            
+            // IMPROVED: For goal cards, use much larger row zones to reduce feedback
+            if itemType == .goalCard {
+                let lastMajorRow = lastIndexPath.item / (gridColumns * zoneSize * 4) // Much larger zones
+                let newMajorRow = newIndexPath.item / (gridColumns * zoneSize * 4)
+                let hasMajorRowChanged = lastMajorRow != newMajorRow
+                
+                // Only consider it meaningful if crossing major boundaries
+                return hasZoneChanged || hasMajorRowChanged
+            }
+            
+            // IMPROVED: For streak items, require crossing multiple zones
+            let lastStreakZone = lastIndexPath.item / (gridColumns * zoneSize * 2)
+            let newStreakZone = newIndexPath.item / (gridColumns * zoneSize * 2)
+            let hasStreakZoneChanged = lastStreakZone != newStreakZone
+            
+            return hasZoneChanged || hasStreakZoneChanged
+        }
+        
+        /// Individual cell detection with reduced sensitivity
+        /// IMPROVED: Much higher thresholds to prevent excessive feedback
+        private func isIndividualCellMeaningfullyChanged(
+            from lastIndexPath: IndexPath,
+            to newIndexPath: IndexPath,
+            itemType: MileStoneType,
+            timestamp: Date
+        ) -> Bool {
+            let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+            
+            // Calculate grid positions
+            let lastGridPosition = (lastIndexPath.item / gridColumns, lastIndexPath.item % gridColumns)
+            let newGridPosition = (newIndexPath.item / gridColumns, newIndexPath.item % gridColumns)
+            
+            // Calculate Manhattan distance between positions
+            let rowDistance = abs(newGridPosition.0 - lastGridPosition.0)
+            let colDistance = abs(newGridPosition.1 - lastGridPosition.1)
+            let totalDistance = rowDistance + colDistance
+            
+            // Only consider it meaningful if moving at least minimum distance
+            guard totalDistance >= DropTargetConfig.minimumGridPositionChange else {
+                return false
+            }
+            
+            // IMPROVED: For goal cards, require significant row changes to reduce feedback
+            if itemType == .goalCard {
+                let hasRowChanged = rowDistance >= 2 // Require 2+ row change
+                if hasRowChanged {
+                    return true
+                }
+                return false
+            }
+            
+            // IMPROVED: For streak items, require much larger position changes
+            let hasSignificantPositionChange = totalDistance >= (DropTargetConfig.minimumGridPositionChange * 2) // Double the threshold
+            
+            if hasSignificantPositionChange {
+                return true
+            }
+            
+            return false
+        }
+        
+        /// Additional optimization: Check if the drop target is in a valid logical area
+        /// This prevents haptic feedback when hovering over invalid drop zones
+        /// Now more permissive to reduce excessive feedback
+        private func isDropTargetInValidLogicalArea(
+            at indexPath: IndexPath,
+            for itemType: MileStoneType
+        ) -> Bool {
+            let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+            
+            // Use zone-based validation to reduce feedback frequency
+            if DropTargetConfig.useZoneBasedDetection {
+                return isDropTargetInValidZone(at: indexPath, for: itemType, gridColumns: gridColumns)
+            }
+            
+            // Legacy strict validation (less restrictive now)
+            switch itemType {
+            case .goalCard:
+                // Goal cards can be placed at row boundaries (more flexible now)
+                // Allow placement in a wider range to reduce feedback
+                let columnIndex = indexPath.item % gridColumns
+                return columnIndex == 0 || columnIndex == 1 // Allow first two columns
+                
+            case .streak:
+                // Streak items can be placed in any valid grid position
+                let columnIndex = indexPath.item % gridColumns
+                return columnIndex < gridColumns
+            }
+        }
+        
+        /// Zone-based validation: More permissive drop zones to reduce feedback
+        /// iOS Home Screen Logic: Uses larger, more flexible zones for smoother experience
+        private func isDropTargetInValidZone(
+            at indexPath: IndexPath,
+            for itemType: MileStoneType,
+            gridColumns: Int
+        ) -> Bool {
+            let zoneSize = DropTargetConfig.zoneSize
+            
+            switch itemType {
+            case .goalCard:
+                // Goal cards can be placed in larger zones (reduces feedback)
+                // iOS Home Screen Logic: Widgets have more flexible placement
+                let zoneIndex = indexPath.item / (gridColumns * zoneSize)
+                let columnInZone = (indexPath.item % gridColumns) / zoneSize
+                
+                // Allow placement in first column of any zone, or anywhere in first zone
+                // This mimics iOS Home Screen widget behavior
+                return columnInZone == 0 || zoneIndex == 0
+                
+            case .streak:
+                // Streak items can be placed in any zone
+                // iOS Home Screen Logic: Apps have very flexible placement
+                return true
+            }
+        }
+        
+        /// Updates the drop target tracking state
+        private func updateDropTargetTracking(
+            newIndexPath: IndexPath,
+            newItemType: MileStoneType,
+            timestamp: Date
+        ) {
+            lastDropTargetIndexPath = newIndexPath
+            lastDropTargetItemType = newItemType
+            lastDropTargetChangeTime = timestamp
+        }
+        
         /// iOS Home Screen Logic: Show drop target indicator to prevent flickering
+        /// IMPROVED: NO haptic feedback during dragging - only for actual drops
         private func showDropTargetIndicator(at indexPath: IndexPath, in collectionView: UICollectionView) {
             // Disable animations for immediate feedback
             CATransaction.begin()
             CATransaction.setDisableActions(true)            
             CATransaction.commit()
+            
+            // IMPROVED: NO haptic feedback during dragging - eliminates vibration spam
+            // provideMinimalHapticFeedback() // DISABLED - no feedback during drag
+        }
+        
+        /// Provides haptic feedback ONLY when there's a meaningful drop target change
+        /// IMPROVED: Completely disabled during dragging to eliminate vibration spam
+        private func provideMinimalHapticFeedback() {
+            // IMPROVED: Completely disable haptic feedback during dragging
+            // This eliminates ALL vibration when moving between grid cells
+            return // NO haptic feedback during dragging at all
+            
+            // OLD LOGIC (disabled):
+            // ONLY provide feedback if this is a meaningful drop target change
+            // If not meaningful, return immediately with NO feedback
+            // guard isMeaningfulDropTargetChange() else {
+            //     return // NO haptic feedback - not a meaningful change
+            // }
+            // 
+            // // Only provide feedback if we haven't provided any recently
+            // let now = Date()
+            // if let lastFeedbackTime = lastHapticFeedbackTime,
+            //    now.timeIntervalSince(lastFeedbackTime) < DropTargetConfig.hapticFeedbackThreshold {
+            //     return // Too soon for another feedback
+            // }
+            // 
+            // // This is a meaningful change - provide haptic feedback
+            // provideHapticFeedback()
+            // lastHapticFeedbackTime = now
+        }
+        
+        /// Determines if the current drop target change is meaningful enough for haptic feedback
+        /// Returns true ONLY for significant changes, false for everything else
+        private func isMeaningfulDropTargetChange() -> Bool {
+            guard let lastIndexPath = lastDropTargetIndexPath,
+                  let lastItemType = lastDropTargetItemType else {
+                // First drop target - this is meaningful
+                return true
+            }
+            
+            // Check if enough time has passed since last meaningful change
+            let now = Date()
+            if let lastChangeTime = lastDropTargetChangeTime,
+               now.timeIntervalSince(lastChangeTime) < DropTargetConfig.changeThreshold {
+                return false // Too soon - not meaningful
+            }
+            
+            // For goal cards: ONLY feedback when crossing major row boundaries (4+ rows)
+            if lastItemType == .goalCard {
+                let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                let currentRow = lastIndexPath.item / gridColumns
+                
+                if let previousRow = lastHapticFeedbackRow {
+                    let rowChange = abs(currentRow - previousRow)
+                    // ONLY meaningful if crossing 4+ row boundaries
+                    if rowChange >= 4 {
+                        lastHapticFeedbackRow = currentRow
+                        return true
+                    } else {
+                        return false // Not meaningful enough
+                    }
+                } else {
+                    // First feedback for goal card
+                    lastHapticFeedbackRow = currentRow
+                    return true
+                }
+            }
+            
+            // For streak items: ONLY feedback when crossing multiple zone boundaries
+            if case .streak = lastItemType {
+                let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                let zoneSize = DropTargetConfig.zoneSize
+                let currentZone = lastIndexPath.item / (gridColumns * zoneSize * 2) // Larger zones
+                
+                if let previousZone = lastHapticFeedbackZone {
+                    // ONLY meaningful if crossing to a different major zone
+                    if currentZone != previousZone {
+                        lastHapticFeedbackZone = currentZone
+                        return true
+                    } else {
+                        return false // Same zone - not meaningful
+                    }
+                } else {
+                    // First feedback for streak item
+                    lastHapticFeedbackZone = currentZone
+                    return true
+                }
+            }
+            
+            return false // Default: not meaningful
+        }
+        
+        /// Helper method to provide the actual haptic feedback
+        /// Uses iOS Home Screen-like intensity and style
+        private func provideHapticFeedback() {
+            // iOS Home Screen Logic: Use very light feedback with minimal intensity
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.prepare()
+            
+            // iOS Home Screen uses very subtle feedback (0.2-0.3 intensity)
+            impactFeedback.impactOccurred(intensity: 0.25)
+        }
+        
+        /// Provides haptic feedback ONLY when an actual drop occurs
+        /// This gives user confirmation that the reorder was successful
+        /// NO feedback during dragging - eliminates vibration spam completely
+        private func provideDropConfirmationHapticFeedback() {
+            // Use medium feedback to confirm successful drop
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.prepare()
+            impactFeedback.impactOccurred(intensity: 0.5)
         }
         
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
@@ -368,6 +812,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
             // Save the new order to DashboardStore UI state
             persistGridOrderToStore()
+            
+            // IMPROVED: Provide haptic feedback ONLY when actual drop occurs
+            // This gives user confirmation that the reorder was successful
+            provideDropConfirmationHapticFeedback()
         }
         
         /// iOS Home Screen Logic: Calculate actual insertion index considering widget/app spacing
@@ -484,6 +932,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Store the dragged index to prevent flickering
                 store.state.ui.isGoalCardBeingDragged = (wrapper.item as? MileStoneType) == .goalCard
             }
+            
+            // Reset drop target tracking for new drag session
+            resetDropTargetTracking()
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionDidEnd session: UIDragSession) {
@@ -494,6 +945,19 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Clear drag state
             store.state.ui.isGoalCardBeingDragged = false
+            
+            // Reset drop target tracking
+            resetDropTargetTracking()
+            
+            // Reset haptic feedback tracking
+            resetHapticFeedbackTracking()
+        }
+        
+        /// Resets haptic feedback tracking to allow fresh feedback in next session
+        private func resetHapticFeedbackTracking() {
+            lastHapticFeedbackTime = nil
+            lastHapticFeedbackRow = nil
+            lastHapticFeedbackZone = nil
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
@@ -519,6 +983,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Clear any remaining drag state
             store.state.ui.isGoalCardBeingDragged = false
+            
+            // Reset drop target tracking
+            resetDropTargetTracking()
         }
         
         /// Saves the current grid order to DashboardStore UI state
@@ -592,6 +1059,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     }
                 }
             }
+        }
+        
+        /// Resets the drop target tracking state
+        private func resetDropTargetTracking() {
+            lastDropTargetIndexPath = nil
+            lastDropTargetItemType = nil
+            lastDropTargetChangeTime = nil
         }
     }
 }

@@ -286,7 +286,7 @@ extension MetricGridUIKitView {
             }
             
             // Provide haptic feedback
-            HapticFeedbackService.medium()
+            // Removed: avoid triggering haptic at drag start (prevents vibration spam)
             return [dragItem]
         }
         
