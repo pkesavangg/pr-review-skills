@@ -284,9 +284,7 @@ extension MetricGridUIKitView {
             if let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
                 cell.updateDragState(true) // Use the new method for more reliable state management
             }
-            
-            // Provide haptic feedback
-            // Removed: avoid triggering haptic at drag start (prevents vibration spam)
+
             return [dragItem]
         }
         

@@ -8,13 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// UIKit-based grid view for goal and streak items with improved drag-and-drop
-/// 
-/// COMPLETE HAPTIC FEEDBACK ELIMINATION:
-/// - NO haptic feedback during dragging - eliminates ALL vibration spam
-/// - Haptic feedback ONLY when actual drop occurs (confirmation feedback)
-/// - No more vibration when overlaying cells or moving between grid sections
-/// - Maintains all existing drag, drop, and reordering functionality
 struct GoalStreakGridUIKitView: UIViewRepresentable {
     @ObservedObject var store: DashboardStore
     
@@ -95,22 +88,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         return layout
     }
     
-    /// Configuration constants for drop target detection
-    /// ONLY haptic feedback for meaningful changes - NO vibration spam
-    /// 
-    /// KEY IMPROVEMENTS:
-    /// - changeThreshold: 2.0s - Much longer to prevent rapid feedback
-    /// - hapticFeedbackThreshold: 2.5s - Significantly reduces vibration spam
-    /// - zoneSize: 6 - Much larger zones for minimal sensitivity
-    /// - minimumGridPositionChange: 8 - Much less sensitive feedback
-    /// - minimumDistanceThreshold: 12 - Significantly reduced sensitivity
     private struct DropTargetConfig {
         /// Minimum time between drop target changes to prevent excessive haptic feedback
-        /// IMPROVED: Increased to 2.0s for minimal feedback
         static let changeThreshold: TimeInterval = 2.0
         
         /// Minimum distance change to consider a drop target change meaningful
-        /// IMPROVED: Increased to 12 for much less sensitivity
         static let minimumDistanceThreshold: Int = 12
         
         /// Whether to enable smart drop target detection (reduces haptic feedback)
@@ -120,26 +102,21 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         static let showOnlyAtBoundaries = true
         
         /// Minimum grid position change to trigger haptic feedback
-        /// IMPROVED: Increased to 8 for minimal feedback
         static let minimumGridPositionChange: Int = 8
         
         /// Whether to use zone-based detection instead of individual cell detection
         static let useZoneBasedDetection = true
         
         /// Zone size for grouping nearby cells (reduces feedback frequency)
-        /// IMPROVED: Increased to 6 for much larger zones
         static let zoneSize: Int = 6
-        
-        /// Additional optimizations
+
         /// Minimum time between haptic feedback events to prevent vibration spam
-        /// IMPROVED: Increased to 2.5s for minimal vibration
         static let hapticFeedbackThreshold: TimeInterval = 2.5
         
         /// Whether to use iOS Home Screen-style drop target validation
         static let useHomeScreenValidation = true
         
         /// Minimum movement distance before considering drop target changes
-        /// IMPROVED: Increased to 40.0 for much less sensitivity
         static let minimumMovementThreshold: CGFloat = 40.0
     }
     
@@ -254,8 +231,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         var lastRemovedStreaks: Set<String> = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
-        
-        // Improved drop target tracking to reduce haptic feedback
+
         private var lastDropTargetIndexPath: IndexPath?
         private var lastDropTargetItemType: MileStoneType?
         private var dropTargetChangeThreshold: TimeInterval = GoalStreakGridUIKitView.DropTargetConfig.changeThreshold
@@ -263,8 +239,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // Minimal haptic feedback tracking
         private var lastHapticFeedbackTime: Date?
-        
-        /// iOS Home Screen Logic: Track position changes for intelligent haptic feedback
+
         /// Prevents vibration spam during smooth dragging operations
         private var lastHapticFeedbackRow: Int?
         private var lastHapticFeedbackZone: Int?
@@ -399,7 +374,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
 
-            // Improved drop target detection with reduced sensitivity
             if let destinationIndexPath = destinationIndexPath {
                 // Only show drop target indicator when there's a meaningful change
                 let shouldShowIndicator = shouldShowDropTargetIndicator(
@@ -419,8 +393,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
-        /// Intelligent drop target detection that considers user's drag pattern
-        /// Reduces feedback for small movements and rapid changes
         private func shouldShowDropTargetIndicator(
             at indexPath: IndexPath,
             in collectionView: UICollectionView,
@@ -455,10 +427,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Only show indicator if both conditions are met
             return isValidLogicalArea
         }
-        
-        /// Enhanced drop target detection with pattern recognition
-        /// Considers the user's drag direction and speed to reduce unnecessary feedback
-        /// IMPROVED: Much less sensitive to grid boundaries, only triggers for meaningful changes
+
         private func isDropTargetMeaningfullyChanged(
             newIndexPath: IndexPath,
             newItemType: MileStoneType
@@ -471,8 +440,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 updateDropTargetTracking(newIndexPath: newIndexPath, newItemType: newItemType, timestamp: now)
                 return true
             }
-            
-            // IMPROVED: Much longer time threshold to prevent rapid feedback
+
             if let lastChangeTime = lastDropTargetChangeTime,
                now.timeIntervalSince(lastChangeTime) < DropTargetConfig.changeThreshold {
                 return false
@@ -483,8 +451,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // If no index change, no meaningful change
             guard hasIndexChanged else { return false }
-            
-            // IMPROVED: Use much larger zones and higher thresholds for less sensitivity
+
             if DropTargetConfig.useZoneBasedDetection {
                 let isZoneChange = isZoneMeaningfullyChanged(
                     from: lastIndexPath,
@@ -498,8 +465,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 return false
             }
-            
-            // IMPROVED: Much higher threshold for individual cell detection
+
             return isIndividualCellMeaningfullyChanged(
                 from: lastIndexPath,
                 to: newIndexPath,
@@ -509,7 +475,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         /// Zone-based detection: Groups nearby cells into zones to reduce feedback frequency
-        /// IMPROVED: Much larger zones and higher thresholds for minimal feedback
         private func isZoneMeaningfullyChanged(
             from lastIndexPath: IndexPath,
             to newIndexPath: IndexPath,
@@ -524,8 +489,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Only trigger if moving to a different zone
             let hasZoneChanged = lastZone != newZone
-            
-            // IMPROVED: For goal cards, use much larger row zones to reduce feedback
+ 
             if itemType == .goalCard {
                 let lastMajorRow = lastIndexPath.item / (gridColumns * zoneSize * 4) // Much larger zones
                 let newMajorRow = newIndexPath.item / (gridColumns * zoneSize * 4)
@@ -534,8 +498,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Only consider it meaningful if crossing major boundaries
                 return hasZoneChanged || hasMajorRowChanged
             }
-            
-            // IMPROVED: For streak items, require crossing multiple zones
+
             let lastStreakZone = lastIndexPath.item / (gridColumns * zoneSize * 2)
             let newStreakZone = newIndexPath.item / (gridColumns * zoneSize * 2)
             let hasStreakZoneChanged = lastStreakZone != newStreakZone
@@ -544,7 +507,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         /// Individual cell detection with reduced sensitivity
-        /// IMPROVED: Much higher thresholds to prevent excessive feedback
         private func isIndividualCellMeaningfullyChanged(
             from lastIndexPath: IndexPath,
             to newIndexPath: IndexPath,
@@ -566,8 +528,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             guard totalDistance >= DropTargetConfig.minimumGridPositionChange else {
                 return false
             }
-            
-            // IMPROVED: For goal cards, require significant row changes to reduce feedback
+
             if itemType == .goalCard {
                 let hasRowChanged = rowDistance >= 2 // Require 2+ row change
                 if hasRowChanged {
@@ -575,8 +536,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 return false
             }
-            
-            // IMPROVED: For streak items, require much larger position changes
+
             let hasSignificantPositionChange = totalDistance >= (DropTargetConfig.minimumGridPositionChange * 2) // Double the threshold
             
             if hasSignificantPositionChange {
@@ -616,7 +576,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         /// Zone-based validation: More permissive drop zones to reduce feedback
-        /// iOS Home Screen Logic: Uses larger, more flexible zones for smoother experience
         private func isDropTargetInValidZone(
             at indexPath: IndexPath,
             for itemType: MileStoneType,
@@ -627,17 +586,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             switch itemType {
             case .goalCard:
                 // Goal cards can be placed in larger zones (reduces feedback)
-                // iOS Home Screen Logic: Widgets have more flexible placement
                 let zoneIndex = indexPath.item / (gridColumns * zoneSize)
                 let columnInZone = (indexPath.item % gridColumns) / zoneSize
                 
                 // Allow placement in first column of any zone, or anywhere in first zone
-                // This mimics iOS Home Screen widget behavior
                 return columnInZone == 0 || zoneIndex == 0
                 
             case .streak:
                 // Streak items can be placed in any zone
-                // iOS Home Screen Logic: Apps have very flexible placement
                 return true
             }
         }
@@ -652,43 +608,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             lastDropTargetItemType = newItemType
             lastDropTargetChangeTime = timestamp
         }
-        
-        /// iOS Home Screen Logic: Show drop target indicator to prevent flickering
-        /// IMPROVED: NO haptic feedback during dragging - only for actual drops
+
         private func showDropTargetIndicator(at indexPath: IndexPath, in collectionView: UICollectionView) {
             // Disable animations for immediate feedback
             CATransaction.begin()
             CATransaction.setDisableActions(true)            
             CATransaction.commit()
-            
-            // IMPROVED: NO haptic feedback during dragging - eliminates vibration spam
-            // provideMinimalHapticFeedback() // DISABLED - no feedback during drag
         }
         
-        /// Provides haptic feedback ONLY when there's a meaningful drop target change
-        /// IMPROVED: Completely disabled during dragging to eliminate vibration spam
         private func provideMinimalHapticFeedback() {
-            // IMPROVED: Completely disable haptic feedback during dragging
-            // This eliminates ALL vibration when moving between grid cells
-            return // NO haptic feedback during dragging at all
-            
-            // OLD LOGIC (disabled):
-            // ONLY provide feedback if this is a meaningful drop target change
-            // If not meaningful, return immediately with NO feedback
-            // guard isMeaningfulDropTargetChange() else {
-            //     return // NO haptic feedback - not a meaningful change
-            // }
-            // 
-            // // Only provide feedback if we haven't provided any recently
-            // let now = Date()
-            // if let lastFeedbackTime = lastHapticFeedbackTime,
-            //    now.timeIntervalSince(lastFeedbackTime) < DropTargetConfig.hapticFeedbackThreshold {
-            //     return // Too soon for another feedback
-            // }
-            // 
-            // // This is a meaningful change - provide haptic feedback
-            // provideHapticFeedback()
-            // lastHapticFeedbackTime = now
+            return
+
         }
         
         /// Determines if the current drop target change is meaningful enough for haptic feedback
@@ -755,7 +685,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         /// Helper method to provide the actual haptic feedback
         /// Uses iOS Home Screen-like intensity and style
         private func provideHapticFeedback() {
-            // iOS Home Screen Logic: Use very light feedback with minimal intensity
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.prepare()
             
@@ -790,7 +719,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return // Invalid drop item
             }
 
-            // iOS Home Screen Logic: Immediately rearrange items to prevent flickering
             // Widgets and apps are pushed to maintain proper spacing
             let sourceIndex = sourceIndexPath.item
             let destinationIndex = destinationIndexPath.item
@@ -812,13 +740,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
             // Save the new order to DashboardStore UI state
             persistGridOrderToStore()
-            
-            // IMPROVED: Provide haptic feedback ONLY when actual drop occurs
-            // This gives user confirmation that the reorder was successful
+
             provideDropConfirmationHapticFeedback()
         }
-        
-        /// iOS Home Screen Logic: Calculate actual insertion index considering widget/app spacing
+
         private func calculateActualInsertionIndex(from sourceIndex: Int, to destinationIndex: Int, for widget: MileStoneType) -> Int {
             let currentModel = gridModel.mileStones
             
@@ -829,8 +754,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Determine if this is a widget (goal card) or app (streak item)
             let isWidget = widget == .goalCard
-            
-            // iOS Home Screen Logic: Widgets and apps have different spacing rules
+  
             if isWidget {
                 // Widget (goal card) logic: Full-width items that push others
                 // Widgets can be placed at any row boundary
@@ -859,8 +783,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return validTargetIndex
             }
         }
-        
-        /// iOS Home Screen Logic: Find next available position when target is occupied
+
         private func findNextAvailablePosition(from startIndex: Int, in model: [MileStoneType], columns: Int) -> Int {
             let maxIndex = model.count - 1
             
@@ -881,10 +804,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Fallback to start index
             return startIndex
         }
-        
-        /// iOS Home Screen Logic: Perform immediate reorder with visual feedback
+
         private func performImmediateReorder(collectionView: UICollectionView, from sourceIndex: Int, to destinationIndex: Int, widget: MileStoneType) {
-            // iOS Home Screen Logic: Disable all animations for instant positioning
+
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
@@ -898,21 +820,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     collectionView.moveItem(at: IndexPath(item: sourceIndex, section: 0),
                                          to: IndexPath(item: destinationIndex, section: 0))
                 }, completion: { _ in
-                    // iOS Home Screen Logic: Update grid layout efficiently
                     self.updateGridLayoutEfficiently(in: collectionView)
-                    
-                    // Validate the grid layout after reordering
                     self.validateGridLayoutAfterReorder(in: collectionView)
                 })
             }
             
             CATransaction.commit()
-            
-            // iOS Home Screen Logic: Force additional layout passes to ensure stability
+
             DispatchQueue.main.async {
                 collectionView.layoutIfNeeded()
-                
-                // Final layout pass to ensure all cells are properly positioned
+ 
                 DispatchQueue.main.async {
                     collectionView.layoutIfNeeded()
                 }
@@ -1011,10 +928,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Force UI update to reflect the changes
             store.objectWillChange.send()
         }
-        
-        /// iOS Home Screen Logic: Update grid layout efficiently to prevent flickering
+
         private func updateGridLayoutEfficiently(in collectionView: UICollectionView) {
-            // iOS Home Screen Logic: Disable animations during layout updates
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             
@@ -1038,8 +953,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             CATransaction.commit()
         }
-        
-        /// iOS Home Screen Logic: Validate grid layout after reordering
+
         private func validateGridLayoutAfterReorder(in collectionView: UICollectionView) {
             // Ensure the collection view layout is valid
             collectionView.collectionViewLayout.invalidateLayout()
