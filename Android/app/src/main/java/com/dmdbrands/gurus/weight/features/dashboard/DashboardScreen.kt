@@ -134,6 +134,15 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       DashboardControlPanel(
         inEditMode = inEditMode,
+        onResetClick = {
+          handleIntent(
+            DashboardIntent.ResetDashboard(
+              onConfirm = {
+                inEditMode = false
+              },
+            ),
+          )
+        },
         onEditClick = { editMode ->
           if (!editMode && inEditMode) {
             // Save dashboard metrics and milestones when exiting edit mode

@@ -5,9 +5,9 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.toMetricKey
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
 import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter
-import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter.toMetricKey
 import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter.toThemeMode
 import com.dmdbrands.gurus.weight.migration.helper.toDeviceDetails
 import com.dmdbrands.gurus.weight.migration.helper.toGoalSettings

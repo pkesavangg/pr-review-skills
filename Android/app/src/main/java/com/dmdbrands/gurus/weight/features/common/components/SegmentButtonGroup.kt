@@ -4,6 +4,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -196,31 +197,33 @@ fun <T> SegmentButtonGroup(
   }
 
   if (type == SegmentButtonType.Single) {
-    // Single row layout - all buttons in one non-scrollable row
-    SingleChoiceSegmentedButtonRow(
-      modifier = modifier.fillMaxWidth(),
+    // Non-scrollable, all items visible in one row with spacing
+    Row(
+      horizontalArrangement = Arrangement.SpaceAround,
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = modifier.fillMaxWidth(), // remove horizontalScroll; keep this if you want row to take full width
     ) {
-      data.forEachIndexed { index, option ->
-        SegmentedButton(
-          shape = shape,
-          onClick = { onSelected(option) },
-          colors = colors,
-          icon = {},
-          selected = option == selectedData,
-          label = {
-            Text(
-              text = key.get(option).uppercase(Locale.getDefault()),
-              style = textStyle,
-              modifier = Modifier
-                .padding(horizontal = horizontalPadding)
-                .wrapContentWidth(unbounded = true), // allows growing wider
-              softWrap = false,
-              overflow = TextOverflow.Visible,
-              maxLines = maxLines,
-            )
-          },
-          modifier = Modifier.weight(1f),
-        )
+      data.forEach { option ->
+        SingleChoiceSegmentedButtonRow {
+          SegmentedButton(
+            shape = shape,
+            onClick = { onSelected(option) },
+            colors = colors,
+            icon = {},
+            selected = option == selectedData,
+            label = {
+              Text(
+                text = key.get(option).uppercase(Locale.getDefault()),
+                style = textStyle,
+                modifier = Modifier
+                  .wrapContentWidth(unbounded = true), // allows growing wider
+                softWrap = false,
+                overflow = TextOverflow.Visible,
+                maxLines = maxLines,
+              )
+            },
+          )
+        }
       }
     }
   } else {

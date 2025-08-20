@@ -1,7 +1,11 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.toMetricKey
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.toStringKey
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
@@ -18,14 +22,26 @@ class DashboardService
 @Inject
 constructor(
   private val dashboardRepository: IDashboardRepository,
+  private val accountRepository: IAccountRepository
 ) : IDashboardService {
   private var accountId: String? = null
 
   /**
    * Sets the current account ID to be used by default in other methods.
    */
-  override fun setAccountId(accountId: String) {
+  override suspend fun setAccountId(accountId: String) {
     this.accountId = accountId
+    refreshDashboard(accountId)
+  }
+
+  override suspend fun refreshDashboard(accountId: String) {
+    try {
+      val account = accountRepository.getAccountFromAPI(accountId)
+      val metricKeys = account.dashboardMetrics.mapNotNull { it.toMetricKey() }
+      dashboardRepository.updateVisibleMetricKeys(accountId, metricKeys)
+    } catch (e: Exception) {
+      AppLog.e("DashboardService", "Failed to refresh dashboard", e.toString())
+    }
   }
 
   /**
@@ -85,11 +101,17 @@ constructor(
   )
 
   override suspend fun updateVisibleKeys(accountId: String?, keys: List<DashboardKey>) {
-    val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
-    val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
-    val milestones = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
-    updateVisibleMetricKeys(id, metrics)
-    updateVisibleMilestoneKeys(id, milestones)
+    try {
+      val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
+      val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
+      val milestones = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
+      updateVisibleMetricKeys(id, metrics)
+      updateVisibleMilestoneKeys(id, milestones)
+      val dashboardKeys = metrics.map { it.toStringKey() }
+      accountRepository.updateDashboardMetrics(dashboardKeys)
+    } catch (e: Exception) {
+      AppLog.e("DashboardService", "Failed to update visible keys", e.toString())
+    }
   }
 
   /**

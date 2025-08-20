@@ -31,6 +31,7 @@ data class DashboardState(
  */
 sealed interface DashboardIntent : IReducer.Intent {
   object LoadEntries : DashboardIntent
+  data class ResetDashboard(val onConfirm: () -> Unit) : DashboardIntent
   data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
   data class UpdateVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent

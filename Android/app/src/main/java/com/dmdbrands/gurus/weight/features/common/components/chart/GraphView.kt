@@ -18,6 +18,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
@@ -291,13 +293,15 @@ fun GraphView(
               )
               val secondaryYAxis =
                 paddedSecondaryGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } }
-              val secondaryGraphMeta = generateNiceScale(
-                floor(secondaryYAxis.min()),
-                ceil(secondaryYAxis.max()),
-                goalWeight = 80.0,
-              )
-              secondaryMinYTarget = secondaryGraphMeta.min
-              secondaryMaxYTarget = secondaryGraphMeta.max
+              if (secondaryYAxis.isNotEmpty()) {
+                val secondaryGraphMeta = generateNiceScale(
+                  floor(secondaryYAxis.min()),
+                  ceil(secondaryYAxis.max()),
+                  goalWeight = 80.0,
+                )
+                secondaryMinYTarget = secondaryGraphMeta.min
+                secondaryMaxYTarget = secondaryGraphMeta.max
+              }
             }
             stepSize = graphMeta.step
           }
@@ -355,9 +359,13 @@ fun GraphView(
     onDestinationUpdate = { selectedTarget = it },
   )
 
+  val currentDeviceType = getDeviceType()
+  val chartHeight = if (currentDeviceType == DeviceType.Tablet)
+    400.dp else 300.dp
+
   ChartHostSection(
     modifier = modifier
-      .height(300.dp)
+      .height(chartHeight)
       .pointerInput(Unit) {
         var isScrollInProgress = false
         awaitPointerEventScope {

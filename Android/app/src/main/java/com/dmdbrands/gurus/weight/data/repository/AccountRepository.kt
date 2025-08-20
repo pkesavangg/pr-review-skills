@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.auth.LogoutRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.PasswordResetRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -109,6 +110,14 @@ constructor(
       ),
     )
     return response
+  }
+
+  override suspend fun updateDashboardMetrics(dashboardKeys: List<String>) {
+    userAPI.updateDashboardMetrics(
+      request = DashboardMetricsRequest(
+        dashboardMetrics = dashboardKeys,
+      ),
+    )
   }
 
   /**

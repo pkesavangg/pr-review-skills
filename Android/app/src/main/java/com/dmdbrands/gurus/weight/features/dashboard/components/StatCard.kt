@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardMetricsStrings
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -52,7 +53,8 @@ internal fun StatCard(
   isPlaceHolder: Boolean = false,
   onMetricClick: (Stat) -> Unit = {}
 ) {
-  val contentHorizonalAlignment = if (stat.icon == null) Alignment.CenterHorizontally else Alignment.Start
+  val contentHorizonalAlignment =
+    if (stat.icon == null || stat.value == null) Alignment.CenterHorizontally else Alignment.Start
   Card(
     modifier = Modifier
       .fillMaxSize()
@@ -78,6 +80,7 @@ internal fun StatCard(
           contentDescription = stat.label,
           tintColor = MeTheme.colorScheme.streak,
         )
+        Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
       }
       Column(
         verticalArrangement = Arrangement.Center,
@@ -90,6 +93,9 @@ internal fun StatCard(
             }
             if (stat.value != null) {
               append(formatStatValue(stat.value))
+              if (stat.valueSuffix != null) {
+                append(" " + stat.valueSuffix)
+              }
             } else {
               append("---")
             }
@@ -147,7 +153,7 @@ fun AnimatedStatCard(
                 Icons.Default.Remove
               else
                 Icons.Default.Add,
-            contentDescription = if (isVisible) DashboardMetricsStrings.RemoveMetricDescription else DashboardMetricsStrings.AddMetricDescription,
+            contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
             tint = MeTheme.colorScheme.iconPrimary,
             modifier = Modifier.size(14.dp),
           )

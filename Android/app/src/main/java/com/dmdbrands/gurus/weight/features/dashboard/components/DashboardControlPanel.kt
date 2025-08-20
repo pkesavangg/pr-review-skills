@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun DashboardControlPanel(
   inEditMode: Boolean = false,
+  onResetClick: () -> Unit = {},
   onEditClick: (Boolean) -> Unit = {},
   onMetricInfoClick: () -> Unit = {},
   onUpdateGoalClick: () -> Unit = {}
@@ -43,7 +44,7 @@ fun DashboardControlPanel(
         onEditClick(false)
       }
       AppButton(label = string.ResetDashboard, type = ButtonType.TextPrimary, size = ButtonSize.Large) {
-        onEditClick(false)
+        onResetClick()
       }
     }
   }

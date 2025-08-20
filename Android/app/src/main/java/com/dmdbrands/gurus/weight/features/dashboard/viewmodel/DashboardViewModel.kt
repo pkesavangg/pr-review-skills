@@ -10,9 +10,11 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -35,7 +37,7 @@ constructor(
   private val healthConnectService: IHealthConnectService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
-),DefaultLifecycleObserver {
+), DefaultLifecycleObserver {
   init {
     handleIntent(DashboardIntent.LoadEntries)
     loadEntries()
@@ -57,6 +59,7 @@ constructor(
   override fun handleIntent(intent: DashboardIntent) {
     when (intent) {
       is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys)
+      is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
       else -> null
     }
@@ -80,15 +83,27 @@ constructor(
     }
   }
 
+  private fun resetDashboard(onConfirm: () -> Unit) {
+    val string = DashboardString.ResetDialog
+    dialogQueueService.showDialog(
+      DialogModel.Confirm(
+        title = string.Title,
+        message = string.Message,
+        confirmText = string.ConfirmText,
+        cancelText = string.CancelText,
+        onConfirm = {
+          viewModelScope.launch {
+            onConfirm()
+            dashboardService.resetVisibleKeys()
+          }
+        },
+      ),
+    )
+  }
+
   private fun updateVisibleKeys(keys: List<DashboardKey>) {
     viewModelScope.launch {
-      val metricKeys = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
-
-      val milestoneKeys = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
-
-
-      dashboardService.updateVisibleMetricKeys(keys = metricKeys)
-      dashboardService.updateVisibleMilestoneKeys(keys = milestoneKeys)
+      dashboardService.updateVisibleKeys(keys = keys)
     }
   }
 

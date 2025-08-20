@@ -13,7 +13,9 @@ interface IDashboardService {
    * Sets the current account ID to be used by default in other methods.
    * @param accountId The account ID to set as default.
    */
-  fun setAccountId(accountId: String)
+  suspend fun setAccountId(accountId: String)
+
+  suspend fun refreshDashboard(accountId: String)
 
   /**
    * Gets a Flow of visible metric keys for the given account.

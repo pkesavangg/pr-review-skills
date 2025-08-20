@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.rememberReorderableLazyGridState
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -44,7 +46,7 @@ fun DashboardMilestoneGrid(
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
 ) {
-  var localVisibleMilestones by remember(visibleMilestones) { mutableStateOf(visibleMilestones.reorderGrid()) }
+  var localVisibleMilestones by remember(visibleMilestones) { mutableStateOf(visibleMilestones) }
   val hapticFeedback = LocalHapticFeedback.current
   val lazyGridState = rememberLazyGridState()
 
@@ -55,7 +57,7 @@ fun DashboardMilestoneGrid(
       localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
         val item = removeAt(from.index)
         add(to.index, item)
-      }.reorderGrid()
+      }
 
       hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
 
@@ -63,9 +65,15 @@ fun DashboardMilestoneGrid(
       onMilestoneReordered(localVisibleMilestones)
     },
   )
+  val currentDeviceType = getDeviceType()
+  val spanCount = if (currentDeviceType == DeviceType.Tablet) {
+    3
+  } else {
+    2
+  }
 
   LazyVerticalGrid(
-    columns = GridCells.Fixed(2),
+    columns = GridCells.Fixed(spanCount),
     state = lazyGridState,
     contentPadding = PaddingValues(vertical = MeTheme.spacing.sm),
     userScrollEnabled = false,
@@ -78,11 +86,11 @@ fun DashboardMilestoneGrid(
   ) {
     // Visible milestones (reorderable)
     items(
-      items = localVisibleMilestones.reorderGrid(),
+      items = localVisibleMilestones,
       key = { getMilestoneKey(it, isVisible = true) },
       span = { milestone ->
         if (isGoalProgressMilestone(milestone)) {
-          GridItemSpan(2)
+          GridItemSpan(spanCount)
         } else {
           GridItemSpan(1)
         }
@@ -111,7 +119,7 @@ fun DashboardMilestoneGrid(
         key = { stat -> getMilestoneKey(stat, isVisible = false) },
         span = { milestone ->
           if (isGoalProgressMilestone(milestone)) {
-            GridItemSpan(2)
+            GridItemSpan(spanCount)
           } else {
             GridItemSpan(1)
           }
@@ -131,28 +139,45 @@ fun DashboardMilestoneGrid(
 }
 
 /**
- * Reorders the grid to ensure the goal progress milestone (span-2 item) is positioned
- * at an even cell index in the 2-column grid layout for optimal visual alignment.
- *
- * @return A new list with the goal progress milestone repositioned if necessary
+ * Reorders so the first goal milestone starts on a new row if it wouldn't fit
+ * in the remaining columns of its current row. Works for any spanCount and any
+ * per-item span (read from Stat.span).
  */
-fun List<Stat>.reorderGrid(): List<Stat> {
-  // Find the goal progress milestone that spans 2 columns
-  val goalMilestoneIndex = indexOfFirst { isGoalProgressMilestone(it) }
+fun List<Stat>.reorderGrid(spanCount: Int): List<Stat> {
+  if (isEmpty()) return this
 
-  // Early exit if no goal milestone found or it's already at the end
-  if (goalMilestoneIndex == -1 || goalMilestoneIndex == lastIndex) {
-    return this
+  val idx = indexOfFirst { isGoalProgressMilestone(it) }
+  if (idx == -1 || idx == lastIndex) return this
+
+  // Your inline rule: milestone takes the whole row, others take 1
+  fun Stat.itemSpan(): Int = when {
+    isGoalProgressMilestone(this) -> spanCount
+    else -> 1
+  }.coerceIn(1, spanCount)
+
+  // How many columns are already used in the current row
+  val usedBefore = (0 until idx).sumOf { this[it].itemSpan() } % spanCount
+  val targetSpan = this[idx].itemSpan()
+  val remaining = spanCount - usedBefore
+
+  // If it fits, keep order
+  if (usedBefore == 0 || targetSpan <= remaining) return this
+
+  // Otherwise, push it forward just enough items to close the row
+  var moveBy = 0
+  var filled = 0
+  while (idx + 1 + moveBy <= lastIndex && filled < remaining) {
+    filled += this[idx + 1 + moveBy].itemSpan()
+    moveBy++
   }
 
-  // If goal milestone is at odd index, move it to next position for proper alignment
-  return if (goalMilestoneIndex % 2 != 0) {
-    toMutableList().apply {
-      val goalMilestone = removeAt(goalMilestoneIndex)
-      add(goalMilestoneIndex + 1, goalMilestone)
-    }
-  } else {
-    this
+  val insertPos = (idx + moveBy).coerceAtMost(lastIndex)
+
+  return toMutableList().apply {
+    val target = removeAt(idx)
+    add(insertPos, target)
   }
 }
+
+
 

@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicScale
-import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.google.gson.Gson
@@ -36,27 +35,6 @@ object IonicDataConverter {
       "light" -> ThemeMode.LIGHT
       "dark" -> ThemeMode.DARK
       else -> ThemeMode.SYSTEM
-    }
-  }
-
-  /**
-   * Extension function to convert string to MetricKey.
-   */
-  fun String.toMetricKey(): MetricKey? {
-    return when (this) {
-      "bmi" -> MetricKey.BMI
-      "bodyFat" -> MetricKey.BODY_FAT
-      "muscleMass" -> MetricKey.MUSCLE_MASS
-      "water" -> MetricKey.BODY_WATER
-      "boneMass" -> MetricKey.BONE_MASS
-      "visceralFatLevel" -> MetricKey.VISCERAL_FAT
-      "subcutaneousFatPercent" -> MetricKey.SUBCUTANEOUS_FAT
-      "proteinPercent" -> MetricKey.PROTEIN
-      "skeletalMusclePercent" -> MetricKey.SKELETAL_MUSCLE
-      "pulse" -> MetricKey.HEART_RATE
-      "bmr" -> MetricKey.BMR
-      "metabolicAge" -> MetricKey.METABOLIC_AGE
-      else -> null
     }
   }
 

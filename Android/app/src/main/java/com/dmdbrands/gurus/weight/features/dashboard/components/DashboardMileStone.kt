@@ -10,7 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -33,6 +35,13 @@ fun DashboardMilestone(
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   modifier: Modifier = Modifier
 ) {
+
+  val currentDeviceType = getDeviceType()
+  val spanCount = if (currentDeviceType == DeviceType.Tablet) {
+    3
+  } else {
+    2
+  }
   var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
   val milestoneKeys = localVisibleKeys.mapNotNull { key ->
@@ -45,6 +54,8 @@ fun DashboardMilestone(
     progress = progress,
     visibleKeys = milestoneKeys,
     filterNulls = false,
+  ).reorderGrid(
+    spanCount = spanCount,
   )
   val allMilestones = StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false)
   val hiddenMilestones = allMilestones.filter { it !in visibleMilestones }
@@ -57,8 +68,10 @@ fun DashboardMilestone(
     } else {
       // Moving from hidden to visible
       visibleMilestones + milestone
-    }
-    localVisibleKeys = newStats.reorderGrid().map { stat ->
+    }.reorderGrid(
+      spanCount = spanCount,
+    )
+    localVisibleKeys = newStats.map { stat ->
       stat.key
     }
     onMilestonesChanged(localVisibleKeys)

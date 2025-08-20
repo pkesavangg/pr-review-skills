@@ -18,12 +18,14 @@ data class Stat(
   val unit: String? = "",
   val icon: Int? = null,
   val key: DashboardKey,
-  val valuePrefix: String? = null
+  val valuePrefix: String? = null,
+  val valueSuffix: String? = null
 ) {
   fun getDisplayValue(): String? {
     val prefix = valuePrefix ?: ""
+    val suffix = valueSuffix ?: ""
     return if (value != null) {
-      "$prefix $value"
+      "$prefix $value $suffix"
     } else {
       null
     }

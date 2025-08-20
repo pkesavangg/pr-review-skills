@@ -25,6 +25,46 @@ object StatHelper {
   /**
    * Returns the value for a given MetricKey from a DashboardMetric.
    */
+
+  fun MetricKey.toStringKey(): String {
+    return when (this) {
+      MetricKey.BMI -> "bmi"
+      MetricKey.BODY_FAT -> "bodyFat"
+      MetricKey.MUSCLE_MASS -> "muscleMass"
+      MetricKey.BODY_WATER -> "water"
+      MetricKey.BONE_MASS -> "boneMass"
+      MetricKey.VISCERAL_FAT -> "visceralFatLevel"
+      MetricKey.SUBCUTANEOUS_FAT -> "subcutaneousFatPercent"
+      MetricKey.PROTEIN -> "proteinPercent"
+      MetricKey.SKELETAL_MUSCLE -> "skeletalMusclePercent"
+      MetricKey.HEART_RATE -> "pulse"
+      MetricKey.BMR -> "bmr"
+      MetricKey.METABOLIC_AGE -> "metabolicAge"
+      else -> ""
+    }
+  }
+
+  /**
+   * Extension function to convert string to MetricKey.
+   */
+  fun String.toMetricKey(): MetricKey? {
+    return when (this) {
+      "bmi" -> MetricKey.BMI
+      "bodyFat" -> MetricKey.BODY_FAT
+      "muscleMass" -> MetricKey.MUSCLE_MASS
+      "water" -> MetricKey.BODY_WATER
+      "boneMass" -> MetricKey.BONE_MASS
+      "visceralFatLevel" -> MetricKey.VISCERAL_FAT
+      "subcutaneousFatPercent" -> MetricKey.SUBCUTANEOUS_FAT
+      "proteinPercent" -> MetricKey.PROTEIN
+      "skeletalMusclePercent" -> MetricKey.SKELETAL_MUSCLE
+      "pulse" -> MetricKey.HEART_RATE
+      "bmr" -> MetricKey.BMR
+      "metabolicAge" -> MetricKey.METABOLIC_AGE
+      else -> null
+    }
+  }
+
   fun getMetricValue(item: DashboardMetric, key: MetricKey, useShort: Boolean = false): Stat {
     val value = when (key) {
       MetricKey.WEIGHT -> item.weight
@@ -66,6 +106,7 @@ object StatHelper {
       else -> null
     }
     val prefix = meta.valuePrefix(useShort).takeIf { it.isNotEmpty() }
+    val suffix = meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
     val calculatedUnit = if (this is DashboardKey.Metric && (this.key == MetricKey.WEIGHT)) {
       unit.label
     } else {
@@ -78,6 +119,7 @@ object StatHelper {
       icon = if (!useShort) meta.icon else null,
       key = this,
       valuePrefix = prefix,
+      valueSuffix = suffix,
     )
   }
 
@@ -260,10 +302,12 @@ internal object StatMeta {
   val milestoneStatMetaMap: Map<MilestoneKey, StatMeta> = mapOf(
     MilestoneKey.CURRENT_STREAK to StatMeta(
       labelProvider = { _ -> DashboardString.MileStone.CurrentStreak },
+      valueSuffix = { "day" },
       icon = AppIcons.Milestone.Bolt,
     ),
     MilestoneKey.LONGEST_STREAK to StatMeta(
       labelProvider = { _ -> DashboardString.MileStone.LongestStreak },
+      valueSuffix = { "day" },
       icon = AppIcons.Milestone.Streak,
     ),
     MilestoneKey.PER_WEEK to StatMeta(
@@ -292,6 +336,7 @@ internal object StatMeta {
     val unit: String? = null,
     val unitProvider: (Boolean) -> String? = { _ -> unit },
     val valuePrefix: (Boolean) -> String = { _ -> "" },
+    val valueSuffix: (Boolean) -> String = { _ -> "" },
     val icon: Int? = null,
   )
 }
