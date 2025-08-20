@@ -20,14 +20,14 @@ object ColorPalette {
   val Neutral300 = Color(0x80FFFFFF)     // 50% of #FFFFFF (semi-transparent white)
   val Neutral400 = Color(0xFFD0CCCA)
   val Neutral450 = Color(0x40000000)     // 25% of #000000 (semi-transparent Black)
-  val Neutral500 = Color(0x802C2827)     // 50% of #2C2827 (semi-transparent dark)
+  val Neutral500 = Color(0x402C2827)     // 25% of #2C2827 (semi-transparent dark)
   val Neutral550 = Color(0x40FFFFFF)     // 25% of #FFFFFF (semi-transparent white)
   val Neutral600 = Color(0xFF7B726E)
-  val Neutral650 = Color(0x80E0E1E1)     // 50% of #E0E1E1
+  val Neutral650 = Color(0x40E0E1E1)     // 25% of #E0E1E1
   val Neutral700 = Color(0xFFE0E1E1)
   val Neutral750 = Color(0xFF92989F)
   val Neutral800 = Color(0xFF565F68)
-  val Neutral850 = Color(0x80222D39)     // 50% of #222D39
+  val Neutral850 = Color(0x80222D39)     // 50% of #222D39o
   val Neutral900 = Color(0xFF222D39)
   val Neutral950 = Color(0xFF12161B)
   val Neutral1000 = Color(0xFF2C2827)
