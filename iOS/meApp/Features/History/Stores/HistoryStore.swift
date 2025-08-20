@@ -145,7 +145,6 @@ final class HistoryStore: ObservableObject {
     // MARK: - Internal helpers -------------------------------------------
 
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
-        print("Loading months...", canShowLoader ? "Showing loader" : "Not showing loader")
         if canShowLoader {
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
         }
