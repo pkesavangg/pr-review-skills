@@ -117,7 +117,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
-        collectionView.hideDragPlatter = false // show system drag preview platter
+        collectionView.hideDragPlatter = true // hide system drag preview platter (slashed circle)
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         
         // Disable selection to prevent visual feedback
@@ -433,24 +433,26 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
             guard store.state.ui.isEditMode else {
-                return UICollectionViewDropProposal(operation: .forbidden)
+                // Use .cancel to avoid showing the slashed-circle icon
+                return UICollectionViewDropProposal(operation: .cancel)
             }
             
             // Only accept drops from the metric grid
             guard let items = session.items as? [UIDragItem] else {
-                return UICollectionViewDropProposal(operation: .forbidden)
+                return UICollectionViewDropProposal(operation: .cancel)
             }
             
             // Check if all items are from the metric grid
             for dragItem in items {
                 if let wrapper = dragItem.localObject as? DragItemWrapper {
                     if wrapper.type != DragItemWrapper.ItemType.metric {
-                        return UICollectionViewDropProposal(operation: .forbidden)
+                        // Use .cancel to suppress forbidden icon for cross-grid drags
+                        return UICollectionViewDropProposal(operation: .cancel)
                     }
                 } else {
                     // Legacy support for direct MetricItem objects
                     if !(dragItem.localObject is MetricItem) {
-                        return UICollectionViewDropProposal(operation: .forbidden)
+                        return UICollectionViewDropProposal(operation: .cancel)
                     }
                 }
             }
@@ -520,6 +522,9 @@ extension MetricGridUIKitView {
             parent.isDragging = false
             draggedItemId = nil
             store.endDragging()
+            
+            self.lastItemIds = self.store.metricsToShow.map { $0.id }
+            self.lastDashboardType = self.store.state.metrics.dashboardType
             
             // Immediately restore EditModeOverlay visibility on all cells if in edit mode
             if store.state.ui.isEditMode {

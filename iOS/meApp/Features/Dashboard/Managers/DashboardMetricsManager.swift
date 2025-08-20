@@ -68,6 +68,36 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
+    func resetOrderToDefault() {
+
+        let desiredOrderLabels: [String]
+        if state.dashboardType == .dashboard12 {
+            desiredOrderLabels = originalMetrics.map { $0.label }
+        } else {
+            desiredOrderLabels = Array(originalMetrics.prefix(4)).map { $0.label }
+        }
+
+        let existingByLabel: [String: MetricItem] = Dictionary(
+            uniqueKeysWithValues: state.metrics.map { ($0.label, $0) }
+        )
+
+        var newMetrics: [MetricItem] = []
+        for label in desiredOrderLabels {
+            if let existing = existingByLabel[label] {
+                newMetrics.append(existing)
+            } else if let original = originalMetrics.first(where: { $0.label == label }) {
+                // Fallback to original placeholder item if not present
+                newMetrics.append(MetricItem(value: original.value, label: original.label, unit: original.unit, preLabel: original.preLabel, icon: original.icon))
+            }
+        }
+
+        let remaining = state.metrics.filter { !desiredOrderLabels.contains($0.label) }
+        newMetrics.append(contentsOf: remaining)
+
+        state.metrics = newMetrics
+        state.activeMetricsCount = newMetrics.count
+    }
+
     // MARK: - API Integration
     func loadMetricsFromAPI() async throws {
         do {

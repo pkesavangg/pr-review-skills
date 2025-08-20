@@ -94,7 +94,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     private func createCollectionView(with layout: UICollectionViewFlowLayout) -> UICollectionView {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        collectionView.hideDragPlatter = false // show system drag preview platter
+        collectionView.hideDragPlatter = true // hide system drag preview platter
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
         
@@ -289,24 +289,26 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
             guard store.state.ui.isEditMode else {
-                return UICollectionViewDropProposal(operation: .forbidden)
+                // Use .cancel to avoid showing the slashed-circle icon
+                return UICollectionViewDropProposal(operation: .cancel)
             }
             
             // Only accept drops from the same grid (goal/streak items)
             guard let items = session.items as? [UIDragItem] else {
-                return UICollectionViewDropProposal(operation: .forbidden)
+                return UICollectionViewDropProposal(operation: .cancel)
             }
             
             // Check if all items are from the goal/streak grid
             for dragItem in items {
                 if let wrapper = dragItem.localObject as? DragItemWrapper {
                     if wrapper.type != DragItemWrapper.ItemType.goalStreak {
-                        return UICollectionViewDropProposal(operation: .forbidden)
+                        // Use .cancel to suppress forbidden icon for cross-grid drags
+                        return UICollectionViewDropProposal(operation: .cancel)
                     }
                 } else {
                     // Legacy support for direct widget objects
                     if !(dragItem.localObject is MileStoneType) {
-                        return UICollectionViewDropProposal(operation: .forbidden)
+                        return UICollectionViewDropProposal(operation: .cancel)
                     }
                 }
             }
@@ -397,15 +399,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Ensure the target position is valid for grid layout
                 let validTargetIndex = targetRow * columns + targetColumn
                 
-                // If the target is occupied by a widget, find the next available position
+                // If the target is occupied by a widget, allow inserting at that index to push it down
                 if validTargetIndex < currentModel.count {
                     let targetWidget = currentModel[validTargetIndex]
                     if targetWidget == .goalCard {
-                        // Widget is here, find next available position
-                        return findNextAvailablePosition(from: validTargetIndex, in: currentModel, columns: columns)
+                        // Insert at goal card index so the goal card is pushed down
+                        return validTargetIndex
                     }
                 }
-                
+
                 return validTargetIndex
             }
         }

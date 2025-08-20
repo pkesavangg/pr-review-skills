@@ -519,12 +519,12 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
         if let dashboardTypeString = account.dashboardSettings?.dashboardType {
             // Support canonical raw values and legacy stored values
-            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "dashboard12" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard12.rawValue  {
+                //logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
                 return .dashboard12
             }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "dashboard4" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard4.rawValue  {
+               // logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
                 return .dashboard4
             }
         }
@@ -799,9 +799,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         if !state.ui.isEditMode {
             // Entering edit mode - begin edit session
             beginEdit()
+            state.ui.isEditMode = true
+        } else {
+            // Already in edit mode - reset current edit session and start fresh
+            resetEditSession()
         }
-        state.ui.isEditMode.toggle()
-
     }
 
     // Delegate graph operations to GraphManager
@@ -941,8 +943,15 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
                 // Delegate reset operations to managers
                 Task {
-                    // Reset metrics to defaults (this will reload from API and restore original order)
-                    try? await self.metricsManager.resetMetricsToDefaults()
+                                    try? await self.metricsManager.resetMetricsToDefaults()
+                 
+                    await MainActor.run {
+                        self.metricsManager.resetOrderToDefault()
+                    }
+                    // Ensure all metrics are active for dashboard12 after reset
+                    await MainActor.run {
+                        self.metricsManager.resetActiveMetricsCountToShowAll()
+                    }
                     
                     // Reset streak data to defaults
                     try? await self.streakManager.resetStreakData()
@@ -967,6 +976,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                     
                     // Sync removal state to ensure consistency after reset
                     await MainActor.run {
+                        // Re-sync removal state now that active metrics include all items
                         self.syncRemovalStateFromMetricsManager()
 
                     }
@@ -1573,5 +1583,44 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         }
         hasEditSnapshot = false
         objectWillChange.send()
+    }
+
+    /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
+    func resetEditSession() {
+        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
+        
+        // First, restore the original state from snapshot
+        if hasEditSnapshot {
+            metricsManager.state.metrics = snapshotMetrics
+            metricsManager.state.activeMetricsCount = snapshotActiveMetricsCount
+            streakManager.state.streakItems = snapshotStreakItems
+            streakManager.state.activeStreakItemsCount = snapshotActiveStreakItemsCount
+            state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
+            state.ui.goalCardPosition = snapshotGoalCardPosition
+            state.ui.streakGridOrder = snapshotStreakGridOrder
+            state.ui.removedMetrics = snapshotRemovedMetrics
+            state.ui.removedStreaks = snapshotRemovedStreaks
+        }
+        
+        // Additionally, ensure order is restored to API/defaults when resetting within edit mode
+        metricsManager.resetOrderToDefault()
+        if state.metrics.dashboardType == .dashboard12 {
+            metricsManager.resetActiveMetricsCountToShowAll()
+        }
+
+        // Clear selection/drag state
+        state.ui.selectedMetricLabel = nil
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+        
+        // Clear the old snapshot and create a fresh one
+        hasEditSnapshot = false
+        beginEdit()
+        
+        // Force UI update to reflect the reset state
+        objectWillChange.send()
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }
