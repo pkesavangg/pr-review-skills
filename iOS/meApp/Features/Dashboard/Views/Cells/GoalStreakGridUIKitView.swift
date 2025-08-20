@@ -108,6 +108,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         collectionView.hideDragPlatter = true // hide system drag preview platter
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
+        collectionView.reorderingCadence = .immediate
         
         // Disable selection to prevent visual feedback
         collectionView.allowsSelection = false
@@ -302,6 +303,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Mark this as a goal/streak grid item to prevent cross-grid dragging
             dragItem.localObject = DragItemWrapper(type: DragItemWrapper.ItemType.goalStreak, item: widget)
+            // Store source index path for preview targeting like Metric grid
+            session.localContext = indexPath
             
             return [dragItem]
         }
@@ -309,8 +312,81 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         func collectionView(_ collectionView: UICollectionView, dragPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
-            params.visiblePath = UIBezierPath(roundedRect: collectionView.cellForItem(at: indexPath)?.bounds ?? .zero, cornerRadius: 10)
+            if let cell = collectionView.cellForItem(at: indexPath) {
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+            }
             return params
+        }
+        
+        // Provide a custom lifting preview so the source cell keeps full size (preview scales instead)
+        func collectionView(_ collectionView: UICollectionView,
+                            dragPreviewForLiftingItem item: UIDragItem,
+                            session: UIDragSession) -> UITargetedDragPreview? {
+            // If we stored the index path, prefer it to resolve the cell fast
+            if let indexPath = session.localContext as? IndexPath,
+               let cell = collectionView.cellForItem(at: indexPath) {
+                let previewView: UIView
+                if let streakCell = cell as? StreakCardCell {
+                    previewView = streakCell.snapshotForPreview()
+                } else if let goalCell = cell as? GoalCardCell {
+                    previewView = goalCell.snapshotForPreview()
+                } else {
+                    previewView = cell.snapshotView(afterScreenUpdates: true) ?? UIView(frame: cell.bounds)
+                }
+                let params = UIDragPreviewParameters()
+                params.backgroundColor = .clear
+                // Match Metric grid: build path from previewView bounds and use 16 corner radius
+                params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+
+                // Match Metric grid: use configured preview scale for consistency
+                let scale = DashboardConstants.UI.dragPreviewScale
+
+                let target = UIDragPreviewTarget(
+                    container: collectionView,
+                    center: cell.center,
+                    transform: CGAffineTransform(scaleX: scale, y: scale)
+                )
+                return UITargetedDragPreview(view: previewView, parameters: params, target: target)
+            }
+
+            // Fallback: resolve the dragged milestone from localObject and find its cell
+            let milestone: MileStoneType?
+            if let wrapper = item.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.goalStreak {
+                milestone = wrapper.item as? MileStoneType
+            } else if let direct = item.localObject as? MileStoneType {
+                milestone = direct
+            } else {
+                milestone = nil
+            }
+
+            if let milestone = milestone,
+               let idx = gridModel.mileStones.firstIndex(of: milestone) {
+                let ip = IndexPath(item: idx, section: 0)
+                if let cell = collectionView.cellForItem(at: ip) {
+                    let previewView: UIView
+                    if let streakCell = cell as? StreakCardCell {
+                        previewView = streakCell.snapshotForPreview()
+                    } else if let goalCell = cell as? GoalCardCell {
+                        previewView = goalCell.snapshotForPreview()
+                    } else {
+                        previewView = cell.snapshotView(afterScreenUpdates: true) ?? UIView(frame: cell.bounds)
+                    }
+                    let params = UIDragPreviewParameters()
+                    params.backgroundColor = .clear
+                    params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+
+                    // Match Metric grid: use configured preview scale for consistency
+                    let scale = DashboardConstants.UI.dragPreviewScale
+                    let target = UIDragPreviewTarget(
+                        container: collectionView,
+                        center: cell.center,
+                        transform: CGAffineTransform(scaleX: scale, y: scale)
+                    )
+                    return UITargetedDragPreview(view: previewView, parameters: params, target: target)
+                }
+            }
+            return nil
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
@@ -705,15 +781,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Widgets and apps are pushed to maintain proper spacing
             let sourceIndex = sourceIndexPath.item
             let destinationIndex = destinationIndexPath.item
-            
+
             // Calculate the actual insertion index considering widget/app spacing
             let actualInsertionIndex = calculateActualInsertionIndex(
                 from: sourceIndex,
                 to: destinationIndex,
                 for: widget
             )
-            
-            // Perform the reorder with immediate visual feedback
+
+            // Perform immediate reorder (push behavior) to avoid swap visuals
             performImmediateReorder(
                 collectionView: collectionView,
                 from: sourceIndex,
@@ -721,10 +797,38 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widget: widget
             )
 
-            // Save the new order to DashboardStore UI state
+            // Persist order to store
             persistGridOrderToStore()
 
+            // Consume system drop animation by redirecting preview offscreen (prevents white platter & swap feel)
+            let offscreen = CGPoint(x: -10_000, y: -10_000)
+            let target = UIDragPreviewTarget(container: collectionView, center: offscreen)
+            coordinator.drop(item.dragItem, to: target)
+
+            // Subtle haptic confirmation
             provideDropConfirmationHapticFeedback()
+        }
+
+        // Provide a transparent, rounded drop preview to eliminate the white platter animation
+        func collectionView(_ collectionView: UICollectionView,
+                            dropPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
+            let params = UIDragPreviewParameters()
+            params.backgroundColor = .clear
+            if let cell = collectionView.cellForItem(at: indexPath) {
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+            }
+            return params
+        }
+
+        // Supply an almost invisible preview for the drop animation
+        func collectionView(_ collectionView: UICollectionView,
+                            dropPreviewForDropping item: UIDragItem,
+                            withDefault defaultPreview: UITargetedDragPreview) -> UITargetedDragPreview? {
+            let clearView = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+            clearView.backgroundColor = .clear
+            let params = UIDragPreviewParameters()
+            params.backgroundColor = .clear
+            return UITargetedDragPreview(view: clearView, parameters: params, target: defaultPreview.target)
         }
 
         private func calculateActualInsertionIndex(from sourceIndex: Int, to destinationIndex: Int, for widget: MileStoneType) -> Int {
@@ -789,34 +893,27 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         private func performImmediateReorder(collectionView: UICollectionView, from sourceIndex: Int, to destinationIndex: Int, widget: MileStoneType) {
+            if let custom = collectionView as? CustomCollectionView { custom.suspendIntrinsicInvalidation = true }
 
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            CATransaction.setAnimationDuration(0)
-            
-            UIView.performWithoutAnimation {
-                // Update the model first to prevent state inconsistencies
-                gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
-                
-                // Perform the collection view update with completion handler
-                collectionView.performBatchUpdates({
-                    collectionView.moveItem(at: IndexPath(item: sourceIndex, section: 0),
-                                         to: IndexPath(item: destinationIndex, section: 0))
-                }, completion: { _ in
-                    self.updateGridLayoutEfficiently(in: collectionView)
-                    self.validateGridLayoutAfterReorder(in: collectionView)
-                })
-            }
-            
-            CATransaction.commit()
+            gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
 
-            DispatchQueue.main.async {
+            collectionView.performBatchUpdates({
+                collectionView.moveItem(at: IndexPath(item: sourceIndex, section: 0),
+                                        to: IndexPath(item: destinationIndex, section: 0))
+            }, completion: { _ in
+
+                collectionView.collectionViewLayout.invalidateLayout()
                 collectionView.layoutIfNeeded()
- 
-                DispatchQueue.main.async {
-                    collectionView.layoutIfNeeded()
+
+                CATransaction.commit()
+
+                if let custom = collectionView as? CustomCollectionView {
+                    custom.suspendIntrinsicInvalidation = false
+                    custom.invalidateIntrinsicContentSize()
                 }
-            }
+            })
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {

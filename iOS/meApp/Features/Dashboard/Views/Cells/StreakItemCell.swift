@@ -175,4 +175,25 @@ class StreakCardCell: UICollectionViewCell {
             contentView.backgroundColor = .clear
         }
     }
+
+    // MARK: - Drag Preview
+    /// Creates a snapshot view for drag preview
+    /// - Returns: A UIView snapshot of the cell's content
+    func snapshotForPreview() -> UIView {
+        if let hostingView = hostingController?.view {
+            let snapshot = hostingView.snapshotView(afterScreenUpdates: true)
+            snapshot?.frame = contentView.bounds
+            snapshot?.layer.cornerRadius = 16
+            snapshot?.layer.masksToBounds = true
+            snapshot?.backgroundColor = .clear
+            return snapshot ?? UIView(frame: contentView.bounds)
+        } else {
+            // Fallback to a simple rounded view if hosting controller is not yet set
+            let fallbackView = UIView(frame: contentView.bounds)
+            fallbackView.backgroundColor = UIColor.systemBackground
+            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.masksToBounds = true
+            return fallbackView
+        }
+    }
 } 
