@@ -91,33 +91,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     private struct DropTargetConfig {
         /// Minimum time between drop target changes to prevent excessive haptic feedback
         static let changeThreshold: TimeInterval = 2.0
-        
-        /// Minimum distance change to consider a drop target change meaningful
-        static let minimumDistanceThreshold: Int = 12
-        
-        /// Whether to enable smart drop target detection (reduces haptic feedback)
-        static let enableSmartDetection = true
-        
-        /// Whether to show drop indicators only at valid grid boundaries
-        static let showOnlyAtBoundaries = true
-        
         /// Minimum grid position change to trigger haptic feedback
         static let minimumGridPositionChange: Int = 8
-        
         /// Whether to use zone-based detection instead of individual cell detection
         static let useZoneBasedDetection = true
-        
         /// Zone size for grouping nearby cells (reduces feedback frequency)
         static let zoneSize: Int = 6
-
         /// Minimum time between haptic feedback events to prevent vibration spam
         static let hapticFeedbackThreshold: TimeInterval = 2.5
-        
-        /// Whether to use iOS Home Screen-style drop target validation
-        static let useHomeScreenValidation = true
-        
-        /// Minimum movement distance before considering drop target changes
-        static let minimumMovementThreshold: CGFloat = 40.0
     }
     
     /// Creates and configures the collection view with drag-and-drop support
@@ -616,6 +597,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             CATransaction.commit()
         }
         
+        /// TODO: Implement minimal haptic feedback for meaningful drop target changes.
+        /// This should trigger a subtle haptic when the user crosses a significant grid boundary.
         private func provideMinimalHapticFeedback() {
             return
 

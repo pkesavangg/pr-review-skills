@@ -18,13 +18,21 @@ struct HapticFeedbackService {
     private static let defaultLightInterval: CFTimeInterval = 0.6
     private static let defaultMediumInterval: CFTimeInterval = 0.8
     private static let defaultHeavyInterval: CFTimeInterval = 1.0
+    private static let syncQueue = DispatchQueue(label: "HapticFeedbackService.syncQueue")
     
     @inline(__always)
     private static func canTrigger(lastAt: inout CFTimeInterval, minInterval: CFTimeInterval) -> Bool {
-        let now = CACurrentMediaTime()
-        if now - lastAt < minInterval { return false }
-        lastAt = now
-        return true
+        var result = false
+        syncQueue.sync {
+            let now = CACurrentMediaTime()
+            if now - lastAt >= minInterval {
+                lastAt = now
+                result = true
+            } else {
+                result = false
+            }
+        }
+        return result
     }
     
     // MARK: - Haptic Feedback Methods
