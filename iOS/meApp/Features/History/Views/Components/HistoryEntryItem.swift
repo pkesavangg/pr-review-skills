@@ -113,7 +113,7 @@ struct HistoryEntryItem: View {
                 ))
             }
         }
-        // iOS 17 fix: Single consolidated animation with stable value tracking
+        // TODO: iOS 17 fix: Remove conflicting animations need to be handled carefully later
         .animation(.easeOut(duration: 0.25), value: animationPhase)
         .contentShape(Rectangle())
         .onTapGesture {

@@ -179,15 +179,12 @@ final class HistoryStore: ObservableObject {
         } catch {
             entries = []
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.notificationService.dismissLoader()
-        }
+        self.notificationService.dismissLoader()
     }
     
     private func deleteEntryInternal(_ entry: Entry) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
-            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds delay for better UX
             try await entryService.deleteEntry(entry)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete entry:", data: error.localizedDescription)
