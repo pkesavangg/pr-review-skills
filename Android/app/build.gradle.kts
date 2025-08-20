@@ -23,8 +23,8 @@ android {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
-    versionCode = 1
-    versionName = "5.0.0"
+    versionCode = 9000000
+    versionName = "5.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -87,6 +87,10 @@ dependencies {
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
+  implementation(libs.work.runtime.ktx)
+  implementation(libs.androidx.hilt.common)
+  implementation(libs.androidx.hilt.work)
+  testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
