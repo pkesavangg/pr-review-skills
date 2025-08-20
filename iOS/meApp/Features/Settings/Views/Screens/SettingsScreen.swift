@@ -16,11 +16,7 @@ struct SettingsScreen: View {
     @StateObject var settingsStore = SettingsStore()
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
-    @State private var showAppearancePicker: Bool = false
-    @State private var showNotificationPicker: Bool = false
-    @State private var showGenderPicker: Bool = false
-    @State private var showUnitPicker: Bool = false
-    @State private var showActivityPicker: Bool = false
+    // App-wide appearance picker state now in store
     
     
     let settingsLang = SettingsStrings.self
@@ -79,9 +75,11 @@ struct SettingsScreen: View {
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
-        // Appearance picker
+        // global modal handler for iPad centered pickers
+        .presentModal(modalStack: $settingsStore.notificationService.modalViewData)
+        // Appearance picker fallback for non-iPad or iOS>=18
         .pickerSheet(
-            isPresented: $showAppearancePicker,
+            isPresented: $settingsStore.showAppearancePicker,
             selectedValues: [Theme.shared.appearanceMode],
             options: [AppearanceMode.allCases],
             displayValue: { $0.rawValue },
@@ -94,7 +92,7 @@ struct SettingsScreen: View {
         )
         // Notifications picker
         .pickerSheet(
-            isPresented: $showNotificationPicker,
+            isPresented: $settingsStore.showNotificationPicker,
             selectedValues: [settingsStore.notificationPreference],
             options: [NotificationPreference.allCases],
             displayValue: { $0.title },
@@ -130,7 +128,7 @@ struct SettingsScreen: View {
             }
         )
         .pickerSheet(
-            isPresented: $showGenderPicker,
+            isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.activeAccount?.gender ?? .male],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
@@ -143,7 +141,7 @@ struct SettingsScreen: View {
         )
         // Unit picker
         .pickerSheet(
-            isPresented: $showUnitPicker,
+            isPresented: $settingsStore.showUnitPicker,
             selectedValues: [settingsStore.activeAccount?.weightSettings?.weightUnit ?? .lb],
             options: [[WeightUnit.lb, .kg]],
             displayValue: { unit in
@@ -158,7 +156,7 @@ struct SettingsScreen: View {
         )
         // Activity level picker
         .pickerSheet(
-            isPresented: $showActivityPicker,
+            isPresented: $settingsStore.showActivityPicker,
             selectedValues: [settingsStore.activeAccount?.weightSettings?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
@@ -234,25 +232,27 @@ struct SettingsScreen: View {
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
-                onTap: { showGenderPicker = true }))
+                onTap: { settingsStore.presentGenderPicker() }))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
-                onTap: { showActivityPicker = true }))
+                onTap: { settingsStore.presentActivityPicker() }))
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.height, value: settingsStore.heightText, chevronType: .upDown, onTap: {
-                settingsStore.showHeightPicker()
-            }))
+            /// Height selection uses SettingsStore.presentHeightPicker() for modal or sheet behavior.
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.height,
+                value: settingsStore.heightText,
+                chevronType: .upDown,
+                onTap: { settingsStore.presentHeightPicker() }
+            ))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
                 chevronType: .upDown,
-                onTap: {
-                    showUnitPicker = true
-                }))
+                onTap: { settingsStore.presentUnitPicker() }))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
@@ -272,7 +272,7 @@ struct SettingsScreen: View {
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown,
-                onTap: { showNotificationPicker = true }))
+                onTap: { settingsStore.presentNotificationPicker() }))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
@@ -286,7 +286,7 @@ struct SettingsScreen: View {
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown,
-                onTap: { showAppearancePicker = true }))
+                onTap: { settingsStore.presentAppearancePicker() }))
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

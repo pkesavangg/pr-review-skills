@@ -69,19 +69,49 @@ struct BottomTabBarView: View {
         .withWeightOnlyModeIndicator()
         .environmentObject(viewModel)
         .edgesIgnoringSafeArea(.bottom)
-        // Half-sheet shown when a new scale is discovered via Bluetooth
-        .sheet(item: $viewModel.discoveredScale) { scale in
-            ScaleDiscoveredSheetView(
-                device: scale,
-                discoveryEvent: viewModel.discoveryEvent,
-                onClose: {
-                    viewModel.dismissDiscoveredScaleSheet()
-                },
-                onConnect: {
-                    viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+        // Show scale discovered sheet: modal on iPad < iOS18 and sheet otherwise
+        .if(DeviceUtils.useModalPicker) { view in
+            view
+                .onChange(of: viewModel.discoveredScale) { _, scale in
+                    if let scale = scale {
+                        let sheetView = ScaleDiscoveredSheetView(
+                            device: scale,
+                            discoveryEvent: viewModel.discoveryEvent,
+                            onClose: {
+                                viewModel.notificationService.dismissModal()
+                                viewModel.dismissDiscoveredScaleSheet()
+                            },
+                            onConnect: {
+                                viewModel.notificationService.dismissModal()
+                                viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                            }
+                        )
+                        .cornerRadius(.radiusSM)
+                        
+                        viewModel.notificationService.showModal(
+                            ModalData(
+                                presentedView: AnyView(sheetView),
+                                backdropDismiss: false
+                            )
+                        )
+                    }
                 }
-            )
-            .deviceDiscoverSheetStyle()
+        }
+        .if(!DeviceUtils.useModalPicker) { view in
+            view
+                .sheet(item: $viewModel.discoveredScale) { scale in
+                    ScaleDiscoveredSheetView(
+                        device: scale,
+                        discoveryEvent: viewModel.discoveryEvent,
+                        onClose: {
+                            viewModel.dismissDiscoveredScaleSheet()
+                        },
+                        onConnect: {
+                            viewModel.openScaleSetup(scale: scale, event: viewModel.discoveryEvent)
+                        }
+                    )
+                    .deviceDiscoverSheetStyle()
+                }
         }
         // Setup flow presentation
         .sheet(item: $viewModel.setupPayload, onDismiss: {

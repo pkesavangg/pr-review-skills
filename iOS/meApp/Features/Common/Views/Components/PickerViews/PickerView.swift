@@ -117,6 +117,8 @@ struct PickerView<T: Hashable>: View {
             }
             .frame(height: 180)
         }
+        .background(theme.backgroundPrimary) // Value of type 'Theme' has no member 'backgroundPrimary'
+        .cornerRadius(.radiusSM)
         .onAppear {
             tempSelectedValues = selectedValues
         }
