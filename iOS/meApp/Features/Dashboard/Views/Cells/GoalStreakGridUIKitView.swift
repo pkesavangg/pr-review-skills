@@ -67,6 +67,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         coordinator.lastIsEditMode = newIsEditMode
+        
+        // Update drag interaction enabled state
+        collectionView.dragInteractionEnabled = newIsEditMode
     }
     
     func makeCoordinator() -> Coordinator {
@@ -268,7 +271,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             }
             let dragItem = UIDragItem(itemProvider: itemProvider)
-            dragItem.localObject = widget
+            
+            // Mark this as a goal/streak grid item to prevent cross-grid dragging
+            dragItem.localObject = DragItemWrapper(type: DragItemWrapper.ItemType.goalStreak, item: widget)
+            
             return [dragItem]
         }
         
@@ -283,7 +289,40 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             guard store.state.ui.isEditMode else {
                 return UICollectionViewDropProposal(operation: .forbidden)
             }
+            
+            // Only accept drops from the same grid (goal/streak items)
+            guard let items = session.items as? [UIDragItem] else {
+                return UICollectionViewDropProposal(operation: .forbidden)
+            }
+            
+            // Check if all items are from the goal/streak grid
+            for dragItem in items {
+                if let wrapper = dragItem.localObject as? DragItemWrapper {
+                    if wrapper.type != DragItemWrapper.ItemType.goalStreak {
+                        return UICollectionViewDropProposal(operation: .forbidden)
+                    }
+                } else {
+                    // Legacy support for direct widget objects
+                    if !(dragItem.localObject is MileStoneType) {
+                        return UICollectionViewDropProposal(operation: .forbidden)
+                    }
+                }
+            }
+
+            if let destinationIndexPath = destinationIndexPath {
+                // Show drop target indicator
+                showDropTargetIndicator(at: destinationIndexPath, in: collectionView)
+            }
+            
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
+        }
+        
+        /// iOS Home Screen Logic: Show drop target indicator to prevent flickering
+        private func showDropTargetIndicator(at indexPath: IndexPath, in collectionView: UICollectionView) {
+            // Disable animations for immediate feedback
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)            
+            CATransaction.commit()
         }
         
         func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
@@ -292,13 +331,190 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                   let item = coordinator.items.first,
                   let sourceIndexPath = item.sourceIndexPath else { return }
 
-            gridModel.moveWidget(from: sourceIndexPath.item, to: destinationIndexPath.item)
-            collectionView.performBatchUpdates({
-                collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
-            }, completion: nil)
+            // Extract the widget from the DragItemWrapper
+            let widget: MileStoneType
+            if let wrapper = item.dragItem.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.goalStreak {
+                widget = wrapper.item as! MileStoneType
+            } else if let directWidget = item.dragItem.localObject as? MileStoneType {
+                widget = directWidget
+            } else {
+                return // Invalid drop item
+            }
+
+            // iOS Home Screen Logic: Immediately rearrange items to prevent flickering
+            // Widgets and apps are pushed to maintain proper spacing
+            let sourceIndex = sourceIndexPath.item
+            let destinationIndex = destinationIndexPath.item
+            
+            // Calculate the actual insertion index considering widget/app spacing
+            let actualInsertionIndex = calculateActualInsertionIndex(
+                from: sourceIndex,
+                to: destinationIndex,
+                for: widget
+            )
+            
+            // Perform the reorder with immediate visual feedback
+            performImmediateReorder(
+                collectionView: collectionView,
+                from: sourceIndex,
+                to: actualInsertionIndex,
+                widget: widget
+            )
 
             // Save the new order to DashboardStore UI state
             persistGridOrderToStore()
+        }
+        
+        /// iOS Home Screen Logic: Calculate actual insertion index considering widget/app spacing
+        private func calculateActualInsertionIndex(from sourceIndex: Int, to destinationIndex: Int, for widget: MileStoneType) -> Int {
+            let currentModel = gridModel.mileStones
+            
+            // If moving to the same position, no change needed
+            if sourceIndex == destinationIndex {
+                return sourceIndex
+            }
+            
+            // Determine if this is a widget (goal card) or app (streak item)
+            let isWidget = widget == .goalCard
+            
+            // iOS Home Screen Logic: Widgets and apps have different spacing rules
+            if isWidget {
+                // Widget (goal card) logic: Full-width items that push others
+                // Widgets can be placed at any row boundary
+                return destinationIndex
+            } else {
+                // App (streak item) logic: Grid items that maintain spacing
+                // Apps are placed in grid positions, maintaining column alignment
+                let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                
+                // Calculate the target row and column
+                let targetRow = destinationIndex / columns
+                let targetColumn = destinationIndex % columns
+                
+                // Ensure the target position is valid for grid layout
+                let validTargetIndex = targetRow * columns + targetColumn
+                
+                // If the target is occupied by a widget, find the next available position
+                if validTargetIndex < currentModel.count {
+                    let targetWidget = currentModel[validTargetIndex]
+                    if targetWidget == .goalCard {
+                        // Widget is here, find next available position
+                        return findNextAvailablePosition(from: validTargetIndex, in: currentModel, columns: columns)
+                    }
+                }
+                
+                return validTargetIndex
+            }
+        }
+        
+        /// iOS Home Screen Logic: Find next available position when target is occupied
+        private func findNextAvailablePosition(from startIndex: Int, in model: [MileStoneType], columns: Int) -> Int {
+            let maxIndex = model.count - 1
+            
+            // Look forward first
+            for i in startIndex...maxIndex {
+                if i < model.count && model[i] != .goalCard {
+                    return i
+                }
+            }
+            
+            // Look backward if no forward position found
+            for i in (0..<startIndex).reversed() {
+                if i < model.count && model[i] != .goalCard {
+                    return i
+                }
+            }
+            
+            // Fallback to start index
+            return startIndex
+        }
+        
+        /// iOS Home Screen Logic: Perform immediate reorder with visual feedback
+        private func performImmediateReorder(collectionView: UICollectionView, from sourceIndex: Int, to destinationIndex: Int, widget: MileStoneType) {
+            // iOS Home Screen Logic: Disable all animations for instant positioning
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            CATransaction.setAnimationDuration(0)
+            
+            UIView.performWithoutAnimation {
+                // Update the model first to prevent state inconsistencies
+                gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
+                
+                // Perform the collection view update with completion handler
+                collectionView.performBatchUpdates({
+                    collectionView.moveItem(at: IndexPath(item: sourceIndex, section: 0),
+                                         to: IndexPath(item: destinationIndex, section: 0))
+                }, completion: { _ in
+                    // iOS Home Screen Logic: Update grid layout efficiently
+                    self.updateGridLayoutEfficiently(in: collectionView)
+                    
+                    // Validate the grid layout after reordering
+                    self.validateGridLayoutAfterReorder(in: collectionView)
+                })
+            }
+            
+            CATransaction.commit()
+            
+            // iOS Home Screen Logic: Force additional layout passes to ensure stability
+            DispatchQueue.main.async {
+                collectionView.layoutIfNeeded()
+                
+                // Final layout pass to ensure all cells are properly positioned
+                DispatchQueue.main.async {
+                    collectionView.layoutIfNeeded()
+                }
+            }
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
+            // Disable animations during drag to prevent flickering
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            CATransaction.commit()
+            
+            // Mark the dragged cell to prevent layout conflicts
+            if let draggedItem = session.items.first,
+               let wrapper = draggedItem.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.goalStreak {
+                // Store the dragged index to prevent flickering
+                store.state.ui.isGoalCardBeingDragged = (wrapper.item as? MileStoneType) == .goalCard
+            }
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, dragSessionDidEnd session: UIDragSession) {
+            // Re-enable animations after drag ends
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            CATransaction.commit()
+            
+            // Clear drag state
+            store.state.ui.isGoalCardBeingDragged = false
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, dropSessionDidEnter session: UIDropSession) {
+            // Disable animations when drop session enters to prevent flickering
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            CATransaction.commit()
+            
+            // Prepare for immediate reordering
+            collectionView.layoutIfNeeded()
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+            // Re-enable animations after drop session ends
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            CATransaction.commit()
+            
+            // Force layout update to ensure proper positioning
+            UIView.performWithoutAnimation {
+                collectionView.layoutIfNeeded()
+            }
+            
+            // Clear any remaining drag state
+            store.state.ui.isGoalCardBeingDragged = false
         }
         
         /// Saves the current grid order to DashboardStore UI state
@@ -323,6 +539,55 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Force UI update to reflect the changes
             store.objectWillChange.send()
+        }
+        
+        /// iOS Home Screen Logic: Update grid layout efficiently to prevent flickering
+        private func updateGridLayoutEfficiently(in collectionView: UICollectionView) {
+            // iOS Home Screen Logic: Disable animations during layout updates
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            
+            // Force layout update
+            collectionView.layoutIfNeeded()
+            
+            // Ensure all cells are properly positioned
+            collectionView.visibleCells.forEach { cell in
+                if let indexPath = collectionView.indexPath(for: cell) {
+                    // Get the layout attributes for this cell
+                    if let attributes = collectionView.layoutAttributesForItem(at: indexPath) {
+                        // Apply the correct frame immediately
+                        cell.frame = attributes.frame
+                        
+                        // Remove any transform animations
+                        cell.transform = .identity
+                        cell.contentView.transform = .identity
+                    }
+                }
+            }
+            
+            CATransaction.commit()
+        }
+        
+        /// iOS Home Screen Logic: Validate grid layout after reordering
+        private func validateGridLayoutAfterReorder(in collectionView: UICollectionView) {
+            // Ensure the collection view layout is valid
+            collectionView.collectionViewLayout.invalidateLayout()
+            
+            // Force a layout pass
+            collectionView.layoutIfNeeded()
+            
+            // Verify all cells are in correct positions
+            collectionView.visibleCells.forEach { cell in
+                if let indexPath = collectionView.indexPath(for: cell) {
+                    let expectedFrame = collectionView.layoutAttributesForItem(at: indexPath)?.frame
+                    if let expectedFrame = expectedFrame, cell.frame != expectedFrame {
+                        // Correct the cell position if it's wrong
+                        UIView.performWithoutAnimation {
+                            cell.frame = expectedFrame
+                        }
+                    }
+                }
+            }
         }
     }
 }

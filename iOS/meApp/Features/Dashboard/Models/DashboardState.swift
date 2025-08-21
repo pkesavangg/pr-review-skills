@@ -43,7 +43,6 @@ struct UIState {
         draggingStreak = nil
         isGoalCardBeingDragged = false
         dropHoverId = nil
-        gridLayoutId = UUID()
     }
 }
 

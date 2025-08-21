@@ -644,6 +644,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         state.ui.draggingMetric = nil
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
+        state.ui.isGoalCardBeingDragged = false
+    }
+ 
+    func resetGridLayout() {
+        resetDragState()
         state.ui.gridLayoutId = UUID()
     }
 
@@ -652,8 +657,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         // Clear the interval cache to ensure fresh randomization
         UIView.clearWiggleIntervalCache()
 
-        state.ui.gridLayoutId = UUID()
-        objectWillChange.send()
+        resetGridLayout()
         logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
 
@@ -820,7 +824,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                 self.state.graph.clearSelection()
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
-                self.state.ui.gridLayoutId = UUID()
+                self.resetGridLayout()
                 // Reset snapshot after a full dashboard reset
                 self.hasEditSnapshot = false
             }
@@ -1361,10 +1365,10 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         // Handle any settings changes
         handleSettingsChange()
        // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
             // Force both grids to rebuild and recalc intrinsic size after re-appearing (fixes half-height issue)
-            self.state.ui.gridLayoutId = UUID()
+            self.resetGridLayout()
             self.objectWillChange.send()
         }
 
