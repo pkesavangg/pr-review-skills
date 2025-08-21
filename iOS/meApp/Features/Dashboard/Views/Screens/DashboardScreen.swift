@@ -140,15 +140,15 @@ struct DashboardScreen: View {
                             .padding(.horizontal, .spacingLG)
                     }
 
-                    if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+                    if store.shouldShowGoalCardOrStreaks {
                         GoalStreakGridUIKitView(store: store)
-                            .frame(minHeight: 200)
+                            .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
                             .id(store.state.ui.gridLayoutId)
                             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
                     }
                 }
                 actionButtonsSection()
-                    .padding(.top, store.allContentRemoved ? .spacing6XL : .spacingSM)
+                    .padding(.top, store.allContentRemoved ? .spacingLG : .spacingSM)
             }
         }
         .background(

@@ -13,6 +13,7 @@ public class CustomCollectionView: UICollectionView {
     private var contentSizeObserver: NSKeyValueObservation?
     private var lastBoundsSize: CGSize = .zero
     public var hideDragPlatter: Bool = false
+    public var suspendIntrinsicInvalidation: Bool = false
     
     public override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
         super.init(frame: frame, collectionViewLayout: layout)
@@ -26,8 +27,11 @@ public class CustomCollectionView: UICollectionView {
     
     override public func didAddSubview(_ subview: UIView) {
         super.didAddSubview(subview)
-        if hideDragPlatter && "\(type(of: subview))" == "_UIPlatterView" {
-            subview.alpha = 0
+        if hideDragPlatter {
+            let className = String(describing: type(of: subview))
+            if className.contains("Platter") || className.contains("Preview") || className.contains("Drag") || className.contains("Drop") {
+                subview.alpha = 0
+            }
         }
     }
     
@@ -51,7 +55,9 @@ public class CustomCollectionView: UICollectionView {
     private func setupIntrinsicSizeObserver() {
         // Observe contentSize changes to update intrinsic size immediately when data/layout changes
         contentSizeObserver = observe(\.contentSize, options: [.new]) { [weak self] _, _ in
-            self?.invalidateIntrinsicContentSize()
+            guard let self = self else { return }
+            if self.suspendIntrinsicInvalidation { return }
+            self.invalidateIntrinsicContentSize()
         }
     }
 }
