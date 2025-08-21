@@ -21,6 +21,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIn
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIntent.SetCurrentStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
@@ -51,7 +52,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -99,6 +99,10 @@ constructor(
         replaceAccount(intent.userName)
       }
 
+      BtWifiScaleSetupIntent.ShowRestoreAccountAlert -> {
+        showRestoreAccountAlert()
+      }
+
       BtWifiScaleSetupIntent.Next -> onNext()
       BtWifiScaleSetupIntent.Back -> onBack()
       BtWifiScaleSetupIntent.Skip -> onSkip()
@@ -130,8 +134,15 @@ constructor(
 
   private fun initializeSetup() {
     viewModelScope.launch {
+      // Initialize username form with active account name
+      initializeUsernameForm()
+
       if (broadcastId != null) {
         discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
+        // Initialize scale mode preferences based on connected scale
+        discoveredScale?.let { scale ->
+          setModePreference(scale)
+        }
       }
       when (initialStep) {
         BtWifiSetupStep.USER_LIMIT_REACHED -> {
@@ -143,6 +154,44 @@ constructor(
         else -> null
       }
       handleIntent(SetCurrentStep(initialStep))
+    }
+  }
+
+  /**
+   * Initializes the username form with the active account name.
+   * This ensures we have a valid username even in the connect popup flow.
+   */
+  private suspend fun initializeUsernameForm() {
+    try {
+      val activeAccount = accountService.activeAccountFlow.first()
+      val username = activeAccount?.firstName ?: "Default"
+      _state.value.usernameForm.username.onValueChange(username)
+    } catch (e: Exception) {
+      _state.value.usernameForm.username.onValueChange("Default")
+    }
+  }
+
+  /**
+   * Sets the mode preferences based on the connected scale's current preferences.
+   * Similar to the Angular component's setModePreference method.
+   *
+   * @param scale The connected scale device
+   */
+  private fun setModePreference(scale: Device) {
+    try {
+      // Default values - similar to Angular component initialization
+      var heartRateEnabled = false
+      var allBodyMetricsMode = true // Default to metrics mode (ScaleModeEnum.metrics)
+
+      // Check if scale has preferences (similar to !!scale?.preference check in Angular)
+      scale.preferences?.let { preferences ->
+        // Set heart rate based on shouldMeasurePulse preference
+        heartRateEnabled = preferences.shouldMeasurePulse ?: false
+        allBodyMetricsMode = preferences.shouldMeasureImpedance ?: true
+      }
+      handleIntent(BtWifiScaleSetupIntent.SetScaleModePreference(allBodyMetricsMode, heartRateEnabled))
+    } catch (e: Exception) {
+      handleIntent(BtWifiScaleSetupIntent.SetScaleModePreference(true, false))
     }
   }
 
@@ -163,6 +212,28 @@ constructor(
       }
 
     }
+  }
+
+  /**
+   * Shows restore account confirmation dialog similar to Angular implementation.
+   * Based on the restore() method from smart-wifi-setup.page.ts
+   */
+  private fun showRestoreAccountAlert() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Title,
+        message = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Message,
+        confirmText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Restore,
+        cancelText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.GoBack,
+        onConfirm = {
+          // Replace account with the current user's first name
+          viewModelScope.launch {
+            val firstName = accountService.activeAccountFlow.first()?.firstName
+            handleIntent(BtWifiScaleSetupIntent.ReplaceAccount(firstName))
+          }
+        },
+      ),
+    )
   }
 
   /**
@@ -312,7 +383,6 @@ constructor(
     val currentState = state.value
     AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
     when (currentState.currentStep) {
-      BtWifiSetupStep.WIFI_PASSWORD,
       BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
         handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
       }
@@ -544,7 +614,7 @@ constructor(
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
         ggDeviceService.pairDevice(
           device = ggBtDevice,
-        ) {
+        ) { it ->
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
@@ -575,15 +645,27 @@ constructor(
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
               viewModelScope.launch {
+                // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
-                fetchUserList(
-                  duplicateUserName = duplicateUserName,
-                  onSuccess = {
-                    handleIntent(
-                      SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND),
-                    )
-                  },
-                )
+                  ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
+                  ?: accountService.activeAccountFlow.first()?.firstName
+
+                if (duplicateUserName != null) {
+                  AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
+                  fetchUserList(duplicateUserName = duplicateUserName)
+                  handleIntent(SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND))
+                } else {
+                  // If we still can't get a username, log error and show generic error
+                  AppLog.e(TAG, "Could not determine duplicate username")
+                  handleIntent(
+                    BtWifiScaleSetupIntent.SetStepConnectionState(
+                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                      ConnectionState.Failed.Error,
+                    ),
+                  )
+                  // Use BT_001 for duplicate user error (consistent with existing error code)
+                  handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
+                }
               }
             }
 
@@ -637,6 +719,15 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e.toString())
+      // Show error state to user
+      handleIntent(
+        BtWifiScaleSetupIntent.SetStepConnectionState(
+          BtWifiSetupStep.CONNECTING_BLUETOOTH,
+          ConnectionState.Failed.Error,
+        ),
+      )
+      // Use BT_002 for general Bluetooth errors (consistent with existing error code)
+      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
     }
   }
 
@@ -840,7 +931,6 @@ constructor(
   }
 
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
-    Log.d(TAG, preferences.toString())
     viewModelScope.launch {
       try {
         if (dashboardKeys != null) {
@@ -982,6 +1072,11 @@ constructor(
       sku = sku,
       preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
     )
+
+    // Set mode preferences after discovering scale
+    discoveredScale?.let { scale ->
+      setModePreference(scale)
+    }
   }
 
   private fun subscribeToLiveData() {

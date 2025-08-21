@@ -20,7 +20,6 @@ import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.model.ForgotPasswordDialogIntent
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.strings.ForgotPasswordDialogStrings
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.viewmodel.ForgotPasswordDialogViewModel
-import com.dmdbrands.gurus.weight.features.login.model.LoginIntent
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 
 /**
@@ -46,25 +45,25 @@ fun PasswordResetModal(
     }
 
     BaseModal(
-        title = ForgotPasswordDialogStrings.Title,
-        body = ForgotPasswordDialogStrings.Subtitle,
-        primaryAction = ActionButton(
+      title = ForgotPasswordDialogStrings.Title,
+      body = ForgotPasswordDialogStrings.Subtitle,
+      primaryAction = ActionButton(
             text = ForgotPasswordDialogStrings.SubmitButton,
             action = { viewModel.handleIntent(ForgotPasswordDialogIntent.Submit) },
             enabled = viewModel.isSubmitEnabled,
         ),
-        secondaryAction = ActionButton(
+      secondaryAction = ActionButton(
             text = ForgotPasswordDialogStrings.CancelButton,
             action = {
                 viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
                 onDismiss()
             },
         ),
-        onDismiss = {
+      onDismiss = {
             viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
             onDismiss()
         },
-        modifier = modifier.clickable(
+      modifier = modifier.clickable(
             interactionSource = interactionSource,
             indication = null,
             onClick = { focusManager.clearFocus() }

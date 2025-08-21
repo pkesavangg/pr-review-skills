@@ -1,10 +1,10 @@
 package com.dmdbrands.gurus.weight.features.ScaleUsers.reducer
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 
 /**
  * Controls for Scale Username form.
@@ -51,6 +51,8 @@ sealed interface ScaleUserListIntent : IReducer.Intent {
   data class DeleteUser(
     val user: GGBTUser,
   ) : ScaleUserListIntent
+
+  data object RefreshUserList : ScaleUserListIntent
 
   data object Save : ScaleUserListIntent
 

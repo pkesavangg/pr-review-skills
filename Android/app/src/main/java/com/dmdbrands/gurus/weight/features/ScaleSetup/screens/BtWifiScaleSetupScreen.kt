@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoade
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiSelection
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LoaderIconType
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupState
@@ -29,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.BtWifiScaleSetup
 import com.dmdbrands.gurus.weight.features.ScaleUsers.components.ScaleUserList
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
@@ -88,7 +90,9 @@ fun BtWifiScaleSetupScreenContent(
         true
 
       BtWifiSetupStep.DUPLICATES_FOUND ->
-        state.duplicateUser?.name != state.usernameForm.username.value
+        state.duplicateUser?.name != state.usernameForm.username.value &&
+          state.usernameForm.username.isValueValid() &&
+          !state.usernameForm.username.value.equals(state.duplicateUser?.name, ignoreCase = true)
 
       BtWifiSetupStep.CONNECTING_WIFI ->
         state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
@@ -145,7 +149,8 @@ fun BtWifiScaleSetupScreenContent(
         }
 
         state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.connectedSSID.isNullOrEmpty() && !isFromWiFiSetup
-          -> { {
+          -> {
+          {
             AppButton(
               type = ButtonType.TextTertiary,
               label = ScaleSetupStrings.SetupButtons.Skip,
@@ -239,8 +244,9 @@ fun BtWifiScaleSetupScreenContent(
               supportText = BtWifiScaleSetupStrings.DuplicateUser
                 .LastActive(state.duplicateUser?.lastActive?.formatTimestamp()).lowercase(),
               onSupportingButtonClick = {
-                onIntent(BtWifiScaleSetupIntent.ReplaceAccount())
+                onIntent(BtWifiScaleSetupIntent.ShowRestoreAccountAlert)
               },
+              userList = state.userList,
             )
           }
 
@@ -262,7 +268,6 @@ fun BtWifiScaleSetupScreenContent(
             ScaleSetupLoader(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.GatheringNetwork.Title(state.currentStepConnectionState),
-              scaleImageSku = state.sku,
               secondaryButtonText = ScaleSetupStrings.SetupButtons.SetupWifiLater,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
@@ -270,6 +275,8 @@ fun BtWifiScaleSetupScreenContent(
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.Skip) }
               } else null,
+              indicatorIcon = LoaderIconType.Wifi,
+              showIndicationOnly = true,
             )
           }
 
@@ -305,6 +312,7 @@ fun BtWifiScaleSetupScreenContent(
                 state.wifiPasswordForm.password.reset()
                 onIntent(BtWifiScaleSetupIntent.HandlePasswordNetworkStatus)
               },
+              inputType = AppInputType.PASSWORD,
             )
           }
 
@@ -322,6 +330,7 @@ fun BtWifiScaleSetupScreenContent(
               secondaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.OpenHelp) }
               } else null,
+              indicatorIcon = LoaderIconType.Wifi,
             )
           }
 

@@ -45,6 +45,7 @@ class IntegrationViewModel @Inject constructor(
    * Current active account, updated automatically from accountService.
    */
   private var currentAccount: Account? = null
+  private var isTabHidden = false
 
   /**
    * Current OAuth provider being processed (tracked locally for OAuth flow).
@@ -150,7 +151,10 @@ class IntegrationViewModel @Inject constructor(
           when (state) {
             ChromeTabState.TabHidden -> {
               AppLog.d("IntegrationViewModel", "Custom tab hidden - OAuth flow may be completed")
-              checkOAuthFlowCompletion()
+              if (!isTabHidden) {
+                isTabHidden = true
+                checkOAuthFlowCompletion()
+              }
             }
 
             ChromeTabState.TabShown -> {
@@ -171,6 +175,7 @@ class IntegrationViewModel @Inject constructor(
           e.toString(),
         )
       }
+      isTabHidden = false
     }
   }
 
@@ -443,8 +448,8 @@ class IntegrationViewModel @Inject constructor(
         // Show success toast
         dialogQueueService.showToast(
           Toast(
-            message = "Successfully disconnected from ${integration.name}"
-          )
+            message = "Successfully disconnected from ${integration.name}",
+          ),
         )
       } catch (e: Exception) {
         AppLog.e(
@@ -457,8 +462,8 @@ class IntegrationViewModel @Inject constructor(
         // Show error toast
         dialogQueueService.showToast(
           Toast(
-            message = "Failed to disconnect from ${integration.name}"
-          )
+            message = "Failed to disconnect from ${integration.name}",
+          ),
         )
 
         // Refresh to ensure UI shows correct state

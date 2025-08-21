@@ -1,3 +1,20 @@
+## 5.0.0 - 08/14/2025
+
+### Added
+
+-Introduced Weight-Only Mode to capture weight without body metrics (impedance off).
+-Accessible from Dashboard and Scale Settings with a clear enable/disable flow.
+-Refreshed UI: confirmation dialogs, improved light/dark visuals, and session state cues.
+-Added guidance and messaging for switching modes to reduce user confusion
+-Introduced goalAlert methods for set/achieve notifications
+
+### Changed
+
+-Forked the Vico chart library to compute y-axis values during scrolling (not only after it stops), resolving lag and line/curve overlap.
+-Added consistent separators for Week, Month, Year, and Total views.
+-Updated Wi-Fi error visuals for dark and light modes
+
+
 ## 5.0.0 - 08/01/2025
 
 ### Added
