@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import Combine
 
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
@@ -19,21 +20,19 @@ struct DashboardScreen: View {
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
-
+    
     var body: some View {
         VStack(spacing: 0) {
-            navbarHeaderSection()
+            navbarHeader()
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if store.state.ui.isEditMode {
                         store.cancelEdit()
                     }
                 }
-            dashboardScrollView()
+            dashboardScroll()
         }
-        .refreshable {
-            // TODO: Implement refresh logic if needed
-        }
+        .refreshable { store.onAppearActions() }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
@@ -46,42 +45,40 @@ struct DashboardScreen: View {
                 selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
             )
         }
-        .onChange(of: selectedMetricInfo) { _, newValue in
-            Task {
+        .task(id: selectedMetricInfo) {
+            if let newValue = selectedMetricInfo {
                 await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
-                // Clear the selectedMetricInfo after handling
                 selectedMetricInfo = nil
             }
         }
-        .onChange(of: store.state.ui.selectedMetricLabel) { _, newValue in
-            store.handleSelectedMetricLabelChange(newValue)
+        .task(id: store.state.ui.selectedMetricLabel) {
+            store.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
         }
-        .onChange(of: selectedEntry) { _, newValue in
-            store.handleSelectedEntryChange(newValue)
+        .task(id: selectedEntry) {
+            store.handleSelectedEntryChange(selectedEntry)
         }
-        .onChange(of: openMetricInfoWithoutSelection) { _, newValue in
-            store.handleMetricInfoSheetDismiss(newValue)
+        .task(id: openMetricInfoWithoutSelection) {
+            store.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
-        
-        .onChange(of: store.currentUnit) { _, _ in
+        .task(id: store.currentUnit) {
             store.handleUnitChange()
         }
-        .onChange(of: store.state.data.latestWeightStored) { _, _ in
+        .task(id: store.state.data.latestWeightStored) {
             store.resetMetricsToLatestEntry()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            // Restart wiggle animations when app becomes active from background
             if store.state.ui.isEditMode {
-                // Force a small delay to ensure the view is fully loaded
                 DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
                     store.restartWiggleAnimations()
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            if store.state.ui.isEditMode { store.cancelEdit() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+        .onReceive(
+            Publishers.MergeMany([
+                NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification),
+                NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            ])
+        ) { _ in
             if store.state.ui.isEditMode { store.cancelEdit() }
         }
         .presentAlert(alertData: $store.state.ui.alertData)
@@ -96,23 +93,16 @@ struct DashboardScreen: View {
                 store.cancelEdit()
             }
             if newTab == .dash {
-                DispatchQueue.main.async {
-                    store.resetGridLayout()
-                }
+                DispatchQueue.main.async { store.resetGridLayout() }
             }
         }
     }
-
-    // MARK: - Sections split for type-checking
-
-    @ViewBuilder
-    private func navbarHeaderSection() -> some View {
-        NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
-            .zIndex(100)
+    
+    private func navbarHeader() -> some View {
+        NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false).zIndex(100)
     }
-
-    @ViewBuilder
-    private func dashboardScrollView() -> some View {
+    
+    private func dashboardScroll() -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
                 WeightTrendView(dashboardStore: store)
@@ -122,54 +112,73 @@ struct DashboardScreen: View {
                             store.cancelEdit()
                         }
                     }
-                if !store.allContentRemoved {
-                    if !store.metricsToShow.isEmpty {
-                        MetricGridUIKitView(store: store, onMetricLongPress: { label in
-                            store.state.ui.selectedMetricLabel = label
-                            openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
-                        })
-                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
-                            .padding(.top, .spacingSM)
-                            .id(store.state.ui.gridLayoutId)
-                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-                    }
-
-                    if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
-                        Divider()
-                            .foregroundColor(theme.statusUtilityPrimary)
-                            .padding(.horizontal, .spacingLG)
-                    }
-
-                    if store.shouldShowGoalCardOrStreaks {
-                        GoalStreakGridUIKitView(store: store)
-                            .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
-                            .id(store.state.ui.gridLayoutId)
-                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-                    }
+                if !store.allContentRemoved && store.state.data.hasAnyEntries {
+                    metricsGridSection()
+                    dividerSection()
+                    goalStreakSection()
                 }
-                actionButtonsSection()
-                    .padding(.top, store.allContentRemoved ? .spacingLG : .spacingSM)
+                if store.state.data.hasAnyEntries {
+                    actionButtons()
+                        .padding(.top, store.allContentRemoved || !store.state.data.hasAnyEntries ? .spacingLG : .spacingSM)
+                }
+                if !store.state.data.hasAnyEntries {
+                    noEntrySection()
+                }
             }
         }
         .background(
-            Color.clear
-                .contentShape(Rectangle())
+            Color.clear.contentShape(Rectangle())
                 .onTapGesture {
-                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && suppressOutsideCancel == false {
+                    if store.state.ui.isEditMode && store.state.ui.alertData == nil && !suppressOutsideCancel {
                         store.cancelEdit()
                     }
                 }
         )
         .padding(.top, .zero)
     }
-
-    // MARK: - Action Buttons
-    private func actionButtonsSection() -> some View {
+    
+    private func metricsGridSection() -> some View {
+        Group {
+            if !store.metricsToShow.isEmpty {
+                MetricGridUIKitView(store: store, onMetricLongPress: { label in
+                    store.state.ui.selectedMetricLabel = label
+                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                })
+                .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
+                .padding(.top, .spacingSM)
+                .id(store.state.ui.gridLayoutId)
+                .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+            }
+        }
+    }
+    
+    private func dividerSection() -> some View {
+        Group {
+            if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
+                Divider()
+                    .foregroundColor(theme.statusUtilityPrimary)
+                    .padding(.horizontal, .spacingLG)
+            }
+        }
+    }
+    
+    private func goalStreakSection() -> some View {
+        Group {
+            if store.shouldShowGoalCardOrStreaks {
+                GoalStreakGridUIKitView(store: store)
+                    .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
+                    .id(store.state.ui.gridLayoutId)
+                    .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+            }
+        }
+    }
+    
+    private func actionButtons() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
             if store.state.ui.isEditMode {
                 ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.saveChanges()
-                    store.resetDragState() 
+                    store.resetDragState()
                 })
                 ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.showResetDashboardAlert()
@@ -185,10 +194,19 @@ struct DashboardScreen: View {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
-
             }
         }
         .padding(.bottom, .spacingLG)
     }
-
+    
+    private func noEntrySection() -> some View {
+        NoEntryView(
+            title: nil,
+            description: DashboardStrings.noEntriesMessage,
+            onButtonTap: {
+                tabViewModel.pendingSettingsNavigation = .addEditScales
+                tabViewModel.selectedTab = .settings
+            }
+        )
+    }
 }
