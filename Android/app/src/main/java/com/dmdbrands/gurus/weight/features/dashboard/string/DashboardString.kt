@@ -52,4 +52,8 @@ object DashboardString {
     const val LbsPerYear = "lbs/year"
     const val LbsTotal = "lbs/total"
   }
+
+  object Loader {
+    const val save = "saving..."
+  }
 }

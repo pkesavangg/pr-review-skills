@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.service
 
 import androidx.activity.ComponentActivity
 import com.greatergoods.libs.healthconnect.HealthConnect
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.greatergoods.libs.healthconnect.enums.DataType
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
@@ -56,13 +57,14 @@ class HealthConnectService @Inject constructor(
   private val context: Context,
   private val healthConnectRepository: IHealthConnectRepository,
   private val accountRepository: IAccountRepository,
-  private val dialogQueueService: IDialogQueueService,
-  private val appNavigationService: IAppNavigationService,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
   private val entryRepository: IEntryRepository, // Add entry repository for fetching entries
   private val integrationRepository: IIntegrationRepository, // Inject IntegrationRepository for integrations flow
   private val entryService: IEntryService,
   // Inject IntegrationService for API calls
-) : IHealthConnectService {
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IHealthConnectService {
 
   // Core Health Connect components
   private lateinit var healthConnect: HealthConnect

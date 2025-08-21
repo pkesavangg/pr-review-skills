@@ -20,27 +20,25 @@ data class GoalFormControls(
       GoalFormControls(
         goalType =
           FormControl.create(
-            initialValue = goalType.value,
+            initialValue = goalType.value,  // Always default to LOSE_GAIN
             validators = listOf(FormValidations.required()),
           ),
         startingWeight =
           FormControl.create(
             initialValue = "0.0",
-            validators =
-              if (goalType == GoalType.LOSE_GAIN) {
-                listOf(FormValidations.required(), FormValidations.weightValidator())
-              } else {
-                listOf(FormValidations.weightValidator()) // No required validation for disabled field
-              },
+            validators = if (goalType == GoalType.LOSE_GAIN) {
+              listOf(FormValidations.required(), FormValidations.weightValidator())
+            } else {
+              listOf(FormValidations.weightValidator()) // No required validation for disabled field
+            },
           ),
         goalWeight =
           FormControl.create(
             initialValue = "0",
-            validators =
-              listOf(
-                FormValidations.required(),
-                FormValidations.weightValidator(),
-              ),
+            validators = listOf(
+              FormValidations.required(),
+              FormValidations.weightValidator(),
+            ),
           ),
       )
   }

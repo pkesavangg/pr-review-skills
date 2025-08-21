@@ -90,8 +90,8 @@ fun BtWifiScaleSetupScreenContent(
         true
 
       BtWifiSetupStep.DUPLICATES_FOUND ->
-        state.duplicateUser?.name != state.usernameForm.username.value &&
-          state.usernameForm.username.isValueValid() &&
+        // Only validate for duplicates in the DUPLICATES_FOUND step
+        state.usernameForm.username.isValueValid() &&
           !state.usernameForm.username.value.equals(state.duplicateUser?.name, ignoreCase = true)
 
       BtWifiSetupStep.CONNECTING_WIFI ->

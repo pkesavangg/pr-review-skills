@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil.getCurrentTimestamp
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -20,14 +21,13 @@ class UserSettingsService
   @Inject
   constructor(
     private val userSettingsRepository: IUserSettingsRepository,
-    private val connectivityObserver: IConnectivityObserver,
-  ) : IUserSettingsService {
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+  ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IUserSettingsService {
     private val TAG = "UserSettingsService"
 
-    /**
-     * Checks if network is available using the connectivity observer
-     */
-    private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
+
 
     /**
      * Toggles the streak setting for the active account.

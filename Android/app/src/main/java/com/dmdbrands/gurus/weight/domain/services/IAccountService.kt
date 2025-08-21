@@ -86,7 +86,7 @@ interface IAccountService {
    * @param profileUpdateRequest The profile data to update
    * @return The updated [Account] or null if update fails
    */
-  suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest)
+  suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest, isFromProfile: Boolean = false)
 
   suspend fun refreshAccount()
 

@@ -32,6 +32,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -222,7 +223,7 @@ constructor(
     val goalEntity =
       GoalSettingsEntity(
         accountId = account.id,
-        goalType = account.goalType ?: "maintain",
+        goalType = account.goalType ?: GoalType.LOSE_GAIN.value,
         weight = account.initialWeight.toFloat(),
         goalWeight = account.goalWeight.toString(),
         goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
@@ -664,7 +665,7 @@ constructor(
       // Update goal settings
       val goalSettings = GoalSettingsEntity(
         accountId = accountInfo.id,
-        goalType = accountInfo.goalType ?: "maintain",
+        goalType = accountInfo.goalType ?: GoalType.LOSE_GAIN.value,
         weight = accountInfo.initialWeight ?: 0.0f,
         goalWeight = accountInfo.goalWeight?.toString() ?: "0",
         goalPercent = accountInfo.goalPercent.toFloat(),

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
@@ -43,9 +44,11 @@ class DeviceService
 @Inject
 constructor(
   private val deviceRepository: IDeviceRepository,
-  private val dialogQueueService: IDialogQueueService,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
   @ApplicationContext private val context: Context,
-) : IDeviceService {
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
   private val tag = "DeviceService"
 
   // Internal scope for launching long-lived jobs

@@ -365,7 +365,7 @@ constructor(
     // Show loading dialog
     val currentAccount = state.value.account
 
-    dialogQueueService.showLoader("Updating activity level...")
+    dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       try {
         val bodyComposition =

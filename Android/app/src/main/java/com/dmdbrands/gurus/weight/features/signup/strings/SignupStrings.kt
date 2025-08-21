@@ -82,7 +82,7 @@ object SignupStrings {
     const val MessageNotAuth = "Unable to create account. Please check your information and try again."
     const val MessageGeneric =
       "Something went wrong. Please try again. If the problem continues, contact customer service."
-    const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
+    const val MessageNoConn = "Unable to find a network connection at this time. Please try again later."
     const val accountExist = "Email address is already in use"
   }
 }

@@ -111,8 +111,16 @@ constructor(
   }
 
   private fun updateVisibleKeys(keys: List<DashboardKey>) {
-    viewModelScope.launch {
-      dashboardService.updateVisibleKeys(keys = keys)
+    try {
+      viewModelScope.launch {
+        dialogQueueService.showLoader(
+          message = DashboardString.Loader.save,
+        )
+          dashboardService.updateVisibleKeys(keys = keys)
+      }
+    } catch (e: Exception) {
+    } finally {
+      dialogQueueService.dismissLoader()
     }
   }
 

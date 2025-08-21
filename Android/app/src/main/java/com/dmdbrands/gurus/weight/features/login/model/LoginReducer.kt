@@ -15,7 +15,7 @@ data class LoginFormControls(
   val password: FormControl<String>,
 ) {
   companion object {
-    fun create(email: String = "") = LoginFormControls(
+    fun create(email: String = "renuka@gg.gg") = LoginFormControls(
       email =
         FormControl.create(
           initialValue = email,
@@ -27,7 +27,7 @@ data class LoginFormControls(
         ),
       password =
         FormControl.create(
-          initialValue = "",
+          initialValue = "123456",
           validators = listOf(
             FormValidations.minLength(6, LoginStrings.PasswordLabel),
             FormValidations.maxLength(50, LoginStrings.PasswordLabel),

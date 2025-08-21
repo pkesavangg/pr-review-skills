@@ -113,7 +113,6 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         // For Goal screen, show current weight field and enable unless MAINTAIN
         showCurrentWeightForMaintain = false,
         showMetricToggle = false,
-
         initialWeightUnit = state.account?.let { account ->
           if (account.isMetricUnit()) WeightUnit.KG else WeightUnit.LB
         },

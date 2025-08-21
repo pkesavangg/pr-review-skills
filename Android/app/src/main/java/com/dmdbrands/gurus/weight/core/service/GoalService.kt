@@ -40,29 +40,17 @@ class GoalService
 @Inject
 constructor(
   private val goalRepository: IGoalRepository,
-  private val connectivityObserver: IConnectivityObserver,
-  private val dialogQueueService: IDialogQueueService,
-  private val appNavigationService: IAppNavigationService,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
-) : IGoalService {
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
 
   private val _goalStatusFlow = MutableStateFlow<Goal?>(null)
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
-
-  init {
-    // Initialize goal status flow based on active account changes
-    // Similar to Angular's subscription to activeAccount
-    // TODO: Set up combine flow with accountService.activeAccountFlow and latest entry
-    // This would update goal status when account or latest entry changes
-  }
-
-  /**
-   * Checks if network is available using the connectivity observer
-   */
-  private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
 
   /**
    * Updates the goal for the active account.

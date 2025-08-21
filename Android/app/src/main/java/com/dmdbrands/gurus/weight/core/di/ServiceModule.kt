@@ -185,8 +185,10 @@ object ServiceModule {
   fun provideDeviceInfoService(
     @ApplicationContext context: Context,
     deviceInfoRepository: IDeviceInfoRepository,
+    dialogQueueService: IDialogQueueService,
     connectivityObserver: IConnectivityObserver,
     offlineHandlerService: IOfflineHandlerService,
+    appNavigationService: IAppNavigationService,
     appRepository: IAppRepository,
     accountRepository: IAccountRepository,
     healthConnectRepository: IHealthConnectRepository,
@@ -196,6 +198,8 @@ object ServiceModule {
       context,
       deviceInfoRepository,
       connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
       offlineHandlerService,
       appRepository,
       accountRepository,
@@ -252,6 +256,8 @@ object ServiceModule {
     userSettingsRepository: IUserSettingsRepository,
     goalRepository: IGoalRepository,
     connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
   ): IOfflineHandlerService =
     OfflineHandlerService(
       accountRepository,
@@ -260,6 +266,8 @@ object ServiceModule {
       userSettingsRepository,
       goalRepository,
       connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
     )
 
   /**
@@ -272,11 +280,13 @@ object ServiceModule {
     bodyCompositionRepository: IBodyCompositionRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
   ): IBodyCompositionService =
     BodyCompositionService(
       bodyCompositionRepository,
       connectivityObserver,
       dialogQueueService,
+      appNavigationService,
     )
 
   /**
@@ -288,10 +298,14 @@ object ServiceModule {
   fun provideNotificationService(
     notificationRepository: INotificationRepository,
     connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
   ): INotificationService =
     NotificationService(
       notificationRepository,
       connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
     )
 
   @Provides
@@ -299,7 +313,10 @@ object ServiceModule {
   fun provideUserSettingsService(
     userSettingsRepository: IUserSettingsRepository,
     connectivityObserver: IConnectivityObserver,
-  ): IUserSettingsService = UserSettingsService(userSettingsRepository, connectivityObserver)
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+  ): IUserSettingsService =
+    UserSettingsService(userSettingsRepository, connectivityObserver, dialogQueueService, appNavigationService)
 
   /**
    * Provides the goal service implementation.
@@ -341,8 +358,11 @@ object ServiceModule {
   fun provideDeviceService(
     @ApplicationContext context: Context,
     deviceRepository: IDeviceRepository,
-    dialogQueueService: IDialogQueueService
-  ): IDeviceService = DeviceService(deviceRepository, dialogQueueService, context)
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+  ): IDeviceService =
+    DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context)
 
   @Provides
   @Singleton

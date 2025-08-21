@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.domain.model.api.goal.GoalData
@@ -33,8 +34,10 @@ class OfflineHandlerService
     private val notificationRepository: INotificationRepository,
     private val userSettingsRepository: IUserSettingsRepository,
     private val goalRepository: IGoalRepository,
-    private val connectivityObserver: IConnectivityObserver,
-  ) : IOfflineHandlerService {
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+  ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IOfflineHandlerService {
     companion object {
       private const val TAG = "OfflineHandlerService"
     }
@@ -47,7 +50,7 @@ class OfflineHandlerService
       AppLog.d(TAG, "Starting selective offline sync process")
       try {
         // Check if network is available
-        if (connectivityObserver.getCurrentNetworkState().unAvailable) {
+        if (!isNetworkAvailable()) {
           AppLog.w(TAG, "Network not available, skipping sync")
           return
         }

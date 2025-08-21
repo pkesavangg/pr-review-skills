@@ -108,6 +108,12 @@ fun MeAppTheme(
     LocalBorderRadius provides BorderRadiusToken,
   ) {
     MaterialTheme(
+      colorScheme = MaterialTheme.colorScheme.copy(
+        primary = meAppColorScheme.primaryAction,           // Selection handles
+        secondary = meAppColorScheme.primaryAction,         // Selection handles
+        onPrimary = meAppColorScheme.textBody,             // Selected text color
+        surfaceVariant = meAppColorScheme.toastBackground,
+      ),
       content = content,
     )
   }

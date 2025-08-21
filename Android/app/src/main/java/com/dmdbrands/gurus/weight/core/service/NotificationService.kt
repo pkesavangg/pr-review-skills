@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.domain.model.api.notification.NotificationSettingsRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -20,16 +21,15 @@ class NotificationService
   @Inject
   constructor(
     private val notificationRepository: INotificationRepository,
-    private val connectivityObserver: IConnectivityObserver,
-  ) : INotificationService {
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+  ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), INotificationService {
     companion object {
       private const val TAG = "NotificationService"
     }
 
-    /**
-     * Checks if network is available for API calls.
-     */
-    private fun isNetworkAvailable(): Boolean = !connectivityObserver.getCurrentNetworkState().unAvailable
+
 
     /**
      * Updates notification settings both online and offline.

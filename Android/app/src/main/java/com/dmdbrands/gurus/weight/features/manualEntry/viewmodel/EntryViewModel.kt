@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
+import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -137,7 +138,7 @@ constructor(
 
   private fun saveEntry() {
     dialogQueueService.showLoader(
-      message = "saving entry...",
+      message = DashboardString.Loader.save,
     )
     viewModelScope.launch {
       val scaleEntry =

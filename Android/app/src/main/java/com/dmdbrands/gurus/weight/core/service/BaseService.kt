@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import retrofit2.HttpException
 
 /**
  * Base class for all services, providing common utilities such as network checks and generic toast construction.
@@ -47,6 +48,16 @@ abstract class BaseService(
     throw Exception("No network connection available")
   }
 
+  protected fun showNetworkError() {
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = ToastStrings.Error.NetworkError.Message,
+        action = null,
+      ),
+    )
+  }
+
   /**
    * Shows a generic success toast with the given title and message.
    */
@@ -61,9 +72,20 @@ abstract class BaseService(
    * Shows a generic error toast with the given title and message.
    */
   protected fun showErrorToast(
-    title: String,
+    title: String? = null,
     message: String,
   ) {
     dialogQueueService.showToast(Toast(title = title, message = message, action = null))
+  }
+
+  /**
+   * Checks if the given error is an internet connectivity error.
+   * Equivalent to Angular's: checkInternetError = (error: any): boolean => ((error instanceof HttpErrorResponse) && error.status === 0);
+   */
+  protected fun checkInternetError(error: Throwable?): Boolean {
+    return when (error) {
+      is HttpException -> error.code() == 0
+      else -> false
+    }
   }
 }

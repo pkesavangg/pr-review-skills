@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.di
 
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.HealthConnectService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -39,11 +40,13 @@ object HealthConnectModule {
     appNavigationService: IAppNavigationService,
     entryRepository: IEntryRepository,
     integrationService: IIntegrationService,
-    entryService: IEntryService
+    entryService: IEntryService,
+    connectivityObserver: IConnectivityObserver,
   ): IHealthConnectService = HealthConnectService(
     context,
     healthConnectRepository,
     accountRepository,
+    connectivityObserver,
     dialogQueueService,
     appNavigationService,
     entryRepository,

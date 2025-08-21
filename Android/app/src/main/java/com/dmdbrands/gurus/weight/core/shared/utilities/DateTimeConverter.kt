@@ -67,11 +67,31 @@ object DateTimeConverter {
     }
   }
 
+  /**
+   * Calculates age from a date of birth string.
+   * Supports both ISO date formats: "yyyy-MM-dd" and "yyyy-MM-ddTHH:mm:ss..."
+   *
+   * @param dobString Date of birth string in ISO format
+   * @return Age in years, or 0 if parsing fails
+   */
   fun calculateAge(dobString: String): Int {
-    val formatter = DateTimeFormatter.ISO_DATE_TIME
-    val dob = ZonedDateTime.parse(dobString, formatter).toLocalDate()
-    val today = LocalDate.now()
-    return Period.between(dob, today).years
+    return try {
+      val dob = when {
+        // Handle ISO date-time format (e.g., "2025-08-21T10:15:30")
+        dobString.contains('T') -> {
+          ZonedDateTime.parse(dobString, DateTimeFormatter.ISO_DATE_TIME).toLocalDate()
+        }
+        // Handle ISO date format (e.g., "2025-08-21")
+        else -> {
+          LocalDate.parse(dobString, DateTimeFormatter.ISO_DATE)
+        }
+      }
+      val today = LocalDate.now()
+      Period.between(dob, today).years
+    } catch (e: Exception) {
+      AppLog.e("DateTimeConverter", "Failed to calculate age from date: $dobString", e.toString())
+      0
+    }
   }
 
   data class TimeRange(val start: Long, val end: Long)

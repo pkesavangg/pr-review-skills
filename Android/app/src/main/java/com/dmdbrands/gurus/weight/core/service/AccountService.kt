@@ -115,7 +115,6 @@ constructor(
       AppLog.d(TAG, "login() successful for email: $email")
       savedAccount
     } catch (e: HttpException) {
-      val header = ToastStrings.Error.LoginError.Header
       val msg =
         when (e.code()) {
           HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
@@ -123,7 +122,7 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      showErrorToast(header, msg)
+      showErrorToast(message = msg)
       AppLog.e(TAG, "Login failed", e.toString())
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -160,9 +159,9 @@ constructor(
         val errorHeader =
           when (e.code()) {
             HttpErrorConfig.ResponseCode.BAD_REQUEST -> signupError.accountExistHeader
-            else -> signupError.Header
+            else -> null
           }
-        showErrorToast(errorHeader, errorMessage)
+        showErrorToast(errorHeader, message = errorMessage)
       }
       AppLog.e(TAG, "Account creation failed", e.toString())
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
@@ -177,6 +176,8 @@ constructor(
   override suspend fun resetPassword(email: String) {
     AppLog.d(TAG, "resetPassword() called for email: $email")
     try {
+      AppLog.d(TAG, "Checking network availability for resetPassword()")
+      requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       val response = this.accountRepository.resetPassword(email)
       if (response.isSuccessful) {
         AppLog.d(TAG, "Successfully reset password")
@@ -229,7 +230,6 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Password change failed", e.toString())
       if (e is HttpException) {
-        val header = ToastStrings.Error.ChangePasswordError.Header
         val msg =
           when (e.code()) {
             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
@@ -237,7 +237,7 @@ constructor(
             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
-        showErrorToast(header, msg)
+        showErrorToast(null, msg)
       }
       false
     }
@@ -249,8 +249,12 @@ constructor(
    * @param profileUpdateRequest The profile data to update
    * @return The updated account or null if update fails
    */
-  override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest) =
+  override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest, isFromProfile: Boolean) {
     try {
+      if (isFromProfile) {
+        requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+        return
+      }
       accountRepository.updateProfile(profileUpdateRequest)
       showSuccessToast(
         ToastStrings.Success.UpdateProfileSuccess.Header,
@@ -280,6 +284,7 @@ constructor(
         }
       }
     }
+  }
 
   /**
    * Checks login status for the active account by calling getAccount API if online.
