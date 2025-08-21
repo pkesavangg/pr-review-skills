@@ -81,10 +81,12 @@ fun GraphView(
   onScroll: (String?) -> Unit = {},
   onLabelUpdate: (String) -> Unit = {},
 ) {
+
   var selectedData: List<GraphPoint> by remember {
     mutableStateOf(listOf())
   }
   val stableGraphLines = rememberStable(graphLines)
+
   val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
   if (stableGraphLines.isEmpty() || stableGraphLines.all { it.points.isEmpty() }) {
     GraphEmptyState(modifier = modifier, placeHolder = placeHolder)
@@ -97,15 +99,16 @@ fun GraphView(
   val ySeries = remember(stableGraphLines) {
     stableGraphLines.map { it.points.map { point -> point.y } }
   }
-  remember(ySeries) {
-    ySeries.flatten().maxOfOrNull { it.value.toDouble() }
-  }
+
+  val timeStamp = stableGraphLines.flatMap { it.points.map { it.x.value.toDouble() }.sortedBy { it } }
+
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = Scroll.Absolute.End,
   )
-  var minTarget by remember { mutableStateOf<Long?>(null) }
-  var maxTarget by remember { mutableStateOf<Long?>(null) }
+
+  var minTarget by remember { mutableStateOf<Long?>(timeStamp.min().toLong()) }
+  var maxTarget by remember { mutableStateOf<Long?>(timeStamp.max().toLong()) }
   var minYTarget by remember { mutableDoubleStateOf(0.0) }
   var secondaryMinYTarget by remember { mutableDoubleStateOf(0.0) }
   var maxYTarget by remember { mutableDoubleStateOf(220.0) }
@@ -165,6 +168,7 @@ fun GraphView(
         secondaryMaxYTarget = secondaryGraphMeta.max
       }
     }
+
   }
 
   LaunchedEffect(segment) {
@@ -177,12 +181,13 @@ fun GraphView(
         .minByOrNull { abs(it - target) }
     }
     repeat(3) { withFrameNanos { } }
-
-
     if (nearest != null) {
-      scrollState.scroll(Scroll.Absolute.x(target.toDouble(), 0.5f)) // ✅ suspend function
-    } else {
-      scrollState.scroll(Scroll.Absolute.End)
+      val endRange = GraphUtil.getEndRange(segment, nearest)
+      if (endRange != null) {
+        scrollState.scroll(Scroll.Absolute.x(endRange.toDouble(), 1.0f)) // ✅ suspend function}
+      } else {
+        scrollState.scroll(Scroll.Absolute.End)
+      }
     }
     selectedTarget = null
     isUpdating = false
@@ -311,7 +316,6 @@ fun GraphView(
         }
       }
   }
-
   val initialTimeStamp = xLabels.minOf { it.value as Long }
   val primaryLayer = primaryLayer(
     segment, animatedMinTarget, animatedMaxTarget,

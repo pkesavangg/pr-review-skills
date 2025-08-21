@@ -8,10 +8,10 @@ import java.time.LocalTime
 import java.time.Period
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
-data class TimeRange(val start: Long, val end: Long)
+
 /**
  * Utility class for converting between ISO date-time strings and timestamps.
  */
@@ -74,30 +74,39 @@ object DateTimeConverter {
     return Period.between(dob, today).years
   }
 
+  data class TimeRange(val start: Long, val end: Long)
+
+  private val UTC: ZoneId = ZoneOffset.UTC
+  private val END_OF_DAY_999: LocalTime = LocalTime.of(23, 59, 59, 999_000_000)
+
+  private fun toUtcDate(millis: Long): LocalDate =
+    Instant.ofEpochMilli(millis).atZone(UTC).toLocalDate()
+
+  private fun startOfDayUtc(d: LocalDate): Long =
+    d.atStartOfDay(UTC).toInstant().toEpochMilli()
+
+  private fun endOfDayUtc(d: LocalDate): Long =
+    d.atTime(END_OF_DAY_999).atZone(UTC).toInstant().toEpochMilli()
+
   fun getWeekRange(referenceMillis: Long): TimeRange {
-    val zone = ZoneId.systemDefault()
-    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
-    val startOfWeek = referenceDate.with(DayOfWeek.SUNDAY).atStartOfDay(zone).toInstant().toEpochMilli()
-    val endOfWeek = referenceDate.with(DayOfWeek.SATURDAY).atTime(LocalTime.MAX).atZone(zone).toInstant().toEpochMilli()
-    return TimeRange(startOfWeek, endOfWeek)
+    val d = toUtcDate(referenceMillis)
+    val startDate = d.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+    val endDate = d.with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
+    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
   }
 
   fun getMonthRange(referenceMillis: Long): TimeRange {
-    val zone = ZoneId.systemDefault()
-    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
-    val yearMonth = YearMonth.from(referenceDate)
-    val startOfMonth = yearMonth.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
-    val endOfMonth = yearMonth.atEndOfMonth().atTime(LocalTime.MAX).atZone(zone).toInstant().toEpochMilli()
-    return TimeRange(startOfMonth, endOfMonth)
+    val d = toUtcDate(referenceMillis)
+    val ym = YearMonth.from(d)
+    val startDate = ym.atDay(1)
+    val endDate = ym.atEndOfMonth()
+    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
   }
 
   fun getYearRange(referenceMillis: Long): TimeRange {
-    val zone = ZoneId.systemDefault()
-    val referenceDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
-    val startOfYear =
-      referenceDate.with(TemporalAdjusters.firstDayOfYear()).atStartOfDay(zone).toInstant().toEpochMilli()
-    val endOfYear = referenceDate.with(TemporalAdjusters.lastDayOfYear()).atTime(LocalTime.MAX).atZone(zone).toInstant()
-      .toEpochMilli()
-    return TimeRange(startOfYear, endOfYear)
+    val d = toUtcDate(referenceMillis)
+    val startDate = d.with(java.time.temporal.TemporalAdjusters.firstDayOfYear())
+    val endDate = d.with(java.time.temporal.TemporalAdjusters.lastDayOfYear())
+    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
   }
 }
