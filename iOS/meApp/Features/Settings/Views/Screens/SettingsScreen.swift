@@ -75,8 +75,6 @@ struct SettingsScreen: View {
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
-        // global modal handler for iPad centered pickers
-        .presentModal(modalStack: $settingsStore.notificationService.modalViewData)
         // Appearance picker fallback for non-iPad or iOS>=18
         .pickerSheet(
             isPresented: $settingsStore.showAppearancePicker,
