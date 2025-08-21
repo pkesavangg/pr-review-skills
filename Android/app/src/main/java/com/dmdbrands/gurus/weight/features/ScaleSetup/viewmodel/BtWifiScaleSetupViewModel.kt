@@ -126,6 +126,7 @@ constructor(
     viewModelScope.launch {
       if (broadcastId != null) {
         discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
+        fetchUserList()
       }
       handleIntent(SetCurrentStep(initialStep))
     }
@@ -229,6 +230,10 @@ constructor(
 
             BtWifiSetupStep.MEASUREMENT -> {
               collectMeasurement()
+            }
+
+            BtWifiSetupStep.USER_LIMIT_REACHED -> {
+              fetchUserList()
             }
 
             else -> {
@@ -596,20 +601,21 @@ constructor(
     }
   }
 
-  private suspend fun fetchUserList(duplicateUserName: String? = null) {
+  private fun fetchUserList(duplicateUserName: String? = null) {
     try {
-      val userList = suspendCoroutine<List<GGBTUser>> { continuation ->
-        ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-          if (duplicateUserName != null) {
-            val user = response.user.first { it.name == duplicateUserName }
-            discoveredScale = discoveredScale?.copy(token = user.token)
-            handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+      viewModelScope.launch {
+        val userList = suspendCoroutine<List<GGBTUser>> { continuation ->
+          ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
+            if (duplicateUserName != null) {
+              val user = response.user.first { it.name == duplicateUserName }
+              discoveredScale = discoveredScale?.copy(token = user.token)
+              handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+            }
+            continuation.resume(response.user)
           }
-          continuation.resume(response.user)
         }
+        handleIntent(BtWifiScaleSetupIntent.SetUserList(userList))
       }
-
-      handleIntent(BtWifiScaleSetupIntent.SetUserList(userList))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e.toString())
     }

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -16,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
@@ -317,6 +319,7 @@ constructor(
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
+      stopScan()
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
@@ -450,6 +453,63 @@ constructor(
           )
           deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
+        }
+
+        GGScanResponseType.DEVICE_MEMORY_FULL -> {
+          dialogQueueService.showDialog(
+            ReconnectScale.getMaxUserAlert(
+              onConfirm = {
+                viewModelScope.launch {
+                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                  if (device == null) {
+                    return@launch
+                  }
+                  ggDeviceService.addCacheDevice(discoveredBroadcastId, device)
+                  navigationService.navigateTo(
+                    AppRoute.ScaleSetup.BtWifiScaleSetup(
+                      data.getSKU(),
+                      BtWifiSetupStep.USER_LIMIT_REACHED,
+                      data.broadcastId,
+                    ),
+                  )
+                }
+              },
+              onCancel = {
+                if (data.broadcastId != null) {
+                  ggDeviceService.skipDevice(data.broadcastId!!)
+                }
+              },
+            ),
+          )
+        }
+
+        GGScanResponseType.DEVICE_DUPLICATE_USER -> {
+          dialogQueueService.showDialog(
+            ReconnectScale.getDuplicateUserAlert(
+              onConfirm = {
+                viewModelScope.launch {
+                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                  if (device == null) {
+                    return@launch
+                  }
+                  ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
+                  ggDeviceService.addCacheDevice(discoveredBroadcastId, device)
+                  navigationService.navigateTo(
+                    AppRoute.ScaleSetup.BtWifiScaleSetup(
+                      data.getSKU(),
+                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                      data.broadcastId,
+                    ),
+                  )
+                }
+              },
+              onCancel = {
+                if (data.broadcastId != null) {
+                  ggDeviceService.skipDevice(data.broadcastId!!)
+                }
+              },
+            ),
+          )
         }
 
         else -> null

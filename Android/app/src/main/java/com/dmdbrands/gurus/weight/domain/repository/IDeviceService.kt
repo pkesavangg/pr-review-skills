@@ -176,7 +176,7 @@ interface IDeviceService {
    * Get scale token from the API.
    * @return The scale token as a string.
    */
-  suspend fun getScaleToken(isR4: Boolean = true): String
+  suspend fun getScaleToken(isR4: Boolean = true): String?
 
   fun weightOnlyModeDismissAlert(onConfirm: () -> Unit)
 
