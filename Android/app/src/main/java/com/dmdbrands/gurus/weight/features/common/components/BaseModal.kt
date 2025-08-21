@@ -26,7 +26,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * CustomDialog composable matching the Figma spec (node 6598-69580).
  *
  * @param title The dialog title.
- * @param body The dialog body text.
+ * @param subtitle The dialog body text.
  * @param primaryAction The primary action button (right, blue).
  * @param secondaryAction The secondary action button (left, tertiary).
  * @param onDismiss Called when the dialog is dismissed (optional, for outside click).
@@ -38,6 +38,7 @@ fun BaseModal(
   primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
   primaryAction: ActionButton? = null,
   title: String? = null,
+  subtitle: String? = null,
   body: String? = null,
   secondaryAction: ActionButton? = null,
   onDismiss: (() -> Unit)? = null,
@@ -67,14 +68,23 @@ fun BaseModal(
           modifier = Modifier.fillMaxWidth(),
         )
       }
-      body?.let {
+      subtitle?.let {
         Text(
-          text = body,
+          text = subtitle,
           style = MeTheme.typography.body2,
           color = MeTheme.colorScheme.textBody,
           modifier = Modifier.fillMaxWidth(),
         )
       }
+      body?.let {
+        Text(
+          text = body,
+          style = MeTheme.typography.body3,
+          color = MeTheme.colorScheme.textBody,
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+
       Column(Modifier.fillMaxWidth()) {
         content?.let {
           it()
@@ -171,7 +181,7 @@ fun BaseModelPreview() {
     Column {
       BaseModal(
         title = "Header",
-        body = "Body content goes here. This is a sample dialog body.",
+        subtitle = "Body content goes here. This is a sample dialog body.",
         primaryAction = ActionButton(text = "loooooooooooo", action = {}),
         secondaryAction = ActionButton(text = "loooooooooooo", action = {}),
       )

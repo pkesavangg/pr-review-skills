@@ -11,7 +11,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.platform.debugInspectorInfo
 
 fun Modifier.debounceClick(
-  debounceTime: Long = 700L,
+  debounceTime: Long = 500L,
   onClick: () -> Unit
 ): Modifier = composed(
   inspectorInfo = debugInspectorInfo {

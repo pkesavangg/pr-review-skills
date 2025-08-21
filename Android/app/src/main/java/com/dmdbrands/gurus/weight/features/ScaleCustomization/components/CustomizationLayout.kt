@@ -14,7 +14,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 @Composable
 fun CustomizationLayout(
-  title: String,
+  title: String? = null,
   subtitle: String? = null,
   content: @Composable () -> Unit,
 ) {
@@ -22,11 +22,13 @@ fun CustomizationLayout(
     modifier = Modifier
       .fillMaxSize(),
   ) {
-    AppText(
-      text = title,
-      textType = TextType.ListTitle2,
-      modifier = Modifier.padding(bottom = spacing.xs),
-    )
+    title?.let {
+      AppText(
+        text = title,
+        textType = TextType.ListTitle2,
+        modifier = Modifier.padding(bottom = spacing.xs),
+      )
+    }
     subtitle?.let {
       AppText(
         text = subtitle,

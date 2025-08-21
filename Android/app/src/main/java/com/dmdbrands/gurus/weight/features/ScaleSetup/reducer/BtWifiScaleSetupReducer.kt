@@ -96,6 +96,9 @@ data class BtWifiScaleSetupState(
   val duplicateUser: GGBTUser? = null,
   val userList: List<GGBTUser> = listOf(),
   val permissions: GGPermissionStatusMap = mutableMapOf(),
+  // Scale mode preferences - similar to Angular component's setModePreference logic
+  val isAllBodyMetrics: Boolean = true, // Default to metrics mode (ScaleModeEnum.metrics)
+  val isHeartRateOn: Boolean = false, // Default heart rate off
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -161,6 +164,8 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
     val userName: String? = null
   ) : BtWifiScaleSetupIntent
 
+  object ShowRestoreAccountAlert : BtWifiScaleSetupIntent
+
   data class SetPermissions(val permissions: GGPermissionStatusMap) : BtWifiScaleSetupIntent
   data class RequestPermission(val permissionType: String) : BtWifiScaleSetupIntent
 
@@ -173,6 +178,20 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
   data class DeleteUser(
     val user: GGBTUser,
+  ) : BtWifiScaleSetupIntent
+
+  // Scale mode preference intents - similar to Angular component's setModePreference
+  data class SetScaleModePreference(
+    val isAllBodyMetrics: Boolean,
+    val isHeartRateOn: Boolean,
+  ) : BtWifiScaleSetupIntent
+
+  data class SetAllBodyMetrics(
+    val isAllBodyMetrics: Boolean,
+  ) : BtWifiScaleSetupIntent
+
+  data class SetHeartRateMode(
+    val isHeartRateOn: Boolean,
   ) : BtWifiScaleSetupIntent
 }
 
@@ -230,6 +249,14 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.UpdateNextButtonText -> state.copy(nextButtonText = intent.text)
       is BtWifiScaleSetupIntent.RefreshNetworks -> state.copy(currentStep = BtWifiSetupStep.GATHERING_NETWORK)
       BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> state.copy() // Logic handled in ViewModel
+
+      // Scale mode preference reducers
+      is BtWifiScaleSetupIntent.SetScaleModePreference -> state.copy(
+        isAllBodyMetrics = intent.isAllBodyMetrics,
+        isHeartRateOn = intent.isHeartRateOn,
+      )
+      is BtWifiScaleSetupIntent.SetAllBodyMetrics -> state.copy(isAllBodyMetrics = intent.isAllBodyMetrics)
+      is BtWifiScaleSetupIntent.SetHeartRateMode -> state.copy(isHeartRateOn = intent.isHeartRateOn)
 
       else -> state
     }
