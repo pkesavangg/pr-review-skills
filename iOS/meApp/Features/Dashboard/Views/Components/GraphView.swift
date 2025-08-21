@@ -18,6 +18,7 @@ import Charts
 
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
+    @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
 
     // Local state variables for chart selection (like WeightGraph)
@@ -63,6 +64,10 @@ struct GraphView: View {
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
 
+        }
+        // Immediately react to active account goal updates like GoalProgressView
+        .onReceive(accountService.$activeAccount) { _ in
+            dashboardStore.handleSettingsChange()
         }
 
     }

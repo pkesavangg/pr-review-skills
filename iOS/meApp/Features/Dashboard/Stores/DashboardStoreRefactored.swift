@@ -148,13 +148,19 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             }
             .store(in: &cancellables)
 
-        // Subscribe to goal settings changes
         accountService.$activeAccount
             .compactMap { $0?.goalSettings }
-            .removeDuplicates()
-            .dropFirst() // Skip initial value to avoid triggering side effects on initial load; only respond to actual changes
-            .sink { [weak self] goalSettings in
-                self?.logger.log(level: .info, tag: "DashboardStore", message: "Goal settings changed - type: \(goalSettings.goalType?.rawValue ?? "nil"), goal weight: \(goalSettings.goalWeight ?? 0)")
+            .map { settings -> (Double?, Double?, GoalType?) in
+                let gw: Double? = settings.goalWeight
+                let iw: Double? = settings.initialWeight
+                let gt: GoalType? = settings.goalType
+                return (gw, iw, gt)
+            }
+            .removeDuplicates { (lhs: (Double?, Double?, GoalType?), rhs: (Double?, Double?, GoalType?)) -> Bool in
+                lhs.0 == rhs.0 && lhs.1 == rhs.1 && lhs.2 == rhs.2
+            }
+            .dropFirst()
+            .sink { [weak self] _ in
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -638,6 +644,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         state.ui.draggingMetric = nil
         state.ui.draggingStreak = nil
         state.ui.dropHoverId = nil
+        state.ui.isGoalCardBeingDragged = false
+    }
+ 
+    func resetGridLayout() {
+        resetDragState()
         state.ui.gridLayoutId = UUID()
     }
 
@@ -646,8 +657,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         // Clear the interval cache to ensure fresh randomization
         UIView.clearWiggleIntervalCache()
 
-        state.ui.gridLayoutId = UUID()
-        objectWillChange.send()
+        resetGridLayout()
         logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
 
@@ -678,9 +688,19 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     func handleSettingsChange() {
-        loadGoalCardData()
-        objectWillChange.send()
-        self.updateYAxisCache()
+        Task {
+            do {
+                try await self.goalManager.loadGoalData()
+                self.logger.log(level: .info, tag: "DashboardStore", message: "Goal data reloaded after settings change")
+            } catch {
+                self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reload goal data after settings change: \(error)")
+            }
+
+            await MainActor.run {
+                self.updateYAxisCache()
+                self.objectWillChange.send()
+            }
+        }
     }
 
     /// Handles dashboard type changes by updating the metric type and refreshing the UI
@@ -804,7 +824,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                 self.state.graph.clearSelection()
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
-                self.state.ui.gridLayoutId = UUID()
+                self.resetGridLayout()
                 // Reset snapshot after a full dashboard reset
                 self.hasEditSnapshot = false
             }
@@ -1345,10 +1365,10 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         // Handle any settings changes
         handleSettingsChange()
        // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
             // Force both grids to rebuild and recalc intrinsic size after re-appearing (fixes half-height issue)
-            self.state.ui.gridLayoutId = UUID()
+            self.resetGridLayout()
             self.objectWillChange.send()
         }
 

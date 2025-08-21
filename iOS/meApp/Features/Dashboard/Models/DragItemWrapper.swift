@@ -11,12 +11,13 @@ class DragItemWrapper {
     enum ItemType {
         case metric
         case streak
+        case goalStreak
     }
     
     let type: ItemType
-    let item: MetricItem
+    let item: Any // Changed from MetricItem to Any to support MileStoneType
     
-    init(type: ItemType, item: MetricItem) {
+    init(type: ItemType, item: Any) {
         self.type = type
         self.item = item
     }
