@@ -13,19 +13,23 @@ class StreakCardCell: UICollectionViewCell {
     
     var isWiggling: Bool = false {
         didSet {
-            layoutSubviews()
+            if !isLongPressed && !isTapped {
+                layoutSubviews()
+            }
         }
     }
     
     var isRemoved: Bool = false {
         didSet {
-            layoutSubviews()
+            if !isLongPressed && !isTapped {
+                layoutSubviews()
+            }
         }
     }
     
     var rowIndex: Int = 0 {
         didSet {
-            if isWiggling && !isRemoved {
+            if isWiggling && !isRemoved && !isLongPressed && !isTapped {
                 layoutSubviews()
             }
         }
@@ -93,6 +97,34 @@ class StreakCardCell: UICollectionViewCell {
         } else {
             hostingController?.rootView = swiftUIView
         }
+
+        ensureProperSize()
+        setNeedsLayout()
+        layoutIfNeeded()
+
+        if let hostingView = hostingController?.view {
+            hostingView.frame = contentView.bounds
+            hostingView.bounds = contentView.bounds
+        }
+    }
+ 
+    func ensureProperSize() {
+        contentView.transform = .identity
+        hostingController?.view.transform = .identity
+
+        contentView.frame = bounds
+        hostingController?.view.frame = contentView.bounds
+
+        if let hostingView = hostingController?.view {
+            hostingView.frame = contentView.bounds
+            hostingView.bounds = contentView.bounds
+            hostingView.translatesAutoresizingMaskIntoConstraints = false
+            hostingView.setNeedsLayout()
+            hostingView.layoutIfNeeded()
+        }
+ 
+        contentView.setNeedsLayout()
+        contentView.layoutIfNeeded()
     }
     
     // MARK: - Reuse
@@ -109,9 +141,83 @@ class StreakCardCell: UICollectionViewCell {
         isWiggling = false
         isRemoved = false
         rowIndex = 0
+        
+        // Ensure proper size is maintained after reuse
+        ensureProperSize()
+        
+        // Reset all transforms and frames to prevent size issues
+        contentView.transform = .identity
+        hostingController?.view.transform = .identity
+        contentView.frame = bounds
+        hostingController?.view.frame = contentView.bounds
+        
+        // Final size check to ensure no unexpected changes
+        if let hostingView = hostingController?.view {
+            hostingView.frame = contentView.bounds
+            hostingView.bounds = contentView.bounds
+        }
     }
     
     // MARK: - Drag State Handling
+
+    func updateDragState(_ isBeingDragged: Bool) {
+        isLongPressed = isBeingDragged
+        isTapped = isBeingDragged
+
+        if isBeingDragged {
+
+            if let item = representedItem, let store = currentStore {
+                let currentFrame = contentView.frame
+                let currentBounds = contentView.bounds
+                configure(with: item, store: store)
+                contentView.frame = currentFrame
+                contentView.bounds = currentBounds
+                hostingController?.view.frame = currentFrame
+                hostingController?.view.bounds = currentBounds
+            }
+            
+            maintainSizeDuringDrag()
+
+            contentView.setNeedsLayout()
+            hostingController?.view.setNeedsLayout()
+        } else {
+
+            if let item = representedItem, let store = currentStore {
+                configure(with: item, store: store)
+            }
+            
+            ensureProperSize()
+            
+            // Allow normal layout after drag ends
+            contentView.setNeedsLayout()
+            hostingController?.view.setNeedsLayout()
+        }
+    }
+    
+    /// Ensures the cell maintains its size during drag operations
+    func maintainSizeDuringDrag() {
+
+        contentView.transform = .identity
+        hostingController?.view.transform = .identity
+
+        contentView.frame = bounds
+        hostingController?.view.frame = contentView.bounds
+
+        contentView.setNeedsLayout()
+        hostingController?.view.setNeedsLayout()
+
+        if let hostingView = hostingController?.view {
+            hostingView.frame = contentView.bounds
+            hostingView.bounds = contentView.bounds
+
+            hostingView.translatesAutoresizingMaskIntoConstraints = false
+            hostingView.setNeedsLayout()
+            hostingView.layoutIfNeeded()
+        }
+
+        contentView.setNeedsLayout()
+        contentView.layoutIfNeeded()
+    }
     
     override func dragStateDidChange(_ dragState: UICollectionViewCell.DragState) {
         super.dragStateDidChange(dragState)
@@ -120,7 +226,7 @@ class StreakCardCell: UICollectionViewCell {
         case .none:
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
-            // Clear interaction states
+            // Clear interaction states to show overlay
             isLongPressed = false
             isTapped = false
             // Reconfigure to show overlay after drag ends
@@ -128,16 +234,26 @@ class StreakCardCell: UICollectionViewCell {
                 configure(with: item, store: store)
             }
         case .lifting, .dragging:
-            // Don't reduce opacity during drag - let EditModeOverlay handle visibility
-            // This prevents items from appearing "removed" during drag operations
+
             hostingController?.view.alpha = 1.0
-            // Set interaction states to hide overlay during drag
+
             isLongPressed = true
             isTapped = true
-            // Reconfigure to hide overlay during drag
+
             if let item = representedItem, let store = currentStore {
+                let currentFrame = contentView.frame
+                let currentBounds = contentView.bounds
+
                 configure(with: item, store: store)
+                
+                contentView.frame = currentFrame
+                contentView.bounds = currentBounds
+                hostingController?.view.frame = currentFrame
+                hostingController?.view.bounds = currentBounds
             }
+            maintainSizeDuringDrag()
+            contentView.setNeedsLayout()
+            hostingController?.view.setNeedsLayout()
         @unknown default:
             break
         }
@@ -145,13 +261,40 @@ class StreakCardCell: UICollectionViewCell {
     
     // MARK: - Wiggle Animation
     
+    override func setNeedsLayout() {
+        if !isLongPressed && !isTapped {
+            super.setNeedsLayout()
+        } else {
+            maintainSizeDuringDrag()
+        }
+    }
+    
+    override func layoutIfNeeded() {
+        if !isLongPressed && !isTapped {
+            super.layoutIfNeeded()
+        } else {
+            maintainSizeDuringDrag()
+        }
+    }
+    
     override func layoutSubviews() {
         super.layoutSubviews()
+        
         // Only wiggle if not removed and in wiggle mode
         if isWiggling && !isRemoved {
             contentView.startWiggleWithRowIndex(rowIndex)
         } else {
             contentView.stopWiggle()
+        }
+
+        if isLongPressed || isTapped {
+            maintainSizeDuringDrag()
+        } else {
+            ensureProperSize()
+        }
+        if let hostingView = hostingController?.view {
+            hostingView.frame = contentView.bounds
+            hostingView.bounds = contentView.bounds
         }
     }
     
@@ -159,20 +302,41 @@ class StreakCardCell: UICollectionViewCell {
         if isWiggling && !isRemoved {
             contentView.stopWiggle()
             contentView.startWiggleWithRowIndex(rowIndex)
+            ensureProperSize()
+            setNeedsLayout()
+            layoutIfNeeded()
         }
+    }
+
+    func stopWiggleAnimation() {
+        contentView.stopWiggle()
+        ensureProperSize()
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     override var isHighlighted: Bool {
         didSet {
-            // Disable highlight visual
+            // Disable highlight visual but maintain size
             contentView.backgroundColor = .clear
+            if isHighlighted {
+                ensureProperSize()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
 
     override var isSelected: Bool {
         didSet {
-            // Disable selection visual
+            // Disable selection visual but maintain size
             contentView.backgroundColor = .clear
+
+            if isSelected {
+                ensureProperSize()
+                setNeedsLayout()
+                layoutIfNeeded()
+            }
         }
     }
 
@@ -180,20 +344,19 @@ class StreakCardCell: UICollectionViewCell {
     /// Creates a snapshot view for drag preview
     /// - Returns: A UIView snapshot of the cell's content
     func snapshotForPreview() -> UIView {
-        if let hostingView = hostingController?.view {
-            let snapshot = hostingView.snapshotView(afterScreenUpdates: true)
-            snapshot?.frame = contentView.bounds
-            snapshot?.layer.cornerRadius = 16
-            snapshot?.layer.masksToBounds = true
-            snapshot?.backgroundColor = .clear
-            return snapshot ?? UIView(frame: contentView.bounds)
-        } else {
-            // Fallback to a simple rounded view if hosting controller is not yet set
+        guard let hostingController = hostingController else {
             let fallbackView = UIView(frame: contentView.bounds)
             fallbackView.backgroundColor = UIColor.systemBackground
             fallbackView.layer.cornerRadius = 16
             fallbackView.layer.masksToBounds = true
             return fallbackView
         }
+        
+        let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
+        snapshot?.frame = contentView.bounds
+        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.masksToBounds = true
+        snapshot?.backgroundColor = .clear
+        return snapshot ?? UIView(frame: contentView.bounds)
     }
 } 

@@ -61,6 +61,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         if let item = streak.representedItem {
                             streak.configure(with: item, store: coordinator.store)
                         }
+                        // Ensure the streak cell maintains its size after configuration
+                        streak.ensureProperSize()
                     }
                 }
             }
@@ -928,6 +930,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                wrapper.type == DragItemWrapper.ItemType.goalStreak {
                 // Store the dragged index to prevent flickering
                 store.state.ui.isGoalCardBeingDragged = (wrapper.item as? MileStoneType) == .goalCard
+                
+                // CRITICAL: Update the dragged cell's drag state to prevent size changes
+                // This ensures the cell maintains its full size during drag operations
+                if let indexPath = session.localContext as? IndexPath,
+                   let cell = collectionView.cellForItem(at: indexPath) {
+                    if let streakCell = cell as? StreakCardCell {
+                        streakCell.updateDragState(true)
+                    } else if let goalCell = cell as? GoalCardCell {
+                        // GoalCardCell should have similar method if needed
+                        // For now, just ensure it doesn't change size
+                    }
+                }
             }
             
             // Reset drop target tracking for new drag session
@@ -942,6 +956,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Clear drag state
             store.state.ui.isGoalCardBeingDragged = false
+            
+            // CRITICAL: Restore all cells' drag state to prevent size issues
+            // This ensures all cells return to their normal size after drag operations
+            collectionView.visibleCells.forEach { cell in
+                if let streakCell = cell as? StreakCardCell {
+                    streakCell.updateDragState(false)
+                }
+                // GoalCardCell handling if needed
+            }
             
             // Reset drop target tracking
             resetDropTargetTracking()

@@ -77,6 +77,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 store: store,
                                 isBeingDragged: false
                             )
+                            metricCell.isRemoved = store.isMetricRemoved(item.label)
                         }
                     }
                 }
@@ -92,6 +93,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                             store: store,
                             isBeingDragged: false
                         )
+                        metricCell.isRemoved = store.isMetricRemoved(item.label)
                     }
                 }
             }
@@ -103,6 +105,26 @@ struct MetricGridUIKitView: UIViewRepresentable {
         
         // Ensure drag interaction is properly managed
         uiView.dragInteractionEnabled = newIsEditMode
+        
+        if !newIsEditMode {
+            UIView.performWithoutAnimation {
+                uiView.visibleCells.forEach { cell in
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.isWiggling = false
+                        metricCell.updateDragState(false)
+                        metricCell.setOverlaySuppressed(false)
+                        if let item = metricCell.representedItem {
+                            metricCell.configure(
+                                with: item,
+                                dashboardType: store.state.metrics.dashboardType,
+                                store: store,
+                                isBeingDragged: false
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -221,6 +243,8 @@ extension MetricGridUIKitView {
             )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
+            // Reflect removal status on the cell so UI can render accordingly
+            cell.isRemoved = store.isMetricRemoved(item.label)
             // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
             // Drag & drop is handled by UICollectionViewDragDelegate without custom recognizers.
             cell.isUserInteractionEnabled = true
@@ -548,6 +572,7 @@ extension MetricGridUIKitView {
                                 self.store.objectWillChange.send()
                             }
                         )
+                        cell.isRemoved = self.store.isMetricRemoved(itemForCell.label)
                     }
                 }
                 CATransaction.commit()
