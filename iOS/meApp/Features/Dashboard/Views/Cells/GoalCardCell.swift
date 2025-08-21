@@ -221,14 +221,14 @@ class GoalCardCell: UICollectionViewCell {
             // Fallback to a simple colored view if hosting controller is not available
             let fallbackView = UIView(frame: contentView.bounds)
             fallbackView.backgroundColor = UIColor.systemBackground
-            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.cornerRadius = .radiusSM
             fallbackView.layer.masksToBounds = true
             return fallbackView
         }
         
         // Create a snapshot of the hosting controller's view
         let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
-        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.cornerRadius = .radiusSM
         snapshot?.layer.masksToBounds = true
         snapshot?.backgroundColor = .clear
         

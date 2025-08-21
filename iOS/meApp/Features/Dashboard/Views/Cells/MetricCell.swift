@@ -29,6 +29,7 @@ class MetricCell: UICollectionViewCell {
     private var currentIsBeingDragged: Bool = false
     private var isLongPressed: Bool = false
     private var isTapped: Bool = false
+    private var suppressOverlay: Bool = false
     
     // MARK: - Initialization
     
@@ -226,11 +227,15 @@ class MetricCell: UICollectionViewCell {
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
             // Clear interaction states
-            isLongPressed = false
-            isTapped = false
+            if !suppressOverlay {
+                isLongPressed = false
+                isTapped = false
+            } else {
+                isLongPressed = true
+            }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay)
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -322,6 +327,19 @@ class MetricCell: UICollectionViewCell {
         // Reconfigure the cell with the new drag state
         if let item = representedItem, let store = currentStore {
             configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged)
+        }
+    }
+
+    func setOverlaySuppressed(_ suppressed: Bool) {
+        suppressOverlay = suppressed
+        if !suppressed {
+            isLongPressed = false
+            isTapped = false
+        } else {
+            isLongPressed = true
+        }
+        if let item = representedItem, let store = currentStore {
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressed)
         }
     }
     
