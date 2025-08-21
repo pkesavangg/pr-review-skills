@@ -7,7 +7,9 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.example.nav3integration.PublicRoute
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 /**
@@ -156,7 +158,8 @@ sealed class AppRoute : NavKey {
     data class BtWifiScaleSetup(
       val sku: String,
       val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
-      val broadcastId: String? = null
+      val broadcastId: String? = null,
+      val userList: List<@Contextual GGBTUser>? = null
     ) : ScaleSetup()
 
     @Serializable

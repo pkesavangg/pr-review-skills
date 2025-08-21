@@ -199,6 +199,7 @@ constructor(
         when (authState) {
           is AuthState.LoggedIn -> {
             // handle login event
+            stopScan()
             initLoadingData(authState.account, true)
           }
 
@@ -206,6 +207,7 @@ constructor(
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
             }
+            stopScan()
           }
 
           is AuthState.AccountDeleted -> {
@@ -228,6 +230,7 @@ constructor(
           }
 
           is AuthState.AccountAdded -> {
+            stopScan()
             initLoadingData(authState.account)
           }
 
@@ -244,6 +247,7 @@ constructor(
                 ),
               )
             }
+            stopScan()
             initLoadingData(authState.account, true)
           }
 
@@ -319,7 +323,6 @@ constructor(
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
-      stopScan()
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
@@ -349,7 +352,6 @@ constructor(
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
-            startScan()
             initialized = true
           } else {
             if (!initialized) {
@@ -368,7 +370,6 @@ constructor(
               }
               initialized = true
             }
-            stopScan()
           }
         }
       }
@@ -460,18 +461,25 @@ constructor(
             ReconnectScale.getMaxUserAlert(
               onConfirm = {
                 viewModelScope.launch {
+                  dialogQueueService.showLoader("Loading...")
                   val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
                   if (device == null) {
                     return@launch
                   }
-                  ggDeviceService.addCacheDevice(discoveredBroadcastId, device)
-                  navigationService.navigateTo(
-                    AppRoute.ScaleSetup.BtWifiScaleSetup(
-                      data.getSKU(),
-                      BtWifiSetupStep.USER_LIMIT_REACHED,
-                      data.broadcastId,
-                    ),
-                  )
+                  ggDeviceService.addCacheDevice(data.broadcastId, device)
+                  ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                    viewModelScope.launch {
+                      dialogQueueService.dismissLoader()
+                      navigationService.navigateTo(
+                        AppRoute.ScaleSetup.BtWifiScaleSetup(
+                          sku = data.getSKU(),
+                          initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                          broadcastId = data.broadcastId,
+                          userList = response.user,
+                        ),
+                      )
+                    }
+                  }
                 }
               },
               onCancel = {
@@ -493,7 +501,7 @@ constructor(
                     return@launch
                   }
                   ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                  ggDeviceService.addCacheDevice(discoveredBroadcastId, device)
+                  ggDeviceService.addCacheDevice(data.broadcastId, device)
                   navigationService.navigateTo(
                     AppRoute.ScaleSetup.BtWifiScaleSetup(
                       data.getSKU(),
@@ -614,11 +622,9 @@ constructor(
 
   private fun stopScan() {
     viewModelScope.launch {
-      if (state.value.hasScanStarted) {
-        ggPermissionService.stopScan()
-        handleIntent(AppIntent.SetScanStatus(false))
-        AppLog.i(TAG, "Scan stopped")
-      }
+      ggPermissionService.stopScan()
+      handleIntent(AppIntent.SetScanStatus(false))
+      AppLog.i(TAG, "Scan stopped")
     }
   }
 
