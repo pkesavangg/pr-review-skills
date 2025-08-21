@@ -141,17 +141,14 @@ class StreakCardCell: UICollectionViewCell {
         isWiggling = false
         isRemoved = false
         rowIndex = 0
-        
-        // Ensure proper size is maintained after reuse
+
         ensureProperSize()
-        
-        // Reset all transforms and frames to prevent size issues
+ 
         contentView.transform = .identity
         hostingController?.view.transform = .identity
         contentView.frame = bounds
         hostingController?.view.frame = contentView.bounds
-        
-        // Final size check to ensure no unexpected changes
+
         if let hostingView = hostingController?.view {
             hostingView.frame = contentView.bounds
             hostingView.bounds = contentView.bounds
@@ -193,8 +190,7 @@ class StreakCardCell: UICollectionViewCell {
             hostingController?.view.setNeedsLayout()
         }
     }
-    
-    /// Ensures the cell maintains its size during drag operations
+
     func maintainSizeDuringDrag() {
 
         contentView.transform = .identity
@@ -226,7 +222,7 @@ class StreakCardCell: UICollectionViewCell {
         case .none:
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
-            // Clear interaction states to show overlay
+            // Clear interaction states
             isLongPressed = false
             isTapped = false
             // Reconfigure to show overlay after drag ends
@@ -317,7 +313,7 @@ class StreakCardCell: UICollectionViewCell {
 
     override var isHighlighted: Bool {
         didSet {
-            // Disable highlight visual but maintain size
+            // Disable highlight visual
             contentView.backgroundColor = .clear
             if isHighlighted {
                 ensureProperSize()
@@ -329,7 +325,7 @@ class StreakCardCell: UICollectionViewCell {
 
     override var isSelected: Bool {
         didSet {
-            // Disable selection visual but maintain size
+            // Disable selection visual
             contentView.backgroundColor = .clear
 
             if isSelected {

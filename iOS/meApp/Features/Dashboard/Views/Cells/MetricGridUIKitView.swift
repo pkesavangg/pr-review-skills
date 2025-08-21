@@ -43,16 +43,12 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let layoutChanged = newDashboardType != coordinator.lastDashboardType
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
         let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
-
-        // Keep drag interaction in sync with edit mode
         uiView.dragInteractionEnabled = newIsEditMode
 
-        // If we just performed a programmatic move, skip the heavy reload once
         if coordinator.suppressNextReload && contentChanged && !layoutChanged && !removalStateChanged {
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
             coordinator.suppressNextReload = false
-            // Ensure layout reflects latest state without reload
             uiView.collectionViewLayout.invalidateLayout()
             uiView.layoutIfNeeded()
         } else if contentChanged || layoutChanged || removalStateChanged {
@@ -537,23 +533,17 @@ extension MetricGridUIKitView {
                 return
             }
 
-            // Update model and collection view immediately so layout reflects the new order without waiting for SwiftUI updates
-            // Suspend intrinsic size invalidation to prevent SwiftUI parent from re-laying out mid-move
             if let custom = collectionView as? CustomCollectionView { custom.suspendIntrinsicInvalidation = true }
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             self.suppressNextReload = true
             collectionView.performBatchUpdates({
-                // Update the underlying data source
                 store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
-                // Reflect the move in the collection view for instant visual update
                 collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
             }, completion: { _ in
-                // Ensure layout reflows right away
                 collectionView.collectionViewLayout.invalidateLayout()
                 collectionView.layoutIfNeeded()
 
-                // Reconfigure visible cells to bind correct items immediately (no animations)
                 UIView.performWithoutAnimation {
                     let visibleIndexPaths = collectionView.indexPathsForVisibleItems
                     for indexPath in visibleIndexPaths {
@@ -582,15 +572,11 @@ extension MetricGridUIKitView {
                 }
             })
 
-            // Also hand the drop to UIKit to finish any drag preview animation cleanly
             coordinator.drop(item.dragItem, toItemAt: destinationIndexPath)
-
-            // Clear drag state
             parent.isDragging = false
             draggedItemId = nil
             store.endDragging()
 
-            // Mark that we will restore overlay on drop session end and remember the dropped item
             if let wrapper = item.dragItem.localObject as? DragItemWrapper,
                wrapper.type == DragItemWrapper.ItemType.metric,
                let droppedItem = wrapper.item as? MetricItem {
@@ -600,24 +586,20 @@ extension MetricGridUIKitView {
             }
             isAwaitingDropEnd = true
 
-            // Proactively suppress overlay on the destination cell until drop end
             if let id = lastDroppedMetricId,
                let destCell = collectionView.visibleCells.first(where: { cell in
                    guard let mc = cell as? MetricCell, let rep = mc.representedItem else { return false }
                    return rep.id.uuidString == id
                }) as? MetricCell {
                 destCell.setOverlaySuppressed(true)
-                // Force destination cell to lay out now
                 destCell.setNeedsLayout()
                 destCell.layoutIfNeeded()
             }
 
             self.lastItemIds = self.store.metricsToShow.map { $0.id }
             self.lastDashboardType = self.store.state.metrics.dashboardType
-            // Do not restore overlays here; wait for dropSessionDidEnd
         }
-        
-        // Provide a transparent drop preview to eliminate the default white platter animation
+
         func collectionView(_ collectionView: UICollectionView,
                             dropPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
             let params = UIDragPreviewParameters()
@@ -628,11 +610,9 @@ extension MetricGridUIKitView {
             return params
         }
 
-        // Provide an almost invisible preview for the dropping animation to fully suppress white overlay
         func collectionView(_ collectionView: UICollectionView,
                             dropPreviewForDropping item: UIDragItem,
                             withDefault defaultPreview: UITargetedDragPreview) -> UITargetedDragPreview? {
-            // Return an invisible preview and send it offscreen so no white platter is visible
             let clearView = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
             clearView.backgroundColor = .clear
             let params = UIDragPreviewParameters()
@@ -661,8 +641,7 @@ extension MetricGridUIKitView {
                 }
             }
             CATransaction.commit()
-            
-            // Restore EditModeOverlay only after the drop fully ends and layout settles
+
             if store.state.ui.isEditMode {
                 let restore = {
                     if let targetId = self.lastDroppedMetricId,

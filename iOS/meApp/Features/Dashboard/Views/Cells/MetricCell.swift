@@ -231,12 +231,10 @@ class MetricCell: UICollectionViewCell {
                 isLongPressed = false
                 isTapped = false
             } else {
-                // Keep overlay hidden until suppression is lifted
                 isLongPressed = true
             }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-                // If suppression is active, keep isBeingDragged visual state
                 configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay)
             }
         case .lifting, .dragging:
@@ -332,15 +330,12 @@ class MetricCell: UICollectionViewCell {
         }
     }
 
-    /// Controls temporary suppression of the EditModeOverlay after a drop until layout has settled.
     func setOverlaySuppressed(_ suppressed: Bool) {
         suppressOverlay = suppressed
         if !suppressed {
-            // When lifting suppression, clear transient press states
             isLongPressed = false
             isTapped = false
         } else {
-            // While suppressed, ensure overlay remains hidden
             isLongPressed = true
         }
         if let item = representedItem, let store = currentStore {

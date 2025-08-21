@@ -29,7 +29,6 @@ public class CustomCollectionView: UICollectionView {
         super.didAddSubview(subview)
         if hideDragPlatter {
             let className = String(describing: type(of: subview))
-            // Hide common private drag/drop preview container views that cause the white platter animation
             if className.contains("Platter") || className.contains("Preview") || className.contains("Drag") || className.contains("Drop") {
                 subview.alpha = 0
             }
