@@ -95,6 +95,7 @@ constructor(
   private var sku: String? = null
   private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
+  private var syncScaleJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
@@ -186,7 +187,7 @@ constructor(
   }
 
   private fun syncScales() {
-    viewModelScope.launch {
+    syncScaleJob = viewModelScope.launch {
       deviceService.getGGBTDevices().collect {
         ggDeviceService.syncDevices(it)
       }
@@ -327,6 +328,7 @@ constructor(
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
+        syncScaleJob?.cancel()
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
