@@ -13,14 +13,12 @@ import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
-import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import android.util.Log
 
 /**
  * Popup dialog for displaying AppSync scan results with body composition metrics.
@@ -32,58 +30,55 @@ import android.util.Log
 @Composable
 fun AppsyncEntryPopup(
   entry: ScaleEntry,
-  apiEntry: ScaleApiEntry?,
   onEdit: () -> Unit,
   onSave: () -> Unit,
 ) {
 
-  val scaleEntry = entry.scale.scaleEntry;
-  val apiEntry = apiEntry;
+  val scaleEntry = entry.scale.scaleEntry
   BaseModal {
     Column(
       modifier = Modifier
         .fillMaxWidth()
         .padding(vertical = spacing.md, horizontal = spacing.sm),
       horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(spacing.xs)
+      verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
       AppText(
         text = AppPopupStrings.AppsyncEntryPopup.Title,
         textType = TextType.Title,
         textAlign = TextAlign.Center,
-        modifier = Modifier.padding(bottom = spacing.md)
+        modifier = Modifier.padding(bottom = spacing.md),
       )
       val isMetric = entry.entry.unit.value.lowercase() == "kg"
-      Log.d("currentaccount",entry.entry.unit.value.toString())
-      val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight,isMetric )
+      val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight, isMetric)
       val displayBmi = scaleEntry.bmi?.toFloat()
       val displayBodyFat = scaleEntry.bodyFat?.toFloat()
       val displayWater = scaleEntry.water?.toFloat()
       val displayMuscleMass = scaleEntry.muscleMass?.toFloat()
 
       AppText(
-        text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat(), entry.entry.unit.value ),
-        textType = TextType.Body
+        text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat(), entry.entry.unit.value),
+        textType = TextType.Body,
       )
 
       displayBodyFat?.let { fat ->
         AppText(
           text = AppPopupStrings.AppsyncEntryPopup.Bodyfat(bodyfat = fat),
-          textType = TextType.Body
+          textType = TextType.Body,
         )
       }
 
       displayMuscleMass?.let { muscle ->
         AppText(
           text = AppPopupStrings.AppsyncEntryPopup.MuscleMass(muscleMass = muscle),
-          textType = TextType.Body
+          textType = TextType.Body,
         )
       }
 
       displayWater?.let { water ->
         AppText(
           text = AppPopupStrings.AppsyncEntryPopup.WaterWeight(waterWeight = water),
-          textType = TextType.Body
+          textType = TextType.Body,
         )
       }
 
@@ -91,7 +86,7 @@ fun AppsyncEntryPopup(
       displayBmi?.let { bmi ->
         AppText(
           text = AppPopupStrings.AppsyncEntryPopup.Bmi(bmi),
-          textType = TextType.Body
+          textType = TextType.Body,
         )
       }
 
@@ -100,13 +95,13 @@ fun AppsyncEntryPopup(
         label = AppPopupStrings.AppsyncEntryPopup.SaveButton,
         type = ButtonType.PrimaryFilled,
         onClick = onSave,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
       )
       AppButton(
         label = AppPopupStrings.AppsyncEntryPopup.EditButton,
         type = ButtonType.InlineTextPrimary,
         onClick = onEdit,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
       )
     }
   }
@@ -128,7 +123,7 @@ fun AppsyncEntryPopupPreview() {
         deviceType = "appsync",
         deviceId = "appsync-scale-001",
         attempts = 0,
-        isSynced = false
+        isSynced = false,
       ),
       scale = ScaleEntryWithMetrics(
         scaleEntry = BodyScaleEntryEntity(
@@ -138,17 +133,16 @@ fun AppsyncEntryPopupPreview() {
           muscleMass = 31.9,
           water = 50.5,
           bmi = 35.5,
-          source = "Appsync scale"
+          source = "Appsync scale",
         ),
-        scaleEntryMetric = null
-      )
+        scaleEntryMetric = null,
+      ),
     )
 
     AppsyncEntryPopup(
       entry = mockEntry,
-      apiEntry = null,
       onEdit = {},
-      onSave = {}
+      onSave = {},
     )
   }
 }

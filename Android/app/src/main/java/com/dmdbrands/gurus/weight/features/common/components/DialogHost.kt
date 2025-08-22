@@ -208,12 +208,10 @@ fun DialogHost() {
 
       DialogType.AppsyncEntryPopup -> {
         val entry = dialog.params["entry"] as ScaleEntry
-        val apiEntry = dialog.params["apiEntry"] as com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
         val onEdit = dialog.params["onEdit"] as (() -> Unit)
         val onSave = dialog.params["onSave"] as (() -> Unit)
         AppsyncEntryPopup(
           entry = entry,
-          apiEntry,
           onEdit = onEdit,
           onSave = onSave,
         )

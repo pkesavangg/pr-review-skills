@@ -23,7 +23,6 @@ import com.dmdbrands.gurus.weight.features.weightless.strings.WeightlessStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the Weightless screen. Handles form state, validation, weightless logic, and navigation.
@@ -92,13 +91,6 @@ constructor(
         emptyList()
       }
 
-    val formattedWeight =
-      if (displayWeight > 0) {
-        String.format("%.1f", displayWeight)
-      } else {
-        ""
-      }
-
     val newState =
       WeightlessState(
         form =
@@ -106,7 +98,7 @@ constructor(
             WeightlessFormControls(
               weightlessWeight =
                 FormControl.create(
-                  initialValue = formattedWeight,
+                  initialValue = displayWeight.toInt().toString(),
                   validators = weightValidators,
                 ),
             ),

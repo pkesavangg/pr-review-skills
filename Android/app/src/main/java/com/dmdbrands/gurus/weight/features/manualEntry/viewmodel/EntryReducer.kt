@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import java.time.LocalTime
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Form controls for weight and date/time (always present)
@@ -64,26 +65,27 @@ data class EntryForm(
       height: Int? = 0,
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
     ): EntryForm {
-              val generalMetrics =
-          GeneralMetricsFormControls(
-            bodyMassIndex = FormControl.create(
-              scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            bodyFat = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.bodyFat?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            muscleMass = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.muscleMass?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            bodyWater = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.water?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            // Add more general metrics here if needed
-          )
+      Log.d("scaleEntry", scaleEntry?.scale?.scaleEntry.toString())
+      val generalMetrics =
+        GeneralMetricsFormControls(
+          bodyMassIndex = FormControl.create(
+            scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          bodyFat = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.bodyFat?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          muscleMass = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.muscleMass?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          bodyWater = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.water?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          // Add more general metrics here if needed
+        )
       val weightDateTime =
         WeightDateTimeFormControls(
           weight = FormControl.create(
@@ -170,8 +172,6 @@ data class EntryForm(
         r4ScaleMetrics = if (r4ScaleMetrics != null) FormGroup(r4ScaleMetrics) else null,
       )
     }
-
-
   }
 }
 
@@ -231,8 +231,23 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
           scaleEntry = scaleEntry,
         )
 
+        // Create new form group and validate it
+        val newFormGroup = MultiFormGroup.create(forms = updatedForm)
+
+        // Force all controls to show validation state
+        updatedForm.weightDateTime.controls.weight.onValueChange(updatedForm.weightDateTime.controls.weight.value)
+        updatedForm.weightDateTime.controls.dateTime.onValueChange(updatedForm.weightDateTime.controls.dateTime.value)
+
+        updatedForm.generalMetrics.controls.bodyMassIndex.onValueChange(updatedForm.generalMetrics.controls.bodyMassIndex.value)
+        updatedForm.generalMetrics.controls.bodyFat.onValueChange(updatedForm.generalMetrics.controls.bodyFat.value)
+        updatedForm.generalMetrics.controls.muscleMass.onValueChange(updatedForm.generalMetrics.controls.muscleMass.value)
+        updatedForm.generalMetrics.controls.bodyWater.onValueChange(updatedForm.generalMetrics.controls.bodyWater.value)
+
+        // Validate the entire form
+        newFormGroup.validate()
+
         state.copy(
-          form = MultiFormGroup.create(forms = updatedForm),
+          form = newFormGroup,
         )
       }
 

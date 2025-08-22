@@ -1,8 +1,5 @@
 package com.dmdbrands.gurus.weight.features.manualEntry.helper
 
-import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
-import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
-import com.dmdbrands.gurus.weight.core.service.AppStatusService.isMetric
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.data.services.OperationType
@@ -20,12 +17,13 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetri
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
+import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.round
 import kotlin.math.roundToInt
-import android.util.Log
 
 object EntryHelper {
   private val dateFormatter: DateTimeFormatter =
@@ -289,7 +287,12 @@ object EntryHelper {
   /**
    * Converts AppSyncResult to ScaleEntry format
    */
-  fun com.greatergoods.libs.appsync.model.AppSyncResult.toScaleEntry(accountId: String, unit: String, userHeight: Int? = null, isSaving: Boolean = false): ScaleEntry {
+  fun com.greatergoods.libs.appsync.model.AppSyncResult.toScaleEntry(
+    accountId: String,
+    unit: String,
+    userHeight: Int? = null,
+    isSaving: Boolean = false
+  ): ScaleEntry {
     val currentTime = System.currentTimeMillis()
     val entryEntity = EntryEntity(
       id = 0L, // Let Room auto-generate
@@ -297,7 +300,7 @@ object EntryHelper {
       entryTimestamp = DateTimeConverter.timestampToIso(currentTime),
       serverTimestamp = null,
       opTimestamp = null,
-      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB ,
+      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB,
       operationType = OperationType.CREATE.name,
       deviceType = "appsync",
       deviceId = "appsync_scale",
@@ -317,11 +320,11 @@ object EntryHelper {
       null
     }
     val rawWeight = ConversionTools.convertAppSyncDisplayToStored(weight?.toDouble() ?: 0.0)
-    val convertedWeight = ConversionTools.convertStoredToDisplay(rawWeight,isMetric )
+    val convertedWeight = ConversionTools.convertStoredToDisplay(rawWeight, unit == WeightUnit.KG.value)
 
     val scaleEntry = BodyScaleEntryEntity(
       id = 0L, // Will be set by DB
-      weight = if(isSaving) convertedWeight else rawWeight,
+      weight = if (isSaving) convertedWeight else rawWeight,
       bodyFat = fat?.toDouble(),
       muscleMass = muscle?.toDouble(),
       water = water?.toDouble(),
@@ -347,7 +350,7 @@ object EntryHelper {
     val currentTime = System.currentTimeMillis()
 
     // Process body composition data with proper conversion
-    val processedBodyFat = fat?.let {
+    fat?.let {
       round(it * 10) / 10.0
     }?.roundToInt()
 

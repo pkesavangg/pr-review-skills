@@ -57,6 +57,7 @@ class AppSyncService @Inject constructor(
   }
 
   override suspend fun handleSaveAppSyncData(scaleEntry: ScaleEntry) {
+    Log.d("saveentry", scaleEntry.scale.scaleEntry.toString())
     try {
       entryService.addEntry(scaleEntry)
       dialogQueueService.showToast(

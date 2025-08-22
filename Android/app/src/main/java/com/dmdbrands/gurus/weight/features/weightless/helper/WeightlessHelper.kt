@@ -71,6 +71,6 @@ object WeightlessHelper {
       baseWeight
     }
     // Round to one decimal place
-    return round(convertedWeight * 10) / 10
+    return round(convertedWeight * 10)
   }
 }

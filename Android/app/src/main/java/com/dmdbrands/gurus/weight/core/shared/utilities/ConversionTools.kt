@@ -116,11 +116,10 @@ object ConversionTools {
    * @return Weight in display format
    */
   fun convertStoredToDisplay(stored: Double, isMetric: Boolean = false): Double {
-    return if (isMetric) {
-      convertStoredToKg(stored)
-    } else {
-      convertStoredToLbs(stored)
+    if (!isMetric) {
+      return convertStoredToLbs(stored)
     }
+    return convertStoredToKg(stored)
   }
 
   /**
