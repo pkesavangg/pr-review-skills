@@ -17,6 +17,10 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector private var permissionsService: PermissionsService
     /// Bluetooth service for device discovery
     @Injector private var bluetoothService: BluetoothService
+    /// Scale service for scale operations
+    @Injector private var scaleService: ScaleService
+    /// Account service for account operations
+    @Injector private var accountService: AccountService
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -282,22 +286,33 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Scale Saving
     private func saveDiscoveredScale() async {
         guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
-        scale.sku = scaleItem?.sku ?? discoveryEvent.device.sku
-        scale.deviceType = DeviceType.scale.rawValue
-        scale.bathScale = scale.bathScale ?? BathScale(scaleType: ScaleSourceType.lcbt.rawValue, bodyComp: scale.bathScale?.bodyComp ?? false)
+        
+        // Use the proper service method to create the A6/LCBT scale with correct relationship handling
         do {
-            let result = await bluetoothService.addNewDevice(scale, metaData: nil)
-            switch result {
-            case .success(let savedScale):
-                LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
-                
-                // Post notification that scale was added
-                NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
-                
-            case .failure(let error):
-                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
-                self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+            // Get account ID from account service
+            guard let accountId = accountService.activeAccount?.accountId else {
+                LoggerService.shared.log(level: .error, tag: tag, message: "No active account found for scale creation")
+                return
             }
+            
+            let savedScale = try await scaleService.createA6Scale(
+                device: scale,
+                sku: scaleItem?.sku ?? discoveryEvent.device.sku,
+                accountId: accountId,
+                deviceMetadata: nil,
+                skipDuplicateCheck: false
+            )
+            
+            await scaleService.syncAllScalesWithRemote()
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            
+            // Post notification that scale was added
+            NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+            self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
         }
     }
     

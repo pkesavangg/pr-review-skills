@@ -4,7 +4,6 @@
 //
 //  Created by Barath Chittibabu on 17/06/25.
 //
-
 import Foundation
 import Combine
 import SwiftUI
@@ -32,11 +31,10 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var selectedMetric: BodyMetric?
 
     // MARK: - UI Flags
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
     @Published var isEmptyState: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
+
     // MARK: - Language Strings
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
@@ -48,22 +46,25 @@ final class HistoryStore: ObservableObject {
     // MARK: - Init ------------------------------------------------------
 
     init() {
-        // Refresh only the affected month when a new entry is stored or deleted.
-        let refreshMonthForEntry: (Entry) -> Void = { [weak self] entry in
-            guard let self = self else { return }
-            let monthKey = String(entry.entryTimestamp.prefix(7))
-            Task { await self.refreshMonth(monthKey) }
-        }
         entryService.entrySaved
-            .sink(receiveValue: refreshMonthForEntry)
+            .sink { [weak self] entry in
+                guard let self = self else { return }
+                Task {
+                    await self.loadMonthsInternal(canShowLoader: false)
+                }
+            }
             .store(in: &cancellables)
         entryService.entryDeleted
-            .sink(receiveValue: refreshMonthForEntry)
+            .sink { [weak self] entry in
+                guard let self = self else { return }
+                Task {
+                    await self.loadMonthsInternal(canShowLoader: false)
+                }
+            }
             .store(in: &cancellables)
     }
 
     // MARK: - Public API --------------------------------------------------
-
     /// Call onAppear of History list screen.
     func loadMonths() {
         Task { [weak self] in
@@ -78,32 +79,25 @@ final class HistoryStore: ObservableObject {
             await self?.loadEntries(for: month)
         }
     }
-
-    /// Toggle expand/collapse for an entry row.
-    func toggleEntry(_ entry: Entry) {
-        let id = entry.id.uuidString
-        if expandedEntries.contains(id) {
-            expandedEntries.remove(id)
-        } else {
-            expandedEntries.insert(id)
-        }
+    
+    func setSelectedMonth(selectedMonth: HistoryMonth) {
+        self.selectedMonth = selectedMonth
+        entries = []
+    }
+    
+    func resetSelectedMonth() {
+        selectedMonth = nil
+        entries = []
     }
 
     /// User tapped a metric inside an expanded entry.
     func selectMetric(_ metric: BodyMetric) {
         selectedMetric = metric
     }
-
-    func deleteEntry(_ entry: Entry) {
-        Task { [weak self] in
-            guard let self = self else { return }
-            // Show confirmation alert first
-            let loader = LoaderModel(text: LoaderStrings.deletingEntry)
-            self.notificationService.showLoader(loader)
-            await self.deleteEntryInternal(entry)
-            await self.refreshSelectedMonth()
-            self.notificationService.dismissLoader()
-        }
+    
+    func refreshAllEntries() async {
+        await entryService.syncAllEntriesWithRemote()
+        await loadMonthsInternal()
     }
 
     /// Presents a delete entry confirmation alert.
@@ -118,30 +112,17 @@ final class HistoryStore: ObservableObject {
             buttons: [
               AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
                   Task {
-                    self.deleteEntry(entry)
-                    onCancel?()
+                      await self.deleteEntryInternal(entry)
+                      onCancel?()
                   }
-
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
                     onCancel?()
                 }
             ]
         )
         notificationService.showAlert(alert)
-    }
-
-    // MARK: - Manual Refresh -------------------------------------------------
-
-    /// Refresh the entries for the month that is currently selected (used by pull-to-refresh UI)
-    func refreshSelectedMonth() async {
-        guard let month = selectedMonth else { return }
-        await loadEntries(for: month)
-    }
-
-    func refreshAllEntries() async {
-        await entryService.syncAllEntriesWithRemote()
-        await loadMonthsInternal()
     }
     
     // MARK: - Handle export
@@ -163,66 +144,53 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Internal helpers -------------------------------------------
 
-    private func loadMonthsInternal() async {
-        await setLoading(true)
+    private func loadMonthsInternal(canShowLoader: Bool = true) async {
+        if canShowLoader {
+            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
+        }
         do {
             let result = try await entryService.getMonthsAll()
+            await self.loadEntries()
             months = result
             isEmptyState = result.isEmpty
-            errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
             months = []
         }
-        await setLoading(false)
+        notificationService.dismissLoader()
     }
 
-    private func loadEntries(for month: HistoryMonth) async {
-        await setLoading(true)
+    func loadEntries(for month: HistoryMonth? = nil) async {
+        let selectedMonth = month ?? self.selectedMonth
+        
+        guard let selectedMonth else {
+            return
+        }
+        notificationService.showLoader(LoaderModel(text: loaderLang.loading))
         do {
-            entries = try await entryService.getMonthDetail(month: month.id)
+            entries = try await entryService.getMonthDetail(month: selectedMonth.id)
+            
+            // Sort entries by entryTimestamp (newest first)
+            entries.sort {
+                DateTimeTools.getTimestamp($0.entryTimestamp) >
+                DateTimeTools.getTimestamp($1.entryTimestamp)
+            }
             isEmptyState = entries.isEmpty
-            errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
             entries = []
         }
-        await setLoading(false)
-    }
-
-    private func setLoading(_ value: Bool) async {
-        await MainActor.run { self.isLoading = value }
-    }
-
-    // Update or insert a single month summary instead of recomputing all months.
-    private func refreshMonth(_ monthKey: String) async {
-        do {
-            if let summary = try await entryService.getMonthSummary(monthKey: monthKey) {
-                await MainActor.run {
-                    if let index = months.firstIndex(where: { $0.id == monthKey }) {
-                        months[index] = summary
-                    } else {
-                        months.append(summary)
-                        months.sort { $0.entryTimestamp > $1.entryTimestamp }
-                    }
-                }
-                // Ensure empty state flag stays correct
-                await MainActor.run { isEmptyState = months.isEmpty }
-            }
-        } catch {
-            // Fallback to full reload on error
-            Task { await loadMonthsInternal() }
-        }
-    }
-
-    private func deleteEntryInternal(_ entry: Entry) async {
-        do {
-            try await entryService.deleteEntry(entry)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        self.notificationService.dismissLoader()
     }
     
+    private func deleteEntryInternal(_ entry: Entry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            try await entryService.deleteEntry(entry)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete entry:", data: error.localizedDescription)
+        }
+        notificationService.dismissLoader()
+    }
+ 
     // MARK: - Export Data
     private func exportData() {
         Task {
@@ -246,8 +214,7 @@ final class HistoryStore: ObservableObject {
     }
     
     deinit {
-      cancellables.forEach { $0.cancel() }
-      cancellables.removeAll()
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
 }
-

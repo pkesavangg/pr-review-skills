@@ -19,7 +19,7 @@ struct DashboardScreen: View {
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
-
+    
     var body: some View {
         VStack(spacing: 0) {
             navbarHeaderSection()
@@ -32,7 +32,7 @@ struct DashboardScreen: View {
             dashboardScrollView()
         }
         .refreshable {
-            // TODO: Implement refresh logic if needed
+            await store.syncEntries()
         }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
@@ -105,15 +105,15 @@ struct DashboardScreen: View {
             }
         }
     }
-
+    
     // MARK: - Sections split for type-checking
-
+    
     @ViewBuilder
     private func navbarHeaderSection() -> some View {
         NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false)
             .zIndex(100)
     }
-
+    
     @ViewBuilder
     private func dashboardScrollView() -> some View {
         ScrollView(showsIndicators: false) {
@@ -131,18 +131,18 @@ struct DashboardScreen: View {
                             store.state.ui.selectedMetricLabel = label
                             openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                         })
-                            .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
-                            .padding(.top, .spacingSM)
-                            .id(store.state.ui.gridLayoutId)
-                            .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
+                        .frame(minHeight: DevicePlatform.isTablet ? 74 : 200)
+                        .padding(.top, .spacingSM)
+                        .id(store.state.ui.gridLayoutId)
+                        .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
                     }
-
+                    
                     if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
                         Divider()
                             .foregroundColor(theme.statusUtilityPrimary)
                             .padding(.horizontal, .spacingLG)
                     }
-
+                    
                     if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
                         GoalStreakGridUIKitView(store: store)
                             .frame(minHeight: 200)
@@ -165,7 +165,7 @@ struct DashboardScreen: View {
         )
         .padding(.top, .zero)
     }
-
+    
     // MARK: - Action Buttons
     private func actionButtonsSection() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
@@ -194,10 +194,10 @@ struct DashboardScreen: View {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 })
-
+                
             }
         }
         .padding(.bottom, .spacingLG)
     }
-
+    
 }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 /// Reusable view that displays a single history entry with expandable metrics
 /// Supports selection, expansion, and swipe-to-delete functionality
@@ -13,77 +14,62 @@ struct HistoryEntryItem: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
-
+    
     let entry: Entry
     let isExpanded: Bool
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (Entry, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
-
+    
+    // iOS 17 fix: Stable animation state
+    @State private var animationPhase: UUID = UUID()
+    @State private var isAnimating = false
+    
     // MARK: - Computed Properties
-
-    private var dateText: String {
-      return DateTimeTools.getFormattedDay(entry.entryTimestamp)
-    }
-
-    private var timeText: String {
-        return DateTimeTools.getFormattedTime(entry.entryTimestamp)
-    }
-
-    private var weightText: String {
-      let weight = WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
-      return weight
-    }
-
-    private var backgroundColor: Color {
-        if isExpanded {
-            return theme.actionSecondary
-        }
-        return .clear
-    }
-
+    
     // MARK: - Body
-
+    
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
             HStack {
                 // Date and time
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(dateText)
+                    Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor( isExpanded ? theme.textInverse : theme.textHeading)
-
-                    Text(timeText)
+                    
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundColor( isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
+                
                 // Weight value
                 HStack(spacing: .spacingXS) {
-                    Text(weightText)
+                    Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-
+                    
                     Text(weightUnit.rawValue)
                         .fontOpenSans(.body2)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
-
+                
                 // Expansion chevron (only if metrics exist)
                 if !entry.metricItems.isEmpty {
                     AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .padding(.leading, .spacingSM)
-                        .animation(.easeOut, value: isExpanded)
+                    // iOS 17 fix: Remove conflicting animations
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
-            .background(backgroundColor)
+            .background(isExpanded ? theme.actionSecondary : Color.clear)
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
@@ -93,9 +79,9 @@ struct HistoryEntryItem: View {
                         label: {
                             AnyView(
                                 Text(CommonStrings.delete)
-                                .fontOpenSans(.button1)
-                                .fontWeight(.bold)
-                                .foregroundColor(theme.textInverse)
+                                    .fontOpenSans(.button1)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textInverse)
                             )
                         }
                     )
@@ -103,35 +89,37 @@ struct HistoryEntryItem: View {
                 itemID: entry.id,
                 openItemID: openItemID
             )
-
-
+            
             Divider()
                 .foregroundColor(theme.actionPrimary)
-            // Expanded metrics section
+            
+            //            // iOS 17 fix: Stable expanded metrics section with proper animation
             if isExpanded, !entry.metricItems.isEmpty {
-                VStack() {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(entry.metricItems.enumerated()), id: \ .0) { index, item in
-                            HistoryMetricItem(
-                                metric: BodyMetrics.config[item.metric]!,
-                                value: item.value,
-                                isAlternate: index % 2 == 1,
-                                onTap: { onMetricTap(entry, item.metric) }
-                            )
-                        }
+                VStack(spacing: 0) {
+                    // iOS 17 fix: Use regular VStack instead of LazyVStack to prevent layout churn
+                    ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
+                        HistoryMetricItem(
+                            metric: BodyMetrics.config[item.metric]!,
+                            value: item.value,
+                            isAlternate: index % 2 == 1,
+                            onTap: { onMetricTap(entry, item.metric) }
+                        )
+                        .id("\(entry.id.uuidString)-metric-\(index)") // iOS 17 fix: Stable metric IDs
                     }
                 }
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .top)),
+                    removal: .opacity.combined(with: .move(edge: .top))
+                ))
             }
         }
-
-        .animation(.easeOut, value: isExpanded)
+        // TODO: iOS 17 fix: Remove conflicting animations need to be handled carefully later
+        .animation(.easeOut(duration: 0.25), value: animationPhase)
         .contentShape(Rectangle())
         .onTapGesture {
-            if !entry.metricItems.isEmpty {
-                onTap()
-            }
+            guard !entry.metricItems.isEmpty else { return }
+            onTap()
         }
-
     }
 }
 
@@ -149,14 +137,14 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             deviceType: "scale",
             isSynced: true
         )
-
+        
         entry.scaleEntry = BathScaleEntry(
             weight: 1492,
             bodyFat: 50,
             muscleMass: 569,
             water: 53
         )
-
+        
         entry.scaleEntryMetric = BathScaleMetric(
             bmr: 1862,
             metabolicAge: 28,
@@ -168,7 +156,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             impedance: 100,
             unit: "kg"
         )
-
+        
         @State var openItemID: UUID? = nil
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
@@ -179,7 +167,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
                 onMetricTap: { _, _ in },
                 openItemID: .constant(nil)
             )
-
+            
             HistoryEntryItem(
                 entry: entry,
                 isExpanded: true,
@@ -196,5 +184,6 @@ struct HistoryEntryItem_Previews: PreviewProvider {
     }
 }
 #endif
+
 
 

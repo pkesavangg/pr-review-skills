@@ -134,7 +134,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Published var selectedScaleMode: ScaleModes = .allBodyMetrics
     
     /// Heart rate measurement setting
-    @Published var isHeartRateEnabled: Bool = true
+    @Published var isHeartRateEnabled: Bool = false
     
     /// Selected customize settings items that have been configured
     @Published var selectedCustomizeItems: Set<String> = []
@@ -278,7 +278,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.openBIAModel()
                                 },
                                 onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
+                                    let isPulseEnabled = heartRateEnabled && scaleMode == .allBodyMetrics
+                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
                                 }
                             )
                         case .scaleMetrics:
@@ -1158,7 +1159,95 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         do {
             let isWifiConfigured = await checkDeviceInfoAfterWifiSetup(scale: scale)
-
+            
+            // Create unique scale ID using timestamp
+            let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
+            let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
+            let accountId = accountService.activeAccount?.accountId ?? ""
+            
+            // Get device metadata for R4 scales
+            var deviceMetadata: DeviceMetaData? = nil
+            let deviceInfoResult = await bluetoothService.getDeviceInfo(for: scale)
+            switch deviceInfoResult {
+            case .success(let deviceInfo):
+                let dto = ScaleMetaDataDTO(
+                    firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                    hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                    latestFirmwareVersion: nil,
+                    manufacturerName: deviceInfo.manufacturerName?.replacingOccurrences(of: "\0", with: ""),
+                    modelNumber: deviceInfo.modelNumber?.replacingOccurrences(of: "\0", with: ""),
+                    serialNumber: deviceInfo.serialNumber?.replacingOccurrences(of: "\0", with: ""),
+                    softwareRevision: deviceInfo.softwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                    systemId: deviceInfo.systemID?.replacingOccurrences(of: "\0", with: ""),
+                    wifiMac: ""
+                )
+                deviceMetadata = DeviceMetaData(from: dto)
+                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved device metadata for R4 scale")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
+            }
+            
+            // Get WiFi MAC address for R4 scales
+            var wifiMacAddress: String? = scale.wifiMac
+            let wifiMacResult = await bluetoothService.getWifiMacAddress(for: scale)
+            switch wifiMacResult {
+            case .success(let macAddress):
+                wifiMacAddress = macAddress
+                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved WiFi MAC address: \(macAddress)")
+            case .failure(let error):
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
+            }
+            
+            // Update dashboard type first
+            try await accountService.updateDashboardType(type: .dashboard12)
+            
+            // Create the R4 scale using the proper service method
+            let savedScale = try await scaleService.createR4Scale(
+                scaleId: scaleID,
+                accountId: accountId,
+                displayName: displayName,
+                token: scaleToken,
+                mac: scale.mac,
+                broadcastIdString: scale.broadcastIdString,
+                broadcastId: scale.broadcastId,
+                sku: scaleItem?.sku ?? discoveryEvent.device.sku,
+                deviceName: discoveryEvent.deviceInfo.productName,
+                wifiMac: wifiMacAddress,
+                deviceMetadata: deviceMetadata,
+                isWifiConfigured: isWifiConfigured,
+                isConnected: true,
+                skipDuplicateCheck: isReconnect
+            )
+            
+            self.savedScale = savedScale
+            await self.scaleService.syncAllScalesWithRemote()
+            // Setup push notifications
+            Task {
+                await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
+            }
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
+            
+            // Post notification that scale was added
+            NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
+            connectionState = .failure
+        }
+    }
+    
+    private func saveScale2() async {
+        guard let discoveryEvent = discoveryEvent,
+              let scale = discoveredScale,
+              let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing required data")
+            return
+        }
+        
+        do {
+            let isWifiConfigured = await checkDeviceInfoAfterWifiSetup(scale: scale)
+            
             // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
@@ -1229,6 +1318,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             connectionState = .failure
         }
     }
+    
     
     /// Fetches the WiFi scale token for setup operations.
     /// This demonstrates how to use the WiFi scale service from other services.
@@ -1313,7 +1403,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup started for SSID: \(networkConfig.ssid)")
         let wifiSetupResult = await bluetoothService.setupWifi(on: scale, config: networkConfig)
-        
         switch wifiSetupResult {
         case .success(let response):
             switch response.wifiState {
@@ -1589,6 +1678,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 savedScale.id,
                 updatedPreference
             )
+            await scaleService.pushLocalChangesToServer()
             // Call bluetooth service to update account
             let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
             switch result {
@@ -1602,19 +1692,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             switch result {
             case .success(_):
-                // Update the saved scale preference
-                savedScale.r4ScalePreference = updatedPreference
-                
-                // Reset the changes flag after successful update
-                hasCustomizeChanges = false
-                
-                LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
-        bluetoothService.syncDevices([])
-                // Clear the selected items since they're now saved
-                selectedCustomizeItems.removeAll()
-                scaleSetupError = .none
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    self.navigateToStep(.stepOn)
+                // Update the scale preference through the service layer to handle SwiftData relationships properly
+                do {
+                    try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
+                    
+                    // Reset the changes flag after successful update
+                    hasCustomizeChanges = false
+                    
+                    LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
+                    // Clear the selected items since they're now saved
+                    selectedCustomizeItems.removeAll()
+                    scaleSetupError = .none
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        self.navigateToStep(.stepOn)
+                    }
+                } catch {
+                    LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update scale preference locally: \(error.localizedDescription)")
+                    await MainActor.run {
+                        self.scaleSetupError = .updateSettingsFailed
+                    }
                 }
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account: \(error.localizedDescription)")
@@ -1622,12 +1718,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     self.scaleSetupError = .updateSettingsFailed
                 }
             }
-            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update settings: \(error.localizedDescription)")
             await MainActor.run {
                 self.scaleSetupError = .updateSettingsFailed
             }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            self.bluetoothService.syncDevices([])
         }
     }
     

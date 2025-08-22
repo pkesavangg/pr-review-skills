@@ -19,7 +19,8 @@ struct HistoryMonthListScreen: View {
     @State private var showDeleteAlert = false
     @State private var entryToDelete: Entry? = nil
     @State private var openItemID: UUID? = nil
-    
+    @State private var isOnboardingComplete: Bool = false
+
     let month: HistoryMonth
     
     // Computed Properties
@@ -29,13 +30,27 @@ struct HistoryMonthListScreen: View {
         return DateTimeTools.getMonthDayYearShort(firstEntry?.entryTimestamp ?? "")
     }
     
+    // MARK: - Private Methods
+    
+    /// Toggle expand/collapse for an entry row.
+    private func toggleEntry(_ entry: Entry) {
+        let id = entry.id.uuidString
+        
+        // iOS 17 fix: Immediate toggle for better responsiveness on repeated navigation
+        if historyStore.expandedEntries.contains(id) {
+            historyStore.expandedEntries.remove(id)
+        } else {
+            historyStore.expandedEntries.insert(id)
+        }
+    }
+    
     // MARK: - Body
     
     var body: some View {
         VStack(spacing: 0) {
-            NavbarHeaderView<Image, Image>(
+            NavbarHeaderView<AnyView, AnyView>(
                 title: title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AnyView(Image(AppAssets.chevronLeft)) },
                 onLeadingTap: { router.navigateBack() }
             )
             .background(theme.backgroundPrimary)
@@ -46,57 +61,55 @@ struct HistoryMonthListScreen: View {
         }
         .background(theme.backgroundSecondary)
         .navigationBarBackButtonHidden(true)
-        .onAppear {
-            historyStore.selectMonth(month)
-        }
-        .onChange(of: historyStore.entries) {
-            // Navigate back if all entries are deleted
-            if historyStore.entries.isEmpty {
-                router.navigateBack()
+        .onAppear(perform: {
+            if !isOnboardingComplete {
+                Task {
+                    await self.historyStore.loadEntries(for: month)
+                    isOnboardingComplete = true
+                }
+            }
+         })
+        .onChange(of: historyStore.isEmptyState) { _, isEmpty in
+            if isEmpty {
+                dismiss()
             }
         }
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }
+        .onDisappear(perform: {
+            historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
+            historyStore.resetSelectedMonth()
+        })
+        .refreshable {
+            await historyStore.loadEntries(for: month)
+        }
     }
     
     @ViewBuilder
     private var content: some View {
-        if historyStore.isEmptyState {
-            NoEntryView(
-                onButtonTap: {
-                    
+        
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(historyStore.entries, id: \.id) { entry in
+                    HistoryEntryItem(
+                        entry: entry,
+                        isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
+                        onTap: {
+                            toggleEntry(entry)
+                        },
+                        onDelete: {
+                            historyStore.showDeleteEntryAlert(entry: entry)
+                        },
+                        onMetricTap: { entry, metric in
+                            selectedEntry = entry
+                            selectedMetric = metric
+                        },
+                        openItemID: $openItemID
+                    )
+                    .id(entry.id) // Use entry ID for stable identity
+                    // Removed dynamic id to preserve view identity and avoid full view rebuild
                 }
-            )
-            
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(historyStore.entries.sorted {
-                        DateTimeTools.getTimestamp($0.entryTimestamp) > DateTimeTools.getTimestamp($1.entryTimestamp)
-                    }, id: \.id) { entry in
-                        HistoryEntryItem(
-                            entry: entry,
-                            isExpanded: historyStore.expandedEntries.contains(entry.id.uuidString),
-                            onTap: {
-                                historyStore.toggleEntry(entry)
-                            },
-                            onDelete: {
-                                historyStore.showDeleteEntryAlert(entry: entry, onCancel: {
-                                    // Let the swipe modifier handle closing naturally
-                                })
-                            },
-                            onMetricTap: { entry, metric in
-                                selectedEntry = entry
-                                selectedMetric = metric
-                            },
-                            openItemID: $openItemID
-                        )
-                    }
-                }
-            }
-            .refreshable {
-                await historyStore.refreshSelectedMonth()
             }
         }
     }
@@ -132,5 +145,3 @@ struct HistoryMonthListScreen_Previews: PreviewProvider {
     }
 }
 #endif
-
-
