@@ -39,8 +39,8 @@ class DashboardStore: ObservableObject {
 static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
-    private let graphManager: DashboardGraphManager
-    private let goalManager: DashboardGoalManager
+    let graphManager: DashboardGraphManager
+    let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
     private let dataManager: DashboardDataManager
 
