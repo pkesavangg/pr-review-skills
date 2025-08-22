@@ -8,4 +8,6 @@ option java_package = "com.dmdbrands.gurus.weight.proto";
 message GoalAlertProto {
   // Map of account ID to alert shown state
   map<string, bool> account_alerts = 1;
+  // Map of account ID to goal card popup shown state
+  map<string, bool> account_goal_card_status = 2;
 }

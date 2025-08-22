@@ -87,6 +87,26 @@ constructor(
   private var accountId: String? = null
   private var initialWeight: Double? = null
 
+  init {
+    repositoryScope.launch {
+      lastUpdated.collect { lastUpdated ->
+        accountId?.let { accountIdValue ->
+          try {
+            val entries = getEntriesByDeviceType(accountIdValue, "scale").first()
+            if (entries.size >= 3) {
+              goalService.checkGoalCard()
+              AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card")
+            } else {
+              AppLog.d("EntryService", "User has only ${entries.size} scale entries, not enough for goal card")
+            }
+          } catch (e: Exception) {
+            AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
+          }
+        }
+      }
+    }
+  }
+
   override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
     combine(
       entryRepository.getMonthlyAverage(accountId ?: ""),
@@ -203,6 +223,24 @@ constructor(
     repositoryScope.launch {
       updateLatestEntry(accountId)
     }
+
+    // Check for goal card after account data is updated
+    repositoryScope.launch {
+      try {
+        val entries = getEntriesByDeviceType(accountId, "scale").first()
+        AppLog.d("EntryService", "Account updated - Found ${entries.size} scale entries for account $accountId")
+
+        // Check if user has 3 or more scale entries to potentially show goal card
+        if (entries.size >= 3) {
+          AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card")
+          goalService.checkGoalCard()
+        } else {
+          AppLog.d("EntryService", "User has only ${entries.size} scale entries, not enough for goal card")
+        }
+      } catch (e: Exception) {
+        AppLog.e("EntryService", "Error checking entries for goal card after account update", e.toString())
+      }
+    }
   }
 
   /**
@@ -249,6 +287,22 @@ constructor(
     syncOperations(
       listOf(updatedEntry),
     )
+
+    // Check for goal card after adding new entry
+    repositoryScope.launch {
+      try {
+        val entries = getEntriesByDeviceType(accountId ?: "", "scale").first()
+        AppLog.d("EntryService", "Entry added - Found ${entries.size} scale entries for account $accountId")
+
+        // Check if user has 3 or more scale entries to potentially show goal card
+        if (entries.size >= 3) {
+          AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card after new entry")
+          goalService.checkGoalCard()
+        }
+      } catch (e: Exception) {
+        AppLog.e("EntryService", "Error checking entries for goal card after adding entry", e.toString())
+      }
+    }
   }
 
   /**
@@ -284,6 +338,25 @@ constructor(
       }
 
       syncOperations(updatedEntries)
+
+      // Check for goal card after adding new entries
+      repositoryScope.launch {
+        try {
+          val entries = getEntriesByDeviceType(accountId ?: "", "scale").first()
+          AppLog.d("EntryService", "Entries added - Found ${entries.size} scale entries for account $accountId")
+
+          // Check if user has 3 or more scale entries to potentially show goal card
+          if (entries.size >= 3) {
+            AppLog.d(
+              "EntryService",
+              "User has ${entries.size} scale entries (>= 3), checking goal card after new entries",
+            )
+            goalService.checkGoalCard()
+          }
+        } catch (e: Exception) {
+          AppLog.e("EntryService", "Error checking entries for goal card after adding entries", e.toString())
+        }
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error saving new entries", e.toString())
     }

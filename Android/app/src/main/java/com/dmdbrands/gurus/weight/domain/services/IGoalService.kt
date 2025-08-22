@@ -78,4 +78,13 @@ interface IGoalService {
     startingWeight: Double,
     goalWeight: Double,
   ): Account?
+
+  /**
+   * Checks if the goal card (Set Goal popup) should be shown to the user.
+   * Based on Angular's checkGoalCard method - shows popup if:
+   * - User has no goal set (goalType is null)
+   * - User has at least 3 entries
+   * - Goal card popup hasn't been shown before for this account
+   */
+  suspend fun checkGoalCard()
 }

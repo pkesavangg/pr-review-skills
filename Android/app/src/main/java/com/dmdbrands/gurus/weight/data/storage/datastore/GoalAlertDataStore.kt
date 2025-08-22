@@ -15,7 +15,7 @@ private val Context.goalAlertDataStore: DataStore<GoalAlertProto> by dataStore(
 )
 
 /**
- * DataStore for managing goal alert state per account.
+ * DataStore for managing goal alert and goal card popup state per account.
  */
 class GoalAlertDataStore(
   context: Context
@@ -48,28 +48,49 @@ class GoalAlertDataStore(
       AppLog.e("GoalAlertDataStore", "Error updating alert shown state for account $accountId", e.toString())
     }
   }
-
+  
   /**
-   * Resets the alert state for a specific account.
-   * @param accountId The account ID to reset
+   * Gets the goal card status value for a specific account.
+   * This method mimics the Angular kvStorage.getValue() functionality.
+   * @param accountId The account ID to check
+   * @return The stored value as a string ("true" if shown, null if not set)
    */
-  suspend fun resetAlertState(accountId: String) {
-    try {
-      updateData { currentData ->
-        currentData.toBuilder()
-          .removeAccountAlerts(accountId)
-          .build()
-      }
+  suspend fun getGoalCardValue(accountId: String): String? {
+    return try {
+      val hasShown = getData().accountGoalCardStatusMap.getOrDefault(accountId, false)
+      if (hasShown) "true" else null
     } catch (e: Exception) {
-      AppLog.e("GoalAlertDataStore", "Error resetting alert state for account $accountId", e.toString())
+      AppLog.e("GoalAlertDataStore", "Error getting goal card value for account $accountId", e.toString())
+      null
     }
   }
 
   /**
-   * Resets all alert states (for all accounts).
+   * Sets the goal card status value for a specific account.
+   * This method mimics the Angular kvStorage.setValue() functionality.
+   * @param accountId The account ID to update
+   * @param value The value to set (typically "true")
+   */
+  suspend fun setGoalCardValue(accountId: String, value: String) {
+    try {
+      val hasShown = value == "true"
+      updateData { currentData ->
+        currentData.toBuilder()
+          .putAccountGoalCardStatus(accountId, hasShown)
+          .build()
+      }
+      AppLog.d("GoalAlertDataStore", "Goal card value set for account $accountId: $value")
+    } catch (e: Exception) {
+      AppLog.e("GoalAlertDataStore", "Error setting goal card value for account $accountId", e.toString())
+    }
+  }
+
+  /**
+   * Resets all alert and goal card states (for all accounts).
    */
   override suspend fun clearData() {
     super.clearData()
+    AppLog.d("GoalAlertDataStore", "All goal alert and goal card states cleared")
   }
 }
 
