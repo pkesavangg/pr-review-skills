@@ -38,8 +38,8 @@ data class Goal(
     }
 
     // Round to one decimal place
-    val roundedGoalWeight = round(convertedGoalWeight * 10) / 10
-    val roundedInitialWeight = round(convertedInitialWeight * 10) / 10
+    val roundedGoalWeight = round(convertedGoalWeight) * 10
+    val roundedInitialWeight = round(convertedInitialWeight) * 10
 
     return copy(
       goalWeight = roundedGoalWeight,

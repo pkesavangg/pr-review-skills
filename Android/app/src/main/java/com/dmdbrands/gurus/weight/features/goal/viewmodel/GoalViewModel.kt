@@ -90,7 +90,6 @@ constructor(
       type = goalType.value,
     ).process(targetUnit, null) // Process with target unit, no weightless needed for goals
 
-    calculateGoalPercentage(currentAccount, state.value.latestWeight)
     val currentWeightValidators =
       if (goalType != GoalType.MAINTAIN) { // Changed from LOSE_GAIN to != MAINTAIN
         listOf(FormValidations.required(), FormValidations.weightValidator())
@@ -98,18 +97,6 @@ constructor(
         emptyList() // No validation for hidden field in maintain mode
       }
 
-    val formattedCurrentWeight =
-      if (goal.initialWeight > 0) {
-        String.format("%.1f", goal.initialWeight)
-      } else {
-        ""
-      }
-    val formattedGoalWeight =
-      if (goal.goalWeight > 0) {
-        String.format("%.1f", goal.goalWeight)
-      } else {
-        ""
-      }
     val newState =
       GoalState(
         form =
@@ -122,12 +109,12 @@ constructor(
                 ),
               startingWeight =
                 FormControl.create(
-                  initialValue = formattedCurrentWeight,
+                  initialValue = "",
                   validators = currentWeightValidators,
                 ),
               goalWeight =
                 FormControl.create(
-                  initialValue = formattedGoalWeight,
+                  initialValue = "",
                   validators =
                     listOf(
                       FormValidations.required(),
@@ -139,6 +126,8 @@ constructor(
         account = currentAccount,
         latestWeight = state.value.latestWeight, // Preserve existing latestWeight
       )
+    newState.form.controls.startingWeight.onValueChange(goal.initialWeight.toInt().toString())
+    newState.form.controls.goalWeight.onValueChange(goal.goalWeight.toInt().toString())
     _state.value = newState
   }
 
@@ -177,6 +166,7 @@ constructor(
       fromUnit = account.weightUnit,
       toUnit = WeightUnit.LB,
     )
+
     AppLog.d(tag, "Goal settings: type=${goal.type}, current=${goal.initialWeight}, goal=${goal.goalWeight}")
     viewModelScope.launch {
       try {

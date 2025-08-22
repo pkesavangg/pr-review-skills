@@ -76,10 +76,10 @@ constructor(
     initialWeight: Double,
     goalType: String,
     wasMet: Boolean,
-  ): Account? =
-    try {
+  ): Account? {
+    return try {
       AppLog.d(TAG, "Updating goal: type=$goalType, goalWeight=$goalWeight, initialWeight=$initialWeight")
-
+      null
       val goalData =
         GoalData(
           goalWeight = goalWeight,
@@ -107,8 +107,9 @@ constructor(
       updatedAccount
     } catch (e: Exception) {
       AppLog.e(TAG, "Error updating goal", e.toString())
-      throw e
+      null
     }
+  }
 
   /**
    * Gets the formatted goal type string for display.

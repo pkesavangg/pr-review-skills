@@ -64,32 +64,33 @@ data class EntryForm(
       height: Int? = 0,
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
     ): EntryForm {
-              val generalMetrics =
-          GeneralMetricsFormControls(
-            bodyMassIndex = FormControl.create(
-              scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            bodyFat = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.bodyFat?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            muscleMass = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.muscleMass?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            bodyWater = FormControl.create(
-              (scaleEntry?.scale?.scaleEntry?.water?.times(10)?.toInt()?.toString()) ?: "",
-              listOf(FormValidations.bodyCompValidator())
-            ),
-            // Add more general metrics here if needed
-          )
+      val generalMetrics =
+        GeneralMetricsFormControls(
+          bodyMassIndex = FormControl.create(
+            scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          bodyFat = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.bodyFat?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          muscleMass = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.muscleMass?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          bodyWater = FormControl.create(
+            (scaleEntry?.scale?.scaleEntry?.water?.times(10)?.toInt()?.toString()) ?: "",
+            listOf(FormValidations.bodyCompValidator()),
+          ),
+          // Add more general metrics here if needed
+        )
       val weightDateTime =
         WeightDateTimeFormControls(
           weight = FormControl.create(
             if (scaleEntry != null) {
               val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
-              val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
+              val displayWeight =
+                ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric).times(10).toInt()
               displayWeight.toString()
             } else "",
             listOf(
@@ -170,8 +171,6 @@ data class EntryForm(
         r4ScaleMetrics = if (r4ScaleMetrics != null) FormGroup(r4ScaleMetrics) else null,
       )
     }
-
-
   }
 }
 

@@ -7,7 +7,7 @@ object ImprovedNiceScaleCalculator {
 
   private val niceNumbers = listOf(1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0)
 
-  data class GraphMeta(
+  data class AxisMeta(
     val min: Double,
     val max: Double,
     val step: Double,
@@ -20,7 +20,7 @@ object ImprovedNiceScaleCalculator {
     maxValue: Double,
     goalWeight: Double,
     targetTickCount: Int = 6
-  ): GraphMeta {
+  ): AxisMeta {
     val actualMin = kotlin.math.floor(minValue)
     val actualMax = kotlin.math.ceil(maxValue)
     val rawRange = actualMax - actualMin
@@ -32,7 +32,7 @@ object ImprovedNiceScaleCalculator {
     }
   }
 
-  private fun handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double): GraphMeta {
+  private fun handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double): AxisMeta {
     val range = maxOf(dataMax - dataMin, 2.0)
     val padding = range * 0.2
     var min = kotlin.math.floor(dataMin - padding)
@@ -63,7 +63,7 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return GraphMeta(maxOf(evenMin, 0.0), evenMax, step, ticks.distinct().sorted(), evenMin..evenMax)
+      return AxisMeta(maxOf(evenMin, 0.0), evenMax, step, ticks.distinct().sorted(), evenMin..evenMax)
     } else {
       step = 1.0
       var current = finalMin
@@ -71,11 +71,11 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+      return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
     }
   }
 
-  private fun handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double): GraphMeta {
+  private fun handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double): AxisMeta {
     val range = dataMax - dataMin
     val padding = range * 0.15
     val min = kotlin.math.floor(dataMin - padding)
@@ -100,7 +100,7 @@ object ImprovedNiceScaleCalculator {
       current += step
     }
 
-    return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
   }
 
   private fun handleNormalRange(
@@ -108,7 +108,7 @@ object ImprovedNiceScaleCalculator {
     dataMax: Double,
     goalWeight: Double,
     targetTickCount: Int
-  ): GraphMeta {
+  ): AxisMeta {
     val rawRange = dataMax - dataMin
     val minimumRange = maxOf(rawRange, 10.0)
     val padding = minimumRange * 0.1
@@ -155,7 +155,7 @@ object ImprovedNiceScaleCalculator {
       }
     }
 
-    return GraphMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
   }
 
   private fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {
