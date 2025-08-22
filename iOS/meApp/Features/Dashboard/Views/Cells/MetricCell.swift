@@ -324,6 +324,59 @@ class MetricCell: UICollectionViewCell {
         let oldState = currentIsBeingDragged
         currentIsBeingDragged = isBeingDragged
         
+        if isBeingDragged {
+            // Enable smooth animations during drag for beautiful cell movement
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull()
+            ]
+            
+            // Add subtle shadow and scale effect during drag
+            layer.shadowOpacity = 0.3
+            layer.shadowRadius = 8
+            layer.shadowOffset = CGSize(width: 0, height: 4)
+            
+            // Smooth transform animation
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            })
+        } else {
+            // Restore normal behavior when not dragging
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull(),
+                "onOrderIn": NSNull(),
+                "onOrderOut": NSNull(),
+                "sublayers": NSNull(),
+                "contents": NSNull(),
+                "hidden": NSNull(),
+                "cornerRadius": NSNull()
+            ]
+            
+            // Completely remove all drag effects and shadows
+            layer.shadowOpacity = 0.0
+            layer.shadowRadius = 0
+            layer.shadowOffset = .zero
+            layer.shadowColor = nil
+            layer.shadowPath = nil
+            
+            // Force immediate shadow removal
+            layer.setNeedsDisplay()
+            layer.displayIfNeeded()
+            
+            // Also call the dedicated shadow clearing method
+            clearAllShadowEffects()
+            
+            // Smooth return to normal size
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = .identity
+            })
+        }
+        
         // Reconfigure the cell with the new drag state
         if let item = representedItem, let store = currentStore {
             configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged)
@@ -428,4 +481,16 @@ class MetricCell: UICollectionViewCell {
         snapshot?.backgroundColor = .clear
         return snapshot ?? UIView(frame: contentView.bounds)
     }
+    
+    /// Force clear all shadow effects - call this when items are dropped
+    func clearAllShadowEffects() {
+        layer.shadowOpacity = 0.0
+        layer.shadowRadius = 0
+        layer.shadowOffset = .zero
+        layer.shadowColor = nil
+        layer.shadowPath = nil
+        layer.setNeedsDisplay()
+        layer.displayIfNeeded()
+    }
+
 }
