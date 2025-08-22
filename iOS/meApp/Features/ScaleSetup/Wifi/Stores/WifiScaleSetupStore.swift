@@ -555,7 +555,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
-                await self.scaleService.pushLocalChangesToServer()
+                await self.scaleService.syncAllScalesWithRemote()
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }

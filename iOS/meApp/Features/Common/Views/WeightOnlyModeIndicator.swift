@@ -10,6 +10,8 @@ import SwiftUI
 /// A draggable floating action button that indicates weight-only mode is enabled by others
 /// Equivalent to Angular's WeightOnlyModeIndicatorComponent
 struct WeightOnlyModeIndicator: View {
+    /// Notification service for presenting modals
+    @StateObject private var notificationService = NotificationHelperService.shared
     @Environment(\.appTheme) private var theme
     @StateObject private var positionStore = FloatingButtonPositionStore()
     @State private var showWeightOnlyAlert = false
@@ -86,16 +88,39 @@ struct WeightOnlyModeIndicator: View {
                 }
         }
         .allowsHitTesting(true)
-        .sheet(isPresented: $showWeightOnlyAlert) {
-            WeightOnlyModeBottomSheet(
-                onDismiss: {
-                    showWeightOnlyAlert = false
-                },
-                onEnableAllBodyMetrics: {
-                    showWeightOnlyAlert = false
+        // Present bottom sheet: centered modal on iPad < iOS 18, sheet otherwise
+        .if(DeviceUtils.useModalPicker) { view in
+            view
+                .onChange(of: showWeightOnlyAlert) { _, show in
+                    if show {
+                        let sheetView = WeightOnlyModeBottomSheet(
+                            onDismiss: {
+                                notificationService.dismissModal()
+                                showWeightOnlyAlert = false },
+                            onEnableAllBodyMetrics: {
+                                notificationService.dismissModal()
+                                showWeightOnlyAlert = false
+                            }
+                        )
+                        notificationService.showModal(
+                            ModalData(presentedView: AnyView(
+                                sheetView
+                                    .background(theme.backgroundPrimary)
+                                    .cornerRadius(.radiusSM)
+                            ), backdropDismiss: false)
+                        )
+                    }
                 }
-            )
-            .deviceDiscoverSheetStyle(height: 420)
+        }
+        .if(!DeviceUtils.useModalPicker) { view in
+            view
+                .sheet(isPresented: $showWeightOnlyAlert) {
+                    WeightOnlyModeBottomSheet(
+                        onDismiss: { showWeightOnlyAlert = false },
+                        onEnableAllBodyMetrics: { showWeightOnlyAlert = false }
+                    )
+                    .deviceDiscoverSheetStyle(height: 420)
+                }
         }
     }
 

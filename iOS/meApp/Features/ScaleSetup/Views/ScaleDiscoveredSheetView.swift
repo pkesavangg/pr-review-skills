@@ -79,11 +79,11 @@ struct ScaleDiscoveredSheetView: View {
                     isDisabled: false,
                     action: onConnect
                 )
+                .padding(.bottom, .spacingMD)
             }
         }
         .padding([.horizontal, .top], .spacingMD)
         .frame(maxWidth: .infinity)
-        .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundPrimary)
         .onDisappear(){
             viewModel.clearTimer()

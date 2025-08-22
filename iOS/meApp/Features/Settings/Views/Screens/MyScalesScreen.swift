@@ -121,6 +121,7 @@ struct MyScalesScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 VStack(alignment: .center, spacing: 0) {
                     MetricInputField(
