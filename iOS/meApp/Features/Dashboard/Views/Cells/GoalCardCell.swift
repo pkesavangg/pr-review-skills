@@ -25,7 +25,8 @@ class GoalCardCell: UICollectionViewCell {
     
     private var currentStore: DashboardStore?
     private var isLongPressed: Bool = false
-    private var isTapped: Bool = false
+    private var suppressOverlay: Bool = false
+    private var currentIsBeingDragged: Bool = false
     
     // MARK: - Initialization
     
@@ -50,6 +51,7 @@ class GoalCardCell: UICollectionViewCell {
     private func setupUI() {
         setupHostingController()
         setupConstraints()
+        setupGestureRecognizers()
     }
     
     /// Configures the hosting controller for SwiftUI view
@@ -73,6 +75,45 @@ class GoalCardCell: UICollectionViewCell {
         ])
     }
     
+    /// Sets up gesture recognizers for the cell
+    private func setupGestureRecognizers() {
+        // Gesture recognizers will be set up in configure method based on edit mode
+    }
+    
+    /// Sets up gesture recognizers based on edit mode
+    private func setupGestureRecognizersForEditMode(_ isEditMode: Bool) {
+        // Remove existing gesture recognizers
+        gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
+        
+        if !isEditMode {
+            // In non-edit mode, add long press gesture recognizer
+            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            longPress.minimumPressDuration = 0.5
+            self.addGestureRecognizer(longPress)
+        }
+        // In edit mode, rely on SwiftUI overlay buttons for add/remove
+    }
+    
+    /// Handles long press gesture on the cell
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            isLongPressed = true
+            // Reconfigure to hide overlay during long press
+            if let store = currentStore {
+                configure(with: store)
+            }
+        case .ended, .cancelled:
+            isLongPressed = false
+            // Reconfigure to show overlay after long press ends (if in edit mode)
+            if let store = currentStore {
+                configure(with: store)
+            }
+        default:
+            break
+        }
+    }
+    
     // MARK: - Configuration
     
     /// Configures the cell with dashboard store data
@@ -85,23 +126,34 @@ class GoalCardCell: UICollectionViewCell {
         
         let goalCardView = GoalProgressView()
         
-        // Apply EditModeOverlay to the GoalProgressView
-        let viewWithOverlay = AnyView(
-            goalCardView
-                .editModeOverlay(
-                    isEditMode: store.state.ui.isEditMode,
-                    isRemoved: store.state.ui.isGoalCardRemoved,
-                    onToggleRemoval: {
-                        store.toggleGoalCardRemoval()
-                    },
-                    isBeingDragged: store.state.ui.isGoalCardBeingDragged || isLongPressed || isTapped,
-                    isDropTarget: store.state.ui.dropHoverId == "goalCard",
-                    rowIndex: rowIndex,
-                    disableWiggle: false
-                )
-        )
+        // Apply EditModeOverlay to the GoalProgressView only when appropriate
+        let shouldShowOverlay = store.state.ui.isEditMode && 
+                               !(store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged)
+        
+        let viewWithOverlay: AnyView
+        if shouldShowOverlay {
+            viewWithOverlay = AnyView(
+                goalCardView
+                    .editModeOverlay(
+                        isEditMode: true, // Always true when we want to show overlay
+                        isRemoved: store.state.ui.isGoalCardRemoved,
+                        onToggleRemoval: {
+                            store.toggleGoalCardRemoval()
+                        },
+                        isBeingDragged: false, // Always false when we want to show overlay
+                        isDropTarget: store.state.ui.dropHoverId == "goalCard",
+                        rowIndex: rowIndex,
+                        disableWiggle: false
+                    )
+            )
+        } else {
+            viewWithOverlay = AnyView(goalCardView)
+        }
         
         hostingController?.rootView = viewWithOverlay
+        
+        // Set up gesture recognizers based on edit mode
+        setupGestureRecognizersForEditMode(store.state.ui.isEditMode)
     }
     
     // MARK: - Reuse
@@ -110,7 +162,10 @@ class GoalCardCell: UICollectionViewCell {
         super.prepareForReuse()
         currentStore = nil
         isLongPressed = false
-        isTapped = false
+        currentIsBeingDragged = false
+        
+        // Remove gesture recognizers
+        gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         
         // Reset to placeholder view
         let placeholderView = AnyView(
@@ -129,9 +184,12 @@ class GoalCardCell: UICollectionViewCell {
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
             // Clear interaction states
-            isLongPressed = false
-            isTapped = false
-            // Reconfigure to show overlay after drag ends
+            if !suppressOverlay {
+                isLongPressed = false
+            } else {
+                isLongPressed = true
+            }
+            // Always reconfigure to update overlay visibility
             if let store = currentStore {
                 configure(with: store)
             }
@@ -141,8 +199,7 @@ class GoalCardCell: UICollectionViewCell {
             hostingController?.view.alpha = 1.0
             // Set interaction states to hide overlay during drag
             isLongPressed = true
-            isTapped = true
-            // Reconfigure to hide overlay during drag
+            // Always reconfigure to update overlay visibility
             if let store = currentStore {
                 configure(with: store)
             }
@@ -210,6 +267,98 @@ class GoalCardCell: UICollectionViewCell {
     func showDeleteButtonIfNeeded() {
         // The EditModeOverlay will automatically show/hide based on edit mode
         // No manual intervention needed
+    }
+    
+    // MARK: - Drag State Management
+    
+    /// Updates the drag state for this cell
+    /// - Parameter isBeingDragged: Whether this cell is currently being dragged
+    func updateDragState(_ isBeingDragged: Bool) {
+        currentIsBeingDragged = isBeingDragged
+        
+        if isBeingDragged {
+            // Enable smooth animations during drag for beautiful cell movement
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull()
+            ]
+            
+            // Add subtle shadow and scale effect during drag
+            layer.shadowOpacity = 0.3
+            layer.shadowRadius = 8
+            layer.shadowOffset = CGSize(width: 0, height: 4)
+            
+            // Smooth transform animation
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            })
+        } else {
+            // Restore normal behavior when not dragging
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull(),
+                "onOrderIn": NSNull(),
+                "onOrderOut": NSNull(),
+                "sublayers": NSNull(),
+                "contents": NSNull(),
+                "hidden": NSNull(),
+                "cornerRadius": NSNull()
+            ]
+            
+            // Completely remove all drag effects and shadows
+            layer.shadowOpacity = 0.0
+            layer.shadowRadius = 0
+            layer.shadowOffset = .zero
+            layer.shadowColor = nil
+            layer.shadowPath = nil
+            
+            // Force immediate shadow removal
+            layer.setNeedsDisplay()
+            layer.displayIfNeeded()
+            
+            // Also call the dedicated shadow clearing method
+            clearAllShadowEffects()
+            
+            // Smooth return to normal size
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = .identity
+            })
+        }
+        
+        // Always reconfigure to update overlay visibility when drag state changes
+        if let store = currentStore {
+            configure(with: store)
+        }
+    }
+    
+    func setOverlaySuppressed(_ suppressed: Bool) {
+        suppressOverlay = suppressed
+        if !suppressed {
+            isLongPressed = false
+        } else {
+            isLongPressed = true
+        }
+        // Always reconfigure to update overlay visibility
+        if let store = currentStore {
+            configure(with: store)
+        }
+    }
+    
+
+    
+    /// Force clear all shadow effects - call this when items are dropped
+    func clearAllShadowEffects() {
+        layer.shadowOpacity = 0.0
+        layer.shadowRadius = 0
+        layer.shadowOffset = .zero
+        layer.shadowColor = nil
+        layer.shadowPath = nil
+        layer.setNeedsDisplay()
+        layer.displayIfNeeded()
     }
     
     // MARK: - Drag Preview
