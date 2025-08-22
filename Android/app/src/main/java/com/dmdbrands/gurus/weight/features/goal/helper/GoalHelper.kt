@@ -11,96 +11,96 @@ import kotlin.math.round
  * Helper functions for Goal-related operations.
  */
 object GoalHelper {
-    /**
-     * Safely converts a FormControl<String> to Double with a default value.
-     */
-    fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double =
-        this.value.toDoubleOrNull() ?: default
+  /**
+   * Safely converts a FormControl<String> to Double with a default value.
+   */
+  fun FormControl<String>.toDoubleSafe(default: Double = 0.0): Double =
+    this.value.toDoubleOrNull() ?: default
 
-    /**
-     * Rounds a Double to one decimal place.
-     */
-    fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
+  /**
+   * Rounds a Double to one decimal place.
+   */
+  fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
 
-    /**
-     * Core function to create a Goal with proper weight conversion.
-     * Used by both form submission and signup flows.
-     */
-    private fun createGoalInternal(
-        startingWeight: Double,
-        goalWeight: Double,
-        goalType: String,
-        fromUnit: WeightUnit,
-        toUnit: WeightUnit
-    ): Goal {
-        val processedStartingWeight = processWeight(startingWeight, fromUnit, toUnit)
-        val processedGoalWeight = processWeight(goalWeight, fromUnit, toUnit)
-        // Determine specific goal type
-        val specificGoalType = if (goalType == GoalType.MAINTAIN.value) {
-            "maintain"
-        } else {
-            if (processedGoalWeight <= processedStartingWeight) "lose" else "gain"
-        }
-
-        return Goal(
-            goalWeight = processedGoalWeight,
-            initialWeight = startingWeight,
-            type = specificGoalType,
-        )
+  /**
+   * Core function to create a Goal with proper weight conversion.
+   * Used by both form submission and signup flows.
+   */
+  private fun createGoalInternal(
+    startingWeight: Double,
+    goalWeight: Double,
+    goalType: String,
+    fromUnit: WeightUnit,
+    toUnit: WeightUnit
+  ): Goal {
+    val processedStartingWeight = processWeight(startingWeight, fromUnit, toUnit)
+    val processedGoalWeight = processWeight(goalWeight, fromUnit, toUnit)
+    // Determine specific goal type
+    val specificGoalType = if (goalType == GoalType.MAINTAIN.value) {
+      "maintain"
+    } else {
+      if (processedGoalWeight <= processedStartingWeight) "lose" else "gain"
     }
 
-    /**
-     * Converts weight between units.
-     */
-    fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
-        return when {
-            from == to -> value
-            from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
-            from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
-            else -> value
-        }
-    }
-
-    /**
-     * Processes weight with unit conversion and rounding.
-     */
-    fun processWeight(weight: Double, fromUnit: WeightUnit, toUnit: WeightUnit): Double {
-        val convertedWeight = convertWeight(weight, fromUnit, toUnit)
-        return convertedWeight.rounded() ?: weight
-    }
-
-    /**
-     * Creates a Goal model from form controls.
-     * Uses the core createGoalInternal function.
-     */
-    fun GoalFormControls.toGoal(
-        fromUnit: WeightUnit,
-        toUnit: WeightUnit,
-    ): Goal {
-        return createGoalInternal(
-            startingWeight = this.startingWeight.toDoubleSafe(),
-            goalWeight = this.goalWeight.toDoubleSafe(),
-            goalType = this.goalType.value,
-            fromUnit = fromUnit,
-            toUnit = toUnit,
-        )
-    }
-
-    /**
-     * Creates a Goal model from signup data.
-     * Uses the same core createGoalInternal function as form submission.
-     */
-    fun createGoal(
-        startingWeight: Double,
-        goalWeight: Double,
-        goalType: String,
-        fromUnit: WeightUnit,
-        toUnit: WeightUnit
-    ): Goal = createGoalInternal(
-        startingWeight = startingWeight,
-        goalWeight = goalWeight,
-        goalType = goalType,
-        fromUnit = fromUnit,
-        toUnit = toUnit,
+    return Goal(
+      goalWeight = processedGoalWeight,
+      initialWeight = processedStartingWeight,
+      type = specificGoalType,
     )
+  }
+
+  /**
+   * Converts weight between units.
+   */
+  fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
+    return when {
+      from == to -> value
+      from == WeightUnit.KG && to == WeightUnit.LB -> value * 2.20462
+      from == WeightUnit.LB && to == WeightUnit.KG -> value / 2.20462
+      else -> value
+    }
+  }
+
+  /**
+   * Processes weight with unit conversion and rounding.
+   */
+  fun processWeight(weight: Double, fromUnit: WeightUnit, toUnit: WeightUnit): Double {
+    val convertedWeight = convertWeight(weight, fromUnit, toUnit)
+    return convertedWeight.rounded() ?: weight
+  }
+
+  /**
+   * Creates a Goal model from form controls.
+   * Uses the core createGoalInternal function.
+   */
+  fun GoalFormControls.toGoal(
+    fromUnit: WeightUnit,
+    toUnit: WeightUnit,
+  ): Goal {
+    return createGoalInternal(
+      startingWeight = this.startingWeight.toDoubleSafe(),
+      goalWeight = this.goalWeight.toDoubleSafe(),
+      goalType = this.goalType.value,
+      fromUnit = fromUnit,
+      toUnit = toUnit,
+    )
+  }
+
+  /**
+   * Creates a Goal model from signup data.
+   * Uses the same core createGoalInternal function as form submission.
+   */
+  fun createGoal(
+    startingWeight: Double,
+    goalWeight: Double,
+    goalType: String,
+    fromUnit: WeightUnit,
+    toUnit: WeightUnit
+  ): Goal = createGoalInternal(
+    startingWeight = startingWeight,
+    goalWeight = goalWeight,
+    goalType = goalType,
+    fromUnit = fromUnit,
+    toUnit = toUnit,
+  )
 }

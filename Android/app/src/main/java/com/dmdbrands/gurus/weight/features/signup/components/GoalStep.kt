@@ -48,8 +48,8 @@ private fun updateWeightValidators(
   val weightUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
   control.addValidator(FormValidations.weightValidator(weightUnit))
 
-  // Re-validate to show updated error message if control has a value and is touched
-  if (control.value.isNotEmpty() && control.touched) {
+  // This prevents validation errors from showing when just switching units on untouched/empty fields
+  if (control.touched && control.value.isNotEmpty()) {
     control.validate()
   }
 }
@@ -66,19 +66,20 @@ fun GoalStep(
   goalWeightControl: FormControl<String>,
   useMetricControl: FormControl<Boolean>? = null,
   onMetricToggle: (Boolean) -> Unit = {},
-  onGoalTypeChange: (GoalType) -> Unit = {}, // Callback for goal type changes
+  onGoalTypeChange: (GoalType) -> Unit = {},
   onNext: () -> Unit = {},
-  showCurrentWeightForMaintain: Boolean = true, // Default true for signup process
-  showMetricToggle: Boolean = true, // Default true for backward compatibility
+  showCurrentWeightForMaintain: Boolean = true,
+  showMetricToggle: Boolean = true,
+  initialWeightUnit: WeightUnit? = null,
 ) {
   val currentWeightFocusRequester = remember { FocusRequester() }
   val goalWeightFocusRequester = remember { FocusRequester() }
 
-  val isMetric = useMetricControl?.value ?: false
+  val isMetric = if (showMetricToggle) (useMetricControl?.value ?: false) else initialWeightUnit == WeightUnit.KG
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
-  // Update weight validators when metric toggle changes
-  LaunchedEffect(isMetric) {
+  // Initialize weight validators based on initial weight unit or metric toggle
+  LaunchedEffect(isMetric, initialWeightUnit) {
     updateWeightValidators(currentWeightControl, isMetric)
     updateWeightValidators(goalWeightControl, isMetric)
   }

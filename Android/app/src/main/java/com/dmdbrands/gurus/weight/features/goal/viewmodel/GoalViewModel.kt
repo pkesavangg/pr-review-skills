@@ -48,9 +48,9 @@ constructor(
   private val tag = "GoalViewModel"
 
   override fun provideInitialState(): GoalState {
-    // Initialize with defaults since we'll load data in init block
+    // Always initialize with LOSE_GAIN
     return GoalState(
-      form = FormGroup(GoalFormControls.create()),
+      form = FormGroup(GoalFormControls.create()),  // Default constructor already sets LOSE_GAIN
     )
   }
 
@@ -80,16 +80,15 @@ constructor(
     val isMetric = currentAccount.isMetricUnit()
     val targetUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
 
-    val goalTypeString = currentAccount.goalType ?: GoalType.MAINTAIN.value
-    val goalType = GoalType.entries.find { it.value == goalTypeString } ?: GoalType.MAINTAIN
-
+    // Default to LOSE_GAIN if no goal type is set
+    val goalTypeString = currentAccount.goalType ?: GoalType.LOSE_GAIN.value
+    val goalType = GoalType.entries.find { it.value == goalTypeString } ?: GoalType.LOSE_GAIN
     // Get current weights and create a Goal object
     val goal = Goal(
       goalWeight = currentAccount.goalWeight ?: 0.0,
       initialWeight = currentAccount.initialWeight,
       type = goalType.value,
     ).process(targetUnit, null) // Process with target unit, no weightless needed for goals
-
     calculateGoalPercentage(currentAccount, state.value.latestWeight)
     val currentWeightValidators =
       if (goalType != GoalType.MAINTAIN) { // Changed from LOSE_GAIN to != MAINTAIN
@@ -98,18 +97,6 @@ constructor(
         emptyList() // No validation for hidden field in maintain mode
       }
 
-    val formattedCurrentWeight =
-      if (goal.initialWeight > 0) {
-        String.format("%.1f", goal.initialWeight)
-      } else {
-        ""
-      }
-    val formattedGoalWeight =
-      if (goal.goalWeight > 0) {
-        String.format("%.1f", goal.goalWeight)
-      } else {
-        ""
-      }
     val newState =
       GoalState(
         form =
@@ -122,12 +109,12 @@ constructor(
                 ),
               startingWeight =
                 FormControl.create(
-                  initialValue = formattedCurrentWeight,
+                  initialValue = goal.initialWeight.toInt().toString(),
                   validators = currentWeightValidators,
                 ),
               goalWeight =
                 FormControl.create(
-                  initialValue = formattedGoalWeight,
+                  initialValue = goal.goalWeight.toInt().toString(),
                   validators =
                     listOf(
                       FormValidations.required(),
@@ -245,8 +232,8 @@ constructor(
   private fun onHandleGoalMet(setNewGoal: Boolean) {
     AppLog.d(tag, "Goal met dialog response: setNewGoal=$setNewGoal")
     if (setNewGoal) {
-      // Reset form for new goal with current metric preference
-      val newFormControls = GoalFormControls.create()
+      // Reset form for new goal with LOSE_GAIN as default
+      val newFormControls = GoalFormControls.create(GoalType.LOSE_GAIN)
       val newState =
         state.value.copy(
           form = FormGroup(newFormControls),
