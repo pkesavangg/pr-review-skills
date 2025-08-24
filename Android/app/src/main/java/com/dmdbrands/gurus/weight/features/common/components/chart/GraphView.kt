@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -90,10 +91,7 @@ fun GraphView(
   val stableGraphLines = rememberStable(graphLines)
 
   val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
-  if (stableGraphLines.isEmpty() || stableGraphLines.all { it.points.isEmpty() }) {
-    GraphEmptyState(modifier = modifier, placeHolder = placeHolder)
-    return
-  }
+
   var point: Point? by remember { mutableStateOf(Point(0f, 0f)) }
   val xLabels = remember(stableGraphLines) {
     stableGraphLines.first().points.map { it.x }

@@ -49,95 +49,107 @@ internal fun ChartHostSection(
   modelProducer: CartesianChartModelProducer,
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  isEmpty: Boolean = false,
   decorations: Decoration? = null,
   separators: List<Double>
 ) {
-  key(segment) {
-    val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
 
-    val primaryChart =
-      rememberCartesianChart(
+  key(segment, isEmpty) {
+    val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+    if (isEmpty) {
+      val emptyChart = rememberCartesianChart(
         primaryLayer,
-        secondaryLayer,
-        startAxis =
-          VerticalAxis.rememberStart(
-            label = null,
-            line = rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-              thickness = 1.dp,
-            ),
-            guideline = null,
-            tickLength = 0.dp,
-          ),
-        topAxis =
-          HorizontalAxis.rememberTop(
-            label = null,
-            line = rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-              thickness = 1.dp,
-            ),
-            guideline = null,
-            tickLength = 0.dp,
-          ),
-        endAxis =
-          VerticalAxis.rememberEnd(
-            valueFormatter =
-              CartesianValueFormatter { _, value, _ ->
-                value.roundToInt().toString()
-              },
-            itemPlacer =
-              VerticalAxis.ItemPlacer.step(
-                step = { stepSize },
-              ),
-            size = BaseAxis.Size.fixed(40.dp),
-            line =
-              rememberAxisLineComponent(
+        bottomAxis = bottomAxis,
+      )
+      CartesianChartHost(
+        chart = emptyChart,
+        modelProducer = modelProducer,
+        modifier = modifier,
+      )
+    } else {
+      val primaryChart =
+        rememberCartesianChart(
+          primaryLayer,
+          secondaryLayer,
+          startAxis =
+            VerticalAxis.rememberStart(
+              label = null,
+              line = rememberAxisLineComponent(
                 fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
                 thickness = 1.dp,
               ),
-            guideline =
-              rememberAxisLineComponent(
-                fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-                thickness = 0.5.dp,
+              guideline = null,
+              tickLength = 0.dp,
+            ),
+          topAxis =
+            HorizontalAxis.rememberTop(
+              label = null,
+              line = rememberAxisLineComponent(
+                fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+                thickness = 1.dp,
               ),
-            label =
-              rememberTextComponent(
-                color = MeTheme.colorScheme.textSubheading,
-                margins = insets(horizontal = 10.dp),
-              ),
-            tickLength = 0.dp,
-          ),
-        bottomAxis = bottomAxis,
-        marker = emptyMarker(),
-        decorations = listOfNotNull(decorations),
-        markerVisibilityListener = markerListener,
-        persistentMarkers =
+              guideline = null,
+              tickLength = 0.dp,
+            ),
+          endAxis =
+            VerticalAxis.rememberEnd(
+              valueFormatter =
+                CartesianValueFormatter { _, value, _ ->
+                  value.roundToInt().toString()
+                },
+              itemPlacer =
+                VerticalAxis.ItemPlacer.step(
+                  step = { stepSize },
+                ),
+              size = BaseAxis.Size.fixed(40.dp),
+              line =
+                rememberAxisLineComponent(
+                  fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+                  thickness = 1.dp,
+                ),
+              guideline =
+                rememberAxisLineComponent(
+                  fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+                  thickness = 0.5.dp,
+                ),
+              label =
+                rememberTextComponent(
+                  color = MeTheme.colorScheme.textSubheading,
+                  margins = insets(horizontal = 10.dp),
+                ),
+              tickLength = 0.dp,
+            ),
+          bottomAxis = bottomAxis,
+          marker = emptyMarker(),
+          decorations = listOfNotNull(decorations),
+          markerVisibilityListener = markerListener,
+          persistentMarkers =
 
-          if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
-            {
-              defaultMarker at xLabels[markerIndex].value
-            }
-          } else {
-            null
+            if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
+              {
+                defaultMarker at xLabels[markerIndex].value
+              }
+            } else {
+              null
+            },
+          visibleLabelsCount = segment.intervalCount(),
+          getXStep = {
+            GraphUtil.calculateXStep(
+              segment,
+              xLabels.map { it.value.toDouble() },
+            )
           },
-        visibleLabelsCount = segment.intervalCount(),
-        getXStep = {
-          GraphUtil.calculateXStep(
-            segment,
-            xLabels.map { it.value.toDouble() },
-          )
-        },
+        )
+      CartesianChartHost(
+        chart = primaryChart,
+        modelProducer = modelProducer,
+        modifier = modifier,
+        animationSpec = null,
+        animateIn = false,
+        scrollState = scrollState,
+        zoomState = rememberVicoZoomState(zoomEnabled = false),
+        consumeMoveEvents = true,
       )
-    CartesianChartHost(
-      chart = primaryChart,
-      modelProducer = modelProducer,
-      modifier = modifier,
-      animationSpec = null,
-      animateIn = false,
-      scrollState = scrollState,
-      zoomState = rememberVicoZoomState(zoomEnabled = false),
-      consumeMoveEvents = true,
-
-      )
+    }
   }
 }
