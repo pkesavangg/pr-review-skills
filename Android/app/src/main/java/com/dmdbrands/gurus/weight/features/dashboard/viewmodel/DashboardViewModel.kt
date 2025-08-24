@@ -43,6 +43,7 @@ constructor(
     loadEntries()
     subscribeMetrics()
     subscribeProgress()
+    subscribeGoals()
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -70,6 +71,14 @@ constructor(
     viewModelScope.launch {
       entryService.progress.collect {
         handleIntent(DashboardIntent.SetProgress(it))
+      }
+    }
+  }
+
+  private fun subscribeGoals() {
+    viewModelScope.launch {
+      goalService.getCurrentGoal().collect {
+        handleIntent(DashboardIntent.SetGoal(it))
       }
     }
   }

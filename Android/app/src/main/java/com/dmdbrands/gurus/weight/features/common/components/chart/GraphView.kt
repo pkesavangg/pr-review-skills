@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
@@ -77,6 +78,7 @@ fun GraphView(
   secondaryGraphLines: GraphLine? = null,
   segment: GraphSegment = GraphSegment.WEEK,
   placeHolder: String? = null,
+  goal: Goal? = null,
   onMetricUpdate: (List<GraphPoint>) -> Unit = {},
   onScroll: (String?) -> Unit = {},
   onLabelUpdate: (String) -> Unit = {},
@@ -340,7 +342,7 @@ fun GraphView(
     )
 
   val defaultMarker = rememberDefaultMarker(xLabels, markerIndex, segment)
-  val decorations = rememberHorizontalLine()
+  val decorations = rememberHorizontalLine(goal = goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(
     isEnabled = !isUpdating,

@@ -19,10 +19,11 @@ import com.patrykandpatrick.vico.core.cartesian.decoration.HorizontalLine
 import com.patrykandpatrick.vico.core.common.Position
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import android.graphics.Typeface
+import android.util.Log
 
 @Composable
-fun rememberHorizontalLine(
-): Decoration {
+fun rememberHorizontalLine(goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null): Decoration? {
+    if (goal == null) return null
     val fill = fill(Color(0xFF458239))
     val line = rememberLineComponent(fill = fill(Color(0xFF458239)), thickness = 2.dp)
     val labelComponent =
@@ -42,7 +43,7 @@ fun rememberHorizontalLine(
         object : Decoration {
             override fun drawOverLayers(context: CartesianDrawingContext) {
                 HorizontalLine(
-                    y = { 150.0 },
+                    y = { goal.goalWeight.div(10) },
                     line = line.copy(fill = fill(Color.Transparent)),
                     labelComponent = labelComponent,
                     horizontalLabelPosition = Position.Horizontal.End,

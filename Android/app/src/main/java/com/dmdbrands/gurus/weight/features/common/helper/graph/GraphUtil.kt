@@ -318,8 +318,7 @@ object GraphUtil {
     zone: ZoneId = ZoneId.systemDefault(),
     weekStart: DayOfWeek = DayOfWeek.SUNDAY
   ): List<Double> {
-    if (startMillis == null || endMillis == null) return emptyList()
-    require(startMillis <= endMillis) { "startMillis must be <= endMillis as $startMillis > $endMillis" }
+    if (startMillis == null || endMillis == null || startMillis > endMillis) return emptyList()
 
     val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
     val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()

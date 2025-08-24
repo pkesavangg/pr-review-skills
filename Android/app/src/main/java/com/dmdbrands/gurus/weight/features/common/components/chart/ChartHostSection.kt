@@ -49,7 +49,7 @@ internal fun ChartHostSection(
   modelProducer: CartesianChartModelProducer,
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
-  decorations: Decoration,
+  decorations: Decoration? = null,
   separators: List<Double>
 ) {
   key(segment) {
@@ -109,7 +109,7 @@ internal fun ChartHostSection(
           ),
         bottomAxis = bottomAxis,
         marker = emptyMarker(),
-        decorations = listOf(decorations),
+        decorations = listOfNotNull(decorations),
         markerVisibilityListener = markerListener,
         persistentMarkers =
 
