@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -18,19 +20,23 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
+import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
+import java.util.Calendar
 import kotlin.math.roundToInt
 
 @Composable
@@ -57,13 +63,27 @@ internal fun ChartHostSection(
   key(segment, isEmpty) {
     val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
     if (isEmpty) {
+
       val emptyChart = rememberCartesianChart(
         primaryLayer,
         bottomAxis = bottomAxis,
       )
+      val emptyScrollState = rememberVicoScrollState(
+        scrollEnabled = false,
+      )
+      val emptyModelProducer = remember { CartesianChartModelProducer() }
+      LaunchedEffect(Unit) {
+        emptyModelProducer.runTransaction {
+          lineSeries {
+            series(listOf(Calendar.getInstance().timeInMillis.toDouble()), listOf(0.0))
+          }
+        }
+        emptyScrollState.scroll(Scroll.Absolute.End)
+      }
       CartesianChartHost(
         chart = emptyChart,
-        modelProducer = modelProducer,
+        modelProducer = emptyModelProducer,
+        scrollState = emptyScrollState,
         modifier = modifier,
       )
     } else {
@@ -136,7 +156,6 @@ internal fun ChartHostSection(
           getXStep = {
             GraphUtil.calculateXStep(
               segment,
-              xLabels.map { it.value.toDouble() },
             )
           },
         )

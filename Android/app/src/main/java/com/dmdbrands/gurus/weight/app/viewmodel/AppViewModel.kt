@@ -318,7 +318,6 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
-    stopScan()
     navigationService.replaceStack(route = route)
   }
 

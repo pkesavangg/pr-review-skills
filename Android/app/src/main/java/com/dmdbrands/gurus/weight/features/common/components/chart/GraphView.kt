@@ -89,6 +89,9 @@ fun GraphView(
     mutableStateOf(listOf())
   }
   val stableGraphLines = rememberStable(graphLines)
+  val isEmptyState by remember {
+    derivedStateOf { stableGraphLines.flatMap { it.points }.isEmpty() }
+  }
 
   val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
 
@@ -107,8 +110,8 @@ fun GraphView(
     initialScroll = Scroll.Absolute.End,
   )
 
-  var minTarget by remember { mutableStateOf<Long?>(timeStamp.min().toLong()) }
-  var maxTarget by remember { mutableStateOf<Long?>(timeStamp.max().toLong()) }
+  var minTarget by remember { mutableStateOf<Long?>(timeStamp.minByOrNull { it }?.toLong()) }
+  var maxTarget by remember { mutableStateOf<Long?>(timeStamp.maxByOrNull { it }?.toLong()) }
   var minYTarget by remember { mutableDoubleStateOf(0.0) }
   var secondaryMinYTarget by remember { mutableDoubleStateOf(0.0) }
   var maxYTarget by remember { mutableDoubleStateOf(220.0) }
@@ -162,7 +165,7 @@ fun GraphView(
         val secondaryGraphMeta = generateNiceScale(
           floor(secondaryYAxis.min()),
           ceil(secondaryYAxis.max()),
-          goalWeight = 80.0,
+          goalWeight = goal?.goalWeight ?: 0.0,
         )
         secondaryMinYTarget = secondaryGraphMeta.min
         secondaryMaxYTarget = secondaryGraphMeta.max
@@ -286,7 +289,7 @@ fun GraphView(
             val graphMeta = generateNiceScale(
               tempMin,
               tempMax,
-              goalWeight = 80.0,
+              goalWeight = goal?.goalWeight ?: 0.0,
             )
             minYTarget = graphMeta.min
             maxYTarget = graphMeta.max
@@ -302,7 +305,7 @@ fun GraphView(
                 val secondaryGraphMeta = generateNiceScale(
                   floor(secondaryYAxis.min()),
                   ceil(secondaryYAxis.max()),
-                  goalWeight = 80.0,
+                  goalWeight = goal?.goalWeight ?: 0.0,
                 )
                 secondaryMinYTarget = secondaryGraphMeta.min
                 secondaryMaxYTarget = secondaryGraphMeta.max
@@ -316,7 +319,8 @@ fun GraphView(
         }
       }
   }
-  val initialTimeStamp = xLabels.minOf { it.value as Long }
+  val initialTimeStamp: Long =
+    xLabels.minByOrNull { it.value.toLong() }?.value?.toLong() ?: Calendar.getInstance().timeInMillis
   val primaryLayer = primaryLayer(
     segment, animatedMinTarget, animatedMaxTarget,
     initialTimeStamp,
@@ -414,6 +418,7 @@ fun GraphView(
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
     separators = separators,
+    isEmpty = isEmptyState,
   )
 }
 

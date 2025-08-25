@@ -124,15 +124,11 @@ object GraphUtil {
    */
   fun calculateXStep(
     segment: GraphSegment,
-    xLabels: List<Double>,
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 5 * ONE_DAY_MILLIS
-      GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
-      GraphSegment.TOTAL -> {
-        ONE_DAY_MILLIS * 60
-      }
+      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.YEAR, GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
 
   fun List<Double>.getMinPositiveDelta(): Double {
@@ -149,9 +145,9 @@ object GraphUtil {
    */
   fun GraphSegment.intervalCount(): Int =
     when (this) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 6
-      GraphSegment.YEAR -> 12
+      GraphSegment.WEEK -> 8
+      GraphSegment.MONTH -> 7
+      GraphSegment.YEAR -> 13
       else -> 32
     }
   // endregion

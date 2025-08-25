@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
+import com.dmdbrands.gurus.weight.features.common.components.chart.EmptyGraph
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphView
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
@@ -141,29 +142,33 @@ fun HistoryGraph(
         }
       }
     }
-    GraphView(
-      modifier =
-        Modifier
-          .fillMaxWidth(),
-      segment = selectedSegment,
-      secondaryGraphLines = validMetricKey?.let { entries.toGraphPoints(validMetricKey) },
-      graphLines = listOf(graphLines),
-      goal = state.goal,
-      onScroll = {
-        subText = it
-      },
-      onMetricUpdate = { grahpoints ->
-        val timeStamps = grahpoints.map { it.x.value.toLong() }
-        val filteredEntries =
-          entries.filter { DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps }
-        onSelected(
-          filteredEntries,
-        )
-      },
-      onLabelUpdate = {
-        labelData = it
-      },
-    )
+    if (state.dayWiseEntries.isEmpty()) {
+      EmptyGraph(selectedSegment)
+    } else {
+      GraphView(
+        modifier =
+          Modifier
+            .fillMaxWidth(),
+        segment = selectedSegment,
+        secondaryGraphLines = validMetricKey?.let { entries.toGraphPoints(validMetricKey) },
+        graphLines = listOf(graphLines),
+        goal = state.goal,
+        onScroll = {
+          subText = it
+        },
+        onMetricUpdate = { grahpoints ->
+          val timeStamps = grahpoints.map { it.x.value.toLong() }
+          val filteredEntries =
+            entries.filter { DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps }
+          onSelected(
+            filteredEntries,
+          )
+        },
+        onLabelUpdate = {
+          labelData = it
+        },
+      )
+    }
     Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
     SegmentButtonGroup(
       data = GraphSegment.entries.toList(),
