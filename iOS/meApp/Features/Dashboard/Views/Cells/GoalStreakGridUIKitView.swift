@@ -166,47 +166,42 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             return store.isStreakRemoved(streak.label)
         }
 
-        // In edit mode, show all items (including removed ones)
-        if isEditMode {
-            // Insert goal card at correct position if not removed
-            if !isGoalCardRemoved {
-                for i in 0...nonRemovedStreaks.count {
-                    if i == goalCardPos {
-                        widgets.append(.goalCard)
-                    }
-                    if i < nonRemovedStreaks.count {
-                        widgets.append(.streak(nonRemovedStreaks[i]))
-                    }
+    if isEditMode {
+        if !isGoalCardRemoved {
+            for i in 0...nonRemovedStreaks.count {
+                if i == goalCardPos {
+                    widgets.append(.goalCard)
                 }
-            } else {
-                widgets = nonRemovedStreaks.map { .streak($0) }
-            }
-
-            // Add removed streaks at the end
-            for streak in removedStreaks {
-                widgets.append(.streak(streak))
-            }
-            // Add removed goal card at the end
-            if isGoalCardRemoved {
-                widgets.append(.goalCard)
+                if i < nonRemovedStreaks.count {
+                    widgets.append(.streak(nonRemovedStreaks[i]))
+                }
             }
         } else {
-            // Not in edit mode - only show non-removed items
-            // Insert goal card at correct position if not removed
-            if !isGoalCardRemoved {
-                for i in 0...nonRemovedStreaks.count {
-                    if i == goalCardPos {
-                        widgets.append(.goalCard)
-                    }
-                    if i < nonRemovedStreaks.count {
-                        widgets.append(.streak(nonRemovedStreaks[i]))
-                    }
-                }
-            } else {
-                widgets = nonRemovedStreaks.map { .streak($0) }
-            }
-            // Don't add removed items when not in edit mode
+            widgets = nonRemovedStreaks.map { .streak($0) }
         }
+
+        for streak in removedStreaks {
+            widgets.append(.streak(streak))
+        }
+
+        if isGoalCardRemoved {
+            widgets.append(.goalCard)
+        }
+    } else {
+
+        if !isGoalCardRemoved {
+            for i in 0...nonRemovedStreaks.count {
+                if i == goalCardPos {
+                    widgets.append(.goalCard)
+                }
+                if i < nonRemovedStreaks.count {
+                    widgets.append(.streak(nonRemovedStreaks[i]))
+                }
+            }
+        } else {
+            widgets = nonRemovedStreaks.map { .streak($0) }
+        }
+    }
         
         return MileStoneGridModel(mileStones: widgets)
     }
