@@ -73,11 +73,27 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return dashboardStore?.continuousOperations ?? []
     }
     
-    /// Chart series data
+    /// Chart series data with scroll performance optimization
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
-        return store.chartSeriesData
+        
+        // During scrolling, use cached data to prevent expensive recalculations
+        if isScrolling && !cachedChartSeriesData.isEmpty {
+            return cachedChartSeriesData
+        }
+        
+        let seriesData = store.chartSeriesData
+        
+        // Cache the data for potential reuse during scrolling
+        if !isScrolling {
+            cachedChartSeriesData = seriesData
+        }
+        
+        return seriesData
     }
+    
+    // Cache for chart series data during scrolling
+    private var cachedChartSeriesData: [GraphSeries] = []
     
     /// Goal weight for display
     var goalWeight: Double {
@@ -147,6 +163,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func updateYAxisConfiguration() {
         guard let store = dashboardStore else { return }
         
+        // Skip Y-axis updates during scrolling to prevent performance issues
+        // Y-axis should be stable during scroll and only update when scroll ends
+        guard !isScrolling else { 
+            return 
+        }
+        
         // Use visible operations for Y-axis calculation (different from Total)
         let operations = store.visibleOperations.isEmpty ? chartOperations : store.visibleOperations
         
@@ -160,8 +182,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             chartHeight: chartFrame.height
         )
         
-        self.yAxisDomain = yAxisScale.domain
-        self.yAxisTicks = yAxisScale.ticks
+        // Animate domain changes only
+        withAnimation(.easeInOut(duration: 0.25)) {
+            self.yAxisDomain = yAxisScale.domain
+        }
+        // Do not animate tick updates
+        var transaction = Transaction(animation: nil)
+        withTransaction(transaction) {
+            self.yAxisTicks = yAxisScale.ticks
+        }
     }
     
     /// Updates chart frame and recalculates Y-axis if needed
@@ -178,6 +207,10 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Handles scroll position changes
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else { return }
+        
+        // Only update if position actually changed to prevent redundant updates
+        guard abs(newPosition.timeIntervalSince(scrollPosition)) > 0.1 else { return }
+        
         self.scrollPosition = newPosition
         
         // Update dashboard store scroll position
@@ -189,12 +222,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.isScrolling = true
         // Immediately clear selection when scroll starts to hide crosshair and label
         clearSelection()
+        // Clear cached data to ensure fresh data on scroll end
+        cachedChartSeriesData = []
         dashboardStore?.handleScrollStart()
     }
     
     /// Handles scroll end
     func handleScrollEnd() {
         self.isScrolling = false
+        // Clear cached data to ensure fresh data is generated
+        cachedChartSeriesData = []
         dashboardStore?.handleScrollEndOptimized()
         
         // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
@@ -406,11 +443,18 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Read cached values from dashboard store
         if let cachedDomain = store.state.graph.cachedYAxisDomain {
-            self.yAxisDomain = cachedDomain
+            // Animate domain transition when cache updates
+            withAnimation(.easeInOut(duration: 0.25)) {
+                self.yAxisDomain = cachedDomain
+            }
         }
         
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
-            self.yAxisTicks = cachedTicks
+            // Suppress animation for tick changes
+            var transaction = Transaction(animation: nil)
+            withTransaction(transaction) {
+                self.yAxisTicks = cachedTicks
+            }
         }
     }
 }

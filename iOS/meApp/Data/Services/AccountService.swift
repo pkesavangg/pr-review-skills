@@ -214,7 +214,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Account State
     /// Returns the currently active account, updating the published state first.
     func getActiveAccount() async throws -> Account? {
-        try await updatePublishedState()
         return activeAccount
     }
 
