@@ -31,6 +31,7 @@ object AppIcons {
     val ScalePlaceholder = R.raw.placeholder_scale
     val WeightOnlyMode = R.drawable.ic_weight_only
     val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
+    val Export = R.drawable.export_info
   }
 
   object Outlined {
