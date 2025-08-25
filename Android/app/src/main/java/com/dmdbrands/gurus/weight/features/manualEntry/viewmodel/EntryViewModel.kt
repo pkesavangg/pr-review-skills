@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -51,7 +50,7 @@ constructor(
       val entryForm =
         EntryForm.create(
           includeR4ScaleMetrics = true,
-          weightUnit = _state.value.weightMode,
+          weightUnit = state.value.weightMode,
           height = accountService.activeAccountFlow.first()?.height,
         )
       handleIntent(
@@ -65,9 +64,11 @@ constructor(
     }
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
-        handleIntent(
-          EntryIntent.UpdateWeightUnit(it ?: WeightUnit.LB),
-        )
+        if (it != null) {
+          handleIntent(
+            EntryIntent.UpdateWeightUnit(it),
+          )
+        }
       }
     }
 
@@ -144,6 +145,10 @@ constructor(
           .toScaleEntry(_state.value.weightMode)
       try {
         entryService.addEntry(entry = scaleEntry)
+
+        // Clear AppSync data after successful save
+        appSyncService.setAppSyncDataForEditing(null)
+
         dialogQueueService.showToast(
           Toast(
             message = "entry saved successfully!",
@@ -176,14 +181,30 @@ constructor(
         val currentAccount = accountService.activeAccountFlow.first()
         val finalHeight = height ?: currentAccount?.height
 
-                 // Dispatch intent with height parameter
-         handleIntent(
-           EntryIntent.LoadAppSyncData(
-             scaleEntry = scaleEntry,
-             height = finalHeight,
-           ),
-         )
-         AppLog.i("EntryViewModel", "AppSync data loaded with height: $finalHeight")
+        // Dispatch intent with height parameter
+        handleIntent(
+          EntryIntent.LoadAppSyncData(
+            scaleEntry = scaleEntry,
+            height = finalHeight,
+          ),
+        )
+
+        // Wait for the form to be updated, then mark as touched/dirty for AppSync editing
+        _state.value.form.markAllAsTouched()
+        _state.value.form.markAllAsDirty()
+
+        // Specifically mark the weight control as touched and dirty
+        _state.value.form.forms.weightDateTime.controls.weight.markAsTouched()
+        _state.value.form.forms.weightDateTime.controls.weight.markAsDirty()
+
+        // Validate the form
+        _state.value.form.validate()
+        // Mark the form as touched and dirty to enable save button for AppSync editing
+
+        AppLog.i(
+          "EntryViewModel",
+          "AppSync data loaded and form marked as touched/dirty - isDirty: ${_state.value.form.isDirty}, isTouched: ${_state.value.form.isTouched}",
+        )
       } catch (e: Exception) {
         AppLog.e("EntryViewModel", "Failed to load AppSync data", e.toString())
         dialogQueueService.showToast(

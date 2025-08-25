@@ -182,6 +182,28 @@ class FormControl<T> private constructor(
     }
 
     /**
+     * Explicitly marks the control as touched
+     */
+    fun markAsTouched() {
+        _touched.value = true
+    }
+
+    /**
+     * Explicitly marks the control as dirty
+     */
+    fun markAsDirty() {
+        _dirty.value = true
+    }
+
+    /**
+     * Sets the value without triggering validation or callbacks (useful for programmatic updates)
+     */
+    fun setValue(newValue: T) {
+        _value.value = newValue
+        _dirty.value = true
+    }
+
+    /**
      * Returns true if the current value passes all sync validators (regardless of touched/dirty state).
      */
     fun isValueValid(): Boolean {
@@ -333,6 +355,20 @@ class FormGroup<T : Any>(
     }
 
     /**
+     * Marks all controls in the group as touched
+     */
+    fun markAllAsTouched() {
+        controls.toList().forEach { it.markAsTouched() }
+    }
+
+    /**
+     * Marks all controls in the group as dirty
+     */
+    fun markAllAsDirty() {
+        controls.toList().forEach { it.markAsDirty() }
+    }
+
+    /**
      * Resets all controls in the group to their initial state
      * @param newValues Optional map of field names to new initial values
      */
@@ -398,6 +434,20 @@ class MultiFormGroup<T : Any>(
      */
     fun forceShowAllErrors() {
         forms.toFormGroupList().forEach { it.forceShowAllErrors() }
+    }
+
+    /**
+     * Marks all controls in all nested FormGroups as touched
+     */
+    fun markAllAsTouched() {
+        forms.toFormGroupList().forEach { it.markAllAsTouched() }
+    }
+
+    /**
+     * Marks all controls in all nested FormGroups as dirty
+     */
+    fun markAllAsDirty() {
+        forms.toFormGroupList().forEach { it.markAllAsDirty() }
     }
 
     /**

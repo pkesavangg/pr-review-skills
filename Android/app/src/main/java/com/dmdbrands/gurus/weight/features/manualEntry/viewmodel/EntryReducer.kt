@@ -11,7 +11,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import java.time.LocalTime
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Form controls for weight and date/time (always present)
@@ -61,15 +60,14 @@ data class EntryForm(
     val minute = calendar.get(Calendar.MINUTE)
     fun create(
       includeR4ScaleMetrics: Boolean = false,
-      weightUnit: WeightUnit? = WeightUnit.LB,
+      weightUnit: WeightUnit? = null,
       height: Int? = 0,
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
     ): EntryForm {
-      Log.d("scaleEntry", scaleEntry?.scale?.scaleEntry.toString())
       val generalMetrics =
         GeneralMetricsFormControls(
           bodyMassIndex = FormControl.create(
-            scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
+            scaleEntry?.scale?.scaleEntry?.bmi?.times(10)?.toInt()?.toString() ?: "",
             listOf(FormValidations.bodyCompValidator()),
           ),
           bodyFat = FormControl.create(
@@ -92,7 +90,7 @@ data class EntryForm(
             if (scaleEntry != null) {
               val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
               val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
-              displayWeight.toString()
+              displayWeight.times(10).toInt().toString()
             } else "",
             listOf(
               FormValidations.weightValidator(weightUnit),
@@ -102,11 +100,17 @@ data class EntryForm(
               if (height != null) {
                 val weight = when {
                   new.isBlank() -> 0.0
-                  weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToLbs(new.toDouble())
-                  else -> new.toDouble()
+                  weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToKg(
+                    ConversionTools.convertDisplayToStored(
+                      new.toDouble() / 10,
+                      false,
+                    ),
+                  )
+
+                  else -> new.toDouble() / 10
                 }
-                val height = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, height)
+                val storedHeight = ConversionTools.convertStoredHeightToCm(height)
+                val bmi = ConversionTools.calculateBMI(weight, storedHeight)
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
                   bmi >= AppValidatorConfig.BodyComp.MAX * 10 -> AppValidatorConfig.BodyComp.MAX.times(
@@ -223,7 +227,6 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
         // Create new form with AppSync data, following Profile pattern exactly
         val scaleEntry = intent.scaleEntry
         val currentForm = state.form.forms
-
         val updatedForm = EntryForm.create(
           includeR4ScaleMetrics = currentForm.r4ScaleMetrics != null,
           weightUnit = state.weightMode,
@@ -231,23 +234,8 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
           scaleEntry = scaleEntry,
         )
 
-        // Create new form group and validate it
-        val newFormGroup = MultiFormGroup.create(forms = updatedForm)
-
-        // Force all controls to show validation state
-        updatedForm.weightDateTime.controls.weight.onValueChange(updatedForm.weightDateTime.controls.weight.value)
-        updatedForm.weightDateTime.controls.dateTime.onValueChange(updatedForm.weightDateTime.controls.dateTime.value)
-
-        updatedForm.generalMetrics.controls.bodyMassIndex.onValueChange(updatedForm.generalMetrics.controls.bodyMassIndex.value)
-        updatedForm.generalMetrics.controls.bodyFat.onValueChange(updatedForm.generalMetrics.controls.bodyFat.value)
-        updatedForm.generalMetrics.controls.muscleMass.onValueChange(updatedForm.generalMetrics.controls.muscleMass.value)
-        updatedForm.generalMetrics.controls.bodyWater.onValueChange(updatedForm.generalMetrics.controls.bodyWater.value)
-
-        // Validate the entire form
-        newFormGroup.validate()
-
         state.copy(
-          form = newFormGroup,
+          form = MultiFormGroup.create(forms = updatedForm),
         )
       }
 

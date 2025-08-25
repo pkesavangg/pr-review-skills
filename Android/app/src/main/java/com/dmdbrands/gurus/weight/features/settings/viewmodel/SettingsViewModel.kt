@@ -483,11 +483,10 @@ constructor(
       AppLog.e(TAG, "No active account found for height update")
       return
     }
-
     val currentHeightInput =
       HeightInput.fromStoredHeight(
         storedHeight = currentAccount.height ?: 1700, // Default to 170cm (1700 in stored format)
-        isMetric = currentAccount.weightUnit?.value == "kg",
+        isMetric = currentAccount.weightUnit.value == "kg",
       )
 
     dialogQueueService.enqueue(

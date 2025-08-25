@@ -160,13 +160,13 @@ constructor(
         // Create ScaleEntry directly from AppSyncResult with calculated BMI
         val scaleEntry =
           result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
-        appSyncService.setAppSyncDataForEditing(scaleEntry)
         appSyncService.setAppSyncData(storedEntry)
         dialogUtility.showEntrySyncPopup(
           entry = scaleEntry,
           apiEntry = scaleEntry.toScaleApiEntry(),
           onEdit = {
             viewModelScope.launch {
+              appSyncService.setAppSyncDataForEditing(scaleEntry)
               appSyncService.handleEditAppSyncData(scaleEntry)
             }
           },
@@ -280,10 +280,12 @@ constructor(
       }
     }
   }
-  fun handleWeightOnlyDismiss(){
+
+  fun handleWeightOnlyDismiss() {
     handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
     handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
   }
+
   /**
    * Handles dismissing the weight-only mode bottom sheet.
    */
