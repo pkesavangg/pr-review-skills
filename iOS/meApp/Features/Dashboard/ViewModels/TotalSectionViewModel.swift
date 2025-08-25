@@ -12,36 +12,29 @@ import Charts
 /// ViewModel specifically for the Total time period chart view
 /// Handles all total-specific chart logic, state management, and data processing
 @MainActor
-class TotalSectionViewModel: ObservableObject {
+final class TotalSectionViewModel: BaseSectionViewModel {
     
-    // MARK: - Published Properties
-    @Published var selectedPoint: BathScaleWeightSummary?
-    @Published var selectedDate: Date?
-    @Published var showCrosshair: Bool = false
-    
-    // MARK: - Chart Configuration
-    private(set) var chartFrame: CGRect = .zero
-    private(set) var yAxisDomain: ClosedRange<Double> = 0...100
-    private(set) var yAxisTicks: [Double] = []
-    
-    // MARK: - Dependencies (injected from parent)
-    private var dashboardStore: DashboardStore?
-    
-    // MARK: - Computed Properties
-    
-    /// All operations for total view (no filtering)
-    var chartOperations: [BathScaleWeightSummary] {
-        return dashboardStore?.continuousOperations ?? []
+    // MARK: - Period-specific properties
+    override var timePeriod: TimePeriod {
+        return .total
     }
     
-    /// Chart series data for total view
-    var chartSeriesData: [GraphSeries] {
-        guard let store = dashboardStore else { return [] }
-        return store.chartSeriesData
+    override var maxGapForConnectedSegments: TimeInterval {
+        return 365 * 24 * 60 * 60 // 1 year gap for total view
     }
+    
+    override var hasXAxis: Bool {
+        return false // Total period has no X-axis
+    }
+    
+    override var pointSize: CGFloat {
+        return 16 // Smaller points for total view (many data points)
+    }
+    
+    // MARK: - Total-specific properties
     
     /// Full date range for X-axis domain
-    var dateRange: ClosedRange<Date> {
+    override var dateRange: ClosedRange<Date> {
         let operations = chartOperations
         guard !operations.isEmpty else {
             let now = Date()
@@ -57,34 +50,22 @@ class TotalSectionViewModel: ObservableObject {
         return minDate...maxDate
     }
     
-    /// Goal weight for display
-    var goalWeight: Double {
-        return dashboardStore?.goalWeightForDisplay ?? 0
+    /// Always at left boundary for total view (no scrolling)
+    override var isAtLeftBoundary: Bool {
+        return true
     }
     
-    /// Current display weight
-    var displayWeight: Double? {
-        return dashboardStore?.displayWeight
+    /// Never animate scrolling for total view since there's no scrolling
+    override var shouldAnimateChartData: Bool {
+        return !chartOperations.isEmpty // Always allow animation for total view
     }
     
-    /// Weight label for current selection or period
-    var weightLabel: String {
-        return dashboardStore?.weightLabel ?? ""
-    }
+    // MARK: - Overridden methods for total-specific behavior
     
-    // MARK: - Initialization
-    func configure(with store: DashboardStore) {
-        self.dashboardStore = store
-        updateYAxisConfiguration()
-    }
-    
-    // MARK: - Chart State Management
-    
-    /// Updates Y-axis configuration based on current data and goal
-    func updateYAxisConfiguration() {
+    override func updateYAxisConfiguration() {
         guard let store = dashboardStore else { return }
         
-        // Use all operations for Y-axis calculation in total view
+        // Use all operations for Y-axis calculation in total view (different from scrolling views)
         let operations = chartOperations
         
         // Get Y-axis scale from graph manager
@@ -101,108 +82,34 @@ class TotalSectionViewModel: ObservableObject {
         self.yAxisTicks = yAxisScale.ticks
     }
     
-    /// Updates chart frame and recalculates Y-axis if needed
-    func updateChartFrame(_ frame: CGRect) {
-        self.chartFrame = frame
-        // Recalculate Y-axis if frame changed significantly
-        if abs(frame.height - chartFrame.height) > 10 {
-            updateYAxisConfiguration()
-        }
+    override func configure(with store: DashboardStore) {
+        self.dashboardStore = store
+        // No scroll positioning for total view - use store's current position
+        self.scrollPosition = store.state.graph.xScrollPosition
+        self.isScrolling = store.state.graph.isScrolling
+        updateYAxisConfiguration()
+        // Sync with any existing cached Y-axis values from the store
+        syncYAxisFromStore()
     }
     
-    // MARK: - Selection Management
-    
-    /// Handles chart selection at a specific date
-    func handleChartSelection(at date: Date?) {
-        guard let date = date else {
-            clearSelection()
-            return
-        }
+    override func getChartPosition(for date: Date, value: Double) -> CGPoint? {
+        guard chartFrame.width > 0 else { return nil }
         
-        selectedDate = date
-        showCrosshair = true
+        // For TOTAL period, calculate position based on actual data range
+        let allOperations = chartOperations
+        guard !allOperations.isEmpty else { return nil }
         
-        // Find the closest operation to the selected date
-        let operations = chartOperations
-        selectedPoint = operations.min { op1, op2 in
-            abs(op1.date.timeIntervalSince(date)) < abs(op2.date.timeIntervalSince(date))
-        }
-    }
-    
-    /// Clears all selection state
-    func clearSelection() {
-        selectedPoint = nil
-        selectedDate = nil
-        showCrosshair = false
-    }
-    
-    // MARK: - Goal Chip Positioning
-    
-    /// Calculates goal chip position for total view (no X-axis)
-    func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
-        let goalWeight = self.goalWeight
-        let domain = yAxisDomain
-        
-        // Calculate proportional position within the chart
-        let domainRange = domain.upperBound - domain.lowerBound
-        guard domainRange > 0, chartFrame.height > 0 else {
-            return (yPosition: chartFrame.height / 2, placement: .middle)
-        }
-        
-        // If goal weight is outside domain, show at edges
-        if goalWeight > domain.upperBound {
-            return (yPosition: -25, placement: .top)
-        }
-        
-        if goalWeight < domain.lowerBound {
-            return (yPosition: chartFrame.height + 20, placement: .bottom)
-        }
-        
-        // Goal weight is within domain, calculate proportional position
-        let yRatio = (goalWeight - domain.lowerBound) / domainRange
-        guard yRatio.isFinite else {
-            return (yPosition: chartFrame.height / 2, placement: .middle)
-        }
-        
-        // Calculate position within full chart area (no X-axis adjustment for total)
-        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
-        
-        return (yPosition: yPosition, placement: .middle)
-    }
-    
-    /// Calculates goal chip X offset based on text width
-    func getGoalChipXOffset() -> CGFloat {
-        guard let store = dashboardStore else { return 28 }
-        
-        let formattedText = store.formatYAxisTickLabel(goalWeight)
-        
-        // Check if it's a 3-digit value or longer
-        if formattedText.count >= 3 {
-            return 32 // More space for 3+ digit values
-        } else {
-            return 28 // Less space for 1-2 digit values
-        }
-    }
-    
-    // MARK: - Chart Position Calculations
-    
-    /// Calculates chart position for a given date and value (for selection callout)
-    func getChartPosition(for date: Date, value: Double) -> CGPoint? {
-        let operations = chartOperations
-        guard !operations.isEmpty, chartFrame.width > 0 else { return nil }
-        
-        // For total period, calculate position based on actual data range
-        let allDates = operations.map { $0.date }
+        let allDates = allOperations.map { $0.date }
         guard let minDate = allDates.min(), let maxDate = allDates.max() else { return nil }
         
-        let xPosition: CGFloat
         let totalTimeRange = maxDate.timeIntervalSince(minDate)
+        let xPosition: CGFloat
         if totalTimeRange > 0 {
             let timeFromStart = date.timeIntervalSince(minDate)
             let xRatio = timeFromStart / totalTimeRange
             xPosition = chartFrame.width * xRatio
         } else {
-            xPosition = chartFrame.width / 2 // Single point, center it
+            xPosition = chartFrame.width > 0 ? chartFrame.width / 2 : 0 // Single point, center it
         }
         
         // Calculate y position relative to y-axis domain
@@ -211,83 +118,45 @@ class TotalSectionViewModel: ObservableObject {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
         
+        // No X-axis adjustment needed for total period
+        let availableChartHeight = chartFrame.height
+        
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
         
-        // Calculate position within full chart area (no X-axis adjustment for total)
-        let yPosition = chartFrame.height * (1 - yRatio) // Invert because chart y grows downward
+        // Calculate position within the available chart area
+        let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
         
-        return CGPoint(x: xPosition, y: yPosition)
+        // Add padding offsets for left boundary
+        let adjustedX = xPosition + 4 // spacingXS approximation
+        let adjustedY = yPosition
+        
+        return CGPoint(x: adjustedX, y: adjustedY)
     }
     
-    // MARK: - Chart Content Helpers
-    
-    /// Returns connected segments for line drawing (prevents gaps in data)
-    func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        guard !dataPoints.isEmpty else { return [] }
-        
-        var segments: [[GraphSeries]] = []
-        var currentSegment: [GraphSeries] = []
-        
-        let sortedPoints = dataPoints.sorted { $0.date < $1.date }
-        let maxGap: TimeInterval = 365 * 24 * 60 * 60 // 1 year gap for total view
-        
-        for point in sortedPoints {
-            if currentSegment.isEmpty {
-                currentSegment.append(point)
-            } else {
-                let lastPoint = currentSegment.last!
-                let timeDifference = point.date.timeIntervalSince(lastPoint.date)
-                
-                if timeDifference <= maxGap {
-                    // Continue current segment
-                    currentSegment.append(point)
-                } else {
-                    // Start new segment due to gap
-                    if !currentSegment.isEmpty {
-                        segments.append(currentSegment)
-                    }
-                    currentSegment = [point]
-                }
-            }
-        }
-        
-        // Add the last segment
-        if !currentSegment.isEmpty {
-            segments.append(currentSegment)
-        }
-        
-        return segments
-    }
+    // MARK: - Total-specific methods
     
     /// Returns appropriate point size for total view
     func getPointSizeForTotal() -> CGFloat {
-        return 16 // Smaller points for total view (many data points)
+        return pointSize // Use the base point size
     }
     
-    // MARK: - Data Refresh
-    
-    /// Called when data changes to update chart state
-    func refreshData() {
-        updateYAxisConfiguration()
-        // Maintain selection if still valid
-        if let selectedDate = selectedDate {
-            handleChartSelection(at: selectedDate)
-        }
+    // MARK: - No-op methods for total view (no scrolling)
+    override func handleScrollPositionChange(_ newPosition: Date?) {
+        // Total view doesn't scroll - no-op
     }
     
-    /// Called when settings change (unit, weightless mode, etc.)
-    func handleSettingsChange() {
-        updateYAxisConfiguration()
-        clearSelection() // Clear selection as values may have changed
+    override func handleScrollStart() {
+        // Total view doesn't scroll - no-op
     }
-}
-
-// MARK: - Goal Placement Enum
-enum GoalPlacement {
-    case top
-    case bottom
-    case middle
+    
+    override func handleScrollEnd() {
+        // Total view doesn't scroll - no-op
+    }
+    
+    override func updateScrollPosition(to position: Date) {
+        // Total view doesn't scroll - no-op
+    }
 }

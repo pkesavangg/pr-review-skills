@@ -13,7 +13,7 @@ struct ScrollDetectionModifier: ViewModifier {
                     Task { @MainActor in
                         await dashboardStore.handleScrollPhaseChange(to: newPhase)
 
-                        // Clear local selection state when scrolling starts
+                        // Immediately clear local selection state when scrolling starts
                         if newPhase == .interacting {
                             selectedXValue = nil
                         }
@@ -31,7 +31,7 @@ struct ScrollDetectionModifier: ViewModifier {
                                 hasDetectedScrollInCurrentGesture = true
                                 dashboardStore.handleScrollStart()
 
-                                // Clear local selection state when scrolling starts
+                                // Immediately clear local selection state when scrolling starts
                                 selectedXValue = nil
                             }
                         }

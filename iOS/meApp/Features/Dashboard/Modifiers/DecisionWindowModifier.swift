@@ -125,7 +125,7 @@ struct DecisionWindowModifier: ViewModifier {
         touchInteractionMode = .scrolling
         cancelDecisionTimer()
 
-        // Clear active selection so crosshair disappears
+        // Immediately clear active selection so crosshair and label disappear
         selectedXValue = nil
     }
 }

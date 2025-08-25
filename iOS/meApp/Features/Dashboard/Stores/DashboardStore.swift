@@ -36,7 +36,7 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
+    static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     let graphManager: DashboardGraphManager
