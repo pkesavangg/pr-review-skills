@@ -49,12 +49,6 @@ class StreakCardCell: UICollectionViewCell {
     
     // MARK: - Configuration
     
-    /// Configures the cell with a MetricItem
-    /// - Parameters:
-    ///   - item: The MetricItem to display
-    ///   - store: The dashboard store for formatting
-    ///   - onMetricLongPress: Callback for long press events
-    ///   - onSelectMetric: Callback for selection events
     func configure(with item: MetricItem, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
         // Always reconfigure to ensure proper state synchronization
         let needsReconfiguration = true
@@ -106,11 +100,7 @@ class StreakCardCell: UICollectionViewCell {
         } else {
             viewWithOverlay = AnyView(streakCardView)
         }
-        
 
-        
-
-        
         let swiftUIView = viewWithOverlay
         
         if hostingController == nil {
@@ -311,18 +301,13 @@ class StreakCardCell: UICollectionViewCell {
             } else {
                 isLongPressed = true
             }
-            // Only reconfigure if we have valid data to prevent unnecessary updates
+
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
             }
         case .lifting, .dragging:
-            // Don't reduce opacity during drag - let EditModeOverlay handle visibility
-            // This prevents items from appearing "removed" during drag operations
             hostingController?.view.alpha = 1.0
-            // Set interaction states to hide overlay during drag
             isLongPressed = true
-            // Don't set currentIsBeingDragged here - let updateDragState handle it
-            // Only reconfigure if we have valid data to prevent unnecessary updates
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
             }
