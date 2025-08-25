@@ -135,7 +135,7 @@ internal fun ChartHostSection(
               label =
                 rememberTextComponent(
                   color = MeTheme.colorScheme.textSubheading,
-                  margins = insets(horizontal = 10.dp),
+                  padding = insets(start = 10.dp),
                 ),
               tickLength = 0.dp,
             ),

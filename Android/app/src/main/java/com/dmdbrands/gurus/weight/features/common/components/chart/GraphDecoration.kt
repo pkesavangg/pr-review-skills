@@ -30,7 +30,7 @@ fun rememberHorizontalLine(goal: com.dmdbrands.gurus.weight.domain.model.goal.Go
       typeface = Typeface.DEFAULT_BOLD,
       color = MeTheme.colorScheme.primaryBackground,
       margins = insets(end = (-40).dp),
-      padding = insets(horizontal = 8.dp, vertical = 4.dp),
+      padding = insets(horizontal = 12.dp, vertical = 2.dp),
       background =
         shapeComponent(
           fill,
@@ -46,7 +46,7 @@ fun rememberHorizontalLine(goal: com.dmdbrands.gurus.weight.domain.model.goal.Go
           line = line.copy(fill = fill(Color.Transparent)),
           labelComponent = labelComponent,
           horizontalLabelPosition = Position.Horizontal.End,
-          verticalLabelPosition = Position.Vertical.Bottom,
+          verticalLabelPosition = Position.Vertical.Center,
           verticalAxisPosition = Axis.Position.Vertical.End,
         ).drawOverLayers(context)
       }
