@@ -112,7 +112,10 @@ struct SwipeableModifier: ViewModifier {
                         // Only trigger if fully opened
                         if isSwipedOpen {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                closeSwipe()
+                                savedOffset = 0
+                                currentOffset = 0
+                                swipeState = .closed
+                                isSwipedOpen = false
                             }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 button.action()

@@ -193,7 +193,7 @@ extension Validator where Value == Date {
 // MARK: - Validation Rules
 private struct Rule {
     /// A regular expression that matches valid e-mail addresses.
-    static let emailPattern = #"(?i)^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})$"#
+    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
 
     /// A regular expression that matches valid URLs.
     static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##

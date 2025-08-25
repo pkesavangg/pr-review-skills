@@ -1543,9 +1543,7 @@ private extension BluetoothService {
     }
     
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        guard let preference = preference,
-              // If the underlying row is gone (e.g., after cascade delete) the modelContext becomes nil
-              preference.modelContext != nil else {
+        guard let preference = preference else {
             return nil
         }
         

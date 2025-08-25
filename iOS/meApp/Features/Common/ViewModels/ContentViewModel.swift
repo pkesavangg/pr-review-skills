@@ -58,6 +58,9 @@ final class ContentViewModel: ObservableObject {
             }
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
+            
+            // Migrate SQLite data from Ionic app if needed (should run before sync)
+            await entryService.migrateFromSQLiteIfNeeded()
         }
     }
 
@@ -75,12 +78,7 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Data Loading (if logged in)
     private func loadData() async {
-        await scaleService.syncAllScalesWithRemote()
         guard let _ = currentAccount else { return }
-        
-        // Migrate SQLite data from Ionic app if needed (should run before sync)
-        await entryService.migrateFromSQLiteIfNeeded()
-        
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
         bluetoothService.initialize()

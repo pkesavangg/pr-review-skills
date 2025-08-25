@@ -102,6 +102,18 @@ class SettingsStore: ObservableObject {
     let heightInchesOptions = ConversionTools.heightInchesOptions
     let heightCmOptions     = ConversionTools.heightCmOptions
     
+    // MARK: - Dialog state controls moved to store
+    /// Controls the presentation of the appearance picker (sheet fallback or centered modal).
+    @Published var showAppearancePicker: Bool = false
+    /// Controls the presentation of the notification preference picker (sheet fallback or centered modal).
+    @Published var showNotificationPicker: Bool = false
+    /// Controls the presentation of the gender picker (sheet fallback or centered modal).
+    @Published var showGenderPicker: Bool = false
+    /// Controls the presentation of the unit picker (sheet fallback or centered modal).
+    @Published var showUnitPicker: Bool = false
+    /// Controls the presentation of the activity level picker (sheet fallback or centered modal).
+    @Published var showActivityPicker: Bool = false
+    
     init() {
         accountService.$activeAccount
             .sink { [weak self] account in
@@ -1224,5 +1236,155 @@ class SettingsStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
+    }
+
+    // MARK: - Picker Presentation Helpers
+    /// Presents the appearance picker (modal on iPad < iOS18, sheet otherwise).
+    func presentAppearancePicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [theme.appearanceMode],
+                options: [AppearanceMode.allCases],
+                displayValue: { $0.rawValue },
+                title: SettingsStrings.appearance,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let mode = vals.first { Theme.shared.appearanceMode = mode }
+                    }
+                }
+            )
+            notificationService.showModal(
+                ModalData(
+                    presentedView: AnyView(picker)
+                )
+            )
+        } else {
+            showAppearancePicker = true
+        }
+    }
+    /// Presents the notification preference picker (modal on iPad < iOS18, sheet otherwise).
+    func presentNotificationPicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [notificationPreference],
+                options: [NotificationPreference.allCases],
+                displayValue: { $0.title },
+                title: SettingsStrings.notifications,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let pref = vals.first { self.updateNotificationPreference(pref) }
+                    
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showNotificationPicker = true
+        }
+    }
+    
+    /// Presents the gender picker (modal on iPad < iOS18, sheet otherwise).
+    func presentGenderPicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [activeAccount?.gender ?? .male],
+                options: [Sex.allCases],
+                displayValue: { $0.rawValue.capitalized },
+                title: SettingsStrings.biologicalSex,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let sex = vals.first { self.updateGender(sex) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showGenderPicker = true
+        }
+    }
+    /// Presents the unit picker (modal on iPad < iOS18, sheet otherwise).
+    func presentUnitPicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [activeAccount?.weightSettings?.weightUnit ?? .lb],
+                options: [[WeightUnit.lb, WeightUnit.kg]],
+                displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
+                title: SettingsStrings.unitType,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let unit = vals.first { self.updateWeightUnit(unit) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showUnitPicker = true
+        }
+    }
+    
+    /// Presents the activity level picker (modal on iPad < iOS18, sheet otherwise).
+    func presentActivityPicker() {
+        if DeviceUtils.useModalPicker {
+            let picker = PickerView(
+                selectedValues: [activeAccount?.weightSettings?.activityLevel ?? .normal],
+                options: [[ActivityLevel.normal, ActivityLevel.athlete]],
+                displayValue: { $0.rawValue.capitalized },
+                title: SettingsStrings.activityLevel,
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let level = vals.first { self.updateActivityLevel(level) }
+                }
+            )
+            notificationService.showModal(ModalData(presentedView: AnyView(picker)))
+        } else {
+            showActivityPicker = true
+        }
+    }
+    /// Presents the height picker (modal on iPad < iOS18, sheet otherwise).
+    func presentHeightPicker() {
+        if DeviceUtils.useModalPicker {
+            if activeAccount?.weightSettings?.weightUnit == .kg {
+                let picker = PickerView(
+                    selectedValues: selectedHeightCm,
+                    options: heightCmOptions,
+                    displayValue: { $0 },
+                    pickerType: .heightCm,
+                    title: SettingsStrings.height,
+                    showCancel: false,
+                    updateValues: { vals in
+                        self.notificationService.dismissModal()
+                        self.updateHeight(fromMetric: true, values: vals)
+                    }
+                )
+                notificationService.showModal(
+                    ModalData(presentedView: AnyView(
+                        picker
+                    ))
+                )
+            } else {
+                let picker = PickerView(
+                    selectedValues: selectedHeightInches,
+                    options: heightInchesOptions,
+                    displayValue: { $0 },
+                    pickerType: .heightInches,
+                    title: SettingsStrings.height,
+                    showCancel: false,
+                    updateValues: { vals in
+                        self.notificationService.dismissModal()
+                        self.updateHeight(fromMetric: false, values: vals)
+                    }
+                )
+                notificationService.showModal(
+                    ModalData(presentedView: AnyView(
+                        picker
+                    ))
+                )
+            }
+        } else {
+            showHeightPicker()
+        }
     }
 }
