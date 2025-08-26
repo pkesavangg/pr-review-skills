@@ -32,18 +32,22 @@ class DashboardStore: ObservableObject {
     private var snapshotGoalCardRemoved: Bool = false
     private var snapshotGoalCardPosition: Int = 0
     private var snapshotStreakGridOrder: [String] = []
+    private var snapshotRemovedMetrics: Set<String> = []
+    private var snapshotRemovedStreaks: Set<String> = []
     private var hasEditSnapshot: Bool = false
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
+    static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-") 
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     private let graphManager: DashboardGraphManager
     private let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
     private let dataManager: DashboardDataManager
-
+    var shouldShowGoalCardOrStreaks: Bool {
+            !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
+        }
     // MARK: - Initialization
     init() {
         // Initialize managers
@@ -188,21 +192,31 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     var metricGridColumns: [GridItem] {
-        let effectiveType = determineDashboardTypeFromAccount()
-        return metricsManager.getMetricGridColumns(for: effectiveType)
+        // Use the in-memory dashboard type rather than re-inferring from account
+        return metricsManager.getMetricGridColumns(for: state.metrics.dashboardType)
     }
 
     var metricsToShow: [MetricItem] {
-        let effectiveType = determineDashboardTypeFromAccount()
-        return metricsManager.getMetricsToShow(
+        let baseMetrics = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: effectiveType
+            dashboardType: state.metrics.dashboardType,
+            removedMetrics: state.ui.removedMetrics
         )
+        
+        // In edit mode, show all metrics so users can toggle removal state
+        // In non-edit mode, filter out removed metrics
+        if state.ui.isEditMode {
+            return baseMetrics
+        } else {
+            let filteredMetrics = baseMetrics.filter { !state.ui.removedMetrics.contains($0.label) }
+            return filteredMetrics
+        }
     }
 
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
-        determineDashboardTypeFromAccount()
+        // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
+        state.metrics.dashboardType
     }
 
     var streakColumns: [GridItem] {
@@ -210,7 +224,15 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     var streakItemsToShow: [MetricItem] {
-        return streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+        let baseStreaks = streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+        
+        // In edit mode, show all streaks so users can toggle removal state
+        // In non-edit mode, filter out removed streaks
+        if state.ui.isEditMode {
+            return baseStreaks
+        } else {
+            return baseStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
+        }
     }
 
     var isAnyItemBeingDragged: Bool {
@@ -218,11 +240,25 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     }
 
     var allContentRemoved: Bool {
-        metricsToShow.isEmpty && (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && (!streakManager.shouldShowStreakGrid())
+        // Check if all metrics are removed (when not in edit mode)
+        let allMetricsRemoved = !state.ui.isEditMode && 
+            metricsManager.state.metrics.allSatisfy { state.ui.removedMetrics.contains($0.label) }
+        
+        // Check if all streaks are removed (when not in edit mode)
+        let allStreaksRemoved = !state.ui.isEditMode && 
+            streakManager.state.streakItems.allSatisfy { state.ui.removedStreaks.contains($0.label) }
+        
+        return metricsToShow.isEmpty && 
+               (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && 
+               (!streakManager.shouldShowStreakGrid()) &&
+               allMetricsRemoved &&
+               allStreaksRemoved
     }
 
     var shouldShowStreakGrid: Bool {
-        streakManager.shouldShowStreakGrid()
+        // Only show streak grid if there are visible (non-removed) streaks
+        let visibleStreaks = streakItemsToShow.filter { !state.ui.removedStreaks.contains($0.label) }
+        return !visibleStreaks.isEmpty
     }
 
     // Delegate data operations to DataManager
@@ -461,12 +497,14 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
         // Load dashboard configuration from API
         await loadDashboardConfigurationFromAPI()
+        
+        // Ensure removal state is synced after API loading
+        syncRemovalStateFromMetricsManager()
 
         // Load other data
         loadLatestEntryData()
 
         // Initialize chart - data will be available from ContentView loading
-        initializeChart()
 
     }
 
@@ -487,12 +525,12 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
         if let dashboardTypeString = account.dashboardSettings?.dashboardType {
             // Support canonical raw values and legacy stored values
-            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "dashboard12" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard12.rawValue  {
+                //logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
                 return .dashboard12
             }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "dashboard4" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard4.rawValue  {
+               // logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
                 return .dashboard4
             }
         }
@@ -502,6 +540,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             let metricsCount = metricsCSV.split(separator: ",").count
             if metricsCount >= 12 {
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
+                return .dashboard12
+            }
+            // If there are zero configured metrics, keep the dashboard at 12 so the grid shows 3 columns
+            if metricsCount == 0 {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
                 return .dashboard12
             }
         }
@@ -556,6 +599,9 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         do {
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
+            
+            // Sync the removal state based on what was loaded from API
+            syncRemovalStateFromMetricsManager()
 
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
@@ -564,6 +610,24 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration: \(error)")
         }
+    }
+    
+    /// Syncs the removal state based on the current metrics manager state
+    /// This ensures that metrics loaded from API are properly marked as removed/active
+    private func syncRemovalStateFromMetricsManager() {
+        // Get the removed metrics from the metrics manager
+        let removedMetricsFromAPI = metricsManager.getRemovedMetricLabels()
+        
+        // Log the current state before syncing
+        logger.log(level: .info, tag: "DashboardStore", message: "Syncing removal state - Current removed: \(state.ui.removedMetrics), API removed: \(removedMetricsFromAPI), Total metrics: \(metricsManager.state.metrics.count), Active count: \(metricsManager.state.activeMetricsCount)")
+        
+        // Update the local removal state to match the API state
+        state.ui.removedMetrics = removedMetricsFromAPI
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Synced removal state from API - Removed metrics: \(removedMetricsFromAPI), Final state: \(state.ui.removedMetrics)")
+        
+        // Force UI update to reflect the new removal state
+        objectWillChange.send()
     }
 
         // Delegate entry lifecycle to DataManager
@@ -590,46 +654,114 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
     // MARK: - UI Action Methods
 
-    // Delegate metric management to MetricsManager
-    func toggleMetricRemovalInReorderedArray(at reorderedIndex: Int) {
-        let metricsToShow = self.metricsToShow
-        guard reorderedIndex < metricsToShow.count else { return }
-        let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
-        Task {
-            try? await metricsManager.toggleMetricVisibility(at: originalIndex)
-        }
-    }
-
-    func isMetricRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
-        let metricsToShow = self.metricsToShow
-        guard reorderedIndex < metricsToShow.count else { return false }
-        let metric = metricsToShow[reorderedIndex]
-        guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return false }
-        return originalIndex >= metricsManager.state.activeMetricsCount
-    }
-
-    // Delegate streak management to StreakManager
-    func toggleStreakRemovalInReorderedArray(at reorderedIndex: Int) {
-        let streakItemsToShow = self.streakItemsToShow
-        guard reorderedIndex < streakItemsToShow.count else { return }
-        let streak = streakItemsToShow[reorderedIndex]
-        guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return }
-        Task {
-            try? await streakManager.toggleStreakVisibility(at: originalIndex)
-        }
-    }
-
-    func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
-        let streakItemsToShow = self.streakItemsToShow
-        guard reorderedIndex < streakItemsToShow.count else { return false }
-        let streak = streakItemsToShow[reorderedIndex]
-        guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return false }
-        return streakManager.isStreakRemoved(at: originalIndex)
-    }
-
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
+    }
+    
+    /// Toggles the removal state of a specific metric
+    /// - Parameter metricLabel: The label of the metric to toggle
+    func toggleMetricRemoval(_ metricLabel: String) {
+        // Find the metric in the metrics array
+        guard let metricIndex = metricsManager.state.metrics.firstIndex(where: { $0.label == metricLabel }) else {
+            logger.log(level: .error, tag: "DashboardStore", message: "Metric not found: \(metricLabel)")
+            return
+        }
+        
+        let metric = metricsManager.state.metrics[metricIndex]
+        
+        if state.ui.removedMetrics.contains(metricLabel) {
+            // Adding the metric back - remove from removedMetrics set
+            state.ui.removedMetrics.remove(metricLabel)
+            
+            // Move the metric back to its original position (before the first removed metric)
+            let removedCount = state.ui.removedMetrics.count
+            let targetIndex = metricsManager.state.metrics.count - removedCount - 1
+            
+            // Remove from current position and insert at target position
+            metricsManager.state.metrics.remove(at: metricIndex)
+            let insertIndex = max(0, min(targetIndex, metricsManager.state.metrics.count))
+            metricsManager.state.metrics.insert(metric, at: insertIndex)
+            
+            // Update active metrics count to include the restored metric
+            metricsManager.state.activeMetricsCount = min(metricsManager.state.activeMetricsCount + 1, metricsManager.state.metrics.count)
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Added metric back: \(metricLabel) at position \(insertIndex), activeMetricsCount: \(metricsManager.state.activeMetricsCount)")
+        } else {
+            // Removing the metric - add to removedMetrics set
+            state.ui.removedMetrics.insert(metricLabel)
+            
+            // Move the metric to the end of the array (last position)
+            metricsManager.state.metrics.remove(at: metricIndex)
+            metricsManager.state.metrics.append(metric)
+            
+            // Update active metrics count to exclude the removed metric
+            metricsManager.state.activeMetricsCount = max(0, metricsManager.state.activeMetricsCount - 1)
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Removed metric: \(metricLabel) moved to last position, activeMetricsCount: \(metricsManager.state.activeMetricsCount)")
+        }
+        
+        // Force UI update to reflect the removal state change
+        objectWillChange.send()
+    }
+    
+    /// Checks if a specific metric is removed
+    /// - Parameter metricLabel: The label of the metric to check
+    /// - Returns: True if the metric is removed, false otherwise
+    func isMetricRemoved(_ metricLabel: String) -> Bool {
+        return state.ui.removedMetrics.contains(metricLabel)
+    }
+    
+    /// Toggles the removal state of a specific streak
+    /// - Parameter streakLabel: The label of the streak to toggle
+    func toggleStreakRemoval(_ streakLabel: String) {
+        // Find the streak in the streak items array
+        guard let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) else {
+            logger.log(level: .error, tag: "DashboardStore", message: "Streak not found: \(streakLabel)")
+            return
+        }
+        
+        let streak = streakManager.state.streakItems[streakIndex]
+        
+        if state.ui.removedStreaks.contains(streakLabel) {
+            // Adding the streak back - remove from removedStreaks set
+            state.ui.removedStreaks.remove(streakLabel)
+            
+            // Move the streak back to its original position (before the first removed streak)
+            let removedCount = state.ui.removedStreaks.count
+            let targetIndex = streakManager.state.streakItems.count - removedCount - 1
+            
+            // Remove from current position and insert at target position
+            streakManager.state.streakItems.remove(at: streakIndex)
+            let insertIndex = max(0, min(targetIndex, streakManager.state.streakItems.count))
+            streakManager.state.streakItems.insert(streak, at: insertIndex)
+            
+            // Update active streak items count to include the restored streak
+            streakManager.state.activeStreakItemsCount = min(streakManager.state.activeStreakItemsCount + 1, streakManager.state.streakItems.count)
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Added streak back: \(streakLabel) at position \(insertIndex), activeStreakItemsCount: \(streakManager.state.activeStreakItemsCount)")
+        } else {
+            // Removing the streak - add to removedStreaks set
+            state.ui.removedStreaks.insert(streakLabel)
+            
+            // Move the streak to the end of the array (last position)
+            streakManager.state.streakItems.remove(at: streakIndex)
+            streakManager.state.streakItems.append(streak)
+            
+            // Update active streak items count to exclude the removed streak
+            streakManager.state.activeStreakItemsCount = max(0, streakManager.state.activeStreakItemsCount - 1)
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Removed streak: \(streakLabel) moved to last position, activeStreakItemsCount: \(streakManager.state.activeStreakItemsCount)")
+        }
+        
+        // Force UI update to reflect the removal state change
+        objectWillChange.send()
+    }
+    
+    /// Checks if a specific streak is removed
+    /// - Parameter streakLabel: The label of the streak to check
+    /// - Returns: True if the streak is removed, false otherwise
+    func isStreakRemoved(_ streakLabel: String) -> Bool {
+        return state.ui.removedStreaks.contains(streakLabel)
     }
 
     /// Updates the goal card position in the grid (like a large widget)
@@ -675,7 +807,14 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
     /// Toggles the edit mode state
     func toggleEditMode() {
-        state.ui.isEditMode.toggle()
+        if !state.ui.isEditMode {
+            // Entering edit mode - begin edit session
+            beginEdit()
+            state.ui.isEditMode = true
+        } else {
+            // Already in edit mode - reset current edit session and start fresh
+            resetEditSession()
+        }
     }
 
     // Delegate graph operations to GraphManager
@@ -701,6 +840,9 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             }
 
             await MainActor.run {
+                // Sync removal state to ensure consistency
+                self.syncRemovalStateFromMetricsManager()
+                
                 self.updateYAxisCache()
                 self.objectWillChange.send()
             }
@@ -712,11 +854,14 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         let newDashboardType = determineDashboardTypeFromAccount()
         state.metrics.dashboardType = newDashboardType
         metricsManager.updateDashboardType(newDashboardType)
+        
+        // Sync removal state after dashboard type change
+        syncRemovalStateFromMetricsManager()
 
         // Force UI update to reflect the new metric type
         objectWillChange.send()
 
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
+        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType), synced removal state: \(state.ui.removedMetrics.count) removed metrics")
     }
 
     /// Handles unit changes by refreshing streak data and goal data
@@ -730,6 +875,11 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
                 // Refresh goal data with new unit
                 try await goalManager.refreshGoalDataForUnitChange()
                 logger.log(level: .info, tag: "DashboardStore", message: "Refreshed goal data for unit change")
+
+                // Sync removal state to ensure consistency
+                await MainActor.run {
+                    self.syncRemovalStateFromMetricsManager()
+                }
 
                 // Trigger UI update to refresh views with new unit
                 await MainActor.run {
@@ -751,7 +901,7 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
 
         Task {
             do {
-                try await metricsManager.saveMetricsToAPI()
+                try await metricsManager.saveMetricsToAPI(removedMetrics: state.ui.removedMetrics)
                
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
 
@@ -786,51 +936,56 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
     func resetDashboard() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
-
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
         state.ui.resetDragState()
 
-        // Reset the saved order to restore default order
         resetGridOrder()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-
-                // Delegate reset operations to managers
-                Task {
-                    try? await self.metricsManager.resetMetricsToDefaults()
-                    try? await self.streakManager.resetStreakData()
-
-                    // After resetting metrics to defaults, update them with latest data
-                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
-                        try? await self.metricsManager.updateMetrics(with: latestEntry)
-                    }
-
-                    // Save the reset configuration to API
-                    try? await self.metricsManager.saveMetricsToAPI()
+        Task {
+            do {
+                // Reset metrics & order
+                try? await metricsManager.resetMetricsToDefaults()
+                await MainActor.run {
+                    metricsManager.resetOrderToDefault()
+                    metricsManager.resetActiveMetricsCountToShowAll()
                 }
 
-                self.state.ui.isGoalCardRemoved = false
+                // Reset streak data
+                try? await streakManager.resetStreakData()
 
-                Task {
-                    do {
-                        try await self.streakManager.refreshStreakData()
-                        try await self.metricsManager.saveMetricsToAPI()
-                    } catch {
-                        self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
-                    }
+                // Update metrics with latest entry if available
+                if let latestEntry = try? await dataManager.getLatestEntry() {
+                    try? await metricsManager.updateMetrics(with: latestEntry)
                 }
 
-                self.state.ui.selectedMetricLabel = nil
-                self.state.graph.clearSelection()
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.resetGridLayout()
-                // Reset snapshot after a full dashboard reset
-                self.hasEditSnapshot = false
+                // Clear removed states
+                await MainActor.run {
+                    state.ui.removedMetrics.removeAll()
+                    state.ui.removedStreaks.removeAll()
+                    state.ui.isGoalCardRemoved = false
+                }
+
+                // Persist reset
+                try? await metricsManager.saveMetricsToAPI(removedMetrics: [])
+                try? await streakManager.refreshStreakData()
+                await MainActor.run {
+                    syncRemovalStateFromMetricsManager()
+                }
+
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.state.ui.isLoading = false
+                    self.state.ui.loaderOverride = nil
+                    self.state.ui.isEditMode = false
+                    self.state.ui.resetDragState()
+                    self.state.ui.selectedMetricLabel = nil
+                    self.hasEditSnapshot = false
+                }
             }
         }
     }
@@ -1368,6 +1523,13 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
+        
+        // Sync removal state to ensure consistency with API data
+        syncRemovalStateFromMetricsManager()
+        
+        // Force UI update to reflect current state
+        objectWillChange.send()
+        
        // After positioning is complete, update Y-axis cache to ensure proper domain calculation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
@@ -1375,8 +1537,6 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             self.resetGridLayout()
             self.objectWillChange.send()
         }
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
     }
 
     /// Begins an edit session by snapshotting the current state for synchronous revert.
@@ -1389,8 +1549,10 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         snapshotGoalCardRemoved = state.ui.isGoalCardRemoved
         snapshotGoalCardPosition = state.ui.goalCardPosition
         snapshotStreakGridOrder = state.ui.streakGridOrder
+        snapshotRemovedMetrics = state.ui.removedMetrics
+        snapshotRemovedStreaks = state.ui.removedStreaks
         hasEditSnapshot = true
-        logger.log(level: .info, tag: "DashboardStore", message: "Edit snapshot captured")
+
     }
 
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
@@ -1405,6 +1567,8 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
             state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
             state.ui.goalCardPosition = snapshotGoalCardPosition
             state.ui.streakGridOrder = snapshotStreakGridOrder
+            state.ui.removedMetrics = snapshotRemovedMetrics
+            state.ui.removedStreaks = snapshotRemovedStreaks
         }
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
@@ -1417,5 +1581,44 @@ static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "
         }
         hasEditSnapshot = false
         objectWillChange.send()
+    }
+
+    /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
+    func resetEditSession() {
+        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
+        
+        // First, restore the original state from snapshot
+        if hasEditSnapshot {
+            metricsManager.state.metrics = snapshotMetrics
+            metricsManager.state.activeMetricsCount = snapshotActiveMetricsCount
+            streakManager.state.streakItems = snapshotStreakItems
+            streakManager.state.activeStreakItemsCount = snapshotActiveStreakItemsCount
+            state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
+            state.ui.goalCardPosition = snapshotGoalCardPosition
+            state.ui.streakGridOrder = snapshotStreakGridOrder
+            state.ui.removedMetrics = snapshotRemovedMetrics
+            state.ui.removedStreaks = snapshotRemovedStreaks
+        }
+        
+        // Additionally, ensure order is restored to API/defaults when resetting within edit mode
+        metricsManager.resetOrderToDefault()
+        if state.metrics.dashboardType == .dashboard12 {
+            metricsManager.resetActiveMetricsCountToShowAll()
+        }
+
+        // Clear selection/drag state
+        state.ui.selectedMetricLabel = nil
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+        
+        // Clear the old snapshot and create a fresh one
+        hasEditSnapshot = false
+        beginEdit()
+        
+        // Force UI update to reflect the reset state
+        objectWillChange.send()
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }

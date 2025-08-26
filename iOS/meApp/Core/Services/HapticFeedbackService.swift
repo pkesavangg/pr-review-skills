@@ -11,24 +11,51 @@ import UIKit
 /// Follows the exact pattern from movingGridsLearning
 struct HapticFeedbackService {
     
+    // MARK: - Cooldown (to prevent rapid repeated vibrations)
+    private static var lastLightAt: CFTimeInterval = 0
+    private static var lastMediumAt: CFTimeInterval = 0
+    private static var lastHeavyAt: CFTimeInterval = 0
+    private static let defaultLightInterval: CFTimeInterval = 0.6
+    private static let defaultMediumInterval: CFTimeInterval = 0.8
+    private static let defaultHeavyInterval: CFTimeInterval = 1.0
+    private static let syncQueue = DispatchQueue(label: "HapticFeedbackService.syncQueue")
+    
+    @inline(__always)
+    private static func canTrigger(lastAt: inout CFTimeInterval, minInterval: CFTimeInterval) -> Bool {
+        var result = false
+        syncQueue.sync {
+            let now = CACurrentMediaTime()
+            if now - lastAt >= minInterval {
+                lastAt = now
+                result = true
+            } else {
+                result = false
+            }
+        }
+        return result
+    }
+    
     // MARK: - Haptic Feedback Methods
     
-    /// Provides light impact feedback
-    static func light() {
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
+    /// Provides light impact feedback (throttled)
+    static func light(minInterval: CFTimeInterval = defaultLightInterval) {
+        guard canTrigger(lastAt: &lastLightAt, minInterval: minInterval) else { return }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
     }
     
-    /// Provides medium impact feedback
-    static func medium() {
-        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-        impactFeedback.impactOccurred()
+    /// Provides medium impact feedback (throttled)
+    static func medium(minInterval: CFTimeInterval = defaultMediumInterval) {
+        guard canTrigger(lastAt: &lastMediumAt, minInterval: minInterval) else { return }
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
     }
     
-    /// Provides heavy impact feedback
-    static func heavy() {
-        let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
-        impactFeedback.impactOccurred()
+    /// Provides heavy impact feedback (throttled)
+    static func heavy(minInterval: CFTimeInterval = defaultHeavyInterval) {
+        guard canTrigger(lastAt: &lastHeavyAt, minInterval: minInterval) else { return }
+        let generator = UIImpactFeedbackGenerator(style: .heavy)
+        generator.impactOccurred()
     }
     
     /// Provides success notification feedback
