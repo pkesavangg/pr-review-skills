@@ -145,7 +145,7 @@ internal fun ChartHostSection(
           markerVisibilityListener = markerListener,
           persistentMarkers =
 
-            if (!isUpdating && selectedData.isNotEmpty() && markerIndex != null) {
+            if (markerIndex != null) {
               {
                 defaultMarker at xLabels[markerIndex].value
               }

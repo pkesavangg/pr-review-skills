@@ -5,73 +5,41 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.periodStarts
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
-import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.core.common.Point
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import java.util.Calendar
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
-
-@Composable
-inline fun <T> rememberStable(
-  value: T,
-  crossinline areEqual: (T, T) -> Boolean = { a, b -> a == b }
-): T {
-  val state = remember { mutableStateOf(value) }
-  if (!areEqual(state.value, value)) {
-    state.value = value
-  }
-  return state.value
-}
+import com.patrykandpatrick.vico.core.common.Point as VicoPoint
 
 /**
  * Composable for displaying a graph/chart with interactive features.
- * Only UI logic and state management are present; all data transformation is delegated to GraphUtil.
+ * Uses GraphViewModel for state management following MVI pattern.
  *
  * @param modifier Modifier for styling.
  * @param graphLines List of GraphLine data to display.
+ * @param secondaryGraphLines Optional secondary graph lines.
  * @param segment The segment of the graph (e.g., WEEK, MONTH).
  * @param placeHolder Optional placeholder text if no data is present.
- * @param selectedData List of selected GraphPoint(s) for marker display.
+ * @param goal Optional goal for reference.
+ * @param onMetricUpdate Callback for metric updates, returns list of GraphPoint(s).
  * @param onScroll Callback for scroll events, returns formatted date range.
- * @param onSelected Callback for marker selection, returns selected GraphPoint(s).
+ * @param onLabelUpdate Callback for label updates, returns updated label string.
+ * @param viewModel The GraphViewModel instance (injected via Hilt).
  */
-@OptIn(FlowPreview::class)
 @Composable
 fun GraphView(
   modifier: Modifier = Modifier,
@@ -83,293 +51,111 @@ fun GraphView(
   onMetricUpdate: (List<GraphPoint>) -> Unit = {},
   onScroll: (String?) -> Unit = {},
   onLabelUpdate: (String) -> Unit = {},
+  viewModel: GraphViewModel = hiltViewModel()
 ) {
+  val state by viewModel.state.collectAsState()
 
-  var selectedData: List<GraphPoint> by remember {
-    mutableStateOf(listOf())
-  }
-  val stableGraphLines = rememberStable(graphLines)
-  val isEmptyState by remember {
-    derivedStateOf { stableGraphLines.flatMap { it.points }.isEmpty() }
+  // Store callbacks in ViewModel
+  LaunchedEffect(Unit) {
+    viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate)
   }
 
-  val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
-
-  var point: Point? by remember { mutableStateOf(Point(0f, 0f)) }
-  val xLabels = remember(stableGraphLines) {
-    stableGraphLines.first().points.map { it.x }
-  }
-  val ySeries = remember(stableGraphLines) {
-    stableGraphLines.map { it.points.map { point -> point.y } }
+  // Handle segment changes
+  LaunchedEffect(segment) {
+    viewModel.handleIntent(GraphIntent.UpdateSegment(segment))
   }
 
-  val timeStamp = stableGraphLines.flatMap { it.points.map { it.x.value.toDouble() }.sortedBy { it } }
+  // Animated values for smooth transitions
+  val animatedMinTarget by animateIntAsState(
+    targetValue = state.minYTarget.toInt(),
+    animationSpec = tween(300),
+    label = "minTarget",
+  )
 
+  val animatedSecondaryMinTarget by animateIntAsState(
+    targetValue = state.secondaryMinYTarget.toInt(),
+    animationSpec = tween(300),
+    label = "secondaryMinTarget",
+  )
+
+  val animatedMaxTarget by animateIntAsState(
+    targetValue = state.maxYTarget.toInt(),
+    animationSpec = tween(300),
+    label = "maxTarget",
+  )
+
+  val animatedSecondaryMaxTarget by animateIntAsState(
+    targetValue = state.secondaryMaxYTarget.toInt(),
+    animationSpec = tween(300),
+    label = "secondaryMaxTarget",
+  )
+
+  // Scroll state
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = Scroll.Absolute.End,
   )
 
-  var minTarget by remember { mutableStateOf<Long?>(timeStamp.minByOrNull { it }?.toLong()) }
-  var maxTarget by remember { mutableStateOf<Long?>(timeStamp.maxByOrNull { it }?.toLong()) }
-  var minYTarget by remember { mutableDoubleStateOf(0.0) }
-  var secondaryMinYTarget by remember { mutableDoubleStateOf(0.0) }
-  var maxYTarget by remember { mutableDoubleStateOf(220.0) }
-  var secondaryMaxYTarget by remember { mutableDoubleStateOf(220.0) }
-
-  val animatedMinTarget by animateIntAsState(
-    targetValue = minYTarget.toInt(),
-    animationSpec = tween(300),
-  )
-  val animatedSecondaryMinTarget by animateIntAsState(
-    targetValue = secondaryMinYTarget.toInt(),
-    animationSpec = tween(300),
-  )
-  val animatedMaxTarget by animateIntAsState(
-    targetValue = maxYTarget.toInt(),
-    animationSpec = tween(300),
-  )
-  val animatedSecondaryMaxTarget by animateIntAsState(
-    targetValue = secondaryMaxYTarget.toInt(),
-    animationSpec = tween(300),
-  )
-  var selectedTarget by remember { mutableStateOf<Long?>(null) }
-  var markerIndex: Int? by remember(xLabels) { mutableStateOf(null) }
-  var isUpdating by remember { mutableStateOf(false) }
-  val modelProducer = remember { CartesianChartModelProducer() }
-  val graphKey = remember(stableGraphLines) { stableGraphLines.hashCode() }
-  // Remember the job outside LaunchedEffect
-  var computationJob by remember { mutableStateOf<Job?>(null) }
-  val minTargetState = rememberUpdatedState(minTarget)
-  val maxTargetState = rememberUpdatedState(maxTarget)
-  var stepSize by remember { mutableDoubleStateOf(10.0) }
-
-  LaunchedEffect(graphKey, stableSecondaryGraphLines) {
-    modelProducer.runTransaction {
-      lineSeries {
-        ySeries.forEach { y ->
-          series(
-            x = xLabels.map { it.value as Long },
-            y = y.map { it.value },
-          )
-        }
-      }
-      if (stableSecondaryGraphLines != null && stableSecondaryGraphLines!!.points.isNotEmpty()) {
-        lineSeries {
-          series(
-            x = stableSecondaryGraphLines!!.points.map { it.x.value as Long },
-            y = stableSecondaryGraphLines!!.points.map { it.y.value },
-          )
-        }
-        val secondaryYAxis = stableSecondaryGraphLines!!.points.map { it.y.value.toDouble() }
-        val secondaryGraphMeta = generateNiceScale(
-          floor(secondaryYAxis.min()),
-          ceil(secondaryYAxis.max()),
-          goalWeight = goal?.goalWeight ?: 0.0,
-        )
-        secondaryMinYTarget = secondaryGraphMeta.min
-        secondaryMaxYTarget = secondaryGraphMeta.max
-      }
-    }
-
+  // Initialize graph when data changes
+  LaunchedEffect(graphLines, secondaryGraphLines) {
+    viewModel.handleIntent(
+      GraphIntent.InitializeGraph(
+        graphLines = graphLines,
+        secondaryGraphLines = secondaryGraphLines,
+        segment = segment,
+        goal = goal,
+      ),
+    )
   }
 
-  LaunchedEffect(segment) {
-    isUpdating = true
-    markerIndex = xLabels.lastIndex
-
-    val target = selectedTarget ?: maxTarget
-    val nearest = target?.let {
-      xLabels.map { it.value.toLong() }
-        .minByOrNull { abs(it - target) }
-    }
-    repeat(3) { withFrameNanos { } }
-    if (nearest != null) {
-      val endRange = GraphUtil.getEndRange(segment, nearest)
-      if (endRange != null) {
-        scrollState.scroll(Scroll.Absolute.x(endRange.toDouble(), 1.0f)) // ✅ suspend function}
-      } else {
-        scrollState.scroll(Scroll.Absolute.End)
-      }
-    }
-    selectedTarget = null
-    isUpdating = false
-  }
-  LaunchedEffect(selectedData) {
-    // Cancel any existing computation job first
-    computationJob?.cancel()
-
-    if (selectedData.isEmpty()) {
-      computationJob = launch(Dispatchers.Default) {
-        val formattedRange = GraphUtil.formatDateRange(
-          minTarget ?: 0L,
-          maxTarget ?: 0L, segment,
-        )
-        onScroll(formattedRange)
-        val subset = averageYValuesInRange(
-          stableGraphLines,
-          minTarget ?: 0L,
-          maxTarget ?: 0L,
-        )
-        // Check if still active before updating
-        if (isActive) {
-          val joinedLabel = subset.values
-            .filterNotNull()
-            .joinToString(" / ") { it.label }
-          onLabelUpdate(joinedLabel)
-          val graphLines = filterXValuesInRange(
-            stableGraphLines,
-            minTarget ?: 0L,
-            maxTarget ?: 0L,
-          )
-          onMetricUpdate(graphLines.flatMap { it.points })
-        }
-
-        // Clear the job reference when done
-        computationJob = null
-      }
-    } else {
-      onScroll(null)
-      onMetricUpdate(
-        listOf(
-          selectedData.first(),
-        ),
-      )
-      onLabelUpdate(
-        selectedData.first().y.label,
-      )
-    }
-  }
-  LaunchedEffect(Unit) {
-    snapshotFlow { minTargetState.value to maxTargetState.value }
-      .debounce(500)
-      .collect { (min, max) ->
-        // Run your logic here after the debounce period
-        computationJob = launch(Dispatchers.Default) {
-          val formattedRange = GraphUtil.formatDateRange(
-            min ?: 0L,
-            max ?: 0L, segment,
-          )
-          onScroll(formattedRange)
-          val subset = averageYValuesInRange(
-            stableGraphLines,
-            min ?: 0L,
-            max ?: 0L,
-          )
-          selectedData = listOf()
-          // Check if still active before updating
-          val joinedLabel = subset.values
-            .filterNotNull()
-            .joinToString(" / ") { it.label }
-          onLabelUpdate(joinedLabel)
-          val graphLines = filterXValuesInRange(
-            stableGraphLines,
-            minTarget ?: 0L,
-            maxTarget ?: 0L,
-          )
-          onMetricUpdate(graphLines.flatMap { it.points })
-          val intervalCount = segment.intervalCount().div(2)
-          val paddedMinTarget = minTarget?.minus(ONE_DAY_MILLIS * intervalCount)
-          val paddedMaxTarget = maxTarget?.plus(ONE_DAY_MILLIS * intervalCount)
-          val paddedGraphLines = filterXValuesInRange(
-            stableGraphLines,
-            paddedMinTarget ?: 0L,
-            paddedMaxTarget ?: 0L,
-          )
-          val yAxis = paddedGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value as Double } }
-          if (yAxis.isNotEmpty()) {
-            var tempMax = 0.0
-            var tempMin = 0.0
-            tempMax = ceil(yAxis.max())
-            tempMin = floor(yAxis.min())
-            if (maxYTarget == minYTarget) {
-              tempMax += 1
-              tempMin -= 1
-            }
-            val graphMeta = generateNiceScale(
-              tempMin,
-              tempMax,
-              goalWeight = goal?.goalWeight ?: 0.0,
-            )
-            minYTarget = graphMeta.min
-            maxYTarget = graphMeta.max
-            if (stableSecondaryGraphLines != null) {
-              val paddedSecondaryGraphLines = filterXValuesInRange(
-                listOf(stableSecondaryGraphLines!!),
-                paddedMinTarget ?: 0L,
-                paddedMaxTarget ?: 0L,
-              )
-              val secondaryYAxis =
-                paddedSecondaryGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } }
-              if (secondaryYAxis.isNotEmpty()) {
-                val secondaryGraphMeta = generateNiceScale(
-                  floor(secondaryYAxis.min()),
-                  ceil(secondaryYAxis.max()),
-                  goalWeight = goal?.goalWeight ?: 0.0,
-                )
-                secondaryMinYTarget = secondaryGraphMeta.min
-                secondaryMaxYTarget = secondaryGraphMeta.max
-              }
-            }
-            stepSize = graphMeta.step
-          }
-
-          // Clear the job reference when done
-          computationJob = null
-        }
-      }
-  }
-  val initialTimeStamp: Long =
-    xLabels.minByOrNull { it.value.toLong() }?.value?.toLong() ?: Calendar.getInstance().timeInMillis
+  // Chart layers and components
   val primaryLayer = primaryLayer(
-    segment, animatedMinTarget, animatedMaxTarget,
-    initialTimeStamp,
+    segment,
+    animatedMinTarget,
+    animatedMaxTarget,
+    state.initialTimeStamp,
   )
+
   val secondaryLayer = secondaryLayer(
     segment = segment,
     minYTarget = animatedSecondaryMinTarget,
     maxYTarget = animatedSecondaryMaxTarget,
-    initialTimeStamp = initialTimeStamp,
+    initialTimeStamp = state.initialTimeStamp,
   )
-  val todayMills = Calendar.getInstance().timeInMillis
 
-  val startRangeX = GraphUtil.getStartRange(segment, initialTimeStamp)
+  val startRangeX = GraphUtil.getStartRange(segment, state.initialTimeStamp)
+  val endRangeX = GraphUtil.getEndRange(segment, state.todayMills)
+  val separators = GraphUtil.periodStarts(segment, startRangeX, endRangeX)
 
-  val endRangeX = GraphUtil.getEndRange(segment, todayMills)
-  val separators = periodStarts(
-    segment,
-    startRangeX,
-    endRangeX,
-
-    )
-
-  val defaultMarker = rememberDefaultMarker(xLabels, markerIndex, segment)
+  val defaultMarker = rememberDefaultMarker(state.xLabels, state.markerIndex, segment)
   val decorations = rememberHorizontalLine(goal = goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(
-    isEnabled = !isUpdating,
+    isEnabled = !state.isUpdating,
     segment = segment,
     onDestinationUpdate = { min, max ->
-      minTarget = min
-      maxTarget = max
+      viewModel.handleIntent(GraphIntent.HandleScroll(min, max))
     },
   )
 
   val markerListener = markerListener(
-    stableGraphLines = stableGraphLines,
-    point = point,
-    xLabels = xLabels,
-    onSelected = {
-      selectedData = it
+    stableGraphLines = state.graphLines,
+    point = state.point,
+    xLabels = state.xLabels,
+    onSelected = { selectedData ->
+      viewModel.handleIntent(GraphIntent.HandleMarkerSelection(selectedData))
     },
-    setMarkerIndex = { markerIndex = it },
-    selectedData = selectedData,
-    onDestinationUpdate = { selectedTarget = it },
+    setMarkerIndex = { markerIndex ->
+      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+    },
+    selectedData = state.selectedData,
+    onDestinationUpdate = { selectedTarget ->
+      viewModel.handleIntent(GraphIntent.UpdateSelectedTarget(selectedTarget))
+    },
   )
 
   val currentDeviceType = getDeviceType()
-  val chartHeight = if (currentDeviceType == DeviceType.Tablet)
-    400.dp else 300.dp
+  val chartHeight = if (currentDeviceType == DeviceType.Tablet) 400.dp else 300.dp
 
   ChartHostSection(
     modifier = modifier
@@ -391,11 +177,13 @@ fun GraphView(
               PointerEventType.Release -> {
                 if (!isScrollInProgress) {
                   val position = event.changes.firstOrNull()?.position
-                  if (position != null && computationJob == null) {
-                    point = (Point(position.x, position.y))
+                  if (position != null && state.computationJob == null) {
+                    viewModel.handleIntent(
+                      GraphIntent.UpdatePoint(VicoPoint(position.x, position.y)),
+                    )
                   }
                 } else {
-                  point = null
+                  viewModel.handleIntent(GraphIntent.UpdatePoint(null))
                 }
                 isScrollInProgress = false
               }
@@ -404,21 +192,21 @@ fun GraphView(
         }
       },
     segment = segment,
-    stepSize = stepSize,
+    stepSize = state.stepSize,
     primaryLayer = primaryLayer,
     secondaryLayer = secondaryLayer,
     markerListener = markerListener,
     defaultMarker = defaultMarker,
     decorations = decorations,
-    xLabels = xLabels,
-    markerIndex = markerIndex,
-    isUpdating = isUpdating,
-    selectedData = selectedData,
-    modelProducer = modelProducer,
+    xLabels = state.xLabels,
+    markerIndex = state.markerIndex,
+    isUpdating = state.isUpdating,
+    selectedData = state.selectedData,
+    modelProducer = state.modelProducer,
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
     separators = separators,
-    isEmpty = isEmptyState,
+    isEmpty = state.isEmpty,
   )
 }
 

@@ -10,6 +10,7 @@ import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibility
 import com.patrykandpatrick.vico.core.cartesian.marker.LineCartesianLayerMarkerTarget
 import com.patrykandpatrick.vico.core.common.Point
 import kotlin.math.abs
+import android.util.Log
 
 /**
  * Internal helper to remember the marker listener for the graph.
@@ -24,6 +25,7 @@ internal fun markerListener(
   setMarkerIndex: (Int?) -> Unit,
   onDestinationUpdate: (Long?) -> Unit,
 ): CartesianMarkerVisibilityListener? = remember(point) {
+  Log.i("CHECKING", point.toString())
   if (point == null) {
     return@remember null
   }
