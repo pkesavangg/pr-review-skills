@@ -932,69 +932,56 @@ class DashboardStore: ObservableObject {
     func resetDashboard() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
-
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
         state.ui.resetDragState()
 
-        // Log the current state before reset
-        logger.log(level: .info, tag: "DashboardStore", message: "Starting dashboard reset - Current metrics: \(metricsManager.state.metrics.count), Active: \(metricsManager.state.activeMetricsCount), Removed: \(state.ui.removedMetrics.count)")
-
-        // Reset the saved order to restore default order
         resetGridOrder()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-
-                // Delegate reset operations to managers
-                Task {
-                                    try? await self.metricsManager.resetMetricsToDefaults()
-                 
-                    await MainActor.run {
-                        self.metricsManager.resetOrderToDefault()
-                    }
-                    // Ensure all metrics are active for dashboard12 after reset
-                    await MainActor.run {
-                        self.metricsManager.resetActiveMetricsCountToShowAll()
-                    }
-                    
-                    // Reset streak data to defaults
-                    try? await self.streakManager.resetStreakData()
-
-                    // After resetting metrics to defaults, update them with latest data
-                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
-                        try? await self.metricsManager.updateMetrics(with: latestEntry)
-                    }
-
-                    // Clear all removal states since we're resetting to defaults
-                    await MainActor.run {
-                        self.state.ui.removedMetrics.removeAll()
-                        self.state.ui.removedStreaks.removeAll()
-                        self.state.ui.isGoalCardRemoved = false
-                    }
-
-                    // Save the reset configuration to API (no removed metrics)
-                    try? await self.metricsManager.saveMetricsToAPI(removedMetrics: [])
-                    
-                    // Refresh streak data to ensure consistency
-                    try? await self.streakManager.refreshStreakData()
-                    
-                    // Sync removal state to ensure consistency after reset
-                    await MainActor.run {
-                        // Re-sync removal state now that active metrics include all items
-                        self.syncRemovalStateFromMetricsManager()
-
-                    }
- 
+        Task {
+            do {
+                // Reset metrics & order
+                try? await metricsManager.resetMetricsToDefaults()
+                await MainActor.run {
+                    metricsManager.resetOrderToDefault()
+                    metricsManager.resetActiveMetricsCountToShowAll()
                 }
 
-                self.state.ui.selectedMetricLabel = nil
-                self.state.graph.clearSelection()
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.hasEditSnapshot = false
+                // Reset streak data
+                try? await streakManager.resetStreakData()
+
+                // Update metrics with latest entry if available
+                if let latestEntry = try? await dataManager.getLatestEntry() {
+                    try? await metricsManager.updateMetrics(with: latestEntry)
+                }
+
+                // Clear removed states
+                await MainActor.run {
+                    state.ui.removedMetrics.removeAll()
+                    state.ui.removedStreaks.removeAll()
+                    state.ui.isGoalCardRemoved = false
+                }
+
+                // Persist reset
+                try? await metricsManager.saveMetricsToAPI(removedMetrics: [])
+                try? await streakManager.refreshStreakData()
+                await MainActor.run {
+                    syncRemovalStateFromMetricsManager()
+                }
+
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.state.ui.isLoading = false
+                    self.state.ui.loaderOverride = nil
+                    self.state.ui.isEditMode = false
+                    self.state.ui.resetDragState()
+                    self.state.ui.selectedMetricLabel = nil
+                    self.hasEditSnapshot = false
+                }
             }
         }
     }

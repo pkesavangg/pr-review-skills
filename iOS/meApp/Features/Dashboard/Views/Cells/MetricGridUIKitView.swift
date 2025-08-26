@@ -160,6 +160,20 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Ensure the collection view can calculate its full content size
         collectionView.contentInsetAdjustmentBehavior = .never
         
+        // Suppress implicit layer animations for smooth drag and drop
+        collectionView.layer.actions = [
+            "position": NSNull(),
+            "bounds": NSNull(),
+            "transform": NSNull(),
+            "opacity": NSNull(),
+            "onOrderIn": NSNull(),
+            "onOrderOut": NSNull(),
+            "sublayers": NSNull(),
+            "contents": NSNull(),
+            "hidden": NSNull(),
+            "cornerRadius": NSNull()
+        ]
+        
         return collectionView
     }
     
@@ -382,9 +396,16 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
             parent.isDragging = true
             
-            // Disable animations during drag to prevent flickering
+            // Set drag operation flag for smooth animations
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = true
+            }
+            
+            // ENABLE smooth animations during drag for beautiful cell movement
             CATransaction.begin()
-            CATransaction.setDisableActions(true)
+            CATransaction.setDisableActions(false)
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
             CATransaction.commit()
             
             // Immediately hide EditModeOverlay on the dragged cell
@@ -414,6 +435,11 @@ extension MetricGridUIKitView {
             parent.isDragging = false
             draggedItemId = nil
             
+            // Clear drag operation flag
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = false
+            }
+            
             // Re-enable animations after drag ends
             CATransaction.begin()
             CATransaction.setDisableActions(false)
@@ -427,6 +453,8 @@ extension MetricGridUIKitView {
                 for cell in collectionView.visibleCells {
                     if let metricCell = cell as? MetricCell {
                         metricCell.updateDragState(false)
+                        // Clear any shadow effects
+                        metricCell.clearAllShadowEffects()
                     }
                 }
             }
@@ -445,6 +473,11 @@ extension MetricGridUIKitView {
                 // Clear the dragged item ID when drag is cancelled
                 self.draggedItemId = nil
                 
+                // Clear drag operation flag
+                if let custom = collectionView as? CustomCollectionView {
+                    custom.isInDragOperation = false
+                }
+                
                 // Clear the store's drag state
                 self.store.endDragging()
                 
@@ -454,6 +487,8 @@ extension MetricGridUIKitView {
                     for cell in collectionView.visibleCells {
                         if let metricCell = cell as? MetricCell {
                             metricCell.updateDragState(false) // Use the new method for more reliable state management
+                            // Clear any shadow effects
+                            metricCell.clearAllShadowEffects()
                         }
                     }
                 }
@@ -497,9 +532,12 @@ extension MetricGridUIKitView {
             draggedItemId = nil
             parent.isDragging = false
             
-            // Disable animations when drop session enters
+            // Keep smooth animations enabled during drop session for beautiful cell movement
+            UIView.setAnimationsEnabled(true)
             CATransaction.begin()
-            CATransaction.setDisableActions(true)
+            CATransaction.setDisableActions(false)
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
             CATransaction.commit()
         }
         
@@ -533,10 +571,15 @@ extension MetricGridUIKitView {
                 return
             }
 
-            if let custom = collectionView as? CustomCollectionView { custom.suspendIntrinsicInvalidation = true }
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
+            // Keep smooth animations during the drop operation for beautiful cell movement
+            // Only disable animations at the very end for instant final positioning
+            if let custom = collectionView as? CustomCollectionView { 
+                custom.suspendIntrinsicInvalidation = true 
+            }
+            
             self.suppressNextReload = true
+            
+            // Use smooth animations for the actual reordering
             collectionView.performBatchUpdates({
                 store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
                 collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
@@ -544,6 +587,11 @@ extension MetricGridUIKitView {
                 collectionView.collectionViewLayout.invalidateLayout()
                 collectionView.layoutIfNeeded()
 
+                // Now disable animations for the final positioning to prevent jump
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                CATransaction.setAnimationDuration(0)
+                
                 UIView.performWithoutAnimation {
                     let visibleIndexPaths = collectionView.indexPathsForVisibleItems
                     for indexPath in visibleIndexPaths {
@@ -563,9 +611,13 @@ extension MetricGridUIKitView {
                             }
                         )
                         cell.isRemoved = self.store.isMetricRemoved(itemForCell.label)
+                        // Clear any shadow effects that might remain
+                        cell.clearAllShadowEffects()
                     }
                 }
+                
                 CATransaction.commit()
+                
                 if let custom = collectionView as? CustomCollectionView {
                     custom.suspendIntrinsicInvalidation = false
                     custom.invalidateIntrinsicContentSize()
@@ -617,9 +669,8 @@ extension MetricGridUIKitView {
             clearView.backgroundColor = .clear
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
-            let offscreen = CGPoint(x: -10_000, y: -10_000)
-            let target = UIDragPreviewTarget(container: collectionView, center: offscreen)
-            return UITargetedDragPreview(view: clearView, parameters: params, target: target)
+            params.visiblePath = UIBezierPath(rect: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return UITargetedDragPreview(view: clearView, parameters: params, target: defaultPreview.target)
         }
 
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
@@ -628,16 +679,31 @@ extension MetricGridUIKitView {
             draggedItemId = nil
             store.endDragging()
             
+            // Clear drag operation flag
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = false
+            }
+            
+            // Force instant layout update with zero animations
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
             UIView.performWithoutAnimation {
                 collectionView.layoutIfNeeded()
+                // Force all visible cells to update their appearance instantly
                 collectionView.visibleCells.forEach { cell in
                     cell.layer.removeAllAnimations()
                     cell.contentView.layer.removeAllAnimations()
+                    // Ensure no transform animations
                     cell.transform = .identity
                     cell.contentView.transform = .identity
+                    
+                    // Restore overlay visibility if in edit mode
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.setOverlaySuppressed(false)
+                        // Force clear all shadow effects to prevent shadow artifacts
+                        metricCell.clearAllShadowEffects()
+                    }
                 }
             }
             CATransaction.commit()

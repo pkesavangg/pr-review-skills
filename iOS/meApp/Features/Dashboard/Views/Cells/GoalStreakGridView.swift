@@ -78,7 +78,10 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
             return cell
         case .streak(let item):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
-            cell.configure(with: item, store: store)
+            cell.configure(
+                with: item, 
+                store: store
+            )
             return cell
         }
     }
