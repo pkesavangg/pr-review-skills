@@ -149,6 +149,7 @@ dependencies {
   implementation(project(":app:appsync"))
   implementation(project(":bleWrapper"))
   implementation(project(":app:wificonnect"))
+  implementation(project(":iam"))
 
   // implementation(project(":ggBluetoothLibrary"))
   // Play Store Review

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.12.0" type="baseline" client="gradle" dependencies="false" name="AGP (8.12.0)" variant="all" version="8.12.0">
+
+    <issue
+        id="MissingClass"
+        message="Class referenced in the layout file, `com.dmdbrands.appsync.OverlayImageView`, was not found in the project or the libraries"
+        errorLine1="        class=&quot;com.dmdbrands.appsync.OverlayImageView&quot; >"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="14"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Fixed screen orientations will be ignored in most cases, starting from Android 16. Android is moving toward a model where apps are expected to adapt to various orientations, display sizes, and aspect ratios."
+        errorLine1="            android:screenOrientation=&quot;landscape&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="8"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
+        errorLine1="        mutableStateOf("
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/greatergoods/libs/appsync/screen/AppSyncScanScreen.kt"
+            line="107"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="GifUsage"
+        message="Using the `.gif` format for bitmaps is discouraged">
+        <location
+            file="src/main/res/drawable-hdpi/progress.gif"/>
+    </issue>
+
+    <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/display_overlay.png` in densityless folder">
+        <location
+            file="src/main/res/drawable/display_overlay.png"/>
+    </issue>
+
+    <issue
+        id="IconMissingDensityFolder"
+        message="Missing density variation folders in `src/main/res`: drawable-mdpi, drawable-xhdpi, drawable-xxhdpi">
+        <location
+            file="src/main/res"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="        &lt;ImageView"
+        errorLine2="         ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="25"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="    &lt;ImageView"
+        errorLine2="     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="34"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image"
+        errorLine1="    &lt;ImageView"
+        errorLine2="     ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="44"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;zoom in&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;zoom in&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="65"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;zoom out&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;zoom out&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="74"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;zoom out&quot;, should use `@string` resource"
+        errorLine1="            android:contentDescription=&quot;zoom out&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="82"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Manual Entry&quot;, should use `@string` resource"
+        errorLine1="         android:text=&quot;Manual Entry&quot; />"
+        errorLine2="         ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="104"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Consider replacing `android:layout_marginLeft` with `android:layout_marginStart=&quot;@dimen/forty&quot;` to better support right-to-left layouts"
+        errorLine1="        android:layout_marginLeft=&quot;@dimen/forty&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="22"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Use &quot;`start`&quot; instead of &quot;`left`&quot; to ensure correct behavior in right-to-left locales"
+        errorLine1="        android:layout_gravity=&quot;top|left&quot;"
+        errorLine2="                                ~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="38"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Consider replacing `android:layout_marginLeft` with `android:layout_marginStart=&quot;@dimen/twenty&quot;` to better support right-to-left layouts"
+        errorLine1="        android:layout_marginLeft=&quot;@dimen/twenty&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="39"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Use &quot;`end`&quot; instead of &quot;`right`&quot; to ensure correct behavior in right-to-left locales"
+        errorLine1="        android:layout_gravity=&quot;top|right&quot;"
+        errorLine2="                                ~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="48"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Use &quot;`end`&quot; instead of &quot;`right`&quot; to ensure correct behavior in right-to-left locales"
+        errorLine1="        android:layout_gravity=&quot;right|center_vertical&quot;"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="56"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Consider replacing `android:layout_marginRight` with `android:layout_marginEnd=&quot;@dimen/forty&quot;` to better support right-to-left layouts"
+        errorLine1="        android:layout_marginRight=&quot;@dimen/forty&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="57"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Use &quot;`end`&quot; instead of &quot;`right`&quot; to ensure correct behavior in right-to-left locales"
+        errorLine1="        android:layout_gravity=&quot;right|bottom&quot;"
+        errorLine2="                                ~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="91"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="RtlHardcoded"
+        message="Consider replacing `android:layout_marginRight` with `android:layout_marginEnd=&quot;@dimen/ten&quot;` to better support right-to-left layouts"
+        errorLine1="        android:layout_marginRight=&quot;@dimen/ten&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/appsync.xml"
+            line="94"
+            column="9"/>
+    </issue>
+
+</issues>
