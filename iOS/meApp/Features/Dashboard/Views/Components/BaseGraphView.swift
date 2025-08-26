@@ -24,10 +24,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var initialTouchPoint: CGPoint = .zero
     @State private var decisionTimer: Timer?
     
-    // MARK: - Performance Optimization
-    @State private var cachedChartContent: AnyView?
-    @State private var lastCacheUpdate: Date = Date()
-    
     // MARK: - Configuration
     private var isScrollable: Bool {
         viewModel.hasXAxis

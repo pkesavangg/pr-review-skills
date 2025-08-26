@@ -187,8 +187,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             self.yAxisDomain = yAxisScale.domain
         }
         // Do not animate tick updates
-        var transaction = Transaction(animation: nil)
-        withTransaction(transaction) {
+        withTransaction(Transaction(animation: nil)) {
             self.yAxisTicks = yAxisScale.ticks
         }
     }
@@ -451,8 +450,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
             // Suppress animation for tick changes
-            var transaction = Transaction(animation: nil)
-            withTransaction(transaction) {
+            withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks
             }
         }
