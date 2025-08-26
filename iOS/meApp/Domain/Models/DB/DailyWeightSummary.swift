@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-final class BathScaleWeightSummary: Identifiable {
+final class BathScaleWeightSummary: Identifiable, Equatable {
     var id: UUID
     var accountId: String
     var period: String       // "YYYY-MM-DD"
@@ -67,6 +67,30 @@ final class BathScaleWeightSummary: Identifiable {
         self.visceralFatLevel = visceralFatLevel
         self.boneMass = boneMass
         self.impedance = impedance
+    }
+    
+    // MARK: - Equatable
+    static func == (lhs: BathScaleWeightSummary, rhs: BathScaleWeightSummary) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.period == rhs.period &&
+               lhs.weight == rhs.weight &&
+               lhs.date == rhs.date &&
+               lhs.count == rhs.count &&
+               lhs.accountId == rhs.accountId &&
+               lhs.entryTimestamp == rhs.entryTimestamp &&
+               lhs.bodyFat == rhs.bodyFat &&
+               lhs.muscleMass == rhs.muscleMass &&
+               lhs.water == rhs.water &&
+               lhs.bmi == rhs.bmi &&
+               lhs.bmr == rhs.bmr &&
+               lhs.metabolicAge == rhs.metabolicAge &&
+               lhs.proteinPercent == rhs.proteinPercent &&
+               lhs.pulse == rhs.pulse &&
+               lhs.skeletalMusclePercent == rhs.skeletalMusclePercent &&
+               lhs.subcutaneousFatPercent == rhs.subcutaneousFatPercent &&
+               lhs.visceralFatLevel == rhs.visceralFatLevel &&
+               lhs.boneMass == rhs.boneMass &&
+               lhs.impedance == rhs.impedance
     }
 }
 
