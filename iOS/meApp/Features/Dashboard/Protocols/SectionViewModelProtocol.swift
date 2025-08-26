@@ -84,9 +84,3 @@ protocol SectionViewModelProtocol: ObservableObject {
     var shouldAnimateChartData: Bool { get }
 }
 
-/// Enum for goal placement
-enum GoalPlacement {
-    case top
-    case middle
-    case bottom
-}

@@ -206,17 +206,9 @@ class DashboardStore: ObservableObject {
         }
         return metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: cachedDashboardType ?? .dashboard12
+            dashboardType: cachedDashboardType ?? .dashboard12,
+            removedMetrics: state.ui.removedMetrics
         )
-        
-        // In edit mode, show all metrics so users can toggle removal state
-        // In non-edit mode, filter out removed metrics
-        if state.ui.isEditMode {
-            return baseMetrics
-        } else {
-            let filteredMetrics = baseMetrics.filter { !state.ui.removedMetrics.contains($0.label) }
-            return filteredMetrics
-        }
     }
     
     // Cache dashboard type to prevent repeated calls
@@ -628,7 +620,22 @@ class DashboardStore: ObservableObject {
             
             logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration: \(error)")
+            logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
+        }
+    }
+    
+    /// Syncs the removal state from the metrics manager to the UI state
+    private func syncRemovalStateFromMetricsManager() {
+        // Get the current metrics from the manager
+        let currentMetrics = metricsManager.state.metrics
+        let activeCount = metricsManager.state.activeMetricsCount
+        
+        // Clear existing removal state
+        state.ui.removedMetrics.removeAll()
+        
+        // Mark metrics beyond the active count as removed
+        for i in activeCount..<currentMetrics.count {
+            state.ui.removedMetrics.insert(currentMetrics[i].label)
         }
     }
     
@@ -692,6 +699,40 @@ class DashboardStore: ObservableObject {
         let streak = streakItemsToShow[reorderedIndex]
         guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return false }
         return streakManager.isStreakRemoved(at: originalIndex)
+    }
+    
+    // MARK: - Removal Status Methods for UIKit Views
+    
+    /// Returns true if the metric with the given label is currently removed
+    func isMetricRemoved(_ metricLabel: String) -> Bool {
+        // Check if the metric is in the removed metrics set
+        return state.ui.removedMetrics.contains(metricLabel)
+    }
+    
+    /// Returns true if the streak with the given label is currently removed
+    func isStreakRemoved(_ streakLabel: String) -> Bool {
+        // Check if the streak is in the removed streaks set
+        return state.ui.removedStreaks.contains(streakLabel)
+    }
+    
+    // MARK: - Toggle Removal Methods for UIKit Views
+    
+    /// Toggles the removal state of a metric by its label
+    func toggleMetricRemoval(_ metricLabel: String) {
+        if state.ui.removedMetrics.contains(metricLabel) {
+            state.ui.removedMetrics.remove(metricLabel)
+        } else {
+            state.ui.removedMetrics.insert(metricLabel)
+        }
+    }
+    
+    /// Toggles the removal state of a streak by its label
+    func toggleStreakRemoval(_ streakLabel: String) {
+        if state.ui.removedStreaks.contains(streakLabel) {
+            state.ui.removedStreaks.remove(streakLabel)
+        } else {
+            state.ui.removedStreaks.insert(streakLabel)
+        }
     }
     
     func toggleGoalCardRemoval() {
