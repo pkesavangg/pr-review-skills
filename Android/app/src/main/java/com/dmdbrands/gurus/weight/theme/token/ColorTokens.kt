@@ -35,20 +35,23 @@ internal object LightColorToken {
   val textErrorDisabled = ColorPalette.Red100 // #F5C0BD
 
   // Action
-  val primaryAction = ColorPalette.Blue900 // #1565C0
+  val primaryFocusedAction = ColorPalette.Blue900
+  val primaryAction = ColorPalette.Blue800 // #1565C0
   val primaryActionDisabled = ColorPalette.Blue500 // #B8D6F4
   val secondaryAction = ColorPalette.Neutral1000 // #2C2827
   val secondaryActionDisabled = ColorPalette.Neutral400 // #D0CCCA
   val tertiaryAction = ColorPalette.Neutral600 // #7B726E
   val tertiaryActionDisabled = ColorPalette.Neutral400 // #D0CCCA
+  val tertiaryActionSecondary = ColorPalette.Neutral770
   val inverse = ColorPalette.Neutral100 // #FFFFFF
   val inverseDisabled = ColorPalette.Neutral300 // 50% of #FFFFFF
   val inverseSecondary = ColorPalette.Neutral150 // #F6F4F1
   val errorAction = ColorPalette.Red900 // #B3261E
   val errorActionDisabled = ColorPalette.Red100 // #F5C0BD
+  val errorActionSecondary = ColorPalette.Red800
 
   // Icon
-  val iconPrimary = ColorPalette.Blue900 // #1565C0
+  val iconPrimary = ColorPalette.Blue800 // #1565C0
   val iconPrimaryDisabled = ColorPalette.Blue200 // #B8D6F4
   val iconSecondary = ColorPalette.Neutral600 // #7B726E
   val iconSecondaryDisabled = ColorPalette.Neutral400 // #D0CCCA
@@ -91,17 +94,20 @@ internal object DarkColorToken {
   val textErrorDisabled = ColorPalette.Red950 // #5C1A16
 
   // Action
+  val primaryFocusedAction = ColorPalette.Blue980
   val primaryAction = ColorPalette.Blue400 // #2B8AEB
   val primaryActionDisabled = ColorPalette.Blue600 // 40% of #2B8AEB
   val secondaryAction = ColorPalette.Neutral700 // #E0E1E1
   val secondaryActionDisabled = ColorPalette.Neutral800 // #565F68
   val tertiaryAction = ColorPalette.Neutral750 // #92989F
   val tertiaryActionDisabled = ColorPalette.Neutral800 // #565F68
+  val tertiaryActionSecondary = ColorPalette.Neutral780
   val inverse = ColorPalette.Neutral900 // #222D39
   val inverseDisabled = ColorPalette.Neutral850 // #50% of #222D39
   val inverseSecondary = ColorPalette.Neutral950 // #12161B
   val errorAction = ColorPalette.Red500 // #F28B82
   val errorActionDisabled = ColorPalette.Red950 // #5C1A16
+  val errorActionSecondary = ColorPalette.Red850
 
   // Icon
   val iconPrimary = ColorPalette.Blue400 // #2B8AEB

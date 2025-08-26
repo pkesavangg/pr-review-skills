@@ -8,7 +8,9 @@ object ColorPalette {
   val Blue400 = Color(0xFF2B8AEB)
   val Blue500 = Color(0x801565C0)
   val Blue600 = Color(0x802B8AEB)
-  val Blue900 = Color(0xFF1565C0)
+  val Blue800 = Color(0xFF1565C0)
+  val Blue900 = Color(0xFF11519A)
+  val Blue980 = Color(0xFF55A1EF)
   val Blue950 = Color(0x662B8AEB)
   val Blue1000 = Color(0xFF1A3959)
 
@@ -26,6 +28,8 @@ object ColorPalette {
   val Neutral650 = Color(0x40E0E1E1)     // 25% of #E0E1E1
   val Neutral700 = Color(0xFFE0E1E1)
   val Neutral750 = Color(0xFF92989F)
+  val Neutral770 = Color(0xFF5E5653)
+  val Neutral780 = Color(0xFF71767B)
   val Neutral800 = Color(0xFF565F68)
   val Neutral850 = Color(0x80222D39)     // 50% of #222D39o
   val Neutral900 = Color(0xFF222D39)
@@ -34,6 +38,8 @@ object ColorPalette {
 
   val Red100 = Color(0xFFF5C0BD)
   val Red500 = Color(0xFFF28B82)
+  val Red800 = Color(0xFF8C1D18)
+  val Red850 = Color(0xFFF6B1AA)
   val Red900 = Color(0xFFB3261E)
   val Red950 = Color(0xFF5C1A16)
 
