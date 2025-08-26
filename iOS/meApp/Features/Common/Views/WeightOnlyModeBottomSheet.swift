@@ -31,6 +31,7 @@ struct WeightOnlyModeBottomSheet: View {
             HStack {
                 Spacer()
                 Button {
+                   onDismiss()
                    dismiss()
                 } label: {
                     AppIconView(icon: AppAssets.close, size: IconSize(width: 16, height: 16))
@@ -46,9 +47,8 @@ struct WeightOnlyModeBottomSheet: View {
                 actionButtonsView
             }
         }
-        .padding([.horizontal, .top], .spacingLG)
+        .padding([.horizontal, .top, .bottom], .spacingLG)
         .frame(maxWidth: .infinity)
-        .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundPrimary)
         .onAppear {
             store.loadWeightOnlyScales()

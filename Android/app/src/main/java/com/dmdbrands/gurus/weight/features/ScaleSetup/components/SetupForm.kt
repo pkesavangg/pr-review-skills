@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,9 +39,11 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 
 /**
  * A reusable form component for scale setup screens that supports input fields,
@@ -58,6 +61,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  * @param onToggleChanged Callback invoked when the toggle state changes.
  * @param supportingImage Resource ID for an optional supporting image.
  * @param onImeAction Callback invoked when IME action is triggered.
+ * @param enableScroll Whether to enable vertical scrolling of the form content. Defaults to true.
+ *                    Set to false if the form is already inside a scrollable container to avoid nested scrolling.
  */
 @Composable
 fun <T> SetupForm(
@@ -81,15 +86,39 @@ fun <T> SetupForm(
   noteMessage: String? = null,
   onSupportingButtonClick: (() -> Unit)? = null,
   onImeAction: (() -> Unit)? = null,
+  enableScroll: Boolean = true, // New parameter to control scrolling
+  userList: List<GGBTUser> = emptyList(), // List of existing usernames to check for duplicates
 ) {
+  // Add duplicate name validator if userList is provided
+  LaunchedEffect(userList) {
+    if (userList.isNotEmpty()) {
+      formControl.addValidator { value ->
+        if (value?.toString()?.let { name ->
+            userList.any { user -> user.name.equals(name, ignoreCase = true) }
+          } == true) {
+          ValidationError("DUPLICATE_NAME", BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
+        } else null
+      }
+    }
+  }
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }
 
   Column(
     modifier = modifier
       .fillMaxSize()
-      .padding(horizontal = spacing.sm, vertical = spacing.md)
-      .verticalScroll(rememberScrollState())
+      .then(
+        // Only apply vertical scroll if enabled
+        if (enableScroll) {
+          Modifier
+            .padding(horizontal = spacing.sm, vertical = spacing.md)
+            .verticalScroll(rememberScrollState())
+        } else {
+          Modifier
+            .fillMaxSize()
+            .padding(horizontal = 0.dp, vertical = 0.dp)
+        },
+      )
       .clickable(
         interactionSource = interactionSource,
         indication = null,
@@ -131,8 +160,7 @@ fun <T> SetupForm(
         index = 0,
         total = 1,
         onClick = {},
-
-        )
+      )
       Spacer(modifier = Modifier.padding(bottom = spacing.sm))
     }
     // Input Field Section
@@ -216,36 +244,61 @@ fun <T> SetupForm(
 @Composable
 fun SetupFormPreview() {
   MeAppTheme {
-    remember {
-      FormControl.create("SSID", listOf(FormValidations.required()))
-    }
-    remember {
-      FormControl.create("", listOf(FormValidations.required()))
-    }
-    val userNameControl = remember { FormControl.create("Kristin", emptyList()) }
-
     Column(
       verticalArrangement = Arrangement.spacedBy(32.dp),
       modifier = Modifier.padding(16.dp),
     ) {
-
-      // User Name Form without Toggle
+      // Normal state
+      val normalControl = remember { FormControl.create("Kristin", emptyList()) }
       SetupForm(
-        formControl = userNameControl,
+        formControl = normalControl,
         title = ScaleFormStrings.UserNameTitle,
         subtitle = ScaleFormStrings.UserNameSubtitle,
         label = ScaleFormStrings.UserNameLabel,
         inputType = AppInputType.TEXT,
+      )
+
+      // Duplicate check state
+      val duplicateControl = remember { FormControl.create("John", emptyList()) }
+      SetupForm(
+        formControl = duplicateControl,
+        title = "Duplicate User",
+        subtitle = "Choose a new user name to proceed.",
+        label = "User name",
+        inputType = AppInputType.TEXT,
+        supportingButtonLabel = "Restore Account",
+        onSupportingButtonClick = {},
+        supportText = "Last active June 10, 2019",
+        userList = listOf(
+          GGBTUser(
+            name = "John",
+            token = "token1",
+            lastActive = System.currentTimeMillis(),
+            isBodyMetricsEnabled = true,
+          ),
+          GGBTUser(
+            name = "Jane",
+            token = "token2",
+            lastActive = System.currentTimeMillis(),
+            isBodyMetricsEnabled = false,
+          ),
+        ), // Existing users
+      )
+
+      // WiFi setup state
+      val wifiControl = remember { FormControl.create("MyNetwork", listOf(FormValidations.required())) }
+      SetupForm(
+        formControl = wifiControl,
+        title = "WiFi Setup",
+        subtitle = "Enter network details",
+        label = "Password",
+        inputType = AppInputType.PASSWORD,
         hasToggle = true,
         toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
-        toggleChecked = true,
+        toggleChecked = false,
         onToggleChanged = {},
-        // supportingImage = AppIcons.Setup.UserNameScale, // Placeholder
-        // supportingButtonLabel = "Restore Account",
-        // onSupportingButtonClick = {},
-        // supportText = "Last active June 10, 2019",
         isWifiConnected = true,
-        noteMessage = "Your phone should stay connected to the chosen 2GHZ network until setup is complete. ",
+        noteMessage = "Your phone should stay connected to the chosen 2GHZ network until setup is complete.",
       )
     }
   }

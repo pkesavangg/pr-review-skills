@@ -157,7 +157,7 @@ final class LoginStore: ObservableObject {
 
         do {
             let _ = try await accountService.logIn(
-                email: loginForm.email.value,
+                email: removeWhiteSpace(loginForm.email.value),
                 password: loginForm.password.value
             )
             // If the login is from account switching, dismiss the login screen

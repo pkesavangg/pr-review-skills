@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleUsers.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,12 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -32,6 +33,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 
 @Composable
 fun ScaleUserList(
@@ -84,7 +86,11 @@ fun ScaleUserList(
     }
 
     if (userList.isEmpty()) {
-      Column(Modifier.fillMaxSize()) {
+      Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+      ) {
         AppText(
           text = ScaleUsersStrings.NoUsers,
           textType = TextType.Body,
@@ -92,11 +98,7 @@ fun ScaleUserList(
         )
       }
     } else {
-
-      Column(
-        modifier = Modifier
-          .clip(RoundedCornerShape(borderRadius.sm)),
-      ) {
+      Column {
         if (userFormControl != null) {
           Row {
             AppText(
@@ -112,20 +114,26 @@ fun ScaleUserList(
             )
           }
         }
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(borderRadius.sm)),
+        ) {
 
-        userList.forEach { user ->
-          ScaleUserItem(
-            user = user,
-            onDeleteUser = onDeleteUser,
-          )
-          if (userList.size > 1 && userList.indexOf(user) < userList.size - 1) {
-            HorizontalDivider(
-              color = colorScheme.utility,
-              thickness = .5.dp,
+          userList.forEach { user ->
+            ScaleUserItem(
+              user = user,
+              onDeleteUser = onDeleteUser,
             )
+            if (userList.size > 1 && userList.indexOf(user) < userList.size - 1) {
+              HorizontalDivider(
+                color = colorScheme.utility,
+                thickness = .5.dp,
+              )
+            }
           }
-        }
 
+        }
       }
     }
   }

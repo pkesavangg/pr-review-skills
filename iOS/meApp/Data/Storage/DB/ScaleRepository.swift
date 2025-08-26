@@ -135,8 +135,30 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     func createScale(_ scale: Device) async throws -> Device {
         let device = scale
         device.isSynced = false
+        
+        // Insert the main device first
         context.insert(device)
+        
+        // Handle relationships - insert related entities and establish relationships
+        if let bathScale = device.bathScale {
+            context.insert(bathScale)
+            device.bathScale = bathScale
+        }
+        
+        if let r4Preference = device.r4ScalePreference {
+            // Ensure the preference has the correct scale ID
+            r4Preference.id = device.id
+            context.insert(r4Preference)
+            device.r4ScalePreference = r4Preference
+        }
+        
+        if let metaData = device.metaData {
+            context.insert(metaData)
+            device.metaData = metaData
+        }
+        
         try context.save()
+        logger.log(level: .info, tag: "ScaleRepository", message: "Successfully created scale with ID: \(device.id)")
         return device
     }
 
@@ -263,12 +285,27 @@ final class ScaleRepository: ScaleRepositoryProtocol {
 
             device.isSynced = true // Mark as synced since they come from server
             device.hasServerID = true
+            
+            // Insert the main device first
             context.insert(device)
             
-            if let pref = device.r4ScalePreference {
-                pref.id = device.id
-                device.r4ScalePreference = pref
-                pref.isSynced = true
+            // Handle relationships properly - insert related entities and establish relationships
+            if let bathScale = device.bathScale {
+                context.insert(bathScale)
+                device.bathScale = bathScale
+            }
+            
+            if let r4Preference = device.r4ScalePreference {
+                r4Preference.id = device.id
+                r4Preference.isSynced = true
+                context.insert(r4Preference)
+                device.r4ScalePreference = r4Preference
+            }
+            
+            if let metaData = device.metaData {
+                metaData.isSynced = true
+                context.insert(metaData)
+                device.metaData = metaData
             }
         }
         

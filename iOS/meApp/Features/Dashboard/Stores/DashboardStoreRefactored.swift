@@ -65,6 +65,10 @@ class DashboardStore: ObservableObject {
             await initializeDashboard()
         }
     }
+    
+    func syncEntries() async {
+        await entryService.syncAllEntriesWithRemote()
+    }
 
     // MARK: - Reactive Bindings
     private func setupBindings() {

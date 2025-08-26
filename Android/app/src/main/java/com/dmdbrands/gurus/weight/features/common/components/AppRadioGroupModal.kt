@@ -68,19 +68,19 @@ fun <T> AppRadioGroupModal(
     var currentSelection by remember { mutableStateOf(selectedItem) }
 
     BaseModal(
-        title = title,
-        body = subtitle,
-        primaryAction =
+      title = title,
+      subtitle = subtitle,
+      primaryAction =
             ActionButton(
                 text = confirmText,
                 action = { onOk(currentSelection) },
             ),
-        secondaryAction =
+      secondaryAction =
             ActionButton(
                 text = cancelText,
                 action = onCancel,
             ),
-        modifier = modifier,
+      modifier = modifier,
     ) {
         // Add spacing before radio group content
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))

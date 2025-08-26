@@ -30,9 +30,12 @@ struct DashboardScreen: View {
                         store.cancelEdit()
                     }
                 }
-            dashboardScroll()
+              dashboardScroll()
         }
-        .refreshable { store.onAppearActions() }
+        .refreshable {
+            await store.syncEntries()
+            store.onAppearActions()
+        }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)

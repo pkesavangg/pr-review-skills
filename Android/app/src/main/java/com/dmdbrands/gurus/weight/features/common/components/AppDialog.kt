@@ -41,7 +41,7 @@ fun AppDialog(
         BaseModal(
           modifier,
           title = title,
-          body = body,
+          subtitle = body,
           primaryActionType = primaryActionType,
           primaryAction = confirmAction,
           secondaryAction = dismissAction,
