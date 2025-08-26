@@ -128,7 +128,7 @@ class GoalCardCell: UICollectionViewCell {
         
         // Apply EditModeOverlay to the GoalProgressView only when appropriate
         let shouldShowOverlay = store.state.ui.isEditMode && 
-                               !(store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged)
+                               !(store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged || suppressOverlay)
         
         let viewWithOverlay: AnyView
         if shouldShowOverlay {
@@ -140,7 +140,7 @@ class GoalCardCell: UICollectionViewCell {
                         onToggleRemoval: {
                             store.toggleGoalCardRemoval()
                         },
-                        isBeingDragged: false, // Always false when we want to show overlay
+                        isBeingDragged: currentIsBeingDragged || isLongPressed, // Use actual drag state
                         isDropTarget: store.state.ui.dropHoverId == "goalCard",
                         rowIndex: rowIndex,
                         disableWiggle: false
@@ -339,12 +339,29 @@ class GoalCardCell: UICollectionViewCell {
         suppressOverlay = suppressed
         if !suppressed {
             isLongPressed = false
+            
+            // When restoring overlays, add a small delay to ensure layout is fully settled
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                guard let self = self,
+                      let store = self.currentStore else { return }
+                
+                // Force a complete reconfiguration to ensure overlay is properly positioned
+                self.configure(with: store)
+                
+                // Force layout update to ensure overlay is fully visible
+                self.setNeedsLayout()
+                self.layoutIfNeeded()
+                
+                // Ensure the hosting controller view is properly positioned and sized
+                if let hostingView = self.hostingController?.view {
+                    hostingView.frame = self.contentView.bounds
+                    hostingView.bounds = self.contentView.bounds
+                    hostingView.setNeedsLayout()
+                    hostingView.layoutIfNeeded()
+                }
+            }
         } else {
             isLongPressed = true
-        }
-        // Always reconfigure to update overlay visibility
-        if let store = currentStore {
-            configure(with: store)
         }
     }
 

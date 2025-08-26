@@ -295,8 +295,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-            // The outer margin for the whole grid
-            return UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+            // If GoalCard is removed, increase top padding for streaks
+            let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
+            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 16.0, right: 16.0)
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
@@ -884,9 +885,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 if case .streak(let streakItem) = droppedItem {
                     // Store the dropped streak item ID for later overlay restoration
                     lastDroppedStreakId = streakItem.id.uuidString
+                    
+                    // Make sure the overlay is suppressed during the drop
+                    if let targetCell = collectionView.visibleCells.first(where: { cell in
+                        guard let streakCell = cell as? StreakCardCell, let rep = streakCell.representedItem else { return false }
+                        return rep.id.uuidString == streakItem.id.uuidString
+                    }) as? StreakCardCell {
+                        targetCell.setOverlaySuppressed(true)
+                    }
                 } else if droppedItem == .goalCard {
                     // Mark that goal card was dropped
                     lastDroppedGoalCard = true
+                    
+                    // Make sure the overlay is suppressed during the drop
+                    if let targetCell = collectionView.visibleCells.first(where: { cell in
+                        return cell is GoalCardCell
+                    }) as? GoalCardCell {
+                        targetCell.setOverlaySuppressed(true)
+                    }
                 }
             }
 
@@ -1157,15 +1173,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     cell.transform = .identity
                     cell.contentView.transform = .identity
                     
-                    // Only update drag state if we're in edit mode to prevent unnecessary changes
+                    // Restore overlay visibility if in edit mode - follow exact pattern from MetricGridUIKitView
                     if self.store.state.ui.isEditMode {
                         if let streakCell = cell as? StreakCardCell {
                             streakCell.updateDragState(false)
-                            // Don't reset drop state here - wait for layout to fully settle
+                            streakCell.setOverlaySuppressed(false)
                             // Force clear all shadow effects to prevent shadow artifacts
                             streakCell.clearAllShadowEffects()
                         } else if let goalCell = cell as? GoalCardCell {
                             goalCell.updateDragState(false)
+                            goalCell.setOverlaySuppressed(false)
                             // Force clear all shadow effects to prevent shadow artifacts
                             goalCell.clearAllShadowEffects()
                         }
@@ -1173,54 +1190,38 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
             CATransaction.commit()
-            
+
             // Clear any remaining drag state
             store.state.ui.isGoalCardBeingDragged = false
             
             // Reset drop target tracking
             resetDropTargetTracking()
             
-            // Restore overlay visibility after layout rerender, following the same pattern as MetricGridUIKitView
+            // Add a delay to ensure layout has fully settled before restoring overlays
             if store.state.ui.isEditMode && isAwaitingDropEnd {
-                let restore = {
-                    if let targetId = self.lastDroppedStreakId,
-                       let targetCell = collectionView.visibleCells.first(where: { cell in
-                           guard let streakCell = cell as? StreakCardCell, let rep = streakCell.representedItem else { return false }
-                           return rep.id.uuidString == targetId
-                       }) as? StreakCardCell {
-                        targetCell.setOverlaySuppressed(false)
-                        // Don't call updateDropState here - let the cell's configure method handle it
-                        targetCell.setNeedsLayout()
-                        targetCell.layoutIfNeeded()
-                    } else if self.lastDroppedGoalCard,
-                              let targetCell = collectionView.visibleCells.first(where: { cell in
-                                  return cell is GoalCardCell
-                              }) as? GoalCardCell {
-                        targetCell.setOverlaySuppressed(false)
-                        // Don't call updateDropState here - let the cell's configure method handle it
-                        targetCell.setNeedsLayout()
-                        targetCell.layoutIfNeeded()
-                    } else {
-                        // Fallback: restore all if we cannot identify the dropped cell
+                // First, mark that we're no longer awaiting drop end
+                self.isAwaitingDropEnd = false
+                
+                // Then add a delay before restoring overlays
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // After the delay, force a layout pass on all cells
+                    UIView.performWithoutAnimation {
+                        collectionView.layoutIfNeeded()
+                        
+                        // Now restore overlays on all cells
                         for cell in collectionView.visibleCells {
                             if let streakCell = cell as? StreakCardCell {
                                 streakCell.setOverlaySuppressed(false)
-                                // Don't call updateDropState here - let the cell's configure method handle it
-                                streakCell.setNeedsLayout()
-                                streakCell.layoutIfNeeded()
                             } else if let goalCell = cell as? GoalCardCell {
                                 goalCell.setOverlaySuppressed(false)
-                                // Don't call updateDropState here - let the cell's configure method handle it
-                                goalCell.setNeedsLayout()
-                                goalCell.layoutIfNeeded()
                             }
                         }
                     }
-                    self.isAwaitingDropEnd = false
+                    
+                    // Clear tracking state
                     self.lastDroppedStreakId = nil
                     self.lastDroppedGoalCard = false
                 }
-                restore()
             } else {
                 isAwaitingDropEnd = false
                 lastDroppedStreakId = nil
