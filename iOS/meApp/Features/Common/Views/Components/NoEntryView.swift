@@ -10,14 +10,14 @@ import SwiftUI
 struct NoEntryView: View {
     @Environment(\.appTheme) private var theme
 
-    let title: String
-    let description: String
+    let title: String?
+    let description: String?
     let buttonTitle: String
     let onButtonTap: () -> Void
 
     init(
-        title: String = EntryStrings.noEntries,
-        description: String = EntryStrings.toStart,
+        title: String? = EntryStrings.noEntries,
+        description: String? = EntryStrings.toStart,
         buttonTitle: String = CommonStrings.connectScale,
         onButtonTap: @escaping () -> Void
     ) {
@@ -31,27 +31,31 @@ struct NoEntryView: View {
         VStack(spacing: .spacingMD) {
             Spacer()
 
-            // Title and description
+            // Title and description (shown only if non-nil)
             VStack(spacing: .spacingXS) {
-                Text(title)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .multilineTextAlignment(.center)
+                if let title = title {
+                    Text(title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.center)
+                }
 
-                Text(description)
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
-                    .multilineTextAlignment(.center)
+                if let description = description {
+                    Text(description)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.center)
+                }
             }
 
             // Connect scale button
             ButtonView(
-              text: buttonTitle,
-              type: .filledPrimary,
-              size: .large,
-              isDisabled: false,
-              action: onButtonTap
-              )
+                text: buttonTitle,
+                type: .filledPrimary,
+                size: .large,
+                isDisabled: false,
+                action: onButtonTap
+            )
 
             Spacer()
         }
@@ -63,7 +67,7 @@ struct NoEntryView: View {
 #if DEBUG
 struct NoEntryView_Previews: PreviewProvider {
     static var previews: some View {
-        NoEntryView(onButtonTap: {})
+        NoEntryView(title: nil, description: nil, onButtonTap: {})
             .environmentObject(Theme.shared)
     }
 }

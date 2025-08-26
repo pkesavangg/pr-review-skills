@@ -21,6 +21,9 @@ struct UIState {
     var selectedMetricLabel: String? = nil
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
+
+    var removedMetrics: Set<String> = [] 
+    var removedStreaks: Set<String> = [] 
     
     // Goal card position management (like large widget)
     var goalCardPosition: Int = 0 // Position after divider (0 = first position)

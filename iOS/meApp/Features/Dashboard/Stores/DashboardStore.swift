@@ -32,6 +32,8 @@ class DashboardStore: ObservableObject {
     private var snapshotGoalCardRemoved: Bool = false
     private var snapshotGoalCardPosition: Int = 0
     private var snapshotStreakGridOrder: [String] = []
+    private var snapshotRemovedMetrics: Set<String> = []
+    private var snapshotRemovedStreaks: Set<String> = []
     private var hasEditSnapshot: Bool = false
     
     // MARK: - Constants
@@ -44,6 +46,9 @@ class DashboardStore: ObservableObject {
     public let streakManager: DashboardStreakManager
     private let dataManager: DashboardDataManager
     
+    var shouldShowGoalCardOrStreaks: Bool {
+            !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
+        }
     // MARK: - Initialization
     init() {
         // Initialize managers
@@ -203,6 +208,15 @@ class DashboardStore: ObservableObject {
             isEditMode: state.ui.isEditMode,
             dashboardType: cachedDashboardType ?? .dashboard12
         )
+        
+        // In edit mode, show all metrics so users can toggle removal state
+        // In non-edit mode, filter out removed metrics
+        if state.ui.isEditMode {
+            return baseMetrics
+        } else {
+            let filteredMetrics = baseMetrics.filter { !state.ui.removedMetrics.contains($0.label) }
+            return filteredMetrics
+        }
     }
     
     // Cache dashboard type to prevent repeated calls
@@ -210,7 +224,8 @@ class DashboardStore: ObservableObject {
     
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
-        determineDashboardTypeFromAccount()
+        // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
+        state.metrics.dashboardType
     }
     
     var streakColumns: [GridItem] {
@@ -218,7 +233,15 @@ class DashboardStore: ObservableObject {
     }
     
     var streakItemsToShow: [MetricItem] {
-        return streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+        let baseStreaks = streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
+        
+        // In edit mode, show all streaks so users can toggle removal state
+        // In non-edit mode, filter out removed streaks
+        if state.ui.isEditMode {
+            return baseStreaks
+        } else {
+            return baseStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
+        }
     }
     
     var isAnyItemBeingDragged: Bool {
@@ -226,11 +249,25 @@ class DashboardStore: ObservableObject {
     }
     
     var allContentRemoved: Bool {
-        metricsToShow.isEmpty && (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && (!streakManager.shouldShowStreakGrid())
+        // Check if all metrics are removed (when not in edit mode)
+        let allMetricsRemoved = !state.ui.isEditMode && 
+            metricsManager.state.metrics.allSatisfy { state.ui.removedMetrics.contains($0.label) }
+        
+        // Check if all streaks are removed (when not in edit mode)
+        let allStreaksRemoved = !state.ui.isEditMode && 
+            streakManager.state.streakItems.allSatisfy { state.ui.removedStreaks.contains($0.label) }
+        
+        return metricsToShow.isEmpty && 
+               (!state.ui.isEditMode && state.ui.isGoalCardRemoved) && 
+               (!streakManager.shouldShowStreakGrid()) &&
+               allMetricsRemoved &&
+               allStreaksRemoved
     }
     
     var shouldShowStreakGrid: Bool {
-        streakManager.shouldShowStreakGrid()
+        // Only show streak grid if there are visible (non-removed) streaks
+        let visibleStreaks = streakItemsToShow.filter { !state.ui.removedStreaks.contains($0.label) }
+        return !visibleStreaks.isEmpty
     }
     
     // Delegate data operations to DataManager
@@ -484,12 +521,14 @@ class DashboardStore: ObservableObject {
         // Load dashboard configuration from API
         await loadDashboardConfigurationFromAPI()
         
+        // Ensure removal state is synced after API loading
+        syncRemovalStateFromMetricsManager()
+
         // Load other data
         loadLatestEntryData()
         
         // Initialize chart - data will be available from ContentView loading
         initializeChart()
-        
     }
     
     // MARK: - Dashboard Type Management
@@ -509,12 +548,12 @@ class DashboardStore: ObservableObject {
         
         if let dashboardTypeString = account.dashboardSettings?.dashboardType {
             // Support canonical raw values and legacy stored values
-            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "dashboard12" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard12.rawValue  {
+                //logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
                 return .dashboard12
             }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "dashboard4" {
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
+            if dashboardTypeString == DashboardType.dashboard4.rawValue  {
+               // logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
                 return .dashboard4
             }
         }
@@ -524,6 +563,11 @@ class DashboardStore: ObservableObject {
             let metricsCount = metricsCSV.split(separator: ",").count
             if metricsCount >= 12 {
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
+                return .dashboard12
+            }
+            // If there are zero configured metrics, keep the dashboard at 12 so the grid shows 3 columns
+            if metricsCount == 0 {
+                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
                 return .dashboard12
             }
         }
@@ -697,7 +741,14 @@ class DashboardStore: ObservableObject {
     
     /// Toggles the edit mode state
     func toggleEditMode() {
-        state.ui.isEditMode.toggle()
+        if !state.ui.isEditMode {
+            // Entering edit mode - begin edit session
+            beginEdit()
+            state.ui.isEditMode = true
+        } else {
+            // Already in edit mode - reset current edit session and start fresh
+            resetEditSession()
+        }
     }
     
     // Delegate graph operations to GraphManager
@@ -723,6 +774,9 @@ class DashboardStore: ObservableObject {
             }
             
             await MainActor.run {
+                // Sync removal state to ensure consistency
+                self.syncRemovalStateFromMetricsManager()
+                
                 self.updateYAxisCache()
                 self.objectWillChange.send()
             }
@@ -1434,8 +1488,10 @@ class DashboardStore: ObservableObject {
         snapshotGoalCardRemoved = state.ui.isGoalCardRemoved
         snapshotGoalCardPosition = state.ui.goalCardPosition
         snapshotStreakGridOrder = state.ui.streakGridOrder
+        snapshotRemovedMetrics = state.ui.removedMetrics
+        snapshotRemovedStreaks = state.ui.removedStreaks
         hasEditSnapshot = true
-        logger.log(level: .info, tag: "DashboardStore", message: "Edit snapshot captured")
+
     }
     
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
@@ -1450,6 +1506,8 @@ class DashboardStore: ObservableObject {
             state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
             state.ui.goalCardPosition = snapshotGoalCardPosition
             state.ui.streakGridOrder = snapshotStreakGridOrder
+            state.ui.removedMetrics = snapshotRemovedMetrics
+            state.ui.removedStreaks = snapshotRemovedStreaks
         }
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
@@ -1462,5 +1520,44 @@ class DashboardStore: ObservableObject {
         }
         hasEditSnapshot = false
         objectWillChange.send()
+    }
+
+    /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
+    func resetEditSession() {
+        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
+        
+        // First, restore the original state from snapshot
+        if hasEditSnapshot {
+            metricsManager.state.metrics = snapshotMetrics
+            metricsManager.state.activeMetricsCount = snapshotActiveMetricsCount
+            streakManager.state.streakItems = snapshotStreakItems
+            streakManager.state.activeStreakItemsCount = snapshotActiveStreakItemsCount
+            state.ui.isGoalCardRemoved = snapshotGoalCardRemoved
+            state.ui.goalCardPosition = snapshotGoalCardPosition
+            state.ui.streakGridOrder = snapshotStreakGridOrder
+            state.ui.removedMetrics = snapshotRemovedMetrics
+            state.ui.removedStreaks = snapshotRemovedStreaks
+        }
+        
+        // Additionally, ensure order is restored to API/defaults when resetting within edit mode
+        metricsManager.resetOrderToDefault()
+        if state.metrics.dashboardType == .dashboard12 {
+            metricsManager.resetActiveMetricsCountToShowAll()
+        }
+
+        // Clear selection/drag state
+        state.ui.selectedMetricLabel = nil
+        state.ui.draggingMetric = nil
+        state.ui.draggingStreak = nil
+        state.ui.dropHoverId = nil
+        
+        // Clear the old snapshot and create a fresh one
+        hasEditSnapshot = false
+        beginEdit()
+        
+        // Force UI update to reflect the reset state
+        objectWillChange.send()
+        
+        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }
