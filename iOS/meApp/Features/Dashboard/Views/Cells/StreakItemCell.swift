@@ -414,14 +414,14 @@ class StreakCardCell: UICollectionViewCell {
         guard let hostingController = hostingController else {
             let fallbackView = UIView(frame: contentView.bounds)
             fallbackView.backgroundColor = UIColor.systemBackground
-            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.cornerRadius = .radiusSM
             fallbackView.layer.masksToBounds = true
             return fallbackView
         }
         
         let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
         snapshot?.frame = contentView.bounds
-        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.cornerRadius = .radiusSM
         snapshot?.layer.masksToBounds = true
         snapshot?.backgroundColor = .clear
         return snapshot ?? UIView(frame: contentView.bounds)

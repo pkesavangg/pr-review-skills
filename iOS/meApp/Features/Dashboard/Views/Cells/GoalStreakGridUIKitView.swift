@@ -330,7 +330,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }
@@ -351,8 +351,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 let params = UIDragPreviewParameters()
                 params.backgroundColor = .clear
-                // Match Metric grid: build path from previewView bounds and use 16 corner radius
-                params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                // Match Metric grid: build path from previewView bounds and use .radiusSM corner radius
+                params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
 
                 // Match Metric grid: use configured preview scale for consistency
                 let scale = DashboardConstants.UI.dragPreviewScale
@@ -390,7 +390,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     }
                     let params = UIDragPreviewParameters()
                     params.backgroundColor = .clear
-                    params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                    params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
 
                     // Match Metric grid: use configured preview scale for consistency
                     let scale = DashboardConstants.UI.dragPreviewScale
@@ -903,7 +903,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }

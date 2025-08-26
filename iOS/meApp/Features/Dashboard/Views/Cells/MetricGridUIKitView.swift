@@ -341,7 +341,7 @@ extension MetricGridUIKitView {
             let parameters = UIDragPreviewParameters()
             parameters.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return parameters
         }
@@ -354,7 +354,7 @@ extension MetricGridUIKitView {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -381,7 +381,7 @@ extension MetricGridUIKitView {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -657,7 +657,7 @@ extension MetricGridUIKitView {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }
