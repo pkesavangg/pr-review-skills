@@ -63,7 +63,7 @@ struct DashboardStrings {
     }
     
     // Empty state messages
-    static let noEntriesMessage = "To collect your first entry, connect a scale or add a manual entry."
+    static let noEntriesMessage = "To collect an entry, connect a scale or add a manual entry."
     static func noEntriesInPeriodMessage(_ timePeriod: String) -> String {
         return "You haven't added any entries this \(timePeriod)."
     }

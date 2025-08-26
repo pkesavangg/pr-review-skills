@@ -20,58 +20,55 @@ struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
-
+    
     // Local state variables for chart selection (like WeightGraph)
     @State private var selectedXValue: Date?
-
+    
     // Scroll detection state
     @State private var hasDetectedScrollInCurrentGesture = false
-
+    
     // Decision window state
     @State private var touchInteractionMode: TouchInteractionMode = .none
     @State private var initialTouchPoint: CGPoint = .zero
     @State private var decisionTimer: Timer?
-
+    
     // Callout positioning
     @State private var chartFrame: CGRect = .zero
-
+    
     // Check if there are any entries to display
     private var hasEntries: Bool {
         return !dashboardStore.continuousOperations.isEmpty
     }
-
+    
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
         return DashboardStrings.noEntriesMessage
     }
-
+    
     var body: some View {
         VStack(alignment: .leading){
             // Preserve layout height: fade the label out instead of removing it to avoid jump
             Text(dashboardStore.weightLabel)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.textSubheading)
-                    .opacity(dashboardStore.state.graph.selectedPoint == nil ? 1 : 0)
-                    .padding(.leading, .spacingSM)
-                    .padding(.vertical, .spacingXS)
-            if hasEntries {
-                chartView
-            } else {
-                emptyStateView
-            }
+                .fontOpenSans(.subHeading2)
+                .foregroundColor(theme.textSubheading)
+                .opacity(dashboardStore.state.graph.selectedPoint == nil ? 1 : 0)
+                .padding(.leading, .spacingSM)
+                .padding(.vertical, .spacingXS)
+            
+            chartView
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
-
+            
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-
+        
     }
-
+    
     // MARK: - Chart View
     private var chartView: some View {
         return HStack(spacing: 0) {
@@ -173,7 +170,7 @@ struct GraphView: View {
                 //.animation(dashboardStore.state.graph.isScrolling ? .none : .easeOut(duration: 0.1), value: dashboardStore.yAxisTicks)
                 .animation(.none, value: dashboardStore.state.graph.xScrollPosition) // Never animate scroll position
                 .animation(.none, value: dashboardStore.state.graph.isScrolling) // Never animate scrolling state changes
-
+                
                 // Apply decision window modifier first, then scroll detection
                 .modifier(DecisionWindowModifier(
                     touchInteractionMode: $touchInteractionMode,
@@ -184,29 +181,29 @@ struct GraphView: View {
                 ))
                 // Keep existing scroll detection modifier
                 .modifier(ScrollDetectionModifier(dashboardStore: dashboardStore, hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture, selectedXValue: $selectedXValue))
-
+                
                 // Selection callout overlay - shows when a point is selected
                 if let selectedPoint = dashboardStore.state.graph.selectedPoint,
                    dashboardStore.state.graph.showCrosshair {
                     selectionCallout(for: selectedPoint)
                 }
-
+                
                 // Goal chip overlay - shows goal weight chip positioned based on ticks
                 if dashboardStore.goalWeightForDisplay != 0 {
                     goalChipCallout()
                 }
             }
         }
-
+        
     }
-
+    
     // MARK: - Selection Callout
     @ViewBuilder
     private func selectionCallout(for selectedPoint: BathScaleWeightSummary) -> some View {
         if let displayWeight = dashboardStore.displayWeight,
            let chartPosition = getChartPosition(for: selectedPoint.date, value: displayWeight),
            chartFrame.width > 0 {
-
+            
             // Base positioning relative to the selected point
             let isOnLeftSide = chartPosition.x < chartFrame.width / 2
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
@@ -220,19 +217,19 @@ struct GraphView: View {
                     y: -15 // Position above chart boundary
                 )
         }
-      }
-
-            // MARK: - Goal Chip Callout
+    }
+    
+    // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalWeight = dashboardStore.goalWeightForDisplay
         let yAxisDomain = dashboardStore.yAxisDomain
-
+        
         // Always show goal chip - it has special significance even if it matches a tick
         let goalPosition = getGoalChipPosition(goalWeight: goalWeight, ticks: [], domain: yAxisDomain)
-
+        
         let xOffset = getGoalChipXOffset(for: goalWeight)
-
+        
         goalWeightChip(goalWeight)
             .position(
                 x: chartFrame.width > 0 ? chartFrame.width - xOffset : 320,
@@ -240,11 +237,11 @@ struct GraphView: View {
             )
             .animation(shouldAnimateChartData ? .easeOut(duration: 0.3) : .none, value: goalPosition.yPosition)
     }
-
+    
     // MARK: - Goal Chip Positioning
     private func getGoalChipXOffset(for goalWeight: Double) -> CGFloat {
         let formattedText = dashboardStore.formatYAxisTickLabel(goalWeight)
-
+        
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
             return 32 // More space for 3+ digit values
@@ -252,41 +249,41 @@ struct GraphView: View {
             return 28 // Less space for 1-2 digit values
         }
     }
-
+    
     private func getGoalChipPosition(goalWeight: Double, ticks: [Double], domain: ClosedRange<Double>) -> (yPosition: CGFloat, placement: GoalPlacement) {
-
+        
         // Goal weight positioning based on domain only (no ticks dependency)
         let domainRange = domain.upperBound - domain.lowerBound
         guard domainRange > 0, chartFrame.height > 0 else {
             return (yPosition: chartFrame.height / 2, placement: .middle)
         }
-
+        
         // Account for X-axis height for periods that have X-axis (week, month, year)
         // Total period has no X-axis, so no height adjustment needed
         let availableChartHeight = chartFrame.height - 18
-
+        
         // If goal weight is higher than domain, show at top
         if goalWeight > domain.upperBound {
             return (yPosition: -25, placement: .top)
         }
-
+        
         // If goal weight is lower than domain, show at bottom
         if goalWeight < domain.lowerBound {
             return (yPosition: chartFrame.height + 20, placement: .bottom)
         }
-
+        
         // Goal weight is within domain range, calculate proportional position
         let yRatio = (goalWeight - domain.lowerBound) / domainRange
         guard yRatio.isFinite else {
             return (yPosition: chartFrame.height / 2, placement: .middle)
         }
-
+        
         // Calculate position within the available chart area (excluding X-axis)
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
-
+        
         return (yPosition: yPosition, placement: .middle)
     }
-
+    
     // MARK: - Goal Chip UI
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
@@ -298,24 +295,24 @@ struct GraphView: View {
             .padding(.vertical, 4)
             .background(Capsule().fill(theme.statusSuccess))
     }
-
+    
     // MARK: - Helper Methods for Callout
-
-        /// Calculate the chart position for a given date and value
+    
+    /// Calculate the chart position for a given date and value
     private func getChartPosition(for date: Date, value: Double) -> CGPoint? {
         let yAxisDomain = dashboardStore.yAxisDomain
-
+        
         let xPosition: CGFloat
-
+        
         if dashboardStore.state.graph.selectedPeriod == .total {
             // For TOTAL period, calculate position based on actual data range
             let allOperations = dashboardStore.continuousOperations
             guard !allOperations.isEmpty else { return nil }
-
+            
             let allDates = allOperations.map { $0.date }
             guard let minDate = allDates.min(), let maxDate = allDates.max() else { return nil }
-
-                        let totalTimeRange = maxDate.timeIntervalSince(minDate)
+            
+            let totalTimeRange = maxDate.timeIntervalSince(minDate)
             if totalTimeRange > 0 {
                 let timeFromStart = date.timeIntervalSince(minDate)
                 let xRatio = timeFromStart / totalTimeRange
@@ -332,117 +329,97 @@ struct GraphView: View {
             let xRatio = timeFromScrollPosition / visibleDomainLength
             xPosition = chartFrame.width * xRatio
         }
-
+        
         // Calculate y position relative to y-axis domain
         let domainRange = yAxisDomain.upperBound - yAxisDomain.lowerBound
         guard domainRange > 0, chartFrame.height > 0 else {
             return CGPoint(x: 0, y: chartFrame.height / 2)
         }
-
+        
         // Account for X-axis height for periods that have X-axis (week, month, year)
         // Total period has no X-axis, so no height adjustment needed
         let availableChartHeight = chartFrame.height + 18
-
+        
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {
             return CGPoint(x: 0, y: chartFrame.height / 2)
         }
-
+        
         // Calculate position within the available chart area (excluding X-axis)
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
-
+        
         // Add padding offsets
         let adjustedX = xPosition + (isAtLeftBoundary ? .spacingXS : 0)
         let adjustedY = yPosition
-
+        
         return CGPoint(x: adjustedX, y: adjustedY)
     }
     // MARK: - Computed Properties
-
+    
     /// Determines if chart data should animate based on data stability
     private var shouldAnimateChartData: Bool {
         // Only animate when not scrolling and data is stable
         return !dashboardStore.state.graph.isScrolling &&
-               !dashboardStore.continuousOperations.isEmpty
+        !dashboardStore.continuousOperations.isEmpty
     }
-
-
+    
+    
     /// Determines if the chart is scrolled to the leftmost boundary of the data
     private var isAtLeftBoundary: Bool {
         //if total period, return true
         if dashboardStore.state.graph.selectedPeriod == .total { return true }
-
+        
         guard !dashboardStore.continuousOperations.isEmpty else { return true }
-
+        
         let operations = dashboardStore.continuousOperations
         let allDates = operations.map { $0.date }
         guard let minDate = allDates.min() else { return true }
-
+        
         let currentScrollPosition = dashboardStore.state.graph.xScrollPosition
         let domainLength = dashboardStore.visibleDomainLength(for: dashboardStore.state.graph.selectedPeriod)
         let visibleStart = currentScrollPosition.addingTimeInterval(-domainLength / 2)
-
+        
         // Consider at boundary if visible start is at or before the minimum data date
         // Add small buffer (1 day) to account for minor scroll position variations
         let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
         return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
     }
-
-    // MARK: - Empty State View
-    private var emptyStateView: some View {
-        VStack(spacing: .spacingMD) {
-            Spacer()
-
-            Text(emptyStateMessage)
-                .fontOpenSans(.heading5)
-                .foregroundColor(theme.textHeading)
-                .fontWeight(.bold)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, .spacingLG)
-
-            Spacer()
-        }
-        .frame(height: 265)
-        .frame(maxWidth: .infinity, minHeight: 240)
-        .padding(.horizontal)
-        .background(theme.textInverse)
-    }
-
+    
     // MARK: - Chart Content Builders
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
         // Use cached Y-axis ticks instead of calling getYAxisScale() to prevent publishing errors
         let yAxisTicks = dashboardStore.yAxisTicks
-
+        
         ForEach(yAxisTicks, id: \.self) { tick in
-              RuleMark(y: .value("YGrid", tick))
-                    .lineStyle(StrokeStyle(lineWidth: 1))
-                    .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
-                    .zIndex(-1)
+            RuleMark(y: .value("YGrid", tick))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
+                .zIndex(-1)
         }
     }
-
+    
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         let seriesData = dashboardStore.chartSeriesData
         let groupedSeries = Dictionary(grouping: seriesData) { $0.series }
-
+        
         ForEach(Array(groupedSeries.keys.sorted()), id: \.self) { seriesName in
             if let seriesPoints = groupedSeries[seriesName] {
                 chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
             }
         }
     }
-
+    
     @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
         let segments = getConnectedSegments(from: seriesPoints, for: dashboardStore.state.graph.selectedPeriod)
-
+        
         ForEach(Array(segments.enumerated()), id: \.offset) { segmentIndex, segment in
             chartContentForSegment(segment: segment, seriesName: seriesName, segmentIndex: segmentIndex)
         }
     }
-
+    
     @ChartContentBuilder
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
@@ -451,7 +428,7 @@ struct GraphView: View {
             visiblePointMark(for: point)
         }
     }
-
+    
     @ChartContentBuilder
     private func invisibleTapTarget(for point: GraphSeries) -> some ChartContent {
         PointMark(
@@ -461,7 +438,7 @@ struct GraphView: View {
         .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
         .foregroundStyle(.clear)
     }
-
+    
     @ChartContentBuilder
     private func lineMarkForPoint(point: GraphSeries, seriesName: String, segmentIndex: Int) -> some ChartContent {
         LineMark(
@@ -473,7 +450,7 @@ struct GraphView: View {
         .interpolationMethod(.monotone)
         .lineStyle(StrokeStyle(lineWidth: 3))
     }
-
+    
     @ChartContentBuilder
     private func visiblePointMark(for point: GraphSeries) -> some ChartContent {
         PointMark(
@@ -483,7 +460,7 @@ struct GraphView: View {
         .symbolSize(point.date == dashboardStore.state.graph.selectedPoint?.date ? 200 : getPointSizeForPeriod())
         .foregroundStyle(by: .value("Series", point.series))
     }
-
+    
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
         if let selectedPoint = dashboardStore.state.graph.selectedPoint,
@@ -497,29 +474,29 @@ struct GraphView: View {
             .lineStyle(StrokeStyle(lineWidth: 1))
         }
     }
-
+    
     // MARK: - Smart Line Connection Logic
-
+    
     /// Groups chart data points into connected segments based on time gaps
     /// Prevents lines from connecting across missing data periods
     private func getConnectedSegments(from dataPoints: [GraphSeries], for period: TimePeriod) -> [[GraphSeries]] {
         guard !dataPoints.isEmpty else { return [] }
-
+        
         var segments: [[GraphSeries]] = []
         var currentSegment: [GraphSeries] = []
-
+        
         let sortedPoints = dataPoints.sorted { $0.date < $1.date }
-
+        
         for point in sortedPoints {
             if currentSegment.isEmpty {
                 currentSegment.append(point)
             } else {
                 let lastPoint = currentSegment.last!
                 let timeDifference = point.date.timeIntervalSince(lastPoint.date)
-
+                
                 // Define maximum gap based on time period
                 let maxGap: TimeInterval = getMaximumGap(for: period)
-
+                
                 if timeDifference <= maxGap {
                     // Continue current segment
                     currentSegment.append(point)
@@ -532,15 +509,15 @@ struct GraphView: View {
                 }
             }
         }
-
+        
         // Add the last segment
         if !currentSegment.isEmpty {
             segments.append(currentSegment)
         }
-
+        
         return segments
     }
-
+    
     /// Determines the maximum time gap allowed before starting a new segment
     private func getMaximumGap(for period: TimePeriod) -> TimeInterval {
         switch period {
@@ -554,27 +531,27 @@ struct GraphView: View {
             return 365 * DashboardConstants.TimeInterval.day // 1 year - don't connect if more than 1 year gap
         }
     }
-
+    
     // MARK: - Axis Marks Builders
     private var yAxisMarks: some AxisContent {
         // Use cached Y-axis ticks instead of calling getYAxisScale() to prevent publishing errors
         let yAxisTicks = dashboardStore.yAxisTicks
-
+        
         return AxisMarks(values: yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
-                  Text(dashboardStore.formatYAxisTickLabel(doubleValue))
-                      .font(.body)
-                      .fontWeight(.medium)
-                      .foregroundColor(theme.textSubheading)
-                      .padding(.horizontal, .spacingXS)
+                    Text(dashboardStore.formatYAxisTickLabel(doubleValue))
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(theme.textSubheading)
+                        .padding(.horizontal, .spacingXS)
                 }
             }
         }
     }
-
+    
     // MARK: - Helper Functions
-
+    
     /// Returns appropriate point size based on the selected period
     private func getPointSizeForPeriod() -> CGFloat {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -584,7 +561,7 @@ struct GraphView: View {
             return 16  // Very small points for total view (many data points)
         }
     }
-
+    
     /// Returns visible domain length - for TOTAL, show all data without domain restriction
     private func getVisibleDomainLength() -> TimeInterval? {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -601,7 +578,7 @@ struct GraphView: View {
             return nil
         }
     }
-
+    
     /// Returns scrollable axes - disable scrolling for TOTAL
     private func getScrollableAxes() -> Axis.Set {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -611,14 +588,7 @@ struct GraphView: View {
             return [] // No scrolling for total view
         }
     }
-
-}
-
-// MARK: - Goal Placement Enum
-enum GoalPlacement {
-    case top
-    case bottom
-    case middle
+    
 }
 
 #Preview {
