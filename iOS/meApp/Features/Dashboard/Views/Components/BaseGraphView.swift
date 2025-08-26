@@ -82,6 +82,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 }
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
+                // Animate only when Y-axis domain changes to smoothly resize content
+                .animation(.easeInOut(duration: 0.25), value: viewModel.yAxisDomain)
                 
                 // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
@@ -143,6 +145,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
+        // Cache series data to prevent recalculation during scroll
         let seriesData = viewModel.chartSeriesData
         let groupedSeries = Dictionary(grouping: seriesData) { $0.series }
         
@@ -290,7 +293,10 @@ extension View {
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
                     set: { newPosition in
-                        viewModel.handleScrollPositionChange(newPosition)
+                        // Debounce scroll position updates to prevent multiple updates per frame
+                        DispatchQueue.main.async {
+                            viewModel.handleScrollPositionChange(newPosition)
+                        }
                     }
                 ))
                 .chartXAxis {
@@ -399,28 +405,40 @@ extension View {
         if isScrollable {
             self
                 .onChange(of: dashboardStore.state.graph.xScrollPosition) { _, newPosition in
-                    viewModel.updateScrollPosition(to: newPosition)
+                    // Debounce to prevent multiple updates per frame
+                    DispatchQueue.main.async {
+                        viewModel.updateScrollPosition(to: newPosition)
+                    }
                 }
-                        .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
-            viewModel.isScrolling = isScrolling
-            // Immediately clear local selection when scrolling starts to remove crosshair and label
-            if isScrolling {
-                localSelectedXValue.wrappedValue = nil
-                // Also clear the view model's selection state immediately
-                viewModel.clearSelection()
-            }
-        }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
-            // Clear local selection when period changes (similar to scrolling behavior)
-            localSelectedXValue.wrappedValue = nil
-            viewModel.clearSelection()
-        }
+                .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
+                    // Debounce to prevent multiple updates per frame
+                    DispatchQueue.main.async {
+                        viewModel.isScrolling = isScrolling
+                        // Immediately clear local selection when scrolling starts to remove crosshair and label
+                        if isScrolling {
+                            localSelectedXValue.wrappedValue = nil
+                            // Also clear the view model's selection state immediately
+                            viewModel.clearSelection()
+                        }
+                    }
+                }
+                .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+                    // Clear local selection when period changes (similar to scrolling behavior)
+                    DispatchQueue.main.async {
+                        localSelectedXValue.wrappedValue = nil
+                        viewModel.clearSelection()
+                    }
+                }
                 // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    viewModel.syncYAxisFromStore()
+                    DispatchQueue.main.async {
+                        viewModel.syncYAxisFromStore()
+                    }
                 }
                 .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
-                    viewModel.syncYAxisFromStore()
+                    DispatchQueue.main.async {
+                        viewModel.syncYAxisFromStore()
+                    }
                 }
         } else {
             self
