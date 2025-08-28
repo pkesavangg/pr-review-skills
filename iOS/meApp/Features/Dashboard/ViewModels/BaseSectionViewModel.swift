@@ -194,9 +194,10 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Updates chart frame and recalculates Y-axis if needed
     func updateChartFrame(_ frame: CGRect) {
+        let previousHeight = chartFrame.height
         self.chartFrame = frame
         // Recalculate Y-axis if frame changed significantly
-        if abs(frame.height - chartFrame.height) > 10 {
+        if abs(frame.height - previousHeight) > 10 {
             updateYAxisConfiguration()
         }
     }
@@ -339,7 +340,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         
         // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height + (hasXAxis ? 18 : 0)
+        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
         
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {

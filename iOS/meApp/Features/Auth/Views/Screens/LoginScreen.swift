@@ -48,6 +48,7 @@ struct LoginScreen: View {
                     }
                 },
                 onTrailingTap: {  },
+                canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
                 shouldShowBackground: false
             )

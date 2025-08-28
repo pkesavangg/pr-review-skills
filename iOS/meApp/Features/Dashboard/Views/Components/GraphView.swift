@@ -27,6 +27,9 @@ struct GraphView: View {
     @StateObject private var monthSectionViewModel = MonthSectionViewModel()
     @StateObject private var weekSectionViewModel = WeekSectionViewModel()
     
+    // Reset chart identity on period switches to avoid stale animations/state
+    @State private var chartIdentity: UUID = UUID()
+    
     // Check if there are any entries to display
     private var hasEntries: Bool {
         return !dashboardStore.continuousOperations.isEmpty
@@ -48,11 +51,12 @@ struct GraphView: View {
                 .padding(.vertical, .spacingXS)
             if hasEntries {
                 chartView
+                    .id(chartIdentity)
             } else {
                 emptyStateView
             }
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
             
@@ -61,12 +65,38 @@ struct GraphView: View {
             yearSectionViewModel.clearSelection()
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
+            
+            // Reconfigure active section view model with fresh store state
+            switch newValue {
+            case .week:
+                weekSectionViewModel.configure(with: dashboardStore)
+            case .month:
+                monthSectionViewModel.configure(with: dashboardStore)
+            case .year:
+                yearSectionViewModel.configure(with: dashboardStore)
+            case .total:
+                totalSectionViewModel.configure(with: dashboardStore)
+            }
+            
+            // Ensure most recent entries are shown for the selected period
+            let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
+                for: newValue,
+                from: dashboardStore.continuousOperations,
+                showingLatest: true
+            )
+            dashboardStore.graphManager.updateScrollPosition(to: optimal)
+            
+            // Recalculate and cache Y-axis based on the new visible region
+            dashboardStore.updateYAxisCache()
+            
+            // Reset chart identity to fully rebuild the Chart without unwanted animations
+            chartIdentity = UUID()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-        
+        .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart View
