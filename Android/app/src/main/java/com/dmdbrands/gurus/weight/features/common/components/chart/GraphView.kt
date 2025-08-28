@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
+import kotlinx.coroutines.delay
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -94,9 +95,10 @@ fun GraphView(
   LaunchedEffect(Unit) {
     viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate) { target ->
       if (target != null) {
-        scrollState.animateScroll(Scroll.Absolute.x(state.scrollValue!!, 1f))
+        delay(100)
+        scrollState.scroll(Scroll.Absolute.x(target, 0.5f))
       } else {
-        scrollState.animateScroll(Scroll.Absolute.End)
+        scrollState.scroll(Scroll.Absolute.End)
       }
     }
   }
