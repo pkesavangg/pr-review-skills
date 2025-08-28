@@ -25,6 +25,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var decisionTimer: Timer?
     
     // MARK: - Configuration
+    private let yAxisLabelWidth: CGFloat = 40
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
@@ -62,7 +63,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
                 .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
-                .padding(.trailing, isScrollable ? .spacingXS : 0)
+                .padding(.trailing, .spacingXS)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -258,8 +259,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     Text(dashboardStore.formatYAxisTickLabel(doubleValue))
                         .font(.body)
                         .fontWeight(.medium)
+                        .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .padding(.horizontal, .spacingXS)
+                        .frame(width: yAxisLabelWidth, alignment: .trailing)
                 }
             }
         }
@@ -345,6 +347,8 @@ extension View {
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
+                    // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
+                    let adjustedLabelTicks: [Date] = allTicks
 
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: nonLastTicks) { _ in
@@ -353,7 +357,7 @@ extension View {
                     }
 
                     // Labels for all tick values
-                    AxisMarks(values: allTicks) { value in
+                    AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = viewModel.formatXAxisLabel(for: date) {
