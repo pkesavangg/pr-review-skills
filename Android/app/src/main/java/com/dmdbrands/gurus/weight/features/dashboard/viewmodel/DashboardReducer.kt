@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -24,6 +25,7 @@ data class DashboardState(
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
   val metricData: List<PeriodBodyScaleSummary> = emptyList(),
+  val goal : Goal? = null
 ) : IReducer.State
 
 /**
@@ -31,6 +33,7 @@ data class DashboardState(
  */
 sealed interface DashboardIntent : IReducer.Intent {
   object LoadEntries : DashboardIntent
+  data class ResetDashboard(val onConfirm: () -> Unit) : DashboardIntent
   data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
   data class UpdateVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
@@ -41,6 +44,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
   data class SetMetricData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
+  data class SetGoal(val goal: Goal?) : DashboardIntent
 }
 
 /**
@@ -56,6 +60,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
+    is DashboardIntent.SetGoal -> state.copy(goal = intent.goal)
     DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     else -> state
   }

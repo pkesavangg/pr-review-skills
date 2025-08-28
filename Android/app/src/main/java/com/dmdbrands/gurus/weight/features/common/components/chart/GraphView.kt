@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,7 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
@@ -75,19 +79,22 @@ fun GraphView(
   secondaryGraphLines: GraphLine? = null,
   segment: GraphSegment = GraphSegment.WEEK,
   placeHolder: String? = null,
+  goal: Goal? = null,
   onMetricUpdate: (List<GraphPoint>) -> Unit = {},
   onScroll: (String?) -> Unit = {},
   onLabelUpdate: (String) -> Unit = {},
 ) {
+
   var selectedData: List<GraphPoint> by remember {
     mutableStateOf(listOf())
   }
   val stableGraphLines = rememberStable(graphLines)
-  val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
-  if (stableGraphLines.isEmpty() || stableGraphLines.all { it.points.isEmpty() }) {
-    GraphEmptyState(modifier = modifier, placeHolder = placeHolder)
-    return
+  val isEmptyState by remember {
+    derivedStateOf { stableGraphLines.flatMap { it.points }.isEmpty() }
   }
+
+  val stableSecondaryGraphLines by rememberUpdatedState(secondaryGraphLines)
+
   var point: Point? by remember { mutableStateOf(Point(0f, 0f)) }
   val xLabels = remember(stableGraphLines) {
     stableGraphLines.first().points.map { it.x }
@@ -95,15 +102,16 @@ fun GraphView(
   val ySeries = remember(stableGraphLines) {
     stableGraphLines.map { it.points.map { point -> point.y } }
   }
-  remember(ySeries) {
-    ySeries.flatten().maxOfOrNull { it.value.toDouble() }
-  }
+
+  val timeStamp = stableGraphLines.flatMap { it.points.map { it.x.value.toDouble() }.sortedBy { it } }
+
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = Scroll.Absolute.End,
   )
-  var minTarget by remember { mutableStateOf<Long?>(null) }
-  var maxTarget by remember { mutableStateOf<Long?>(null) }
+
+  var minTarget by remember { mutableStateOf<Long?>(timeStamp.minByOrNull { it }?.toLong()) }
+  var maxTarget by remember { mutableStateOf<Long?>(timeStamp.maxByOrNull { it }?.toLong()) }
   var minYTarget by remember { mutableDoubleStateOf(0.0) }
   var secondaryMinYTarget by remember { mutableDoubleStateOf(0.0) }
   var maxYTarget by remember { mutableDoubleStateOf(220.0) }
@@ -157,12 +165,13 @@ fun GraphView(
         val secondaryGraphMeta = generateNiceScale(
           floor(secondaryYAxis.min()),
           ceil(secondaryYAxis.max()),
-          goalWeight = 80.0,
+          goalWeight = goal?.goalWeight ?: 0.0,
         )
         secondaryMinYTarget = secondaryGraphMeta.min
         secondaryMaxYTarget = secondaryGraphMeta.max
       }
     }
+
   }
 
   LaunchedEffect(segment) {
@@ -175,12 +184,13 @@ fun GraphView(
         .minByOrNull { abs(it - target) }
     }
     repeat(3) { withFrameNanos { } }
-
-
     if (nearest != null) {
-      scrollState.scroll(Scroll.Absolute.x(target.toDouble(), 0.5f)) // ✅ suspend function
-    } else {
-      scrollState.scroll(Scroll.Absolute.End)
+      val endRange = GraphUtil.getEndRange(segment, nearest)
+      if (endRange != null) {
+        scrollState.scroll(Scroll.Absolute.x(endRange.toDouble(), 1.0f)) // ✅ suspend function}
+      } else {
+        scrollState.scroll(Scroll.Absolute.End)
+      }
     }
     selectedTarget = null
     isUpdating = false
@@ -279,7 +289,7 @@ fun GraphView(
             val graphMeta = generateNiceScale(
               tempMin,
               tempMax,
-              goalWeight = 80.0,
+              goalWeight = goal?.goalWeight ?: 0.0,
             )
             minYTarget = graphMeta.min
             maxYTarget = graphMeta.max
@@ -291,13 +301,15 @@ fun GraphView(
               )
               val secondaryYAxis =
                 paddedSecondaryGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } }
-              val secondaryGraphMeta = generateNiceScale(
-                floor(secondaryYAxis.min()),
-                ceil(secondaryYAxis.max()),
-                goalWeight = 80.0,
-              )
-              secondaryMinYTarget = secondaryGraphMeta.min
-              secondaryMaxYTarget = secondaryGraphMeta.max
+              if (secondaryYAxis.isNotEmpty()) {
+                val secondaryGraphMeta = generateNiceScale(
+                  floor(secondaryYAxis.min()),
+                  ceil(secondaryYAxis.max()),
+                  goalWeight = goal?.goalWeight ?: 0.0,
+                )
+                secondaryMinYTarget = secondaryGraphMeta.min
+                secondaryMaxYTarget = secondaryGraphMeta.max
+              }
             }
             stepSize = graphMeta.step
           }
@@ -307,8 +319,8 @@ fun GraphView(
         }
       }
   }
-
-  val initialTimeStamp = xLabels.minOf { it.value as Long }
+  val initialTimeStamp: Long =
+    xLabels.minByOrNull { it.value.toLong() }?.value?.toLong() ?: Calendar.getInstance().timeInMillis
   val primaryLayer = primaryLayer(
     segment, animatedMinTarget, animatedMaxTarget,
     initialTimeStamp,
@@ -332,7 +344,7 @@ fun GraphView(
     )
 
   val defaultMarker = rememberDefaultMarker(xLabels, markerIndex, segment)
-  val decorations = rememberHorizontalLine()
+  val decorations = rememberHorizontalLine(goal = goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(
     isEnabled = !isUpdating,
@@ -355,9 +367,13 @@ fun GraphView(
     onDestinationUpdate = { selectedTarget = it },
   )
 
+  val currentDeviceType = getDeviceType()
+  val chartHeight = if (currentDeviceType == DeviceType.Tablet)
+    400.dp else 300.dp
+
   ChartHostSection(
     modifier = modifier
-      .height(300.dp)
+      .height(chartHeight)
       .pointerInput(Unit) {
         var isScrollInProgress = false
         awaitPointerEventScope {
@@ -402,6 +418,7 @@ fun GraphView(
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
     separators = separators,
+    isEmpty = isEmptyState,
   )
 }
 

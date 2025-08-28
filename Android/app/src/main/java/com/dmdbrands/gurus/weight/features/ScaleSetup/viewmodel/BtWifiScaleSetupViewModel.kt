@@ -66,6 +66,7 @@ constructor(
   @Assisted("sku") private val sku: String,
   @Assisted("broadcastId") private val broadcastId: String? = null,
   @Assisted("initialStep") private val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+  @Assisted("userList") private val userList: List<GGBTUser>? = null,
   override val ggDeviceService: GGDeviceService,
   private val deviceService: IDeviceService,
   private val dashboardService: IDashboardService,
@@ -82,7 +83,8 @@ constructor(
     fun create(
       @Assisted("sku") sku: String,
       @Assisted("broadcastId") broadcastId: String? = null,
-      @Assisted("initialStep") initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO
+      @Assisted("initialStep") initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
+      @Assisted("userList") userList: List<GGBTUser>? = null
     ): BtWifiScaleSetupViewModel
   }
 
@@ -127,6 +129,10 @@ constructor(
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
+    initializeSetup()
+  }
+
+  private fun initializeSetup() {
     viewModelScope.launch {
       // Initialize username form with active account name
       initializeUsernameForm()
@@ -137,6 +143,15 @@ constructor(
         discoveredScale?.let { scale ->
           setModePreference(scale)
         }
+      }
+      when (initialStep) {
+        BtWifiSetupStep.USER_LIMIT_REACHED -> {
+          if (userList != null) {
+            handleIntent(BtWifiScaleSetupIntent.SetUserList(userList))
+          }
+        }
+
+        else -> null
       }
       handleIntent(SetCurrentStep(initialStep))
     }
@@ -656,11 +671,15 @@ constructor(
 
             GGUserActionResponseType.MEMORY_FULL -> {
               viewModelScope.launch {
-                fetchUserList()
-                handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                handleIntent(
-                  SetCurrentStep(BtWifiSetupStep.USER_LIMIT_REACHED),
+                fetchUserList(
+                  onSuccess = {
+                    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                    handleIntent(
+                      SetCurrentStep(BtWifiSetupStep.USER_LIMIT_REACHED),
+                    )
+                  },
                 )
+
               }
             }
 
@@ -682,38 +701,22 @@ constructor(
     }
   }
 
-  private suspend fun fetchUserList(duplicateUserName: String? = null) {
+  private fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
     try {
-      val userList = suspendCoroutine<List<GGBTUser>> { continuation ->
-        ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-          if (duplicateUserName != null) {
-            // Find user by name, handling case-insensitive comparison
-            val user = response.user.firstOrNull {
-              it.name.equals(duplicateUserName, ignoreCase = true)
-            }
-
-            if (user != null) {
-              AppLog.d(TAG, "Found duplicate user in list: ${user.name}")
+      viewModelScope.launch {
+        val userList = suspendCoroutine { continuation ->
+          ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
+            if (duplicateUserName != null) {
+              val user = response.user.first { it.name == duplicateUserName }
               discoveredScale = discoveredScale?.copy(token = user.token)
               handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
-            } else {
-              // If we can't find the user, log error and show generic error
-              AppLog.e(TAG, "Could not find duplicate user '$duplicateUserName' in user list")
-              handleIntent(
-                BtWifiScaleSetupIntent.SetStepConnectionState(
-                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                  ConnectionState.Failed.Error,
-                ),
-              )
-              // Use BT_002 for general Bluetooth errors (consistent with existing error code)
-              handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
             }
+            continuation.resume(response.user)
+            onSuccess?.invoke()
           }
-          continuation.resume(response.user)
         }
+        handleIntent(BtWifiScaleSetupIntent.SetUserList(userList))
       }
-
-      handleIntent(BtWifiScaleSetupIntent.SetUserList(userList))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e.toString())
       // Show error state to user

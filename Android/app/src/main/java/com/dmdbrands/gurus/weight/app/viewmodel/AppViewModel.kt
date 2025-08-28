@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -16,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
@@ -46,13 +48,11 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.content.Context
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -95,6 +95,7 @@ constructor(
   private var sku: String? = null
   private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
+  private var syncScaleJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
@@ -186,7 +187,7 @@ constructor(
   }
 
   private fun syncScales() {
-    viewModelScope.launch {
+    syncScaleJob = viewModelScope.launch {
       deviceService.getGGBTDevices().collect {
         ggDeviceService.syncDevices(it)
       }
@@ -199,6 +200,7 @@ constructor(
         when (authState) {
           is AuthState.LoggedIn -> {
             // handle login event
+            stopScan()
             initLoadingData(authState.account, true)
           }
 
@@ -206,6 +208,7 @@ constructor(
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
             }
+            stopScan()
           }
 
           is AuthState.AccountDeleted -> {
@@ -228,6 +231,7 @@ constructor(
           }
 
           is AuthState.AccountAdded -> {
+            stopScan()
             initLoadingData(authState.account)
           }
 
@@ -244,6 +248,7 @@ constructor(
                 ),
               )
             }
+            stopScan()
             initLoadingData(authState.account, true)
           }
 
@@ -313,7 +318,6 @@ constructor(
       } else {
         AppRoute.Auth.Landing
       }
-    stopScan()
     navigationService.replaceStack(route = route)
   }
 
@@ -323,6 +327,7 @@ constructor(
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
+        syncScaleJob?.cancel()
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
@@ -348,7 +353,6 @@ constructor(
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
-            startScan()
             initialized = true
           } else {
             if (!initialized) {
@@ -367,7 +371,6 @@ constructor(
               }
               initialized = true
             }
-            stopScan()
           }
         }
       }
@@ -452,6 +455,70 @@ constructor(
           )
           deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
+        }
+
+        GGScanResponseType.DEVICE_MEMORY_FULL -> {
+          dialogQueueService.showDialog(
+            ReconnectScale.getMaxUserAlert(
+              onConfirm = {
+                viewModelScope.launch {
+                  dialogQueueService.showLoader("Loading...")
+                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                  if (device == null) {
+                    return@launch
+                  }
+                  ggDeviceService.addCacheDevice(data.broadcastId, device)
+                  ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                    viewModelScope.launch {
+                      dialogQueueService.dismissLoader()
+                      navigationService.navigateTo(
+                        AppRoute.ScaleSetup.BtWifiScaleSetup(
+                          sku = data.getSKU(),
+                          initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                          broadcastId = data.broadcastId,
+                          userList = response.user,
+                        ),
+                      )
+                    }
+                  }
+                }
+              },
+              onCancel = {
+                if (data.broadcastId != null) {
+                  ggDeviceService.skipDevice(data.broadcastId!!)
+                }
+              },
+            ),
+          )
+        }
+
+        GGScanResponseType.DEVICE_DUPLICATE_USER -> {
+          dialogQueueService.showDialog(
+            ReconnectScale.getDuplicateUserAlert(
+              onConfirm = {
+                viewModelScope.launch {
+                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                  if (device == null) {
+                    return@launch
+                  }
+                  ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
+                  ggDeviceService.addCacheDevice(data.broadcastId, device)
+                  navigationService.navigateTo(
+                    AppRoute.ScaleSetup.BtWifiScaleSetup(
+                      data.getSKU(),
+                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                      data.broadcastId,
+                    ),
+                  )
+                }
+              },
+              onCancel = {
+                if (data.broadcastId != null) {
+                  ggDeviceService.skipDevice(data.broadcastId!!)
+                }
+              },
+            ),
+          )
         }
 
         else -> null
@@ -556,11 +623,9 @@ constructor(
 
   private fun stopScan() {
     viewModelScope.launch {
-      if (state.value.hasScanStarted) {
-        ggPermissionService.stopScan()
-        handleIntent(AppIntent.SetScanStatus(false))
-        AppLog.i(TAG, "Scan stopped")
-      }
+      ggPermissionService.stopScan()
+      handleIntent(AppIntent.SetScanStatus(false))
+      AppLog.i(TAG, "Scan stopped")
     }
   }
 

@@ -33,10 +33,12 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardControlPanel
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMetrics
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMilestone
+import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.components.HistoryGraph
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
+import com.dmdbrands.gurus.weight.features.history.components.HistoryEmptyState
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -107,61 +109,75 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           handleIntent(DashboardIntent.SetMetricData(it))
         },
       )
-      DashboardMetrics(
-        metricData = metricData,
-        inEditMode = inEditMode,
-        visibleKeys = currentVisibleMetrics,
-        selectedStat = selectedStat,
-        onMetricClick = { stat ->
-          handleIntent(DashboardIntent.SetSelectedStat(stat))
-        },
-        onMetricsChanged = { visibleMetrics ->
-          currentVisibleMetrics = visibleMetrics
-        },
-      )
-      HorizontalDivider(
-        color = MeTheme.colorScheme.utility,
-        modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
-      )
-      DashboardMilestone(
-        progress = state.progress,
-        inEditMode = inEditMode,
-        visibleKeys = currentVisibleMilestones,
-        onMilestonesChanged = { visibleMilestones ->
-          currentVisibleMilestones = visibleMilestones
-        },
-      )
-      Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-      DashboardControlPanel(
-        inEditMode = inEditMode,
-        onEditClick = { editMode ->
-          if (!editMode && inEditMode) {
-            // Save dashboard metrics and milestones when exiting edit mode
-            val allVisibleKeys =
-              currentVisibleMetrics + currentVisibleMilestones
-            handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
-          }
-          inEditMode = editMode
-        },
-        onUpdateGoalClick = {
-          scope.launch {
-            navBackStack.addRoute(AppRoute.AccountSettings.Goal)
-          }
-        },
-        onMetricInfoClick = {
-          scope.launch {
-            navBackStack.addRoute(
-              route = AppRoute.Dashboard.MetricInfo(
-                info = fromPeriodSummary(metricData.first()),
-                key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
-                source = getSourceFromSegment(
-                  selectedSegment,
-                ),
+      if(state.dayWiseEntries.isEmpty()) {
+        Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
+        EmptyMetric()
+      } else {
+        DashboardMetrics(
+          metricData = metricData,
+          inEditMode = inEditMode,
+          visibleKeys = currentVisibleMetrics,
+          selectedStat = selectedStat,
+          onMetricClick = { stat ->
+            handleIntent(DashboardIntent.SetSelectedStat(stat))
+          },
+          onMetricsChanged = { visibleMetrics ->
+            currentVisibleMetrics = visibleMetrics
+          },
+        )
+        HorizontalDivider(
+          color = MeTheme.colorScheme.utility,
+          modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+        )
+        DashboardMilestone(
+          progress = state.progress,
+          inEditMode = inEditMode,
+          visibleKeys = currentVisibleMilestones,
+          onMilestonesChanged = { visibleMilestones ->
+            currentVisibleMilestones = visibleMilestones
+          },
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        DashboardControlPanel(
+          inEditMode = inEditMode,
+          onResetClick = {
+            handleIntent(
+              DashboardIntent.ResetDashboard(
+                onConfirm = {
+                  inEditMode = false
+                },
               ),
             )
-          }
-        },
-      )
+          },
+          onEditClick = { editMode ->
+            if (!editMode && inEditMode) {
+              // Save dashboard metrics and milestones when exiting edit mode
+              val allVisibleKeys =
+                currentVisibleMetrics + currentVisibleMilestones
+              handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
+            }
+            inEditMode = editMode
+          },
+          onUpdateGoalClick = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.Goal)
+            }
+          },
+          onMetricInfoClick = {
+            scope.launch {
+              navBackStack.addRoute(
+                route = AppRoute.Dashboard.MetricInfo(
+                  info = fromPeriodSummary(metricData.first()),
+                  key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
+                  source = getSourceFromSegment(
+                    selectedSegment,
+                  ),
+                ),
+              )
+            }
+          },
+        )
+      }
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
     }
   }

@@ -327,9 +327,10 @@ object ServiceModule {
   @Provides
   @Singleton
   fun provideDashboardService(
-    dashboardRepository: IDashboardRepository
+    dashboardRepository: IDashboardRepository,
+    accountRepository: IAccountRepository
   ): IDashboardService =
-    DashboardService(dashboardRepository)
+    DashboardService(dashboardRepository, accountRepository)
 
   /**
    * Provides the device service implementation.

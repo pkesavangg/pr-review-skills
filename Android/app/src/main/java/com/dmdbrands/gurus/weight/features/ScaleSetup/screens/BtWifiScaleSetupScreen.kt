@@ -40,16 +40,18 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 
 @Composable
 fun BtWifiScaleSetupScreen(
   sku: String,
   initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
-  broadcastId: String? = null
+  broadcastId: String? = null,
+  userList: List<GGBTUser>? = null
 ) {
   val viewModel: BtWifiScaleSetupViewModel =
     hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku, broadcastId, initialStep)
+      factory.create(sku, broadcastId, initialStep , userList)
     }
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(
@@ -74,7 +76,7 @@ fun BtWifiScaleSetupScreenContent(
     if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
       isAnimating.value = true
       try {
-        pagerState.animateScrollToPage(state.currentStepIndex)
+        pagerState.scrollToPage(state.currentStepIndex)
       } finally {
         withFrameNanos { }
         isAnimating.value = false

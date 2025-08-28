@@ -26,7 +26,9 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.rememberReorderableLazyGridState
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageSummary
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
@@ -116,6 +118,7 @@ private fun DashboardMetricsGrid(
   var localVisibleMetrics by remember(visibleMetrics) { mutableStateOf(visibleMetrics) }
   val hapticFeedback = LocalHapticFeedback.current
   val lazyGridState = rememberLazyGridState()
+  val currentDeviceType = getDeviceType()
   val reorderableState = rememberReorderableLazyGridState(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
@@ -127,8 +130,12 @@ private fun DashboardMetricsGrid(
     },
   )
 
+  val columnCount = when (currentDeviceType) {
+    DeviceType.Phone -> 3
+    DeviceType.Tablet -> 4
+  }
   LazyVerticalGrid(
-    columns = GridCells.Fixed(3),
+    columns = GridCells.Fixed(count = columnCount),
     state = lazyGridState,
     contentPadding = PaddingValues(vertical = MeTheme.spacing.sm),
     userScrollEnabled = false,

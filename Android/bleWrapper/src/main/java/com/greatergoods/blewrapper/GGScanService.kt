@@ -42,7 +42,10 @@ abstract class GGScanService {
   /**
    *  Stops the bluetooth scan and also the flow of GGScanResponse
    */
-  fun stopScan() {
+  fun stopScan(clearDevices: Boolean = true) {
+    if (clearDevices) {
+      ggBluetooth.clearDevices()
+    }
     ggBluetooth.stop()
   }
 

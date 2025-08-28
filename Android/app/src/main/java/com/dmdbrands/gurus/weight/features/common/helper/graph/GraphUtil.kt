@@ -124,15 +124,11 @@ object GraphUtil {
    */
   fun calculateXStep(
     segment: GraphSegment,
-    xLabels: List<Double>,
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 5 * ONE_DAY_MILLIS
-      GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
-      GraphSegment.TOTAL -> {
-        ONE_DAY_MILLIS * 60
-      }
+      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.YEAR, GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
 
   fun List<Double>.getMinPositiveDelta(): Double {
@@ -149,9 +145,9 @@ object GraphUtil {
    */
   fun GraphSegment.intervalCount(): Int =
     when (this) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 6
-      GraphSegment.YEAR -> 12
+      GraphSegment.WEEK -> 8
+      GraphSegment.MONTH -> 7
+      GraphSegment.YEAR -> 13
       else -> 32
     }
   // endregion
@@ -318,8 +314,7 @@ object GraphUtil {
     zone: ZoneId = ZoneId.systemDefault(),
     weekStart: DayOfWeek = DayOfWeek.SUNDAY
   ): List<Double> {
-    if (startMillis == null || endMillis == null) return emptyList()
-    require(startMillis <= endMillis) { "startMillis must be <= endMillis as $startMillis > $endMillis" }
+    if (startMillis == null || endMillis == null || startMillis > endMillis) return emptyList()
 
     val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
     val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()

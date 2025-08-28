@@ -78,11 +78,9 @@ fun GoalMilestoneDisplay(
 
   Column(
     modifier = modifier
-      .fillMaxWidth()
-      .padding(horizontal = spacing.sm),
+      .fillMaxWidth(),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Spacer(modifier = Modifier.height(spacing.sm))
     // Goal Type Specific Display
     when (goalType) {
       GoalType.MAINTAIN -> {

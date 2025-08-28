@@ -164,6 +164,7 @@ constructor(
       fromUnit = account.weightUnit,
       toUnit = WeightUnit.LB,
     )
+
     AppLog.d(tag, "Goal settings: type=${goal.type}, current=${goal.initialWeight}, goal=${goal.goalWeight}")
     viewModelScope.launch {
       try {

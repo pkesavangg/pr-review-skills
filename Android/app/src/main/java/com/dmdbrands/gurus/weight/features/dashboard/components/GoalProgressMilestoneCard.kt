@@ -10,18 +10,21 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -92,18 +95,24 @@ fun GoalProgressMilestoneCard(
         rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
       },
   ) {
-    // Reuse the shared GoalMilestoneDisplay to ensure consistent look and logic.
-    // If we have the required account/goal context, render; otherwise, no-op.
-    val account = progress.goal?.account
-    if (account != null) {
-      val latest = (progress.latest as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
-      GoalMilestoneDisplay(
-        account = account,
-        latestWeight = latest,
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MeTheme.spacing.sm),
-      )
+    Card(
+      modifier = Modifier
+        .wrapContentSize()
+        .alpha(if (isVisible) 1f else 0.5f),
+      colors = CardDefaults.cardColors(containerColor = MeTheme.colorScheme.primaryBackground),
+    ) {
+      // Reuse the shared GoalMilestoneDisplay to ensure consistent look and logic.
+      // If we have the required account/goal context, render; otherwise, no-op.
+      val account = progress.goal?.account
+      if (account != null) {
+        val latest = (progress.latest as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
+        GoalMilestoneDisplay(
+          account = account,
+          latestWeight = latest,
+          modifier = Modifier
+            .fillMaxWidth(),
+        )
+      }
     }
   }
 }

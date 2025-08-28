@@ -590,7 +590,7 @@ constructor(
    * Get scale token from the API.
    * @return The scale token as a string.
    */
-  override suspend fun getScaleToken(isR4: Boolean): String {
+  override suspend fun getScaleToken(isR4: Boolean): String? {
     AppLog.d(tag, "Getting scale token from API")
     return try {
       val token = deviceRepository.getScaleTokenFromApi(isR4)
@@ -598,7 +598,7 @@ constructor(
       token
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale token", e.toString())
-      throw e
+      null
     }
   }
 

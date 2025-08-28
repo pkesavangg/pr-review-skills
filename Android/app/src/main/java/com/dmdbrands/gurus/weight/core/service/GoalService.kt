@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -77,10 +78,10 @@ constructor(
     initialWeight: Double,
     goalType: String,
     wasMet: Boolean,
-  ): Account? =
-    try {
+  ): Account? {
+    return try {
       AppLog.d(TAG, "Updating goal: type=$goalType, goalWeight=$goalWeight, initialWeight=$initialWeight")
-
+      null
       val goalData =
         GoalData(
           goalWeight = goalWeight,
@@ -108,8 +109,9 @@ constructor(
       updatedAccount
     } catch (e: Exception) {
       AppLog.e(TAG, "Error updating goal", e.toString())
-      throw e
+      null
     }
+  }
 
   /**
    * Gets the formatted goal type string for display.
@@ -352,7 +354,14 @@ constructor(
    * Gets the current goal or null if none is set.
    * @return Current goal or null
    */
-  override suspend fun getCurrentGoal(): Flow<Goal?> = goalRepository.getCurrentGoal()
+  override suspend fun getCurrentGoal(): Flow<Goal?> =
+    combine(
+      accountRepository.getActiveAccountWeightUnitFlow(),
+      accountRepository.getActiveAccountWeightlessFlow(),
+      goalRepository.getCurrentGoal(),
+    ) { weightUnit, weightless, goal ->
+      goal?.process(weightUnit, weightless)
+    }
 
   /**
    * Updates the goal status flow based on account data.
