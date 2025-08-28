@@ -1,6 +1,5 @@
 package com.greatergoods.ggInAppMessaging.core.service
 
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -12,7 +11,7 @@ import android.content.SharedPreferences
  */
 @Singleton
 class FeedStorageService @Inject constructor(
-  @ApplicationContext private val context: Context
+  private val context: Context
 ) {
 
   private val tag = "FeedStorageService"

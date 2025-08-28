@@ -6,7 +6,7 @@ import com.dmdbrands.gurus.weight.domain.repository.FeedAction
 import com.dmdbrands.gurus.weight.domain.repository.IFeedRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
-import com.greatergoods.ggInAppMessaging.core.GGInAppMessagingService
+import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.ggInAppMessaging.domain.models.FeedActionType
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import kotlinx.coroutines.CoroutineScope
@@ -56,22 +56,19 @@ class FeedService @Inject constructor(
   override val notificationBadgeUpdated: Flow<Boolean> = _notificationBadgeUpdated.asSharedFlow()
 
   // MARK: - Computed Properties (matching Angular service)
-  private val accountId: String?
-    get() = accountService.activeAccountFlow.first().id
-
-  private val feedInfoOfflineKey: String
-    get() = "$feedInfoKey${if (accountId != null) "_$accountId" else ""}"
-
-  private val feedLastTriggeredAt: String
-    get() = "$feedLastTriggeredAtKey${if (accountId != null) "_$accountId" else ""}"
+  private suspend fun accountId() = accountService.activeAccountFlow.first()?.id
 
   init {
-    val initialFeedSettings = getFeedSettings()
+    // Initialize feed settings in a coroutine
+    serviceScope.launch {
+      val initialFeedSettings = getFeedSettings()
+    }
 
     // Listen for feed updates from the GG IAM service (matching Angular service)
     serviceScope.launch {
-      ggIAMService.sendUpdateFeed.collect { feedInfo ->
-        updateFeedItem(feedInfo.feedItem, feedInfo.actionType, feedInfo.variationId)
+      ggIAMService.feedsUpdatedSubject.collect { feeds ->
+        _feedsChanged.emit(feeds.map { it as FeedItem })
+        launch { updateNotificationBadge() }
       }
     }
 
@@ -86,19 +83,14 @@ class FeedService @Inject constructor(
       }
     }
 
-    // Listen for full-feed changes from the GG IAM service and propagate them internally
+    // Listen for feed notification changes from the GG IAM service
     serviceScope.launch {
-      ggIAMService.feedsChanged.collect { newFeeds ->
-        _feedsChanged.emit(newFeeds)
-        updateNotificationBadge()
-      }
-    }
-
-    serviceScope.launch {
-      ggIAMService.feedNotificationChanged.collect {
-        val result = getFeedSettings()
-        _feedSettingsChanged.emit(result)
-        updateNotificationBadge()
+      ggIAMService.feedNotificationChangedSubject.collect {
+        launch {
+          val result = getFeedSettings()
+          _feedSettingsChanged.emit(result)
+          updateNotificationBadge()
+        }
       }
     }
   }
@@ -114,11 +106,9 @@ class FeedService @Inject constructor(
       val items = feedRepository.fetchFeedItems()
 
       // Update GG IAM service with new feeds (matching Angular service)
-      ggIAMService.feedsUpdatedSubject.tryEmit(items)
-      ggIAMService.feedNotificationChangedSubject.tryEmit(Unit)
+      ggIAMService.load(items.map { it as com.greatergoods.ggInAppMessaging.domain.models.FeedItem })
 
       // Also emit to internal flows
-      ggIAMService.load(items)
       _feedsChanged.emit(items)
       updateNotificationBadge()
       AppLog.i(tag, "Successfully fetched feed items")
@@ -126,8 +116,7 @@ class FeedService @Inject constructor(
       AppLog.e(tag, "Failed to fetch feed items", error.toString())
 
       // Emit empty feeds on error (matching Angular service)
-      ggIAMService.feedsUpdatedSubject.tryEmit(emptyList())
-      ggIAMService.load(emptyList())
+      ggIAMService.load(emptyList<com.greatergoods.ggInAppMessaging.domain.models.FeedItem>())
       updateNotificationBadge()
     }
     // }
@@ -143,26 +132,8 @@ class FeedService @Inject constructor(
       feedRepository.updateFeedItem(feedItem.feedPostId, action)
 
       // If item is read, update local copy (matching Angular service)
-      val feedItemToUpdate = ggIAMService.feedsUpdatedSubject.value.find { item ->
-        item?.elementId == feedItem?.elementId
-      }
-
-      if (feedItemToUpdate != null) {
-        when (actionType) {
-          FeedActionType.READ -> {
-            feedItemToUpdate.isUnread = false
-            feedItemToUpdate.trigger = null
-            ggIAMService.feedNotificationChangedSubject.tryEmit(Unit)
-          }
-
-          FeedActionType.TRIGGER -> {
-            feedItemToUpdate.trigger = null
-          }
-
-          else -> { /* No local update needed for other action types */
-          }
-        }
-      }
+      // Note: The IAM service handles feed updates internally
+      AppLog.d(tag, "Feed item updated, IAM service will handle local updates")
 
       AppLog.i(tag, "Successfully updated feed item")
     } catch (error: Exception) {
@@ -176,7 +147,7 @@ class FeedService @Inject constructor(
 
   // MARK: - Feed Settings Management
 
-  override fun getFeedSettings(): FeedSetting? {
+  override suspend fun getFeedSettings(): FeedSetting? {
     return ggIAMService.getStoredFeedNotificationSetting()
   }
 
@@ -198,17 +169,17 @@ class FeedService @Inject constructor(
   /**
    * Get the current account ID (matching Angular service's accountId getter)
    */
-  fun getCurrentAccountId(): String? = accountId
+  suspend fun getCurrentAccountId(): String? = accountId()
 
   /**
    * Get the feed info offline key (matching Angular service's feedInfoOfflineKey getter)
    */
-  fun getFeedInfoOfflineKey(): String = feedInfoOfflineKey
+  suspend fun getFeedInfoOfflineKey(): String = "$feedInfoKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
 
   /**
    * Get the feed last triggered at key (matching Angular service's feedLastTriggeredAt getter)
    */
-  fun getFeedLastTriggeredAtKey(): String = feedLastTriggeredAt
+  suspend fun getFeedLastTriggeredAtKey(): String = "$feedLastTriggeredAtKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
 
   // MARK: - Cleanup
 
@@ -222,14 +193,14 @@ class FeedService @Inject constructor(
   // MARK: - Private Helpers
 
   private fun buildFeedAction(actionType: FeedActionType, variationId: Int?): FeedAction {
-    val action = FeedAction(action = actionType)
+    val osType = if (requiresMeta(actionType)) "android" else null
+    val meta = if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(variationId) else null
 
-    if (requiresMeta(actionType)) {
-      action.osType = "android" // Matching Angular service's AppStatus.devicePlatform
-      action.meta = com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(variationId)
-    }
-
-    return action
+    return FeedAction(
+      action = actionType,
+      osType = osType,
+      meta = meta
+    )
   }
 
   private fun requiresMeta(actionType: FeedActionType): Boolean {

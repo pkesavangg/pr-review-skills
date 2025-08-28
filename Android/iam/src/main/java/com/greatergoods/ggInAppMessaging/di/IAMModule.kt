@@ -6,8 +6,10 @@ import com.greatergoods.ggInAppMessaging.domain.models.GGInAppMessagingConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import android.content.Context
 
 /**
  * Dependency injection module for GG In-App Messaging
@@ -17,34 +19,36 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object IAMModule {
 
-    /**
-     * Provide GG In-App Messaging configuration
-     */
-    @Provides
-    @Singleton
-    fun provideGGInAppMessagingConfig(): GGInAppMessagingConfig {
-        return GGInAppMessagingConfig(
-            baseNavigationPath = "" // Configure based on your app's navigation structure
-        )
-    }
+  /**
+   * Provide GG In-App Messaging configuration
+   */
+  @Provides
+  @Singleton
+  fun provideGGInAppMessagingConfig(): GGInAppMessagingConfig {
+    return GGInAppMessagingConfig(
+      baseNavigationPath = "", // Configure based on your app's navigation structure
+    )
+  }
 
-    /**
-     * Provide Feed Storage Service
-     */
-    @Provides
-    @Singleton
-    fun provideFeedStorageService(): FeedStorageService {
-        return FeedStorageService()
-    }
+  /**
+   * Provide Feed Storage Service
+   */
+  @Provides
+  @Singleton
+  fun provideFeedStorageService(@ApplicationContext context: Context): FeedStorageService {
+    return FeedStorageService(
+      context,
+    )
+  }
 
-    /**
-     * Provide GG In-App Messaging Service
-     */
-    @Provides
-    @Singleton
-    fun provideGGInAppMessagingService(
-        feedStorageService: FeedStorageService
-    ): GGInAppMessagingService {
-        return GGInAppMessagingService(feedStorageService)
-    }
+  /**
+   * Provide GG In-App Messaging Service
+   */
+  @Provides
+  @Singleton
+  fun provideGGInAppMessagingService(
+    feedStorageService: FeedStorageService
+  ): GGInAppMessagingService {
+    return GGInAppMessagingService(feedStorageService)
+  }
 }

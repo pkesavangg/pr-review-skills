@@ -1,7 +1,11 @@
 package com.greatergoods.ggInAppMessaging.core.service
 
 import com.google.gson.Gson
-import com.greatergoods.ggInAppMessaging.domain.models.*
+import com.greatergoods.ggInAppMessaging.domain.models.FeedInfo
+import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTriggerEvents
+import com.greatergoods.ggInAppMessaging.domain.models.GGInAppMessagingConfig
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,7 +64,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun setAccountId(accountId: String) {
     this.accountId = accountId
-    AppLog.d(tag, "Account ID set to: $accountId")
   }
 
   /**
@@ -68,7 +71,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun setLibConfig(config: GGInAppMessagingConfig) {
     this.libConfig = config
-    AppLog.d(tag, "Library config updated")
   }
 
   /**
@@ -101,7 +103,6 @@ class GGInAppMessagingService @Inject constructor(
     val success = feedStorageService.setValue(feedInfoOfflineKey, feedValue)
     if (success) {
       _feedNotificationChangedSubject.tryEmit(Unit)
-      AppLog.d(tag, "Feed notification settings stored successfully")
     }
   }
 
@@ -114,7 +115,6 @@ class GGInAppMessagingService @Inject constructor(
       try {
         Gson().fromJson(feedInfoObject.value, FeedSetting::class.java)
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to parse feed settings", e.toString())
         null
       }
     } else {
@@ -132,7 +132,6 @@ class GGInAppMessagingService @Inject constructor(
         it.trigger == FeedTriggerEvents.LOGIN
       }
       if (feedItem != null) {
-        AppLog.d(tag, "Feed modal trigger found for item: ${feedItem.feedPostId}")
         return feedItem
       }
     }
@@ -144,7 +143,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun load(feeds: List<FeedItem>) {
     _feedsUpdatedSubject.value = feeds
-    AppLog.d(tag, "Loaded ${feeds.size} feeds")
   }
 
   /**
@@ -152,7 +150,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun clearFeedData() {
     _feedsUpdatedSubject.value = emptyList()
-    AppLog.d(tag, "Feed data cleared")
   }
 
   /**
@@ -160,7 +157,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun setPromoCodeCopied(isCopied: Boolean) {
     _promoCodeCopiedSubject.value = isCopied
-    AppLog.d(tag, "Promo code copied state set to: $isCopied")
   }
 
   /**
@@ -168,7 +164,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   fun setDarkMode(isDarkMode: Boolean) {
     _darkModeChangedSubject.value = isDarkMode
-    AppLog.d(tag, "Dark mode state set to: $isDarkMode")
   }
 
   /**
@@ -176,7 +171,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   suspend fun emitFeedUpdate(feedInfo: FeedInfo) {
     _sendUpdateFeed.emit(feedInfo)
-    AppLog.d(tag, "Feed update emitted for item: ${feedInfo.feedItem.feedPostId}")
   }
 
   /**
@@ -184,7 +178,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   suspend fun emitFeedNotificationChange() {
     _feedNotificationChangedSubject.emit(Unit)
-    AppLog.d(tag, "Feed notification change emitted")
   }
 
   // MARK: - Navigation Methods (Android equivalents)
@@ -193,8 +186,7 @@ class GGInAppMessagingService @Inject constructor(
    * Navigate to FAQ (Android equivalent)
    */
   fun navigateToFAQ() {
-    val navigationPath = "${libConfig.baseNavigationPath}$feedLandingPagePath/faq"
-    AppLog.d(tag, "Navigation to FAQ requested: $navigationPath")
+    "${libConfig.baseNavigationPath}$feedLandingPagePath/faq"
     // TODO: Implement navigation using Navigation Component or deep linking
   }
 
@@ -202,8 +194,7 @@ class GGInAppMessagingService @Inject constructor(
    * Navigate to feed landing page (Android equivalent)
    */
   fun navigateFeedLandingPage(feedItem: FeedItem, isFromModal: Boolean = false) {
-    val navigationPath = "${libConfig.baseNavigationPath}$feedLandingPagePath"
-    AppLog.d(tag, "Navigation to feed landing page requested: $navigationPath")
+    "${libConfig.baseNavigationPath}$feedLandingPagePath"
     // TODO: Implement navigation using Navigation Component or deep linking
   }
 
@@ -211,7 +202,6 @@ class GGInAppMessagingService @Inject constructor(
    * Show feed modal (Android equivalent)
    */
   suspend fun showFeedModal(feedItem: FeedItem): Boolean {
-    AppLog.d(tag, "Show feed modal requested for item: ${feedItem.feedPostId}")
     // TODO: Implement modal display using Dialog or BottomSheet
     return true
   }

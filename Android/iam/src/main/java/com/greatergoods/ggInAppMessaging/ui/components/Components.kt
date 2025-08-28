@@ -5,28 +5,6 @@ package com.greatergoods.ggInAppMessaging.ui.components
  * Exports all UI components for easy importing
  */
 
-// Core Components
-@JvmField
-val FeedItemComponent = FeedItemComponent::class.java
-
-@JvmField
-val FeedModalComponent = FeedModalComponent::class.java
-
-@JvmField
-val FeedLandingPageComponent = FeedLandingPageComponent::class.java
-
-@JvmField
-val FeedSettingsComponent = FeedSettingsComponent::class.java
-
-@JvmField
-val FAQComponent = FAQComponent::class.java
-
-@JvmField
-val LazyImageComponent = LazyImageComponent::class.java
-
-@JvmField
-val NavbarHeaderView = NavbarHeaderView::class.java
-
 /**
  * Component usage examples:
  *

@@ -55,7 +55,7 @@ interface IFeedService {
    * Gets the stored feed notification settings.
    * @return FeedSetting if exists, null otherwise
    */
-  fun getFeedSettings(): FeedSetting?
+  suspend fun getFeedSettings(): FeedSetting?
 
   // MARK: - Feed Modal Management
 

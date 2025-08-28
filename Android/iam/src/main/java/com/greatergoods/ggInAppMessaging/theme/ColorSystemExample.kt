@@ -16,7 +16,7 @@ import com.greatergoods.ggInAppMessaging.theme.getIAMColors
 fun IAMColorSystemExample() {
     // Get IAM colors from MaterialTheme
     val iamColors = getIAMColors()
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -29,9 +29,9 @@ fun IAMColorSystemExample() {
             style = MaterialTheme.typography.headlineLarge,
             color = iamColors.textHeading
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Example of using action colors
         Button(
             onClick = { /* action */ },
@@ -44,9 +44,9 @@ fun IAMColorSystemExample() {
                 color = iamColors.actionInverse
             )
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Example of using status colors
         Card(
             colors = CardDefaults.cardColors(
@@ -59,9 +59,9 @@ fun IAMColorSystemExample() {
                 modifier = Modifier.padding(16.dp)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Example of using theme colors
         val themeColor = iamColors.getThemeColor("blue")
         Card(
@@ -86,7 +86,7 @@ fun ManualColorSchemeExample() {
     // Create color scheme for specific theme mode
     val lightModeColors = IAMColorScheme(isDarkMode = false)
     val darkModeColors = IAMColorScheme(isDarkMode = true)
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,7 +97,7 @@ fun ManualColorSchemeExample() {
             text = "Light Mode Colors",
             color = lightModeColors.textHeading
         )
-        
+
         Button(
             onClick = { /* action */ },
             colors = ButtonDefaults.buttonColors(
