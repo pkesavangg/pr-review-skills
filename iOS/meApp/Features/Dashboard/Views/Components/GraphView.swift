@@ -97,8 +97,7 @@ struct GraphView: View {
             dashboardStore.handleSettingsChange()
         }
         // Disable implicit animations when switching sections to prevent axes animating from outside
-        .animation(nil, value: dashboardStore.state.graph.selectedPeriod)
-        
+        .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart View
