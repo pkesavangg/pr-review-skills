@@ -278,13 +278,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
                 cell.configure(
                     with: item, 
-                    store: store,
-                    onMetricLongPress: { label in
-                        // Handle long press for streak items if needed
-                    },
-                    onSelectMetric: { label in
-                        // Handle selection for streak items if needed
-                    }
+                    store: store
                 )
                 cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
@@ -297,23 +291,20 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
             let widget = gridModel.mileStones[indexPath.item]
-            let contentWidth = collectionView.bounds.width - 32 // 16px * 2 for left and right insets
+            let contentWidth = collectionView.bounds.width - 32
             let interItemSpacing: CGFloat = 16
 
             switch widget {
             case .goalCard:
-                return CGSize(width: contentWidth, height: 120) // Large widget spans full width
+                return CGSize(width: contentWidth, height: 120)
             case .streak:
-
-                // Device-aware columns: iPad=4, iPhone=2
                 let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
                 let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
-                return CGSize(width: itemWidth, height: 70) // Small widget
+                return CGSize(width: itemWidth, height: 70)
             }
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-            // If GoalCard is removed, increase top padding for streaks
             let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
             return UIEdgeInsets(top: topInset, left: 16.0, bottom: 16.0, right: 16.0)
         }
