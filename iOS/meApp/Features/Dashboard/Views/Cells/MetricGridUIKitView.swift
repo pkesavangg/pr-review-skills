@@ -265,6 +265,11 @@ extension MetricGridUIKitView {
                 if let originalIndex = self.store.metricsManager.state.metrics.firstIndex(where: { $0.id == item.id }) {
                     Task {
                         try? await self.store.metricsManager.toggleMetricVisibility(at: originalIndex)
+                        
+                        // Sync the UI state with the metrics manager after the change
+                        await MainActor.run {
+                            self.store.syncRemovalStateFromMetricsManager()
+                        }
                     }
                 }
             }

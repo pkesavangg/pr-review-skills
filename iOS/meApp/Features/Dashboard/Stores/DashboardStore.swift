@@ -204,11 +204,12 @@ class DashboardStore: ObservableObject {
         if cachedDashboardType == nil {
             cachedDashboardType = determineDashboardTypeFromAccount()
         }
-        return metricsManager.getMetricsToShow(
+        let result = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
             dashboardType: cachedDashboardType ?? .dashboard12,
             removedMetrics: state.ui.removedMetrics
         )
+        return result
     }
     
     // Cache dashboard type to prevent repeated calls
@@ -515,6 +516,7 @@ class DashboardStore: ObservableObject {
         
         // Ensure removal state is synced after API loading
         syncRemovalStateFromMetricsManager()
+        syncRemovalStateFromStreakManager()
 
         // Load other data
         loadLatestEntryData()
@@ -533,18 +535,28 @@ class DashboardStore: ObservableObject {
     
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
+        // TEMPORARY OVERRIDE FOR TESTING - FORCE TO 12 METRICS
+        print("🔍 [DEBUG] TEMPORARY OVERRIDE: Forcing dashboard type to 12 metrics")
+        return .dashboard12
+        
+        // ORIGINAL LOGIC (COMMENTED OUT FOR TESTING)
+        /*
         guard let account = accountService.activeAccount else {
+            print("🔍 [DEBUG] No active account, defaulting to 4 metrics")
             logger.log(level: .info, tag: "DashboardStore", message: "No active account, defaulting to 4 metrics")
             return .dashboard4
         }
         
         if let dashboardTypeString = account.dashboardSettings?.dashboardType {
+            print("🔍 [DEBUG] Account has dashboardType: \(dashboardTypeString)")
             // Support canonical raw values and legacy stored values
-            if dashboardTypeString == DashboardType.dashboard12.rawValue  {
+            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "12" {
+                print("🔍 [DEBUG] Dashboard type set to 12 metrics (from account)")
                 //logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
                 return .dashboard12
             }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue  {
+            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "4" {
+               print("🔍 [DEBUG] Dashboard type set to 4 metrics (from account)")
                // logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
                 return .dashboard4
             }
@@ -553,19 +565,24 @@ class DashboardStore: ObservableObject {
         // Fallback: infer from dashboardMetrics count if type string is missing or unexpected
         if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
             let metricsCount = metricsCSV.split(separator: ",").count
+            print("🔍 [DEBUG] Account has dashboardMetrics CSV with \(metricsCount) metrics")
             if metricsCount >= 12 {
+                print("🔍 [DEBUG] Dashboard type inferred to 12 metrics (from metrics count)")
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
                 return .dashboard12
             }
             // If there are zero configured metrics, keep the dashboard at 12 so the grid shows 3 columns
             if metricsCount == 0 {
+                print("🔍 [DEBUG] Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
                 return .dashboard12
             }
         }
         
+        print("🔍 [DEBUG] Dashboard type defaulted to 4 metrics")
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type defaulted to 4 metrics")
         return .dashboard4
+        */
     }
     
     // MARK: - Data Loading Methods
@@ -625,7 +642,7 @@ class DashboardStore: ObservableObject {
     }
     
     /// Syncs the removal state from the metrics manager to the UI state
-    private func syncRemovalStateFromMetricsManager() {
+    func syncRemovalStateFromMetricsManager() {
         // Get the current metrics from the manager
         let currentMetrics = metricsManager.state.metrics
         let activeCount = metricsManager.state.activeMetricsCount
@@ -636,6 +653,21 @@ class DashboardStore: ObservableObject {
         // Mark metrics beyond the active count as removed
         for i in activeCount..<currentMetrics.count {
             state.ui.removedMetrics.insert(currentMetrics[i].label)
+        }
+    }
+    
+    /// Syncs the removal state from the streak manager to the UI state
+    func syncRemovalStateFromStreakManager() {
+        // Get the current streak items from the manager
+        let currentStreakItems = streakManager.state.streakItems
+        let activeCount = streakManager.state.activeStreakItemsCount
+        
+        // Clear existing removal state
+        state.ui.removedStreaks.removeAll()
+        
+        // Mark streak items beyond the active count as removed
+        for i in activeCount..<currentStreakItems.count {
+            state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
     }
     
@@ -669,8 +701,25 @@ class DashboardStore: ObservableObject {
         guard reorderedIndex < metricsToShow.count else { return }
         let metric = metricsToShow[reorderedIndex]
         guard let originalIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == metric.id }) else { return }
+        
+        // Call the underlying manager to actually reorder the array
         Task {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
+            
+            // Sync the UI state with the metrics manager after the change
+            await MainActor.run {
+                self.syncRemovalStateFromMetricsManager()
+            }
+        }
+        
+        // Update the UI state for consistency
+        let isCurrentlyRemoved = originalIndex >= metricsManager.state.activeMetricsCount
+        if isCurrentlyRemoved {
+            // Metric is being added back - remove from removed set
+            state.ui.removedMetrics.remove(metric.label)
+        } else {
+            // Metric is being removed - add to removed set
+            state.ui.removedMetrics.insert(metric.label)
         }
     }
     
@@ -688,8 +737,25 @@ class DashboardStore: ObservableObject {
         guard reorderedIndex < streakItemsToShow.count else { return }
         let streak = streakItemsToShow[reorderedIndex]
         guard let originalIndex = state.streak.streakItems.firstIndex(where: { $0.id == streak.id }) else { return }
+        
+        // Call the underlying manager to actually reorder the array
         Task {
             try? await streakManager.toggleStreakVisibility(at: originalIndex)
+            
+            // Sync the UI state with the streak manager after the change
+            await MainActor.run {
+                self.syncRemovalStateFromStreakManager()
+            }
+        }
+        
+        // Update the UI state for consistency
+        let isCurrentlyRemoved = originalIndex >= streakManager.state.activeStreakItemsCount
+        if isCurrentlyRemoved {
+            // Streak is being added back - remove from removed set
+            state.ui.removedStreaks.remove(streak.label)
+        } else {
+            // Streak is being removed - add to removed set
+            state.ui.removedStreaks.insert(streak.label)
         }
     }
     
@@ -719,6 +785,20 @@ class DashboardStore: ObservableObject {
     
     /// Toggles the removal state of a metric by its label
     func toggleMetricRemoval(_ metricLabel: String) {
+        // Find the metric in the current metrics array
+        if let metricIndex = metricsManager.state.metrics.firstIndex(where: { $0.label == metricLabel }) {
+            // Call the underlying manager to actually reorder the array
+            Task {
+                try? await metricsManager.toggleMetricVisibility(at: metricIndex)
+                
+                // Sync the UI state with the metrics manager after the change
+                await MainActor.run {
+                    self.syncRemovalStateFromMetricsManager()
+                }
+            }
+        }
+        
+        // Update the UI state
         if state.ui.removedMetrics.contains(metricLabel) {
             state.ui.removedMetrics.remove(metricLabel)
         } else {
@@ -728,6 +808,20 @@ class DashboardStore: ObservableObject {
     
     /// Toggles the removal state of a streak by its label
     func toggleStreakRemoval(_ streakLabel: String) {
+        // Find the streak in the current streak items array
+        if let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) {
+            // Call the underlying manager to actually reorder the array
+            Task {
+                try? await streakManager.toggleStreakVisibility(at: streakIndex)
+                
+                // Sync the UI state with the streak manager after the change
+                await MainActor.run {
+                    self.syncRemovalStateFromStreakManager()
+                }
+            }
+        }
+        
+        // Update the UI state
         if state.ui.removedStreaks.contains(streakLabel) {
             state.ui.removedStreaks.remove(streakLabel)
         } else {
@@ -817,6 +911,7 @@ class DashboardStore: ObservableObject {
             await MainActor.run {
                 // Sync removal state to ensure consistency
                 self.syncRemovalStateFromMetricsManager()
+                self.syncRemovalStateFromStreakManager()
                 
                 self.updateYAxisCache()
                 self.objectWillChange.send()
@@ -1550,6 +1645,11 @@ class DashboardStore: ObservableObject {
             state.ui.removedMetrics = snapshotRemovedMetrics
             state.ui.removedStreaks = snapshotRemovedStreaks
         }
+        
+        // Sync the removal state to ensure consistency after restoration
+        syncRemovalStateFromMetricsManager()
+        syncRemovalStateFromStreakManager()
+        
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
         // Inline non-destructive drag state clearing to avoid layout jumps
@@ -1585,6 +1685,10 @@ class DashboardStore: ObservableObject {
         if state.metrics.dashboardType == .dashboard12 {
             metricsManager.resetActiveMetricsCountToShowAll()
         }
+
+        // Sync the removal state to ensure consistency after restoration and reset
+        syncRemovalStateFromMetricsManager()
+        syncRemovalStateFromStreakManager()
 
         // Clear selection/drag state
         state.ui.selectedMetricLabel = nil
