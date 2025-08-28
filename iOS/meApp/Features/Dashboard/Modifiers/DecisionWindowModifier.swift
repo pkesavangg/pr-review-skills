@@ -7,9 +7,6 @@ struct DecisionWindowModifier: ViewModifier {
     @Binding var selectedXValue: Date?
     let dashboardStore: DashboardStore
 
-    // Track if scroll start has been notified to prevent redundant calls
-    @State private var didNotifyScrollStart: Bool = false
-
     // Constants for decision logic
     private let decisionWindowDuration: TimeInterval = 0.15 // 150ms
     private let movementThreshold: CGFloat = 12 // 10-12 points
@@ -38,7 +35,6 @@ struct DecisionWindowModifier: ViewModifier {
             touchInteractionMode = .deciding
             initialTouchPoint = value.location
             startDecisionTimer()
-            didNotifyScrollStart = false
 
         case .deciding:
             // Check if we should enter scroll mode early
@@ -48,14 +44,6 @@ struct DecisionWindowModifier: ViewModifier {
 
             if isHorizontalMovement {
                 enterScrollMode()
-
-                // iOS 17: Notify dashboard store of scroll start
-                if #available(iOS 17.0, *) {
-                    if !didNotifyScrollStart {
-                        dashboardStore.handleScrollStart()
-                        didNotifyScrollStart = true
-                    }
-                }
             }
             // If not horizontal scrolling, let timer decide
 
@@ -78,10 +66,6 @@ struct DecisionWindowModifier: ViewModifier {
             selectedXValue = nil
 
         case .scrolling:
-            // iOS 17: Notify dashboard store of scroll end
-            if #available(iOS 17.0, *) {
-                dashboardStore.handleScrollEndOptimized()
-            }
             break
 
         case .deciding, .none:
@@ -91,7 +75,6 @@ struct DecisionWindowModifier: ViewModifier {
 
         // Reset interaction mode
         touchInteractionMode = .none
-        didNotifyScrollStart = false
     }
 
     private func startDecisionTimer() {
