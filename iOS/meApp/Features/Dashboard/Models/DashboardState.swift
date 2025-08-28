@@ -54,6 +54,7 @@ struct MetricsState {
     var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
     var activeMetricsCount: Int = 12
+    var removedMetrics: Set<String> = []
 
     var metricsToShow: [MetricItem] {
         // Show only active metrics based on activeMetricsCount
@@ -74,6 +75,7 @@ struct MetricsState {
 struct StreakState {
     var streakItems: [MetricItem] = []
     var activeStreakItemsCount: Int = 6
+    var removedStreaks: Set<String> = []
 
     var streakItemsToShow: [MetricItem] {
         Array(streakItems.prefix(activeStreakItemsCount))

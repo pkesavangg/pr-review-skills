@@ -535,54 +535,7 @@ class DashboardStore: ObservableObject {
     
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
-        // TEMPORARY OVERRIDE FOR TESTING - FORCE TO 12 METRICS
-        print("🔍 [DEBUG] TEMPORARY OVERRIDE: Forcing dashboard type to 12 metrics")
         return .dashboard12
-        
-        // ORIGINAL LOGIC (COMMENTED OUT FOR TESTING)
-        /*
-        guard let account = accountService.activeAccount else {
-            print("🔍 [DEBUG] No active account, defaulting to 4 metrics")
-            logger.log(level: .info, tag: "DashboardStore", message: "No active account, defaulting to 4 metrics")
-            return .dashboard4
-        }
-        
-        if let dashboardTypeString = account.dashboardSettings?.dashboardType {
-            print("🔍 [DEBUG] Account has dashboardType: \(dashboardTypeString)")
-            // Support canonical raw values and legacy stored values
-            if dashboardTypeString == DashboardType.dashboard12.rawValue || dashboardTypeString == "12" {
-                print("🔍 [DEBUG] Dashboard type set to 12 metrics (from account)")
-                //logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 12 metrics (from account)")
-                return .dashboard12
-            }
-            if dashboardTypeString == DashboardType.dashboard4.rawValue || dashboardTypeString == "4" {
-               print("🔍 [DEBUG] Dashboard type set to 4 metrics (from account)")
-               // logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type set to 4 metrics (from account)")
-                return .dashboard4
-            }
-        }
-        
-        // Fallback: infer from dashboardMetrics count if type string is missing or unexpected
-        if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
-            let metricsCount = metricsCSV.split(separator: ",").count
-            print("🔍 [DEBUG] Account has dashboardMetrics CSV with \(metricsCount) metrics")
-            if metricsCount >= 12 {
-                print("🔍 [DEBUG] Dashboard type inferred to 12 metrics (from metrics count)")
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type inferred to 12 metrics (from metrics count)")
-                return .dashboard12
-            }
-            // If there are zero configured metrics, keep the dashboard at 12 so the grid shows 3 columns
-            if metricsCount == 0 {
-                print("🔍 [DEBUG] Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard metrics empty; defaulting to 12-metric layout for edit mode consistency")
-                return .dashboard12
-            }
-        }
-        
-        print("🔍 [DEBUG] Dashboard type defaulted to 4 metrics")
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type defaulted to 4 metrics")
-        return .dashboard4
-        */
     }
     
     // MARK: - Data Loading Methods
@@ -690,12 +643,9 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         self.updateYAxisCache()
     }
-    
-    
-    
+
     // MARK: - UI Action Methods
-    
-    // Delegate metric management to MetricsManager
+
     func toggleMetricRemovalInReorderedArray(at reorderedIndex: Int) {
         let metricsToShow = self.metricsToShow
         guard reorderedIndex < metricsToShow.count else { return }
@@ -1016,6 +966,9 @@ class DashboardStore: ObservableObject {
                     try? await self.metricsManager.resetMetricsToDefaults()
                     try? await self.streakManager.resetStreakData()
                     
+                    // Reset metrics to their original body metrics order
+                    self.metricsManager.resetOrderToDefault()
+                    
                     // After resetting metrics to defaults, update them with latest data
                     if let latestEntry = try? await self.dataManager.getLatestEntry() {
                         try? await self.metricsManager.updateMetrics(with: latestEntry)
@@ -1031,6 +984,12 @@ class DashboardStore: ObservableObject {
                     do {
                         try await self.streakManager.refreshStreakData()
                         try await self.metricsManager.saveMetricsToAPI()
+                        
+                        // Sync the removal state from both managers after reset
+                        await MainActor.run {
+                            self.syncRemovalStateFromMetricsManager()
+                            self.syncRemovalStateFromStreakManager()
+                        }
                     } catch {
                         self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
                     }
@@ -1043,6 +1002,9 @@ class DashboardStore: ObservableObject {
                 self.resetGridLayout()
                 // Reset snapshot after a full dashboard reset
                 self.hasEditSnapshot = false
+                
+                // Force UI update to reflect the reset state
+                self.objectWillChange.send()
             }
         }
     }
@@ -1054,6 +1016,71 @@ class DashboardStore: ObservableObject {
         logger.log(level: .info, tag: "DashboardStore", message: "Reset grid order to default")
     }
     
+    /// Enhanced reset that properly restores removed items and reverses reordering
+    func resetDashboardEnhanced() {
+        state.ui.isLoading = true
+        state.ui.loaderOverride = LoaderModel(text: lang.saving)
+        
+        state.ui.selectedMetricLabel = nil
+        state.ui.isEditMode = false
+        state.ui.resetDragState()
+        
+        // Reset the saved order to restore default order
+        resetGridOrder()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.state.ui.isLoading = false
+                self.state.ui.loaderOverride = nil
+                
+                // Delegate reset operations to managers
+                Task {
+                    try? await self.metricsManager.resetMetricsToDefaults()
+                    try? await self.streakManager.resetStreakData()
+                    
+                    // Reset metrics to their original body metrics order
+                    self.metricsManager.resetOrderToDefault()
+                    
+                    // After resetting metrics to defaults, update them with latest data
+                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
+                        try? await self.metricsManager.updateMetrics(with: latestEntry)
+                    }
+                    
+                    // Save the reset configuration to API
+                    try? await self.metricsManager.saveMetricsToAPI()
+                }
+                
+                self.state.ui.isGoalCardRemoved = false
+                
+                Task {
+                    do {
+                        try await self.streakManager.refreshStreakData()
+                        try await self.metricsManager.saveMetricsToAPI()
+                        
+                        // Sync the removal state from both managers after reset
+                        await MainActor.run {
+                            self.syncRemovalStateFromMetricsManager()
+                            self.syncRemovalStateFromStreakManager()
+                        }
+                    } catch {
+                        self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
+                    }
+                }
+                
+                self.state.ui.selectedMetricLabel = nil
+                self.state.graph.clearSelection()
+                self.state.ui.isEditMode = false
+                self.state.ui.resetDragState()
+                self.resetGridLayout()
+                // Reset snapshot after a full dashboard reset
+                self.hasEditSnapshot = false
+                
+                // Force UI update to reflect the reset state
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
     func showResetDashboardAlert() {
         let alertLang = AlertStrings.ResetDashboardAlert.self
         let alert = AlertModel(
@@ -1063,7 +1090,7 @@ class DashboardStore: ObservableObject {
                 AlertButtonModel(title: alertLang.cancelButton, type: .secondary) { _ in
                 },
                 AlertButtonModel(title: alertLang.resetButton, type: .primary) { _ in
-                    self.resetDashboard()
+                    self.resetDashboardEnhanced()
                 }
             ]
         )

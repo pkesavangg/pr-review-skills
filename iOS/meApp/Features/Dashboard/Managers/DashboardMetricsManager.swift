@@ -146,7 +146,14 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func resetMetricsToDefaults() async throws {
         // Instead of just setting up initial metrics, reload from API to restore original order
         try await loadMetricsFromAPI()
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API")
+        
+        // Ensure all metrics are active after reset
+        resetActiveMetricsCountToShowAll()
+        
+        // Clear any removal state to ensure all metrics are visible
+        state.removedMetrics.removeAll()
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API and restoring all metrics")
     }
     
     /// Resets the active metrics count to show all metrics (useful for dashboard reset)

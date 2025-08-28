@@ -127,9 +127,19 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     func resetStreakData() async throws {
+        // Reset to original order and restore all streaks
+        setupInitialStreakItems()
+        
+        // Ensure all streak items are active after reset
+        state.activeStreakItemsCount = state.streakItems.count
+        
+        // Clear any removal state to ensure all streaks are visible
+        state.removedStreaks.removeAll()
+        
         // Refresh streak data to get current unit labels
         try await refreshStreakData()
-        logger.log(level: .info, tag: "DashboardStreakManager", message: "Streak data reset to defaults")
+        
+        logger.log(level: .info, tag: "DashboardStreakManager", message: "Streak data reset to defaults with all streaks restored")
     }
     
     /// Refreshes streak data when unit changes

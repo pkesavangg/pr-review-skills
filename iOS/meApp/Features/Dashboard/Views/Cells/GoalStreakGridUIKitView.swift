@@ -26,6 +26,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let newModel = buildGridModelFromStoreState()
         let newIsEditMode = store.state.ui.isEditMode
         let newRemovedStreaks = store.state.ui.removedStreaks
+        let newGoalCardRemoved = store.state.ui.isGoalCardRemoved
+        let newGoalCardPosition = store.state.ui.goalCardPosition
+        let newStreakGridOrder = store.state.ui.streakGridOrder
 
         let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
             switch widget {
@@ -42,14 +45,26 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         let contentChanged = oldIds != newIds
         let removalStateChanged = newRemovedStreaks != coordinator.lastRemovedStreaks
+        let goalCardStateChanged = newGoalCardRemoved != coordinator.lastGoalCardRemoved
+        let goalCardPositionChanged = newGoalCardPosition != coordinator.lastGoalCardPosition
+        let streakOrderChanged = newStreakGridOrder != coordinator.lastStreakGridOrder
 
-        if contentChanged || removalStateChanged {
+        // Check if this is a reset operation (all items restored and order reset)
+        let isResetOperation = !newGoalCardRemoved && 
+                              newGoalCardPosition == 0 && 
+                              newStreakGridOrder.isEmpty &&
+                              newRemovedStreaks.isEmpty
+
+        if contentChanged || removalStateChanged || goalCardStateChanged || goalCardPositionChanged || streakOrderChanged {
             coordinator.gridModel = newModel
             collectionView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
                 collectionView.reloadData()
             }
             coordinator.lastRemovedStreaks = newRemovedStreaks
+            coordinator.lastGoalCardRemoved = newGoalCardRemoved
+            coordinator.lastGoalCardPosition = newGoalCardPosition
+            coordinator.lastStreakGridOrder = newStreakGridOrder
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
@@ -211,6 +226,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
         var lastIsEditMode: Bool = false
         var lastRemovedStreaks: Set<String> = []
+        var lastGoalCardRemoved: Bool = false
+        var lastGoalCardPosition: Int = 0
+        var lastStreakGridOrder: [String] = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
 
@@ -849,7 +867,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                                 streakCell.isRemoved = self.store.isStreakRemoved(streakItem.label)
                                 // Clear any shadow effects that might remain
                                 streakCell.clearAllShadowEffects()
-                                // Clear any shadow effects that might remain
                             }
                         } else if let goalCell = cell as? GoalCardCell {
                             // Always reconfigure to ensure proper overlay visibility after drop
@@ -857,7 +874,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                             goalCell.isRemoved = self.store.state.ui.isGoalCardRemoved
                             // Clear any shadow effects that might remain
                             goalCell.clearAllShadowEffects()
-                            // Clear any shadow effects that might remain
                         }
                     }
                 }
