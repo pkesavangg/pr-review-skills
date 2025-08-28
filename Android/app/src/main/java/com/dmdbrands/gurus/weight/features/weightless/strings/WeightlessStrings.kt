@@ -28,7 +28,7 @@ object WeightlessStrings {
     const val WeightlessInfoMessage = "Weightless mode helps you focus on your health goals without being tied to specific weight targets. You can set a target weight for reference."
 
     //toast
-    const val title = "Success!"
+    const val SuccessTitle = "Success!"
     const val SuccessMessage = "Weightless Updated."
 
 }

@@ -201,7 +201,7 @@ constructor(
     viewModelScope.launch {
       dialogQueueService.showToast(
         Toast(
-          title = WeightlessStrings.Title,
+          title = WeightlessStrings.SuccessTitle,
           message = WeightlessStrings.SuccessMessage,
           action = null,
         ),

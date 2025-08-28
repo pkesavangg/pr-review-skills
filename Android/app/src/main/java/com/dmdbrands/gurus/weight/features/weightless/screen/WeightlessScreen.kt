@@ -80,7 +80,13 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
         ChangePasswordStrings.SaveButton,
         type = ButtonType.InlineTextPrimary,
         size = ButtonSize.Small,
-        enabled = ((state.form.isValid && state.form.isDirty) || state.hasToggleChanged) && (state.isWeightlessOn && state.form.controls.weightlessWeight.value != "0.0"),
+        enabled = if (state.isWeightlessOn) {
+          // When weightless is ON, form must be valid and dirty, and weight must not be 0.0
+          (state.form.isValid && state.form.isDirty) && state.form.controls.weightlessWeight.value != "0.0"
+        } else {
+          // When weightless is OFF, only check if toggle has changed
+          state.hasToggleChanged
+        },
       ) {
         keyboardController?.hide()
         handleIntent.invoke(WeightlessIntent.Submit)
