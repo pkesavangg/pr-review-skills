@@ -146,7 +146,14 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func resetMetricsToDefaults() async throws {
         // Instead of just setting up initial metrics, reload from API to restore original order
         try await loadMetricsFromAPI()
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API")
+        
+        // Ensure all metrics are active after reset
+        resetActiveMetricsCountToShowAll()
+        
+        // Clear any removal state to ensure all metrics are visible
+        state.removedMetrics.removeAll()
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API and restoring all metrics")
     }
     
     /// Resets the active metrics count to show all metrics (useful for dashboard reset)
@@ -249,19 +256,19 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
-                     return state.metrics
+            return state.metrics
         } else {
-            // In non-edit mode, show ONLY active metrics (removed items hidden), capped by dashboard type
-            let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
-                .filter { !removedMetrics.contains($0.label) } // Filter out removed metrics
+            let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+
             
             switch dashboardType {
             case .dashboard4:
-                // Show only allowed labels from active list (hidden if removed)
-                return Array(activeMetrics.filter { allowedFour.contains($0.label) }.prefix(4))
+                let result = Array(allUnremovedMetrics.filter { allowedFour.contains($0.label) }.prefix(4))
+                return result
             case .dashboard12:
-                // Show up to 12 active metrics
-                return Array(activeMetrics.prefix(12))
+                let result = Array(allUnremovedMetrics.prefix(12))
+
+                return result
             }
         }
     }

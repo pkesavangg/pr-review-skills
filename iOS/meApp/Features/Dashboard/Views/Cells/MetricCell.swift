@@ -140,22 +140,23 @@ class MetricCell: UICollectionViewCell {
                 : MetricCardView.fourCardVerticalPadding
         )
         
-        let viewWithOverlay = AnyView(
-                         metricCardView
-                 .editModeOverlay(
-                     isEditMode: store.state.ui.isEditMode,
-                     isRemoved: itemIsRemoved,
-                     onToggleRemoval: {
-                         store.toggleMetricRemoval(item.label)
-                     },
-                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
-                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
-                     rowIndex: rowIndex,
-                     disableWiggle: itemIsRemoved // removed items must not wiggle
-                 )
-        )
+        // Only apply EditModeOverlay when in edit mode
+        let finalView = store.state.ui.isEditMode ? AnyView(
+            metricCardView
+                .editModeOverlay(
+                    isEditMode: store.state.ui.isEditMode,
+                    isRemoved: itemIsRemoved,
+                    onToggleRemoval: {
+                        store.toggleMetricRemoval(item.label)
+                    },
+                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
+                    isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                    rowIndex: rowIndex,
+                    disableWiggle: itemIsRemoved // removed items must not wiggle
+                )
+        ) : AnyView(metricCardView)
         
-        hostingController?.rootView = viewWithOverlay
+        hostingController?.rootView = finalView
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
@@ -470,13 +471,13 @@ class MetricCell: UICollectionViewCell {
         guard let hostingController = hostingController else {
             let fallbackView = UIView(frame: contentView.bounds)
             fallbackView.backgroundColor = UIColor.systemBackground
-            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.cornerRadius = .radiusSM
             fallbackView.layer.masksToBounds = true
             return fallbackView
         }
         let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
         snapshot?.frame = contentView.bounds
-        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.cornerRadius = .radiusSM
         snapshot?.layer.masksToBounds = true
         snapshot?.backgroundColor = .clear
         return snapshot ?? UIView(frame: contentView.bounds)

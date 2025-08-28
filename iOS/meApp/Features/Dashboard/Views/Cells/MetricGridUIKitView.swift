@@ -39,19 +39,29 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let newIsEditMode = store.state.ui.isEditMode
         let newSelectedLabel = store.state.ui.selectedMetricLabel
         let newRemovedMetrics = store.state.ui.removedMetrics
+        let newActiveMetricsCount = store.metricsManager.state.activeMetricsCount
+        
         let contentChanged = newIds != coordinator.lastItemIds
         let layoutChanged = newDashboardType != coordinator.lastDashboardType
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
         let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
+        let activeMetricsCountChanged = newActiveMetricsCount != coordinator.lastActiveMetricsCount
+        
+        // Check if this is a reset operation (all metrics restored and order reset)
+        let isResetOperation = newRemovedMetrics.isEmpty && 
+                              newActiveMetricsCount == store.metricsManager.state.metrics.count &&
+                              coordinator.lastRemovedMetrics.count > 0
+        
         uiView.dragInteractionEnabled = newIsEditMode
 
         if coordinator.suppressNextReload && contentChanged && !layoutChanged && !removalStateChanged {
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
+            coordinator.lastActiveMetricsCount = newActiveMetricsCount
             coordinator.suppressNextReload = false
             uiView.collectionViewLayout.invalidateLayout()
             uiView.layoutIfNeeded()
-        } else if contentChanged || layoutChanged || removalStateChanged {
+        } else if contentChanged || layoutChanged || removalStateChanged || activeMetricsCountChanged {
             // When item count or layout changes, avoid batch updates; do a full, animation-less reload
             uiView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
@@ -59,6 +69,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
             }
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
+            coordinator.lastActiveMetricsCount = newActiveMetricsCount
         } else {
             // No content/layout changes. Avoid explicit reloads; just update wiggle state if needed
             if newIsEditMode != coordinator.lastIsEditMode {
@@ -204,6 +215,7 @@ extension MetricGridUIKitView {
         var lastIsEditMode: Bool = false
         var lastSelectedMetricLabel: String? = nil
         var lastRemovedMetrics: Set<String> = []
+        var lastActiveMetricsCount: Int = 0
         var suppressNextReload: Bool = false
         
         // MARK: - Properties
@@ -265,6 +277,11 @@ extension MetricGridUIKitView {
                 if let originalIndex = self.store.metricsManager.state.metrics.firstIndex(where: { $0.id == item.id }) {
                     Task {
                         try? await self.store.metricsManager.toggleMetricVisibility(at: originalIndex)
+                        
+                        // Sync the UI state with the metrics manager after the change
+                        await MainActor.run {
+                            self.store.syncRemovalStateFromMetricsManager()
+                        }
                     }
                 }
             }
@@ -341,7 +358,7 @@ extension MetricGridUIKitView {
             let parameters = UIDragPreviewParameters()
             parameters.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return parameters
         }
@@ -354,7 +371,7 @@ extension MetricGridUIKitView {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -381,7 +398,7 @@ extension MetricGridUIKitView {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -657,7 +674,7 @@ extension MetricGridUIKitView {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }

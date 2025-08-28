@@ -26,6 +26,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let newModel = buildGridModelFromStoreState()
         let newIsEditMode = store.state.ui.isEditMode
         let newRemovedStreaks = store.state.ui.removedStreaks
+        let newGoalCardRemoved = store.state.ui.isGoalCardRemoved
+        let newGoalCardPosition = store.state.ui.goalCardPosition
+        let newStreakGridOrder = store.state.ui.streakGridOrder
 
         let oldIds = coordinator.gridModel.mileStones.map { widget -> String in
             switch widget {
@@ -42,14 +45,26 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         let contentChanged = oldIds != newIds
         let removalStateChanged = newRemovedStreaks != coordinator.lastRemovedStreaks
+        let goalCardStateChanged = newGoalCardRemoved != coordinator.lastGoalCardRemoved
+        let goalCardPositionChanged = newGoalCardPosition != coordinator.lastGoalCardPosition
+        let streakOrderChanged = newStreakGridOrder != coordinator.lastStreakGridOrder
 
-        if contentChanged || removalStateChanged {
+        // Check if this is a reset operation (all items restored and order reset)
+        let isResetOperation = !newGoalCardRemoved && 
+                              newGoalCardPosition == 0 && 
+                              newStreakGridOrder.isEmpty &&
+                              newRemovedStreaks.isEmpty
+
+        if contentChanged || removalStateChanged || goalCardStateChanged || goalCardPositionChanged || streakOrderChanged {
             coordinator.gridModel = newModel
             collectionView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
                 collectionView.reloadData()
             }
             coordinator.lastRemovedStreaks = newRemovedStreaks
+            coordinator.lastGoalCardRemoved = newGoalCardRemoved
+            coordinator.lastGoalCardPosition = newGoalCardPosition
+            coordinator.lastStreakGridOrder = newStreakGridOrder
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
@@ -211,6 +226,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
         var lastIsEditMode: Bool = false
         var lastRemovedStreaks: Set<String> = []
+        var lastGoalCardRemoved: Bool = false
+        var lastGoalCardPosition: Int = 0
+        var lastStreakGridOrder: [String] = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
 
@@ -260,13 +278,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
                 cell.configure(
                     with: item, 
-                    store: store,
-                    onMetricLongPress: { label in
-                        // Handle long press for streak items if needed
-                    },
-                    onSelectMetric: { label in
-                        // Handle selection for streak items if needed
-                    }
+                    store: store
                 )
                 cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
@@ -279,24 +291,22 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
             let widget = gridModel.mileStones[indexPath.item]
-            let contentWidth = collectionView.bounds.width - 32 // 16px * 2 for left and right insets
+            let contentWidth = collectionView.bounds.width - 32
             let interItemSpacing: CGFloat = 16
 
             switch widget {
             case .goalCard:
-                return CGSize(width: contentWidth, height: 120) // Large widget spans full width
+                return CGSize(width: contentWidth, height: 120)
             case .streak:
-
-                // Device-aware columns: iPad=4, iPhone=2
                 let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
                 let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
-                return CGSize(width: itemWidth, height: 70) // Small widget
+                return CGSize(width: itemWidth, height: 70)
             }
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-            // The outer margin for the whole grid
-            return UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+            let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
+            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 16.0, right: 16.0)
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
@@ -330,7 +340,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }
@@ -351,8 +361,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 let params = UIDragPreviewParameters()
                 params.backgroundColor = .clear
-                // Match Metric grid: build path from previewView bounds and use 16 corner radius
-                params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                // Match Metric grid: build path from previewView bounds and use .radiusSM corner radius
+                params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
 
                 // Match Metric grid: use configured preview scale for consistency
                 let scale = DashboardConstants.UI.dragPreviewScale
@@ -390,7 +400,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     }
                     let params = UIDragPreviewParameters()
                     params.backgroundColor = .clear
-                    params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                    params.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
 
                     // Match Metric grid: use configured preview scale for consistency
                     let scale = DashboardConstants.UI.dragPreviewScale
@@ -848,7 +858,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                                 streakCell.isRemoved = self.store.isStreakRemoved(streakItem.label)
                                 // Clear any shadow effects that might remain
                                 streakCell.clearAllShadowEffects()
-                                // Clear any shadow effects that might remain
                             }
                         } else if let goalCell = cell as? GoalCardCell {
                             // Always reconfigure to ensure proper overlay visibility after drop
@@ -856,7 +865,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                             goalCell.isRemoved = self.store.state.ui.isGoalCardRemoved
                             // Clear any shadow effects that might remain
                             goalCell.clearAllShadowEffects()
-                            // Clear any shadow effects that might remain
                         }
                     }
                 }
@@ -884,9 +892,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 if case .streak(let streakItem) = droppedItem {
                     // Store the dropped streak item ID for later overlay restoration
                     lastDroppedStreakId = streakItem.id.uuidString
+                    
+                    // Make sure the overlay is suppressed during the drop
+                    if let targetCell = collectionView.visibleCells.first(where: { cell in
+                        guard let streakCell = cell as? StreakCardCell, let rep = streakCell.representedItem else { return false }
+                        return rep.id.uuidString == streakItem.id.uuidString
+                    }) as? StreakCardCell {
+                        targetCell.setOverlaySuppressed(true)
+                    }
                 } else if droppedItem == .goalCard {
                     // Mark that goal card was dropped
                     lastDroppedGoalCard = true
+                    
+                    // Make sure the overlay is suppressed during the drop
+                    if let targetCell = collectionView.visibleCells.first(where: { cell in
+                        return cell is GoalCardCell
+                    }) as? GoalCardCell {
+                        targetCell.setOverlaySuppressed(true)
+                    }
                 }
             }
 
@@ -903,7 +926,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let params = UIDragPreviewParameters()
             params.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return params
         }
@@ -1157,15 +1180,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     cell.transform = .identity
                     cell.contentView.transform = .identity
                     
-                    // Only update drag state if we're in edit mode to prevent unnecessary changes
+                    // Restore overlay visibility if in edit mode - follow exact pattern from MetricGridUIKitView
                     if self.store.state.ui.isEditMode {
                         if let streakCell = cell as? StreakCardCell {
                             streakCell.updateDragState(false)
-                            // Don't reset drop state here - wait for layout to fully settle
+                            streakCell.setOverlaySuppressed(false)
                             // Force clear all shadow effects to prevent shadow artifacts
                             streakCell.clearAllShadowEffects()
                         } else if let goalCell = cell as? GoalCardCell {
                             goalCell.updateDragState(false)
+                            goalCell.setOverlaySuppressed(false)
                             // Force clear all shadow effects to prevent shadow artifacts
                             goalCell.clearAllShadowEffects()
                         }
@@ -1173,54 +1197,38 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
             CATransaction.commit()
-            
+
             // Clear any remaining drag state
             store.state.ui.isGoalCardBeingDragged = false
             
             // Reset drop target tracking
             resetDropTargetTracking()
             
-            // Restore overlay visibility after layout rerender, following the same pattern as MetricGridUIKitView
+            // Add a delay to ensure layout has fully settled before restoring overlays
             if store.state.ui.isEditMode && isAwaitingDropEnd {
-                let restore = {
-                    if let targetId = self.lastDroppedStreakId,
-                       let targetCell = collectionView.visibleCells.first(where: { cell in
-                           guard let streakCell = cell as? StreakCardCell, let rep = streakCell.representedItem else { return false }
-                           return rep.id.uuidString == targetId
-                       }) as? StreakCardCell {
-                        targetCell.setOverlaySuppressed(false)
-                        // Don't call updateDropState here - let the cell's configure method handle it
-                        targetCell.setNeedsLayout()
-                        targetCell.layoutIfNeeded()
-                    } else if self.lastDroppedGoalCard,
-                              let targetCell = collectionView.visibleCells.first(where: { cell in
-                                  return cell is GoalCardCell
-                              }) as? GoalCardCell {
-                        targetCell.setOverlaySuppressed(false)
-                        // Don't call updateDropState here - let the cell's configure method handle it
-                        targetCell.setNeedsLayout()
-                        targetCell.layoutIfNeeded()
-                    } else {
-                        // Fallback: restore all if we cannot identify the dropped cell
+                // First, mark that we're no longer awaiting drop end
+                self.isAwaitingDropEnd = false
+                
+                // Then add a delay before restoring overlays
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // After the delay, force a layout pass on all cells
+                    UIView.performWithoutAnimation {
+                        collectionView.layoutIfNeeded()
+                        
+                        // Now restore overlays on all cells
                         for cell in collectionView.visibleCells {
                             if let streakCell = cell as? StreakCardCell {
                                 streakCell.setOverlaySuppressed(false)
-                                // Don't call updateDropState here - let the cell's configure method handle it
-                                streakCell.setNeedsLayout()
-                                streakCell.layoutIfNeeded()
                             } else if let goalCell = cell as? GoalCardCell {
                                 goalCell.setOverlaySuppressed(false)
-                                // Don't call updateDropState here - let the cell's configure method handle it
-                                goalCell.setNeedsLayout()
-                                goalCell.layoutIfNeeded()
                             }
                         }
                     }
-                    self.isAwaitingDropEnd = false
+                    
+                    // Clear tracking state
                     self.lastDroppedStreakId = nil
                     self.lastDroppedGoalCard = false
                 }
-                restore()
             } else {
                 isAwaitingDropEnd = false
                 lastDroppedStreakId = nil
