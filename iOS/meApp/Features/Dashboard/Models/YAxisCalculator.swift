@@ -84,12 +84,16 @@ struct YAxisCalculator {
             targetTickCount: 4 // Reduced tick count for cleaner graphs
         )
 
+        print("Generated scale Y axis range: \(scale)")
+        // Align domain to tick range so plot bounds match horizontal rules
+        let domainMin = scale.ticks.first ?? scale.min
+        let domainMax = scale.ticks.last ?? scale.max
         return YAxisScale(
             min: scale.min,
             max: scale.max,
             step: scale.step,
             ticks: scale.ticks,
-            domain: scale.domain,
+            domain: domainMin...domainMax,
             average: average
         )
     }
@@ -185,12 +189,15 @@ struct YAxisCalculator {
             initialStep: 1.0
         )
 
+        // Align domain to tick range so plot bounds coincide with horizontal rules
+        let domainMinSmall = adjustedTicks.first ?? finalMin
+        let domainMaxSmall = adjustedTicks.last ?? finalMax
         return YAxisScale(
             min: finalMin,
             max: finalMax,
             step: adjustedStep,
             ticks: adjustedTicks,
-            domain: finalMin...finalMax,
+            domain: domainMinSmall...domainMaxSmall,
             average: average
         )
     }
@@ -247,12 +254,15 @@ struct YAxisCalculator {
             goalWeight: goalWeight,
             targetTickCount: 3
         )
+            // Align fallback domain to tick range as well
+            let domainMin = scale.ticks.first ?? scale.min
+            let domainMax = scale.ticks.last ?? scale.max
             return YAxisScale(
                 min: scale.min,
                 max: scale.max,
                 step: scale.step,
                 ticks: scale.ticks,
-                domain: scale.domain,
+                domain: domainMin...domainMax,
                 average: goalWeight
             )
         }
@@ -334,7 +344,10 @@ fileprivate struct ImprovedNiceScaleCalculator {
             initialStep: initialStep
         )
 
-        return (finalMin, finalMax, adjustedStep, adjustedTicks, finalMin...finalMax)
+        // Align domain to tick range so plot bounds coincide with horizontal rules
+        let domainMin = adjustedTicks.first ?? finalMin
+        let domainMax = adjustedTicks.last ?? finalMax
+        return (finalMin, finalMax, adjustedStep, adjustedTicks, domainMin...domainMax)
     }
 
         /// Handle medium ranges (5-15 units)
@@ -422,12 +435,15 @@ fileprivate struct ImprovedNiceScaleCalculator {
             initialStep: step
         )
 
+        // Align domain to tick range so plot bounds coincide with horizontal rules
+        let domainMin = adjustedTicks.first ?? finalMin
+        let domainMax = adjustedTicks.last ?? finalMax
         return (
             min: finalMin,
             max: finalMax,
             step: adjustedStep,
             ticks: adjustedTicks,
-            domain: finalMin...finalMax
+            domain: domainMin...domainMax
         )
     }
 

@@ -361,7 +361,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
     func formatXAxisLabel(for date: Date) -> String? {
-        return dashboardStore?.xLabelString(for: date, period: timePeriod)
+        return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
     }
     
     // MARK: - Chart Content Helpers
