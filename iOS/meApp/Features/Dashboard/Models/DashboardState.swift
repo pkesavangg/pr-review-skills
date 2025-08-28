@@ -21,6 +21,9 @@ struct UIState {
     var selectedMetricLabel: String? = nil
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
+
+    var removedMetrics: Set<String> = [] 
+    var removedStreaks: Set<String> = [] 
     
     // Goal card position management (like large widget)
     var goalCardPosition: Int = 0 // Position after divider (0 = first position)
@@ -43,7 +46,6 @@ struct UIState {
         draggingStreak = nil
         isGoalCardBeingDragged = false
         dropHoverId = nil
-        gridLayoutId = UUID()
     }
 }
 
@@ -52,6 +54,7 @@ struct MetricsState {
     var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
     var activeMetricsCount: Int = 12
+    var removedMetrics: Set<String> = []
 
     var metricsToShow: [MetricItem] {
         // Show only active metrics based on activeMetricsCount
@@ -72,6 +75,7 @@ struct MetricsState {
 struct StreakState {
     var streakItems: [MetricItem] = []
     var activeStreakItemsCount: Int = 6
+    var removedStreaks: Set<String> = []
 
     var streakItemsToShow: [MetricItem] {
         Array(streakItems.prefix(activeStreakItemsCount))

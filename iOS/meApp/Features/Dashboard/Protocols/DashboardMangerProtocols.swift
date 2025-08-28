@@ -54,12 +54,14 @@ func getVisibleOperations(from operations: [BathScaleWeightSummary]) async -> [B
 protocol DashboardMetricsManaging {
     func updateMetrics(with entry: Entry) async throws
     func updateMetrics(with selectedPoint: BathScaleWeightSummary) async throws
-    func saveMetricsToAPI() async throws
+    func saveMetricsToAPI(removedMetrics: Set<String>) async throws
     func loadMetricsFromAPI() async throws
     func resetMetricsToDefaults() async throws
     func toggleMetricVisibility(at index: Int) async throws
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws
     func getMetricValue(for label: String, from summary: BathScaleWeightSummary) async -> Double?
+    func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType, removedMetrics: Set<String>) -> [MetricItem]
+    func getRemovedMetricLabels() -> Set<String>
     func createEntryForMetricInfo(metricLabel: String?) async -> Entry
     func getBodyMetric(for metricLabel: String) async -> BodyMetric
     func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>)

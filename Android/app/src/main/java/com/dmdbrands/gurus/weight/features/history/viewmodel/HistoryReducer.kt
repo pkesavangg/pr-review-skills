@@ -35,6 +35,8 @@ sealed interface HistoryIntent : IReducer.Intent {
     data class getHistory(
         val start: String,
     ) : HistoryIntent
+
+    object Export : HistoryIntent
 }
 
 /**

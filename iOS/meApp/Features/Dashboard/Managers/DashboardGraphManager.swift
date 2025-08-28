@@ -29,6 +29,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
+    
+    // Chart data caching for scroll performance
+    private var cachedChartSeriesData: [GraphSeries] = []
+    private var lastCachedScrollPosition: Date?
+    private var lastCachedYAxisDomain: ClosedRange<Double>?
+    private var lastCachedSelectedMetric: String?
+    private var lastCachedOperationsCount: Int = 0
+    private var chartDataGenerationThrottle: Timer?
 
     init(initialState: GraphState = GraphState()) {
         self.state = initialState
@@ -263,6 +271,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Generates chart data using the provided Y-axis domain for consistent metric normalization
     /// This ensures metric lines stay within the visible Y-axis range when scrolling
+    /// Now includes caching and throttling for scroll performance
     func generateChartDataWithYAxisDomain(
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
@@ -278,10 +287,27 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return []
         }
 
-        var series: [GraphSeries] = []
+        // Check if we can use cached data during scrolling
+        if state.isScrolling && canUseCachedChartData(
+            operationsCount: allOperations.count,
+            yAxisDomain: yAxisDomain,
+            selectedMetric: selectedMetric
+        ) {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
+            return cachedChartSeriesData
+        }
+        
+        // During scrolling, use simplified data for better performance
+        let operationsToProcess = state.isScrolling ? 
+            simplifyDataForScrolling(allOperations) : 
+            allOperations
 
-        // Add weight series (always present) from all operations to show continuous line
-        for summary in allOperations {
+        // Generate fresh data
+        var series: [GraphSeries] = []
+        
+        // Add weight series (always present) from operations to show continuous line
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generating weight series with Y-axis domain: \(yAxisDomain), operations: \(operationsToProcess.count)")
+        for summary in operationsToProcess {
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchorWeight = anchorWeight else { continue }
@@ -312,8 +338,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             series.append(contentsOf: normalizedMetricSeries)
         }
 
+        // Cache the generated data for future scroll events
+        cacheChartData(
+            series: series,
+            operationsCount: allOperations.count,
+            yAxisDomain: yAxisDomain,
+            selectedMetric: selectedMetric
+        )
+
         logger.log(level: .info, tag: "DashboardGraphManager",
-                  message: "Generated chart data with Y-axis domain: \(series.count) points, " +
+                  message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
                           "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
                           "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
@@ -637,6 +671,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func updateSelectedPeriod(_ period: TimePeriod) {
         state.selectedPeriod = period
         state.clearSelection()
+        
+        // Clear chart data cache when period changes
+        clearChartDataCache()
 
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
@@ -1238,5 +1275,90 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.isScrolling = false
         state.hasDetectedScrollInCurrentGesture = false
         latestScrollPosition = nil
+        
+        // Clear chart data cache when scrolling ends to ensure fresh data on next scroll
+        clearChartDataCache()
+    }
+    
+    // MARK: - Chart Data Caching for Scroll Performance
+    
+    /// Checks if cached chart data can be used during scrolling
+    private func canUseCachedChartData(
+        operationsCount: Int,
+        yAxisDomain: ClosedRange<Double>,
+        selectedMetric: String?
+    ) -> Bool {
+        // Must have cached data
+        guard !cachedChartSeriesData.isEmpty else { return false }
+        
+        // Operations count must match
+        guard operationsCount == lastCachedOperationsCount else { return false }
+        
+        // Selected metric must match
+        guard selectedMetric == lastCachedSelectedMetric else { return false }
+        
+        // Y-axis domain must be similar (within 5% tolerance)
+        guard let lastDomain = lastCachedYAxisDomain else { return false }
+        
+        let domainDifference = abs(yAxisDomain.lowerBound - lastDomain.lowerBound) + 
+                              abs(yAxisDomain.upperBound - lastDomain.upperBound)
+        let domainSize = max(yAxisDomain.upperBound - yAxisDomain.lowerBound, 0.1)
+        let tolerance = domainSize * 0.05 // 5% tolerance
+        
+        return domainDifference <= tolerance
+    }
+    
+    /// Caches chart data for reuse during scrolling
+    private func cacheChartData(
+        series: [GraphSeries],
+        operationsCount: Int,
+        yAxisDomain: ClosedRange<Double>,
+        selectedMetric: String?
+    ) {
+        cachedChartSeriesData = series
+        lastCachedOperationsCount = operationsCount
+        lastCachedYAxisDomain = yAxisDomain
+        lastCachedSelectedMetric = selectedMetric
+        lastCachedScrollPosition = state.xScrollPosition
+    }
+    
+    /// Clears chart data cache (called when scrolling ends or data changes)
+    private func clearChartDataCache() {
+        cachedChartSeriesData = []
+        lastCachedScrollPosition = nil
+        lastCachedYAxisDomain = nil
+        lastCachedSelectedMetric = nil
+        lastCachedOperationsCount = 0
+        
+        // Cancel any pending throttled generation
+        chartDataGenerationThrottle?.invalidate()
+        chartDataGenerationThrottle = nil
+    }
+    
+    /// Simplifies data during scrolling by reducing the number of points for better performance
+    private func simplifyDataForScrolling(_ operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
+        // For very large datasets, sample every nth point during scrolling
+        let maxPointsDuringScroll = 100 // Limit to 100 points during scroll
+        
+        guard operations.count > maxPointsDuringScroll else {
+            return operations
+        }
+        
+        let step = operations.count / maxPointsDuringScroll
+        var simplifiedOps: [BathScaleWeightSummary] = []
+        
+        for i in stride(from: 0, to: operations.count, by: max(1, step)) {
+            simplifiedOps.append(operations[i])
+        }
+        
+        // Always include the last point to maintain chart continuity
+        if let lastOp = operations.last, !simplifiedOps.contains(where: { $0.date == lastOp.date }) {
+            simplifiedOps.append(lastOp)
+        }
+        
+        logger.log(level: .debug, tag: "DashboardGraphManager", 
+                  message: "Simplified data for scrolling: \(operations.count) -> \(simplifiedOps.count) points")
+        
+        return simplifiedOps
     }
 }

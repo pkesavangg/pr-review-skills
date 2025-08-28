@@ -6,7 +6,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
-import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 
 /**
  * Controls for Goal form.
@@ -141,14 +140,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         val controls = state.form.controls
         // Mark goalType as changed (dirty) and set new value
         controls.goalType.onValueChange(intent.goalType.value)
-
-        // Toggle required validator for startingWeight based on goal type
-        if (intent.goalType != GoalType.MAINTAIN) {
-          controls.startingWeight.addValidator(FormValidations.required())
-        } else {
-          controls.startingWeight.removeValidator(ValidationType.REQUIRED)
-        }
-
         state.copy() // same form reference; UI observes updated controls
       }
 

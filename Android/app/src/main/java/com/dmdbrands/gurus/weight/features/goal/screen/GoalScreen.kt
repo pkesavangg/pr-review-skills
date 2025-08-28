@@ -17,12 +17,14 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
@@ -32,6 +34,7 @@ import com.dmdbrands.gurus.weight.features.goal.model.GoalState
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.goal.viewmodel.GoalViewModel
 import com.dmdbrands.gurus.weight.features.signup.components.GoalStep
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -95,7 +98,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
       Spacer(modifier = Modifier.padding(top = if (!canDisplayMilestone) spacing.md else 0.dp))
 
       GoalStep(
-        title = if (canShowTitle) GoalStrings.Title else null,
+        title = if (canShowTitle) GoalStrings.Title else SignupStrings.goalStepTitle,
         subtitle = GoalStrings.Subtitle,
         goalTypeControl = state.form.controls.goalType,
         currentWeightControl = state.form.controls.startingWeight,
@@ -110,6 +113,10 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         // For Goal screen, show current weight field and enable unless MAINTAIN
         showCurrentWeightForMaintain = false,
         showMetricToggle = false,
+
+        initialWeightUnit = state.account?.let { account ->
+          if (account.isMetricUnit()) WeightUnit.KG else WeightUnit.LB
+        },
       )
       Spacer(modifier = Modifier.padding(spacing.lg))
     }

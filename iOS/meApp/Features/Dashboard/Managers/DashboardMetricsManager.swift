@@ -53,15 +53,49 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
     // MARK: - Setup Methods
     private func setupInitialMetrics() {
-        state.metrics = originalMetrics.map {
-            MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
+        if state.dashboardType == .dashboard12 {
+      
+            state.metrics = originalMetrics.map {
+                MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
+            }
+            state.activeMetricsCount = state.metrics.count
+        } else {
+            let basicMetrics = Array(originalMetrics.prefix(4))
+            state.metrics = basicMetrics.map {
+                MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
+            }
+            state.activeMetricsCount = state.metrics.count
         }
-        switch state.dashboardType {
-        case .dashboard4:
-            state.activeMetricsCount = 4
-        case .dashboard12:
-            state.activeMetricsCount = 12
+    }
+
+    func resetOrderToDefault() {
+
+        let desiredOrderLabels: [String]
+        if state.dashboardType == .dashboard12 {
+            desiredOrderLabels = originalMetrics.map { $0.label }
+        } else {
+            desiredOrderLabels = Array(originalMetrics.prefix(4)).map { $0.label }
         }
+
+        let existingByLabel: [String: MetricItem] = Dictionary(
+            uniqueKeysWithValues: state.metrics.map { ($0.label, $0) }
+        )
+
+        var newMetrics: [MetricItem] = []
+        for label in desiredOrderLabels {
+            if let existing = existingByLabel[label] {
+                newMetrics.append(existing)
+            } else if let original = originalMetrics.first(where: { $0.label == label }) {
+                // Fallback to original placeholder item if not present
+                newMetrics.append(MetricItem(value: original.value, label: original.label, unit: original.unit, preLabel: original.preLabel, icon: original.icon))
+            }
+        }
+
+        let remaining = state.metrics.filter { !desiredOrderLabels.contains($0.label) }
+        newMetrics.append(contentsOf: remaining)
+
+        state.metrics = newMetrics
+        state.activeMetricsCount = newMetrics.count
     }
 
     // MARK: - API Integration
@@ -71,19 +105,24 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 throw DashboardError.noActiveAccount
             }
           
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loading metrics from API - Current state: \(state.metrics.count) metrics, active: \(state.activeMetricsCount)")
+            
+            // Fully rely on dashboardType parameter from active account
             if let dashboardTypeString = account.dashboardSettings?.dashboardType,
                let dashboardType = DashboardType(rawValue: dashboardTypeString) {
                 updateDashboardType(dashboardType)
                 logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded dashboard type from API: \(dashboardType.rawValue)")
-            } else if let metricsCSV = account.dashboardSettings?.dashboardMetrics {
-                let metricsCount = metricsCSV.split(separator: ",").count
-                updateDashboardType(metricsCount >= 12 ? .dashboard12 : .dashboard4)
-                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Inferred dashboard type from metrics count: \(state.dashboardType.rawValue)")
+            } else {
+                // If no dashboardType is set, use default dashboard12
+                updateDashboardType(.dashboard12)
             }
+            
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                 updateMetricsOrder(from: metricArray)
-                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loaded metrics from API: \(metricArray)")
+
+            } else {
+                setupInitialMetrics()
             }
         } catch {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to load metrics from API: \(error)")
@@ -105,32 +144,88 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
     // MARK: - Metric Management
     func resetMetricsToDefaults() async throws {
-        setupInitialMetrics()
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults")
+        // Instead of just setting up initial metrics, reload from API to restore original order
+        try await loadMetricsFromAPI()
+        
+        // Ensure all metrics are active after reset
+        resetActiveMetricsCountToShowAll()
+        
+        // Clear any removal state to ensure all metrics are visible
+        state.removedMetrics.removeAll()
+        
+        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API and restoring all metrics")
+    }
+    
+    /// Resets the active metrics count to show all metrics (useful for dashboard reset)
+    /// For dashboard type 12: shows all 12 metrics
+    /// For dashboard type 4: shows all configured metrics
+    func resetActiveMetricsCountToShowAll() {
+        if state.dashboardType == .dashboard12 {
+            // For dashboard 12, show all 12 metrics
+            state.activeMetricsCount = state.metrics.count
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset active metrics count for dashboard 12: all \(state.activeMetricsCount) metrics are now active")
+        } else {
+            // For dashboard 4, all stored metrics are already active
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reset active metrics count called for dashboard 4 - all \(state.metrics.count) metrics are already active")
+        }
+    }
+    
+    /// Returns the set of removed metric labels based on the current state
+    /// For dashboard type 12: returns labels of metrics beyond activeMetricsCount (inactive ones)
+    /// For dashboard type 4: returns empty set since all stored metrics are active
+    func getRemovedMetricLabels() -> Set<String> {
+        if state.dashboardType == .dashboard12 {
+            let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
+            let removedLabels = Set(removedMetrics.map { $0.label })
+            
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Dashboard 12: \(removedLabels.count) inactive metrics out of \(state.metrics.count) total")
+            return removedLabels
+        } else {
+            return []
+        }
     }
 
     func toggleMetricVisibility(at index: Int) async throws {
         guard index < state.metrics.count else {
             throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
         }
-        let metric = state.metrics[index]
-        let isCurrentlyRemoved = index >= state.activeMetricsCount
-        state.metrics.remove(at: index)
-        if isCurrentlyRemoved {
-            state.metrics.insert(metric, at: state.activeMetricsCount)
-            state.activeMetricsCount += 1
+        
+        if state.dashboardType == .dashboard12 {
+            // For dashboard 12, allow toggling between active and inactive
+            let metric = state.metrics[index]
+            let isCurrentlyRemoved = index >= state.activeMetricsCount
+            
+            state.metrics.remove(at: index)
+            if isCurrentlyRemoved {
+                // Adding the metric back - insert at the end of active metrics
+                state.metrics.insert(metric, at: state.activeMetricsCount)
+                state.activeMetricsCount += 1
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Added metric back: \(metric.label), activeMetricsCount: \(state.activeMetricsCount)")
+            } else {
+                // Removing the metric - move to end (inactive section)
+                state.metrics.append(metric)
+                state.activeMetricsCount -= 1
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Removed metric: \(metric.label), activeMetricsCount: \(state.activeMetricsCount)")
+            }
         } else {
-            state.metrics.append(metric)
-            state.activeMetricsCount -= 1
+            // For dashboard 4, all metrics are always active
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggle metric visibility called but not needed for dashboard 4 - all \(state.metrics.count) metrics are always active")
         }
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Toggled metric visibility at index: \(index), activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
         state.metrics.move(fromOffsets: source, toOffset: destination)
-        let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
-        state.activeMetricsCount = currentActiveCount
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics from \(source) to \(destination), activeMetricsCount: \(state.activeMetricsCount)")
+        
+        if state.dashboardType == .dashboard12 {
+            // For dashboard 12, ensure activeMetricsCount remains correct after reordering
+            // This prevents active and inactive metrics from getting mixed up
+            let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
+            state.activeMetricsCount = currentActiveCount
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics for dashboard 12, activeMetricsCount: \(state.activeMetricsCount)")
+        } else {
+            // For dashboard 4, activeMetricsCount remains the same since all metrics are active
+            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Reordered metrics for dashboard 4, activeMetricsCount: \(state.activeMetricsCount)")
+        }
     }
 
     // MARK: - Utility Methods
@@ -152,7 +247,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
-    func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType) -> [MetricItem] {
+    func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType, removedMetrics: Set<String> = []) -> [MetricItem] {
         let allowedFour: Set<String> = [
             DashboardStrings.bmi,
             DashboardStrings.bodyFat,
@@ -161,25 +256,19 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
-            // In edit mode, strictly follow dashboard type
-            switch dashboardType {
-            case .dashboard4:
-                // Show only the four allowed metrics (regardless of active ordering)
-                return state.metrics.filter { allowedFour.contains($0.label) }
-            case .dashboard12:
-                // Show all metrics (active + removed) so user can add/remove
-                return state.metrics
-            }
+            return state.metrics
         } else {
-            // In non-edit mode, show ONLY active metrics (removed items hidden), capped by dashboard type
-            let activeMetrics = Array(state.metrics.prefix(state.activeMetricsCount))
+            let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+
+            
             switch dashboardType {
             case .dashboard4:
-                // Show only allowed labels from active list (hidden if removed)
-                return Array(activeMetrics.filter { allowedFour.contains($0.label) }.prefix(4))
+                let result = Array(allUnremovedMetrics.filter { allowedFour.contains($0.label) }.prefix(4))
+                return result
             case .dashboard12:
-                // Show up to 12 active metrics
-                return Array(activeMetrics.prefix(12))
+                let result = Array(allUnremovedMetrics.prefix(12))
+
+                return result
             }
         }
     }
@@ -359,12 +448,21 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - API Operations
-    func saveMetricsToAPI() async throws {
+    func saveMetricsToAPI(removedMetrics: Set<String> = []) async throws {
         do {
             guard accountService.activeAccount != nil else {
                 throw DashboardError.noActiveAccount
             }
-            let visibleMetrics = Array(state.metrics.prefix(state.activeMetricsCount)).map { $0.label }
+            
+            // Get all metrics that are NOT removed and are within the active count
+            let visibleMetrics = state.metrics
+                .enumerated()
+                .filter { index, metric in
+                    // Include metric if it's not removed and within active count
+                    !removedMetrics.contains(metric.label) && index < state.activeMetricsCount
+                }
+                .map { $0.element.label }
+            
             let apiMetrics = visibleMetrics.compactMap { displayLabel -> String? in
                 switch displayLabel {
                 case DashboardStrings.bmi: return "bmi"
@@ -382,6 +480,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 default: return nil
                 }
             }
+            
             _ = try await accountService.updateDashboardMetrics(metrics: apiMetrics)
             logger.log(level: .info, tag: "DashboardMetricsManager", message: "Saved metrics to API: \(apiMetrics)")
         } catch {
@@ -493,6 +592,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     private func updateMetricsOrder(from apiMetrics: [String]) {
+
         let displayMetrics = apiMetrics.compactMap { apiMetric -> String? in
             switch apiMetric {
             case "bmi": return DashboardStrings.bmi
@@ -510,8 +610,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             default: return nil
             }
         }
+
         var activeMetrics: [MetricItem] = []
-        var inactiveMetrics: [MetricItem] = []
         for displayMetric in displayMetrics {
             if let originalMetric = originalMetrics.first(where: { $0.label == displayMetric }) {
                 let metricItem = MetricItem(
@@ -524,21 +624,29 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 activeMetrics.append(metricItem)
             }
         }
-        for metric in originalMetrics {
-            if !displayMetrics.contains(metric.label) {
-                let metricItem = MetricItem(
-                    value: metric.value,
-                    label: metric.label,
-                    unit: metric.unit,
-                    preLabel: metric.preLabel,
-                    icon: metric.icon
-                )
-                inactiveMetrics.append(metricItem)
+        
+        // For dashboard type 12, also include inactive metrics so they can be managed in edit mode
+        var inactiveMetrics: [MetricItem] = []
+        if state.dashboardType == .dashboard12 {
+            // Add all metrics that are not in the API response as inactive
+            for originalMetric in originalMetrics {
+                if !displayMetrics.contains(originalMetric.label) {
+                    let metricItem = MetricItem(
+                        value: originalMetric.value,
+                        label: originalMetric.label,
+                        unit: originalMetric.unit,
+                        preLabel: originalMetric.preLabel,
+                        icon: originalMetric.icon
+                    )
+                    inactiveMetrics.append(metricItem)
+                }
             }
         }
+
         state.metrics = activeMetrics + inactiveMetrics
+
         state.activeMetricsCount = activeMetrics.count
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics order from API: \(displayMetrics), activeMetricsCount: \(state.activeMetricsCount)")
+
     }
 
     // MARK: - Metric Interaction Methods

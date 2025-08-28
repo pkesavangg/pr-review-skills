@@ -7,54 +7,57 @@
 package com.dmdbrands.gurus.weight.theme.enums
 
 enum class ColorSchemeKey {
-    // Background
-    Primary,
-    PrimaryDisabled,
-    Secondary,
+  // Background
+  Primary,
+  PrimaryDisabled,
+  Secondary,
 
-    // Support
-    Overlay,
-    ToastBackground,
+  // Support
+  Overlay,
+  ToastBackground,
 
-    // Action
-    PrimaryAction,
-    PrimaryActionDisabled,
-    SecondaryAction,
-    SecondaryActionDisabled,
-    TertiaryAction,
-    TertiaryActionDisabled,
-    Inverse,
-    InverseDisabled,
-    InverseSecondary,
-    ErrorAction,
-    ErrorActionDisabled,
+  // Action
+  PrimaryFocusedAction,
+  PrimaryAction,
+  PrimaryActionDisabled,
+  SecondaryAction,
+  SecondaryActionDisabled,
+  TertiaryAction,
+  TertiaryActionDisabled,
+  TertiaryActionSecondary,
+  Inverse,
+  InverseDisabled,
+  InverseSecondary,
+  ErrorAction,
+  ErrorActionDisabled,
+  ErrorActionSecondary,
 
-    // Status
-    Goal,
-    Success,
-    Danger,
-    Streak,
-    Utility,
-    Glow,
+  // Status
+  Goal,
+  Success,
+  Danger,
+  Streak,
+  Utility,
+  Glow,
 
-    // Icon
-    IconPrimary,
-    IconPrimaryDisabled,
-    IconSecondary,
-    IconSecondaryDisabled,
+  // Icon
+  IconPrimary,
+  IconPrimaryDisabled,
+  IconSecondary,
+  IconSecondaryDisabled,
 
-    // Loading
-    Loading,
-    LoadingError,
+  // Loading
+  Loading,
+  LoadingError,
 
-    // Text
-    Heading,
-    Body,
-    Subheading,
-    Error,
-    ErrorDisabled,
+  // Text
+  Heading,
+  Body,
+  Subheading,
+  Error,
+  ErrorDisabled,
 
-    // Brand
-    MeAppPrimary,
-    WgPrimary,
+  // Brand
+  MeAppPrimary,
+  WgPrimary,
 }

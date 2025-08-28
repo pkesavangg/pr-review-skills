@@ -4,6 +4,9 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,8 +20,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -29,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.flow.collectLatest
 
 // Button style types
 enum class ButtonType {
@@ -125,6 +131,58 @@ object AppButtonDefaults {
         )
 
       else -> null
+    }
+
+  /**
+   * Returns pressed background color based on button type.
+   */
+  @Composable
+  fun pressedBackgroundColor(type: ButtonType): Color =
+    when (type) {
+      ButtonType.PrimaryFilled -> MeTheme.colorScheme.primaryFocusedAction
+      ButtonType.SecondaryFilled -> MeTheme.colorScheme.inverseActionSecondary
+      ButtonType.PrimaryOutlined -> MeTheme.colorScheme.inverseActionSecondary
+      ButtonType.SecondaryOutlined -> MeTheme.colorScheme.primaryFocusedAction
+      else -> Color.Transparent
+    }
+
+  /**
+   * Returns pressed background color based on button type.
+   */
+  @Composable
+  fun pressedBorder(type: ButtonType): BorderStroke? =
+    when (type) {
+      ButtonType.PrimaryOutlined ->
+        BorderStroke(
+          2.dp,
+          MeTheme.colorScheme.primaryFocusedAction,
+        )
+
+      ButtonType.SecondaryOutlined ->
+        BorderStroke(
+          2.dp,
+          MeTheme.colorScheme.inverseActionSecondary,
+        )
+
+      else -> null
+    }
+
+  /**
+   * Returns pressed content color based on button type.
+   */
+  @Composable
+  fun pressedContentColor(type: ButtonType, enabled: Boolean): Color =
+    when (type) {
+      ButtonType.TextPrimary, ButtonType.InlineTextPrimary ->
+        MeTheme.colorScheme.primaryFocusedAction
+
+      ButtonType.TextSecondary, ButtonType.InlineTextSecondary ->
+        MeTheme.colorScheme.inverseActionSecondary
+
+      ButtonType.TextTertiary, ButtonType.InlineTextTertiary -> MeTheme.colorScheme.tertiaryActionSecondary
+      ButtonType.ErrorText -> MeTheme.colorScheme.errorAction
+      ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined -> if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
+      ButtonType.SecondaryFilled, ButtonType.PrimaryOutlined -> if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
     }
 
   // Button height by size
@@ -226,7 +284,13 @@ fun AppButton(
   // Get style values from defaults
   val backgroundColor = AppButtonDefaults.backgroundColor(type, enabled)
   val contentColor = AppButtonDefaults.contentColor(type, enabled)
+  AppButtonDefaults.pressedBackgroundColor(type)
+  AppButtonDefaults.pressedContentColor(type, enabled)
+  val focusedBackgroundColor = AppButtonDefaults.pressedBackgroundColor(type)
+  val focusedContentColor = AppButtonDefaults.pressedContentColor(type, enabled)
+  AppButtonDefaults.pressedBorder(type)
   val border = AppButtonDefaults.border(type, enabled)
+  val pressedBorder = AppButtonDefaults.pressedBorder(type)
   val height = AppButtonDefaults.height(size)
   val hPadding = AppButtonDefaults.horizontalPadding(size, type)
   val textStyle = AppButtonDefaults.textStyle(size)
@@ -245,10 +309,31 @@ fun AppButton(
       },
     )
     .defaultMinSize(minWidth = minWidth)
+
+  // Create interaction source for focus state
+  val interactionSource = remember { MutableInteractionSource() }
+  var isPressed by remember { mutableStateOf(false) }
+
+  // Determine colors based on focus state
+  val finalBackgroundColor = if (isPressed) focusedBackgroundColor else backgroundColor
+  val finalContentColor = if (isPressed) focusedContentColor else contentColor
+  val borderColor = if (isPressed) pressedBorder else border
+
+  // Collect interactions
+  LaunchedEffect(interactionSource) {
+    interactionSource.interactions.collectLatest { interaction: Interaction ->
+      when (interaction) {
+        is PressInteraction.Press -> isPressed = true
+        is PressInteraction.Release,
+        is PressInteraction.Cancel -> isPressed = false
+      }
+    }
+  }
+
   val buttonColors =
     ButtonDefaults.buttonColors(
-      containerColor = backgroundColor,
-      contentColor = contentColor,
+      containerColor = finalBackgroundColor,
+      contentColor = finalContentColor,
       disabledContainerColor = backgroundColor,
       disabledContentColor = contentColor,
     )
@@ -260,9 +345,10 @@ fun AppButton(
     enabled = enabled,
     shape = shape,
     colors = buttonColors,
-    border = border,
+    border = borderColor,
     modifier = buttonModifier,
     contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
+    interactionSource = interactionSource,
   ) {
     Text(text = text, style = textStyle, maxLines = maxLines)
   }

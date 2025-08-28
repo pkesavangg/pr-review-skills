@@ -60,14 +60,14 @@ data class EntryForm(
     val minute = calendar.get(Calendar.MINUTE)
     fun create(
       includeR4ScaleMetrics: Boolean = false,
-      weightUnit: WeightUnit? = WeightUnit.LB,
+      weightUnit: WeightUnit? = null,
       height: Int? = 0,
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
     ): EntryForm {
       val generalMetrics =
         GeneralMetricsFormControls(
           bodyMassIndex = FormControl.create(
-            scaleEntry?.scale?.scaleEntry?.bmi?.toString() ?: "",
+            scaleEntry?.scale?.scaleEntry?.bmi?.times(10)?.toInt()?.toString() ?: "",
             listOf(FormValidations.bodyCompValidator()),
           ),
           bodyFat = FormControl.create(
@@ -89,9 +89,8 @@ data class EntryForm(
           weight = FormControl.create(
             if (scaleEntry != null) {
               val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
-              val displayWeight =
-                ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric).times(10).toInt()
-              displayWeight.toString()
+              val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
+              displayWeight.times(10).toInt().toString()
             } else "",
             listOf(
               FormValidations.weightValidator(weightUnit),
@@ -101,11 +100,17 @@ data class EntryForm(
               if (height != null) {
                 val weight = when {
                   new.isBlank() -> 0.0
-                  weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToLbs(new.toDouble())
-                  else -> new.toDouble()
+                  weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToKg(
+                    ConversionTools.convertDisplayToStored(
+                      new.toDouble() / 10,
+                      false,
+                    ),
+                  )
+
+                  else -> new.toDouble() / 10
                 }
-                val height = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, height)
+                val storedHeight = ConversionTools.convertStoredHeightToCm(height)
+                val bmi = ConversionTools.calculateBMI(weight, storedHeight)
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
                   bmi >= AppValidatorConfig.BodyComp.MAX * 10 -> AppValidatorConfig.BodyComp.MAX.times(
@@ -222,7 +227,6 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
         // Create new form with AppSync data, following Profile pattern exactly
         val scaleEntry = intent.scaleEntry
         val currentForm = state.form.forms
-
         val updatedForm = EntryForm.create(
           includeR4ScaleMetrics = currentForm.r4ScaleMetrics != null,
           weightUnit = state.weightMode,

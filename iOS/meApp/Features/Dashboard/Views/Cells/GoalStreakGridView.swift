@@ -78,7 +78,10 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
             return cell
         case .streak(let item):
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
-            cell.configure(with: item, store: store)
+            cell.configure(
+                with: item, 
+                store: store
+            )
             return cell
         }
     }
@@ -129,7 +132,7 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
     func collectionView(_ collectionView: UICollectionView, dragPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
         let params = UIDragPreviewParameters()
         params.backgroundColor = .clear
-        params.visiblePath = UIBezierPath(roundedRect: collectionView.cellForItem(at: indexPath)?.bounds ?? .zero, cornerRadius: 10)
+        params.visiblePath = UIBezierPath(roundedRect: collectionView.cellForItem(at: indexPath)?.bounds ?? .zero, cornerRadius: .radiusSM)
         return params
     }
 

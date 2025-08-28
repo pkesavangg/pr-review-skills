@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -22,7 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
-import android.util.Log
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -33,160 +31,186 @@ import android.util.Log
 class EntryViewModel
 @Inject
 constructor(
-    private val entryService: IEntryService,
-    private val accountService: IAccountService,
-    private val appSyncService: IAppSyncService,
+  private val entryService: IEntryService,
+  private val accountService: IAccountService,
+  private val appSyncService: IAppSyncService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
-    reducer = EntryReducer(),
+  reducer = EntryReducer(),
 ) {
-    override fun provideInitialState(): EntryState =
-        EntryState(
-            form =
-                MultiFormGroup.create(
-                    forms = EntryForm.create(),
-                ),
-        )
+  override fun provideInitialState(): EntryState =
+    EntryState(
+      form =
+        MultiFormGroup.create(
+          forms = EntryForm.create(),
+        ),
+    )
 
-    init {
-        viewModelScope.launch {
-            val entryForm =
-                EntryForm.create(
-                    includeR4ScaleMetrics = true,
-                    weightUnit = _state.value.weightMode,
-                    height = accountService.activeAccountFlow.first()?.height,
-                )
-            handleIntent(
-                EntryIntent.UpdateForm(
-                    form =
-                        MultiFormGroup.create(
-                            forms = entryForm,
-                        ),
-                ),
+  init {
+    viewModelScope.launch {
+      val entryForm =
+        EntryForm.create(
+          includeR4ScaleMetrics = true,
+          weightUnit = state.value.weightMode,
+          height = accountService.activeAccountFlow.first()?.height,
+        )
+      handleIntent(
+        EntryIntent.UpdateForm(
+          form =
+            MultiFormGroup.create(
+              forms = entryForm,
+            ),
+        ),
+      )
+    }
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
+        if (it != null) {
+          handleIntent(
+            EntryIntent.UpdateWeightUnit(it),
+          )
+        }
+      }
+    }
+
+    // Check if there's AppSync data to load
+    viewModelScope.launch {
+      appSyncService.appSyncDataForEditing.collectLatest { scaleEntry ->
+        if (scaleEntry != null) {
+          loadAppSyncData(scaleEntry)
+        }
+      }
+    }
+  }
+
+  override fun handleIntent(intent: EntryIntent) {
+    super.handleIntent(intent)
+    when (intent) {
+      is EntryIntent.Save -> {
+        saveEntry()
+      }
+
+      else -> null
+    }
+  }
+
+  fun initDeactivate(onConfirm: () -> Unit) {
+    viewModelScope.launch {
+      navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+        if (state.value.form.isDirty || state.value.form.isTouched) {
+          return@registerOnDeactivate suspendCancellableCoroutine { cont ->
+            var isResumed = false
+
+            dialogQueueService.enqueue(
+              DialogModel.Confirm(
+                title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                message = AppPopupStrings.UnsavedChanges.Message,
+                onConfirm = {
+                  if (!isResumed) {
+                    isResumed = true
+                    onConfirm()
+                    deactivate()
+                    _state.value.form.resetForm()
+                    cont.resume(true)
+                  }
+                },
+                onCancel = {
+                  if (!isResumed) {
+                    isResumed = true
+                    cont.resume(false)
+                  }
+                },
+              ),
             )
+          }
+        } else {
+          return@registerOnDeactivate true
         }
-        viewModelScope.launch {
-            accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
-                handleIntent(
-                    EntryIntent.UpdateWeightUnit(it ?: WeightUnit.LB),
-                )
-            }
-        }
-
-        // Check if there's AppSync data to load
-        viewModelScope.launch {
-            appSyncService.appSyncDataForEditing.collectLatest { scaleEntry ->
-                if (scaleEntry != null) {
-                    loadAppSyncData(scaleEntry)
-                }
-            }
-        }
+      }
     }
+  }
 
-    override fun handleIntent(intent: EntryIntent) {
-        super.handleIntent(intent)
-        when (intent) {
-            is EntryIntent.Save -> {
-                saveEntry()
-            }
-            else -> null
-        }
+  fun deactivate() {
+    viewModelScope.launch {
+      navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
     }
+  }
 
-    fun initDeactivate(onConfirm: () -> Unit) {
-        viewModelScope.launch {
-            navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
-                if (state.value.form.isDirty || state.value.form.isTouched) {
-                    return@registerOnDeactivate suspendCancellableCoroutine { cont ->
-                        var isResumed = false
+  private fun saveEntry() {
+    dialogQueueService.showLoader(
+      message = "saving entry...",
+    )
+    viewModelScope.launch {
+      val scaleEntry =
+        _state.value.form.forms
+          .toScaleEntry(_state.value.weightMode)
+      try {
+        entryService.addEntry(entry = scaleEntry)
 
-                        dialogQueueService.enqueue(
-                          DialogModel.Confirm(
-                            title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                            message = AppPopupStrings.UnsavedChanges.Message,
-                            onConfirm = {
-                                    if (!isResumed) {
-                                        isResumed = true
-                                        onConfirm()
-                                        deactivate()
-                                        _state.value.form.resetForm()
-                                        cont.resume(true)
-                                    }
-                                },
-                            onCancel = {
-                                    if (!isResumed) {
-                                        isResumed = true
-                                        cont.resume(false)
-                                    }
-                                },
-                            ),
-                        )
-                    }
-                } else {
-                    return@registerOnDeactivate true
-                }
-            }
-        }
-    }
+        // Clear AppSync data after successful save
+        appSyncService.setAppSyncDataForEditing(null)
 
-    fun deactivate() {
-        viewModelScope.launch {
-            navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
-        }
-    }
-
-    private fun saveEntry() {
-        dialogQueueService.showLoader(
-            message = "saving entry...",
+        dialogQueueService.showToast(
+          Toast(
+            message = "entry saved successfully!",
+          ),
         )
-        viewModelScope.launch {
-            val scaleEntry =
-                _state.value.form.forms
-                    .toScaleEntry(_state.value.weightMode)
-            try {
-                entryService.addEntry(entry = scaleEntry)
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "entry saved successfully!",
-                    ),
-                )
-                _state.value.form.resetForm()
-                navigationService.navigateBack(AppRoute.Home)
-            } catch (e: Exception) {
-                AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
-                dialogQueueService.showToast(
-                    Toast(
-                        message = "Failed to save entry: ${e.message}",
-                    ),
-                )
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-        }
+        _state.value.form.resetForm()
+        navigationService.navigateBack(AppRoute.Home)
+      } catch (e: Exception) {
+        AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
+        dialogQueueService.showToast(
+          Toast(
+            message = "Failed to save entry: ${e.message}",
+          ),
+        )
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
     }
+  }
 
-        /**
-     * Loads AppSync data into the form for editing, following ProfileViewModel pattern.
-     */
-    private fun loadAppSyncData(scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry, height: Int? = null) {
-        viewModelScope.launch {
-            try {
-                val currentAccount = accountService.activeAccountFlow.first()
-                val finalHeight = height ?: currentAccount?.height
+  /**
+   * Loads AppSync data into the form for editing, following ProfileViewModel pattern.
+   */
+  private fun loadAppSyncData(
+    scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry,
+    height: Int? = null
+  ) {
+    viewModelScope.launch {
+      try {
+        val currentAccount = accountService.activeAccountFlow.first()
+        val finalHeight = height ?: currentAccount?.height
 
-                // Dispatch intent with height parameter, following Profile pattern exactly
-                handleIntent(
-                    EntryIntent.LoadAppSyncData(
-                        scaleEntry = scaleEntry,
-                        height = finalHeight
-                    )
-                )
-                AppLog.i("EntryViewModel", "AppSync data loading intent dispatched with height: $finalHeight")
-            } catch (e: Exception) {
-                AppLog.e("EntryViewModel", "Failed to load AppSync data", e.toString())
-                dialogQueueService.showToast(
-                    Toast(message = "Failed to load AppSync data: ${e.message}")
-                )
-            }
-        }
+        // Dispatch intent with height parameter
+        handleIntent(
+          EntryIntent.LoadAppSyncData(
+            scaleEntry = scaleEntry,
+            height = finalHeight,
+          ),
+        )
+
+        // Wait for the form to be updated, then mark as touched/dirty for AppSync editing
+        _state.value.form.markAllAsTouched()
+        _state.value.form.markAllAsDirty()
+
+        // Specifically mark the weight control as touched and dirty
+        _state.value.form.forms.weightDateTime.controls.weight.markAsTouched()
+        _state.value.form.forms.weightDateTime.controls.weight.markAsDirty()
+
+        // Validate the form
+        _state.value.form.validate()
+        // Mark the form as touched and dirty to enable save button for AppSync editing
+
+        AppLog.i(
+          "EntryViewModel",
+          "AppSync data loaded and form marked as touched/dirty - isDirty: ${_state.value.form.isDirty}, isTouched: ${_state.value.form.isTouched}",
+        )
+      } catch (e: Exception) {
+        AppLog.e("EntryViewModel", "Failed to load AppSync data", e.toString())
+        dialogQueueService.showToast(
+          Toast(message = "Failed to load AppSync data: ${e.message}"),
+        )
+      }
     }
+  }
 }

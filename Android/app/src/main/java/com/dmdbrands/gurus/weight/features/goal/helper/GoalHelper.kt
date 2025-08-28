@@ -34,10 +34,6 @@ object GoalHelper {
     fromUnit: WeightUnit,
     toUnit: WeightUnit
   ): Goal {
-    Log.d(
-      "GoalHelper",
-      "Creating goal: startingWeight=$startingWeight, goalWeight=$goalWeight, goalType=$goalType, fromUnit=$fromUnit, toUnit=$toUnit",
-    )
     val processedStartingWeight = processWeight(startingWeight, fromUnit, toUnit)
     val processedGoalWeight = processWeight(goalWeight, fromUnit, toUnit)
     // Determine specific goal type

@@ -28,7 +28,8 @@ enum class DialogType {
   MultipleDeviceConnection,
   FinishConnect,
   ScaleName,
-  AppsyncEntryPopup
+  AppsyncEntryPopup,
+  SetGoalPopup
 }
 
 @Composable
@@ -208,14 +209,27 @@ fun DialogHost() {
 
       DialogType.AppsyncEntryPopup -> {
         val entry = dialog.params["entry"] as ScaleEntry
-        val apiEntry = dialog.params["apiEntry"] as com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
         val onEdit = dialog.params["onEdit"] as (() -> Unit)
         val onSave = dialog.params["onSave"] as (() -> Unit)
         AppsyncEntryPopup(
           entry = entry,
-          apiEntry,
           onEdit = onEdit,
           onSave = onSave,
+        )
+      }
+
+      DialogType.SetGoalPopup -> {
+        val onSetGoal = dialog.params["onSetGoal"] as? (() -> Unit) ?: {}
+        SetGoalPopup(
+          onSetGoal = {
+            onSetGoal()
+            dialog.onConfirm?.invoke(Unit)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onClose = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          }
         )
       }
     }

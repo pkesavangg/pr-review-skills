@@ -38,14 +38,30 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let newDashboardType = store.state.metrics.dashboardType
         let newIsEditMode = store.state.ui.isEditMode
         let newSelectedLabel = store.state.ui.selectedMetricLabel
+        let newRemovedMetrics = store.state.ui.removedMetrics
+        let newActiveMetricsCount = store.metricsManager.state.activeMetricsCount
+        
         let contentChanged = newIds != coordinator.lastItemIds
         let layoutChanged = newDashboardType != coordinator.lastDashboardType
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
-
-        // Keep drag interaction in sync with edit mode
+        let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
+        let activeMetricsCountChanged = newActiveMetricsCount != coordinator.lastActiveMetricsCount
+        
+        // Check if this is a reset operation (all metrics restored and order reset)
+        let isResetOperation = newRemovedMetrics.isEmpty && 
+                              newActiveMetricsCount == store.metricsManager.state.metrics.count &&
+                              coordinator.lastRemovedMetrics.count > 0
+        
         uiView.dragInteractionEnabled = newIsEditMode
 
-        if contentChanged || layoutChanged {
+        if coordinator.suppressNextReload && contentChanged && !layoutChanged && !removalStateChanged {
+            coordinator.lastItemIds = newIds
+            coordinator.lastDashboardType = newDashboardType
+            coordinator.lastActiveMetricsCount = newActiveMetricsCount
+            coordinator.suppressNextReload = false
+            uiView.collectionViewLayout.invalidateLayout()
+            uiView.layoutIfNeeded()
+        } else if contentChanged || layoutChanged || removalStateChanged || activeMetricsCountChanged {
             // When item count or layout changes, avoid batch updates; do a full, animation-less reload
             uiView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
@@ -53,6 +69,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
             }
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
+            coordinator.lastActiveMetricsCount = newActiveMetricsCount
         } else {
             // No content/layout changes. Avoid explicit reloads; just update wiggle state if needed
             if newIsEditMode != coordinator.lastIsEditMode {
@@ -67,6 +84,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 store: store,
                                 isBeingDragged: false
                             )
+                            metricCell.isRemoved = store.isMetricRemoved(item.label)
                         }
                     }
                 }
@@ -82,6 +100,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                             store: store,
                             isBeingDragged: false
                         )
+                        metricCell.isRemoved = store.isMetricRemoved(item.label)
                     }
                 }
             }
@@ -89,6 +108,30 @@ struct MetricGridUIKitView: UIViewRepresentable {
 
         coordinator.lastIsEditMode = newIsEditMode
         coordinator.lastSelectedMetricLabel = newSelectedLabel
+        coordinator.lastRemovedMetrics = newRemovedMetrics
+        
+        // Ensure drag interaction is properly managed
+        uiView.dragInteractionEnabled = newIsEditMode
+        
+        if !newIsEditMode {
+            UIView.performWithoutAnimation {
+                uiView.visibleCells.forEach { cell in
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.isWiggling = false
+                        metricCell.updateDragState(false)
+                        metricCell.setOverlaySuppressed(false)
+                        if let item = metricCell.representedItem {
+                            metricCell.configure(
+                                with: item,
+                                dashboardType: store.state.metrics.dashboardType,
+                                store: store,
+                                isBeingDragged: false
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
     
     func makeCoordinator() -> Coordinator {
@@ -111,7 +154,10 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let collectionView = CustomCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.dragInteractionEnabled = store.state.ui.isEditMode // Only enable drag in edit mode
-        collectionView.hideDragPlatter = false // show system drag preview platter
+        collectionView.hideDragPlatter = true // hide system drag preview platter (slashed circle)
+        if #available(iOS 11.0, *) {
+            collectionView.reorderingCadence = .immediate
+        }
         collectionView.register(MetricCell.self, forCellWithReuseIdentifier: "MetricCell")
         
         // Disable selection to prevent visual feedback
@@ -124,6 +170,20 @@ struct MetricGridUIKitView: UIViewRepresentable {
         
         // Ensure the collection view can calculate its full content size
         collectionView.contentInsetAdjustmentBehavior = .never
+        
+        // Suppress implicit layer animations for smooth drag and drop
+        collectionView.layer.actions = [
+            "position": NSNull(),
+            "bounds": NSNull(),
+            "transform": NSNull(),
+            "opacity": NSNull(),
+            "onOrderIn": NSNull(),
+            "onOrderOut": NSNull(),
+            "sublayers": NSNull(),
+            "contents": NSNull(),
+            "hidden": NSNull(),
+            "cornerRadius": NSNull()
+        ]
         
         return collectionView
     }
@@ -154,12 +214,17 @@ extension MetricGridUIKitView {
         var lastDashboardType: DashboardType = .dashboard12
         var lastIsEditMode: Bool = false
         var lastSelectedMetricLabel: String? = nil
+        var lastRemovedMetrics: Set<String> = []
+        var lastActiveMetricsCount: Int = 0
+        var suppressNextReload: Bool = false
         
         // MARK: - Properties
         
         var parent: MetricGridUIKitView
         var store: DashboardStore
         private var draggedItemId: String?
+        private var isAwaitingDropEnd: Bool = false
+        private var lastDroppedMetricId: String?
         
         // MARK: - Initialization
         
@@ -200,6 +265,8 @@ extension MetricGridUIKitView {
             )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
+            // Reflect removal status on the cell so UI can render accordingly
+            cell.isRemoved = store.isMetricRemoved(item.label)
             // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
             // Drag & drop is handled by UICollectionViewDragDelegate without custom recognizers.
             cell.isUserInteractionEnabled = true
@@ -210,6 +277,11 @@ extension MetricGridUIKitView {
                 if let originalIndex = self.store.metricsManager.state.metrics.firstIndex(where: { $0.id == item.id }) {
                     Task {
                         try? await self.store.metricsManager.toggleMetricVisibility(at: originalIndex)
+                        
+                        // Sync the UI state with the metrics manager after the change
+                        await MainActor.run {
+                            self.store.syncRemovalStateFromMetricsManager()
+                        }
                     }
                 }
             }
@@ -250,7 +322,7 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             let item = store.metricsToShow[indexPath.item]
-            let isRemoved = store.isMetricRemovedInReorderedArray(at: indexPath.item)
+            let isRemoved = store.isMetricRemoved(item.label)
             
             if isRemoved {
                 return [] // Return empty array to prevent drag
@@ -260,7 +332,9 @@ extension MetricGridUIKitView {
             
             let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             let dragItem = UIDragItem(itemProvider: itemProvider)
-            dragItem.localObject = item
+            
+            // Mark this as a metric grid item to prevent cross-grid dragging
+            dragItem.localObject = DragItemWrapper(type: DragItemWrapper.ItemType.metric, item: item)
             
             // Store the source index path for use in drag preview
             session.localContext = indexPath
@@ -275,9 +349,7 @@ extension MetricGridUIKitView {
             if let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
                 cell.updateDragState(true) // Use the new method for more reliable state management
             }
-            
-            // Provide haptic feedback
-            HapticFeedbackService.medium()
+
             return [dragItem]
         }
         
@@ -286,7 +358,7 @@ extension MetricGridUIKitView {
             let parameters = UIDragPreviewParameters()
             parameters.backgroundColor = .clear
             if let cell = collectionView.cellForItem(at: indexPath) {
-                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
             }
             return parameters
         }
@@ -299,7 +371,7 @@ extension MetricGridUIKitView {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -308,15 +380,25 @@ extension MetricGridUIKitView {
                 )
                 return UITargetedDragPreview(view: previewView, parameters: parameters, target: target)
             }
-            if let metricCell = collectionView.visibleCells.first(where: {
-                guard let cellItem = ($0 as? MetricCell)?.representedItem,
-                      let dragItem = item.localObject as? MetricItem else { return false }
-                return cellItem.id.uuidString == dragItem.id.uuidString
+            
+            // Fallback: find cell by matching the dragged item
+            let metricItem: MetricItem?
+            if let wrapper = item.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.metric {
+                metricItem = wrapper.item as? MetricItem
+            } else {
+                metricItem = item.localObject as? MetricItem
+            }
+            
+            if let metricItem = metricItem,
+               let metricCell = collectionView.visibleCells.first(where: {
+                guard let cellItem = ($0 as? MetricCell)?.representedItem else { return false }
+                return cellItem.id.uuidString == metricItem.id.uuidString
             }) as? MetricCell {
                 let previewView = metricCell.snapshotForPreview()
                 let parameters = UIDragPreviewParameters()
                 parameters.backgroundColor = .clear
-                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: 16)
+                parameters.visiblePath = UIBezierPath(roundedRect: previewView.bounds, cornerRadius: .radiusSM)
                 let s = DashboardConstants.UI.dragPreviewScale
                 let target = UIDragPreviewTarget(
                     container: collectionView,
@@ -331,15 +413,36 @@ extension MetricGridUIKitView {
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
             parent.isDragging = true
             
+            // Set drag operation flag for smooth animations
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = true
+            }
+            
+            // ENABLE smooth animations during drag for beautiful cell movement
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+            CATransaction.commit()
+            
             // Immediately hide EditModeOverlay on the dragged cell
-            if let draggedItem = session.items.first,
-               let dragItem = draggedItem.localObject as? MetricItem {
-                // Find and hide EditModeOverlay on the dragged metric cell
-                for cell in collectionView.visibleCells {
-                    if let metricCell = cell as? MetricCell,
-                       metricCell.representedItem?.id == dragItem.id {
-                        metricCell.updateDragState(true) // Use the new method for more reliable state management
-                        break
+            if let draggedItem = session.items.first {
+                let metricItem: MetricItem?
+                if let wrapper = draggedItem.localObject as? DragItemWrapper,
+                   wrapper.type == DragItemWrapper.ItemType.metric {
+                    metricItem = wrapper.item as? MetricItem
+                } else {
+                    metricItem = draggedItem.localObject as? MetricItem
+                }
+                
+                if let metricItem = metricItem {
+                    // Find and hide EditModeOverlay on the dragged metric cell
+                    for cell in collectionView.visibleCells {
+                        if let metricCell = cell as? MetricCell,
+                           metricCell.representedItem?.id == metricItem.id {
+                            metricCell.updateDragState(true) // Use the new method for more reliable state management
+                            break
+                        }
                     }
                 }
             }
@@ -349,15 +452,26 @@ extension MetricGridUIKitView {
             parent.isDragging = false
             draggedItemId = nil
             
+            // Clear drag operation flag
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = false
+            }
+            
+            // Re-enable animations after drag ends
+            CATransaction.begin()
+            CATransaction.setDisableActions(false)
+            CATransaction.commit()
+            
             // Clear the store's drag state
             store.endDragging()
             
-            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
-            if store.state.ui.isEditMode {
-                // Update all visible cells to restore EditModeOverlay visibility
+            // Do not restore overlays here if we're awaiting the drop session end
+            if store.state.ui.isEditMode && !isAwaitingDropEnd {
                 for cell in collectionView.visibleCells {
                     if let metricCell = cell as? MetricCell {
-                        metricCell.updateDragState(false) // Use the new method for more reliable state management
+                        metricCell.updateDragState(false)
+                        // Clear any shadow effects
+                        metricCell.clearAllShadowEffects()
                     }
                 }
             }
@@ -376,6 +490,11 @@ extension MetricGridUIKitView {
                 // Clear the dragged item ID when drag is cancelled
                 self.draggedItemId = nil
                 
+                // Clear drag operation flag
+                if let custom = collectionView as? CustomCollectionView {
+                    custom.isInDragOperation = false
+                }
+                
                 // Clear the store's drag state
                 self.store.endDragging()
                 
@@ -385,6 +504,8 @@ extension MetricGridUIKitView {
                     for cell in collectionView.visibleCells {
                         if let metricCell = cell as? MetricCell {
                             metricCell.updateDragState(false) // Use the new method for more reliable state management
+                            // Clear any shadow effects
+                            metricCell.clearAllShadowEffects()
                         }
                     }
                 }
@@ -395,8 +516,30 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
             guard store.state.ui.isEditMode else {
-                return UICollectionViewDropProposal(operation: .forbidden)
+                // Use .cancel to avoid showing the slashed-circle icon
+                return UICollectionViewDropProposal(operation: .cancel)
             }
+            
+            // Only accept drops from the metric grid
+            guard let items = session.items as? [UIDragItem] else {
+                return UICollectionViewDropProposal(operation: .cancel)
+            }
+            
+            // Check if all items are from the metric grid
+            for dragItem in items {
+                if let wrapper = dragItem.localObject as? DragItemWrapper {
+                    if wrapper.type != DragItemWrapper.ItemType.metric {
+                        // Use .cancel to suppress forbidden icon for cross-grid drags
+                        return UICollectionViewDropProposal(operation: .cancel)
+                    }
+                } else {
+                    // Legacy support for direct MetricItem objects
+                    if !(dragItem.localObject is MetricItem) {
+                        return UICollectionViewDropProposal(operation: .cancel)
+                    }
+                }
+            }
+            
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
         
@@ -406,9 +549,12 @@ extension MetricGridUIKitView {
             draggedItemId = nil
             parent.isDragging = false
             
-            // Disable animations when drop session enters
+            // Keep smooth animations enabled during drop session for beautiful cell movement
+            UIView.setAnimationsEnabled(true)
             CATransaction.begin()
-            CATransaction.setDisableActions(true)
+            CATransaction.setDisableActions(false)
+            CATransaction.setAnimationDuration(0.3)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
             CATransaction.commit()
         }
         
@@ -419,70 +565,193 @@ extension MetricGridUIKitView {
                   let sourceIndexPath = item.sourceIndexPath else {
                 return 
             }
-            
-            // Completely disable ALL animations and force instant positioning (like iOS home screen)
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            CATransaction.setAnimationDuration(0)
-            UIView.performWithoutAnimation {
-                collectionView.performBatchUpdates({
-                    // Check if both source and destination are not removed
-                    let sourceIsRemoved = store.isMetricRemovedInReorderedArray(at: sourceIndexPath.item)
-                    let destIsRemoved = store.isMetricRemovedInReorderedArray(at: destinationIndexPath.item)
-  
-                    // Only allow move if neither source nor destination is removed
-                    if !sourceIsRemoved && !destIsRemoved {
-                        store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
-                        collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
-                    } else {
-                        collectionView.reloadData()
-                    }
-                })
+
+            // Validate that this is a valid metric item drop
+            let metricItem: MetricItem?
+            if let wrapper = item.dragItem.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.metric {
+                metricItem = wrapper.item as? MetricItem
+            } else if let directItem = item.dragItem.localObject as? MetricItem {
+                metricItem = directItem
+            } else {
+                return // Invalid drop item
             }
-            CATransaction.commit()
+            guard metricItem != nil else { return }
+
+            // Ensure both source and destination are valid and not removed
+            let sourceItem = store.metricsToShow[sourceIndexPath.item]
+            let destItem = store.metricsToShow[destinationIndexPath.item]
+            let sourceIsRemoved = store.isMetricRemoved(sourceItem.label)
+            let destIsRemoved = store.isMetricRemoved(destItem.label)
+            guard !sourceIsRemoved && !destIsRemoved else {
+                collectionView.reloadData()
+                return
+            }
+
+            // Keep smooth animations during the drop operation for beautiful cell movement
+            // Only disable animations at the very end for instant final positioning
+            if let custom = collectionView as? CustomCollectionView { 
+                custom.suspendIntrinsicInvalidation = true 
+            }
             
-            // Immediately clear drag state after drop is executed
+            self.suppressNextReload = true
+            
+            // Use smooth animations for the actual reordering
+            collectionView.performBatchUpdates({
+                store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
+                collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
+            }, completion: { _ in
+                collectionView.collectionViewLayout.invalidateLayout()
+                collectionView.layoutIfNeeded()
+
+                // Now disable animations for the final positioning to prevent jump
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                CATransaction.setAnimationDuration(0)
+                
+                UIView.performWithoutAnimation {
+                    let visibleIndexPaths = collectionView.indexPathsForVisibleItems
+                    for indexPath in visibleIndexPaths {
+                        guard indexPath.item < self.store.metricsToShow.count,
+                              let cell = collectionView.cellForItem(at: indexPath) as? MetricCell else { continue }
+                        let itemForCell = self.store.metricsToShow[indexPath.item]
+                        cell.configure(
+                            with: itemForCell,
+                            dashboardType: self.store.state.metrics.dashboardType,
+                            store: self.store,
+                            isBeingDragged: false,
+                            onMetricLongPress: self.parent.onMetricLongPress,
+                            onSelectMetric: { label in
+                                if label.isEmpty { self.store.state.ui.selectedMetricLabel = nil }
+                                else { self.store.state.ui.selectedMetricLabel = label }
+                                self.store.objectWillChange.send()
+                            }
+                        )
+                        cell.isRemoved = self.store.isMetricRemoved(itemForCell.label)
+                        // Clear any shadow effects that might remain
+                        cell.clearAllShadowEffects()
+                    }
+                }
+                
+                CATransaction.commit()
+                
+                if let custom = collectionView as? CustomCollectionView {
+                    custom.suspendIntrinsicInvalidation = false
+                    custom.invalidateIntrinsicContentSize()
+                }
+            })
+
+            coordinator.drop(item.dragItem, toItemAt: destinationIndexPath)
             parent.isDragging = false
             draggedItemId = nil
             store.endDragging()
-            
-            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
-            if store.state.ui.isEditMode {
-                for cell in collectionView.visibleCells {
-                    if let metricCell = cell as? MetricCell {
-                        metricCell.updateDragState(false)
-                    }
-                }
+
+            if let wrapper = item.dragItem.localObject as? DragItemWrapper,
+               wrapper.type == DragItemWrapper.ItemType.metric,
+               let droppedItem = wrapper.item as? MetricItem {
+                lastDroppedMetricId = droppedItem.id.uuidString
+            } else if let directItem = item.dragItem.localObject as? MetricItem {
+                lastDroppedMetricId = directItem.id.uuidString
             }
+            isAwaitingDropEnd = true
+
+            if let id = lastDroppedMetricId,
+               let destCell = collectionView.visibleCells.first(where: { cell in
+                   guard let mc = cell as? MetricCell, let rep = mc.representedItem else { return false }
+                   return rep.id.uuidString == id
+               }) as? MetricCell {
+                destCell.setOverlaySuppressed(true)
+                destCell.setNeedsLayout()
+                destCell.layoutIfNeeded()
+            }
+
+            self.lastItemIds = self.store.metricsToShow.map { $0.id }
+            self.lastDashboardType = self.store.state.metrics.dashboardType
         }
-        
+
+        func collectionView(_ collectionView: UICollectionView,
+                            dropPreviewParametersForItemAt indexPath: IndexPath) -> UIDragPreviewParameters? {
+            let params = UIDragPreviewParameters()
+            params.backgroundColor = .clear
+            if let cell = collectionView.cellForItem(at: indexPath) {
+                params.visiblePath = UIBezierPath(roundedRect: cell.bounds, cornerRadius: .radiusSM)
+            }
+            return params
+        }
+
+        func collectionView(_ collectionView: UICollectionView,
+                            dropPreviewForDropping item: UIDragItem,
+                            withDefault defaultPreview: UITargetedDragPreview) -> UITargetedDragPreview? {
+            let clearView = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+            clearView.backgroundColor = .clear
+            let params = UIDragPreviewParameters()
+            params.backgroundColor = .clear
+            params.visiblePath = UIBezierPath(rect: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return UITargetedDragPreview(view: clearView, parameters: params, target: defaultPreview.target)
+        }
+
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
             // Immediately clear drag state when drop session ends
             parent.isDragging = false
             draggedItemId = nil
             store.endDragging()
             
+            // Clear drag operation flag
+            if let custom = collectionView as? CustomCollectionView {
+                custom.isInDragOperation = false
+            }
+            
+            // Force instant layout update with zero animations
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
             UIView.performWithoutAnimation {
                 collectionView.layoutIfNeeded()
+                // Force all visible cells to update their appearance instantly
                 collectionView.visibleCells.forEach { cell in
                     cell.layer.removeAllAnimations()
                     cell.contentView.layer.removeAllAnimations()
+                    // Ensure no transform animations
                     cell.transform = .identity
                     cell.contentView.transform = .identity
+                    
+                    // Restore overlay visibility if in edit mode
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.setOverlaySuppressed(false)
+                        // Force clear all shadow effects to prevent shadow artifacts
+                        metricCell.clearAllShadowEffects()
+                    }
                 }
             }
             CATransaction.commit()
-            
-            // Immediately restore EditModeOverlay visibility on all cells if in edit mode
+
             if store.state.ui.isEditMode {
-                for cell in collectionView.visibleCells {
-                    if let metricCell = cell as? MetricCell {
-                        metricCell.updateDragState(false)
+                let restore = {
+                    if let targetId = self.lastDroppedMetricId,
+                       let targetCell = collectionView.visibleCells.first(where: { cell in
+                           guard let metricCell = cell as? MetricCell, let rep = metricCell.representedItem else { return false }
+                           return rep.id.uuidString == targetId
+                       }) as? MetricCell {
+                        targetCell.setOverlaySuppressed(false)
+                        targetCell.setNeedsLayout()
+                        targetCell.layoutIfNeeded()
+                    } else {
+                        // Fallback: restore all if we cannot identify the dropped cell
+                        for cell in collectionView.visibleCells {
+                            if let metricCell = cell as? MetricCell {
+                                metricCell.setOverlaySuppressed(false)
+                                metricCell.setNeedsLayout()
+                                metricCell.layoutIfNeeded()
+                            }
+                        }
                     }
+                    self.isAwaitingDropEnd = false
+                    self.lastDroppedMetricId = nil
                 }
+                restore()
+            } else {
+                isAwaitingDropEnd = false
+                lastDroppedMetricId = nil
             }
         }
 

@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service implementation for handling AppSync-related business logic
@@ -62,6 +61,7 @@ class AppSyncService @Inject constructor(
       dialogQueueService.showToast(
         Toast(message = "Entry saved successfully!"),
       )
+      setAppSyncDataForEditing(null)
       AppLog.d("AppSyncService", "Successfully saved AppSync entry")
     } catch (e: Exception) {
       AppLog.e("AppSyncService", "Error saving AppSync entry: ${e.message}", e)

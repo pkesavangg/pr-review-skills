@@ -8,7 +8,6 @@
 // MARK: - HistoryMetricItem
 
 /// Visual row used inside `HistoryEntryItem` to display an individual metric (e.g. BMI, Body Fat).
-
 import SwiftUI
 
 struct HistoryMetricItem: View {
@@ -18,6 +17,9 @@ struct HistoryMetricItem: View {
     let value: Int
     let isAlternate: Bool
     let onTap: () -> Void
+    
+    // iOS 17 fix: Prevent tap spam
+    @State private var lastTapTime: Date = Date.distantPast
 
     // MARK: - Body
 
@@ -56,7 +58,12 @@ struct HistoryMetricItem: View {
         .padding(.vertical, .spacingSM)
         .padding(.horizontal, .spacingSM)
         .background(isAlternate ? theme.backgroundPrimary : theme.backgroundSecondary)
+        .contentShape(Rectangle()) // iOS 17 fix: Ensure consistent tap area
         .onTapGesture {
+            // iOS 17 fix: Debounce taps to prevent rapid fire
+            let now = Date()
+            guard now.timeIntervalSince(lastTapTime) > 0.3 else { return }
+            lastTapTime = now
             onTap()
         }
     }

@@ -17,6 +17,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Injector private var permissionsService: PermissionsService
     @Injector private var bluetoothService: BluetoothService
     @Injector private var scaleService: ScaleService
+    @Injector private var accountService: AccountService
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -447,19 +448,54 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Prepare the device for saving
         let deviceToSave = device
         deviceToSave.id = UUID().uuidString
-        deviceToSave.sku = scaleItem?.sku ?? discoveryEvent.device.sku
-        deviceToSave.deviceType = DeviceType.scale.rawValue
-        deviceToSave.bathScale = deviceToSave.bathScale ?? BathScale(
-            scaleType: ScaleSourceType.bluetooth.rawValue,
-            bodyComp: deviceToSave.bathScale?.bodyComp ?? false
-        )
-        // Save the new scale
-        let result = await bluetoothService.addNewDevice(deviceToSave, metaData: nil)
-        await self.scaleService.syncAllScalesWithRemote()
-        switch result {
-        case .success(let savedScale):
-            LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
+        
+        // Get device metadata for Bluetooth scales (matching BluetoothService.addNewDevice logic)
+        var deviceMetadata: DeviceMetaData? = nil
+        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave)
+        switch deviceInfoResult {
+        case .success(let deviceInfo):
+            let dto = ScaleMetaDataDTO(
+                firmwareRevision: deviceInfo.firmwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                hardwareRevision: deviceInfo.hardwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                latestFirmwareVersion: nil,
+                manufacturerName: deviceInfo.manufacturerName?.replacingOccurrences(of: "\0", with: ""),
+                modelNumber: deviceInfo.modelNumber?.replacingOccurrences(of: "\0", with: ""),
+                serialNumber: deviceInfo.serialNumber?.replacingOccurrences(of: "\0", with: ""),
+                softwareRevision: deviceInfo.softwareRevision?.replacingOccurrences(of: "\0", with: ""),
+                systemId: deviceInfo.systemID?.replacingOccurrences(of: "\0", with: ""),
+                wifiMac: ""
+            )
+            deviceMetadata = DeviceMetaData(from: dto)
+            LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved device metadata for Bluetooth scale")
         case .failure(let error):
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
+        }
+        
+        // Use the proper service method to create the Bluetooth scale with correct relationship handling
+        do {
+            // Get account ID from account service
+            guard let accountId = accountService.activeAccount?.accountId else {
+                LoggerService.shared.log(level: .error, tag: tag, message: "No active account found for scale creation")
+                return
+            }
+            
+            let savedScale = try await scaleService.createBluetoothScale(
+                device: deviceToSave,
+                sku: scaleItem?.sku ?? discoveryEvent.device.sku,
+                userNumber: deviceToSave.userNumber ?? "1",
+                accountId: accountId,
+                deviceMetadata: deviceMetadata,
+                skipDuplicateCheck: false
+            )
+            
+            await self.scaleService.syncAllScalesWithRemote()
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
+            
+            // Post notification that scale was added
+            NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            
+        } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
         }
         notificationService.dismissLoader()

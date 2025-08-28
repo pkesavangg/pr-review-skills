@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
@@ -281,6 +282,73 @@ constructor(
       AppLog.e(TAG, "Failed to create goal during signup", e.toString())
       null
     }
+
+  /**
+   * Checks if the goal card (Set Goal popup) should be shown to the user.
+   * Based on Angular's checkGoalCard method - shows popup if:
+   * - User has no goal set (goalType is null)
+   * - User has at least 3 entries
+   * - Goal card popup hasn't been shown before for this account
+   */
+  override suspend fun checkGoalCard() {
+    try {
+      AppLog.d(TAG, "Checking goal card conditions")
+      // Get current account
+      val account = accountRepository.getActiveAccount().first()
+      if (account == null) {
+        AppLog.d(TAG, "No active account found, skipping goal card check")
+        return
+      }
+
+      // Check if user has a goal set (check goal type)
+      val currentGoal = getCurrentGoal().first()
+      if (currentGoal != null) {
+        AppLog.d(TAG, "User already has a goal set (${currentGoal.type}), skipping goal card")
+        return
+      }
+
+      val isPopupShowed = goalAlertDataStore.getGoalCardValue(account.id)
+      if (isPopupShowed != null) {
+        AppLog.d(TAG, "Goal card already shown for account ${account.id}")
+        return
+      }
+
+      AppLog.i(TAG, "All conditions met - showing goal card popup for account ${account.id}")
+
+      // Mark popup as shown first (like Angular implementation)
+      showSetGoalPopup()
+      goalAlertDataStore.setGoalCardValue(account.id, "true")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error checking goal card", e.toString())
+    }
+  }
+
+  /**
+   * Shows the Set Goal popup using the dialog queue system.
+   * Navigates to goal screen when user confirms.
+   */
+  private fun showSetGoalPopup() {
+    AppLog.d(TAG, "Showing Set Goal popup")
+
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.SetGoalPopup,
+        params = mapOf(
+          "onSetGoal" to {
+            AppLog.d(TAG, "User confirmed Set Goal popup - navigating to goal screen")
+            CoroutineScope(Dispatchers.IO).launch {
+              appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
+            }
+            dialogQueueService.dismissCurrent()
+          },
+        ),
+        onDismiss = {
+          AppLog.d(TAG, "Set Goal popup dismissed")
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
+  }
 
   /**
    * Gets the current goal or null if none is set.

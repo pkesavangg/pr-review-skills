@@ -375,6 +375,87 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return createdDevice
     }
     
+    /// Helper method to create an R4 scale with all required relationships properly set up.
+    /// This ensures SwiftData relationships are established correctly to avoid crashes.
+    /// - Parameters:
+    ///   - scaleId: Unique identifier for the scale
+    ///   - accountId: Account ID for the scale
+    ///   - displayName: Display name for the scale
+    ///   - token: Scale token for authentication
+    ///   - mac: MAC address of the scale
+    ///   - broadcastIdString: Broadcast ID string
+    ///   - broadcastId: Broadcast ID as Int64
+    ///   - sku: Scale SKU
+    ///   - deviceName: Device name
+    ///   - wifiMac: WiFi MAC address (optional)
+    ///   - deviceMetadata: Device metadata (optional)
+    ///   - isWifiConfigured: Whether WiFi is configured
+    ///   - isConnected: Whether scale is connected
+    ///   - skipDuplicateCheck: Whether to skip duplicate checking
+    /// - Returns: The created Device
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String? = nil,
+        deviceMetadata: DeviceMetaData? = nil,
+        isWifiConfigured: Bool = false,
+        isConnected: Bool = false,
+        skipDuplicateCheck: Bool = false
+    ) async throws -> Device {
+        // Create the main device
+        let device = Device(
+            id: scaleId,
+            accountId: accountId,
+            sku: sku, mac: mac,
+            deviceName: deviceName,
+            deviceType: DeviceType.scale.rawValue,
+            broadcastId: broadcastId,
+            broadcastIdString: broadcastIdString,
+            userNumber: "0",
+            createdAt: DateTimeTools.getCurrentDatetimeIsoString(),
+            isConnected: isConnected,
+            wifiMac: wifiMac,
+            isWifiConfigured: isWifiConfigured,
+            token: token,
+            metaData: deviceMetadata
+        )
+        device.nickname = "AccuCheck Verve Smart Scale"
+        device.peripheralIdentifier = mac?.replacingOccurrences(of: ":", with: "") ?? ""
+        
+        // Create bath scale relationship
+        let bathScale = BathScale(
+            scaleType: ScaleSourceType.btWifiR4.rawValue,
+            bodyComp: true
+        )
+        device.bathScale = bathScale
+        
+        // Create R4 preference relationship
+        let r4Preference = R4ScalePreference(
+            scaleId: scaleId,
+            displayName: displayName,
+            displayMetrics: ScaleMetrics.defaultMetricsKeys,
+            shouldFactoryReset: false,
+            shouldMeasureImpedance: true,
+            shouldMeasurePulse: false,
+            timeFormat: "12",
+            tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+            wifiFotaScheduleTime: 0,
+            updatedAt: DateTimeTools.getCurrentDatetimeIsoString()
+        )
+        r4Preference.isSynced = false
+        device.r4ScalePreference = r4Preference
+        
+        // Create and save the device with all relationships
+        return try await createDevice(device, skipDuplicateCheck)
+    }
+    
     func createScaleInLocal(_ device: Device) async throws -> Device {
         logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
         return try await localRepository.createScale(device)
@@ -628,5 +709,102 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         if let nickname = dto.nickname { properties["nickname"] = nickname }
         //Add Properties here in order to update the device
         return properties
+    }
+    
+    /// Helper method to create a Bluetooth scale with all required relationships properly set up.
+    /// This ensures SwiftData relationships are established correctly to avoid crashes.
+    /// - Parameters:
+    ///   - device: The Device object to save
+    ///   - sku: Scale SKU
+    ///   - userNumber: User number for the scale
+    ///   - accountId: Account ID for the scale
+    ///   - deviceMetadata: Device metadata (optional)
+    ///   - skipDuplicateCheck: Whether to skip duplicate checking
+    /// - Returns: The created Device
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData? = nil,
+        skipDuplicateCheck: Bool = false
+    ) async throws -> Device {
+        
+        // Set up device properties (matching BluetoothService.addNewDevice logic)
+        device.id = device.id ?? UUID().uuidString
+        device.accountId = accountId
+        device.sku = sku
+        device.deviceType = DeviceType.scale.rawValue
+        device.userNumber = userNumber
+        device.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
+        device.nickname = device.nickname ?? "Bluetooth Smart Scale"
+        device.metaData = deviceMetadata
+        // Note: password is already set on the device from the pairing process
+        
+        // Create bath scale relationship if it doesn't exist
+        if device.bathScale == nil {
+            let bathScale = BathScale(
+                scaleType: ScaleSourceType.bluetooth.rawValue,
+                bodyComp: false
+            )
+            device.bathScale = bathScale
+        } else {
+            // Update scale type if bath scale exists
+            device.bathScale?.scaleType = ScaleSourceType.bluetooth.rawValue
+        }
+        
+        // Use the repository to create the scale with proper relationship handling
+        let savedDevice = try await localRepository.createScale(device)
+        
+        // Sync devices after creation (matching original BluetoothService logic)
+        try await syncDevices(tempDevice: nil)
+        
+        return savedDevice
+    }
+    
+    /// Helper method to create an A6/LCBT scale with all required relationships properly set up.
+    /// This ensures SwiftData relationships are established correctly to avoid crashes.
+    /// - Parameters:
+    ///   - device: The Device object to save
+    ///   - sku: Scale SKU
+    ///   - accountId: Account ID for the scale
+    ///   - deviceMetadata: Device metadata (optional)
+    ///   - skipDuplicateCheck: Whether to skip duplicate checking
+    /// - Returns: The created Device
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData? = nil,
+        skipDuplicateCheck: Bool = false
+    ) async throws -> Device {
+        
+        // Set up device properties (matching BluetoothService.addNewDevice logic)
+        device.accountId = accountId
+        device.sku = sku
+        device.deviceType = DeviceType.scale.rawValue
+        device.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
+        device.nickname = device.nickname ?? "Bluetooth Smart Scale"
+        device.metaData = deviceMetadata
+        // Note: password is already set on the device from the pairing process
+        
+        // Create bath scale relationship if it doesn't exist
+        if device.bathScale == nil {
+            let bathScale = BathScale(
+                scaleType: ScaleSourceType.lcbt.rawValue,
+                bodyComp: device.bathScale?.bodyComp ?? false
+            )
+            device.bathScale = bathScale
+        } else {
+            // Update scale type if bath scale exists
+            device.bathScale?.scaleType = ScaleSourceType.lcbt.rawValue
+        }
+        // Use the repository to create the scale with proper relationship handling
+        let savedDevice = try await localRepository.createScale(device)
+        
+        // Sync devices after creation (matching original BluetoothService logic)
+        try await syncDevices(tempDevice: nil)
+        
+        return savedDevice
     }
 }

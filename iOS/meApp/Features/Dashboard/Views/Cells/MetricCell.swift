@@ -29,6 +29,7 @@ class MetricCell: UICollectionViewCell {
     private var currentIsBeingDragged: Bool = false
     private var isLongPressed: Bool = false
     private var isTapped: Bool = false
+    private var suppressOverlay: Bool = false
     
     // MARK: - Initialization
     
@@ -103,8 +104,8 @@ class MetricCell: UICollectionViewCell {
         currentDashboardType = dashboardType
         currentIsBeingDragged = isBeingDragged
         
-        // Determine if this item is removed
-        let itemIsRemoved = store.isMetricRemovedInReorderedArray(at: store.metricsToShow.firstIndex(where: { $0.id == item.id }) ?? 0)
+        // Determine if this item is removed using the new removal state
+        let itemIsRemoved = store.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
         let metricCardView = MetricCardView(
@@ -115,9 +116,7 @@ class MetricCell: UICollectionViewCell {
             isRemoved: itemIsRemoved,
             isSelected: store.state.ui.selectedMetricLabel == item.label,
             onToggleRemoval: {
-                if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                    store.toggleMetricRemovalInReorderedArray(at: index)
-                }
+                store.toggleMetricRemoval(item.label)
             },
             onTap: {
                 // Only allow selection if not in edit mode
@@ -141,24 +140,23 @@ class MetricCell: UICollectionViewCell {
                 : MetricCardView.fourCardVerticalPadding
         )
         
-        let viewWithOverlay = AnyView(
-                         metricCardView
-                 .editModeOverlay(
-                     isEditMode: store.state.ui.isEditMode,
-                     isRemoved: itemIsRemoved,
-                     onToggleRemoval: {
-                         if let index = store.metricsToShow.firstIndex(where: { $0.id == item.id }) {
-                             store.toggleMetricRemovalInReorderedArray(at: index)
-                         }
-                     },
-                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
-                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
-                     rowIndex: rowIndex,
-                     disableWiggle: itemIsRemoved // removed items must not wiggle
-                 )
-        )
+        // Only apply EditModeOverlay when in edit mode
+        let finalView = store.state.ui.isEditMode ? AnyView(
+            metricCardView
+                .editModeOverlay(
+                    isEditMode: store.state.ui.isEditMode,
+                    isRemoved: itemIsRemoved,
+                    onToggleRemoval: {
+                        store.toggleMetricRemoval(item.label)
+                    },
+                    isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
+                    isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
+                    rowIndex: rowIndex,
+                    disableWiggle: itemIsRemoved // removed items must not wiggle
+                )
+        ) : AnyView(metricCardView)
         
-        hostingController?.rootView = viewWithOverlay
+        hostingController?.rootView = finalView
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
@@ -196,6 +194,10 @@ class MetricCell: UICollectionViewCell {
         isRemoved = false
         rowIndex = 0
         
+        // Reset callbacks
+        onMetricLongPressCallback = nil
+        onSelectMetricCallback = nil
+        
         // Reset to placeholder view
         let placeholderView = AnyView(
             MetricCardView(
@@ -226,11 +228,15 @@ class MetricCell: UICollectionViewCell {
             // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
             // Clear interaction states
-            isLongPressed = false
-            isTapped = false
+            if !suppressOverlay {
+                isLongPressed = false
+                isTapped = false
+            } else {
+                isLongPressed = true
+            }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay)
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -319,9 +325,75 @@ class MetricCell: UICollectionViewCell {
         let oldState = currentIsBeingDragged
         currentIsBeingDragged = isBeingDragged
         
+        if isBeingDragged {
+            // Enable smooth animations during drag for beautiful cell movement
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull()
+            ]
+            
+            // Add subtle shadow and scale effect during drag
+            layer.shadowOpacity = 0.3
+            layer.shadowRadius = 8
+            layer.shadowOffset = CGSize(width: 0, height: 4)
+            
+            // Smooth transform animation
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            })
+        } else {
+            // Restore normal behavior when not dragging
+            layer.actions = [
+                "position": NSNull(),
+                "bounds": NSNull(),
+                "transform": NSNull(),
+                "opacity": NSNull(),
+                "onOrderIn": NSNull(),
+                "onOrderOut": NSNull(),
+                "sublayers": NSNull(),
+                "contents": NSNull(),
+                "hidden": NSNull(),
+                "cornerRadius": NSNull()
+            ]
+            
+            // Completely remove all drag effects and shadows
+            layer.shadowOpacity = 0.0
+            layer.shadowRadius = 0
+            layer.shadowOffset = .zero
+            layer.shadowColor = nil
+            layer.shadowPath = nil
+            
+            // Force immediate shadow removal
+            layer.setNeedsDisplay()
+            layer.displayIfNeeded()
+            
+            // Also call the dedicated shadow clearing method
+            clearAllShadowEffects()
+            
+            // Smooth return to normal size
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+                self.transform = .identity
+            })
+        }
+        
         // Reconfigure the cell with the new drag state
         if let item = representedItem, let store = currentStore {
             configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged)
+        }
+    }
+
+    func setOverlaySuppressed(_ suppressed: Bool) {
+        suppressOverlay = suppressed
+        if !suppressed {
+            isLongPressed = false
+            isTapped = false
+        } else {
+            isLongPressed = true
+        }
+        if let item = representedItem, let store = currentStore {
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressed)
         }
     }
     
@@ -399,15 +471,27 @@ class MetricCell: UICollectionViewCell {
         guard let hostingController = hostingController else {
             let fallbackView = UIView(frame: contentView.bounds)
             fallbackView.backgroundColor = UIColor.systemBackground
-            fallbackView.layer.cornerRadius = 16
+            fallbackView.layer.cornerRadius = .radiusSM
             fallbackView.layer.masksToBounds = true
             return fallbackView
         }
         let snapshot = hostingController.view.snapshotView(afterScreenUpdates: true)
         snapshot?.frame = contentView.bounds
-        snapshot?.layer.cornerRadius = 16
+        snapshot?.layer.cornerRadius = .radiusSM
         snapshot?.layer.masksToBounds = true
         snapshot?.backgroundColor = .clear
         return snapshot ?? UIView(frame: contentView.bounds)
     }
+    
+    /// Force clear all shadow effects - call this when items are dropped
+    func clearAllShadowEffects() {
+        layer.shadowOpacity = 0.0
+        layer.shadowRadius = 0
+        layer.shadowOffset = .zero
+        layer.shadowColor = nil
+        layer.shadowPath = nil
+        layer.setNeedsDisplay()
+        layer.displayIfNeeded()
+    }
+
 }

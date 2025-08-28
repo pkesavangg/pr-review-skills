@@ -136,4 +136,11 @@ object AppPopupStrings {
     const val ConfirmButton = "Enable"
     const val CancelButton = "Dismiss"
   }
+
+  object SetGoalPopup {
+    const val Title = "Set a Goal"
+    const val Message = "A great tool for tracking your journey that can always be changed in the app settings."
+    const val ConfirmButton = "LET'S DO IT"
+    const val CloseContentDescription = "Close"
+  }
 }
