@@ -1034,7 +1034,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         for weekOffset in 0..<totalWeeks {
             if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
-                for dayOffset in 0..<7 {
+                for dayOffset in 0...7 {
                     if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
                         if dayDate >= weekStartForOldest && dayDate <= weekEndForLatest {
                             dates.append(dayDate)
@@ -1092,7 +1092,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         for yearOffset in 0..<totalYears {
             if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStartForOldest) {
-                for monthOffset in 0..<12 {
+                for monthOffset in 0...12 {
                     if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
                         if monthDate >= yearStartForOldest && monthDate <= yearEndForLatest {
                             dates.append(monthDate)

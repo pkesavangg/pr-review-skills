@@ -83,16 +83,23 @@ struct YAxisCalculator {
             goalWeight: goalWeight,
             targetTickCount: 4 // Reduced tick count for cleaner graphs
         )
-
-        print("Generated scale Y axis range: \(scale)")
-        // Align domain to tick range so plot bounds match horizontal rules
-        let domainMin = scale.ticks.first ?? scale.min
-        let domainMax = scale.ticks.last ?? scale.max
-        return YAxisScale(
-            min: scale.min,
-            max: scale.max,
+        
+        // Apply edge buffer so top/bottom data points don't touch chart edges
+        let buffered = applyEdgeBufferToTicks(
+            dataMin: minValue,
+            dataMax: maxValue,
             step: scale.step,
-            ticks: scale.ticks,
+            ticks: scale.ticks
+        )
+
+        // Align domain to adjusted tick range so plot bounds match horizontal rules
+        let domainMin = buffered.ticks.first ?? scale.min
+        let domainMax = buffered.ticks.last ?? scale.max
+        return YAxisScale(
+            min: domainMin,
+            max: domainMax,
+            step: buffered.step,
+            ticks: buffered.ticks,
             domain: domainMin...domainMax,
             average: average
         )
@@ -183,18 +190,28 @@ struct YAxisCalculator {
 
 
         // Create simple ticks with appropriate steps for small datasets
-        let (adjustedStep, adjustedTicks) = enforceTickLimits(
+        var (adjustedStep, adjustedTicks) = enforceTickLimits(
             min: finalMin,
             max: finalMax,
             initialStep: 1.0
         )
 
+        // Apply edge buffer so points don't touch top/bottom
+        let buffered = applyEdgeBufferToTicks(
+            dataMin: minValue,
+            dataMax: maxValue,
+            step: adjustedStep,
+            ticks: adjustedTicks
+        )
+        adjustedStep = buffered.step
+        adjustedTicks = buffered.ticks
+
         // Align domain to tick range so plot bounds coincide with horizontal rules
         let domainMinSmall = adjustedTicks.first ?? finalMin
         let domainMaxSmall = adjustedTicks.last ?? finalMax
         return YAxisScale(
-            min: finalMin,
-            max: finalMax,
+            min: domainMinSmall,
+            max: domainMaxSmall,
             step: adjustedStep,
             ticks: adjustedTicks,
             domain: domainMinSmall...domainMaxSmall,
@@ -310,7 +327,6 @@ fileprivate struct ImprovedNiceScaleCalculator {
             /// Handle very small ranges (gradual weight changes)
     private static func handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
         // For very small ranges, use 1-unit steps and ensure we show the trend
-        let center = (dataMin + dataMax) / 2
         let range = max(dataMax - dataMin, 2.0) // Minimum 2-unit range for visibility
 
         // Calculate bounds with padding, but ensure we include all actual data
@@ -465,6 +481,57 @@ fileprivate struct ImprovedNiceScaleCalculator {
         let step = closestNiceNumber * magnitude
 
         return step
+    }
+}
+
+// MARK: - Edge Buffer Helpers
+
+extension YAxisCalculator {
+    /// Ensures there is visual headroom/footroom between data extremes and the outermost ticks.
+    /// Keeps domain aligned with ticks to avoid gridline overflow beyond the plot area.
+    /// - Parameters:
+    ///   - dataMin: Minimum actual data value in display units
+    ///   - dataMax: Maximum actual data value in display units
+    ///   - step: Current tick step size
+    ///   - ticks: Current tick values (ascending)
+    ///   - thresholdRatio: If distance between data and nearest tick is less than `step * thresholdRatio`, extend one more step
+    ///   - maxTicks: Soft cap for number of ticks; will re-enforce limits after extension
+    /// - Returns: Adjusted step and ticks with edge buffer applied
+    static func applyEdgeBufferToTicks(
+        dataMin: Double,
+        dataMax: Double,
+        step: Double,
+        ticks: [Double],
+        thresholdRatio: Double = 0.35,
+        maxTicks: Int = 6
+    ) -> (step: Double, ticks: [Double]) {
+        guard !ticks.isEmpty else { return (step, ticks) }
+
+        var proposedMin = ticks.first!
+        var proposedMax = ticks.last!
+        let proposedStep = step
+
+        // Determine if data is too close to outer ticks
+        let tooCloseToTop = (proposedMax - dataMax) < (proposedStep * thresholdRatio)
+        let tooCloseToBottom = (dataMin - proposedMin) < (proposedStep * thresholdRatio)
+
+        if tooCloseToTop { proposedMax += proposedStep }
+        if tooCloseToBottom { proposedMin -= proposedStep }
+
+        // Re-enforce tick limits and regenerate ticks uniformly
+        var enforced = enforceTickLimits(min: proposedMin, max: proposedMax, initialStep: proposedStep)
+
+        // If still too close and we haven't exceeded soft cap, try to extend once more on each side
+        if let last = enforced.ticks.last, (last - dataMax) < (enforced.step * thresholdRatio), enforced.ticks.count < maxTicks {
+            proposedMax = last + enforced.step
+            enforced = enforceTickLimits(min: enforced.ticks.first ?? proposedMin, max: proposedMax, initialStep: enforced.step)
+        }
+        if let first = enforced.ticks.first, (dataMin - first) < (enforced.step * thresholdRatio), enforced.ticks.count < maxTicks {
+            proposedMin = first - enforced.step
+            enforced = enforceTickLimits(min: proposedMin, max: enforced.ticks.last ?? proposedMax, initialStep: enforced.step)
+        }
+
+        return (enforced.step, enforced.ticks)
     }
 }
 
