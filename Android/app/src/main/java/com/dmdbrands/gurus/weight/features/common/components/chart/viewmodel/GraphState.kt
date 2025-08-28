@@ -6,8 +6,8 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
-import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import kotlinx.coroutines.Job
 import java.util.Calendar
 
 /**
@@ -57,9 +57,11 @@ data class GraphState(
   val secondaryMaxYTarget: Double = 220.0,
   val markerIndex: Int? = null,
   val isUpdating: Boolean = false,
-  val computationJob: kotlinx.coroutines.Job? = null,
+  val computationJob: Job? = null,
+  val animationJob: Job? = null,
   val stepSize: Double = 10.0,
-  val scrollState: Scroll = Scroll.Absolute.End,
+  val scrollValue: Double? = null,
+  val savedTarget: Long? = null,
   val separators: List<Double> = emptyList()
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
@@ -79,8 +81,6 @@ data class GraphState(
     this.xLabels.maxOfOrNull { it.value.toDouble() }?.toLong() ?: Calendar.getInstance().timeInMillis
   val startRangeX = GraphUtil.getStartRange(segment, initialTimeStamp)
   val endRangeX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-  val selectedTarget =
-    if (markerIndex != null && markerIndex < xLabels.size) xLabels[markerIndex].value.toLong() else null
   val selectedData =
     if (markerIndex != null && markerIndex < xLabels.size) graphLines.map { it.points[markerIndex] } else emptyList()
 }

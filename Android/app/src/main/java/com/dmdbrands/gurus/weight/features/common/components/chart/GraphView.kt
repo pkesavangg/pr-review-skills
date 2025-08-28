@@ -27,8 +27,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -61,11 +59,6 @@ fun GraphView(
   val state by viewModel.state.collectAsState()
   var point: VicoPoint? by remember { mutableStateOf(null) }
 
-  // Store callbacks in ViewModel
-  LaunchedEffect(Unit) {
-    viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate)
-  }
-
   // Animated values for smooth transitions
   val animatedMinTarget by animateIntAsState(
     targetValue = state.minYTarget.toInt(),
@@ -92,10 +85,21 @@ fun GraphView(
   )
 
   // Scroll state
-  var scrollState = rememberVicoScrollState(
+  val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = Scroll.Absolute.End,
   )
+
+  // Store callbacks in ViewModel
+  LaunchedEffect(Unit) {
+    viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate) { target ->
+      if (target != null) {
+        scrollState.animateScroll(Scroll.Absolute.x(state.scrollValue!!, 1f))
+      } else {
+        scrollState.animateScroll(Scroll.Absolute.End)
+      }
+    }
+  }
 
   // Initialize graph when data changes
   LaunchedEffect(graphLines, secondaryGraphLines) {
@@ -107,12 +111,6 @@ fun GraphView(
         goal = goal,
       ),
     )
-  }
-
-  LaunchedEffect(state.scrollState) {
-    withContext(Dispatchers.Default) {
-      scrollState.animateScroll(state.scrollState)
-    }
   }
 
   // Handle segment changes

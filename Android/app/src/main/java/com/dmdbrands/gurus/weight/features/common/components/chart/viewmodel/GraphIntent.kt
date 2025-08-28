@@ -4,7 +4,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.patrykandpatrick.vico.core.cartesian.Scroll
+import kotlinx.coroutines.Job
 
 /**
  * Intent for graph actions, defining all possible user interactions and state updates.
@@ -35,6 +35,8 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Int?) : GraphIntent
 
+  data class UpdateSavedTarget(val target: Long) : GraphIntent
+
   /** Update updating state */
   data class UpdateIsUpdating(val isUpdating: Boolean) : GraphIntent
 
@@ -42,13 +44,13 @@ sealed interface GraphIntent : IReducer.Intent {
   data class UpdateStepSize(val stepSize: Double) : GraphIntent
 
   /** Update scroll state */
-  data class UpdateScrollState(val scrollState: Scroll) : GraphIntent
+  data class UpdateScrollValue(val scrollValue: Double?) : GraphIntent
 
   /** Update separators */
   data class UpdateSeparators(val separators: List<Double>) : GraphIntent
 
   /** Update computation job */
-  data class UpdateComputationJob(val job: kotlinx.coroutines.Job?) : GraphIntent
+  data class UpdateComputationJob(val job: Job?) : GraphIntent
 
   /** Reset graph state */
   object ResetGraph : GraphIntent

@@ -12,7 +12,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
-import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +39,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   private var onMetricUpdate: (List<GraphPoint>) -> Unit = {}
   private var onScroll: (String?) -> Unit = {}
   private var onLabelUpdate: (String) -> Unit = {}
+  private var onScrollValueUpdate: suspend (Double?) -> Unit = {}
 
   override fun provideInitialState(): GraphState = GraphState()
 
@@ -71,15 +71,9 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
     val minTarget = timeStamp.minByOrNull { it }?.toLong()
     val maxTarget = timeStamp.maxByOrNull { it }?.toLong()
     handleIntent(GraphIntent.UpdateTargetRange(minTarget, maxTarget))
-    if (maxTarget != null)
-      handleIntent(
-        GraphIntent.UpdateScrollState(
-          Scroll.Absolute.x(1755023400000.0, 0.5f),
-        ),
-      )
 
     // Setup chart model producer
-    setupChartModelProducer(graphLines, secondaryGraphLines, goal)
+    setupChartModelProducer(secondaryGraphLines, goal)
 
     // Handle segment update
     handleSegmentUpdate(segment)
@@ -92,7 +86,6 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
    * Sets up the chart model producer with primary and secondary graph lines.
    */
   private fun setupChartModelProducer(
-    graphLines: List<GraphLine>,
     secondaryGraphLines: GraphLine?,
     goal: Goal?
   ) {
@@ -143,25 +136,24 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
    * Handles segment updates and recalculates related values.
    */
   private fun handleSegmentUpdate(segment: GraphSegment) {
+    viewModelScope.launch {
 
-    val currentState = state.value
+      val currentState = state.value
 
-    super.handleIntent(GraphIntent.UpdateIsUpdating(true))
+      super.handleIntent(GraphIntent.UpdateIsUpdating(true))
 
-    val target = currentState.selectedTarget ?: currentState.maxTarget
-    val nearest = target?.let {
-      currentState.xLabels.map { it.value.toLong() }
-        .minByOrNull { abs(it - target) }
+      val target = currentState.savedTarget ?: currentState.maxTarget
+      val nearest = target?.let {
+        currentState.xLabels.map { it.value.toLong() }
+          .minByOrNull { abs(it - target) }
+      }
+      if (segment != currentState.segment) {
+        onScrollValueUpdate(nearest?.toDouble())
+      }
+
+      super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+      super.handleIntent(GraphIntent.UpdateIsUpdating(false))
     }
-
-    if (nearest != null) {
-      super.handleIntent(GraphIntent.UpdateScrollState(Scroll.Absolute.x(nearest.toDouble(), 0.5f)))
-    } else {
-      super.handleIntent(GraphIntent.UpdateScrollState(Scroll.Absolute.End))
-    }
-
-    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    super.handleIntent(GraphIntent.UpdateIsUpdating(false))
   }
 
   /**
@@ -233,6 +225,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
       )
 
       super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+      super.handleIntent(GraphIntent.UpdateSavedTarget(max))
 
       if (isActive) {
         val joinedLabel = subset.values
@@ -330,11 +323,13 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   fun setCallbacks(
     onMetricUpdate: (List<GraphPoint>) -> Unit,
     onScroll: (String?) -> Unit,
-    onLabelUpdate: (String) -> Unit
+    onLabelUpdate: (String) -> Unit,
+    scrollToValue: suspend (Double?) -> Unit
   ) {
     this.onMetricUpdate = onMetricUpdate
     this.onScroll = onScroll
     this.onLabelUpdate = onLabelUpdate
+    this.onScrollValueUpdate = scrollToValue
   }
 
   /**

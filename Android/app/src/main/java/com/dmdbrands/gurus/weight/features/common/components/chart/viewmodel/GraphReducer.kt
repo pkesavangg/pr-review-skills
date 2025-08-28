@@ -30,11 +30,13 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
+    is GraphIntent.UpdateSavedTarget -> state.copy(savedTarget = intent.target)
+
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
 
     is GraphIntent.UpdateStepSize -> state.copy(stepSize = intent.stepSize)
 
-    is GraphIntent.UpdateScrollState -> state.copy(scrollState = intent.scrollState)
+    is GraphIntent.UpdateScrollValue -> state.copy(scrollValue = intent.scrollValue)
 
     is GraphIntent.UpdateSeparators -> state.copy(separators = intent.separators)
 
