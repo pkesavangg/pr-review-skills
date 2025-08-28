@@ -343,12 +343,17 @@ extension View {
                     }
                 ))
                 .chartXAxis {
-                    AxisMarks(values: viewModel.xAxisValues) { value in
-                        if let date = value.as(Date.self), date != viewModel.xAxisValues.last {
-                            AxisGridLine()
-                            AxisTick()
-                        }
-                        
+                    let allTicks = viewModel.xAxisValues
+                    let nonLastTicks = Array(allTicks.dropLast())
+
+                    // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
+                    AxisMarks(values: nonLastTicks) { _ in
+                        AxisGridLine()
+                        AxisTick()
+                    }
+
+                    // Labels for all tick values
+                    AxisMarks(values: allTicks) { value in
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = viewModel.formatXAxisLabel(for: date) {
