@@ -976,8 +976,7 @@ constructor(
       if (weightlessWeight != null) {
         val displayWeight =
           WeightlessHelper.processStoredWeightToDisplay(weightlessWeight.toDouble(), account.weightUnit)
-        val formattedWeight = String.format("%.1f", displayWeight)
-        "On - $formattedWeight"
+        "On - ${displayWeight / 10}"
       } else {
         "On"
       }
