@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,6 +27,8 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -54,15 +59,11 @@ fun GraphView(
   viewModel: GraphViewModel = hiltViewModel()
 ) {
   val state by viewModel.state.collectAsState()
+  var point: VicoPoint? by remember { mutableStateOf(null) }
 
   // Store callbacks in ViewModel
   LaunchedEffect(Unit) {
     viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate)
-  }
-
-  // Handle segment changes
-  LaunchedEffect(segment) {
-    viewModel.handleIntent(GraphIntent.UpdateSegment(segment))
   }
 
   // Animated values for smooth transitions
@@ -91,7 +92,7 @@ fun GraphView(
   )
 
   // Scroll state
-  val scrollState = rememberVicoScrollState(
+  var scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = Scroll.Absolute.End,
   )
@@ -106,6 +107,23 @@ fun GraphView(
         goal = goal,
       ),
     )
+  }
+
+  LaunchedEffect(state.scrollState) {
+    withContext(Dispatchers.Default) {
+      scrollState.animateScroll(state.scrollState)
+    }
+  }
+
+  // Handle segment changes
+  LaunchedEffect(segment) {
+    viewModel.handleIntent(GraphIntent.UpdateSegment(segment))
+    if (segment == GraphSegment.TOTAL) {
+      viewModel.handleIntent(GraphIntent.UpdateSeparators(emptyList()))
+    } else {
+      val separators = GraphUtil.periodStarts(segment, state.startRangeX, state.endRangeX)
+      viewModel.handleIntent(GraphIntent.UpdateSeparators(separators))
+    }
   }
 
   // Chart layers and components
@@ -123,10 +141,6 @@ fun GraphView(
     initialTimeStamp = state.initialTimeStamp,
   )
 
-  val startRangeX = GraphUtil.getStartRange(segment, state.initialTimeStamp)
-  val endRangeX = GraphUtil.getEndRange(segment, state.todayMills)
-  val separators = GraphUtil.periodStarts(segment, startRangeX, endRangeX)
-
   val defaultMarker = rememberDefaultMarker(state.xLabels, state.markerIndex, segment)
   val decorations = rememberHorizontalLine(goal = goal)
 
@@ -134,23 +148,15 @@ fun GraphView(
     isEnabled = !state.isUpdating,
     segment = segment,
     onDestinationUpdate = { min, max ->
-      viewModel.handleIntent(GraphIntent.HandleScroll(min, max))
+      viewModel.handleIntent(GraphIntent.SetScrollRange(min, max))
     },
   )
 
   val markerListener = markerListener(
-    stableGraphLines = state.graphLines,
-    point = state.point,
+    point = point,
     xLabels = state.xLabels,
-    onSelected = { selectedData ->
-      viewModel.handleIntent(GraphIntent.HandleMarkerSelection(selectedData))
-    },
     setMarkerIndex = { markerIndex ->
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
-    },
-    selectedData = state.selectedData,
-    onDestinationUpdate = { selectedTarget ->
-      viewModel.handleIntent(GraphIntent.UpdateSelectedTarget(selectedTarget))
     },
   )
 
@@ -178,12 +184,10 @@ fun GraphView(
                 if (!isScrollInProgress) {
                   val position = event.changes.firstOrNull()?.position
                   if (position != null && state.computationJob == null) {
-                    viewModel.handleIntent(
-                      GraphIntent.UpdatePoint(VicoPoint(position.x, position.y)),
-                    )
+                    point = VicoPoint(position.x, position.y)
                   }
                 } else {
-                  viewModel.handleIntent(GraphIntent.UpdatePoint(null))
+                  point = null
                 }
                 isScrollInProgress = false
               }
@@ -200,13 +204,11 @@ fun GraphView(
     decorations = decorations,
     xLabels = state.xLabels,
     markerIndex = state.markerIndex,
-    isUpdating = state.isUpdating,
-    selectedData = state.selectedData,
+    state = state,
     modelProducer = state.modelProducer,
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
-    separators = separators,
-    isEmpty = state.isEmpty,
+    separators = state.separators,
   )
 }
 

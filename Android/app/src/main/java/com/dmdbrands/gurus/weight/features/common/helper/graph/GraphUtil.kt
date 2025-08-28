@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
+import kotlin.math.ceil
 import kotlin.reflect.KProperty1
 
 val dateRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
@@ -117,6 +118,15 @@ object GraphUtil {
   // endregion
 
   // region Calculation
+  fun calculateTotalIntervalCount(
+    startTime: Long,
+    endTime: Long,
+    segment: GraphSegment
+  ): Int {
+    val step = calculateXStep(segment)
+    val duration = endTime - startTime
+    return ceil(duration.toDouble() / step).toInt()
+  }
 
   /**
    * Calculates the X-axis step size for the given [GraphSegment].
@@ -128,7 +138,7 @@ object GraphUtil {
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
       GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
-      GraphSegment.YEAR, GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
+      GraphSegment.YEAR, GraphSegment.TOTAL -> 30 * ONE_DAY_MILLIS
     }.toDouble()
 
   fun List<Double>.getMinPositiveDelta(): Double {
@@ -145,10 +155,9 @@ object GraphUtil {
    */
   fun GraphSegment.intervalCount(): Int =
     when (this) {
-      GraphSegment.WEEK -> 8
-      GraphSegment.MONTH -> 7
-      GraphSegment.YEAR -> 13
-      else -> 32
+      GraphSegment.WEEK -> 7
+      GraphSegment.MONTH -> 6
+      GraphSegment.YEAR, GraphSegment.TOTAL -> 12
     }
   // endregion
 
@@ -293,18 +302,16 @@ object GraphUtil {
     }
   }
 
-  fun getStartRange(segment: GraphSegment, timeStamp: Long): Long? = when (segment) {
+  fun getStartRange(segment: GraphSegment, timeStamp: Long): Long = when (segment) {
     GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).start
     GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).start
-    GraphSegment.YEAR -> DateTimeConverter.getYearRange(timeStamp).start
-    else -> null
+    GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).start
   }
 
-  fun getEndRange(segment: GraphSegment, timeStamp: Long): Long? = when (segment) {
+  fun getEndRange(segment: GraphSegment, timeStamp: Long): Long = when (segment) {
     GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).end
     GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).end
-    GraphSegment.YEAR -> DateTimeConverter.getYearRange(timeStamp).end
-    else -> null
+    GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).end
   }
 
   fun periodStarts(

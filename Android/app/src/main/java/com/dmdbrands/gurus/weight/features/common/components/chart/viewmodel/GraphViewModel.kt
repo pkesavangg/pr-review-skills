@@ -8,7 +8,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.periodStarts
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -46,14 +44,13 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   override fun provideInitialState(): GraphState = GraphState()
 
   override fun handleIntent(intent: GraphIntent) {
+    super.handleIntent(intent)
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
       is GraphIntent.UpdateSegment -> handleSegmentUpdate(intent.segment)
-      is GraphIntent.UpdateSelectedData -> handleSelectedDataUpdate(intent.selectedData)
-      is GraphIntent.HandleMarkerSelection -> handleSelectedDataUpdate(intent.selectedData)
+      is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate(intent.markerIndex)
       else -> null
     }
-    super.handleIntent(intent)
   }
 
   /**
@@ -67,44 +64,19 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
     val segment = intent.segment
     val goal = intent.goal
 
-    if (graphLines.isEmpty()) {
-      handleIntent(GraphIntent.UpdateIsEmpty(true))
-      return
-    }
-
     // Calculate derived values
-    val xLabels = graphLines.first().points.map { it.x }
-    val ySeries = graphLines.map { it.points.map { point -> point.y } }
     val timeStamp = graphLines.flatMap { it.points.map { it.x.value.toDouble() }.sortedBy { it } }
-    val graphKey = graphLines.hashCode()
-
-    // Update state with calculated values
-    handleIntent(GraphIntent.UpdateXLabels(xLabels))
-    handleIntent(GraphIntent.UpdateYSeries(ySeries))
-    handleIntent(GraphIntent.UpdateTimestamps(timeStamp))
-    handleIntent(GraphIntent.UpdateGraphKey(graphKey))
-    handleIntent(GraphIntent.UpdateIsEmpty(false))
 
     // Set initial targets
     val minTarget = timeStamp.minByOrNull { it }?.toLong()
     val maxTarget = timeStamp.maxByOrNull { it }?.toLong()
     handleIntent(GraphIntent.UpdateTargetRange(minTarget, maxTarget))
-
-    // Calculate initial timestamps
-    val initialTimeStamp = xLabels.minByOrNull { it.value.toLong() }?.value?.toLong()
-      ?: Calendar.getInstance().timeInMillis
-    val todayMills = Calendar.getInstance().timeInMillis
-
-    handleIntent(GraphIntent.UpdateInitialTimestamp(initialTimeStamp))
-    handleIntent(GraphIntent.UpdateTodayMills(todayMills))
-
-    // Calculate ranges and separators
-    val startRangeX = GraphUtil.getStartRange(segment, initialTimeStamp) ?: initialTimeStamp
-    val endRangeX = GraphUtil.getEndRange(segment, todayMills) ?: todayMills
-    val separators = periodStarts(segment, startRangeX, endRangeX)
-
-    handleIntent(GraphIntent.UpdateRangeValues(startRangeX, endRangeX))
-    handleIntent(GraphIntent.UpdateSeparators(separators))
+    if (maxTarget != null)
+      handleIntent(
+        GraphIntent.UpdateScrollState(
+          Scroll.Absolute.x(1755023400000.0, 0.5f),
+        ),
+      )
 
     // Setup chart model producer
     setupChartModelProducer(graphLines, secondaryGraphLines, goal)
@@ -126,7 +98,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   ) {
     val currentState = state.value
     val xLabels = currentState.xLabels
-    val ySeries = currentState.ySeries
+    val ySeries = currentState.yLabels
 
     viewModelScope.launch {
       currentState.modelProducer.runTransaction {
@@ -171,6 +143,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
    * Handles segment updates and recalculates related values.
    */
   private fun handleSegmentUpdate(segment: GraphSegment) {
+
     val currentState = state.value
 
     super.handleIntent(GraphIntent.UpdateIsUpdating(true))
@@ -187,15 +160,16 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
       super.handleIntent(GraphIntent.UpdateScrollState(Scroll.Absolute.End))
     }
 
-    super.handleIntent(GraphIntent.UpdateSelectedTarget(null))
+    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     super.handleIntent(GraphIntent.UpdateIsUpdating(false))
   }
 
   /**
    * Handles updates to selected data and triggers metric updates.
    */
-  private fun handleSelectedDataUpdate(selectedData: List<GraphPoint>) {
+  private fun handleSelectedDataUpdate(markerIndex: Int?) {
     val currentState = state.value
+    val selectedData = currentState.selectedData
 
     // Cancel any existing computation job
     currentState.computationJob?.cancel()
@@ -258,7 +232,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
         max,
       )
 
-      super.handleIntent(GraphIntent.UpdateSelectedData(emptyList()))
+      super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
 
       if (isActive) {
         val joinedLabel = subset.values
