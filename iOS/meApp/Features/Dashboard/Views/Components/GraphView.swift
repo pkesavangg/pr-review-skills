@@ -96,7 +96,6 @@ struct GraphView: View {
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-        // Disable implicit animations when switching sections to prevent axes animating from outside
         .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
     
