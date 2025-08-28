@@ -13,4 +13,8 @@ object DashboardString {
     const val ConfirmText = "Reset"
     const val CancelText = "Cancel"
   }
+
+  object Loader {
+    const val Save = "Saving..."
+  }
 }

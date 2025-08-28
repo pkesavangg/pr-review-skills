@@ -114,9 +114,9 @@ constructor(
     try {
       viewModelScope.launch {
         dialogQueueService.showLoader(
-          message = DashboardString.Loader.save,
+          message = DashboardString.Loader.Save,
         )
-          dashboardService.updateVisibleKeys(keys = keys)
+        dashboardService.updateVisibleKeys(keys = keys)
       }
     } catch (e: Exception) {
     } finally {
