@@ -51,7 +51,7 @@ fun BtWifiScaleSetupScreen(
 ) {
   val viewModel: BtWifiScaleSetupViewModel =
     hiltViewModel<BtWifiScaleSetupViewModel, BtWifiScaleSetupViewModel.Factory> { factory ->
-      factory.create(sku, broadcastId, initialStep , userList)
+      factory.create(sku, broadcastId, initialStep, userList)
     }
   val state by viewModel.state.collectAsState()
   BtWifiScaleSetupScreenContent(
@@ -97,8 +97,32 @@ fun BtWifiScaleSetupScreenContent(
       BtWifiSetupStep.CONNECTING_WIFI ->
         state.wifiPasswordForm.ssid.isValueValid() && state.wifiPasswordForm.password.isValueValid()
 
+      BtWifiSetupStep.WIFI_PASSWORD -> {
+        // For WIFI_PASSWORD step, check if password is valid
+        // If it's a no-password network, only SSID needs to be valid
+        // If it requires password, both SSID and password must be valid
+        val isSSIDValid = state.wifiPasswordForm.ssid.isValueValid()
+        val isPasswordValid = if (state.wifiPasswordForm.noPasswordNetwork.value) {
+          true // No password required
+        } else {
+          state.wifiPasswordForm.password.isValueValid() // Password required and must be valid
+        }
+        isSSIDValid && isPasswordValid
+      }
+
       BtWifiSetupStep.PERMISSIONS ->
         AppPermissionsHelper.areRequiredPermissionsEnabled(state.permissions, state.sku)
+
+      BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+        // For WiFi list step, enable Next button if WiFi is already connected
+        // or if user has selected a network (handled by canProceedToNext)
+        !state.connectedSSID.isNullOrEmpty() || state.canProceedToNext
+      }
+
+      BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+        // For customization step, only check if username is valid (no duplicate validation)
+        state.usernameForm.username.isValueValid()
+      }
 
       else -> state.canProceedToNext
 
@@ -168,12 +192,16 @@ fun BtWifiScaleSetupScreenContent(
         state.currentStep == BtWifiSetupStep.SCALE_INFO ||
           state.currentStep == BtWifiSetupStep.PERMISSIONS ||
           state.currentStep == BtWifiSetupStep.DUPLICATES_FOUND ||
-          state.currentStep == BtWifiSetupStep.WIFI_PASSWORD ||
-          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) -> {
+          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) ||
+          state.currentStep == BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
-              label = state.nextButtonText,
+              label = when (state.currentStep) {
+                BtWifiSetupStep.WIFI_PASSWORD -> ScaleSetupStrings.SetupButtons.Connect
+                BtWifiSetupStep.AVAILABLE_WIFI_LIST -> ScaleSetupStrings.SetupButtons.Next
+                else -> state.nextButtonText
+              },
               size = ButtonSize.Small,
               enabled = !state.isLoading && isNextButtonEnabledForStep,
               onClick = {
@@ -286,10 +314,18 @@ fun BtWifiScaleSetupScreenContent(
               title = BtWifiScaleSetupStrings.WifiList.Title,
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
               configuredSSID = state.connectedSSID,
-              onSelect = {
-                state.wifiPasswordForm.ssid.onValueChange(it)
-                onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                onIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.WIFI_PASSWORD))
+              onSelect = { selectedSSID ->
+                // Check if the selected network is already connected
+                if (selectedSSID == state.connectedSSID) {
+                  // Same network selected, user can continue to customization
+                  onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+                  // Don't navigate anywhere - user will click the Continue button to proceed
+                } else {
+                  // New network selected, go to password step
+                  state.wifiPasswordForm.ssid.onValueChange(selectedSSID)
+                  onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false)) // Reset to false, will be enabled when password is valid
+                  onIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.WIFI_PASSWORD))
+                }
               },
               onRefresh = {
                 onIntent(BtWifiScaleSetupIntent.RefreshNetworks)
@@ -340,6 +376,7 @@ fun BtWifiScaleSetupScreenContent(
               subtitle = BtWifiScaleSetupStrings.CustomizeSettings.Subtitle,
               state = state,
               onIntent = onIntent,
+              userList = state.userList,
             )
           }
 

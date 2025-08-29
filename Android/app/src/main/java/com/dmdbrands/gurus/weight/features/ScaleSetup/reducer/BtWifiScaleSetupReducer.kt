@@ -1,8 +1,5 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
-import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -12,6 +9,9 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
 
 /**
  * Controls for WiFi-Password form.
@@ -33,7 +33,7 @@ data class WifiPasswordFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
-          FormValidations.minLength(6, LoginStrings.PasswordLabel),
+          FormValidations.minLength(1, LoginStrings.PasswordLabel),
           FormValidations.maxLength(50, LoginStrings.PasswordLabel),
         ),
       ),
@@ -94,6 +94,7 @@ data class BtWifiScaleSetupState(
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: List<DashboardKey> = listOf(),
   val duplicateUser: GGBTUser? = null,
+  val duplicateUserList: List<GGBTUser> = listOf(),
   val userList: List<GGBTUser> = listOf(),
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   // Scale mode preferences - similar to Angular component's setModePreference logic
@@ -114,6 +115,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   data class SetConnectedSSID(val ssid: String) : BtWifiScaleSetupIntent
   data class SetUserList(val userList: List<GGBTUser>) : BtWifiScaleSetupIntent
   data class SetDuplicateUser(val duplicateUser: GGBTUser?) : BtWifiScaleSetupIntent
+  data class SetDuplicateUserList(val duplicateUserList: List<GGBTUser>) : BtWifiScaleSetupIntent
   data class UpdateSettings(
     val dashboardKeys: List<DashboardKey>? = null,
     val preferences: Preferences? = null
@@ -207,6 +209,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.ssid)
       is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList)
       is BtWifiScaleSetupIntent.SetDuplicateUser -> state.copy(duplicateUser = intent.duplicateUser)
+      is BtWifiScaleSetupIntent.SetDuplicateUserList -> state.copy(duplicateUserList = intent.duplicateUserList)
       is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
       is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
@@ -255,6 +258,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         isAllBodyMetrics = intent.isAllBodyMetrics,
         isHeartRateOn = intent.isHeartRateOn,
       )
+
       is BtWifiScaleSetupIntent.SetAllBodyMetrics -> state.copy(isAllBodyMetrics = intent.isAllBodyMetrics)
       is BtWifiScaleSetupIntent.SetHeartRateMode -> state.copy(isHeartRateOn = intent.isHeartRateOn)
 
