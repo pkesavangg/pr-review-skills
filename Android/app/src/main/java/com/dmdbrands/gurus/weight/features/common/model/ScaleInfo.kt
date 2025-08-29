@@ -15,13 +15,13 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class ScaleInfo(
-    val productName: String,
-    val sku: String,
-    val setupType: ScaleSetupType,
-    val bodyComp: Boolean,
-    val isConnected: Boolean? = null,
-    val isWifiConfigured: Boolean? = null,
-    val scaleId: String? = null,
+  val productName: String,
+  val sku: String,
+  val setupType: ScaleSetupType,
+  val bodyComp: Boolean,
+  val isConnected: Boolean? = null,
+  val isWifiConfigured: Boolean? = null,
+  val scaleId: String? = null,
 )
 
 val SCALES =

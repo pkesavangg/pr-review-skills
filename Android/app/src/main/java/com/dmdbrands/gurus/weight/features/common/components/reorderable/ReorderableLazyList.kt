@@ -276,6 +276,7 @@ class ReorderableLazyListState internal constructor(
   scrollThresholdPadding,
   scroller,
   layoutDirection,
+  shouldItemMove = shouldItemMove,
 )
 
 /**
