@@ -53,7 +53,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -234,12 +233,10 @@ constructor(
 
         if (userDetails != null) {
           // Delete specific user
-          Log.d(TAG, "Deleting specific user: ${userDetails.name} with token: ${userDetails.token}")
           deleteUserByBroadcastIdAndToken(broadcastId, userDetails.token)
         } else {
           // Delete all duplicate users
           val duplicateList = state.value.duplicateUserList
-          Log.d(TAG, "Deleting ${duplicateList.size} duplicate users")
           for (user in duplicateList) {
             deleteUserByBroadcastIdAndToken(broadcastId, user.token)
           }
@@ -265,10 +262,8 @@ constructor(
         broadcastId = broadcastId,
         token = token,
       )
-
-      Log.d(TAG, "Deleting user with broadcastId: $broadcastId, token: $token")
       ggDeviceService.deleteAccount(minimalDevice) {
-        Log.d(TAG, "Successfully deleted user with token: $token")
+        refreshUserListAfterAccountChange()
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error deleting user with token: $token", e.toString())
@@ -363,7 +358,6 @@ constructor(
               loadDashboardKeys()
               // Refresh the user list to ensure it's up-to-date for duplicate validation
               AppLog.d(TAG, "Entering CUSTOMIZE_SETTINGS step, refreshing user list...")
-              refreshUserListForCustomization()
               // Prevent automatic progression to UPDATE_SETTINGS
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
             }
@@ -373,7 +367,6 @@ constructor(
             }
 
             BtWifiSetupStep.DUPLICATES_FOUND -> {
-              refreshUserListForCustomization()
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Save))
               // Check for duplicate users when entering this step
               checkDuplicateUserList()
@@ -598,29 +591,6 @@ constructor(
         currentState.wifiPasswordForm.ssid.isValueValid() && currentState.wifiPasswordForm.password.isValueValid()
       }
       handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-    }
-  }
-
-  /**
-   * Refreshes the user list when entering customization step to ensure duplicate validation works correctly.
-   * This ensures that if users were deleted/added during the setup process, the validation uses the current list.
-   */
-  private fun refreshUserListForCustomization() {
-    viewModelScope.launch {
-      try {
-        if (discoveredScale != null) {
-          val userList = suspendCoroutine { continuation ->
-            ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-              continuation.resume(response.user)
-            }
-          }
-          // Filter out the current user to prevent duplicate validation errors when restoring the same name
-          val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
-          handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error refreshing user list for customization", e.toString())
-      }
     }
   }
 
@@ -1338,20 +1308,7 @@ constructor(
             )
             ggDeviceService.deleteAccount(deleteDevice!!.toGGBTDevice()) {
               // After deleting user, refresh the user list to keep it in sync
-              viewModelScope.launch {
-                try {
-                  val updatedUserList = suspendCoroutine { continuation ->
-                    ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-                      continuation.resume(response.user)
-                    }
-                  }
-                  // Update the user list with the current state from the scale
-                  handleIntent(BtWifiScaleSetupIntent.SetUserList(updatedUserList))
-                  AppLog.d(TAG, "Updated user list after deletion: ${updatedUserList.size} users")
-                } catch (e: Exception) {
-                  AppLog.e(TAG, "Error updating user list after deletion", e.toString())
-                }
-              }
+              refreshUserListAfterAccountChange()
             }
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
