@@ -17,7 +17,7 @@ import androidx.navigation3.ui.rememberSceneSetupNavEntryDecorator
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.NavigationObserver
-import com.dmdbrands.gurus.weight.features.feedMessages.FeedMessagesScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
 import com.dmdbrands.gurus.weight.features.home.HomeScreen
 import com.dmdbrands.gurus.weight.features.loading.LoadingScreen
 import com.example.nav3integration.TopLevelBackStack
@@ -60,7 +60,7 @@ fun NavHost(
                 entry<AppRoute.Init.Loading> { LoadingScreen() }
                 entry<AppRoute.Home> { HomeScreen() }
                 entry<AppRoute.FeedMessages> {
-                  FeedMessagesScreen(
+                  AppFeedMessagesScreen(
                     onBackPress = {
                       coroutineScope.launch {
                         topLevelBackStack.removeLast(AppRoute.App)

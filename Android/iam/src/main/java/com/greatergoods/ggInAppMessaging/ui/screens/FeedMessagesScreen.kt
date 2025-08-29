@@ -27,7 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.greatergoods.ggInAppMessaging.theme.getIAMColors
+import com.greatergoods.ggInAppMessaging.theme.ColorTokens
+import com.greatergoods.ggInAppMessaging.theme.rememberIAMColors
 
 /**
  * Main Feed Messages Screen Content
@@ -39,23 +40,29 @@ fun FeedMessagesScreen(
   onSettingsPress: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val iamColors = getIAMColors()
+  // Get ColorTokens with automatic recomposition on theme changes
+  val colors = rememberIAMColors()
+
+  // Show nothing if colors are not yet initialized
+  if (colors == null) {
+    return
+  }
 
   Column(
     modifier = modifier
+      .background(colors.primaryBackground)
       .fillMaxSize()
-      .background(iamColors.backgroundPrimary)
       .verticalScroll(rememberScrollState()),
   ) {
     // Section Header
     SectionHeader(
       title = "Deals on Goods",
       onSettingsClick = onSettingsPress,
-      iamColors = iamColors,
+      colors = colors,
     )
 
     // Empty State Content
-    EmptyStateContent(iamColors = iamColors)
+    EmptyStateContent(colors = colors)
   }
 }
 
@@ -63,12 +70,12 @@ fun FeedMessagesScreen(
 private fun SectionHeader(
   title: String,
   onSettingsClick: () -> Unit,
-  iamColors: com.greatergoods.ggInAppMessaging.theme.IAMColorScheme
+  colors: ColorTokens
 ) {
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .background(iamColors.backgroundSecondary)
+      .background(colors.secondaryBackground)
       .padding(horizontal = 16.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -77,7 +84,7 @@ private fun SectionHeader(
       modifier = Modifier
         .size(24.dp)
         .background(
-          color = iamColors.brandWgPrimary,
+          color = colors.brandWgPrimary,
           shape = MaterialTheme.shapes.small,
         ),
       contentAlignment = Alignment.Center,
@@ -97,7 +104,7 @@ private fun SectionHeader(
       text = title,
       style = MaterialTheme.typography.titleMedium,
       fontWeight = FontWeight.Bold,
-      color = iamColors.textHeading,
+      color = colors.textHeading,
       modifier = Modifier.weight(1f),
     )
 
@@ -109,7 +116,7 @@ private fun SectionHeader(
       Icon(
         imageVector = Icons.Default.Settings,
         contentDescription = "Settings",
-        tint = iamColors.brandWgPrimary,
+        tint = colors.brandWgPrimary,
         modifier = Modifier.size(24.dp),
       )
     }
@@ -118,13 +125,14 @@ private fun SectionHeader(
 
 @Composable
 private fun EmptyStateContent(
-  iamColors: com.greatergoods.ggInAppMessaging.theme.IAMColorScheme
+  colors: ColorTokens
 ) {
   Box(
     modifier = Modifier
-      .fillMaxWidth(),
+      .fillMaxWidth().background(color = colors.primaryBackground),
     contentAlignment = Alignment.Center,
   ) {
+    Text("${colors.primaryBackground}")
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
       modifier = Modifier.padding(32.dp),
@@ -134,7 +142,7 @@ private fun EmptyStateContent(
         text = "Dry on Deals...for Now",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = iamColors.textHeading,
+        color = colors.textHeading,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
       )
 
@@ -144,16 +152,15 @@ private fun EmptyStateContent(
       Text(
         text = "check back soon",
         style = MaterialTheme.typography.bodyLarge,
-        color = iamColors.textBody,
+        color = colors.textBody,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
       )
     }
   }
 }
 
-
 @Preview
 @Composable
-fun FeedMessagesScreenPreview(){
+fun FeedMessagesScreenPreview() {
   FeedMessagesScreen({})
 }
