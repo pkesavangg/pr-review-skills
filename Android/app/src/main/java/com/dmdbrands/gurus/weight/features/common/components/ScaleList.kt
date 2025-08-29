@@ -39,6 +39,8 @@ fun ScaleList(
   enableLazyLoading: Boolean = true,
   lazyListState: LazyListState = rememberLazyListState(),
   initialSelectedType: ScaleSegmentType = ScaleSegmentType.All,
+  header: (@Composable () -> Unit)? = null,  // NEW
+  footer: (@Composable () -> Unit)? = null,  // NEW
 ) {
   var selectedType by remember { mutableStateOf(initialSelectedType) }
 
@@ -78,12 +80,13 @@ fun ScaleList(
       .fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(spacing.xs),
   ) {
+    header?.let { item(key = "header") { it() } }
     // Header item - Segment control
     item {
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(start = spacing.sm,end = spacing.sm,bottom = spacing.sm)
+          .padding(start = spacing.sm, end = spacing.sm, bottom = spacing.sm),
       ) {
         SegmentButtonGroup(
           data = listOf(
@@ -97,7 +100,7 @@ fun ScaleList(
           onSelected = { selectedType = it },
           size = SegmentButtonSize.Small,
           type = SegmentButtonType.Scrollable,
-          modifier = Modifier.fillMaxWidth()
+          modifier = Modifier.fillMaxWidth(),
         )
       }
     }
