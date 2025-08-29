@@ -17,7 +17,6 @@ import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Common composable for creating line layers with connection condition.
@@ -53,8 +52,6 @@ internal fun rememberLineLayerWithConnection(
 
   val startRangeX = initialTimeStamp?.let { GraphUtil.getStartRange(segment, it) }
   val endRangeX = GraphUtil.getEndRange(segment, todayMills)
-
-  Log.d("GraphUtil", "startRangeX: $startRangeX")
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
