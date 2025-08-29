@@ -196,5 +196,11 @@ sealed class AppRoute : NavKey {
       val source: MetricInfoSource = MetricInfoSource.DAY
     ) : Dashboard()
   }
+
+  /**
+   * Feed Messages navigation route
+   */
+  @Serializable
+  data object FeedMessages : AppRoute()
 }
 

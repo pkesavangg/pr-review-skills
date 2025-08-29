@@ -17,6 +17,7 @@ import androidx.navigation3.ui.rememberSceneSetupNavEntryDecorator
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.NavigationObserver
+import com.dmdbrands.gurus.weight.features.feedMessages.FeedMessagesScreen
 import com.dmdbrands.gurus.weight.features.home.HomeScreen
 import com.dmdbrands.gurus.weight.features.loading.LoadingScreen
 import com.example.nav3integration.TopLevelBackStack
@@ -31,38 +32,53 @@ fun NavHost(
   topLevelBackStack: TopLevelBackStack<NavKey>,
   appViewModel: AppViewModel,
 ) {
-  val coroutineScope = rememberCoroutineScope()
-  NavigationObserver(
-    appViewModel.navigationService.navigationIntent,
-    topLevelBackStack,
-  )
-  NavDisplay(
-    modifier = Modifier.navigationBarsPadding(),
-    entryDecorators =
-      listOf(
-        rememberSceneSetupNavEntryDecorator(),
-        rememberSavedStateNavEntryDecorator(),
-        rememberViewModelStoreNavEntryDecorator(),
-      ),
-    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App).ifEmpty {
+    val coroutineScope = rememberCoroutineScope()
+    NavigationObserver(
+        appViewModel.navigationService.navigationIntent,
+        topLevelBackStack,
+    )
+    NavDisplay(
+        modifier = Modifier.navigationBarsPadding(),
+        entryDecorators =
+            listOf(
+                rememberSceneSetupNavEntryDecorator(),
+                rememberSavedStateNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
+        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App).ifEmpty {
       listOf(
         AppRoute.Init.Loading,
       )
     },
-    onBack = {
-      coroutineScope.launch {
-        topLevelBackStack.removeLast(AppRoute.App)
-      }
-    },
-    entryProvider =
-      entryProvider {
-        entry<AppRoute.Init.Loading> { LoadingScreen() }
-        entry<AppRoute.Home> { HomeScreen() }
-        authEntries()
-        accountSettingsEntries()
-        scaleDetailEntries()
-        scaleSetupEntries()
-        historyEntries()
+        onBack = {
+            coroutineScope.launch {
+                topLevelBackStack.removeLast(AppRoute.App)
+            }
+        },
+        entryProvider =
+            entryProvider {
+                entry<AppRoute.Init.Loading> { LoadingScreen() }
+                entry<AppRoute.Home> { HomeScreen() }
+                entry<AppRoute.FeedMessages> {
+                  FeedMessagesScreen(
+                    onBackPress = {
+                      coroutineScope.launch {
+                        topLevelBackStack.removeLast(AppRoute.App)
+                      }
+                    },
+                    onSettingsPress = {
+                      // Navigate to settings or show settings modal
+                      coroutineScope.launch {
+                        topLevelBackStack.addRoute(AppRoute.Main.Settings)
+                      }
+                    }
+                  )
+                }
+                authEntries()
+                accountSettingsEntries()
+                scaleDetailEntries()
+                scaleSetupEntries()
+                historyEntries()
         dashboardEntries()
 
         integrationEntries()

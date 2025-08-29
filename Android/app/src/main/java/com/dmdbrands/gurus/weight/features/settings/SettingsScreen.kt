@@ -196,7 +196,11 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.Messages,
               type = SettingsItemType.Action(),
-              onClick = { },
+              onClick = {
+                coroutineScope.launch {
+                  backStack.addRoute(AppRoute.FeedMessages)
+                }
+              },
             ),
             SettingsItem(
               title = SettingsScreenStrings.AppPermissions,
