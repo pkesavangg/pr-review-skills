@@ -118,7 +118,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Determines if the chart is scrolled to the leftmost boundary
     var isAtLeftBoundary: Bool {
-        guard let store = dashboardStore, !chartOperations.isEmpty else { return true }
+        guard dashboardStore != nil, !chartOperations.isEmpty else { return true }
         
         let operations = chartOperations
         let allDates = operations.map { $0.date }
@@ -312,9 +312,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
-            return 32 // More space for 3+ digit values
+            return 22 // More space for 3+ digit values
         } else {
-            return 28 // Less space for 1-2 digit values
+            return 18 // Less space for 1-2 digit values
         }
     }
     
@@ -361,7 +361,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
     func formatXAxisLabel(for date: Date) -> String? {
-        return dashboardStore?.xLabelString(for: date, period: timePeriod)
+        return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
     }
     
     // MARK: - Chart Content Helpers

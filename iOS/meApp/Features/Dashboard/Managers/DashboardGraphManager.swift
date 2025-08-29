@@ -1022,25 +1022,45 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
 
+        // Use a Sunday-start Gregorian calendar locally to avoid region differences
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+        cal.firstWeekday = 1 // Sunday
+
         var dates: [Date] = []
 
-        // Buffer logic: show from start of week (Sunday) of oldest entry to end of week (Saturday) of latest entry
-        let weekStartForOldest = calendar.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
-        let weekEndForLatest = calendar.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
+        // Start of oldest week (Sunday 00:00 local)
+        let weekStartForOldest = cal.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
+        // End returned by dateInterval is exclusive (start of next week).
+        // We'll compare using this exclusive boundary so Saturday is included.
+        let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
 
-        // Calculate total weeks from start of oldest week to end of latest week
-        let timeInterval = weekEndForLatest.timeIntervalSince(weekStartForOldest)
+        // Calculate total weeks from start of oldest week to inclusive end of latest week
+        let timeInterval = weekEndExclusive.timeIntervalSince(weekStartForOldest)
         let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
 
         for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
-                for dayOffset in 0..<7 {
-                    if let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentWeekStart) {
-                        if dayDate >= weekStartForOldest && dayDate <= weekEndForLatest {
+            if let currentWeekStart = cal.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
+                // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
+                let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
+                for dayOffset in 0...6 { // include Saturday
+                    if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
+                       let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
+                        if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
                             dates.append(dayDate)
                         }
                     }
                 }
+            }
+        }
+        // Append a phantom tick one day after the last date so the real last tick (Saturday)
+        // is not exactly at the right edge of the visible domain.
+        if let last = dates.max() {
+            let lastStart = cal.startOfDay(for: last)
+            if let nextDay = cal.date(byAdding: .day, value: 1, to: lastStart),
+               let phantomNoon = cal.date(byAdding: .hour, value: 12, to: nextDay) {
+                dates.append(phantomNoon)
             }
         }
         return dates
@@ -1080,25 +1100,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
 
+        // Use a stable Gregorian calendar and anchor ticks at local noon
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+
         var dates: [Date] = []
 
-        // Buffer logic: show from start of year of oldest entry to end of year of latest entry
-        let yearStartForOldest = calendar.dateInterval(of: .year, for: startDate)?.start ?? startDate
-        let yearEndForLatest = calendar.dateInterval(of: .year, for: endDate)?.end ?? endDate
+        // Start of oldest year and exclusive end (start of next year)
+        let yearStartForOldest = cal.dateInterval(of: .year, for: startDate)?.start ?? startDate
+        let yearEndExclusive = cal.dateInterval(of: .year, for: endDate)?.end ?? endDate
 
-        // Calculate total years from start of oldest year to end of latest year
-        let timeInterval = yearEndForLatest.timeIntervalSince(yearStartForOldest)
+        // Calculate total years from start of oldest year to exclusive end of latest year
+        let timeInterval = yearEndExclusive.timeIntervalSince(yearStartForOldest)
         let totalYears = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.year)))
 
         for yearOffset in 0..<totalYears {
-            if let currentYearStart = calendar.date(byAdding: .year, value: yearOffset, to: yearStartForOldest) {
+            if let currentYearStart = cal.date(byAdding: .year, value: yearOffset, to: yearStartForOldest) {
+                let startOfYear = cal.startOfDay(for: currentYearStart)
                 for monthOffset in 0..<12 {
-                    if let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentYearStart) {
-                        if monthDate >= yearStartForOldest && monthDate <= yearEndForLatest {
-                            dates.append(monthDate)
+                    if let monthStart = cal.date(byAdding: .month, value: monthOffset, to: startOfYear),
+                       let monthNoon = cal.date(byAdding: .hour, value: 12, to: monthStart) {
+                        if monthNoon >= yearStartForOldest && monthNoon < yearEndExclusive {
+                            dates.append(monthNoon)
                         }
                     }
                 }
+            }
+        }
+
+        // Append a phantom tick one month after the last real month to keep December visible
+        if let last = dates.max() {
+            let startOfLast = cal.startOfDay(for: last)
+            if let nextMonth = cal.date(byAdding: .month, value: 1, to: startOfLast),
+               let phantomNoon = cal.date(byAdding: .hour, value: 12, to: nextMonth) {
+                dates.append(phantomNoon)
             }
         }
         return dates
@@ -1155,19 +1191,35 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week, .month:
             formatter.dateFormat = "MMM d, yyyy"
         case .year, .total:
-            formatter.dateFormat = "MMM yyyy"
+            formatter.dateFormat = "MMM, yyyy"
         }
         return formatter.string(from: date)
     }
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+
+        // Adjust the displayed end date to be inclusive of the visible range.
+        // Our X-axis generation may append a phantom tick beyond the last real value
+        // (e.g., +1 day for week, +1 month for year). The label should not show this.
+        let inclusiveEndDate: Date = {
+            switch period {
+            case .week, .month:
+                return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
+            case .year:
+                return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
+            case .total:
+                return maxDate
+            }
+        }()
+
         let startDay = calendar.component(.day, from: minDate)
-        let endDay = calendar.component(.day, from: maxDate)
+        let endDay = calendar.component(.day, from: inclusiveEndDate)
         let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
-        let endMonth = DateTimeTools.formatter("LLL").string(from: maxDate).lowercased()
+        let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
         let startYear = calendar.component(.year, from: minDate)
-        let endYear = calendar.component(.year, from: maxDate)
+        let endYear = calendar.component(.year, from: inclusiveEndDate)
+
         switch period {
         case .week, .month:
             return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"

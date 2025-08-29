@@ -25,6 +25,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var decisionTimer: Timer?
     
     // MARK: - Configuration
+    private let yAxisLabelWidth: CGFloat = 40
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
@@ -35,6 +36,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 // Main Chart
                 Chart {
                     yAxisGridLines
+                    xAxisGridLinesSolid
+                    yAxisBaseline
                     chartSeries
                     crosshairContent
                 }
@@ -60,7 +63,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
                 .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
-                .padding(.trailing, isScrollable ? .spacingXS : 0)
+                .padding(.trailing, .spacingXS)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -136,9 +139,50 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
         ForEach(viewModel.yAxisTicks, id: \.self) { tick in
-            RuleMark(y: .value("YGrid", tick))
+            // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
+            // so it doesn't overlap with the axis baseline (which makes it look thicker).
+            let effectiveTick: Double = {
+                guard viewModel.hasXAxis else { return tick }
+                let lower = viewModel.yAxisDomain.lowerBound
+                let upper = viewModel.yAxisDomain.upperBound
+                let epsilon: Double = 1e-6
+                let domainRange = upper - lower
+                let availableHeight = max(1, viewModel.chartFrame.height -  (viewModel.hasXAxis ? 18 : 0))
+                let onePointValue = domainRange / Double(availableHeight)
+                if abs(tick - lower) <= epsilon { return tick + onePointValue }
+                if abs(tick - upper) <= epsilon { return tick - onePointValue }
+                return tick
+            }()
+            RuleMark(y: .value("YGrid", effectiveTick))
                 .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(-1)
+        }
+    }
+    
+    @ChartContentBuilder
+    private var xAxisGridLinesSolid: some ChartContent {
+        if viewModel.hasXAxis, let lastDate = viewModel.xAxisValues.last {
+            // Nudge the line 0.5pt inside the plot to avoid edge clipping
+            let domainLength = viewModel.visibleDomainLength
+            let width = max(1, viewModel.chartFrame.width)
+            let secondsPerPoint = domainLength / Double(width)
+            let halfPointOffset = secondsPerPoint * 0.5
+            let effectiveDate = lastDate.addingTimeInterval(-halfPointOffset)
+            RuleMark(x: .value("XGrid", effectiveDate))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(10)
+        }
+    }
+
+    @ChartContentBuilder
+    private var yAxisBaseline: some ChartContent {
+        // Show baseline only for Total view (no X-axis)
+        if !viewModel.hasXAxis {
+            RuleMark(x: .value("YBaselineTrailing", viewModel.dateRange.upperBound))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
         }
     }
@@ -215,8 +259,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     Text(dashboardStore.formatYAxisTickLabel(doubleValue))
                         .font(.body)
                         .fontWeight(.medium)
+                        .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .padding(.horizontal, .spacingXS)
+                        .frame(width: yAxisLabelWidth, alignment: .trailing)
                 }
             }
         }
@@ -232,7 +277,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
             let finalXPosition = chartPosition.x + baseOffset
             
-            Text(viewModel.weightLabel)
+            Text(viewModel.weightLabel.lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
@@ -300,9 +345,19 @@ extension View {
                     }
                 ))
                 .chartXAxis {
-                    AxisMarks(values: viewModel.xAxisValues) { value in
+                    let allTicks = viewModel.xAxisValues
+                    let nonLastTicks = Array(allTicks.dropLast())
+                    // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
+                    let adjustedLabelTicks: [Date] = allTicks
+
+                    // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
+                    AxisMarks(values: nonLastTicks) { _ in
                         AxisGridLine()
                         AxisTick()
+                    }
+
+                    // Labels for all tick values
+                    AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = viewModel.formatXAxisLabel(for: date) {
