@@ -32,6 +32,7 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -130,7 +131,7 @@ fun MetricInfoScreenContent(
     },
   ) { modifier ->
     Column(
-      modifier = modifier.verticalScroll(verticalScrollState),
+      modifier = modifier.padding(top = spacing.md).verticalScroll(verticalScrollState),
     ) {
       SegmentButtonGroup(
         data = metricKeys,
