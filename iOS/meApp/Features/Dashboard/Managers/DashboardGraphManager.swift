@@ -1198,12 +1198,28 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+
+        // Adjust the displayed end date to be inclusive of the visible range.
+        // Our X-axis generation may append a phantom tick beyond the last real value
+        // (e.g., +1 day for week, +1 month for year). The label should not show this.
+        let inclusiveEndDate: Date = {
+            switch period {
+            case .week, .month:
+                return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
+            case .year:
+                return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
+            case .total:
+                return maxDate
+            }
+        }()
+
         let startDay = calendar.component(.day, from: minDate)
-        let endDay = calendar.component(.day, from: maxDate)
+        let endDay = calendar.component(.day, from: inclusiveEndDate)
         let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
-        let endMonth = DateTimeTools.formatter("LLL").string(from: maxDate).lowercased()
+        let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
         let startYear = calendar.component(.year, from: minDate)
-        let endYear = calendar.component(.year, from: maxDate)
+        let endYear = calendar.component(.year, from: inclusiveEndDate)
+
         switch period {
         case .week, .month:
             return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
