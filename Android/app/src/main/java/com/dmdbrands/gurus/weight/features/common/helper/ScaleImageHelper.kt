@@ -13,7 +13,7 @@ object ScaleUtility {
     // val sku = if (sku == "0341" || sku == "0380") "0412" else sku
     return try {
       // Use reflection to get the field from R.drawable class
-      val fieldName = "setup_$sku"
+      val fieldName = "s_$sku"
       val field = R.drawable::class.java.getDeclaredField(fieldName)
       field.getInt(null) // Static field, so pass null
     } catch (e: Exception) {
