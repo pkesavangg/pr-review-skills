@@ -218,6 +218,17 @@ extension MetricGridUIKitView {
         var lastActiveMetricsCount: Int = 0
         var suppressNextReload: Bool = false
         
+        /// Returns the number of non-removed (active) metrics that can be reordered
+        private var activeMetricsCount: Int {
+            let metrics = store.metricsToShow
+            return metrics.count - store.state.ui.removedMetrics.count
+        }
+        
+        /// Returns the first index of removed metrics (where dropping should be prevented)
+        private var firstRemovedIndex: Int {
+            return activeMetricsCount
+        }
+        
         // MARK: - Properties
         
         var parent: MetricGridUIKitView
@@ -320,15 +331,41 @@ extension MetricGridUIKitView {
         
         // MARK: - UICollectionViewDragDelegate
         
+        func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
+            // Only allow moving items that are non-removed (active) items
+            return store.state.ui.isEditMode && indexPath.item < firstRemovedIndex
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, targetIndexPathForMoveFromItemAt originalIndexPath: IndexPath, toProposedIndexPath proposedIndexPath: IndexPath) -> IndexPath {
+            let maxValidIndex = firstRemovedIndex - 1
+            
+            // Prevent any moves to/from removed item indices
+            if originalIndexPath.item >= firstRemovedIndex || proposedIndexPath.item >= firstRemovedIndex {
+                return originalIndexPath // Return original position to cancel the move
+            }
+            
+            // Ensure proposed destination is within valid range (0 to maxValidIndex)
+            if proposedIndexPath.item < 0 {
+                return IndexPath(item: 0, section: proposedIndexPath.section)
+            } else if proposedIndexPath.item >= firstRemovedIndex {
+                return IndexPath(item: maxValidIndex, section: proposedIndexPath.section)
+            }
+            
+            return proposedIndexPath
+        }
+        
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             let item = store.metricsToShow[indexPath.item]
             let isRemoved = store.isMetricRemoved(item.label)
             
-            if isRemoved {
-                return [] // Return empty array to prevent drag
+            // Only allow dragging of non-removed items (active metrics)
+            if isRemoved || indexPath.item >= firstRemovedIndex {
+                return [] // Return empty array to prevent drag of removed items
             }
             
             if !store.state.ui.isEditMode { return [] } // Prevent drag if not in edit mode
+            
+            // Only allow dragging of non-removed items
             
             let itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
             let dragItem = UIDragItem(itemProvider: itemProvider)
@@ -539,6 +576,18 @@ extension MetricGridUIKitView {
                     }
                 }
             }
+
+            // Completely prevent any drops on removed items
+            // Use .cancel instead of .forbidden to avoid slashed circle visual effect
+            if let destinationIndexPath = destinationIndexPath, destinationIndexPath.item >= firstRemovedIndex {
+                return UICollectionViewDropProposal(operation: .cancel)
+            }
+            
+            // Also check if destination would cause issues - only allow drops on active metrics
+            guard let destinationIndexPath = destinationIndexPath, 
+                  destinationIndexPath.item >= 0 && destinationIndexPath.item < firstRemovedIndex else {
+                return UICollectionViewDropProposal(operation: .cancel)
+            }
             
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
@@ -578,13 +627,15 @@ extension MetricGridUIKitView {
             }
             guard metricItem != nil else { return }
 
-            // Ensure both source and destination are valid and not removed
-            let sourceItem = store.metricsToShow[sourceIndexPath.item]
-            let destItem = store.metricsToShow[destinationIndexPath.item]
-            let sourceIsRemoved = store.isMetricRemoved(sourceItem.label)
-            let destIsRemoved = store.isMetricRemoved(destItem.label)
-            guard !sourceIsRemoved && !destIsRemoved else {
-                collectionView.reloadData()
+            // Prevent dropping on removed items - only allow drops on active metrics
+            if destinationIndexPath.item >= firstRemovedIndex {
+                collectionView.reloadData() // Reset to original state
+                return
+            }
+
+            // Also prevent moving FROM removed items (should already be blocked, but extra safety)
+            if sourceIndexPath.item >= firstRemovedIndex {
+                collectionView.reloadData() // Reset to original state
                 return
             }
 
@@ -601,45 +652,45 @@ extension MetricGridUIKitView {
                 store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
                 collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
             }, completion: { _ in
-                collectionView.collectionViewLayout.invalidateLayout()
-                collectionView.layoutIfNeeded()
+                    collectionView.collectionViewLayout.invalidateLayout()
+                    collectionView.layoutIfNeeded()
 
-                // Now disable animations for the final positioning to prevent jump
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                CATransaction.setAnimationDuration(0)
-                
-                UIView.performWithoutAnimation {
-                    let visibleIndexPaths = collectionView.indexPathsForVisibleItems
-                    for indexPath in visibleIndexPaths {
-                        guard indexPath.item < self.store.metricsToShow.count,
-                              let cell = collectionView.cellForItem(at: indexPath) as? MetricCell else { continue }
-                        let itemForCell = self.store.metricsToShow[indexPath.item]
-                        cell.configure(
-                            with: itemForCell,
-                            dashboardType: self.store.state.metrics.dashboardType,
-                            store: self.store,
-                            isBeingDragged: false,
-                            onMetricLongPress: self.parent.onMetricLongPress,
-                            onSelectMetric: { label in
-                                if label.isEmpty { self.store.state.ui.selectedMetricLabel = nil }
-                                else { self.store.state.ui.selectedMetricLabel = label }
-                                self.store.objectWillChange.send()
-                            }
-                        )
-                        cell.isRemoved = self.store.isMetricRemoved(itemForCell.label)
-                        // Clear any shadow effects that might remain
-                        cell.clearAllShadowEffects()
+                    // Now disable animations for the final positioning to prevent jump
+                    CATransaction.begin()
+                    CATransaction.setDisableActions(true)
+                    CATransaction.setAnimationDuration(0)
+                    
+                    UIView.performWithoutAnimation {
+                        let visibleIndexPaths = collectionView.indexPathsForVisibleItems
+                        for indexPath in visibleIndexPaths {
+                            guard indexPath.item < self.store.metricsToShow.count,
+                                  let cell = collectionView.cellForItem(at: indexPath) as? MetricCell else { continue }
+                            let itemForCell = self.store.metricsToShow[indexPath.item]
+                            cell.configure(
+                                with: itemForCell,
+                                dashboardType: self.store.state.metrics.dashboardType,
+                                store: self.store,
+                                isBeingDragged: false,
+                                onMetricLongPress: self.parent.onMetricLongPress,
+                                onSelectMetric: { label in
+                                    if label.isEmpty { self.store.state.ui.selectedMetricLabel = nil }
+                                    else { self.store.state.ui.selectedMetricLabel = label }
+                                    self.store.objectWillChange.send()
+                                }
+                            )
+                            cell.isRemoved = self.store.isMetricRemoved(itemForCell.label)
+                            // Clear any shadow effects that might remain
+                            cell.clearAllShadowEffects()
+                        }
                     }
-                }
-                
-                CATransaction.commit()
-                
-                if let custom = collectionView as? CustomCollectionView {
-                    custom.suspendIntrinsicInvalidation = false
-                    custom.invalidateIntrinsicContentSize()
-                }
-            })
+                    
+                    CATransaction.commit()
+                    
+                    if let custom = collectionView as? CustomCollectionView {
+                        custom.suspendIntrinsicInvalidation = false
+                        custom.invalidateIntrinsicContentSize()
+                    }
+                })
 
             coordinator.drop(item.dragItem, toItemAt: destinationIndexPath)
             parent.isDragging = false

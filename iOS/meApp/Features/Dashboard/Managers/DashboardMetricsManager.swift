@@ -256,10 +256,14 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
-            return state.metrics
+            // In edit mode, show all metrics (both removed and non-removed) so users can manage them
+            // Non-removed metrics first, then removed metrics
+            let nonRemovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+            let removedMetricsArray = state.metrics.filter { removedMetrics.contains($0.label) }
+            return nonRemovedMetrics + removedMetricsArray
         } else {
+            // In non-edit mode, only show non-removed metrics
             let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
-
             
             switch dashboardType {
             case .dashboard4:
@@ -267,7 +271,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 return result
             case .dashboard12:
                 let result = Array(allUnremovedMetrics.prefix(12))
-
                 return result
             }
         }
