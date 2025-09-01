@@ -163,20 +163,22 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     @ChartContentBuilder
     private var xAxisGridLinesSolid: some ChartContent {
-        if let referenceDate = viewModel.hasXAxis ? viewModel.xAxisValues.last
-                                                     : viewModel.xAxisValues.first
-        {  let domainLength = viewModel.visibleDomainLength
+        let referenceDate = viewModel.hasXAxis ?
+        viewModel.xAxisValues.last
+        : viewModel.xAxisValues.first
+        if let referenceDate = referenceDate {
+            let domainLength = viewModel.visibleDomainLength
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
             let halfPointOffset = secondsPerPoint * 0.5
             let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
-
+            
             RuleMark(x: .value("XGrid", effectiveDate))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
         }
     }
-
+    
     @ChartContentBuilder
     private var yAxisBaseline: some ChartContent {
         // Show baseline only for Total view (no X-axis)
@@ -351,7 +353,7 @@ extension View {
                     let nonLastTicks = Array(allTicks.dropLast())
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
-
+                    
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: nonLastTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
@@ -366,7 +368,7 @@ extension View {
                             AxisTick()
                         }
                     }
-
+                    
                     // Labels for all tick values
                     AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
@@ -495,7 +497,7 @@ extension View {
                         viewModel.clearSelection()
                     }
                 }
-                // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
+            // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
                     DispatchQueue.main.async {
                         viewModel.syncYAxisFromStore()

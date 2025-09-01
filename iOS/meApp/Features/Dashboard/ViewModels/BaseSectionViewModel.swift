@@ -511,8 +511,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
         switch timePeriod {
         case .week:
-            // For week view, show solid line for Sunday (start of week)
-            return components.weekday == 1 // 1 = Sunday
+            // For week view, show solid line for the start of the week per locale
+            guard let weekday = components.weekday else { return false }
+            return weekday == calendar.firstWeekday
 
         case .month:
             // For month view, show solid line for 1st of month
