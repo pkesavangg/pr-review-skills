@@ -62,6 +62,7 @@ data class GraphState(
   val stepSize: Double = 10.0,
   val scrollValue: Double? = null,
   val savedTarget: Long? = null,
+  val scrollTarget: Double? = null,
   val separators: List<Double> = emptyList()
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()

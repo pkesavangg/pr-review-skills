@@ -57,4 +57,7 @@ sealed interface GraphIntent : IReducer.Intent {
 
   /** Handle scroll event */
   data class SetScrollRange(val min: Long, val max: Long) : GraphIntent
+
+  /** Set scroll target for frame-synchronized scrolling */
+  data class SetScrollTarget(val target: Double?) : GraphIntent
 }

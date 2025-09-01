@@ -129,8 +129,6 @@ fun HistoryGraph(
       }
 
       Box(
-        modifier = Modifier
-          .height(18.dp),
         contentAlignment = Alignment.TopStart,
       ) {
         if (subText != null) {

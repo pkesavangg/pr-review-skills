@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -110,6 +111,7 @@ internal fun ChartHostSection(
               rememberTextComponent(
                 color = MeTheme.colorScheme.textSubheading,
                 padding = insets(start = 10.dp),
+                textSize = 14.sp,
               ),
             tickLength = 0.dp,
           ),

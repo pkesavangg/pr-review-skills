@@ -53,5 +53,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       minTarget = intent.min,
       maxTarget = intent.max,
     )
+
+    is GraphIntent.SetScrollTarget -> state.copy(scrollTarget = intent.target)
   }
 }

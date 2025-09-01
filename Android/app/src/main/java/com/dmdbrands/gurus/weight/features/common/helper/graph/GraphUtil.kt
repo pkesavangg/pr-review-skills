@@ -156,9 +156,9 @@ object GraphUtil {
   fun GraphSegment.intervalCount(): Int =
     when (this) {
       GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 6
+      GraphSegment.MONTH -> 5
       GraphSegment.YEAR, GraphSegment.TOTAL -> 12
-    }
+    } + 1
   // endregion
 
   // region Formatting

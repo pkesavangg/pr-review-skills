@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -13,6 +14,7 @@ import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.core.common.Position
 
 @Composable
 internal fun bottomAxis(
@@ -27,7 +29,7 @@ internal fun bottomAxis(
           if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
             value.toLong(),
             segment,
-          ) else " "
+          ).lowercase() else " "
         },
       itemPlacer = horizontalItemPlacer,
       guideline = rememberAxisGuidelineComponent(
@@ -36,13 +38,14 @@ internal fun bottomAxis(
       ),
       label = rememberAxisLabelComponent(
         color = MeTheme.colorScheme.textSubheading,
+        textSize = 14.sp,
       ),
       tick = rememberAxisGuidelineComponent(),
-      tickLength = 6.dp,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
+      horizontalLabelPosition = Position.Horizontal.End,
       separators = { separators },
     )
   else
