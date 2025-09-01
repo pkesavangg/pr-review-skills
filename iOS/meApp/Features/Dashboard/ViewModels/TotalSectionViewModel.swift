@@ -30,6 +30,11 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     override var pointSize: CGFloat {
         return 16 // Smaller points for total view (many data points)
     }
+
+    // Explicitly restate for clarity (optional overrides)
+    override var lineWidth: CGFloat { 2 }
+    override var basePointDiameter: CGFloat { 4 }
+    override var selectedPointDiameter: CGFloat { 8 }
     
     // MARK: - Total-specific properties
     

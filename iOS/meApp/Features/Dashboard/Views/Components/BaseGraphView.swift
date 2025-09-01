@@ -228,14 +228,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             )
             .foregroundStyle(by: .value("Series", point.series))
             .interpolationMethod(.monotone)
-            .lineStyle(StrokeStyle(lineWidth: 3))
+            .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
             
             // Visible point mark
             PointMark(
                 x: .value("Date", point.date),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
+            .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
             .foregroundStyle(by: .value("Series", point.series))
         }
     }
@@ -281,7 +281,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
-                    x: max(50, min(viewModel.chartFrame.width - (isScrollable ? 100 : 85), finalXPosition)), // Prevent cropping
+                    x: max(40, min(viewModel.chartFrame.width - (isScrollable ? 100 : 85), finalXPosition)), // Prevent cropping
                     y: -15 // Position above chart boundary
                 )
         }
