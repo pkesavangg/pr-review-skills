@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.blewrapper.GGPermissionService
@@ -131,8 +132,8 @@ constructor(
           AppLog.d(TAG, "Permissions granted, auto-advancing to next step")
           handleIntent(AppsyncScaleSetupIntent.Next)
         } else {
-          AppLog.w(TAG, "Cannot proceed: required permissions not granted")
-          requestPermission(GGPermissionType.CAMERA)
+          // Check and request permissions sequentially
+          permissionAccess()
         }
       }
 
@@ -187,10 +188,10 @@ constructor(
           AppLog.d(TAG, "Found already paired scale, deleting: ${alreadyPairedScale.id}")
           deviceService.deleteScale(alreadyPairedScale.id)
         }
-        
+
         val scaleInfo = SCALES.find { it.sku == state.value.sku }
         AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}")
-        
+
         val appSyncDevice = Device(
           device = GGDeviceDetail(
             deviceName = scaleInfo?.productName ?: "",
@@ -201,7 +202,7 @@ constructor(
           deviceType = ScaleSetupType.AppSync.value,
           nickname = scaleInfo?.productName!!,
         )
-        
+
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
         deviceService.saveScale(appSyncDevice)
         AppLog.i(TAG, "Successfully saved AppSync scale")
@@ -256,6 +257,23 @@ constructor(
     val url = "${AppConfig.PRODUCT_URL}/$sku"
     AppLog.d(TAG, "Opening product guide URL: $url")
     openInAppBrowser(url)
+  }
+
+  /**
+   * Handles permission access similar to Angular's permissionAccess() method.
+   * For AppSync setup, only camera permission is required.
+   */
+  private fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+
+    // Check Camera permission for AppSync setup
+    if (currentPermissions[GGPermissionType.CAMERA] != GGPermissionState.ENABLED) {
+      AppLog.d(TAG, "Requesting Camera permission")
+      handleIntent(AppsyncScaleSetupIntent.RequestPermission(GGPermissionType.CAMERA))
+      return
+    }
+
+    AppLog.d(TAG, "All required permissions are enabled")
   }
 
   /**

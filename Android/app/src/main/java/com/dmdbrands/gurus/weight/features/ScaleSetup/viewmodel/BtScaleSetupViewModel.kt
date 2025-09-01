@@ -111,9 +111,14 @@ constructor(
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
-    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
-      AppLog.d(TAG, "Moving from scale info to select user step")
-      handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
+    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO) {
+      if (isPermissionGranted) {
+        handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
+      } else {
+        // Check and request permissions sequentially
+        handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.PERMISSIONS))
+        permissionAccess()
+      }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
       if (currentState.nextStep != null)

@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
@@ -444,11 +445,18 @@ constructor(
         return
       }
     } else {
+      // Handle permissions step - check and request permissions sequentially
+      if (currentState.currentStep == BtWifiSetupStep.SCALE_INFO) {
+        viewModelScope.launch {
+          permissionAccess()
+        }
+        return
+      }
+
       // For steps that need async operations, the functions will be called automatically
       // by observeStepChanges() when the step changes. Here we just handle the step transition.
       when (currentState.currentStep) {
         BtWifiSetupStep.WAKEUP,
-        BtWifiSetupStep.PERMISSIONS,
         BtWifiSetupStep.CONNECTING_BLUETOOTH,
         BtWifiSetupStep.GATHERING_NETWORK,
         BtWifiSetupStep.UPDATE_SETTINGS,
@@ -1016,6 +1024,60 @@ constructor(
     }
   }
 
+  /**
+   * Requests a specific permission with rationale alert using the permission service.
+   */
+  private fun requestPermission(permissionType: String) {
+    if (permissionType == GGPermissionType.WIFI_SWITCH) {
+      permissionService.requestPermission(permissionType)
+      return
+    }
+    viewModelScope.launch {
+      try {
+        dialogUtility.permissionAlert(
+          permissionType = permissionType,
+          onRequest = {
+            permissionService.requestPermission(permissionType)
+          },
+        )
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
+      }
+    }
+  }
+
+  fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+
+    // Check Bluetooth Switch permission
+    if (currentPermissions[GGPermissionType.BLUETOOTH_SWITCH] != GGPermissionState.ENABLED) {
+      AppLog.d(TAG, "Requesting Bluetooth Switch permission")
+      handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.BLUETOOTH_SWITCH))
+    }
+
+    // For Android API 31+ (Android 12+), check NEARBY_DEVICE permission
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+      if (currentPermissions[GGPermissionType.NEARBY_DEVICE] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Nearby Device permission")
+        handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.NEARBY_DEVICE))
+        return
+      }
+    } else {
+      // For older Android versions, check Location permissions
+      if (currentPermissions[GGPermissionType.LOCATION_SWITCH] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location Switch permission")
+        handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION_SWITCH))
+      }
+
+      if (currentPermissions[GGPermissionType.LOCATION] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location permission")
+        handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION))
+      }
+    }
+
+    AppLog.d(TAG, "All required permissions are enabled")
+  }
+
   private suspend fun updateWifiDetails() {
     val device = discoveredScale?.toGGBTDevice() ?: return
 
@@ -1268,28 +1330,6 @@ constructor(
         }
 
         else -> null
-      }
-    }
-  }
-
-  /**
-   * Requests a specific permission with rationale alert using the permission service.
-   */
-  private fun requestPermission(permissionType: String) {
-    if (permissionType == GGPermissionType.WIFI_SWITCH) {
-      permissionService.requestPermission(permissionType)
-      return
-    }
-    viewModelScope.launch {
-      try {
-        dialogUtility.permissionAlert(
-          permissionType = permissionType,
-          onRequest = {
-            permissionService.requestPermission(permissionType)
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e)
       }
     }
   }

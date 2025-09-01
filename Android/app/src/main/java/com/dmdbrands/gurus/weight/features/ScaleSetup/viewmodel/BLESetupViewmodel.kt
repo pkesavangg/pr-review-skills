@@ -315,6 +315,42 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     }
   }
 
+  /**
+   * Handles permission access similar to Angular's permissionAccess() method.
+   * Checks and prompts for required permissions sequentially.
+   */
+  protected fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+
+    // Check Bluetooth Switch permission
+    if (currentPermissions[GGPermissionType.BLUETOOTH_SWITCH] != GGPermissionState.ENABLED) {
+      AppLog.d(TAG, "Requesting Bluetooth Switch permission")
+      handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.BLUETOOTH_SWITCH))
+    }
+
+    // For Android API 31+ (Android 12+), check NEARBY_DEVICE permission
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+      if (currentPermissions[GGPermissionType.NEARBY_DEVICE] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Nearby Device permission")
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.NEARBY_DEVICE))
+        return
+      }
+    } else {
+      // For older Android versions, check Location permissions
+      if (currentPermissions[GGPermissionType.LOCATION_SWITCH] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location Switch permission")
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION_SWITCH))
+      }
+
+      if (currentPermissions[GGPermissionType.LOCATION] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location permission")
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION))
+      }
+    }
+
+    AppLog.d(TAG, "All required permissions are enabled")
+  }
+
   fun navigateTo(route: AppRoute) {
     AppLog.d(TAG, "Navigating to route: $route")
     viewModelScope.launch {
