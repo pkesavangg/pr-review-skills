@@ -4,6 +4,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.appPermissions.strings.AppPermissionsScreenStrings
 import com.dmdbrands.gurus.weight.features.common.components.PermissionItemStatus
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
@@ -369,5 +370,58 @@ object AppPermissionsHelper {
 
       else -> defaultEnabled to defaultDisabled
     }
+  }
+
+  /**
+   * Gets the required permission sets based on paired scales.
+   * This determines which permissions are required for the current setup.
+   * Based on the Angular implementation in permissions.service.ts
+   *
+   * @param pairedScales List of paired scale devices
+   * @return Set of permission types that are required
+   */
+  fun getRequiredPermissionSets(pairedScales: List<Device>): Set<String> {
+    val requiredPermissions = mutableSetOf<String>()
+
+    pairedScales.forEach { scale ->
+      val scaleSetupType = ScaleSetupType.fromString(scale.deviceType)
+      when (scaleSetupType) {
+        ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> {
+          requiredPermissions.add(GGPermissionType.NOTIFICATION)
+        }
+
+        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> {
+          requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)
+          } else {
+            requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
+            requiredPermissions.add(GGPermissionType.LOCATION)
+          }
+        }
+
+        ScaleSetupType.AppSync -> {
+          requiredPermissions.add(GGPermissionType.CAMERA)
+        }
+
+        ScaleSetupType.BtWifiR4 -> {
+          requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)
+          } else {
+            requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
+            requiredPermissions.add(GGPermissionType.LOCATION)
+          }
+          requiredPermissions.add(GGPermissionType.NOTIFICATION)
+        }
+
+        null -> {
+          // Handle unknown setup type - default to basic Bluetooth permissions
+          requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
+        }
+      }
+    }
+
+    return requiredPermissions
   }
 }

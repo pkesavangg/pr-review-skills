@@ -102,8 +102,6 @@ constructor(
   init {
     setScaleDetails()
     observePermissions()
-    val scaleName = state.value.scale?.nickname ?: SCALES.find { it.sku == state.value.scale?.sku }!!.productName
-    handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
     configureR4ScaleDetails()
   }
 
@@ -147,6 +145,9 @@ constructor(
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
+          // Initialize form with current scale name after scale data is loaded
+          val scaleName = scaleDevice.nickname ?: SCALES.find { it.sku == scaleDevice.sku }?.productName ?: ""
+          handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
         }
       }
     }
@@ -264,12 +265,14 @@ constructor(
         AppLog.i("SaveScaleName", "Updated scale name: $scaleName")
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()
+        // Note: Form will be repopulated with updated nickname when dialog reopens
+        // because setScaleDetails() observes device changes and updates the form
       } catch (e: Exception) {
         AppLog.e("SaveScaleName", "Reset Password failed", e.toString())
         showToast(ScaleNameDialogStrings.Toast.Error)
       } finally {
         dialogQueueService.dismissLoader()
-        state.value.scaleNameForm.resetForm()
+        // Don't reset form here - let it be handled by the scale data observer
       }
     }
   }
