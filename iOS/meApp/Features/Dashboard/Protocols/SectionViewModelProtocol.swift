@@ -81,6 +81,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Chart Content Helpers
     func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]]
+    func shouldShowSolidLine(for date: Date) -> Bool
+    func formatSelectedXAxisLabel() -> String?
     
     // MARK: - Data Management
     func refreshData()

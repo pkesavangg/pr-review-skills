@@ -1225,7 +1225,8 @@ class DashboardStore: ObservableObject {
     }
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        return String(format: "%.0f", weight)
+        let rounded = roundedGoalWeight(weight)
+        return String(format: "%.0f", rounded)
     }
     
     func formatChartDate(_ date: Date) -> String {
@@ -1237,6 +1238,10 @@ class DashboardStore: ObservableObject {
             formatter.dateFormat = "MMM yyyy"
         }
         return formatter.string(from: date)
+    }
+    
+    func roundedGoalWeight(_ weight: Double) -> Double {
+        return weight.rounded(.toNearestOrAwayFromZero) // or your preferred rule
     }
     
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {

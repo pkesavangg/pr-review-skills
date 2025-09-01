@@ -58,7 +58,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     viewModel: viewModel,
                     localSelectedXValue: $localSelectedXValue,
                     touchInteractionMode: touchInteractionMode,
-                    dashboardStore: dashboardStore
+                    dashboardStore: dashboardStore,
+                    theme: theme
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
@@ -277,7 +278,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
             let finalXPosition = chartPosition.x + baseOffset
             
-            Text(viewModel.weightLabel.lowercased())
+            Text((viewModel.formatSelectedXAxisLabel() ?? "").lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
@@ -329,7 +330,8 @@ extension View {
         viewModel: ViewModel,
         localSelectedXValue: Binding<Date?>,
         touchInteractionMode: TouchInteractionMode,
-        dashboardStore: DashboardStore
+        dashboardStore: DashboardStore,
+        theme: AppColors.Palette
     ) -> some View {
         if isScrollable {
             self
@@ -351,9 +353,18 @@ extension View {
                     let adjustedLabelTicks: [Date] = allTicks
 
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
-                    AxisMarks(values: nonLastTicks) { _ in
-                        AxisGridLine()
-                        AxisTick()
+                    AxisMarks(values: nonLastTicks) { value in
+                        if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
+                            // Solid line for start of week/month/year
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                        } else {
+                            // Default dotted line for other grid lines
+                            AxisGridLine()
+                            AxisTick()
+                        }
                     }
 
                     // Labels for all tick values
@@ -363,7 +374,7 @@ extension View {
                                let labelString = viewModel.formatXAxisLabel(for: date) {
                                 Text(labelString)
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(theme.textSubheading)
                             }
                         }
                     }

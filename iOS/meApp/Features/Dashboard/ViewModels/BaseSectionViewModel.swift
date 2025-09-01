@@ -307,7 +307,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip position (with X-axis adjustment)
     func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
-        let goalWeight = self.goalWeight
+        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? 0
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -400,6 +400,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
     }
     
+    func formatSelectedXAxisLabel() -> String? {
+        guard
+            let store = dashboardStore,
+            let date = store.state.graph.selectedPoint?.date 
+        else { return nil }
+
+        return dashboardStore?.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+    }
+    
     // MARK: - Chart Content Helpers
     
     /// Returns connected segments for line drawing (prevents gaps in data)
@@ -476,7 +485,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when the dashboard store's cached Y-axis values change during scrolling
     func syncYAxisFromStore() {
         guard let store = dashboardStore else { return }
-        
+
         // Read cached values from dashboard store
         if let cachedDomain = store.state.graph.cachedYAxisDomain {
             // Animate domain transition when cache updates
@@ -484,12 +493,37 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 self.yAxisDomain = cachedDomain
             }
         }
-        
+
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks
             }
+        }
+    }
+
+    /// Determines if a date should show a solid vertical line (start of week/month/year)
+    /// - Parameter date: The date to check
+    /// - Returns: True if the date represents the start of a major period
+    func shouldShowSolidLine(for date: Date) -> Bool {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.weekday, .day, .month], from: date)
+
+        switch timePeriod {
+        case .week:
+            // For week view, show solid line for Sunday (start of week)
+            return components.weekday == 1 // 1 = Sunday
+
+        case .month:
+            // For month view, show solid line for 1st of month
+            return components.day == 1
+
+        case .year:
+            // For year view, show solid line for January 1st
+            return components.month == 1 && components.day == 1
+
+        default:
+            return false
         }
     }
 }
