@@ -162,17 +162,17 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     @ChartContentBuilder
     private var xAxisGridLinesSolid: some ChartContent {
-        if viewModel.hasXAxis, let lastDate = viewModel.xAxisValues.last {
-            // Nudge the line 0.5pt inside the plot to avoid edge clipping
-            let domainLength = viewModel.visibleDomainLength
+        if let referenceDate = viewModel.hasXAxis ? viewModel.xAxisValues.last
+                                                     : viewModel.xAxisValues.first
+        {  let domainLength = viewModel.visibleDomainLength
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
             let halfPointOffset = secondsPerPoint * 0.5
-            let effectiveDate = lastDate.addingTimeInterval(-halfPointOffset)
+            let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
+
             RuleMark(x: .value("XGrid", effectiveDate))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
-                .zIndex(10)
         }
     }
 
