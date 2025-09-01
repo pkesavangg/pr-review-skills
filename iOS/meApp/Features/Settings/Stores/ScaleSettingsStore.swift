@@ -28,6 +28,7 @@ final class ScaleSettingsStore: ObservableObject {
     
     // Additional device info
     @Published var firmwareVersion: String? = nil
+    @Published var deviceInfo: DeviceInfo? = nil
     @Published var isImpedanceSwitchedOnForSession: Bool = false
     @Published var isScaleImpedanceSwitchedOn: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
@@ -150,6 +151,7 @@ final class ScaleSettingsStore: ObservableObject {
             self.getConnectedWifiSSID();
             // Update published properties
             self.firmwareVersion = deviceInfo.firmwareRevision
+            self.deviceInfo = deviceInfo
             self.isImpedanceSwitchedOnForSession = deviceInfo.sessionImpedanceSwitchState ?? false
             self.isScaleImpedanceSwitchedOn = deviceInfo.impedanceSwitchState ?? false
             // Update Wi-Fi configured flag if available
@@ -249,6 +251,17 @@ final class ScaleSettingsStore: ObservableObject {
             notificationService.showToast(ToastModel(title: toastLang.success, message: ScaleModesStrings.bodyMetricsEnabled))
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to enable body metrics: \(error.localizedDescription)", data: error)
+        }
+    }
+
+    func setSessionImpedance(_ enabled: Bool) async {
+        guard isDeviceConnected else { return }
+        let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
+        switch res {
+        case .success:
+            isImpedanceSwitchedOnForSession = enabled
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to update session impedance: \(error.localizedDescription)")
         }
     }
 }

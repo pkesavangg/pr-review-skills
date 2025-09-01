@@ -13,6 +13,7 @@ struct ScaleSettingsScreen: View {
     @StateObject private var scaleSettingsStore: ScaleSettingsStore
     let scale: Device
     var scaleType: ScaleType
+    @State private var isOtherSettingsSheetPresented = false
     
     init(scale: Device, scaleType: ScaleType) {
         self.scale = scale
@@ -48,6 +49,11 @@ struct ScaleSettingsScreen: View {
                 }
                 supportSection()
                 deleteScaleSection()
+                
+                // Other section should be enable for the R4 scales and if canEnableTestingFeatures flag is true
+                if scaleType == .bluetoothR4  && AppConstants.canEnableTestingFeatures == true {
+                    othersSection()
+                }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -57,6 +63,9 @@ struct ScaleSettingsScreen: View {
             isPresented: $scaleSettingsStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .sheet(isPresented: $isOtherSettingsSheetPresented) {
+            AdditionalSettingsSheet(scale: scale)
+        }
         .navigationBarBackButtonHidden(true)
     }
     
@@ -230,6 +239,49 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.productGuide,
                     onTap: { scaleSettingsStore.openProductGuide(for: scale.sku ?? "") }
+                )
+            )
+        }
+        .listRowInsets()
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
+    }
+    
+    private func othersSection() -> some View {
+        Section(header: SectionHeader(title: lang.othersSectionHeader)) {
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.scaleMac,
+                    value: scale.mac,
+                    chevronType: .none
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.softwareUpdate,
+                    isDisabled: !scaleSettingsStore.isDeviceConnected || !(scaleSettingsStore.isWifiConfigured),
+                    onTap: {
+                        // Hook for software update UI if needed
+                    }
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.otherSettings,
+                    onTap: { isOtherSettingsSheetPresented = true }
+                )
+            )
+            ActionListItemView(
+                config: ActionListItemConfig(
+                    title: lang.sessionImpedance,
+                    chevronType: .none,
+                    toggleBinding: Binding(get: { scaleSettingsStore.isImpedanceSwitchedOnForSession }, set: { val in
+                        scaleSettingsStore.isImpedanceSwitchedOnForSession = val
+                    }),
+                    isDisabled: !scaleSettingsStore.isDeviceConnected || scaleSettingsStore.isScaleImpedanceSwitchedOn == true || (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false),
+                    onTap: {
+                        Task { await scaleSettingsStore.setSessionImpedance(scaleSettingsStore.isImpedanceSwitchedOnForSession) }
+                    }
                 )
             )
         }

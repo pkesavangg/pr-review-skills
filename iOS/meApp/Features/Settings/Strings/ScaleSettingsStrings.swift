@@ -35,4 +35,22 @@ struct ScaleSettingsStrings {
     static let userNumberInfo: (String) -> String = { userNumber in
         return "U\(userNumber)"
     }
+
+    // Additional Settings
+    static let othersSectionHeader = "Others"
+    static let otherSettings = "Other Settings"
+    static let softwareUpdate = "Software Update"
+    static let scaleMac = "Scale MAC"
+    static let scaleFeatures = "Scale Features"
+    static let startAnimation = "Start Animation"
+    static let endAnimation = "End Animation"
+    static let clearData = "Clear Data"
+    static let clearWifi = "Clear Wi‑Fi"
+    static let clearSettings = "Clear Settings"
+    static let clearHistory = "Clear History"
+    static let clearAccount = "Clear Account"
+    static let timeFormat = "Time Format"
+    static let resetFirmware = "Reset Firmware"
+    static let restoreFactorySettings = "Restore Factory Settings"
+    static let sessionImpedance = "Session Impedance"
 }
