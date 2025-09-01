@@ -290,7 +290,7 @@ constructor(
 
       // Check if user has a goal set (check goal type)
       val currentGoal = getCurrentGoal().first()
-      if (currentGoal != null) {
+      if (currentGoal?.goalType != null) {
         AppLog.d(TAG, "User already has a goal set (${currentGoal.type}), skipping goal card")
         return
       }

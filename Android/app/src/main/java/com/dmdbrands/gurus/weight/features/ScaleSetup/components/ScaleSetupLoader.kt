@@ -109,7 +109,7 @@ fun ScaleSetupLoader(
     // Main content centered vertically
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
-      modifier = Modifier.weight(1f),
+      modifier = Modifier.fillMaxWidth(),
       verticalArrangement = Arrangement.Center,
     ) {
       // Title and subtitle section
@@ -122,7 +122,15 @@ fun ScaleSetupLoader(
             text = title,
             textType = TextType.Title,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+              .fillMaxWidth()
+              .then(
+                if (connectionState is ConnectionState.Failed) {
+                  Modifier.padding(top = spacing.md)
+                } else {
+                  Modifier
+                },
+              ),
           )
         }
 
@@ -212,78 +220,79 @@ fun ScaleSetupLoader(
         }
       }
 
-    }
-
-    // Buttons at the bottom (if provided)
-    if (primaryButtonClick != null) {
-      Column(
-        modifier = Modifier
-          .padding(top = spacing.x2l),
-      ) {
-        AppButton(
-          label = primaryButtonText,
-          type = ButtonType.PrimaryFilled,
-          onClick = primaryButtonClick,
-        )
-        if (secondaryButtonClick != null) {
-          Spacer(modifier = Modifier.height(spacing.xs))
+      // Buttons at the bottom (if provided)
+      if (primaryButtonClick != null) {
+        Column(
+          modifier = Modifier
+            .padding(top = spacing.x2l),
+        ) {
           AppButton(
-            label = secondaryButtonText,
-            type = ButtonType.InlineTextPrimary,
-            onClick = secondaryButtonClick,
+            label = primaryButtonText,
+            type = ButtonType.PrimaryFilled,
+            onClick = primaryButtonClick,
           )
+          if (secondaryButtonClick != null) {
+            Spacer(modifier = Modifier.height(spacing.xs))
+            AppButton(
+              label = secondaryButtonText,
+              type = ButtonType.InlineTextPrimary,
+              onClick = secondaryButtonClick,
+            )
+          }
         }
       }
+
     }
+
   }
 }
 
+// @PreviewTheme
+// @Composable
+// private fun PreviewScaleSetupLoaderConnecting() {
+//   MeAppTheme {
+//     ScaleSetupLoader(
+//       title = "Connecting to Bluetooth",
+//       subtitle = "Please wait while we connect your scale",
+//       scaleImageSku = "0412",
+//       connectionState = ConnectionState.Loading,
+//     )
+//   }
+// }
+
 @PreviewTheme
 @Composable
-private fun PreviewScaleSetupLoaderConnecting() {
+private fun PreviewScaleSetupLoaderConnectionError() {
   MeAppTheme {
     ScaleSetupLoader(
-      title = "Connecting to Bluetooth",
-      subtitle = "Please wait while we connect your scale",
       scaleImageSku = "0412",
-      connectionState = ConnectionState.Loading,
+      title = "Connection Error",
+      subtitle = "Something went wrong during setup",
+      errorCode = "ERR_001",
+      connectionState = ConnectionState.Failed.Error,
+      indicatorIcon = LoaderIconType.Error,
+      primaryButtonText = SetupLoaderStrings.TryAgainButton,
+      secondaryButtonText = SetupLoaderStrings.SupportButton,
+      primaryButtonClick = { },
+      secondaryButtonClick = { },
     )
   }
 }
 
 // @PreviewTheme
 // @Composable
-// private fun PreviewScaleSetupLoaderConnectionError() {
+// private fun PreviewScaleSetupLoaderWifiConnecting() {
 //   MeAppTheme {
 //     ScaleSetupLoader(
-//       scaleImageSku = "0412",
-//       title = "Connection Error",
-//       subtitle = "Something went wrong during setup",
-//       errorCode = "ERR_001",
-//       connectionState = ConnectionState.Failed.Error,
-//       indicatorIcon = LoaderIconType.Error,
-//       primaryButtonText = SetupLoaderStrings.TryAgainButton,
-//       secondaryButtonText = SetupLoaderStrings.SupportButton,
-//       primaryButtonClick = { },
-//       secondaryButtonClick = { },
+//       scaleImageSku = "0397",
+//       title = "Connecting to WiFi",
+//       subtitle = "Please wait while we connect your scale to WiFi",
+//       connectionState = ConnectionState.Loading,
+//       showIndicationOnly = true,
+//       indicatorIcon = LoaderIconType.Wifi,
 //     )
 //   }
 // }
-//
-@PreviewTheme
-@Composable
-private fun PreviewScaleSetupLoaderWifiConnecting() {
-  MeAppTheme {
-    ScaleSetupLoader(
-      scaleImageSku = "0397",
-      title = "Connecting to WiFi",
-      subtitle = "Please wait while we connect your scale to WiFi",
-      connectionState = ConnectionState.Loading,
-      showIndicationOnly = true,
-      indicatorIcon = LoaderIconType.Wifi,
-    )
-  }
-}
 //
 // @PreviewTheme
 // @Composable
