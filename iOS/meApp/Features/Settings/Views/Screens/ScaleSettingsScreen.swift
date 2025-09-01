@@ -14,6 +14,7 @@ struct ScaleSettingsScreen: View {
     let scale: Device
     var scaleType: ScaleType
     @State private var isOtherSettingsSheetPresented = false
+    @State private var isSoftwareUpdatePresented = false
     
     init(scale: Device, scaleType: ScaleType) {
         self.scale = scale
@@ -65,6 +66,13 @@ struct ScaleSettingsScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .sheet(isPresented: $isOtherSettingsSheetPresented) {
             AdditionalSettingsSheet(scale: scale)
+        }
+        .sheet(isPresented: $isSoftwareUpdatePresented) {
+            SoftwareUpdateSheet(
+                scale: scale,
+                currentFirmware: scaleSettingsStore.firmwareVersion,
+                latestVersion: scale.metaData?.latestVersion
+            )
         }
         .navigationBarBackButtonHidden(true)
     }
@@ -259,9 +267,16 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.softwareUpdate,
-                    isDisabled: !scaleSettingsStore.isDeviceConnected || !(scaleSettingsStore.isWifiConfigured),
+                    isDisabled: !(((scale.metaData?.latestVersion ?? "") != (scaleSettingsStore.firmwareVersion ?? ""))
+                                   && scaleSettingsStore.isDeviceConnected
+                                   && scaleSettingsStore.isWifiConfigured),
                     onTap: {
-                        // Hook for software update UI if needed
+                        let canProceed = ((scale.metaData?.latestVersion ?? "") != (scaleSettingsStore.firmwareVersion ?? ""))
+                            && scaleSettingsStore.isDeviceConnected
+                            && scaleSettingsStore.isWifiConfigured
+                        if canProceed {
+                            isSoftwareUpdatePresented = true
+                        }
                     }
                 )
             )
