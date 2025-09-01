@@ -21,6 +21,7 @@ final class ContentViewModel: ObservableObject {
     @Injector var entryService : EntryService
     @Injector var logger : LoggerService
     @Injector var bluetoothService: BluetoothService
+    @Injector var accountFlagService: AccountFlagService
 
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
@@ -45,6 +46,15 @@ final class ContentViewModel: ObservableObject {
                 guard self.contentViewState != .initializing else { return }
 
                 self.performAppInitialization()
+            }
+            .store(in: &cancellables)
+
+        entryService.entrySaved
+            .sink { [weak self] entry in
+                guard let self else { return }
+                Task {
+                    await self.checkAccountFlagsAfterEntry()
+                }
             }
             .store(in: &cancellables)
     }
@@ -90,10 +100,47 @@ final class ContentViewModel: ObservableObject {
         }
         await feedService.fetchFeedItems()
         feedService.checkAndTriggerFeedModal()
+        await checkAccountFlagsAfterLogin()
     }
 
     // MARK: - View State Management
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
+    }
+    
+    // MARK: - Account Flags
+    
+    /// Shared function to check account flags for different triggers
+    /// - Parameter trigger: The trigger type ("login" or "entry")
+    private func checkAccountFlags(trigger: String) async {
+        do {
+            logger.log(level: .info, tag: "ContentViewModel", message: "Starting account flag check after \(trigger)")
+            
+            let flag = try await accountFlagService.getAccountFlag()
+            if flag != nil {
+                try await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout))
+                
+                let flagProcessed = try await accountFlagService.checkAccountFlag(trigger: trigger)
+                if flagProcessed {
+                    logger.log(level: .info, tag: "ContentViewModel", message: "Account flag processed successfully after \(trigger)")
+                } else {
+                    logger.log(level: .debug, tag: "ContentViewModel", message: "No matching account flag found for \(trigger) trigger")
+                }
+            } else {
+                logger.log(level: .debug, tag: "ContentViewModel", message: "No account flags found after \(trigger)")
+            }
+        } catch {
+            logger.log(level: .error, tag: "ContentViewModel", message: "Error checking account flags after \(trigger): \(error.localizedDescription)")
+        }
+    }
+    
+    /// Checks for account flags after successful login
+    private func checkAccountFlagsAfterLogin() async {
+        await checkAccountFlags(trigger: "login")
+    }
+    
+    /// Checks for account flags after entry creation
+    private func checkAccountFlagsAfterEntry() async {
+        await checkAccountFlags(trigger: "entry")
     }
 }
