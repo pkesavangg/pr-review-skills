@@ -65,6 +65,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             coordinator.lastGoalCardRemoved = newGoalCardRemoved
             coordinator.lastGoalCardPosition = newGoalCardPosition
             coordinator.lastStreakGridOrder = newStreakGridOrder
+            
+            // Force collection view to recalculate its intrinsic content size
+            DispatchQueue.main.async {
+                collectionView.layoutIfNeeded()
+                if let customCollectionView = collectionView as? CustomCollectionView {
+                    customCollectionView.invalidateIntrinsicContentSize()
+                }
+            }
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {

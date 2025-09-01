@@ -145,7 +145,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let layout = LeadingAlignedFlowLayout()
         layout.minimumInteritemSpacing = .spacingSM
         layout.minimumLineSpacing = .spacingSM
-        layout.sectionInset = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        layout.sectionInset = UIEdgeInsets(top: 20, left: 20, bottom: 0, right: 20)
         return layout
     }
     
