@@ -588,8 +588,17 @@ class DashboardStore: ObservableObject {
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
             
+            // Mark loading as complete
+            await MainActor.run {
+                objectWillChange.send()
+            }
+            
             logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
+            // Even on error, update UI state
+            await MainActor.run {
+                objectWillChange.send()
+            }
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
         }
     }
