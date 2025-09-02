@@ -88,12 +88,12 @@ struct SoftwareUpdateSheet: View {
                                     DatePickerView(
                                         isPresented: $showDatePicker,
                                         date: $viewModel.selectedDate,
-                                        endDate: Date()
+                                        endDate: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
                                     )
                                     TimePickerView(
                                         isPresented: $showTimePicker,
                                         time: $viewModel.selectedTime,
-                                        endTime: Date()
+                                        endTime: Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: viewModel.selectedDate) ?? viewModel.selectedDate
                                     )
                                     
                                     // Save button

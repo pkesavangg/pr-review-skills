@@ -23,7 +23,7 @@ struct AdditionalSettingsSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
-                title: "Other Settings",
+                title: lang.otherSettings,
                 leadingContent: {
                     AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
                         .foregroundColor(theme.statusIconPrimary)
@@ -123,7 +123,7 @@ struct AdditionalSettingsSheet: View {
             .background(theme.backgroundSecondary.ignoresSafeArea())
             .onAppear { Task { await viewModel.load() } }
             .confirmationDialog(
-                "Select Time Format",
+                lang.selectTimeFormat,
                 isPresented: $showTimeFormatPicker,
                 titleVisibility: .visible
             ) {
@@ -136,7 +136,7 @@ struct AdditionalSettingsSheet: View {
                 Button("Cancel", role: .cancel) {}
             }
             .confirmationDialog(
-                "Clear Data",
+                lang.clearData,
                 isPresented: $showClearDataPicker,
                 titleVisibility: .visible
             ) {

@@ -53,4 +53,5 @@ struct ScaleSettingsStrings {
     static let resetFirmware = "Reset Firmware"
     static let restoreFactorySettings = "Restore Factory Settings"
     static let sessionImpedance = "Session Impedance"
+    static let selectTimeFormat = "Select Time Format"
 }
