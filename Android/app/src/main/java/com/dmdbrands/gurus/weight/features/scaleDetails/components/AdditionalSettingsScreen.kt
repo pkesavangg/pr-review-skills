@@ -51,42 +51,42 @@ fun AdditionalSettingsScreen(
 
       // Scale Information Section
       SettingsSection(
-        title = "Scale Details",
+        title = ScaleDetailsStrings.ScaleDetails,
         items = listOf(
           SettingsItem(
-            title = "Manufacturer",
-            type = SettingsItemType.TextOnly(state.deviceInfo?.manufacturerName ?: "Unknown"),
+            title = ScaleDetailsStrings.Manufacturer,
+            type = SettingsItemType.TextOnly(state.deviceInfo?.manufacturerName ?: ScaleDetailsStrings.Unknown),
           ),
           SettingsItem(
-            title = "Device Name",
-            type = SettingsItemType.TextOnly(device?.device?.deviceName ?: "Unknown"),
+            title = ScaleDetailsStrings.DeviceName,
+            type = SettingsItemType.TextOnly(device?.device?.deviceName ?: ScaleDetailsStrings.Unknown),
           ),
           SettingsItem(
-            title = "MAC Address",
-            type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
+            title = ScaleDetailsStrings.MacAddress,
+            type = SettingsItemType.TextOnly(device?.device?.macAddress ?: ScaleDetailsStrings.Unknown),
           ),
           SettingsItem(
-            title = "Broadcast ID",
-            type = SettingsItemType.TextOnly(device?.device?.broadcastId ?: "Unknown"),
+            title = ScaleDetailsStrings.BroadcastId,
+            type = SettingsItemType.TextOnly(device?.device?.broadcastId ?: ScaleDetailsStrings.Unknown),
           ),
           SettingsItem(
-            title = "Firmware Revision",
-            type = SettingsItemType.TextOnly(state.deviceInfo?.firmwareRevision ?: "Unknown"),
+            title = ScaleDetailsStrings.FirmwareRevision,
+            type = SettingsItemType.TextOnly(state.deviceInfo?.firmwareRevision ?: ScaleDetailsStrings.Unknown),
           ),
           SettingsItem(
-            title = "Battery Level",
+            title = ScaleDetailsStrings.BatteryLevel,
             type = SettingsItemType.TextOnly(
-              "${state.deviceInfo?.batteryLevel ?: "Unknown"}%",
+              "${state.deviceInfo?.batteryLevel ?: ScaleDetailsStrings.Unknown}%",
             ),
           ),
         ),
       )
 
       SettingsSection(
-        title = "Scale Features",
+        title = ScaleDetailsStrings.ScaleFeatures,
         items = listOf(
           SettingsItem(
-            title = "Enable Start Animation",
+            title = ScaleDetailsStrings.EnableStartAnimation,
             type = SettingsItemType.Toggle(
               checked = state.isStartAnimationEnabled,
               onCheckedChange = { enabled ->
@@ -95,7 +95,7 @@ fun AdditionalSettingsScreen(
             ),
           ),
           SettingsItem(
-            title = "Enable End Animation",
+            title = ScaleDetailsStrings.EnableEndAnimation,
             type = SettingsItemType.Toggle(
               checked = state.isEndAnimationEnabled,
               onCheckedChange = { enabled ->
@@ -104,9 +104,9 @@ fun AdditionalSettingsScreen(
             ),
           ),
           SettingsItem(
-            title = "Time Format",
+            title = ScaleDetailsStrings.TimeFormat,
             type = SettingsItemType.Dropdown(
-              state.currentTimeFormat ?: "12H",
+              state.currentTimeFormat ?: ScaleDetailsStrings.TimeFormat12H,
             ),
             enabled = isConnected,
             onClick = {
@@ -114,7 +114,7 @@ fun AdditionalSettingsScreen(
             },
           ),
           SettingsItem(
-            title = "Reset Firmware",
+            title = ScaleDetailsStrings.ResetFirmware,
             type = SettingsItemType.Action(),
             color = SettingColorType.Danger,
             enabled = isConnected,
@@ -123,7 +123,7 @@ fun AdditionalSettingsScreen(
             },
           ),
           SettingsItem(
-            title = "Factory Reset",
+            title = ScaleDetailsStrings.FactoryReset,
             type = SettingsItemType.Action(),
             color = SettingColorType.Danger,
             enabled = isConnected,
@@ -132,7 +132,7 @@ fun AdditionalSettingsScreen(
             },
           ),
           SettingsItem(
-            title = "Download Logs",
+            title = ScaleDetailsStrings.DownloadLogs,
             type = SettingsItemType.Action(),
             enabled = isConnected,
             onClick = {
@@ -140,15 +140,15 @@ fun AdditionalSettingsScreen(
             },
           ),
           SettingsItem(
-            title = "Clear Scale Data",
+            title = ScaleDetailsStrings.ClearScaleData,
             type = SettingsItemType.Dropdown(
               when (state.currentClearDataSelection) {
-                "ALL" -> "All"
-                "WIFI" -> "Wi-Fi"
-                "SETTINGS" -> "Settings"
-                "HISTORY" -> "History"
-                "ACCOUNT" -> "Account"
-                else -> "Not Set"
+                "ALL" -> ScaleDetailsStrings.All
+                "WIFI" -> ScaleDetailsStrings.WiFi
+                "SETTINGS" -> ScaleDetailsStrings.Settings
+                "HISTORY" -> ScaleDetailsStrings.History
+                "ACCOUNT" -> ScaleDetailsStrings.Account
+                else -> ScaleDetailsStrings.NotSet
               },
             ),
             color = SettingColorType.Danger,

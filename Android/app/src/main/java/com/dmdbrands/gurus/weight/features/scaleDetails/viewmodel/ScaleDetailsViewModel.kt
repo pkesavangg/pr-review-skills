@@ -403,12 +403,12 @@ constructor(
           val isWifiConfigured = scale.device?.isWifiConfigured ?: false
 
           if (!isWifiConfigured) {
-            showToast("Wi-Fi must be configured to download firmware updates")
+            showToast(ScaleDetailsStrings.WifiRequiredForUpdate)
             return@launch
           }
 
           // Show updating message (similar to Angular implementation)
-          showToast("Updating Firmware...")
+          showToast(ScaleDetailsStrings.UpdatingFirmware)
 
           // Call the actual firmware update service (similar to Angular's bluetoothservice.updateFirmware)
           ggDeviceService.startFirmwareUpgrade(scale.toGGBTDevice(), timestamp)
@@ -416,18 +416,18 @@ constructor(
           AppLog.d(TAG, "Firmware update started for scale: ${scale.device?.deviceName}, timestamp: $timestamp")
 
           if (timestamp == 0L) {
-            showToast("Firmware update started immediately")
+            showToast(ScaleDetailsStrings.FirmwareUpdateStarted)
           } else {
             val date = java.text.SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", java.util.Locale.getDefault())
               .format(java.util.Date(timestamp))
-            showToast("Firmware update scheduled for $date")
+            showToast("${ScaleDetailsStrings.FirmwareUpdateScheduled} $date")
           }
         } else {
-          showToast("Scale must be connected to update firmware")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedUpdate)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error starting firmware update", e.toString())
-        showToast("Error starting firmware update")
+        showToast(ScaleDetailsStrings.ErrorStartingUpdate)
       }
     }
   }
@@ -455,16 +455,16 @@ constructor(
           AppLog.d(TAG, "Session impedance toggled: $enabled for scale: ${scale.device?.deviceName}")
 
           showToast(
-            if (enabled) "Session impedance enabled"
-            else "Session impedance disabled",
+            if (enabled) ScaleDetailsStrings.SessionImpedanceEnabled
+            else ScaleDetailsStrings.SessionImpedanceDisabled,
           )
         } else {
           AppLog.w(TAG, "Cannot toggle session impedance - scale not connected")
-          showToast("Scale must be connected to change session impedance")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedImpedance)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error toggling session impedance", e.toString())
-        showToast("Error updating session impedance")
+        showToast(ScaleDetailsStrings.ErrorUpdatingImpedance)
       }
     }
   }
@@ -477,18 +477,18 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          showToast("Downloading logs...")
+          showToast(ScaleDetailsStrings.DownloadingLogs)
 // TODO: need to implement download option
           ggDeviceService.getDeviceLogs(scale.toGGBTDevice()) { logResponse ->
             // AppLog.d(TAG, "Device logs downloaded: ${logResponse.logs?.size ?: 0} entries")
-            showToast("Logs downloaded successfully")
+            showToast(ScaleDetailsStrings.LogsDownloaded)
           }
         } else {
-          showToast("Scale must be connected to download logs")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedLogs)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error downloading logs", e.toString())
-        showToast("Error downloading logs")
+        showToast(ScaleDetailsStrings.ErrorDownloadingLogs)
       }
     }
   }
@@ -502,7 +502,7 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          showToast("Clearing $dataType data...")
+          showToast("${ScaleDetailsStrings.ClearingData} $dataType data...")
 
           val clearType = when (dataType) {
             "ALL" -> ClearDataType.ALL
@@ -515,14 +515,14 @@ constructor(
 
           ggDeviceService.clearData(scale.toGGBTDevice(), clearType) { result ->
             AppLog.d(TAG, "Clear data result: $result")
-            showToast("$dataType data cleared successfully")
+            showToast("$dataType ${ScaleDetailsStrings.DataCleared}")
           }
         } else {
-          showToast("Scale must be connected to clear data")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedClear)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error clearing scale data", e.toString())
-        showToast("Error clearing scale data")
+        showToast(ScaleDetailsStrings.ErrorClearingData)
       }
     }
   }
@@ -536,7 +536,7 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          showToast("Updating time format...")
+          showToast(ScaleDetailsStrings.UpdatingTimeFormat)
 
           ggDeviceService.updateSettings(
             scale.toGGBTDevice(),
@@ -546,14 +546,14 @@ constructor(
             ),
           )
 
-          AppLog.d(TAG, "Time format changed to: ${if (is12Hour) "12H" else "24H"}")
-          showToast("Time format updated to ${if (is12Hour) "12H" else "24H"}")
+          AppLog.d(TAG, "Time format changed to: ${if (is12Hour) ScaleDetailsStrings.TimeFormat12H else ScaleDetailsStrings.TimeFormat24H}")
+          showToast("${ScaleDetailsStrings.TimeFormatUpdated} ${if (is12Hour) ScaleDetailsStrings.TimeFormat12H else ScaleDetailsStrings.TimeFormat24H}")
         } else {
-          showToast("Scale must be connected to change time format")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedTimeFormat)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error changing time format", e.toString())
-        showToast("Error changing time format")
+        showToast(ScaleDetailsStrings.ErrorChangingTimeFormat)
       }
     }
   }
@@ -568,8 +568,8 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          val animationType = if (isStartAnimation) "start" else "end"
-          showToast("Updating $animationType animation...")
+          val animationType = if (isStartAnimation) ScaleDetailsStrings.StartAnimation else ScaleDetailsStrings.EndAnimation
+          showToast("${ScaleDetailsStrings.UpdatingAnimation} $animationType animation...")
 
           val settingKey = if (isStartAnimation) {
             GGBTSettingType.INITIAL_LOGO_ANIM
@@ -585,14 +585,14 @@ constructor(
             ),
           )
 
-          AppLog.d(TAG, "$animationType animation ${if (enabled) "enabled" else "disabled"}")
-          showToast("$animationType animation ${if (enabled) "enabled" else "disabled"}")
+          AppLog.d(TAG, "$animationType animation ${if (enabled) ScaleDetailsStrings.AnimationEnabled else ScaleDetailsStrings.AnimationDisabled}")
+          showToast("$animationType ${if (enabled) ScaleDetailsStrings.AnimationEnabled else ScaleDetailsStrings.AnimationDisabled}")
         } else {
-          showToast("Scale must be connected to change animation settings")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedAnimation)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error toggling scale animation", e.toString())
-        showToast("Error updating animation settings")
+        showToast(ScaleDetailsStrings.ErrorUpdatingAnimation)
       }
     }
   }
@@ -605,7 +605,7 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          showToast("Resetting firmware...")
+          showToast(ScaleDetailsStrings.ResettingFirmware)
 
           ggDeviceService.updateSettings(
             scale.toGGBTDevice(),
@@ -616,13 +616,13 @@ constructor(
           )
 
           AppLog.d(TAG, "Firmware reset initiated")
-          showToast("Firmware reset successfully")
+          showToast(ScaleDetailsStrings.FirmwareResetSuccess)
         } else {
-          showToast("Scale must be connected to reset firmware")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedReset)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error resetting firmware", e.toString())
-        showToast("Error resetting firmware")
+        showToast(ScaleDetailsStrings.ErrorResettingFirmware)
       }
     }
   }
@@ -635,7 +635,7 @@ constructor(
       try {
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          showToast("Restoring factory settings...")
+          showToast(ScaleDetailsStrings.RestoringFactory)
 
           ggDeviceService.updateSettings(
             scale.toGGBTDevice(),
@@ -646,13 +646,13 @@ constructor(
           )
 
           AppLog.d(TAG, "Factory settings restore initiated")
-          showToast("Factory settings restored successfully")
+          showToast(ScaleDetailsStrings.FactoryRestoreSuccess)
         } else {
-          showToast("Scale must be connected to restore factory settings")
+          showToast(ScaleDetailsStrings.ScaleNotConnectedFactory)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error restoring factory settings", e.toString())
-        showToast("Error restoring factory settings")
+        showToast(ScaleDetailsStrings.ErrorRestoringFactory)
       }
     }
   }
@@ -664,14 +664,14 @@ constructor(
     val currentSelection = state.value.currentTimeFormat
     showRadioGroupModal(
       dialogService = dialogQueueService,
-      title = "Time Format",
+      title = ScaleDetailsStrings.TimeFormat,
       options = listOf(
-        RadioButtonOption("12H", "12H"),
-        RadioButtonOption("24H", "24H"),
+        RadioButtonOption(ScaleDetailsStrings.TimeFormat12H, ScaleDetailsStrings.TimeFormat12H),
+        RadioButtonOption(ScaleDetailsStrings.TimeFormat24H, ScaleDetailsStrings.TimeFormat24H),
       ),
       selectedItem = currentSelection,
       onConfirm = { selectedValue ->
-        val is12Hour = selectedValue == "12H"
+        val is12Hour = selectedValue == ScaleDetailsStrings.TimeFormat12H
         handleIntent(ScaleDetailsIntent.ChangeTimeFormat(is12Hour))
       },
     )
@@ -684,13 +684,13 @@ constructor(
     val currentSelection = state.value.currentClearDataSelection
     showRadioGroupModal(
       dialogService = dialogQueueService,
-      title = "Clear Data",
+      title = ScaleDetailsStrings.ClearData,
       options = listOf(
-        RadioButtonOption("ALL", "All"),
-        RadioButtonOption("WIFI", "Wi-Fi"),
-        RadioButtonOption("SETTINGS", "Settings"),
-        RadioButtonOption("HISTORY", "History"),
-        RadioButtonOption("ACCOUNT", "Account"),
+        RadioButtonOption("ALL", ScaleDetailsStrings.All),
+        RadioButtonOption("WIFI", ScaleDetailsStrings.WiFi),
+        RadioButtonOption("SETTINGS", ScaleDetailsStrings.Settings),
+        RadioButtonOption("HISTORY", ScaleDetailsStrings.History),
+        RadioButtonOption("ACCOUNT", ScaleDetailsStrings.Account),
       ),
       selectedItem = currentSelection,
       onConfirm = { selectedValue ->
