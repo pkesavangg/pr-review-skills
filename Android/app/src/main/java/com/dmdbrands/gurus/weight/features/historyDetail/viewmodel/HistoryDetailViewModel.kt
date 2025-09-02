@@ -80,42 +80,30 @@ class HistoryDetailViewModel @AssistedInject constructor(
     }
 
     private fun showDeleteEntryDialog(entry: ScaleEntry) {
-        AppLog.d(TAG, "Showing delete entry dialog for entry: ${entry.entry.id}")
         viewModelScope.launch {
-            try {
-                dialogQueueService.showDialog(
-                    DialogModel.Confirm(
-                        title = HistoryDetailScreenStrings.DeleteEntryDialogTitle,
-                        message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
-                        confirmText = HistoryDetailScreenStrings.DeleteButton,
-                        cancelText = HistoryDetailScreenStrings.CancelButton,
-                        onConfirm = {
-                            AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
-                            dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
-                            viewModelScope.launch {
-                                try {
-                                    entryService.deleteEntry(entry)
-                                    AppLog.i(TAG, "Successfully deleted entry: ${entry.entry.id}")
-                                    dialogQueueService.dismissCurrent()
-                                    dialogQueueService.dismissLoader()
-                                } catch (e: Exception) {
-                                    AppLog.e(TAG, "Error deleting entry: ${entry.entry.id}", e)
-                                    dialogQueueService.dismissCurrent()
-                                    dialogQueueService.dismissLoader()
-                                }
-                            }
-                        },
-                        onCancel = {
+            dialogQueueService.showDialog(
+                DialogModel.Confirm(
+                    title = HistoryDetailScreenStrings.DeleteEntryDialogTitle,
+                    message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
+                    confirmText = HistoryDetailScreenStrings.DeleteButton,
+                    cancelText = HistoryDetailScreenStrings.CancelButton,
+                    onConfirm = {
+                        AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
+                        dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
+                        viewModelScope.launch {
+                            entryService.deleteEntry(entry)
                             dialogQueueService.dismissCurrent()
-                        },
-                        onDismiss = {
-                            dialogQueueService.dismissCurrent()
-                        },
-                    ),
-                )
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error showing delete entry dialog", e)
-            }
+                            dialogQueueService.dismissLoader()
+                        }
+                    },
+                    onCancel = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                    onDismiss = {
+                        dialogQueueService.dismissCurrent()
+                    },
+                ),
+            )
         }
     }
 

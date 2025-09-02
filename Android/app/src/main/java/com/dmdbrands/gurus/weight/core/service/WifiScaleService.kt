@@ -147,7 +147,7 @@ class WifiScaleService @Inject constructor(
             when (result.result) {
               is EsptouchResult.Success -> {
                 AppLog.d(
-                  "WifiScaleService",
+                  TAG,
                   "Esptouch connection successful",
                 )
                 onSuccess()
@@ -156,7 +156,7 @@ class WifiScaleService @Inject constructor(
               is EsptouchResult.Failure -> {
                 val errorMsg =
                   "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}"
-                AppLog.e("WifiScaleService", errorMsg)
+                AppLog.e(TAG, "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}")
                 onError(errorMsg)
               }
             }
@@ -166,7 +166,7 @@ class WifiScaleService @Inject constructor(
             when (result.result) {
               is SmartConfigResult.Success -> {
                 AppLog.d(
-                  "WifiScaleService",
+                  TAG,
                   "SmartConfig connection successful",
                 )
                 onSuccess()
@@ -175,7 +175,7 @@ class WifiScaleService @Inject constructor(
               is SmartConfigResult.Failure -> {
                 val errorMsg =
                   "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}"
-                AppLog.e("WifiScaleService", errorMsg)
+                AppLog.e(TAG, "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}")
                 onError(errorMsg)
               }
             }
@@ -183,7 +183,7 @@ class WifiScaleService @Inject constructor(
 
           is WifiConnectResult.ApMode -> {
             // You may want to handle ApMode result here if needed
-            AppLog.d("WifiScaleService", "AP Mode connection result: $result")
+            AppLog.d(TAG, "AP Mode connection result: $result")
             onSuccess() // Or handle error if needed
           }
 
@@ -193,7 +193,7 @@ class WifiScaleService @Inject constructor(
       } catch (e: Exception) {
         Log.d("connectwifiexception", e.toString())
         val errorMsg = "Connect failed: ${e.message}"
-        AppLog.e("WifiScaleService", errorMsg, e.toString())
+        AppLog.e(TAG, "Connect failed: ${e.message}", e)
         onError(errorMsg)
       }
     }
@@ -207,13 +207,13 @@ class WifiScaleService @Inject constructor(
    * @throws Exception if the API call fails
    */
   suspend fun getScaleToken(r: String? = null): String? {
-    AppLog.d("WifiScaleService", "getScaleToken - Getting scale token from API")
+    AppLog.d(TAG, "Getting scale token from API")
     return try {
       val token = deviceService.getScaleToken(false)
-      AppLog.d("WifiScaleService", "getScaleToken - Scale token retrieved successfully")
+      AppLog.d(TAG, "Scale token retrieved successfully")
       token
     } catch (e: Exception) {
-      AppLog.e("WifiScaleService", "getScaleToken - Error getting scale token", e.toString())
+      AppLog.e(TAG, "Error getting scale token", e)
       null
     }
   }
@@ -237,7 +237,7 @@ class WifiScaleService @Inject constructor(
       context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
     if (!hasLocationPermission) {
       AppLog.w(
-        "WifiScaleService",
+        TAG,
         "Location permission not granted. Returning empty scan results.",
       )
       return emptyList()
@@ -247,7 +247,7 @@ class WifiScaleService @Inject constructor(
         currentActivity.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
       wifiManager.scanResults ?: emptyList()
     } catch (e: Exception) {
-      AppLog.e("WifiScaleService", "Error getting WiFi scan results", e.toString())
+      AppLog.e(TAG, "Error getting WiFi scan results", e)
       emptyList()
     }
   }
@@ -259,13 +259,13 @@ class WifiScaleService @Inject constructor(
    * @return The SSID of the connected network, or empty string if not connected
    */
   fun getConnectedSsid(): String {
-    AppLog.d("WifiScaleService", "Getting connected SSID")
+    AppLog.d(TAG, "Getting connected SSID")
     return try {
       val ssid = wifiSmartConnectManager.getConnectedSsid(currentActivity)
-      AppLog.d("WifiScaleService", "Connected SSID: $ssid")
+      AppLog.d(TAG, "Connected SSID: $ssid")
       ssid
     } catch (e: Exception) {
-      AppLog.e("WifiScaleService", "Error getting connected SSID", e.toString())
+      AppLog.e(TAG, "Error getting connected SSID", e)
       ""
     }
   }
@@ -277,13 +277,13 @@ class WifiScaleService @Inject constructor(
    * @return The BSSID of the connected network, or empty string if not connected
    */
   fun getConnectedBssid(): String {
-    AppLog.d("WifiScaleService", "Getting connected BSSID")
+    AppLog.d(TAG, "Getting connected BSSID")
     return try {
       val bssid = wifiSmartConnectManager.getConnectedBssid(currentActivity)
-      AppLog.d("WifiScaleService", "Connected BSSID: $bssid")
+      AppLog.d(TAG, "Connected BSSID: $bssid")
       bssid
     } catch (e: Exception) {
-      AppLog.e("WifiScaleService", "Error getting connected BSSID", e.toString())
+      AppLog.e(TAG, "Error getting connected BSSID", e)
       ""
     }
   }
@@ -297,9 +297,9 @@ class WifiScaleService @Inject constructor(
       val wifiSettingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
       wifiSettingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       context.startActivity(wifiSettingsIntent)
-      AppLog.d("WifiScaleService", "Opened WiFi settings")
+      AppLog.d(TAG, "Opened WiFi settings")
     } catch (e: Exception) {
-      AppLog.e("WifiScaleService", "Failed to open WiFi settings: ${e.message}")
+      AppLog.e(TAG, "Failed to open WiFi settings", e)
     }
   }
 
@@ -337,16 +337,16 @@ class WifiScaleService @Inject constructor(
       }
 
       AppLog.d(
-        "WifiScaleService",
+        TAG,
         "getConnectedWifiInfo - Status: $status, SSID: $ssid, BSSID: $bssid, hasLocationPermission: $hasLocationPermission",
       )
 
       return WifiStatus(status, locationStatus, ssid, bssid)
     } catch (e: Exception) {
       AppLog.e(
-        "WifiScaleService",
+        TAG,
         "getConnectedWifiInfo - Error getting wifi connection status",
-        e.toString(),
+        e,
       )
       return WifiStatus(status, locationStatus, ssid, bssid)
     }
@@ -362,7 +362,7 @@ class WifiScaleService @Inject constructor(
    * @throws IllegalArgumentException if no setup type is provided
    */
   private fun validateSetupData(setupInfo: WifiSetupInfo, setupType: WifiSetupType): Boolean {
-    AppLog.d("WifiScaleService", "Validating setup data for type: $setupType")
+    AppLog.d(TAG, "Validating setup data for type: $setupType")
 
     val isValid = when (setupType) {
       WifiSetupType.FIRST -> {
@@ -388,7 +388,7 @@ class WifiScaleService @Inject constructor(
       }
     }
 
-    AppLog.d("WifiScaleService", "Setup data validation result: $isValid for type: $setupType")
+    AppLog.d(TAG, "Setup data validation result: $isValid for type: $setupType")
     return isValid
   }
 
@@ -404,7 +404,7 @@ class WifiScaleService @Inject constructor(
     if (!validateSetupData(setupInfo, setupType)) {
       val errorMessage =
         "Data for ${setupType.name.lowercase()} setup type '$setupType' is invalid: $setupInfo"
-      AppLog.e("WifiScaleService", errorMessage)
+      AppLog.e(TAG, errorMessage)
       throw IllegalArgumentException(errorMessage)
     }
   }

@@ -77,7 +77,7 @@ constructor(
         AppLog.i(TAG, "Body composition saved to DB with isSynced = false for offline sync")
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Body composition update failed", e.toString())
+      AppLog.e(TAG, "Body composition update failed", e)
       null
     } finally {
       showSuccessToast(

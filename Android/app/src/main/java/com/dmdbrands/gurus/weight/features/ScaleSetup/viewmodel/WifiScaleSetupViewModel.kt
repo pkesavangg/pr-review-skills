@@ -246,7 +246,7 @@ constructor(
                         handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
                       }
                     } catch (e: Exception) {
-                      AppLog.e(TAG, "Error getting MAC address", e.toString())
+                      AppLog.e(TAG, "Error getting MAC address", e)
                     }
                   }
                 }
@@ -305,7 +305,7 @@ constructor(
       wifiScaleService.openWifiSettings()
       AppLog.d(TAG, "WiFi settings opened successfully")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to open WiFi settings", e.toString())
+      AppLog.e(TAG, "Failed to open WiFi settings", e)
     }
   }
 
@@ -407,7 +407,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e(TAG, "Error requesting permission ${permissionType}", e)
       }
     }
   }
@@ -421,7 +421,7 @@ constructor(
         navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e)
       }
     }
   }
@@ -437,7 +437,7 @@ constructor(
         scaleToken = token
         AppLog.d(TAG, "getScaleToken - token retrieved: $token")
       } catch (e: Exception) {
-        AppLog.e(TAG, "getScaleToken - Error getting scale token", e.toString())
+        AppLog.e(TAG, "getScaleToken - Error getting scale token", e)
       }
     }
   }
@@ -462,7 +462,7 @@ constructor(
         handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
         AppLog.d(TAG, "getNetworkInfo: $status")
       } catch (e: Exception) {
-        AppLog.e(TAG, "getNetworkInfo - Error getting network info", e.toString())
+        AppLog.e(TAG, "getNetworkInfo - Error getting network info", e)
       }
     }
   }
@@ -498,7 +498,7 @@ constructor(
       try {
         updateNetworkStatus()
       } catch (e: Exception) {
-        AppLog.e(TAG, "monitorNetworkStatus - Error monitoring network", e.toString())
+        AppLog.e(TAG, "monitorNetworkStatus - Error monitoring network", e)
       }
     }
   }
@@ -530,7 +530,7 @@ constructor(
       AppLog.w(TAG, "getMacAddress - No matching network found")
       null
     } catch (e: Exception) {
-      AppLog.e(TAG, "getMacAddress - Error getting MAC address", e.toString())
+      AppLog.e(TAG, "getMacAddress - Error getting MAC address", e)
       null
     }
   }
@@ -610,7 +610,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "startSmartConnect - Error starting connect", e.toString())
+        AppLog.e(TAG, "startSmartConnect - Error starting connect", e)
         handleIntent(WifiScaleSetupIntent.SetConnectionError(e.message ?: "Unknown error"))
       }
     }
@@ -640,7 +640,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "startApMode - Error starting AP mode", e.toString())
+        AppLog.e(TAG, "startApMode - Error starting AP mode", e)
 
         // Retry logic similar to TypeScript
         if (count < 5) {
@@ -934,7 +934,7 @@ constructor(
       try {
         checkAndSaveScale()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error saving scale", e.toString())
+        AppLog.e(TAG, "Error saving scale", e)
       }
     }
   }
@@ -948,7 +948,7 @@ constructor(
     try {
       wifiScaleService.stop()
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error stopping WiFi service", e.toString())
+      AppLog.e(TAG, "Error stopping WiFi service", e)
     }
     if (currentState.saved || canExit) {
       navigateBack()
@@ -1131,7 +1131,7 @@ constructor(
                 try {
                   wifiScaleService.openWifiSettings()
                 } catch (e: Exception) {
-                  AppLog.e(TAG, "Failed to open location settings", e.toString())
+                  AppLog.e(TAG, "Failed to open location settings", e)
                 }
               },
             ),
@@ -1150,7 +1150,7 @@ constructor(
           )
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error showing permission revoked alert", e.toString())
+        AppLog.e(TAG, "Error showing permission revoked alert", e)
       }
     }
   }

@@ -179,7 +179,7 @@ constructor(
         AppLog.i(tag, "Goal settings saved successfully")
       } catch (e: Exception) {
         handleIntent(GoalIntent.Error(GoalStrings.SaveErrorMessage))
-        AppLog.e(tag, "Failed to save goal settings", e.toString())
+        AppLog.e(tag, "Failed to save goal settings", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -296,7 +296,7 @@ constructor(
       try {
         navigationService.navigateBack()
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to navigate back from goal screen", e.toString())
+        AppLog.e(tag, "Failed to navigate back from goal screen", e)
       }
     }
   }
