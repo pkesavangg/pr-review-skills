@@ -588,8 +588,17 @@ class DashboardStore: ObservableObject {
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
             
+            // Mark loading as complete
+            await MainActor.run {
+                objectWillChange.send()
+            }
+            
             logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
+            // Even on error, update UI state
+            await MainActor.run {
+                objectWillChange.send()
+            }
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
         }
     }
@@ -1404,16 +1413,34 @@ class DashboardStore: ObservableObject {
     ///   - to: The destination index
     func moveMetric(from sourceIndex: Int, to destinationIndex: Int) {
         // Validate indices before performing the move
+        // Restrict moves to only active (non-removed) metrics
+        // Calculate the number of active (non-removed) metrics dynamically
+        let activeMetricsCount = metricsToShow.count - state.ui.removedMetrics.count
+        
         guard sourceIndex != destinationIndex,
-              sourceIndex >= 0 && sourceIndex < metricsManager.state.metrics.count,
-              destinationIndex >= 0 && destinationIndex < metricsManager.state.metrics.count else {
-            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
+              sourceIndex >= 0 && sourceIndex < activeMetricsCount,
+              destinationIndex >= 0 && destinationIndex < activeMetricsCount,
+              sourceIndex < metricsToShow.count,
+              destinationIndex < metricsToShow.count else {
+            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)")
             return
         }
         
-        // Move the metric in the data source
-        let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
-        metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
+        // Get the metrics that are currently being shown
+        let visibleMetrics = metricsToShow
+        let sourceMetric = visibleMetrics[sourceIndex]
+        let destinationMetric = visibleMetrics[destinationIndex]
+        
+        // Find the actual indices in the full metrics array
+        guard let sourceActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == sourceMetric.id }),
+              let destinationActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == destinationMetric.id }) else {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Could not find actual indices for metrics")
+            return
+        }
+        
+        // Move the metric in the data source using actual indices
+        let movedMetric = metricsManager.state.metrics.remove(at: sourceActualIndex)
+        metricsManager.state.metrics.insert(movedMetric, at: destinationActualIndex)
         
         // Update active metrics count if needed
         let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
@@ -1422,7 +1449,7 @@ class DashboardStore: ObservableObject {
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
+        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
     
     // MARK: - Graph State Management

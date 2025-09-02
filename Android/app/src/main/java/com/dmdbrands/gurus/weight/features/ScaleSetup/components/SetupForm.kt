@@ -44,6 +44,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import android.util.Log
 
 /**
  * A reusable form component for scale setup screens that supports input fields,
@@ -89,17 +90,25 @@ fun <T> SetupForm(
   enableScroll: Boolean = true, // New parameter to control scrolling
   userList: List<GGBTUser> = emptyList(), // List of existing usernames to check for duplicates
 ) {
-  // Add duplicate name validator if userList is provided
+  // Add duplicate name validator if userList is provided (same as Angular version)
+    // Use LaunchedEffect to refresh validation whenever userList changes
   LaunchedEffect(userList) {
+    // Remove any existing duplicate validators first
+    formControl.removeValidator("DUPLICATE_NAME")
+
     if (userList.isNotEmpty()) {
+      // Add new duplicate validator
       formControl.addValidator { value ->
         if (value?.toString()?.let { name ->
             userList.any { user -> user.name.equals(name, ignoreCase = true) }
-          } == true) {
+          } == true ) {
           ValidationError("DUPLICATE_NAME", BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
         } else null
       }
     }
+
+    // Force validation refresh to update any existing errors
+    formControl.validate()
   }
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }

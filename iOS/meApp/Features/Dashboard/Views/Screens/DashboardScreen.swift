@@ -161,6 +161,7 @@ struct DashboardScreen: View {
                 Divider()
                     .foregroundColor(theme.statusUtilityPrimary)
                     .padding(.horizontal, .spacingLG)
+                    .padding(.top, .spacingSM)
             }
         }
     }

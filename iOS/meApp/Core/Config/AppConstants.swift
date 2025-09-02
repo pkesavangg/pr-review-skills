@@ -9,6 +9,7 @@ struct AppConstants {
         static let discoveredScaleModalTimeout = 30 * 1_000_000_000 // Timeout for discovered scale modal in nanoseconds (30 seconds)
         static let discoveredAlertTimeout = 15 * 1_000_000_000 // Timeout for discovered alert in nanoseconds (15 seconds)
         static let updateSettingsTimeout = 2 * 60 * 1_000_000_000 // 2 minutes timeout for updating settings in milliseconds
+        static let appReviewTriggerTimeout = 2 * 1_000_000_000 // 2 seconds delay for app review triggers in nanoseconds
     }
     
     struct Account {

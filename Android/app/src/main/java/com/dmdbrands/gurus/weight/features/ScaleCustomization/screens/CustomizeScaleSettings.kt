@@ -47,6 +47,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
 
 @Composable
@@ -55,6 +56,7 @@ fun CustomizeScaleSettings(
   title: String,
   subtitle: String,
   state: BtWifiScaleSetupState,
+  userList: List<GGBTUser> = emptyList(),
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
@@ -80,21 +82,21 @@ fun CustomizeScaleSettings(
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
     shouldCenterMiddleContent = true,
-          leadingContent =
-        {
-          AppButton(
-            type = ButtonType.TextPrimary,
-            label = ScaleSetupStrings.backButton,
-            size = ButtonSize.Small,
-            // Disable back button when on main settings screen (NONE)
-            enabled = pagerState.currentPage != CustomizeSettings.NONE.ordinal,
-            onClick = {
-              scope.launch {
-                pagerState.scrollToPage(0)
-              }
-            },
-          )
-        },
+    leadingContent =
+      {
+        AppButton(
+          type = ButtonType.TextPrimary,
+          label = ScaleSetupStrings.backButton,
+          size = ButtonSize.Small,
+          // Disable back button when on main settings screen (NONE)
+          enabled = pagerState.currentPage != CustomizeSettings.NONE.ordinal,
+          onClick = {
+            scope.launch {
+              pagerState.scrollToPage(0)
+            }
+          },
+        )
+      },
     trailingContent =
       {
         if (pagerState.currentPage == CustomizeSettings.NONE.ordinal) {
@@ -241,6 +243,7 @@ fun CustomizeScaleSettings(
             inputType = AppInputType.TEXT,
             supportingImage = AppIcons.Setup.UserNameScale,
             enableScroll = false,
+            userList = userList,
           )
         }
       }

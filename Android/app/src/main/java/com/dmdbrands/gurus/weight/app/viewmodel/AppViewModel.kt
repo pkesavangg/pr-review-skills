@@ -457,6 +457,14 @@ constructor(
           checkCanShowWeightOnlyModeAlert()
         }
 
+        GGScanResponseType.WIFI_STATUS_UPDATE -> {
+          onDeviceUpdate(
+            deviceDetail = data,
+            connectionStatus = BLEStatus.CONNECTED,
+          )
+          deviceService.updateConnectedScales(data, true)
+        }
+
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           dialogQueueService.showDialog(
             ReconnectScale.getMaxUserAlert(
