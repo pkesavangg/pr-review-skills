@@ -31,4 +31,23 @@ object ScaleDetailsStrings {
   const val DeleteScale = "Delete Scale"
   const val SetupIncomplete = "Setup Incomplete"
   const val SetupWifi = "Setup Wi-Fi"
+
+  // Testing Features (similar to Angular implementation)
+  const val Others = "Others"
+  const val ScaleMac = "Scale MAC"
+  const val SoftwareUpdate = "Software Update"
+  const val OtherSettings = "Other Settings"
+  const val SessionImpedance = "Session Impedance"
+
+  // Firmware Update Strings
+  const val Version = "Version"
+  const val AlreadyUpToDate = "Your scale is already up to date!"
+  const val UpdateMessage = "A new firmware version"
+  const val UpdateMessage1 = "is available for your scale."
+  const val UpdateMessage2 = "This will update your scale immediately."
+  const val UpdateNow = "Now"
+  const val UpdateSchedule = "Schedule"
+  const val Upgrade = "Upgrade"
+  const val Date = "Date"
+  const val Save = "Save"
 }

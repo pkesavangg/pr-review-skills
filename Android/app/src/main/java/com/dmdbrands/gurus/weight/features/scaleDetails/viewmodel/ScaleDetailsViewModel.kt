@@ -3,16 +3,18 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
+import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleDetailsIntent
@@ -22,7 +24,11 @@ import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleNameDialogF
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleDetailsStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleNameDialogStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.WifiMacAddressStrings
+import com.dmdbrands.library.ggbluetooth.enums.ClearDataType
+import com.dmdbrands.library.ggbluetooth.enums.GGBTSettingType
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTSetting
+import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import dagger.assisted.Assisted
@@ -53,8 +59,13 @@ constructor(
     fun create(scaleId: String): ScaleDetailsViewModel
   }
 
+  init {
+    provideInitialState()
+  }
+
   override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState(
     scaleNameForm = FormGroup(ScaleNameDialogFormControls.Companion.create()),
+    enableTestingFeatures = AppStatusService.enableTestingFeatures,
   )
 
   override fun handleIntent(intent: ScaleDetailsIntent) {
@@ -95,6 +106,23 @@ constructor(
         intent.permissionType,
       )
 
+      // Testing Features Handlers
+      is ScaleDetailsIntent.ToggleSessionImpedance -> toggleSessionImpedance(intent.enabled)
+      // Firmware Update Handlers
+      ScaleDetailsIntent.StartFirmwareUpdate -> startFirmwareUpdate(0) // Immediate update
+      is ScaleDetailsIntent.StartScheduledFirmwareUpdate -> startFirmwareUpdate(intent.timestamp)
+
+      // Additional Settings Handlers
+      ScaleDetailsIntent.DownloadLogs -> downloadLogs()
+      is ScaleDetailsIntent.ClearScaleData -> clearScaleData(intent.dataType)
+      is ScaleDetailsIntent.ChangeTimeFormat -> changeTimeFormat(intent.is12Hour)
+      is ScaleDetailsIntent.ToggleScaleAnimation -> toggleScaleAnimation(intent.isStartAnimation, intent.enabled)
+      ScaleDetailsIntent.ResetFirmware -> resetFirmware()
+      ScaleDetailsIntent.RestoreFactorySettings -> restoreFactorySettings()
+
+      // Dialog Management Handlers
+      ScaleDetailsIntent.ShowTimeFormatDialog -> showTimeFormatModal()
+      ScaleDetailsIntent.ShowClearDataDialog -> showClearDataModal()
       else -> {}
     }
   }
@@ -103,6 +131,7 @@ constructor(
     setScaleDetails()
     observePermissions()
     configureR4ScaleDetails()
+    observeScaleConnectionChanges()
   }
 
   private fun configureR4ScaleDetails() {
@@ -139,6 +168,28 @@ constructor(
     }
   }
 
+  /**
+   * Observes scale connection changes and updates device info when connection status changes.
+   * Similar to Angular's pairedScaleService.scales subscription in scale-detail.page.ts
+   */
+  private fun observeScaleConnectionChanges() {
+    viewModelScope.launch {
+      deviceService.pairedScales.collect { devices ->
+        val currentScale = state.value.scale
+        if (currentScale != null) {
+          val updatedScale = devices.find { it.id == scaleId }
+          updatedScale?.let { scale ->
+            currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+
+            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+            getDeviceInfo()
+          }
+        }
+      }
+    }
+  }
+
   private fun setScaleDetails() {
     viewModelScope.launch {
       deviceService.pairedScales.collect { devices ->
@@ -146,7 +197,7 @@ constructor(
         device?.let { scaleDevice ->
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
-          val scaleName = scaleDevice.nickname ?: SCALES.find { it.sku == scaleDevice.sku }?.productName ?: ""
+          val scaleName = scaleDevice.nickname
           handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
         }
       }
@@ -312,9 +363,349 @@ constructor(
     )
   }
 
+  /**
+   * Gets device info from the scale (similar to Angular's getDeviceInfo method).
+   * Updates device details in the state when connection status changes.
+   */
+  private fun getDeviceInfo() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          AppLog.d(TAG, "Getting device info for connected scale: ${scale.device?.deviceName}")
+          ggDeviceService.getDeviceInfo(scale.toGGBTDevice()) { deviceDetails ->
+            if (deviceDetails != null) {
+              handleIntent(ScaleDetailsIntent.SetDeviceDetail(deviceDetails))
+            }
+            AppLog.d(
+              TAG,
+              "Device info received - Firmware: $deviceDetails",
+            )
+          }
+        } else {
+          AppLog.w(TAG, "Cannot get device info - scale not connected or null")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error getting device info", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Starts firmware update (similar to Angular's unserviceable.updateFirmware).
+   * @param timestamp The timestamp for scheduled update (0 for immediate update)
+   */
+  private fun startFirmwareUpdate(timestamp: Long) {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          val isWifiConfigured = scale.device?.isWifiConfigured ?: false
+
+          if (!isWifiConfigured) {
+            showToast("Wi-Fi must be configured to download firmware updates")
+            return@launch
+          }
+
+          // Show updating message (similar to Angular implementation)
+          showToast("Updating Firmware...")
+
+          // Call the actual firmware update service (similar to Angular's bluetoothservice.updateFirmware)
+          ggDeviceService.startFirmwareUpgrade(scale.toGGBTDevice(), timestamp)
+
+          AppLog.d(TAG, "Firmware update started for scale: ${scale.device?.deviceName}, timestamp: $timestamp")
+
+          if (timestamp == 0L) {
+            showToast("Firmware update started immediately")
+          } else {
+            val date = java.text.SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", java.util.Locale.getDefault())
+              .format(java.util.Date(timestamp))
+            showToast("Firmware update scheduled for $date")
+          }
+        } else {
+          showToast("Scale must be connected to update firmware")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error starting firmware update", e.toString())
+        showToast("Error starting firmware update")
+      }
+    }
+  }
+
+  /**
+   * Toggles session impedance for the scale (similar to Angular implementation).
+   * This is a testing feature that allows enabling/disabling impedance for the current session.
+   */
+  private fun toggleSessionImpedance(enabled: Boolean) {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          // Update the state immediately for UI feedback
+          // Call the actual Bluetooth service to update session impedance
+          // Similar to Angular's bluetoothService.updateSetting implementation
+          ggDeviceService.updateSettings(
+            scale.toGGBTDevice(),
+            GGBTSetting(
+              key = GGBTSettingType.SESSION_IMPEDANCE,
+              value = GGBTSettingValue.Boolean(enabled),
+            ),
+          )
+
+          AppLog.d(TAG, "Session impedance toggled: $enabled for scale: ${scale.device?.deviceName}")
+
+          showToast(
+            if (enabled) "Session impedance enabled"
+            else "Session impedance disabled",
+          )
+        } else {
+          AppLog.w(TAG, "Cannot toggle session impedance - scale not connected")
+          showToast("Scale must be connected to change session impedance")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error toggling session impedance", e.toString())
+        showToast("Error updating session impedance")
+      }
+    }
+  }
+
+  /**
+   * Downloads device logs (similar to Angular implementation).
+   */
+  private fun downloadLogs() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          showToast("Downloading logs...")
+// TODO: need to implement download option
+          ggDeviceService.getDeviceLogs(scale.toGGBTDevice()) { logResponse ->
+            // AppLog.d(TAG, "Device logs downloaded: ${logResponse.logs?.size ?: 0} entries")
+            showToast("Logs downloaded successfully")
+          }
+        } else {
+          showToast("Scale must be connected to download logs")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error downloading logs", e.toString())
+        showToast("Error downloading logs")
+      }
+    }
+  }
+
+  /**
+   * Clears scale data based on type (similar to Angular's clearData method).
+   * @param dataType The type of data to clear ("ALL", "WIFI", "SETTINGS", "HISTORY", "ACCOUNT")
+   */
+  private fun clearScaleData(dataType: String) {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          showToast("Clearing $dataType data...")
+
+          val clearType = when (dataType) {
+            "ALL" -> ClearDataType.ALL
+            "WIFI" -> ClearDataType.WIFI
+            "SETTINGS" -> ClearDataType.SETTINGS
+            "HISTORY" -> ClearDataType.HISTORY
+            "ACCOUNT" -> ClearDataType.ACCOUNT
+            else -> ClearDataType.ALL
+          }
+
+          ggDeviceService.clearData(scale.toGGBTDevice(), clearType) { result ->
+            AppLog.d(TAG, "Clear data result: $result")
+            showToast("$dataType data cleared successfully")
+          }
+        } else {
+          showToast("Scale must be connected to clear data")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error clearing scale data", e.toString())
+        showToast("Error clearing scale data")
+      }
+    }
+  }
+
+  /**
+   * Changes time format on the scale (similar to Angular's changeTimeFormat method).
+   * @param is12Hour True for 12-hour format, false for 24-hour format
+   */
+  private fun changeTimeFormat(is12Hour: Boolean) {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          showToast("Updating time format...")
+
+          ggDeviceService.updateSettings(
+            scale.toGGBTDevice(),
+            GGBTSetting(
+              key = GGBTSettingType.TIME_FORMAT,
+              value = GGBTSettingValue.Boolean(is12Hour),
+            ),
+          )
+
+          AppLog.d(TAG, "Time format changed to: ${if (is12Hour) "12H" else "24H"}")
+          showToast("Time format updated to ${if (is12Hour) "12H" else "24H"}")
+        } else {
+          showToast("Scale must be connected to change time format")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error changing time format", e.toString())
+        showToast("Error changing time format")
+      }
+    }
+  }
+
+  /**
+   * Toggles scale animation settings (similar to Angular's toggleScaleAnimation method).
+   * @param isStartAnimation True for start animation, false for end animation
+   * @param enabled Whether the animation should be enabled
+   */
+  private fun toggleScaleAnimation(isStartAnimation: Boolean, enabled: Boolean) {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          val animationType = if (isStartAnimation) "start" else "end"
+          showToast("Updating $animationType animation...")
+
+          val settingKey = if (isStartAnimation) {
+            GGBTSettingType.INITIAL_LOGO_ANIM
+          } else {
+            GGBTSettingType.FINAL_LOGO_ANIM
+          }
+
+          ggDeviceService.updateSettings(
+            scale.toGGBTDevice(),
+            GGBTSetting(
+              key = settingKey,
+              value = GGBTSettingValue.Boolean(enabled),
+            ),
+          )
+
+          AppLog.d(TAG, "$animationType animation ${if (enabled) "enabled" else "disabled"}")
+          showToast("$animationType animation ${if (enabled) "enabled" else "disabled"}")
+        } else {
+          showToast("Scale must be connected to change animation settings")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error toggling scale animation", e.toString())
+        showToast("Error updating animation settings")
+      }
+    }
+  }
+
+  /**
+   * Resets firmware (similar to Angular's resetFirmware method).
+   */
+  private fun resetFirmware() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          showToast("Resetting firmware...")
+
+          ggDeviceService.updateSettings(
+            scale.toGGBTDevice(),
+            GGBTSetting(
+              key = GGBTSettingType.RESET_FIRMWARE,
+              value = GGBTSettingValue.Boolean(true),
+            ),
+          )
+
+          AppLog.d(TAG, "Firmware reset initiated")
+          showToast("Firmware reset successfully")
+        } else {
+          showToast("Scale must be connected to reset firmware")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error resetting firmware", e.toString())
+        showToast("Error resetting firmware")
+      }
+    }
+  }
+
+  /**
+   * Restores factory settings (similar to Angular's restoreFactorySettings method).
+   */
+  private fun restoreFactorySettings() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          showToast("Restoring factory settings...")
+
+          ggDeviceService.updateSettings(
+            scale.toGGBTDevice(),
+            GGBTSetting(
+              key = GGBTSettingType.RESTORE_FACTORY,
+              value = GGBTSettingValue.Boolean(true),
+            ),
+          )
+
+          AppLog.d(TAG, "Factory settings restore initiated")
+          showToast("Factory settings restored successfully")
+        } else {
+          showToast("Scale must be connected to restore factory settings")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error restoring factory settings", e.toString())
+        showToast("Error restoring factory settings")
+      }
+    }
+  }
+
+  /**
+   * Shows the time format selection modal.
+   */
+  private fun showTimeFormatModal() {
+    val currentSelection = state.value.currentTimeFormat
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = "Time Format",
+      options = listOf(
+        RadioButtonOption("12H", "12H"),
+        RadioButtonOption("24H", "24H"),
+      ),
+      selectedItem = currentSelection,
+      onConfirm = { selectedValue ->
+        val is12Hour = selectedValue == "12H"
+        handleIntent(ScaleDetailsIntent.ChangeTimeFormat(is12Hour))
+      },
+    )
+  }
+
+  /**
+   * Shows the clear data selection modal.
+   */
+  private fun showClearDataModal() {
+    val currentSelection = state.value.currentClearDataSelection
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = "Clear Data",
+      options = listOf(
+        RadioButtonOption("ALL", "All"),
+        RadioButtonOption("WIFI", "Wi-Fi"),
+        RadioButtonOption("SETTINGS", "Settings"),
+        RadioButtonOption("HISTORY", "History"),
+        RadioButtonOption("ACCOUNT", "Account"),
+      ),
+      selectedItem = currentSelection,
+      onConfirm = { selectedValue ->
+        handleIntent(ScaleDetailsIntent.ClearScaleData(selectedValue ?: ""))
+      },
+    )
+  }
+
   private fun navigateBack() {
     viewModelScope.launch {
       navigationService.navigateBack()
     }
+  }
+
+  companion object {
+    private const val TAG = "ScaleDetailsViewModel"
   }
 }
