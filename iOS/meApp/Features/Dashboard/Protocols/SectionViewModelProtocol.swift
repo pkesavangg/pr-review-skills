@@ -44,6 +44,15 @@ protocol SectionViewModelProtocol: ObservableObject {
     var xAxisValues: [Date] { get }
     var isAtLeftBoundary: Bool { get }
     
+    // MARK: - Stroke & Point Sizing
+    var lineWidth: CGFloat { get }
+    var basePointDiameter: CGFloat { get }
+    var selectedPointDiameter: CGFloat { get }
+    var basePointArea: CGFloat { get }
+    var selectedPointArea: CGFloat { get }
+    func pointArea(isSelected: Bool) -> CGFloat
+    func symbolArea(forDiameter diameter: CGFloat) -> CGFloat
+    
     // MARK: - Initialization and Configuration
     func configure(with store: DashboardStore)
     
@@ -72,6 +81,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Chart Content Helpers
     func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]]
+    func shouldShowSolidLine(for date: Date) -> Bool
+    func formatSelectedXAxisLabel() -> String?
     
     // MARK: - Data Management
     func refreshData()

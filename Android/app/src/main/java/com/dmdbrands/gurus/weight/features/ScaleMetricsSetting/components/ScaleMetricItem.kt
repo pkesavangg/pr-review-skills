@@ -57,7 +57,7 @@ fun ScaleMetricItem(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(vertical = spacing.xs, horizontal = spacing.sm),
+          .padding( horizontal = spacing.sm),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -25,6 +25,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var decisionTimer: Timer?
     
     // MARK: - Configuration
+    private let yAxisLabelWidth: CGFloat = 40
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
@@ -35,6 +36,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 // Main Chart
                 Chart {
                     yAxisGridLines
+                    xAxisGridLinesSolid
+                    yAxisBaseline
                     chartSeries
                     crosshairContent
                 }
@@ -55,12 +58,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     viewModel: viewModel,
                     localSelectedXValue: $localSelectedXValue,
                     touchInteractionMode: touchInteractionMode,
-                    dashboardStore: dashboardStore
+                    dashboardStore: dashboardStore,
+                    theme: theme
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
                 .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
-                .padding(.trailing, isScrollable ? .spacingXS : 0)
+                .padding(.trailing, .spacingXS)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -136,9 +140,52 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
         ForEach(viewModel.yAxisTicks, id: \.self) { tick in
-            RuleMark(y: .value("YGrid", tick))
+            // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
+            // so it doesn't overlap with the axis baseline (which makes it look thicker).
+            let effectiveTick: Double = {
+                guard viewModel.hasXAxis else { return tick }
+                let lower = viewModel.yAxisDomain.lowerBound
+                let upper = viewModel.yAxisDomain.upperBound
+                let epsilon: Double = 1e-6
+                let domainRange = upper - lower
+                let availableHeight = max(1, viewModel.chartFrame.height -  (viewModel.hasXAxis ? 18 : 0))
+                let onePointValue = domainRange / Double(availableHeight)
+                if abs(tick - lower) <= epsilon { return tick + onePointValue }
+                if abs(tick - upper) <= epsilon { return tick - onePointValue }
+                return tick
+            }()
+            RuleMark(y: .value("YGrid", effectiveTick))
                 .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(theme.statusUtilityPrimary.opacity(0.3))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(-1)
+        }
+    }
+    
+    @ChartContentBuilder
+    private var xAxisGridLinesSolid: some ChartContent {
+        let referenceDate = viewModel.hasXAxis ?
+        viewModel.xAxisValues.last
+        : viewModel.xAxisValues.first
+        if let referenceDate = referenceDate {
+            let domainLength = viewModel.visibleDomainLength
+            let width = max(1, viewModel.chartFrame.width)
+            let secondsPerPoint = domainLength / Double(width)
+            let halfPointOffset = secondsPerPoint * 0.5
+            let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
+            
+            RuleMark(x: .value("XGrid", effectiveDate))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+        }
+    }
+    
+    @ChartContentBuilder
+    private var yAxisBaseline: some ChartContent {
+        // Show baseline only for Total view (no X-axis)
+        if !viewModel.hasXAxis {
+            RuleMark(x: .value("YBaselineTrailing", viewModel.dateRange.upperBound))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
         }
     }
@@ -184,14 +231,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             )
             .foregroundStyle(by: .value("Series", point.series))
             .interpolationMethod(.monotone)
-            .lineStyle(StrokeStyle(lineWidth: 3))
+            .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
             
             // Visible point mark
             PointMark(
                 x: .value("Date", point.date),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
+            .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
             .foregroundStyle(by: .value("Series", point.series))
         }
     }
@@ -215,8 +262,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     Text(dashboardStore.formatYAxisTickLabel(doubleValue))
                         .font(.body)
                         .fontWeight(.medium)
+                        .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .padding(.horizontal, .spacingXS)
+                        .frame(width: yAxisLabelWidth, alignment: .trailing)
                 }
             }
         }
@@ -232,11 +280,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
             let finalXPosition = chartPosition.x + baseOffset
             
-            Text(viewModel.weightLabel)
+            Text((viewModel.formatSelectedXAxisLabel() ?? "").lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(
-                    x: max(50, min(viewModel.chartFrame.width - (isScrollable ? 100 : 85), finalXPosition)), // Prevent cropping
+                    x: max(40, min(viewModel.chartFrame.width - (isScrollable ? 100 : 85), finalXPosition)), // Prevent cropping
                     y: -15 // Position above chart boundary
                 )
         }
@@ -284,7 +332,8 @@ extension View {
         viewModel: ViewModel,
         localSelectedXValue: Binding<Date?>,
         touchInteractionMode: TouchInteractionMode,
-        dashboardStore: DashboardStore
+        dashboardStore: DashboardStore,
+        theme: AppColors.Palette
     ) -> some View {
         if isScrollable {
             self
@@ -300,15 +349,34 @@ extension View {
                     }
                 ))
                 .chartXAxis {
-                    AxisMarks(values: viewModel.xAxisValues) { value in
-                        AxisGridLine()
-                        AxisTick()
+                    let allTicks = viewModel.xAxisValues
+                    let nonLastTicks = Array(allTicks.dropLast())
+                    // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
+                    let adjustedLabelTicks: [Date] = allTicks
+                    
+                    // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
+                    AxisMarks(values: nonLastTicks) { value in
+                        if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
+                            // Solid line for start of week/month/year
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                        } else {
+                            // Default dotted line for other grid lines
+                            AxisGridLine()
+                            AxisTick()
+                        }
+                    }
+                    
+                    // Labels for all tick values
+                    AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = viewModel.formatXAxisLabel(for: date) {
                                 Text(labelString)
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(theme.textSubheading)
                             }
                         }
                     }
@@ -429,7 +497,7 @@ extension View {
                         viewModel.clearSelection()
                     }
                 }
-                // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
+            // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
                     DispatchQueue.main.async {
                         viewModel.syncYAxisFromStore()

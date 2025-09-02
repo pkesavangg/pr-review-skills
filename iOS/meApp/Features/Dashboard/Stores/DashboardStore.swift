@@ -419,12 +419,12 @@ class DashboardStore: ObservableObject {
     /// Returns the average weight for the current visible or all operations
     @MainActor
     func getCurrentAverageWeight() -> Double {
-        let visibleOps = visibleOperations
+        // Use strict on-screen visible operations (exclude any offscreen buffer)
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
         if visibleOps.isEmpty {
             return 0
         }
         let opsToUse = visibleOps
-        
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
@@ -1234,7 +1234,8 @@ class DashboardStore: ObservableObject {
     }
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        return String(format: "%.0f", weight)
+        let rounded = roundedGoalWeight(weight)
+        return String(format: "%.0f", rounded)
     }
     
     func formatChartDate(_ date: Date) -> String {
@@ -1246,6 +1247,10 @@ class DashboardStore: ObservableObject {
             formatter.dateFormat = "MMM yyyy"
         }
         return formatter.string(from: date)
+    }
+    
+    func roundedGoalWeight(_ weight: Double) -> Double {
+        return weight.rounded(.toNearestOrAwayFromZero) // or your preferred rule
     }
     
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
