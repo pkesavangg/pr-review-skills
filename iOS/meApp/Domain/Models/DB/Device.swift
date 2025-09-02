@@ -143,6 +143,14 @@ final class Device {
         if let metaDataDto = dto.metaData {
             metaData = DeviceMetaData(from: metaDataDto)
         }
+        // Propagate root-level latestVersion into meta data
+        if let latest = dto.latestVersion {
+            if let existingMeta = metaData {
+                existingMeta.latestVersion = latest
+            } else {
+                metaData = DeviceMetaData(latestVersion: latest)
+            }
+        }
 
         var bathScale: BathScale? = nil
         let resolvedScaleType = scaleType ?? dto.type

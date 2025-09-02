@@ -700,6 +700,23 @@ struct LegalStrings {
     static let andText = "&"
 }
 
+struct FirmwareUpdateStrings {
+    static let title = "Software Update"
+    static let version = "Version"
+    static let alreadyUpdated = "You are already on the latest version."
+    static let now = "Now"
+    static let schedule = "Schedule"
+    static let message = "A new firmware version"
+    static let message1 = "is available. You can either upgrade now or schedule to upgrade at a later time."
+    static let nowDetails = "A new version is available with performance and stability improvement."
+    static let message2 = "We will start the update immediately. Keep the scale powered."
+    static let upgrade = "Upgrade"
+    static let upgradeNow = "Upgrade Now"
+    static let updatingFirmware = "Updating firmware..."
+    static let updateTriggered = "Firmware update requested"
+    static let date = "Date"
+}
+
 
 
 /// Constants for App Assets used in the app
