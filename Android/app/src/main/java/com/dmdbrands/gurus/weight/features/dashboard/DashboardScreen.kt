@@ -43,6 +43,7 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 @Composable
 fun DashboardScreen() {
@@ -70,7 +71,8 @@ fun DashboardScreen() {
         message = "Are you sure you want to exit the dashboard?",
         onConfirm = {
           scope.launch {
-            activity?.finish()
+            activity?.finishAffinity()
+            exitProcess(0) // import kotlin.system.exitProcess
           }
         },
       ),

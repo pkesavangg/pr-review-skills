@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -23,7 +24,7 @@ import kotlin.math.roundToInt
 import android.graphics.Typeface
 
 @Composable
-fun rememberHorizontalLine(goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null): Decoration? {
+fun rememberHorizontalLine(goal: Goal? = null): Decoration? {
   if (goal == null || goal.goalWeight == 0.0) return null
   val fill = fill(Color(0xFF458239))
   val line = rememberLineComponent(fill = fill(Color(0xFF458239)), thickness = 2.dp)

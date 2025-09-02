@@ -14,11 +14,12 @@ sealed interface GraphIntent : IReducer.Intent {
   data class InitializeGraph(
     val graphLines: List<GraphLine>,
     val secondaryGraphLines: GraphLine? = null,
-    val segment: GraphSegment = GraphSegment.WEEK,
     val goal: Goal? = null
   ) : GraphIntent
 
   /** Update the graph segment */
+  data class HandleSegment(val segment: GraphSegment) : GraphIntent
+
   data class UpdateSegment(val segment: GraphSegment) : GraphIntent
 
   /** Update target range for the graph */

@@ -25,6 +25,7 @@ import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
+import android.util.Log
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
@@ -44,13 +45,13 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   override fun provideInitialState(): GraphState = GraphState()
 
   override fun handleIntent(intent: GraphIntent) {
+    super.handleIntent(intent)
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
-      is GraphIntent.UpdateSegment -> handleSegmentUpdate(intent.segment)
+      is GraphIntent.HandleSegment -> handleSegmentUpdate(intent.segment)
       is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate(intent.markerIndex)
       else -> null
     }
-    super.handleIntent(intent)
   }
 
   /**
@@ -61,7 +62,6 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
 
     val graphLines = intent.graphLines
     val secondaryGraphLines = intent.secondaryGraphLines
-    val segment = intent.segment
     val goal = intent.goal
 
     // Calculate derived values
@@ -75,9 +75,6 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
 
     // Setup chart model producer
     setupChartModelProducer(secondaryGraphLines, goal)
-
-    // Handle segment update
-    handleSegmentUpdate(segment)
 
     // Setup continuous debounced scroll handling
     setupDebouncedScrollHandling()
@@ -137,27 +134,27 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
    * Handles segment updates and recalculates related values.
    */
   private fun handleSegmentUpdate(segment: GraphSegment) {
-    viewModelScope.launch {
+    val currentState = _state.value
+    Log.d("handleSegmentUpdate", segment.toString() + "  " + currentState.segment.toString())
+    if (segment != currentState.segment || !hasInitialized) {
+      super.handleIntent(GraphIntent.UpdateSegment(segment))
+      viewModelScope.launch {
+        super.handleIntent(GraphIntent.UpdateIsUpdating(true))
 
-      val currentState = state.value
-
-      super.handleIntent(GraphIntent.UpdateIsUpdating(true))
-
-      val target = currentState.savedTarget ?: currentState.maxTarget
-      val nearest = target?.let {
-        currentState.xLabels.map { it.value.toLong() }
-          .minByOrNull { abs(it - target) }
-      }
-      if (segment != currentState.segment || !hasInitialized) {
+        val target = currentState.savedTarget ?: currentState.maxTarget
+        val nearest = target?.let {
+          currentState.xLabels.map { it.value.toLong() }
+            .minByOrNull { abs(it - target) }
+        }
         onScrollValueUpdate(nearest?.toDouble())
       }
       if (!hasInitialized) {
         hasInitialized = true
       }
-
-      super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-      super.handleIntent(GraphIntent.UpdateIsUpdating(false))
     }
+
+    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    super.handleIntent(GraphIntent.UpdateIsUpdating(false))
   }
 
   /**

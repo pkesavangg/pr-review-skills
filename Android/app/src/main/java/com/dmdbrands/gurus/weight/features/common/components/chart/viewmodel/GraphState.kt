@@ -46,7 +46,7 @@ import java.util.Calendar
 data class GraphState(
   val graphLines: List<GraphLine> = emptyList(),
   val secondaryGraphLines: GraphLine? = null,
-  val segment: GraphSegment = GraphSegment.WEEK,
+  val segment: GraphSegment = GraphSegment.TOTAL,
   val goal: Goal? = null,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,

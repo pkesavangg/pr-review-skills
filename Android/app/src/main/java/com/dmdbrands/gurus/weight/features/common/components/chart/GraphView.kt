@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -30,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
+import kotlin.math.roundToInt
 import android.util.Log
 
 /**
@@ -65,26 +65,26 @@ fun GraphView(
 
   // Animated values for smooth transitions
   val animatedMinTarget by animateIntAsState(
-    targetValue = state.minYTarget.toInt(),
-    animationSpec = tween(300),
+    targetValue = state.minYTarget.roundToInt(),
+    animationSpec = tween(500),
     label = "minTarget",
   )
 
   val animatedSecondaryMinTarget by animateIntAsState(
-    targetValue = state.secondaryMinYTarget.toInt(),
-    animationSpec = tween(300),
+    targetValue = state.secondaryMinYTarget.roundToInt(),
+    animationSpec = tween(500),
     label = "secondaryMinTarget",
   )
 
   val animatedMaxTarget by animateIntAsState(
-    targetValue = state.maxYTarget.toInt(),
-    animationSpec = tween(300),
+    targetValue = state.maxYTarget.roundToInt(),
+    animationSpec = tween(500),
     label = "maxTarget",
   )
 
   val animatedSecondaryMaxTarget by animateIntAsState(
-    targetValue = state.secondaryMaxYTarget.toInt(),
-    animationSpec = tween(300),
+    targetValue = state.secondaryMaxYTarget.roundToInt(),
+    animationSpec = tween(500),
     label = "secondaryMaxTarget",
   )
 
@@ -97,8 +97,6 @@ fun GraphView(
   // Store callbacks in ViewModel
   DisposableEffect(Unit) {
     viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate) { target ->
-      Log.i("CHECKING", target.toString())
-
       // Store the target for processing in LaunchedEffect
       viewModel.handleIntent(GraphIntent.SetScrollTarget(target))
     }
@@ -110,10 +108,8 @@ fun GraphView(
   // Handle scroll target changes with frame synchronization
   LaunchedEffect(state.scrollTarget) {
     val target = state.scrollTarget
-    withFrameNanos { }
-    withFrameNanos { }
-    withFrameNanos { }
-
+    Log.i("CHECKING", target.toString())
+    repeat(3) { withFrameNanos { } }
     if (target != null) {
       scrollState.scroll(Scroll.Absolute.x(target, 0.5f))
     }
@@ -125,7 +121,6 @@ fun GraphView(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
         secondaryGraphLines = secondaryGraphLines,
-        segment = segment,
         goal = goal,
       ),
     )
@@ -133,7 +128,7 @@ fun GraphView(
 
   // Handle segment changes
   LaunchedEffect(segment) {
-    viewModel.handleIntent(GraphIntent.UpdateSegment(segment))
+    viewModel.handleIntent(GraphIntent.HandleSegment(segment))
     if (segment == GraphSegment.TOTAL) {
       viewModel.handleIntent(GraphIntent.UpdateSeparators(emptyList()))
     } else {

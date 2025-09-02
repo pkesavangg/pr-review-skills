@@ -10,7 +10,6 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
     is GraphIntent.InitializeGraph -> state.copy(
       graphLines = intent.graphLines,
       secondaryGraphLines = intent.secondaryGraphLines,
-      segment = intent.segment,
       goal = intent.goal,
     )
 
@@ -55,5 +54,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
     )
 
     is GraphIntent.SetScrollTarget -> state.copy(scrollTarget = intent.target)
+
+    else -> state
   }
 }
