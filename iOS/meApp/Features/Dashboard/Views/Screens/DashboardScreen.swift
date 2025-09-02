@@ -171,6 +171,7 @@ struct DashboardScreen: View {
             if store.shouldShowGoalCardOrStreaks {
                 GoalStreakGridUIKitView(store: store)
                     .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
+                    .padding(.top, store.state.ui.isGoalCardRemoved ? 0 : .spacingXS)
                     .id(store.state.ui.gridLayoutId)
                     .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
             }
