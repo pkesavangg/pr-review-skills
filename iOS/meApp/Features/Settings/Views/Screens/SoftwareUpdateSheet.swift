@@ -39,7 +39,7 @@ struct SoftwareUpdateSheet: View {
                     if viewModel.hasUpdate {
                         // Update available flow
                         VStack(alignment: .leading, spacing: .spacingLG) {
-                            Text("\(FirmwareUpdateStrings.message) \(viewModel.latestVersion ?? "") \(FirmwareUpdateStrings.message1)")
+                            Text("\(FirmwareUpdateStrings.message) \(viewModel.currentFirmware ?? "") \(FirmwareUpdateStrings.message1)")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textBody)
                             

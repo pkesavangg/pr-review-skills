@@ -706,12 +706,9 @@ struct FirmwareUpdateStrings {
     static let alreadyUpdated = "You are already on the latest version."
     static let now = "Now"
     static let schedule = "Schedule"
-    // Matches Ionic modal: "A new firmware version <x> is available. You can either upgrade now or schedule to upgrade at a later time."
     static let message = "A new firmware version"
     static let message1 = "is available. You can either upgrade now or schedule to upgrade at a later time."
-    // Additional message shown under Now segment (from Ionic):
     static let nowDetails = "A new version is available with performance and stability improvement."
-    // Legacy message kept for compatibility where used elsewhere
     static let message2 = "We will start the update immediately. Keep the scale powered."
     static let upgrade = "Upgrade"
     static let upgradeNow = "Upgrade Now"

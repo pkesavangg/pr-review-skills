@@ -460,7 +460,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func createScaleInLocal(_ device: Device) async throws -> Device {
-        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server", data: device.metaData)
+        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server", data: device)
         return try await localRepository.createScale(device)
     }
     
