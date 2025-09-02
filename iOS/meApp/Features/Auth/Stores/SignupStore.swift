@@ -190,9 +190,16 @@ final class SignupStore: ObservableObject {
     
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView(){
-                self.notificationService.dismissModal()
-            })
+            presentedView: AnyView(
+                HStack {
+                    Spacer()
+                    HelpModalView {
+                        self.notificationService.dismissModal()
+                    }
+                    .frame(maxWidth: UIScreen.main.bounds.width * 0.75)
+                    Spacer()
+                }
+            )
         ))
     }
     
