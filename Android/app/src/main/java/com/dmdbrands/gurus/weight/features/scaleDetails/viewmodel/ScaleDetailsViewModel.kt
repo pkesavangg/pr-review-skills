@@ -265,7 +265,7 @@ constructor(
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()
       } catch (e: Exception) {
-        AppLog.e("SaveScaleName", "Reset Password failed", e.toString())
+        AppLog.e("SaveScaleName", "Reset Password failed", e)
         showToast(ScaleNameDialogStrings.Toast.Error)
       } finally {
         dialogQueueService.dismissLoader()
@@ -287,7 +287,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e("requestPermission", "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e("requestPermission", "Error requesting permission ${permissionType}", e)
       }
     }
   }

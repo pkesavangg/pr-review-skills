@@ -34,7 +34,7 @@ class StorageClearService
           appDatabase.clearAllTables()
           clearAllDataStores()
         } catch (e: Exception) {
-          AppLog.e(tag, "Failed to clear local data", e.toString())
+          AppLog.e(tag, "Failed to clear local data", e)
           throw e
         }
       }
@@ -49,13 +49,13 @@ class StorageClearService
           try {
             dataStore.clearData()
           } catch (e: Exception) {
-            AppLog.e(tag, "Failed to clear DataStore: ${dataStore::class.simpleName}", e.toString())
+            AppLog.e(tag, "Failed to clear DataStore: ${dataStore::class.simpleName}", e)
             // Continue with other DataStores even if one fails
           }
         }
         AppLog.i(tag, "All DataStores cleared successfully")
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to clear DataStores", e.toString())
+        AppLog.e(tag, "Failed to clear DataStores", e)
         throw e
       }
     }

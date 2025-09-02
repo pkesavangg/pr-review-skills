@@ -179,14 +179,14 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
                 type = SettingsItemType.None,
                 color = SettingColorType.Danger,
                 onClick = {
-                    AppLog.i("DebugMenuScreen", "Clear data clicked")
+                    AppLog.i(TAG, "Clear data clicked")
                     handleIntent(
                         DebugMenuIntent.ClearAllData {
-                            AppLog.i("DebugMenuScreen", "Activity finish callback triggered!")
+                            AppLog.i(TAG, "Activity finish callback triggered!")
                             try {
                                 activity?.finish()
                             } catch (e: Exception) {
-                                AppLog.e("DebugMenuScreen", "Error finishing activity", e.toString())
+                                AppLog.e(TAG, "Error finishing activity", e)
                             }
                         },
                     )
@@ -243,3 +243,5 @@ private fun DebugMenuScreenPreview() {
         )
     }
 }
+
+private const val TAG = "DebugMenuScreen"

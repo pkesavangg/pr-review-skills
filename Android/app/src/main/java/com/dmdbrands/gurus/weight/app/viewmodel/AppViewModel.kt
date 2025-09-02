@@ -106,15 +106,15 @@ constructor(
         logManager.cleanupOldLogs(5)
         AppLog.i("MainActivity", "Cleaning up old logs")
       } catch (e: Exception) {
-        AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
+        AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
       // Load all tokens into TokenManager's in-memory map
       try {
         tokenManager.loadAllTokens()
-        AppLog.d(TAG, "Loaded all tokens into TokenManager")
+        AppLog.v(TAG, "Loaded all tokens into TokenManager")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to load tokens into TokenManager", e.toString())
+        AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
       initialize()
     }
@@ -298,7 +298,7 @@ constructor(
       AppLog.d(TAG, "Checked login status for all accounts")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking login status", e.toString())
+      AppLog.e(TAG, "Error checking login status", e)
       false
     }
 
@@ -343,7 +343,7 @@ constructor(
       }
     } catch (e: Exception) {
       routeToLandingOrApp()
-      AppLog.e(TAG, "Load data failed", e.toString())
+      AppLog.e(TAG, "Load data failed", e)
     }
   }
 
@@ -567,7 +567,7 @@ constructor(
           ),
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e.toString())
+        AppLog.e(TAG, "Error during saving entry", e)
       }
     }
   }
@@ -613,7 +613,7 @@ constructor(
         healthConnectService.checkHealthConnectPermissionDisabled()
         AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to check Health Connect permission", e.toString())
+        AppLog.e(TAG, "Failed to check Health Connect permission", e)
       }
     }
   }

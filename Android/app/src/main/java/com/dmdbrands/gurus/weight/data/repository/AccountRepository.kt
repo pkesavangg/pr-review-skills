@@ -326,7 +326,7 @@ constructor(
     refreshToken: String,
     accountId: String?,
   ): Token {
-    AppLog.d(TAG, "Refreshing token for account: $accountId")
+    AppLog.v(TAG, "Refreshing token for account: $accountId")
     val response = authAPI.refreshToken(RefreshTokenRequest(refreshToken))
     return Token(
       accountId = accountId ?: "", // Preserve the account ID
@@ -416,7 +416,7 @@ constructor(
         authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
         apiLogoutAttempted = true
       } catch (e: Exception) {
-        AppLog.e(TAG, "API logout failed", e.toString())
+        AppLog.e(TAG, "API logout failed", e)
         // Continue with local logout even if API fails
       }
       // Always perform local logout regardless of network status
@@ -431,7 +431,7 @@ constructor(
       AppLog.d(TAG, "Logout successful (API attempted: $apiLogoutAttempted)")
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "LogoutAccount failed", e.toString())
+      AppLog.e(TAG, "LogoutAccount failed", e)
       false
     }
 
@@ -451,7 +451,7 @@ constructor(
           // Try to logout on API
           authAPI.logoutWithToken(LogoutRequest(account.fcmToken ?: ""), account.id)
         } catch (e: Exception) {
-          AppLog.e(TAG, "API logout failed for account ${account.id}", e.toString())
+          AppLog.e(TAG, "API logout failed for account ${account.id}", e)
           // Continue with local logout even if API fails
         }
       }
@@ -462,7 +462,7 @@ constructor(
       AppLog.d(TAG, "All accounts logged out successfully")
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Logout all failed", e.toString())
+      AppLog.e(TAG, "Logout all failed", e)
       false
     }
 
@@ -696,7 +696,7 @@ constructor(
       accountDao.insertIntegrationsSettings(integrationsSettings)
       AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e.toString())
+      AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)
       throw e
     }
   }

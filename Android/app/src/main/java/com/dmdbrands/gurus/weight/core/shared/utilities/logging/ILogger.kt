@@ -33,5 +33,17 @@ interface ILogger {
         throwable: Throwable,
     )
 
+    fun v(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
+    fun a(
+        tag: String,
+        message: String,
+        data: String? = null,
+    )
+
     fun reset()
 }

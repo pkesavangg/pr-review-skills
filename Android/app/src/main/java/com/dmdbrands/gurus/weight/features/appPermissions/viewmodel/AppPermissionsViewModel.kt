@@ -61,7 +61,7 @@ class AppPermissionsViewModel @Inject constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e("AppPermissionsViewModel", "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e("AppPermissionsViewModel", "Error requesting permission ${permissionType}", e)
       }
     }
   }

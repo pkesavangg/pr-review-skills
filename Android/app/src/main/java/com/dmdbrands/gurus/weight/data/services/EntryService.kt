@@ -182,7 +182,7 @@ constructor(
       val months = entryRepository.getMonthlyAverage(accountId).first()
       _monthYear.value = months
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error updating month year", e.toString())
+      AppLog.e("EntryService", "Error updating month year", e)
     }
   }
 
@@ -208,7 +208,7 @@ constructor(
         _latestEntry.value = latest
       }
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error updating account flows", e.toString())
+      AppLog.e("EntryService", "Error updating account flows", e)
     }
     this.syncOperations()
     repositoryScope.launch {
@@ -358,7 +358,7 @@ constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error saving new entries", e.toString())
+      AppLog.e("EntryService", "Error saving new entries", e)
     }
   }
 
@@ -378,7 +378,7 @@ constructor(
         )
       syncOperations(emptyList(), listOf(deleteEntry))
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error deleting entry", e.toString())
+      AppLog.e("EntryService", "Error deleting entry", e)
     }
   }
 
@@ -446,7 +446,7 @@ constructor(
                 ),
             )
           failedOperations.add(failedOperation)
-          AppLog.e("EntryService", "Error sending operation to API", e.toString())
+          AppLog.e("EntryService", "Error sending operation to API", e)
         }
       }
 
@@ -491,7 +491,7 @@ constructor(
         operationsFromApi.addAll(scaleEntries)
         accountRepository.updateSyncTimeStamp(response.timestamp)
       } catch (e: Exception) {
-        AppLog.e("EntryService", "Error getting operations from API", e.toString())
+        AppLog.e("EntryService", "Error getting operations from API", e)
         // If API fails, store successful operations as placeholders
         // This means these operations will be marked as synced but might need to be
         // re-synced later when API is available
@@ -514,7 +514,7 @@ constructor(
       // 7. Update last updated timestamp
       _lastUpdated.value = System.currentTimeMillis()
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error in syncOperations", e.toString())
+      AppLog.e("EntryService", "Error in syncOperations", e)
     } finally {
       _isUpdating.value = false
     }
@@ -526,7 +526,7 @@ constructor(
         _latestEntry.value = latest
       }
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error updating latest entry", e.toString())
+      AppLog.e("EntryService", "Error updating latest entry", e)
     }
   }
 
@@ -619,7 +619,7 @@ constructor(
             }
           }
         } catch (e: Exception) {
-          AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e.toString())
+          AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
           // Fallback: use initYear for year calculation if parsing fails
           if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
             year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
@@ -648,7 +648,7 @@ constructor(
         initYear = initYear,
       )
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error calculating progress", e.toString())
+      AppLog.e("EntryService", "Error calculating progress", e)
       return Progress()
     }
   }
@@ -759,7 +759,7 @@ constructor(
 
       return score
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error calculating current streak", e.toString())
+      AppLog.e("EntryService", "Error calculating current streak", e)
       return 0
     }
   }
@@ -815,7 +815,7 @@ internal object EntryServiceHelper {
       val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
       entryRepository.insert(sortedOperations)
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error executing operations", e.toString())
+      AppLog.e("EntryService", "Error executing operations", e)
     }
   }
 
@@ -867,7 +867,7 @@ internal object EntryServiceHelper {
         entryRepository.delete(operation)
       }
     } catch (e: Exception) {
-      AppLog.e("EntryService", "Error executing operations", e.toString())
+      AppLog.e("EntryService", "Error executing operations", e)
       throw e
     }
   }

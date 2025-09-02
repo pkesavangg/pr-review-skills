@@ -122,8 +122,8 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      showErrorToast(message = msg)
-      AppLog.e(TAG, "Login failed", e.toString())
+      showErrorToast(header, msg)
+      AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
     }
@@ -163,7 +163,7 @@ constructor(
           }
         showErrorToast(errorHeader, message = errorMessage)
       }
-      AppLog.e(TAG, "Account creation failed", e.toString())
+      AppLog.e(TAG, "Account creation failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Account creation failed"))
       null
     }
@@ -196,7 +196,7 @@ constructor(
         )
       }
     } catch (e: HttpException) {
-      AppLog.e(TAG, "Failed to reset password", e.toString())
+      AppLog.e(TAG, "Failed to reset password", e)
       showErrorToast(
         ToastStrings.Error.ResetPasswordError.Header,
         ToastStrings.Error.ResetPasswordError.Message,
@@ -228,7 +228,7 @@ constructor(
       )
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Password change failed", e.toString())
+      AppLog.e(TAG, "Password change failed", e)
       if (e is HttpException) {
         val msg =
           when (e.code()) {
@@ -279,7 +279,7 @@ constructor(
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           showErrorToast(header, msg)
-          AppLog.e(TAG, "Profile update failed", e.toString())
+          AppLog.e(TAG, "Profile update failed", e)
           throw e
         }
       }
@@ -325,7 +325,7 @@ constructor(
       AppLog.d(TAG, "Active account login status check successful")
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Active account login status check failed", e.toString())
+      AppLog.e(TAG, "Active account login status check failed", e)
       false
     }
   }
@@ -378,7 +378,7 @@ constructor(
           accountRepository.updateAccountInfo(account.id, accountInfo)
           AppLog.d(TAG, "Account ${account.id} login status check successful")
         } catch (e: Exception) {
-          AppLog.e(TAG, "Account ${account.id} login status check failed", e.toString())
+          AppLog.e(TAG, "Account ${account.id} login status check failed", e)
           // Mark account as expired in database
           accountRepository.markAccountExpired(account.id)
           // Clear tokens for this account
@@ -390,7 +390,7 @@ constructor(
       _checkIntegrations.value = true
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Logged-in accounts status check failed", e.toString())
+      AppLog.e(TAG, "Logged-in accounts status check failed", e)
       false
     }
   }
@@ -402,27 +402,27 @@ constructor(
    * @return The affected account or null if not found
    */
   override suspend fun handleUnauthorizedLogout(accountId: String?): Account? {
-    AppLog.d(TAG, "handleUnauthorizedLogout() called for accountId: $accountId")
+    AppLog.v(TAG, "handleUnauthorizedLogout() called for accountId: $accountId")
     if (accountId.isNullOrEmpty()) {
       AppLog.w(TAG, "No account ID available for unauthorized logout")
       return null
     }
 
     return try {
-      AppLog.d(TAG, "Handling unauthorized logout for account: $accountId")
+      AppLog.v(TAG, "Handling unauthorized logout for account: $accountId")
       val account = getCurrentAccount()
       return if (account?.isActiveAccount == true && accountId == account.id) {
         // Mark account as expired in database
         accountRepository.markAccountExpired(accountId)
         // Clear account tokens from DataStore
         accountRepository.clearAccountTokens(accountId)
-        AppLog.d(TAG, "Unauthorized logout completed for account: $accountId")
+        AppLog.v(TAG, "Unauthorized logout completed for account: $accountId")
         account
       } else {
         null
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during unauthorized logout for account: $accountId", e.toString())
+      AppLog.e(TAG, "Error during unauthorized logout for account: $accountId", e)
       null
     }
   }
@@ -438,14 +438,14 @@ constructor(
     fcmToken: String?,
   ): Boolean =
     try {
-      AppLog.d(TAG, "logout() called for accountId: $accountId")
+      AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
       AppLog.d(TAG, "Logout successful")
       appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
       result
     } catch (e: Exception) {
-      AppLog.e(TAG, "Logout failed", e.toString())
+      AppLog.e(TAG, "Logout failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout failed"))
       false
     }
@@ -462,7 +462,7 @@ constructor(
       appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
       result
     } catch (e: Exception) {
-      AppLog.e(TAG, "Logout all failed", e.toString())
+      AppLog.e(TAG, "Logout all failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Logout all failed"))
       false
     }
@@ -474,14 +474,14 @@ constructor(
     accountID: String,
     isActiveAccount: Boolean,
   ) {
-    AppLog.d(TAG, "deleteAccount() called for accountId: $accountID, isActiveAccount: $isActiveAccount")
+    AppLog.v(TAG, "deleteAccount() called for accountId: $accountID, isActiveAccount: $isActiveAccount")
     AppLog.d(TAG, "Checking network availability for deleteAccount()")
     requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
     try {
       accountRepository.deleteAccount(accountID, isActiveAccount)
       AppLog.d(TAG, "Account deleted successfully")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Account deletion failed", e.toString())
+      AppLog.e(TAG, "Account deletion failed", e)
       throw e
     }
   }
@@ -497,7 +497,7 @@ constructor(
     showToast: Boolean,
   ): Boolean =
     try {
-      AppLog.d(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
+      AppLog.v(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
       requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
@@ -505,7 +505,7 @@ constructor(
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to switch account", e.toString())
+      AppLog.e(TAG, "Failed to switch account", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
       false
     }
@@ -523,7 +523,7 @@ constructor(
       appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
       true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Token update failed", e.toString())
+              AppLog.e(TAG, "Token update failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
       false
     }
@@ -538,7 +538,7 @@ constructor(
       accountRepository.setCurrentThemeMode(themeMode)
       AppLog.d(TAG, "Successfully set theme mode to: $themeMode")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to set theme mode", e.toString())
+      AppLog.e(TAG, "Failed to set theme mode", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to set theme mode"))
     }
   }
@@ -549,7 +549,7 @@ constructor(
       storageClearService.clearAllStorage()
       AppLog.d(TAG, "reset() completed. All storage cleared.")
     } catch (e: Exception) {
-      AppLog.e(TAG, "reset() failed during storage clear", e.toString())
+      AppLog.e(TAG, "reset() failed during storage clear", e)
       dialogQueueService.showToast(
         Toast(
           title = null,

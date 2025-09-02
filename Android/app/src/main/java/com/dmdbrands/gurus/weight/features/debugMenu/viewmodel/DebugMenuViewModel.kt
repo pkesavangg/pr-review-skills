@@ -70,7 +70,7 @@ class DebugMenuViewModel @Inject constructor(
             try {
                 navigationService.navigateBack()
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to navigate back from debug menu", e.toString())
+                AppLog.e(tag, "Failed to navigate back from debug menu", e)
             }
         }
     }
@@ -102,7 +102,7 @@ class DebugMenuViewModel @Inject constructor(
                     showErrorAlert()
                 }
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to send app logs", e.toString())
+                AppLog.e(tag, "Failed to send app logs", e)
                 showErrorAlert()
             } finally {
                 dialogQueueService.dismissLoader()
@@ -135,7 +135,7 @@ class DebugMenuViewModel @Inject constructor(
 
                 AppLog.i(tag, "Entries resynced successfully")
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to resync entries", e.toString())
+                AppLog.e(tag, "Failed to resync entries", e)
                 showErrorAlert()
             } finally {
                 dialogQueueService.dismissLoader()
@@ -161,7 +161,7 @@ class DebugMenuViewModel @Inject constructor(
                 }
                 showRestartAlert(onDismiss)
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to clear all data", e.toString())
+                AppLog.e(tag, "Failed to clear all data", e)
                 showErrorAlert()
             }
             finally {
@@ -195,7 +195,7 @@ class DebugMenuViewModel @Inject constructor(
 
                 AppLog.i(tag, "Scale logs sent successfully")
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to send scale logs", e.toString())
+                AppLog.e(tag, "Failed to send scale logs", e)
                 showErrorAlert()
             } finally {
                 dialogQueueService.dismissLoader()
@@ -236,7 +236,7 @@ class DebugMenuViewModel @Inject constructor(
                             onDismiss.invoke()
                             AppLog.i(tag, "App exit callback executed successfully")
                         } catch (e: Exception) {
-                            AppLog.e(tag, "Error executing app exit callback", e.toString())
+                            AppLog.e(tag, "Error executing app exit callback", e)
                         }
                     }
                 },

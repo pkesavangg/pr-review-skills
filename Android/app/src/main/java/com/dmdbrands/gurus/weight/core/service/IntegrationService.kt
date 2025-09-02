@@ -70,7 +70,7 @@ class IntegrationService @Inject constructor(
               showReintegrateAlert(inactiveProviders)
             }
           } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to process checkIntegrations signal", e.toString())
+            AppLog.e(TAG, "Failed to process checkIntegrations signal", e)
           }
         }
       }
@@ -128,7 +128,7 @@ class IntegrationService @Inject constructor(
       emit(integrations)
       AppLog.d(TAG, "Successfully loaded ${integrations.size} integrations")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to get integrations with status", e.toString())
+      AppLog.e(TAG, "Failed to get integrations with status", e)
     }
   }
 
@@ -156,7 +156,7 @@ class IntegrationService @Inject constructor(
         null
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to connect to integration: $provider", e.toString())
+      AppLog.e(TAG, "Failed to connect to integration: $provider", e)
       throw e
     }
   }
@@ -186,7 +186,7 @@ class IntegrationService @Inject constructor(
       integrationRepository.updateLocalAccount()
     } catch (e: Exception) {
       dialogQueueService.dismissLoader()
-      AppLog.e(TAG, "Failed to disconnect from integration: $provider", e.toString())
+      AppLog.e(TAG, "Failed to disconnect from integration: $provider", e)
       throw e
     }
   }
@@ -204,7 +204,7 @@ class IntegrationService @Inject constructor(
       integrationRepository.removeIntegration(apiProvider, suggestion)
       AppLog.d(TAG, "Successfully removed integration from API: $provider")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to remove integration from API: $provider", e.toString())
+      AppLog.e(TAG, "Failed to remove integration from API: $provider", e)
       throw e
     }
   }
@@ -252,7 +252,7 @@ class IntegrationService @Inject constructor(
       AppLog.d(TAG, "Integration status for $provider: connected=${status.first}, valid=${status.second}")
       status
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to get integration status for: $provider", e.toString())
+      AppLog.e(TAG, "Failed to get integration status for: $provider", e)
       false to false
     }
   }
@@ -293,7 +293,7 @@ class IntegrationService @Inject constructor(
       AppLog.d(TAG, "Found ${inactiveIntegrations.size} inactive integrations: $inactiveIntegrations")
       inactiveIntegrations
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to check for inactive integrations", e.toString())
+      AppLog.e(TAG, "Failed to check for inactive integrations", e)
       emptyList()
     }
   }
@@ -362,14 +362,14 @@ class IntegrationService @Inject constructor(
                   removeIntegrationOnApi(provider)
                   AppLog.d(TAG, "Successfully disabled integration: $provider")
                 } catch (e: Exception) {
-                  AppLog.e(TAG, "Failed to disable integration: $provider", e.toString())
+                  AppLog.e(TAG, "Failed to disable integration: $provider", e)
                 }
               }
               // Refresh account data after all integrations are removed
               accountService.refreshAccount()
               AppLog.d(TAG, "Successfully disabled all inactive integrations")
             } catch (e: Exception) {
-              AppLog.e(TAG, "Failed to disable inactive integrations", e.toString())
+              AppLog.e(TAG, "Failed to disable inactive integrations", e)
             }
             dialogQueueService.dismissCurrent()
           }

@@ -289,7 +289,7 @@ object ConversionTools {
         .joinToString("")
         .uppercase()
     } catch (e: Exception) {
-      AppLog.e("ConversionTools", "Error converting int to hex", e.toString())
+      AppLog.e("ConversionTools", "Error converting int to hex", e)
       ""
     }
   }

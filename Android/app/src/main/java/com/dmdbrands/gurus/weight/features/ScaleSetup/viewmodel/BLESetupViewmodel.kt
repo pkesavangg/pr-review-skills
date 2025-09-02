@@ -38,8 +38,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Singleton
 
-private val TAG = "ScaleSetupViewModel"
-
 @Singleton
 class BLESetupDependencies @Inject constructor(
   val ggDeviceService: GGDeviceService,
@@ -70,12 +68,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   protected fun lazyInit() {
     if (!isInitialized) {
+      AppLog.d(TAG, "Initializing BLESetupViewmodel for SKU: $sku, protocol: $protocolType")
       isInitialized = true
       onInit()
     }
   }
 
   private fun onInit() {
+    AppLog.d(TAG, "Starting BLESetupViewmodel initialization")
     loadScaleInfo()
     observeStepChanges()
     observePermissions()
@@ -106,19 +106,36 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   )
 
   override fun handleIntent(intent: ScaleSetupIntent) {
+    AppLog.d(TAG, "Handling BLE setup intent: ${intent::class.simpleName}")
     super.handleIntent(intent)
     when (intent) {
-      ScaleSetupIntent.Next -> onNext()
-      ScaleSetupIntent.Back -> onBack()
-      ScaleSetupIntent.Skip -> onSkip()
-      ScaleSetupIntent.TryAgain -> onTryAgain()
-      is ScaleSetupIntent.ExitSetup ->
-        onExitSetup(
-          intent.isSetupFinished,
-        )
+      ScaleSetupIntent.Next -> {
+        AppLog.d(TAG, "Next intent received")
+        onNext()
+      }
+      ScaleSetupIntent.Back -> {
+        AppLog.d(TAG, "Back intent received")
+        onBack()
+      }
+      ScaleSetupIntent.Skip -> {
+        AppLog.d(TAG, "Skip intent received")
+        onSkip()
+      }
+      ScaleSetupIntent.TryAgain -> {
+        AppLog.d(TAG, "Try again intent received")
+        onTryAgain()
+      }
+      is ScaleSetupIntent.ExitSetup -> {
+        AppLog.d(TAG, "Exit setup intent received, isSetupFinished: ${intent.isSetupFinished}")
+        onExitSetup(intent.isSetupFinished)
+      }
 
-      ScaleSetupIntent.OpenHelp -> openHelpModal()
+      ScaleSetupIntent.OpenHelp -> {
+        AppLog.d(TAG, "Open help intent received")
+        openHelpModal()
+      }
       is ScaleSetupIntent.RequestPermission -> {
+        AppLog.d(TAG, "Request permission intent received: ${intent.permission}")
         this.requestPermission(intent.permission)
       }
 
@@ -132,41 +149,58 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    */
   protected open fun onScanResponse(response: GGScanResponse.DeviceDetail, onDeviceFound: (GGDeviceDetail) -> Unit) {
     val ggDeviceDetail = response.data
+    AppLog.d(TAG, "Received scan response: ${response.type}, protocol: ${ggDeviceDetail.protocolType}")
+    
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == protocolType) {
+          AppLog.d(TAG, "New device found with matching protocol: ${ggDeviceDetail.deviceName}")
           viewModelScope.launch {
-            if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress)) {
-              dialogQueueService.showDialog(
-                DialogModel.Alert(
-                  title = "Known Scale Discovered",
-                  message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
-                  onDismiss = {
-                    onExitSetup(true)
-                    dialogQueueService.dismissCurrent()
-                  },
-                ),
-              )
-            } else {
-              AppLog.d(TAG, "Wake up successful, proceeding to next step")
-              stopObservingDevices()
-              onDeviceFound(ggDeviceDetail)
+            try {
+              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress)) {
+                AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
+                dialogQueueService.showDialog(
+                  DialogModel.Alert(
+                    title = "Known Scale Discovered",
+                    message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
+                    onDismiss = {
+                      AppLog.d(TAG, "User dismissed known scale dialog")
+                      onExitSetup(true)
+                      dialogQueueService.dismissCurrent()
+                    },
+                  ),
+                )
+              } else {
+                AppLog.d(TAG, "New scale discovered, proceeding to next step")
+                stopObservingDevices()
+                onDeviceFound(ggDeviceDetail)
+              }
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Error checking scale existence", e)
             }
           }
+        } else {
+          AppLog.d(TAG, "Device protocol mismatch - expected: $protocolType, found: ${ggDeviceDetail.protocolType}")
         }
       }
 
-      else -> null
+      else -> {
+        AppLog.d(TAG, "Ignoring scan response type: ${response.type}")
+      }
     }
   }
 
   protected open fun onEntryResponse(response: GGScanResponse.Entry, onEntryFound: (List<GGEntry>) -> Unit) {
+    AppLog.d(TAG, "Received entry response: ${response.type}")
     when (response.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
+        AppLog.d(TAG, "Processing entry data: ${response.data.size} entries")
         onEntryFound(response.data)
       }
 
-      else -> null
+      else -> {
+        AppLog.d(TAG, "Ignoring entry response type: ${response.type}")
+      }
     }
   }
 
@@ -176,6 +210,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Clears the bluetooth timeout job.
    */
   protected fun clearBluetoothTimeout() {
+    AppLog.d(TAG, "Clearing bluetooth timeout")
     bluetoothTimeoutJob?.cancel()
     bluetoothTimeoutJob = null
   }
@@ -184,49 +219,73 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
    */
   protected fun startObservingDevices(onDeviceFound: (GGDeviceDetail) -> Unit = {}) {
+    AppLog.d(TAG, "Starting device observation")
     deviceObservationJob?.cancel()
     deviceObservationJob = viewModelScope.launch {
-      ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
-        .collect { scanResponse ->
-          onScanResponse(scanResponse as GGScanResponse.DeviceDetail, onDeviceFound)
-        }
+      try {
+        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
+          .collect { scanResponse ->
+            AppLog.d(TAG, "Received device scan response: ${scanResponse::class.simpleName}")
+            onScanResponse(scanResponse as GGScanResponse.DeviceDetail, onDeviceFound)
+          }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing device scan responses", e)
+      }
     }
   }
 
   protected fun stopObservingDevices() {
+    AppLog.d(TAG, "Stopping device observation")
     deviceObservationJob?.cancel()
     deviceObservationJob = null
   }
 
   protected fun stopObservingEntries() {
+    AppLog.d(TAG, "Stopping entry observation")
     entryObservationJob?.cancel()
     entryObservationJob = null
   }
 
   protected fun startObservingEntries(onEntryFound: (List<GGEntry>) -> Unit = {}) {
+    AppLog.d(TAG, "Starting entry observation")
     if (entryObservationJob == null) {
       entryObservationJob = viewModelScope.launch {
-        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
-          .collect { scanResponse ->
-            onEntryResponse(scanResponse as GGScanResponse.Entry, onEntryFound)
-          }
+        try {
+          ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
+            .collect { scanResponse ->
+              AppLog.d(TAG, "Received entry scan response: ${scanResponse::class.simpleName}")
+              onEntryResponse(scanResponse as GGScanResponse.Entry, onEntryFound)
+            }
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error observing entry scan responses", e)
+        }
       }
     }
   }
 
   protected open fun handleButtonChanges(step: Step) {}
   private fun observeStepChanges() {
+    AppLog.d(TAG, "Starting step changes observation")
     viewModelScope.launch {
-      state.map { it.scaleSetupState.setupState.step }.collect { newStep ->
-        if (currentSetupState.step != newStep) {
-          currentSetupState = _state.value.scaleSetupState.setupState
-          onStepChange(newStep)
+      try {
+        state.map { it.scaleSetupState.setupState.step }.collect { newStep ->
+          if (currentSetupState.step != newStep) {
+            AppLog.d(TAG, "Step changed from ${currentSetupState.step} to $newStep")
+            currentSetupState = _state.value.scaleSetupState.setupState
+            onStepChange(newStep)
+          }
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing step changes", e)
       }
     }
     viewModelScope.launch {
-      state.collect {
-        handleButtonChanges(state.value.step)
+      try {
+        state.collect {
+          handleButtonChanges(state.value.step)
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error handling button changes", e)
       }
     }
   }
@@ -235,7 +294,9 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Requests a specific permission with rationale alert using the permission service.
    */
   private fun requestPermission(permissionType: String) {
+    AppLog.d(TAG, "Requesting permission: $permissionType")
     if (permissionType == GGPermissionType.WIFI_SWITCH) {
+      AppLog.d(TAG, "Directly requesting WiFi switch permission")
       permissionService.requestPermission(permissionType)
       return
     }
@@ -244,18 +305,25 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         dialogUtility.permissionAlert(
           permissionType = permissionType,
           onRequest = {
+            AppLog.d(TAG, "User confirmed permission request for: $permissionType")
             permissionService.requestPermission(permissionType)
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e(TAG, "Error requesting permission $permissionType", e)
       }
     }
   }
 
   fun navigateTo(route: AppRoute) {
+    AppLog.d(TAG, "Navigating to route: $route")
     viewModelScope.launch {
-      navigationService.navigateTo(route)
+      try {
+        navigationService.navigateTo(route)
+        AppLog.d(TAG, "Successfully navigated to route: $route")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error navigating to route: $route", e)
+      }
     }
   }
 
@@ -263,6 +331,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Opens the Help modal.
    */
   private fun openHelpModal() {
+    AppLog.d(TAG, "Opening help modal")
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
@@ -273,9 +342,12 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
+    AppLog.d(TAG, "Exit setup requested - isSetupFinished: $isSetupFinished, connection status: ${discoveredScale?.connectionStatus}")
     if (isSetupFinished) {
+      AppLog.d(TAG, "Setup is finished, proceeding to exit")
       onExit(isSetupFinished)
     } else {
+      AppLog.d(TAG, "Setup not finished, showing exit confirmation dialog")
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
@@ -283,6 +355,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
           cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
           onConfirm = {
+            AppLog.d(TAG, "User confirmed exit setup")
             onExit(isSetupFinished)
           },
         ),
@@ -291,14 +364,23 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   }
 
   private fun onExit(isSetupFinished: Boolean) {
+    AppLog.d(TAG, "Exiting setup - isSetupFinished: $isSetupFinished")
     viewModelScope.launch {
-      if (isSetupFinished) {
-        onSetupFinished()
+      try {
+        if (isSetupFinished) {
+          AppLog.d(TAG, "Setup finished, calling onSetupFinished")
+          onSetupFinished()
+        }
+        AppLog.d(TAG, "Resuming scan and syncing devices")
+        ggDeviceService.resumeScan(false)
+        val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+        AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
+        ggDeviceService.syncDevices(pairedDevices)
+        navigateBack()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during exit process", e)
+        navigateBack()
       }
-      ggDeviceService.resumeScan(false)
-      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-      ggDeviceService.syncDevices(pairedDevices)
-      navigateBack()
     }
   }
 
@@ -306,21 +388,25 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Navigates back from the setup screen.
    */
   private suspend fun navigateBack() {
+    AppLog.d(TAG, "Navigating back from BLE setup")
     try {
       navigationService.navigateBack()
-      AppLog.d(TAG, "Successfully navigated back from scale setup")
+      AppLog.d(TAG, "Successfully navigated back from BLE setup")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
+      AppLog.e(TAG, "Failed to navigate back from BLE setup", e)
     }
   }
 
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
+    AppLog.d(TAG, "Subscribing to permissions")
     return combine(
       permissionService.permissionCallBackFlow,
       connectivityObserver.observe(),
     ) { permissions, networkState ->
       val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
       val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
+
+      AppLog.d(TAG, "Permission status - Network: $networkStatus, WiFi Switch: $wifiSwitchStatus")
 
       // WiFi switch is enabled if either network is available OR WiFi switch is enabled
       val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
@@ -331,6 +417,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         GGPermissionState.DISABLED
       }
 
+      AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
       permissions.toMutableMap().apply {
         put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
       }
@@ -341,14 +428,24 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
    * Loads scale information based on the provided SKU.
    */
   private fun loadScaleInfo() {
-    AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    AppLog.d(TAG, "Loading scale info for SKU: $sku, initial step: $initialStep")
     handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
     viewModelScope.launch {
-      if (broadcastId != null) {
-        discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
+      try {
+        if (broadcastId != null) {
+          AppLog.d(TAG, "Loading scale from broadcast ID: $broadcastId")
+          discoveredScale = ggDeviceService.deviceCache.value[broadcastId] as? Device
+          AppLog.d(TAG, "Found scale from cache: ${discoveredScale?.id}")
+        }
+        handleIntent(ScaleSetupIntent.SetSku(sku))
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error loading scale info", e)
       }
-      handleIntent(ScaleSetupIntent.SetSku(sku))
     }
+  }
+
+  companion object {
+    private const val TAG = "BLESetupViewmodel"
   }
 }
 

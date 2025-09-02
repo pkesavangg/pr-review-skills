@@ -79,7 +79,7 @@ constructor(
         account
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to update goal setting online", e.toString())
+      AppLog.e(TAG, "Failed to update goal setting online", e)
       throw e
     }
 
@@ -111,7 +111,7 @@ constructor(
         account
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to store goal setting offline", e.toString())
+      AppLog.e(TAG, "Failed to store goal setting offline", e)
       throw e
     }
 
@@ -136,7 +136,7 @@ constructor(
         )
       }
       .catch { e ->
-        AppLog.e(TAG, "Failed to get current goal", e.toString())
+        AppLog.e(TAG, "Failed to get current goal", e)
         emit(null)
       }
   }
