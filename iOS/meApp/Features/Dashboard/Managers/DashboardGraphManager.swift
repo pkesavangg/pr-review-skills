@@ -788,6 +788,27 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return visibleOps
     }
 
+    /// Returns operations strictly within the on-screen visible domain (no buffer)
+    /// Uses the chart's configured visible domain length starting at the current left edge (xScrollPosition).
+    func getStrictVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
+        guard !operations.isEmpty else { return [] }
+
+        let allDates = operations.map { $0.date }
+        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
+
+        let domainLength = visibleDomainLength(for: state.selectedPeriod)
+        // IMPORTANT: xScrollPosition in our state represents the LEFT boundary of the visible window
+        let start = max(state.xScrollPosition, minDate)
+        let end = min(state.xScrollPosition.addingTimeInterval(domainLength), maxDate)
+
+        let strictlyVisible = operations.filter { summary in
+            summary.date >= start && summary.date <= end
+        }
+
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated strict visible operations: \(strictlyVisible.count) between \(start) and \(end)")
+        return strictlyVisible
+    }
+
     /// Forces recalculation of visible operations and clears cache
     /// Use this after programmatically setting scroll position
     func forceVisibleOperationsRecalculation() {

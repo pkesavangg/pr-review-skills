@@ -17,7 +17,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         HStack(spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.element) { index, segment in
                 Button(action: {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0)) {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85, blendDuration: 0)) {
                         selectedSegment = segment
                     }
                 }) {
@@ -35,9 +35,6 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                                     .onAppear {
                                         segmentWidths[index] = geometry.size.width
                                     }
-                                    .onChange(of: geometry.size.width) {
-                                        segmentWidths[index] = geometry.size.width
-                                    }
                             }
                         )
                 }
@@ -51,10 +48,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                 .fill(theme.actionSecondary)
                 .frame(width: selectedWidth())
                 .offset(x: calculateOffset())
-                .animation(
-                    .spring(response: 0.4, dampingFraction: 0.8, blendDuration: 0),
-                    value: selectedSegment
-                )
+                .compositingGroup()
         )
         .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
     }

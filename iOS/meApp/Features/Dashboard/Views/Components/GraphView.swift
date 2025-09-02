@@ -40,13 +40,29 @@ struct GraphView: View {
         return DashboardStrings.noEntriesMessage
     }
     
+    // Whether the selection callout is currently visible for the active period
+    private var isShowingSelectionCallout: Bool {
+        switch dashboardStore.state.graph.selectedPeriod {
+        case .week:
+            return weekSectionViewModel.showCrosshair
+        case .month:
+            return monthSectionViewModel.showCrosshair
+        case .year:
+            return yearSectionViewModel.showCrosshair
+        case .total:
+            return totalSectionViewModel.showCrosshair
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading){
             // Preserve layout height: fade the label out instead of removing it to avoid jump
             Text(dashboardStore.weightLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
-                .opacity(dashboardStore.state.graph.selectedPoint == nil ? 1 : 0)
+                // Hide immediately when the callout is shown (driven by the same VM flag)
+                .opacity(isShowingSelectionCallout ? 0 : 1)
+                .animation(.none, value: isShowingSelectionCallout)
                 .padding(.leading, .spacingSM)
                 .padding(.vertical, .spacingXS)
             if hasEntries {
