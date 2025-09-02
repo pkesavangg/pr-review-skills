@@ -36,8 +36,8 @@ struct SoftwareUpdateSheet: View {
             )
             VStack {
                 ScrollView(.vertical, showsIndicators: false) {
-                    if !viewModel.hasUpdate {
-                        // Update available flow (matches Ionic text)
+                    if viewModel.hasUpdate {
+                        // Update available flow
                         VStack(alignment: .leading, spacing: .spacingLG) {
                             Text("\(FirmwareUpdateStrings.message) \(viewModel.latestVersion ?? "") \(FirmwareUpdateStrings.message1)")
                                 .fontOpenSans(.body2)
@@ -115,7 +115,7 @@ struct SoftwareUpdateSheet: View {
                     } else {
                         // Segmented control using shared SegmentedButtonView
                         VStack(spacing: .spacingSM) {
-                            Text("\(FirmwareUpdateStrings.version) \(viewModel.latestVersion ?? viewModel.currentFirmware ?? "00:00:00:00:00:00")")
+                            Text("\(FirmwareUpdateStrings.version) \(viewModel.latestVersion ?? viewModel.currentFirmware ?? "000.000.000.000")")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textBody)
                             Text(FirmwareUpdateStrings.alreadyUpdated)

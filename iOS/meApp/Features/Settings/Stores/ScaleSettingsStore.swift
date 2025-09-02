@@ -159,7 +159,7 @@ final class ScaleSettingsStore: ObservableObject {
                 self.isWifiConfigured = wifiConfigured
             }
             self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
-            logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")")
+            logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error)")
         }

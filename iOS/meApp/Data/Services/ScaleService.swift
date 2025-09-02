@@ -74,6 +74,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self._apiRepository = ScaleAPIRepository()
         self.localRepository = ScaleRepository()
         self.localKVRepo = ScaleRepositoryLocal()
+        Task {
+            await refreshScalesFromLocal()
+        }
     }
     
     /// Initializes the scale service with required dependencies.
@@ -457,7 +460,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func createScaleInLocal(_ device: Device) async throws -> Device {
-        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
+        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server", data: device.metaData)
         return try await localRepository.createScale(device)
     }
     
