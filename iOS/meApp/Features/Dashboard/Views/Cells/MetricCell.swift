@@ -397,6 +397,32 @@ class MetricCell: UICollectionViewCell {
         }
     }
     
+    /// Updates the cell's appearance when dragging outside boundaries
+    /// - Parameter isOutsideBounds: Whether the drag is currently outside allowed boundaries
+    func updateBoundaryState(_ isOutsideBounds: Bool) {
+        if isOutsideBounds {
+            // Add visual feedback for out-of-bounds drag
+            layer.borderWidth = 2.0
+            layer.borderColor = UIColor.systemRed.cgColor
+            alpha = 0.6
+            
+            // Add a subtle shake animation to indicate invalid drop zone
+            let shake = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            shake.timingFunction = CAMediaTimingFunction(name: .linear)
+            shake.duration = 0.6
+            shake.values = [-2.0, 2.0, -2.0, 2.0, -1.0, 1.0, -0.5, 0.5, 0.0]
+            layer.add(shake, forKey: "shake")
+        } else {
+            // Restore normal drag appearance
+            layer.borderWidth = 0.0
+            layer.borderColor = UIColor.clear.cgColor
+            alpha = 1.0
+            
+            // Remove shake animation
+            layer.removeAnimation(forKey: "shake")
+        }
+    }
+    
     // MARK: - Long Press Handling
     
     private var onMetricLongPressCallback: ((String) -> Void)? {
