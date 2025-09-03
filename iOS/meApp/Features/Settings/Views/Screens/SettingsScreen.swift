@@ -275,7 +275,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
             }))
-                .listRowInsets()
+            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
                 router.navigate(to: .appPermissions)
             }))

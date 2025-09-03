@@ -31,7 +31,19 @@ struct ColorTokens {
     static let green100 = Color("green-100")
     static let yellow100 = Color("yellow-100")
     static let accucheck = Color("accucheck")
+    
+    static let ggBackground = Color("ggBackground")
+    static let ggPrimary = Color("ggPrimary")
+    static let ggSecondary100 = Color("ggSecondary100")
+    static let ggSecondary900 = Color("ggSecondary900")
 
+    // Promo colors (asset-backed)
+    static let promoBlue100 = Color("promoBlue100")
+    static let promoBlue900 = Color("promoBlue900")
+    static let promoGreen100 = Color("promoGreen100")
+    static let promoGreen900 = Color("promoGreen900")
+    static let promoRed100 = Color("promoRed100")
+    static let promoRed900 = Color("promoRed900")
     // MARK: - App Palette Definitions
     struct Palette {
         static let primary = AppColors.Palette(
@@ -87,6 +99,19 @@ struct ColorTokens {
             // Logos
             logoPrimary: neutral100,
             logoSecondary: neutral900,
+            
+            ggBackground: ggBackground,
+            ggPrimary: ggPrimary,
+            ggSecondary100: ggSecondary100,
+            ggSecondary900: ggSecondary900,
+            
+            // Promo
+            promoBlue100: promoBlue100,
+            promoBlue900: promoBlue900,    
+            promoGreen100: promoGreen100,
+            promoGreen900: promoGreen900,
+            promoRed100: promoRed100,
+            promoRed900: promoRed900
         )
     }
 }
