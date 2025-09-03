@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -49,7 +51,9 @@ import kotlin.system.exitProcess
 fun DashboardScreen() {
   val viewmodel: DashboardViewModel = hiltViewModel()
   val state by viewmodel.state.collectAsState()
-  val activity = LocalActivity.current
+  val context = LocalContext.current
+  val activity = context as? AppCompatActivity
+
   val scope = rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
   DisposableEffect(lifecycleOwner) {
@@ -72,7 +76,6 @@ fun DashboardScreen() {
         onConfirm = {
           scope.launch {
             activity?.finishAffinity()
-            exitProcess(0) // import kotlin.system.exitProcess
           }
         },
       ),

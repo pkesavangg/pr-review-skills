@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
@@ -13,7 +14,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
-import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
@@ -21,9 +21,8 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
+import com.patrykandpatrick.vico.compose.common.component.shapeComponent
 import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.compose.common.insets
-import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
@@ -32,7 +31,10 @@ import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
+import com.patrykandpatrick.vico.core.common.component.TextComponent
+import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlin.math.roundToInt
+import android.text.Layout
 
 @Composable
 internal fun ChartHostSection(
@@ -61,6 +63,7 @@ internal fun ChartHostSection(
       segment = segment,
     ) else segment.intervalCount()
     val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+    val fill = fill(Color(0xFF458239))
 
     val primaryChart =
       rememberCartesianChart(
@@ -96,7 +99,7 @@ internal fun ChartHostSection(
               VerticalAxis.ItemPlacer.step(
                 step = { stepSize },
               ),
-            size = BaseAxis.Size.fixed(40.dp),
+            tickLength = 0.dp,
             line =
               rememberAxisLineComponent(
                 fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
@@ -110,10 +113,15 @@ internal fun ChartHostSection(
             label =
               rememberTextComponent(
                 color = MeTheme.colorScheme.textSubheading,
-                padding = insets(start = 10.dp),
+                minWidth = TextComponent.MinWidth.fixed(40f),
                 textSize = 14.sp,
+                textAlignment = Layout.Alignment.ALIGN_CENTER,
+                background =
+                  shapeComponent(
+                    fill,
+                    shape = CorneredShape.Pill,
+                  ),
               ),
-            tickLength = 0.dp,
           ),
         bottomAxis = bottomAxis,
         marker = emptyMarker(),
@@ -121,7 +129,7 @@ internal fun ChartHostSection(
         markerVisibilityListener = markerListener,
         persistentMarkers =
 
-          if (markerIndex != null) {
+          if (markerIndex != null && markerIndex < xLabels.size) {
             {
               defaultMarker at xLabels[markerIndex].value
             }

@@ -18,9 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.BaselineShift
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -78,24 +76,6 @@ fun HistoryGraph(
   } else null
 
   val weightUnit = if (entries.isNotEmpty()) entries.random().unit else null
-  buildAnnotatedString {
-    withStyle(style = MeTheme.typography.heading2.toSpanStyle()) {
-      append(labelData.ifBlank { "---" })
-    }
-
-    if (labelData.isNotBlank() && weightUnit != null) {
-
-      withStyle(
-        style = MeTheme.typography.subHeading2.toSpanStyle().copy(
-          baselineShift = BaselineShift(0.05f), // subtle subscript
-          color = MeTheme.colorScheme.textBody,
-        ),
-      ) {
-        append(weightUnit.label)
-      }
-    }
-  }
-
 
   Column(
     modifier =
@@ -111,14 +91,13 @@ fun HistoryGraph(
       )
       Row(verticalAlignment = Alignment.Bottom) {
         Text(
-          text = labelData.ifBlank { "---" },
+          text = labelData.ifBlank { "000.0" },
           style = MeTheme.typography.heading2,
           color = MeTheme.colorScheme.textBody,
         )
 
         if (labelData.isNotBlank() && weightUnit != null) {
           Spacer(modifier = Modifier.width(4.dp))
-
           Text(
             text = weightUnit.label, // or dynamic unit
             style = MeTheme.typography.subHeading2,
@@ -131,13 +110,11 @@ fun HistoryGraph(
       Box(
         contentAlignment = Alignment.TopStart,
       ) {
-        if (subText != null) {
-          Text(
-            text = subText!!,
-            style = MeTheme.typography.subHeading2,
-            color = MeTheme.colorScheme.textSubheading,
-          )
-        }
+        Text(
+          text = subText ?: "No data available",
+          style = MeTheme.typography.subHeading2,
+          color = if (subText != null) MeTheme.colorScheme.textSubheading else Color.Transparent,
+        )
       }
     }
     if (state.dayWiseEntries.isEmpty()) {

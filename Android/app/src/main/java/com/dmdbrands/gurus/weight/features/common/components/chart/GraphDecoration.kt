@@ -19,9 +19,11 @@ import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.decoration.HorizontalLine
 import com.patrykandpatrick.vico.core.common.Position
+import com.patrykandpatrick.vico.core.common.component.TextComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import kotlin.math.roundToInt
 import android.graphics.Typeface
+import android.text.Layout
 
 @Composable
 fun rememberHorizontalLine(goal: Goal? = null): Decoration? {
@@ -33,8 +35,8 @@ fun rememberHorizontalLine(goal: Goal? = null): Decoration? {
       typeface = Typeface.DEFAULT_BOLD,
       textSize = 14.sp,
       color = MeTheme.colorScheme.primaryBackground,
-      margins = insets(end = (-40).dp),
-      padding = insets(horizontal = 10.dp, vertical = 3.dp),
+      textAlignment = Layout.Alignment.ALIGN_CENTER,
+      minWidth = TextComponent.MinWidth.fixed(36f),
       background =
         shapeComponent(
           fill,

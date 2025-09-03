@@ -30,7 +30,6 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
 import kotlin.math.roundToInt
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -66,25 +65,25 @@ fun GraphView(
   // Animated values for smooth transitions
   val animatedMinTarget by animateIntAsState(
     targetValue = state.minYTarget.roundToInt(),
-    animationSpec = tween(500),
+    animationSpec = tween(300),
     label = "minTarget",
   )
 
   val animatedSecondaryMinTarget by animateIntAsState(
     targetValue = state.secondaryMinYTarget.roundToInt(),
-    animationSpec = tween(500),
+    animationSpec = tween(300),
     label = "secondaryMinTarget",
   )
 
   val animatedMaxTarget by animateIntAsState(
     targetValue = state.maxYTarget.roundToInt(),
-    animationSpec = tween(500),
+    animationSpec = tween(300),
     label = "maxTarget",
   )
 
   val animatedSecondaryMaxTarget by animateIntAsState(
     targetValue = state.secondaryMaxYTarget.roundToInt(),
-    animationSpec = tween(500),
+    animationSpec = tween(300),
     label = "secondaryMaxTarget",
   )
 
@@ -108,7 +107,6 @@ fun GraphView(
   // Handle scroll target changes with frame synchronization
   LaunchedEffect(state.scrollTarget) {
     val target = state.scrollTarget
-    Log.i("CHECKING", target.toString())
     repeat(3) { withFrameNanos { } }
     if (target != null) {
       scrollState.scroll(Scroll.Absolute.x(target, 0.5f))
@@ -116,7 +114,7 @@ fun GraphView(
   }
 
   // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines) {
+  LaunchedEffect(graphLines, secondaryGraphLines, segment) {
     viewModel.handleIntent(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
