@@ -107,7 +107,7 @@ struct ColorTokens {
             
             // Promo
             promoBlue100: promoBlue100,
-            promoBlue900: promoBlue900,    
+            promoBlue900: promoBlue900,
             promoGreen100: promoGreen100,
             promoGreen900: promoGreen900,
             promoRed100: promoRed100,
