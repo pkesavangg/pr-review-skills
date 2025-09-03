@@ -5,6 +5,7 @@ package com.dmdbrands.gurus.weight.features.feedMessages.strings
  */
 object FeedMessagesStrings {
   const val Title = "Messages"
+  const val SettingsTitle = "Message Settings"
   const val CloseButton = "Close"
   const val SettingsButton = "Settings"
 }

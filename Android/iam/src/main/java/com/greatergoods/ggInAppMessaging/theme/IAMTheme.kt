@@ -1,55 +1,141 @@
 package com.greatergoods.ggInAppMessaging.theme
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import com.greatergoods.ggInAppMessaging.theme.rememberIAMColorScheme
-import com.greatergoods.ggInAppMessaging.theme.getIAMColors
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+
+@Immutable
+data class IamColors(
+    // Background
+    val primaryBackground: Color,
+    val primaryBackgroundDisabled: Color,
+    val secondaryBackground: Color,
+
+    // Action
+    val primaryFocusedAction: Color,
+    val primaryAction: Color,
+    val primaryActionDisabled: Color,
+    val secondaryAction: Color,
+    val secondaryActionDisabled: Color,
+    val tertiaryAction: Color,
+    val tertiaryActionDisabled: Color,
+    val tertiaryActionSecondary: Color,
+    val inverseAction: Color,
+    val inverseActionDisabled: Color,
+    val inverseActionSecondary: Color,
+    val errorAction: Color,
+    val errorActionDisabled: Color,
+    val errorActionSecondary: Color,
+
+    // Status
+    val goal: Color,
+    val success: Color,
+    val danger: Color,
+    val streak: Color,
+    val utility: Color,
+    val glow: Color,
+
+    // Icon
+    val iconPrimary: Color,
+    val iconPrimaryDisabled: Color,
+    val iconSecondary: Color,
+    val iconSecondaryDisabled: Color,
+
+    // Loading
+    val loading: Color,
+    val loadingError: Color,
+
+    // Support
+    val overlay: Color,
+    val toastBackground: Color,
+
+    // Text
+    val textHeading: Color,
+    val textBody: Color,
+    val textSubheading: Color,
+    val textError: Color,
+    val textErrorDisabled: Color,
+
+    // Brand
+    val meAppPrimary: Color,
+    val wgPrimary: Color,
+)
+
+// Default colors for IAM previews when app doesn't provide values
+private val DefaultIamColors = IamColors(
+    // Background
+    primaryBackground = Color.White,
+    primaryBackgroundDisabled = Color(0xFFF5F5F5),
+    secondaryBackground = Color(0xFFF6F4F1),
+
+    // Action
+    primaryFocusedAction = Color(0xFF1565C0),
+    primaryAction = Color(0xFF1565C0),
+    primaryActionDisabled = Color(0xFFB8D6F4),
+    secondaryAction = Color(0xFF2C2827),
+    secondaryActionDisabled = Color(0xFFD0CCCA),
+    tertiaryAction = Color(0xFF7B726E),
+    tertiaryActionDisabled = Color(0xFFD0CCCA),
+    tertiaryActionSecondary = Color(0xFF7B726E),
+    inverseAction = Color.White,
+    inverseActionDisabled = Color(0xFFF5F5F5),
+    inverseActionSecondary = Color(0xFFF6F4F1),
+    errorAction = Color(0xFFB3261E),
+    errorActionDisabled = Color(0xFFF5C0BD),
+    errorActionSecondary = Color(0xFFB3261E),
+
+    // Status
+    goal = Color(0xFF458239),
+    success = Color(0xFF458239),
+    danger = Color(0xFFB3261E),
+    streak = Color(0xFFEDB53A),
+    utility = Color(0xFFD0CCCA),
+    glow = Color(0x40000000),
+
+    // Icon
+    iconPrimary = Color(0xFF1565C0),
+    iconPrimaryDisabled = Color(0xFFB8D6F4),
+    iconSecondary = Color(0xFF7B726E),
+    iconSecondaryDisabled = Color(0xFFD0CCCA),
+
+    // Loading
+    loading = Color(0xFFB8D6F4),
+    loadingError = Color(0xFFF5C0BD),
+
+    // Support
+    overlay = Color(0x802C2827),
+    toastBackground = Color(0xFFE3F2FD),
+
+    // Text
+    textHeading = Color(0xFF2C2827),
+    textBody = Color(0xFF2C2827),
+    textSubheading = Color(0xFF7B726E),
+    textError = Color(0xFFB3261E),
+    textErrorDisabled = Color(0xFFF5C0BD),
+
+    // Brand
+    meAppPrimary = Color(0xFF65CEC8),
+    wgPrimary = Color(0xFF1565C0),
+)
+
+// LocalComposition for IAM colors - app provides colors through this
+val LocalIamColors = staticCompositionLocalOf { DefaultIamColors }
+
+object IamTheme {
+    val colors: IamColors
+        @Composable get() = LocalIamColors.current
+}
 
 /**
- * IAM Theme package index
- *
- * This package provides a comprehensive color system for the IAM package that:
- * 1. Follows the same semantic structure as the main app
- * 2. Automatically adapts to light and dark modes
- * 3. Provides IAM-specific colors and themes
- * 4. Integrates seamlessly with existing MaterialTheme usage
- *
- * Usage:
- *
- * // Get IAM colors from MaterialTheme
- * val iamColors = getIAMColors()
- *
- * // Use semantic colors
- * val backgroundColor = iamColors.backgroundPrimary
- * val textColor = iamColors.textHeading
- * val actionColor = iamColors.actionPrimary
- *
- * // Get theme-specific colors
- * val themeColor = iamColors.getThemeColor("red")
- * val promoColors = iamColors.getPromoCodeColors("blue")
- *
- * // Manual color scheme creation
- * val iamColorScheme = IAMColorScheme(isDarkMode = true)
- * val darkModeColors = iamColorScheme.actionPrimary
+ * Provides IAM theme colors to child composables.
+ * This is an alternative to using LocalIamColors directly.
  */
-
-/**
- * Quick access to common IAM colors
- */
-object IAMThemeColors {
-  /**
-   * Get IAM color scheme for current theme
-   */
-  @Composable
-  fun current(): IAMColorScheme {
-    return getIAMColors()
-  }
-
-  /**
-   * Get IAM color scheme for specific theme mode
-   */
-  @Composable
-  fun forMode(isDarkMode: Boolean): IAMColorScheme {
-    return rememberIAMColorScheme(isDarkMode)
-  }
+@Composable
+fun ProvideIamTheme(
+    colors: IamColors,
+    content: @Composable () -> Unit
+) {
+    CompositionLocalProvider(LocalIamColors provides colors, content = content)
 }

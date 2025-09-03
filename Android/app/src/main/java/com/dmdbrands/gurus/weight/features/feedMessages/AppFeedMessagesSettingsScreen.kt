@@ -14,21 +14,20 @@ import com.dmdbrands.gurus.weight.features.feedMessages.viewmodel.FeedMessagesVi
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
-import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesScreen
+import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesSettingsScreen
 
 /**
- * Feed Messages Screen with TopAppBar
+ * Feed Messages Settings Screen with TopAppBar
  * Reuses content from IAM package and adds navigation
  */
 @Composable
-fun AppFeedMessagesScreen(
+fun AppFeedMessagesSettingsScreen(
   onBackPress: () -> Unit,
-  onSettingsPress: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: FeedMessagesViewModel = hiltViewModel()
 ) {
   AppScaffold(
-    title = FeedMessagesStrings.Title,
+    title = FeedMessagesStrings.SettingsTitle,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) { onBackPress() }
     },
@@ -36,15 +35,23 @@ fun AppFeedMessagesScreen(
     appBarColor = colorScheme.primaryBackground,
     modifier = modifier.fillMaxSize(),
   ) { scaffoldModifier ->
-    // Reuse the IAM FeedMessagesScreen content
+    // Reuse the IAM FeedMessagesSettingsScreen content
     Column(
       modifier = Modifier
         .background(colorScheme.primaryBackground)
-        .fillMaxSize()
-        // .padding(horizontal = 16.dp),
+        .fillMaxSize(),
     ) {
-      FeedMessagesScreen(
-        onSettingsPress = onSettingsPress,
+      FeedMessagesSettingsScreen(
+        onPopUpMessagesToggle = { enabled ->
+          // Handle pop-up messages toggle
+          // TODO: Implement with ViewModel
+        },
+        onNotificationBadgesToggle = { enabled ->
+          // Handle notification badges toggle
+          // TODO: Implement with ViewModel
+        },
+        popUpMessagesEnabled = true, // TODO: Get from ViewModel
+        notificationBadgesEnabled = true, // TODO: Get from ViewModel
       )
     }
   }
@@ -52,15 +59,10 @@ fun AppFeedMessagesScreen(
 
 @PreviewTheme
 @Composable
-fun FeedMessagesScreenPreview() {
+fun FeedMessagesSettingsScreenPreview() {
   MeAppTheme {
-    AppFeedMessagesScreen(
+    AppFeedMessagesSettingsScreen(
       onBackPress = {},
-      onSettingsPress = {},
     )
   }
 }
-
-
-
-

@@ -67,9 +67,9 @@ fun NavHost(
                       }
                     },
                     onSettingsPress = {
-                      // Navigate to settings or show settings modal
+                      // Navigate to feed messages settings
                       coroutineScope.launch {
-                        topLevelBackStack.addRoute(AppRoute.Main.Settings)
+                        topLevelBackStack.addRoute(AppRoute.FeedMessagesSettings)
                       }
                     }
                   )
@@ -79,26 +79,26 @@ fun NavHost(
                 scaleDetailEntries()
                 scaleSetupEntries()
                 historyEntries()
-        dashboardEntries()
-
-        integrationEntries()
-      },
-    transitionSpec = {
-      // Slide in from right when navigating forward
-      slideInHorizontally(initialOffsetX = { it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { -it })
-    },
-    popTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
-    },
-    predictivePopTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
-    },
-  )
+                dashboardEntries()
+                integrationEntries()
+                feedMessagesEntries()
+            },
+        transitionSpec = {
+            // Slide in from right when navigating forward
+            slideInHorizontally(initialOffsetX = { it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { -it })
+        },
+        popTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
+        predictivePopTransitionSpec = {
+            // Slide in from left when navigating back
+            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                slideOutHorizontally(targetOffsetX = { it })
+        },
+    )
 }
 
 @Composable

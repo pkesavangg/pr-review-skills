@@ -198,9 +198,12 @@ sealed class AppRoute : NavKey {
   }
 
   /**
-   * Feed Messages navigation route
+   * Feed Messages navigation routes
    */
   @Serializable
   data object FeedMessages : AppRoute()
+
+  @Serializable
+  data object FeedMessagesSettings : AppRoute()
 }
 

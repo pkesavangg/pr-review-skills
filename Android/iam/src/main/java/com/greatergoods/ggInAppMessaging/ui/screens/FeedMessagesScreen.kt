@@ -1,22 +1,16 @@
 package com.greatergoods.ggInAppMessaging.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.greatergoods.ggInAppMessaging.theme.ColorTokens
-import com.greatergoods.ggInAppMessaging.theme.rememberIAMColors
+import com.greatergoods.ggInAppMessaging.features.common.AppIcon
+import com.greatergoods.ggInAppMessaging.features.common.AppIconType
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
+import com.greatergoods.ggInAppMessaging.theme.IamTheme
 
 /**
  * Main Feed Messages Screen Content
@@ -40,109 +35,83 @@ fun FeedMessagesScreen(
   onSettingsPress: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  // Get ColorTokens with automatic recomposition on theme changes
-  val colors = rememberIAMColors()
-
-  // Show nothing if colors are not yet initialized
-  if (colors == null) {
-    return
-  }
+  // Global composable approach - automatically recomposes when colors change anywhere
+  val colors = IamTheme.colors
 
   Column(
     modifier = modifier
       .background(colors.primaryBackground)
-      .fillMaxSize()
-      .verticalScroll(rememberScrollState()),
+      .fillMaxWidth()
+      .fillMaxHeight(),
   ) {
     // Section Header
     SectionHeader(
       title = "Deals on Goods",
       onSettingsClick = onSettingsPress,
-      colors = colors,
     )
-
-    // Empty State Content
-    EmptyStateContent(colors = colors)
+    // Empty State Content (using weight for vertical centering)
+    EmptyStateContent()
   }
 }
 
 @Composable
-private fun SectionHeader(
+fun SectionHeader(
   title: String,
   onSettingsClick: () -> Unit,
-  colors: ColorTokens
 ) {
+
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .background(colors.secondaryBackground)
-      .padding(horizontal = 16.dp, vertical = 12.dp),
+      .padding(16.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    // Deals Icon (stylized 'G' or price tag)
-    Box(
-      modifier = Modifier
-        .size(24.dp)
-        .background(
-          color = colors.brandWgPrimary,
-          shape = MaterialTheme.shapes.small,
-        ),
-      contentAlignment = Alignment.Center,
-    ) {
-      Text(
-        text = "G",
-        color = Color.White,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-      )
-    }
-
+    AppIcon(
+      id = AppIcons.Logo,
+      contentDescription = "Deals Logo",
+      tintColor = Color.Unspecified,
+      type = AppIconType.Tertiary,
+      onClick = { /* action */ },
+      modifier = Modifier.size(24.dp),
+    )
     Spacer(modifier = Modifier.width(12.dp))
-
-    // Section Title
     Text(
       text = title,
       style = MaterialTheme.typography.titleMedium,
       fontWeight = FontWeight.Bold,
-      color = colors.textHeading,
       modifier = Modifier.weight(1f),
     )
-
-    // Settings Icon
-    IconButton(
+    AppIcon(
+      id = AppIcons.Settings, // Using system settings icon
+      contentDescription = "Settings",
+      type = AppIconType.Primary, // Will automatically use colors.brandWgPrimary
       onClick = onSettingsClick,
-      modifier = Modifier.size(40.dp),
-    ) {
-      Icon(
-        imageVector = Icons.Default.Settings,
-        contentDescription = "Settings",
-        tint = colors.brandWgPrimary,
-        modifier = Modifier.size(24.dp),
-      )
-    }
+      modifier = Modifier.size(24.dp),
+    )
   }
 }
 
 @Composable
-private fun EmptyStateContent(
-  colors: ColorTokens
-) {
-  Box(
-    modifier = Modifier
-      .fillMaxWidth().background(color = colors.primaryBackground),
+private fun EmptyStateContent() {
+  // Use a Box with fillMaxSize to center the column vertically
+  androidx.compose.foundation.layout.Box(
     contentAlignment = Alignment.Center,
+    modifier = Modifier
+      .fillMaxWidth()
+      .fillMaxHeight()
+      .background(color = IamTheme.colors.primaryBackground),
   ) {
-    Text("${colors.primaryBackground}")
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
-      modifier = Modifier.padding(32.dp),
+      verticalArrangement = Arrangement.Center,
+      modifier = Modifier.padding(horizontal = 32.dp),
     ) {
       // Primary Empty State Message
       Text(
         text = "Dry on Deals...for Now",
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = colors.textHeading,
+        color = IamTheme.colors.textHeading,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
       )
 
@@ -152,7 +121,7 @@ private fun EmptyStateContent(
       Text(
         text = "check back soon",
         style = MaterialTheme.typography.bodyLarge,
-        color = colors.textBody,
+        color = IamTheme.colors.textBody,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
       )
     }

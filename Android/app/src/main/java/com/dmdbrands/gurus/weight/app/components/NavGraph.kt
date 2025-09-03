@@ -36,6 +36,7 @@ import com.dmdbrands.gurus.weight.features.scaleMode.screens.ScaleModeScreen
 import com.dmdbrands.gurus.weight.features.settings.SettingsScreen
 import com.dmdbrands.gurus.weight.features.signup.SignupScreen
 import com.dmdbrands.gurus.weight.features.weightless.screen.WeightlessScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesSettingsScreen
 
 /**
  * Registers the entries for the authentication screens.
@@ -122,5 +123,15 @@ fun EntryProviderBuilder<NavKey>.dashboardEntries() {
 fun EntryProviderBuilder<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
     HistoryDetailScreen(monthDetails.month)
+  }
+}
+
+fun EntryProviderBuilder<NavKey>.feedMessagesEntries() {
+  entry<AppRoute.FeedMessagesSettings> {
+    AppFeedMessagesSettingsScreen(
+      onBackPress = {
+        // Navigation will be handled by the NavHost
+      }
+    )
   }
 }
