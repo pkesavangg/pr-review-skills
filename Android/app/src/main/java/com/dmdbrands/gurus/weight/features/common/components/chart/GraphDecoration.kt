@@ -4,8 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
-import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -21,22 +21,23 @@ import com.patrykandpatrick.vico.core.cartesian.decoration.HorizontalLine
 import com.patrykandpatrick.vico.core.common.Position
 import com.patrykandpatrick.vico.core.common.component.TextComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
-import kotlin.math.roundToInt
 import android.graphics.Typeface
 import android.text.Layout
 
 @Composable
-fun rememberHorizontalLine(goal: Goal? = null): Decoration? {
+fun rememberHorizontalLine(goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null): Decoration? {
   if (goal == null || goal.goalWeight == 0.0) return null
   val fill = fill(Color(0xFF458239))
   val line = rememberLineComponent(fill = fill(Color(0xFF458239)), thickness = 2.dp)
   val labelComponent =
     rememberTextComponent(
+      minWidth = TextComponent.MinWidth.fixed(40f),
+      textAlignment = Layout.Alignment.ALIGN_CENTER,
       typeface = Typeface.DEFAULT_BOLD,
       textSize = 14.sp,
       color = MeTheme.colorScheme.primaryBackground,
-      textAlignment = Layout.Alignment.ALIGN_CENTER,
-      minWidth = TextComponent.MinWidth.fixed(36f),
+      margins = insets(end = (-38).dp),
+      padding = insets(horizontal = 8.dp, vertical = 2.dp),
       background =
         shapeComponent(
           fill,
@@ -49,7 +50,7 @@ fun rememberHorizontalLine(goal: Goal? = null): Decoration? {
       override fun drawOverLayers(context: CartesianDrawingContext) {
         HorizontalLine(
           y = { goal.goalWeight.div(10) },
-          label = { goal.goalWeight.div(10).roundToInt().toString() },
+          label = {goal.goalWeight.div(10).toInt().toString()},
           line = line.copy(fill = fill(Color.Transparent)),
           labelComponent = labelComponent,
           horizontalLabelPosition = Position.Horizontal.End,

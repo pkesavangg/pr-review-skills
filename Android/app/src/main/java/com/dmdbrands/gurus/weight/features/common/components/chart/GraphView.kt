@@ -23,7 +23,6 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -120,6 +119,7 @@ fun GraphView(
         graphLines = graphLines,
         secondaryGraphLines = secondaryGraphLines,
         goal = goal,
+        segment = segment,
       ),
     )
   }
@@ -127,12 +127,6 @@ fun GraphView(
   // Handle segment changes
   LaunchedEffect(segment) {
     viewModel.handleIntent(GraphIntent.HandleSegment(segment))
-    if (segment == GraphSegment.TOTAL) {
-      viewModel.handleIntent(GraphIntent.UpdateSeparators(emptyList()))
-    } else {
-      val separators = GraphUtil.periodStarts(segment, state.startRangeX, state.endRangeX)
-      viewModel.handleIntent(GraphIntent.UpdateSeparators(separators))
-    }
   }
 
   // Chart layers and components
@@ -165,7 +159,11 @@ fun GraphView(
     point = point,
     xLabels = state.xLabels,
     setMarkerIndex = { markerIndex ->
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      if (markerIndex != null) {
+        if (markerIndex > 0) {
+          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+        }
+      }
     },
   )
 

@@ -53,7 +53,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -122,7 +121,6 @@ constructor(
   }
 
   private fun initialize() {
-    Log.i("CHECKING", "passed check")
     viewModelScope.launch {
       workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().collect { workInfos ->
         if (workInfos.isEmpty()) {

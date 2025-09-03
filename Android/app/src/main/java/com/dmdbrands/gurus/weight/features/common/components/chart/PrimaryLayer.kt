@@ -51,7 +51,7 @@ internal fun rememberLineLayerWithConnection(
   val todayMills = Calendar.getInstance().timeInMillis
 
   val startRangeX = initialTimeStamp?.let { GraphUtil.getStartRange(segment, it) }
-  GraphUtil.getEndRange(segment, todayMills)
+  val endRangeX = GraphUtil.getEndRange(segment, todayMills)
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
@@ -87,7 +87,7 @@ internal fun rememberLineLayerWithConnection(
         }
 
         override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
-          return 1757097100000.0 ?: super.getMaxX(minX, maxX, extraStore)
+          return endRangeX.toDouble()
         }
 
         override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {

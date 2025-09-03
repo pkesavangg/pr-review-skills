@@ -1,17 +1,37 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import android.icu.util.Calendar
 
 /**
  * Reducer for the graph state, handling intents to update the graph state.
  */
 class GraphReducer : IReducer<GraphState, GraphIntent> {
   override fun reduce(state: GraphState, intent: GraphIntent): GraphState? = when (intent) {
-    is GraphIntent.InitializeGraph -> state.copy(
-      graphLines = intent.graphLines,
-      secondaryGraphLines = intent.secondaryGraphLines,
-      goal = intent.goal,
-    )
+    is GraphIntent.InitializeGraph -> {
+      val updatedState = state.copy(
+        graphLines = intent.graphLines,
+        secondaryGraphLines = intent.secondaryGraphLines,
+        goal = intent.goal,
+      )
+      val segment = intent.segment
+
+      val separators = if (segment == GraphSegment.TOTAL) {
+        emptyList()
+      } else {
+        val separators = GraphUtil.periodStarts(
+          segment,
+          updatedState.initialTimeStamp,
+          Calendar.getInstance().timeInMillis,
+        ).map { it.toDouble() }
+        separators
+      }
+      updatedState.copy(
+        separators = separators,
+      )
+    }
 
     is GraphIntent.UpdateSegment -> state.copy(segment = intent.segment)
 

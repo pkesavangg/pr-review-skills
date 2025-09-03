@@ -380,7 +380,7 @@ interface EntryDao {
     """
         SELECT
           strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
-          MAX(e.entryTimestamp) AS entryTimestamp,
+          datetime(MIN(e.entryTimestamp), 'start of month') AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
           AVG(bse.muscleMass) AS muscleMass,
@@ -452,39 +452,33 @@ interface EntryDao {
     accountId: String
   ): Flow<List<PeriodBodyScaleSummary>>
 
-  /**
-   * Get daywise averages of body scale data for an account.
-   *
-   * This query joins the entry, body_scale_entry, and body_scale_entry_metric tables to aggregate
-   * all relevant body scale and metric fields by day. For repeated use, consider a VIEW or temp table.
-   */
   @Query(
     """
-        SELECT
-          strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS period,
-          MAX(e.entryTimestamp) AS entryTimestamp,
-          AVG(bse.weight) AS weight,
-          AVG(bse.bodyFat) AS bodyFat,
-          AVG(bse.muscleMass) AS muscleMass,
-          AVG(bse.water) AS water,
-          AVG(bse.bmi) AS bmi,
-          AVG(bsem.bmr) AS bmr,
-          AVG(bsem.metabolicAge) AS metabolicAge,
-          AVG(bsem.proteinPercent) AS proteinPercent,
-          AVG(bsem.pulse) AS pulse,
-          AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
-          AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
-          AVG(bsem.visceralFatLevel) AS visceralFatLevel,
-          AVG(bsem.boneMass) AS boneMass,
-          AVG(bsem.impedance) AS impedance,
-          MAX(e.unit) AS unit
-        FROM entry_view AS e
-        LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
-        LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
-        WHERE e.accountId = :accountId
-        GROUP BY period
-        ORDER BY period DESC
-    """,
+    SELECT
+      strftime('%Y-%m-%d', e.entryTimestamp) AS period,
+      datetime(MIN(e.entryTimestamp), 'start of day') AS entryTimestamp,
+      AVG(bse.weight) AS weight,
+      AVG(bse.bodyFat) AS bodyFat,
+      AVG(bse.muscleMass) AS muscleMass,
+      AVG(bse.water) AS water,
+      AVG(bse.bmi) AS bmi,
+      AVG(bsem.bmr) AS bmr,
+      AVG(bsem.metabolicAge) AS metabolicAge,
+      AVG(bsem.proteinPercent) AS proteinPercent,
+      AVG(bsem.pulse) AS pulse,
+      AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
+      AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
+      AVG(bsem.visceralFatLevel) AS visceralFatLevel,
+      AVG(bsem.boneMass) AS boneMass,
+      AVG(bsem.impedance) AS impedance,
+      MAX(e.unit) AS unit
+    FROM entry_view AS e
+    LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+    LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
+    WHERE e.accountId = :accountId
+    GROUP BY strftime('%Y-%m-%d', e.entryTimestamp)
+    ORDER BY period DESC
+  """,
   )
   fun getDaywiseBodyScaleAveragesWithJoin(
     accountId: String

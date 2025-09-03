@@ -317,50 +317,31 @@ object GraphUtil {
   fun periodStarts(
     segment: GraphSegment,
     startMillis: Long?,
-    endMillis: Long?,
-    zone: ZoneId = ZoneId.systemDefault(),
-    weekStart: DayOfWeek = DayOfWeek.SUNDAY
-  ): List<Double> {
+    endMillis: Long?
+  ): List<Long> {
     if (startMillis == null || endMillis == null || startMillis > endMillis) return emptyList()
 
+    val zone = ZoneId.systemDefault()
     val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
     val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
 
-    // Align to the first boundary >= startDate
     var cursor = when (segment) {
-      GraphSegment.WEEK -> startDate.with(TemporalAdjusters.nextOrSame(weekStart))
+      GraphSegment.WEEK -> startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
       GraphSegment.MONTH -> startDate.withDayOfMonth(1)
-      GraphSegment.YEAR -> startDate.withDayOfYear(1)
-      else -> startDate.withDayOfYear(1)
-    }
-    if (segment == GraphSegment.WEEK && cursor.isBefore(startDate)) {
-      cursor = cursor.plusWeeks(1)
-    }
-    if (segment == GraphSegment.MONTH && cursor.isBefore(startDate)) {
-      cursor = cursor.plusMonths(1)
-    }
-    if (segment == GraphSegment.YEAR && cursor.isBefore(startDate)) {
-      cursor = cursor.plusYears(1)
-    }
-
-    val lastBoundary = when (segment) {
-      GraphSegment.WEEK -> endDate.with(TemporalAdjusters.previousOrSame(weekStart))
-      GraphSegment.MONTH -> endDate.withDayOfMonth(1)
-      GraphSegment.YEAR -> endDate.withDayOfYear(1)
-      else -> endDate.withDayOfYear(1)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> startDate.withDayOfYear(1)
     }
 
     val step = when (segment) {
       GraphSegment.WEEK -> Period.ofWeeks(1)
       GraphSegment.MONTH -> Period.ofMonths(1)
-      GraphSegment.YEAR -> Period.ofYears(1)
       else -> Period.ofYears(1)
     }
 
-    val out = mutableListOf<Double>()
-    while (!cursor.isAfter(lastBoundary)) {
-      val ms = cursor.atStartOfDay(zone).toInstant().toEpochMilli()
-      if (ms in startMillis..endMillis) out.add(ms.toDouble())
+    val out = ArrayList<Long>()
+    while (!cursor.isAfter(endDate)) {
+      // 👇 Local midnight millis (wall-clock IST)
+      val ms = cursor.atStartOfDay(zone).toEpochSecond() * 1000
+      out.add(ms)
       cursor = cursor.plus(step)
     }
     return out

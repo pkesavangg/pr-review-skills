@@ -144,7 +144,6 @@ fun HistoryGraph(
         },
       )
     }
-    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
     SegmentButtonGroup(
       data = GraphSegment.entries.toList(),
       selectedData = selectedSegment,

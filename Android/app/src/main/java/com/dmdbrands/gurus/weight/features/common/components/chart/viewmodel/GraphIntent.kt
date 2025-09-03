@@ -14,7 +14,8 @@ sealed interface GraphIntent : IReducer.Intent {
   data class InitializeGraph(
     val graphLines: List<GraphLine>,
     val secondaryGraphLines: GraphLine? = null,
-    val goal: Goal? = null
+    val goal: Goal? = null,
+    val segment: GraphSegment
   ) : GraphIntent
 
   /** Update the graph segment */

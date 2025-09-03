@@ -40,16 +40,13 @@ internal fun bottomAxis(
         color = MeTheme.colorScheme.textSubheading,
         textSize = 14.sp,
       ),
-      tick = rememberAxisGuidelineComponent(
-        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-        thickness = 1.dp,
-      ),
+      tick = rememberAxisGuidelineComponent(),
       tickLength = 20.dp,
+      horizontalLabelPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
-      horizontalLabelPosition = Position.Horizontal.End,
       separators = { separators },
     )
   else
