@@ -775,6 +775,7 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let ggLogoLight = "ggLogoLight"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
     static let close = "close"
