@@ -63,7 +63,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
-                .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
                 .padding(.trailing, .spacingXS)
                 .background(
                     GeometryReader { geo in
@@ -396,6 +395,15 @@ extension View {
                                     .foregroundColor(theme.textSubheading)
                             }
                         }
+                    }
+                }
+                // Slight inner padding at the left edge only when we're at the initial boundary
+                // to avoid clipping the first point in views like Year
+                .chartPlotStyle { plot in
+                    if viewModel.isAtLeftBoundary {
+                        plot.padding(.leading, 8)
+                    } else {
+                        plot
                     }
                 }
                 .chartXSelection(value: Binding(
