@@ -580,7 +580,7 @@ class DashboardStore: ObservableObject {
     }
     
     // Delegate configuration loading to respective managers
-    private func loadDashboardConfigurationFromAPI() async {
+    func loadDashboardConfigurationFromAPI() async {
         do {
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
@@ -1662,6 +1662,15 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
+        
+        // Refresh dashboard configuration from API to ensure latest changes are reflected
+        Task {
+            await loadDashboardConfigurationFromAPI()
+            await MainActor.run {
+                self.objectWillChange.send()
+            }
+        }
+        
         // After positioning is complete, update Y-axis cache to ensure proper domain calculation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
@@ -1671,6 +1680,22 @@ class DashboardStore: ObservableObject {
         }
         
         logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
+    
+    /// Force a complete refresh of the dashboard state
+    /// This ensures all UI elements are updated immediately
+    func refreshDashboardState() {
+        // Force refresh of all dashboard components
+        loadLatestEntryData()
+        loadGoalCardData()
+        handleSettingsChange()
+        
+        // Force UI update
+        objectWillChange.send()
+        
+        // Reset grid layout to ensure proper display
+        resetGridLayout()
+
     }
     
     /// Begins an edit session by snapshotting the current state for synchronous revert.
