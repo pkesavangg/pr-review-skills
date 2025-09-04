@@ -74,7 +74,8 @@ struct SignupScreen: View {
             .padding(.top, .spacing2XL)
             // Footer Buttons
             footerButtons
-                .padding(.spacingSM)
+                .padding(.vertical, .spacingSM)
+                .padding(.trailing, .spacingSM)
             
         }
         .onAppear {

@@ -30,9 +30,14 @@ struct DateOfBirthStepView: View {
                         .foregroundColor(theme.textHeading)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    DateLabelView(date: signupStore.signupForm.birthday.value) {
+                    DateLabelView(
+                        date: signupStore.signupForm.birthday.value,
+                        isSelected: showDatePicker
+                    ) {
                         withAnimation { showDatePicker.toggle() }
                     }
+                    .padding(.top, .spacingMD)
+                    .padding(.leading, 2)
                     // The date picker appears when showDatePicker is true
                     DatePickerView(isPresented: $showDatePicker,
                                    date: $signupStore.signupForm.birthday.value,
@@ -40,7 +45,6 @@ struct DateOfBirthStepView: View {
                         
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, .spacingLG)
             }
         }
     }
