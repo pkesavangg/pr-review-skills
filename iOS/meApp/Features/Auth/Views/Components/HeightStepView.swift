@@ -34,6 +34,7 @@ struct HeightStepView: View {
                 ChipView(
                     text: signupStore.getFormattedHeight(),
                     style: .bordered,
+                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
                     onTap: {
                         signupStore.showHeightPicker()
                     }
