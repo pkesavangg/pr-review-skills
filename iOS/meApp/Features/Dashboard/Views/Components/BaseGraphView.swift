@@ -230,9 +230,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
+            let xDate = viewModel.plotXDate(for: point.date)
             // Invisible tap target
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
@@ -240,7 +241,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Line mark
             LineMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value),
                 series: .value("Series", "\(point.series)-\(segmentIndex)")
             )
@@ -250,7 +251,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Visible point mark
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
@@ -261,7 +262,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
         if let selectedPoint = viewModel.selectedPoint, viewModel.showCrosshair {
-            RuleMark(x: .value("Date", selectedPoint.date))
+            let xDate = viewModel.plotXDate(for: selectedPoint.date)
+            RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
                 .foregroundStyle(theme.actionSecondary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
