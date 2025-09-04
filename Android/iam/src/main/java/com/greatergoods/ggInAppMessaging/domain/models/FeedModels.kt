@@ -117,6 +117,31 @@ data class FeedInfo(
 )
 
 /**
+ * Featured product information
+ */
+@Serializable
+data class FeaturedProduct(
+  val variationId: Int,
+  val titleText: String,
+  val feedLandingPageId: String,
+  val linkText: String,
+  val linkTarget: String,
+  val productImage: String
+)
+
+/**
+ * Feed action types
+ */
+@Serializable
+enum class FeedActionType {
+  CLICK,
+  VIEW,
+  DISMISS,
+  READ,
+  TRIGGER
+}
+
+/**
  * Feed configuration
  */
 @Serializable

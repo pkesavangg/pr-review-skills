@@ -5,12 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.feedMessages.strings.FeedMessagesStrings
-import com.dmdbrands.gurus.weight.features.feedMessages.viewmodel.FeedMessagesViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -25,7 +23,6 @@ fun AppFeedMessagesScreen(
   onBackPress: () -> Unit,
   onSettingsPress: () -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: FeedMessagesViewModel = hiltViewModel()
 ) {
   AppScaffold(
     title = FeedMessagesStrings.Title,
@@ -43,9 +40,9 @@ fun AppFeedMessagesScreen(
         .fillMaxSize()
         // .padding(horizontal = 16.dp),
     ) {
-      FeedMessagesScreen(
-        onSettingsPress = onSettingsPress,
-      )
+              FeedMessagesScreen(
+          onSettingsPress = onSettingsPress
+        )
     }
   }
 }

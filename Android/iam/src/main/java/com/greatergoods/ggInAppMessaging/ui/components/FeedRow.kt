@@ -23,7 +23,7 @@ import com.greatergoods.ggInAppMessaging.domain.models.*
  */
 @Composable
 fun FeedRow(
-    feedItem: IAMFeedItem,
+    feedItem: FeedItem,
     onClick: () -> Unit
 ) {
     Card(
@@ -49,7 +49,7 @@ fun FeedRow(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop
             )
-            
+
             // Feed content
             Column(
                 modifier = Modifier.weight(1f),
@@ -62,7 +62,7 @@ fun FeedRow(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
-                
+
                 // Title
                 Text(
                     text = feedItem.titleText,
@@ -72,7 +72,7 @@ fun FeedRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 // Subtitle
                 Text(
                     text = feedItem.subtitleFeedText,
@@ -82,7 +82,7 @@ fun FeedRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             // Unread indicator
             if (feedItem.isUnread == true) {
                 Box(
@@ -104,7 +104,7 @@ fun FeedRow(
 private fun FeedRowPreview() {
     MaterialTheme {
         FeedRow(
-            feedItem = IAMFeedItem(
+            feedItem = FeedItem(
                 feedPostId = "1",
                 elementId = "1",
                 accountId = "1",
@@ -118,7 +118,7 @@ private fun FeedRowPreview() {
                 linkText = "BUY NOW",
                 trigger = null,
                 expiresAt = null,
-                feedType = FeedType.LINK,
+                feedType = "link",
                 landingPage = null
             ),
             onClick = {}

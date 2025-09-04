@@ -1,66 +1,40 @@
 package com.greatergoods.ggInAppMessaging.core.service
 
-import com.google.gson.Gson
-import com.greatergoods.ggInAppMessaging.domain.models.FeedInfo
+import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
-import com.greatergoods.ggInAppMessaging.domain.models.FeedTriggerEvents
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.models.GGInAppMessagingConfig
+import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Main GG In-App Messaging service
- * Android equivalent of Angular gg-in-app-messaging.service.ts
+ * Manages feed settings and provides reactive updates
  */
-@Singleton
-class GGInAppMessagingService @Inject constructor(
+class GGInAppMessagingService(
   private val feedStorageService: FeedStorageService
 ) {
 
   private val tag = "GGInAppMessagingService"
 
-  // MARK: - Constants
-  private val feedInfoKey = "feedInfo"
-  private val feedLastTriggeredAtKey = "feedLastTriggeredAt"
-  private val feedLandingPagePath = "/feed-landing-page"
-
   // MARK: - Properties
   private var accountId: String = ""
   private var libConfig: GGInAppMessagingConfig = GGInAppMessagingConfig()
 
-  // MARK: - Subjects (BehaviorSubject equivalents)
-  private val _feedsUpdatedSubject = MutableStateFlow<List<FeedItem>>(emptyList())
-  val feedsUpdatedSubject: StateFlow<List<FeedItem>> = _feedsUpdatedSubject.asStateFlow()
-
-  private val _sendUpdateFeed = MutableSharedFlow<FeedInfo>()
-  val sendUpdateFeed = _sendUpdateFeed.asSharedFlow()
-
+  // MARK: - Reactive Streams
   private val _feedNotificationChangedSubject = MutableSharedFlow<Unit>()
   val feedNotificationChangedSubject = _feedNotificationChangedSubject.asSharedFlow()
 
-  private val _promoCodeCopiedSubject = MutableStateFlow(false)
-  val promoCodeCopiedSubject: StateFlow<Boolean> = _promoCodeCopiedSubject.asStateFlow()
-
-  private val _darkModeChangedSubject = MutableStateFlow(false)
-  val darkModeChangedSubject: StateFlow<Boolean> = _darkModeChangedSubject.asStateFlow()
-
-  // MARK: - Computed Properties
-  val feedInfoOfflineKey: String
-    get() = "$feedInfoKey${if (accountId.isNotEmpty()) "_$accountId" else ""}"
-
-  val feedLastTriggeredAt: String
-    get() = "$feedLastTriggeredAtKey${if (accountId.isNotEmpty()) "_$accountId" else ""}"
+  // MARK: - Feed Items Storage
+  private var _storedFeedItems: List<FeedItem> = emptyList()
 
   // MARK: - Public Methods
 
   /**
-   * Set account ID
+   * Set account ID for user-specific settings
    */
   fun setAccountId(accountId: String) {
     this.accountId = accountId
@@ -74,12 +48,9 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Get unread feed count
+   * Get feed settings flow for reactive updates
    */
-  fun getUnreadFeedCount(): Int {
-    val unreadFeeds = _feedsUpdatedSubject.value.filter { it.isUnread }
-    return unreadFeeds.size
-  }
+  val feedSettingsFlow: Flow<FeedSetting> = feedStorageService.feedSettingsFlow
 
   /**
    * Check and initialize stored feed notification settings
@@ -99,10 +70,11 @@ class GGInAppMessagingService @Inject constructor(
    * Store feed notification settings
    */
   suspend fun storeFeedNotificationSetting(feedSetting: FeedSetting) {
-    val feedValue = Gson().toJson(feedSetting)
-    val success = feedStorageService.setValue(feedInfoOfflineKey, feedValue)
-    if (success) {
+    try {
+      feedStorageService.updateFeedSettings(feedSetting, accountId)
       _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to store feed notification setting", e)
     }
   }
 
@@ -110,67 +82,60 @@ class GGInAppMessagingService @Inject constructor(
    * Get stored feed notification settings
    */
   suspend fun getStoredFeedNotificationSetting(): FeedSetting? {
-    val feedInfoObject = feedStorageService.getValue(feedInfoOfflineKey)
-    return if (feedInfoObject?.value != null) {
-      try {
-        Gson().fromJson(feedInfoObject.value, FeedSetting::class.java)
-      } catch (e: Exception) {
-        null
-      }
-    } else {
+    return try {
+      feedStorageService.getFeedSettings()
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to get stored feed notification setting", e)
       null
     }
   }
 
   /**
-   * Check if feed modal should be triggered
+   * Update pop-up message setting
    */
-  suspend fun checkFeedModalTrigger(): FeedItem? {
-    val feedSetting = getStoredFeedNotificationSetting()
-    if (feedSetting?.showPopupMessage == true) {
-      val feedItem = _feedsUpdatedSubject.value.find {
-        it.trigger == FeedTriggerEvents.LOGIN
-      }
-      if (feedItem != null) {
-        return feedItem
-      }
+  suspend fun updatePopupMessageSetting(showPopupMessage: Boolean) {
+    try {
+      feedStorageService.updatePopupMessageSetting(showPopupMessage, accountId)
+      _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to update popup message setting", e)
     }
-    return null
   }
 
   /**
-   * Load feeds into the service
+   * Update notification badge setting
    */
-  fun load(feeds: List<FeedItem>) {
-    _feedsUpdatedSubject.value = feeds
+  suspend fun updateNotificationBadgeSetting(showNotificationBadge: Boolean) {
+    try {
+      feedStorageService.updateNotificationBadgeSetting(showNotificationBadge, accountId)
+      _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to update notification badge setting", e)
+    }
   }
 
   /**
-   * Clear all feed data
+   * Get pop-up message setting
    */
-  fun clearFeedData() {
-    _feedsUpdatedSubject.value = emptyList()
+  suspend fun getPopupMessageSetting(): Boolean {
+    return try {
+      feedStorageService.getPopupMessageSetting()
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to get popup message setting", e)
+      true // Default to true
+    }
   }
 
   /**
-   * Set promo code copied state
+   * Get notification badge setting
    */
-  fun setPromoCodeCopied(isCopied: Boolean) {
-    _promoCodeCopiedSubject.value = isCopied
-  }
-
-  /**
-   * Set dark mode state
-   */
-  fun setDarkMode(isDarkMode: Boolean) {
-    _darkModeChangedSubject.value = isDarkMode
-  }
-
-  /**
-   * Emit feed update
-   */
-  suspend fun emitFeedUpdate(feedInfo: FeedInfo) {
-    _sendUpdateFeed.emit(feedInfo)
+  suspend fun getNotificationBadgeSetting(): Boolean {
+    return try {
+      feedStorageService.getNotificationBadgeSetting()
+    } catch (e: Exception) {
+      android.util.Log.e(tag, "Failed to get notification badge setting", e)
+      true // Default to true
+    }
   }
 
   /**
@@ -180,29 +145,109 @@ class GGInAppMessagingService @Inject constructor(
     _feedNotificationChangedSubject.emit(Unit)
   }
 
-  // MARK: - Navigation Methods (Android equivalents)
+  // MARK: - Methods required by existing FeedService
 
   /**
-   * Navigate to FAQ (Android equivalent)
+   * Get unread feed count (placeholder implementation)
    */
-  fun navigateToFAQ() {
-    "${libConfig.baseNavigationPath}$feedLandingPagePath/faq"
-    // TODO: Implement navigation using Navigation Component or deep linking
+  fun getUnreadFeedCount(): Int {
+    // TODO: Implement actual unread count logic
+    return 0
   }
 
   /**
-   * Navigate to feed landing page (Android equivalent)
+   * Check if feed modal should be triggered (placeholder implementation)
    */
-  fun navigateFeedLandingPage(feedItem: FeedItem, isFromModal: Boolean = false) {
-    "${libConfig.baseNavigationPath}$feedLandingPagePath"
-    // TODO: Implement navigation using Navigation Component or deep linking
+  suspend fun checkFeedModalTrigger(): Any? {
+    // TODO: Implement actual modal trigger logic
+    return null
   }
 
   /**
-   * Show feed modal (Android equivalent)
+   * Clear feed data (placeholder implementation)
    */
-  suspend fun showFeedModal(feedItem: FeedItem): Boolean {
-    // TODO: Implement modal display using Dialog or BottomSheet
-    return true
+  fun clearFeedData() {
+    // TODO: Implement actual clear logic
+  }
+
+  /**
+   * Set feed items received from main app's FeedService
+   * This method is called by the main app to provide feed items
+   */
+  fun setFeedItems(feedItems: List<FeedItem>) {
+    _storedFeedItems = feedItems
+  }
+
+  /**
+   * Get feed items - returns stored items from main app or mock data as fallback
+   * Reference: https://github.com/dmdbrands/balance-server?tab=readme-ov-file#get-bpmv2feed
+   */
+  suspend fun getFeedItems(): List<FeedItem> {
+    return _storedFeedItems
+  }
+
+  /**
+   * Create mock feed items (fallback implementation)
+   */
+  private fun createMockFeedItems(): List<FeedItem> {
+    return listOf(
+      FeedItem(
+        elementId = "mockUUID0002",
+        titleText = "Here's a headline that's 40 characters.",
+        subtitleModalText = "Be prepare for the holidays! Offer ends in {{expiresAt}}!",
+        subtitleFeedText = "Ends in 48 hours",
+        messageTypeText = "LIGHTENING DEAL",
+        titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+        linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+        linkText = "SHOP NOW",
+        trigger = null,
+        isUnread = false,
+        expiresAt = "2024-12-30T06:00:00.000Z",
+        feedPostId = "TvCN6AV5b781rXLSldOziI",
+        accountId = "TvCN6AV5b781rXLSldOziI",
+        feedType = FeedTypes.LINK,
+        landingPage = LandingPage(
+          feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+          feedPostId = "TvCN6AV5b781rXLSldOziI",
+          titleText = "Vacuum Sealers",
+          promoCode = "5ZHTL9M8",
+          featuredImage = null,
+          supportingTitleText = "One Machine, a Million Uses",
+          supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+          supportingImage = listOf(
+            "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+          ),
+          featuredTitleText = "Three Colors",
+          themeColor = "red",
+          featuredProduct = listOf(
+            FeaturedProduct(
+              variationId = 10001,
+              titleText = "Stone Blue",
+              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+              linkText = "Shop",
+              linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+              productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            ),
+            FeaturedProduct(
+              variationId = 10002,
+              titleText = "Stone Blue",
+              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+              linkText = "Shop",
+              linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+              productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            ),
+            FeaturedProduct(
+              variationId = 10003,
+              titleText = "Stone Blue",
+              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+              linkText = "Shop",
+              linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+              productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            ),
+          ),
+        ),
+      ),
+    )
   }
 }

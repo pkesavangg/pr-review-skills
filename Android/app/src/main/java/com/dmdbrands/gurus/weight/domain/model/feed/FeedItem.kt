@@ -1,5 +1,5 @@
 package com.dmdbrands.gurus.weight.domain.model.feed
 
-import com.greatergoods.ggInAppMessaging.domain.models.IAMFeedItem
+import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 
-typealias FeedItem = IAMFeedItem
+typealias FeedItem = com.greatergoods.ggInAppMessaging.domain.models.FeedItem

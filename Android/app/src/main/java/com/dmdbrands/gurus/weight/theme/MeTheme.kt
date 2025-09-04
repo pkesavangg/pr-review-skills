@@ -28,6 +28,8 @@ import com.dmdbrands.gurus.weight.theme.token.LocalTypography
 import com.dmdbrands.gurus.weight.theme.token.SpacingToken
 import com.greatergoods.ggInAppMessaging.theme.IamColors
 import com.greatergoods.ggInAppMessaging.theme.LocalIamColors
+import com.greatergoods.ggInAppMessaging.theme.LocalIamTypography
+import com.greatergoods.ggInAppMessaging.theme.model.IamTypography
 import android.app.Activity
 
 val LocalAppTheme =
@@ -110,6 +112,7 @@ fun MeAppTheme(
     LocalAnimation provides AnimationToken,
     LocalBorderRadius provides BorderRadiusToken,
     LocalIamColors provides iamColorsFromColorScheme(meAppColorScheme),
+    LocalIamTypography provides IAMTypography(AppTypography),
   ) {
     MaterialTheme(
       colorScheme = MaterialTheme.colorScheme.copy(
@@ -182,6 +185,28 @@ private fun iamColorsFromColorScheme(colorScheme: ColorScheme): IamColors {
     // Brand
     meAppPrimary = colorScheme.meAppPrimary,
     wgPrimary = colorScheme.wgPrimary,
+  )
+}
+
+private fun IAMTypography(typography: Typography): IamTypography {
+  return IamTypography(
+    typography.heading1,
+    typography.heading2,
+    typography.heading3,
+    typography.heading4,
+    typography.heading5,
+    typography.heading6,
+    typography.subHeading1,
+    typography.subHeading2,
+    typography.body1,
+    typography.body2,
+    typography.body3,
+    typography.body4,
+    typography.body5,
+    typography.link1,
+    typography.link2,
+    typography.button1,
+    typography.button2,
   )
 }
 

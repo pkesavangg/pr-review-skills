@@ -7,8 +7,11 @@ import com.dmdbrands.gurus.weight.domain.repository.IFeedRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
+import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedActionType
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
+import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,25 +67,6 @@ class FeedService @Inject constructor(
       val initialFeedSettings = getFeedSettings()
     }
 
-    // Listen for feed updates from the GG IAM service (matching Angular service)
-    serviceScope.launch {
-      ggIAMService.feedsUpdatedSubject.collect { feeds ->
-        _feedsChanged.emit(feeds.map { it as FeedItem })
-        launch { updateNotificationBadge() }
-      }
-    }
-
-    // Listen for promo code copied events (matching Angular service)
-    serviceScope.launch {
-      ggIAMService.promoCodeCopiedSubject.collect { isCopied ->
-        if (isCopied) {
-          // TODO: Show toast notification when notification service is available
-          // notificationService.showToast(message = "Promo code copied", duration = 3000)
-          AppLog.i(tag, "Promo code copied")
-        }
-      }
-    }
-
     // Listen for feed notification changes from the GG IAM service
     serviceScope.launch {
       ggIAMService.feedNotificationChangedSubject.collect {
@@ -106,7 +90,7 @@ class FeedService @Inject constructor(
       val items = feedRepository.fetchFeedItems()
 
       // Update GG IAM service with new feeds (matching Angular service)
-      ggIAMService.load(items.map { it as com.greatergoods.ggInAppMessaging.domain.models.FeedItem })
+      ggIAMService.setFeedItems(items)
 
       // Also emit to internal flows
       _feedsChanged.emit(items)
@@ -116,7 +100,6 @@ class FeedService @Inject constructor(
       AppLog.e(tag, "Failed to fetch feed items", error.toString())
 
       // Emit empty feeds on error (matching Angular service)
-      ggIAMService.load(emptyList<com.greatergoods.ggInAppMessaging.domain.models.FeedItem>())
       updateNotificationBadge()
     }
     // }
@@ -159,7 +142,7 @@ class FeedService @Inject constructor(
       result?.let { feedItem ->
         // TODO: Show modal using notification service
         // notificationService.showModal(...)
-        AppLog.d(tag, "Triggering feed modal for item: ${feedItem.feedPostId}")
+        AppLog.d(tag, "Triggering feed modal for item: $feedItem")
       }
     }
   }
@@ -174,12 +157,14 @@ class FeedService @Inject constructor(
   /**
    * Get the feed info offline key (matching Angular service's feedInfoOfflineKey getter)
    */
-  suspend fun getFeedInfoOfflineKey(): String = "$feedInfoKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
+  suspend fun getFeedInfoOfflineKey(): String =
+    "$feedInfoKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
 
   /**
    * Get the feed last triggered at key (matching Angular service's feedLastTriggeredAt getter)
    */
-  suspend fun getFeedLastTriggeredAtKey(): String = "$feedLastTriggeredAtKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
+  suspend fun getFeedLastTriggeredAtKey(): String =
+    "$feedLastTriggeredAtKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
 
   // MARK: - Cleanup
 
@@ -194,12 +179,13 @@ class FeedService @Inject constructor(
 
   private fun buildFeedAction(actionType: FeedActionType, variationId: Int?): FeedAction {
     val osType = if (requiresMeta(actionType)) "android" else null
-    val meta = if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(variationId) else null
+    val meta =
+      if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(variationId) else null
 
     return FeedAction(
       action = actionType,
       osType = osType,
-      meta = meta
+      meta = meta,
     )
   }
 
@@ -214,6 +200,134 @@ class FeedService @Inject constructor(
     val feedSettings = getFeedSettings()
     val badgeShouldShow = getUnreadFeedCount() > 0 && (feedSettings?.showNotificationBadge ?: true)
     _notificationBadgeUpdated.emit(badgeShouldShow)
+  }
+
+  // MARK: - Mock Data for Testing
+
+  /**
+   * Set mock feed items for testing purposes
+   * This method can be called to provide mock data to the IAM service
+   */
+  fun setMockFeedItems() {
+    serviceScope.launch {
+      try {
+        // Create mock feed items (you can customize this data)
+        val mockItems = listOf(
+          FeedItem(
+            elementId = "mockFromFeedService001",
+            titleText = "Special Offer from FeedService!",
+            messageTypeText = "LIGHTENING DEAL",
+            subtitleFeedText = "Ends in 48 hours",
+            subtitleModalText = "This feed item came from the main app's FeedService",
+            feedType = FeedTypes.LINK,
+            linkText = "https://shop.greatergoods.com",
+            feedPostId = "mockPost001",
+            accountId = "testAccount",
+            titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            landingPage = LandingPage(
+              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+              feedPostId = "TvCN6AV5b781rXLSldOziI",
+              titleText = "Vacuum Sealers",
+              promoCode = "5ZHTL9M8",
+              featuredImage = null,
+              supportingTitleText = "One Machine, a Million Uses",
+              supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+              supportingImage = listOf(
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+              ),
+              featuredTitleText = "Three Colors",
+              themeColor = "red",
+              featuredProduct = listOf(
+                FeaturedProduct(
+                  variationId = 10001,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+                FeaturedProduct(
+                  variationId = 10002,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+                FeaturedProduct(
+                  variationId = 10003,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+              ),
+            ),
+          ),
+          FeedItem(
+            elementId = "mockFromFeedService002",
+            titleText = "Another Test Item",
+            titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            messageTypeText = "LIGHTENING DEAL",
+            subtitleFeedText = "Ends in 48 hours",
+            subtitleModalText = "This is another mock item from FeedService",
+            feedType = FeedTypes.LANDING,
+            linkText = "https://example.com",
+            feedPostId = "mockPost002",
+            accountId = "testAccount",
+            landingPage = LandingPage(
+              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+              feedPostId = "TvCN6AV5b781rXLSldOziI",
+              titleText = "Vacuum Sealers",
+              promoCode = "5ZHTL9M8",
+              featuredImage = null,
+              supportingTitleText = "One Machine, a Million Uses",
+              supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+              supportingImage = listOf(
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+              ),
+              featuredTitleText = "Three Colors",
+              themeColor = "red",
+              featuredProduct = listOf(
+                FeaturedProduct(
+                  variationId = 10001,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+                FeaturedProduct(
+                  variationId = 10002,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+                FeaturedProduct(
+                  variationId = 10003,
+                  titleText = "Stone Blue",
+                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+                  linkText = "Shop",
+                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                ),
+              ),
+            ),
+          ),
+        )
+
+        // Set the mock items in the IAM service
+        ggIAMService.setFeedItems(mockItems)
+        AppLog.d(tag, "Set ${mockItems.size} mock feed items in IAM service")
+      } catch (e: Exception) {
+        AppLog.e(tag, "Failed to set mock feed items", e.toString())
+      }
+    }
   }
 
   fun cleanup() {

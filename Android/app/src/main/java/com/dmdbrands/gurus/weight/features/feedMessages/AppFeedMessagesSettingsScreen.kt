@@ -5,12 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.feedMessages.strings.FeedMessagesStrings
-import com.dmdbrands.gurus.weight.features.feedMessages.viewmodel.FeedMessagesViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -24,7 +22,6 @@ import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesSettingsScreen
 fun AppFeedMessagesSettingsScreen(
   onBackPress: () -> Unit,
   modifier: Modifier = Modifier,
-  viewModel: FeedMessagesViewModel = hiltViewModel()
 ) {
   AppScaffold(
     title = FeedMessagesStrings.SettingsTitle,
@@ -38,7 +35,7 @@ fun AppFeedMessagesSettingsScreen(
     // Reuse the IAM FeedMessagesSettingsScreen content
     Column(
       modifier = Modifier
-        .background(colorScheme.primaryBackground)
+        .background(colorScheme.secondaryBackground)
         .fillMaxSize(),
     ) {
       FeedMessagesSettingsScreen(

@@ -37,7 +37,7 @@ fun FeedMessagesSettingsScreen(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .background(iamColors.primaryBackground),
+      .background(iamColors.secondaryBackground),
   ) {
     // Settings Content
     SettingsContent(
@@ -58,7 +58,8 @@ private fun SettingsContent(
 ) {
   Column(
     modifier = Modifier
-      .fillMaxWidth(),
+      .fillMaxWidth()
+      .background(IamTheme.colors.secondaryBackground),
   ) {
     // Pop-up Messages Setting
     SettingRow(
@@ -89,11 +90,7 @@ private fun SettingRow(
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .padding(horizontal = 16.dp)
-      .background(
-        color = IamTheme.colors.primaryBackground,
-        shape = MaterialTheme.shapes.medium,
-      ),
+      .padding(horizontal = 16.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     // Setting Title

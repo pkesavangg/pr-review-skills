@@ -2,8 +2,8 @@ plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.hilt)
-  kotlin("kapt")
+  alias(libs.plugins.google.proto)
+  alias(libs.plugins.kotlin.serialization)
   `maven-publish`
 }
 
@@ -78,10 +78,18 @@ dependencies {
   // Timber for logging
   implementation(libs.timber)
 
-  // Hilt for dependency injection
-  implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
-  implementation(libs.hilt.navigation.compose)
+  // DataStore dependencies
+  implementation(libs.androidx.datastore)
+  implementation(libs.androidx.datastore.preferences.core)
+
+  // Protobuf dependencies
+  implementation(libs.protobuf.javalite)
+
+  // Kotlin serialization
+  implementation(libs.kotlinx.serialization.json)
+
+  // browser
+  implementation(libs.androidx.browser)
 
   // Testing
   testImplementation(libs.junit)
@@ -91,4 +99,20 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+
+protobuf {
+  protoc {
+    artifact = "com.google.protobuf:protoc:3.24.0"
+  }
+  generateProtoTasks {
+    all().forEach {
+      it.builtins {
+        create("java") {
+          option("lite")
+        }
+      }
+    }
+  }
 }
