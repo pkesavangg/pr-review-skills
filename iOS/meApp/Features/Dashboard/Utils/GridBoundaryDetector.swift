@@ -50,13 +50,7 @@ class GridBoundaryDetector {
             width: screenWidth,
             height: actualGridHeight
         )
-        
-        // Debug logging for boundary testing
-        #if DEBUG
-        print("GridBoundaryDetector - Screen Width: \(screenWidth), Grid Height: \(actualGridHeight)")
-        print("GridBoundaryDetector Bounds: \(gridBounds)")
-        print("Collection View Frame: \(collectionViewFrame), Content Size: \(contentSize)")
-        #endif
+ 
     }
     
     /// Checks if a drag location is within the precise grid boundaries

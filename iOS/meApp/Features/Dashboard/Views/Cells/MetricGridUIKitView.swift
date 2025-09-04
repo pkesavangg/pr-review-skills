@@ -593,13 +593,6 @@ extension MetricGridUIKitView {
             // Check if drag is within precise grid boundaries
             let isWithinBounds = boundaryDetector.isDragLocationWithinBounds(location, in: collectionView)
             
-            // Debug logging for testing
-            #if DEBUG
-            if !isWithinBounds {
-                print("MetricGrid Drag Outside Precise Bounds - Location: \(location)")
-            }
-            #endif
-            
             // Update boundary state if it changed
             updateDragBoundaryState(!isWithinBounds, for: collectionView)
         }
@@ -747,7 +740,6 @@ extension MetricGridUIKitView {
                 return
             }
 
-            // Use spring animation to slowly settle to the destination like iOS home screen
             if let custom = collectionView as? CustomCollectionView { 
                 custom.suspendIntrinsicInvalidation = true 
             }
