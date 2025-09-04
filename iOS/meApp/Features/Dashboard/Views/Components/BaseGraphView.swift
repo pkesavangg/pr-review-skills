@@ -12,11 +12,6 @@ import Charts
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
-    // MARK: - Constants
-    
-    /// Padding factor for trailing domain to provide extra space at the end of scrollable charts
-    private let trailingDomainPadding: Double = 1.05
-    
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
@@ -358,7 +353,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength * trailingDomainPadding) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
