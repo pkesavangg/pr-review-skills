@@ -35,8 +35,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             ZStack {
                 // Main Chart
                 Chart {
-                    yAxisGridLines
-                    xAxisGridLinesSolid
+                     yAxisGridLines
+                     xAxisGridLinesSolid
                     yAxisBaseline
                     chartSeries
                     crosshairContent
@@ -183,7 +183,22 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private var yAxisBaseline: some ChartContent {
         // Show baseline only for Total view (no X-axis)
         if !viewModel.hasXAxis {
-            RuleMark(x: .value("YBaselineTrailing", viewModel.dateRange.upperBound))
+            // Draw both leading (start) and trailing (end) vertical boundaries.
+            // Nudge them inward by half a point in time to avoid edge clipping.
+            let domain = viewModel.dateRange
+            let domainLength = domain.upperBound.timeIntervalSince(domain.lowerBound)
+            let width = max(1, viewModel.chartFrame.width)
+            let secondsPerPoint = domainLength / Double(width)
+            let halfPointOffset = secondsPerPoint * 0.5
+
+            let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
+            let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
+
+            RuleMark(x: .value("YBaselineLeading", leadingX))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(-1)
+            RuleMark(x: .value("YBaselineTrailing", trailingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)

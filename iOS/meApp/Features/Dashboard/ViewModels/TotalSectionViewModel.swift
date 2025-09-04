@@ -19,8 +19,10 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         return .total
     }
     
-    override var maxGapForConnectedSegments: TimeInterval {
-        return 365 * 24 * 60 * 60 // 1 year gap for total view
+    /// Connect across any gap in Total view
+    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
+        let sorted = dataPoints.sorted { $0.date < $1.date }
+        return sorted.isEmpty ? [] : [sorted]
     }
     
     override var hasXAxis: Bool {
@@ -51,7 +53,17 @@ final class TotalSectionViewModel: BaseSectionViewModel {
             let now = Date()
             return now...now
         }
-        
+
+        // If there is only one point, expand the domain by 3 months on both sides
+        if minDate == maxDate {
+            let calendar = Calendar.current
+            let expandedStart = calendar.date(byAdding: .month, value: -3, to: minDate)
+                ?? minDate.addingTimeInterval(-90 * 24 * 60 * 60)
+            let expandedEnd = calendar.date(byAdding: .month, value: 3, to: maxDate)
+                ?? maxDate.addingTimeInterval(90 * 24 * 60 * 60)
+            return expandedStart...expandedEnd
+        }
+
         return minDate...maxDate
     }
     
