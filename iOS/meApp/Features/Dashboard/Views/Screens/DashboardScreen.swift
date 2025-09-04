@@ -72,7 +72,32 @@ struct DashboardScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if store.state.ui.isEditMode {
                 DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
-                    store.restartWiggleAnimations()
+store.restartWiggleAnimations()
+                }
+            }
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                await MainActor.run {
+                    store.objectWillChange.send()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                // Force UI update to reflect the changes
+                await MainActor.run {
+                    store.objectWillChange.send()
+                    // Force a complete refresh of the dashboard state
+                    store.refreshDashboardState()
+                }
+            }
+        }
+        .onAppear {
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                await MainActor.run {
+                    store.objectWillChange.send()
                 }
             }
         }
@@ -96,7 +121,20 @@ struct DashboardScreen: View {
                 store.cancelEdit()
             }
             if newTab == .dash {
-                DispatchQueue.main.async { store.resetGridLayout() }
+                // Immediately refresh dashboard data when switching to dashboard tab
+                // This ensures changes from scale setup are reflected
+                print("📱 DashboardScreen: Switched to dashboard tab, refreshing data...")
+                Task {
+                    await store.loadDashboardConfigurationFromAPI()
+                    await MainActor.run {
+                        store.objectWillChange.send()
+                    }
+                    print("📱 DashboardScreen: Dashboard data refreshed on tab switch")
+                }
+                
+                DispatchQueue.main.async { 
+                    store.resetGridLayout()
+                }
             }
         }
     }

@@ -522,6 +522,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Exit / Help
     private func performExitCleanup() {
+        // Post notification to refresh dashboard when setup is dismissed
+        NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+        
         dismissAction?()
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
@@ -620,6 +623,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .customizeSettings:
             handleCustomizeSettingsNext()
         case .scaleConnected:
+            // Post notification to refresh dashboard when setup completes
+            NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            
+            // Also post a notification when the setup is about to dismiss
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            }
+            
+            // Post one more notification right before dismissing to ensure dashboard refreshes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            }
+            
             dismissAction?()
         default:
             moveToNextStep()
@@ -800,9 +816,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             break
         case .dashboardMetrics:
-            // Persist dashboard metrics via the Dashboard feature's store
-            dashboardStore.saveChanges()
             // Mark that changes were made so the flow can treat it as updated
+            // Dashboard metrics will be saved to API when Next button is clicked
             self.hasCustomizeChanges = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             break
@@ -1637,7 +1652,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            let _ = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            let saveDashboardMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            
+            // Save dashboard metrics to API when Next button is clicked
+            if saveDashboardMetrics {
+                // Post notification to refresh dashboard screen when user returns to it
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+                
+                // Also post a notification when the setup flow is about to complete
+                // This ensures the dashboard refreshes when the user returns
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+                }
+            }
             
             // Get current preference or create default
             let currentPreference = savedScale.r4ScalePreference ?? {

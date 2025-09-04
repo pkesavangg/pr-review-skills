@@ -70,7 +70,7 @@ class StreakCardCell: UICollectionViewCell {
         if parentView == .R4ScaleSetup {
             let lower = item.label.lowercased()
             if lower.contains("current streak") || lower.contains("longest streak") {
-                streakValue = ""
+                streakValue = "0"
             } else {
                 streakValue = "+/-"
             }
