@@ -27,12 +27,11 @@ struct DashboardMetricsSection: View {
                     
                 }
             }
-            
-            // if !store.allContentRemoved && store.state.data.hasAnyEntries {
+
             metricsGridSection()
             dividerSection()
             goalStreakSection()
-            // }
+            
         }
         .onAppear {
             if parentView == .R4ScaleSetup {
@@ -61,7 +60,6 @@ struct DashboardMetricsSection: View {
     
     private func metricsGridSection() -> some View {
         Group {
-            // if !store.metricsToShow.isEmpty {
             MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
                 store.state.ui.selectedMetricLabel = label
                 openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
@@ -70,7 +68,6 @@ struct DashboardMetricsSection: View {
             .padding(.top, .spacingSM)
             .id(store.state.ui.gridLayoutId)
             .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-            //}
         }
     }
     
@@ -87,13 +84,11 @@ struct DashboardMetricsSection: View {
     
     private func goalStreakSection() -> some View {
         Group {
-            // if store.shouldShowGoalCardOrStreaks {
             GoalStreakGridUIKitView(parentView: parentView, store: store)
                 .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
                 .padding(.top, store.state.ui.isGoalCardRemoved ? 0 : .spacingXS)
                 .id(store.state.ui.gridLayoutId)
                 .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-            // }
         }
     }
 }

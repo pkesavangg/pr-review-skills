@@ -113,13 +113,7 @@ class MetricCell: UICollectionViewCell {
         let itemIsRemoved = store.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
-        let displayValue: String
-        if store.effectiveDashboardType == .dashboard12 && store.state.ui.isEditMode {
-            // In Scale Setup flow (forced edit mode), show big header style via MetricCardView default
-            displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
-        } else {
-            displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
-        }
+        let displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
 
         let metricCardView = MetricCardView(
             value: displayValue,

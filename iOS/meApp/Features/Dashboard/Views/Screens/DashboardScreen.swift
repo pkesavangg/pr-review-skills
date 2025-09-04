@@ -121,15 +121,11 @@ store.restartWiggleAnimations()
                 store.cancelEdit()
             }
             if newTab == .dash {
-                // Immediately refresh dashboard data when switching to dashboard tab
-                // This ensures changes from scale setup are reflected
-                print("📱 DashboardScreen: Switched to dashboard tab, refreshing data...")
                 Task {
                     await store.loadDashboardConfigurationFromAPI()
                     await MainActor.run {
                         store.objectWillChange.send()
                     }
-                    print("📱 DashboardScreen: Dashboard data refreshed on tab switch")
                 }
                 
                 DispatchQueue.main.async { 
