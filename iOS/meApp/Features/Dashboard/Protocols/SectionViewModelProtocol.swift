@@ -75,6 +75,10 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Chart Position Calculations
     func getChartPosition(for date: Date, value: Double) -> CGPoint?
+    /// Returns the actual X value that should be plotted for a given data date.
+    /// Default behavior is to use the same date; specific periods can override
+    /// to shift points (e.g., center monthly averages between month ticks).
+    func plotXDate(for original: Date) -> Date
     
     // MARK: - X-Axis Label Generation
     func formatXAxisLabel(for date: Date) -> String?

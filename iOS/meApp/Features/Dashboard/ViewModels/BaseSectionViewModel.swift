@@ -365,7 +365,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         let visibleDomainLength = self.visibleDomainLength
         guard visibleDomainLength.isFinite && visibleDomainLength > 0 else { return nil }
         
-        let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
+        // Use the plotting X-date which may be shifted (e.g., mid-month for year view)
+        let effectiveDate = plotXDate(for: date)
+        let timeFromScrollPosition = effectiveDate.timeIntervalSince(xScrollPosition)
         let xRatio = timeFromScrollPosition / visibleDomainLength
         let xPosition = chartFrame.width * xRatio
         
@@ -391,6 +393,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         let adjustedY = yPosition
         
         return CGPoint(x: adjustedX, y: adjustedY)
+    }
+
+    /// Default implementation: use the original date for plotting
+    func plotXDate(for original: Date) -> Date {
+        return original
     }
     
     // MARK: - X-Axis Label Generation

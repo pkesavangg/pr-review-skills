@@ -63,8 +63,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
-                .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
-                .padding(.trailing, .spacingXS)
+                .padding(.leading, 0)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -183,7 +182,22 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private var yAxisBaseline: some ChartContent {
         // Show baseline only for Total view (no X-axis)
         if !viewModel.hasXAxis {
-            RuleMark(x: .value("YBaselineTrailing", viewModel.dateRange.upperBound))
+            // Draw both leading (start) and trailing (end) vertical boundaries.
+            // Nudge them inward by half a point in time to avoid edge clipping.
+            let domain = viewModel.dateRange
+            let domainLength = domain.upperBound.timeIntervalSince(domain.lowerBound)
+            let width = max(1, viewModel.chartFrame.width)
+            let secondsPerPoint = domainLength / Double(width)
+            let halfPointOffset = secondsPerPoint * 0.5
+            
+            let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
+            let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
+            
+            RuleMark(x: .value("YBaselineLeading", leadingX))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(-1)
+            RuleMark(x: .value("YBaselineTrailing", trailingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
@@ -215,9 +229,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
+            let xDate = viewModel.plotXDate(for: point.date)
             // Invisible tap target
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
@@ -225,7 +240,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Line mark
             LineMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value),
                 series: .value("Series", "\(point.series)-\(segmentIndex)")
             )
@@ -235,7 +250,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Visible point mark
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
@@ -246,7 +261,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
         if let selectedPoint = viewModel.selectedPoint, viewModel.showCrosshair {
-            RuleMark(x: .value("Date", selectedPoint.date))
+            let xDate = viewModel.plotXDate(for: selectedPoint.date)
+            RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
                 .foregroundStyle(theme.actionSecondary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
@@ -264,7 +280,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                         .fontWeight(.medium)
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: yAxisLabelWidth, alignment: .trailing)
+                        .frame(width: yAxisLabelWidth, alignment: .center)
                 }
             }
         }
@@ -337,7 +353,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
@@ -379,6 +395,14 @@ extension View {
                                     .foregroundColor(theme.textSubheading)
                             }
                         }
+                    }
+                }
+                // Add padding to left side of chart area
+                .chartPlotStyle { plot in
+                    if viewModel.isAtLeftBoundary {
+                        plot.padding(.leading, .spacingXS)
+                    } else {
+                        plot
                     }
                 }
                 .chartXSelection(value: Binding(
