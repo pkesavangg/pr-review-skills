@@ -14,6 +14,14 @@ import Charts
 @MainActor
 final class TotalSectionViewModel: BaseSectionViewModel {
     
+    // MARK: - Constants
+    
+    /// Number of days to expand domain when there's only one data point
+    private static let domainExpansionDays: Int = 3
+    
+    /// Fallback time interval for domain expansion (90 days in seconds)
+    private static let fallbackDomainExpansion: TimeInterval = 90 * 24 * 60 * 60
+    
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .total
@@ -57,10 +65,10 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         // If there is only one point, expand the domain by 3 months on both sides
         if minDate == maxDate {
             let calendar = Calendar.current
-            let expandedStart = calendar.date(byAdding: .month, value: -3, to: minDate)
-                ?? minDate.addingTimeInterval(-90 * 24 * 60 * 60)
-            let expandedEnd = calendar.date(byAdding: .month, value: 3, to: maxDate)
-                ?? maxDate.addingTimeInterval(90 * 24 * 60 * 60)
+            let expandedStart = calendar.date(byAdding: .month, value: -Self.domainExpansionDays, to: minDate)
+                ?? minDate.addingTimeInterval(-Self.fallbackDomainExpansion)
+            let expandedEnd = calendar.date(byAdding: .month, value: Self.domainExpansionDays, to: maxDate)
+                ?? maxDate.addingTimeInterval(Self.fallbackDomainExpansion)
             return expandedStart...expandedEnd
         }
 
