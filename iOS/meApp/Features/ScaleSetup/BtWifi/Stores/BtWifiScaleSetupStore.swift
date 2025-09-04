@@ -167,6 +167,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let customizeSettingsLang = BtWifiScaleSetupStrings.CustomizeSettingsStrings.self
     
+    // Dashboard store used for the Dashboard Metrics customization view
+    private let dashboardStore = DashboardStore()
+    
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
         guard let scaleItem else { return [] }
@@ -290,6 +293,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                 self?.hasCustomizeChanges = true
                                 self?.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
                             }
+                            
+                        case .dashboardMetrics:
+                            ScrollView {
+                                DashboardMetricsSection(
+                                    store: dashboardStore,
+                                    parentView: .R4ScaleSetup,
+                                    openMetricInfoWithoutSelection: .constant(nil)
+                                )
+                                .padding(.top, .spacingSM)
+                            }
+                            .scrollIndicators(.hidden)
+                            
                         default:
                             // For now, other settings show placeholder
                             VStack {
@@ -785,7 +800,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             break
         case .dashboardMetrics:
+            // Persist dashboard metrics via the Dashboard feature's store
+            dashboardStore.saveChanges()
+            // Mark that changes were made so the flow can treat it as updated
             self.hasCustomizeChanges = true
+            self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             break
         default:
             break

@@ -12,6 +12,8 @@ import UIKit
 /// Provides iOS home screen-like behavior with wiggle animations and instant positioning
 /// Uses existing EditModeOverlay for delete buttons instead of custom UIKit delete buttons
 struct MetricGridUIKitView: UIViewRepresentable {
+    // Parent context (dashboard vs setup)
+    var parentView: DashboardMetricsParentView = .dashboard
     
     // MARK: - Properties
     
@@ -84,7 +86,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 with: item,
                                 dashboardType: store.state.metrics.dashboardType,
                                 store: store,
-                                isBeingDragged: false
+                                isBeingDragged: false,
+                                parentView: parentView
                             )
                             metricCell.isRemoved = store.isMetricRemoved(item.label)
                         }
@@ -100,7 +103,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
                             with: item,
                             dashboardType: store.state.metrics.dashboardType,
                             store: store,
-                            isBeingDragged: false
+                            isBeingDragged: false,
+                            parentView: parentView
                         )
                         metricCell.isRemoved = store.isMetricRemoved(item.label)
                     }
@@ -127,7 +131,8 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 with: item,
                                 dashboardType: store.state.metrics.dashboardType,
                                 store: store,
-                                isBeingDragged: false
+                                isBeingDragged: false,
+                                parentView: parentView
                             )
                         }
                     }
@@ -314,6 +319,7 @@ extension MetricGridUIKitView {
                 dashboardType: store.state.metrics.dashboardType,
                 store: store,
                 isBeingDragged: isBeingDragged, // Pass drag state to cell
+                parentView: parent.parentView,
                 onMetricLongPress: parent.onMetricLongPress,
                 onSelectMetric: { label in
                     if label.isEmpty {
@@ -774,6 +780,7 @@ extension MetricGridUIKitView {
                         dashboardType: self.store.state.metrics.dashboardType,
                         store: self.store,
                         isBeingDragged: false,
+                        parentView: self.parent.parentView,
                         onMetricLongPress: self.parent.onMetricLongPress,
                         onSelectMetric: { label in
                             if label.isEmpty { self.store.state.ui.selectedMetricLabel = nil }

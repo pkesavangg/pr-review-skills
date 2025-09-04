@@ -47,6 +47,9 @@ class StreakCardCell: UICollectionViewCell {
     private var currentIsBeingDragged: Bool = false
     private var suppressOverlay: Bool = false
     
+    // Parent context for rendering rules
+    var parentView: DashboardMetricsParentView = .dashboard
+    
     // MARK: - Configuration
     
     func configure(with item: MetricItem, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
@@ -63,8 +66,20 @@ class StreakCardCell: UICollectionViewCell {
         // Set the removal state
         isRemoved = store.isStreakRemoved(item.label)
         
+        let streakValue: String
+        if parentView == .R4ScaleSetup {
+            let lower = item.label.lowercased()
+            if lower.contains("current streak") || lower.contains("longest streak") {
+                streakValue = ""
+            } else {
+                streakValue = "+/-"
+            }
+        } else {
+            streakValue = item.value
+        }
+
         let streakCardView = StreakCardView(
-            value: item.value,
+            value: streakValue,
             label: item.label,
             icon: item.icon,
             isEditMode: store.state.ui.isEditMode,
