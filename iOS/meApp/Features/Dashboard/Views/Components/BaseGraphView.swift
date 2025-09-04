@@ -35,8 +35,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             ZStack {
                 // Main Chart
                 Chart {
-                     yAxisGridLines
-                     xAxisGridLinesSolid
+                    yAxisGridLines
+                    xAxisGridLinesSolid
                     yAxisBaseline
                     chartSeries
                     crosshairContent
@@ -63,7 +63,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
-                .padding(.trailing, .spacingXS)
+                .padding(.leading, 0)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -189,10 +189,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
             let halfPointOffset = secondsPerPoint * 0.5
-
+            
             let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
             let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
-
+            
             RuleMark(x: .value("YBaselineLeading", leadingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
@@ -280,7 +280,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                         .fontWeight(.medium)
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: yAxisLabelWidth, alignment: .trailing)
+                        .frame(width: yAxisLabelWidth, alignment: .center)
                 }
             }
         }
@@ -353,7 +353,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
@@ -397,11 +397,10 @@ extension View {
                         }
                     }
                 }
-                // Slight inner padding at the left edge only when we're at the initial boundary
-                // to avoid clipping the first point in views like Year
+                // Add padding to left side of chart area
                 .chartPlotStyle { plot in
                     if viewModel.isAtLeftBoundary {
-                        plot.padding(.leading, 8)
+                        plot.padding(.leading, .spacingXS)
                     } else {
                         plot
                     }
