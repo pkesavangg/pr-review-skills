@@ -85,10 +85,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 }
                 .animation(.easeInOut(duration: 0.25), value: viewModel.yAxisDomain)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
-                // // Animate only when Y-axis domain changes to smoothly resize content
-                // .animation(.easeInOut(duration: 0.25), value: viewModel.yAxisDomain)
-                
+                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
                 // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
