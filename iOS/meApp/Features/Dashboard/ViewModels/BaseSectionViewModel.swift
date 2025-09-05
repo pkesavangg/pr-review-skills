@@ -149,7 +149,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// X-axis values with buffer
     var xAxisValues: [Date] {
         guard let store = dashboardStore else { return [] }
-        return store.xAxisValuesWithBuffer(for: timePeriod)
+        // Use the live scroll position from this view model so axis ticks (including
+        // trailing phantom ticks) reflect the current gesture immediately and avoid
+        // the "jump" when scroll ends.
+        let liveScrollPosition = self.scrollPosition
+        return store.graphManager.generateVisibleXAxisValues(
+            for: timePeriod,
+            from: store.continuousOperations,
+            scrollPosition: liveScrollPosition
+        )
     }
     
     /// Determines if the chart is scrolled to the leftmost boundary
@@ -317,15 +325,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         
         // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
+        let availableChartHeight = chartFrame.height - (18)
         
         // If goal weight is outside domain, show at edges
         if goalWeight > domain.upperBound {
-            return (yPosition: -25, placement: .top)
+            return (yPosition: -20, placement: .top)
         }
         
         if goalWeight < domain.lowerBound {
-            return (yPosition: chartFrame.height + 20, placement: .bottom)
+            return (yPosition: chartFrame.height, placement: .bottom)
         }
         
         // Goal weight is within domain, calculate proportional position
@@ -348,9 +356,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
-            return 22 // More space for 3+ digit values
+            return 28 // Less space for 3+ digit values
         } else {
-            return 18 // Less space for 1-2 digit values
+            return 34 // More space for 1-2 digit values
         }
     }
     

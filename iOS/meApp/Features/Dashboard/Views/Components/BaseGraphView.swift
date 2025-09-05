@@ -23,6 +23,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var touchInteractionMode: TouchInteractionMode = .none
     @State private var initialTouchPoint: CGPoint = .zero
     @State private var decisionTimer: Timer?
+    // Enable Y-axis animation only after first render to avoid blank-first-frame
+    @State private var enableYAxisAnimation: Bool = false
     
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
@@ -83,7 +85,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .onAppear {
                     viewModel.initializeChart()
                 }
-                .animation(.easeInOut(duration: 0.25), value: viewModel.yAxisDomain)
+                // Re-enable Chart-level animation after first frame to animate subsequent domain changes
+                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
                 // Apply touch interaction modifiers only for scrollable charts
@@ -112,6 +115,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
         .onAppear {
             viewModel.configure(with: dashboardStore)
+            // Flip on animation after first frame so the initial mount does not animate
+            DispatchQueue.main.async { enableYAxisAnimation = true }
         }
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
             viewModel.refreshData()
@@ -147,7 +152,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 let domainRange = upper - lower
                 let availableHeight = max(1, viewModel.chartFrame.height -  (viewModel.hasXAxis ? 18 : 0))
                 let onePointValue = domainRange / Double(availableHeight)
-                if abs(tick - lower) <= epsilon { return tick + onePointValue }
+                // Only nudge the bottom-most tick when lower domain is negative.
+                if abs(tick - lower) <= epsilon {
+                    return lower < 0 ? (tick + onePointValue) : tick
+                }
                 if abs(tick - upper) <= epsilon { return tick - onePointValue }
                 return tick
             }()
@@ -274,8 +282,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
                     Text(dashboardStore.formatYAxisTickLabel(doubleValue))
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .fontOpenSans(.subHeading2)
+                        .multilineTextAlignment(.leading)
+                        .fontWeight(.regular)
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
                         .frame(width: yAxisLabelWidth, alignment: .center)
@@ -309,11 +318,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalPosition = viewModel.getGoalChipPosition()
-        let xOffset = viewModel.getGoalChipXOffset()
+        let xOffset = 20
         
         goalWeightChip(viewModel.goalWeight)
             .position(
-                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - xOffset : 320,
+                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - CGFloat(xOffset) : 320,
                 y: goalPosition.yPosition
             )
             .animation(
@@ -328,10 +337,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private func goalWeightChip(_ value: Double) -> some View {
         Text(dashboardStore.formatYAxisTickLabel(value))
             .fontWeight(.bold)
-            .font(.body)
-            .foregroundColor(.white)
+            .fontOpenSans(.body3)
+            .foregroundColor(theme.actionInverse)
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
     }
 }
@@ -426,7 +435,17 @@ extension View {
             self
                 .chartXScale(domain: viewModel.dateRange)
                 .chartXAxis {
-                    // No X-axis for total view
+                    // Reserve space for X-axis to keep chart height consistent with other sections
+                    AxisMarks(position: .bottom) { _ in
+                        // Hide grid/ticks but keep label height via an invisible label
+                        AxisGridLine().foregroundStyle(.clear)
+                        AxisTick().foregroundStyle(.clear)
+                        AxisValueLabel {
+                            Text("00")
+                                .font(.caption)
+                                .opacity(0) // invisible but reserves height
+                        }
+                    }
                 }
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },

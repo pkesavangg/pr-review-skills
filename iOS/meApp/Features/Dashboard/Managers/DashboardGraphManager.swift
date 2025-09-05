@@ -920,21 +920,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        // NEVER recalculate X-axis values during scrolling to prevent axis jumping
-        if state.isScrolling {
-            if !lastXAxisValues.isEmpty && lastXAxisPeriod == period {
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll to prevent jumping")
+        // During scrolling we usually want to keep ticks stable, but when the window
+        // moves significantly or approaches dataset edges we must recompute so the
+        // trailing phantom tick (extra space) appears immediately, avoiding the post-scroll
+        // "jump" of the last data point.
+        if state.isScrolling, !lastXAxisValues.isEmpty, lastXAxisPeriod == period {
+            let domainLength: TimeInterval = visibleDomainLength(for: period)
+            let lastPos = lastXAxisScrollPosition ?? state.xScrollPosition
+            let delta = abs(scrollPosition.timeIntervalSince(lastPos))
+
+            // Heuristic: allow reuse unless the user moved > ~1/6 of the domain or is near edges
+            let movedFar = delta > (domainLength / 6.0)
+
+            // Edge detection: if the right or left boundary is close to the dataset edges,
+            // recompute so we include the empty trailing/leading space immediately.
+            let allDates: [Date] = operations.map { $0.date }
+            let minDate = allDates.min() ?? scrollPosition
+            let maxDate = allDates.max() ?? scrollPosition
+            let leftEdge = scrollPosition
+            let rightEdge = scrollPosition.addingTimeInterval(domainLength)
+            let nearLeft = leftEdge <= minDate.addingTimeInterval(domainLength / 4.0)
+            let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
+
+            if !(movedFar || nearLeft || nearRight) {
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
 
-        let domainLength = visibleDomainLength(for: period)
-        let allDates = operations.map(\.date)
+        let domainLength: TimeInterval = visibleDomainLength(for: period)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min() else { return [] }
-        let buffer = domainLength * 2
+        let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
-        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
         let xAxisValues: [Date]
@@ -958,7 +978,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
     func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
-        let allDates = operations.map(\.date)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
             return Date()
         }
@@ -995,9 +1015,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
 
         let domainLength = visibleDomainLength(for: period)
-        let buffer = domainLength * 2
-        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let buffer: TimeInterval = domainLength * 2.0
+        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
