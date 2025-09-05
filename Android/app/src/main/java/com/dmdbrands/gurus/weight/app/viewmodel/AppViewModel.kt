@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -79,7 +80,8 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val deviceInfoService: IDeviceInfoService,
   private val workManager: WorkManager,
-  private val bluetoothPreferencesService: BluetoothPreferencesService
+  private val bluetoothPreferencesService: BluetoothPreferencesService,
+  private val feedService: IFeedService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -335,6 +337,7 @@ constructor(
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
+        feedService.fetchFeedItems()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()

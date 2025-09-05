@@ -47,7 +47,7 @@ interface IFeedService {
    * Gets the count of unread feed items.
    * @return Number of unread feed items
    */
-  fun getUnreadFeedCount(): Int
+  suspend fun getUnreadFeedCount(): Int
 
   // MARK: - Feed Settings Management
 

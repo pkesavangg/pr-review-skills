@@ -6,7 +6,7 @@ import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesSettingsScreen
 
 @Composable
 fun FeedMessageSettingsScreen() {
-  FeedMessagesSettingsScreen({}, {})
+  FeedMessagesSettingsScreen()
 }
 
 @Preview

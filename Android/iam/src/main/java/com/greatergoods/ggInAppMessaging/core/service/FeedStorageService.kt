@@ -4,12 +4,13 @@ import com.greatergoods.ggInAppMessaging.core.storage.FeedSettingsDataStore
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
 /**
  * Feed storage service for managing local feed data using Proto DataStore
  * Provides type-safe storage for feed settings with reactive updates
  */
-class FeedStorageService(
+class FeedStorageService @Inject constructor(
   private val feedSettingsDataStore: FeedSettingsDataStore
 ) {
 

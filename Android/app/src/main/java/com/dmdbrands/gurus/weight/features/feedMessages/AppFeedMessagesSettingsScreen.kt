@@ -38,18 +38,7 @@ fun AppFeedMessagesSettingsScreen(
         .background(colorScheme.secondaryBackground)
         .fillMaxSize(),
     ) {
-      FeedMessagesSettingsScreen(
-        onPopUpMessagesToggle = { enabled ->
-          // Handle pop-up messages toggle
-          // TODO: Implement with ViewModel
-        },
-        onNotificationBadgesToggle = { enabled ->
-          // Handle notification badges toggle
-          // TODO: Implement with ViewModel
-        },
-        popUpMessagesEnabled = true, // TODO: Get from ViewModel
-        notificationBadgesEnabled = true, // TODO: Get from ViewModel
-      )
+      FeedMessagesSettingsScreen()
     }
   }
 }

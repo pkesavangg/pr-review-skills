@@ -8,6 +8,17 @@ package com.greatergoods.ggInAppMessaging.ui.components
 /**
  * Component usage examples:
  *
+ * // Feed Popup Modal
+ * FeedPopup(
+ *     imageUrl = "https://example.com/image.jpg",
+ *     messageType = "LIGHTNING DEAL",
+ *     headline = "Here's a headline that's 40 characters.",
+ *     supportingText = "Supporting text that can be customized up to 60 characters.",
+ *     onPrimaryButtonClick = { /* handle shop now */ },
+ *     onSecondaryButtonClick = { /* handle message settings */ },
+ *     onCloseClick = { /* close popup */ }
+ * )
+ *
  * // Feed Item Display
  * FeedItemComponent(
  *     feedItem = feedItem,

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.InputStream
 import java.io.OutputStream
+import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * Extension property to provide FeedSettings DataStore instance from Context.
@@ -25,8 +27,8 @@ val Context.feedSettingsDataStore: DataStore<FeedSettings> by dataStore(
  * DataStore for managing feed settings using Proto DataStore.
  * Provides type-safe storage for pop-up messages and notification badges settings.
  */
-class FeedSettingsDataStore(
-  private val context: Context,
+class FeedSettingsDataStore @Inject constructor(
+  @ApplicationContext private val context: Context,
 ) : BaseProtoDataStore<FeedSettings>(
   dataStore = context.feedSettingsDataStore,
 ) {
@@ -44,13 +46,22 @@ class FeedSettingsDataStore(
 
   /**
    * Gets the current feed settings.
+   * Returns default values (true) if settings haven't been initialized yet.
    */
   suspend fun getFeedSettings(): FeedSetting {
     val proto = getData()
-    return FeedSetting(
-      showPopupMessage = proto.showPopupMessage,
-      showNotificationBadge = proto.showNotificationBadge
-    )
+    // If accountId is empty, it means settings haven't been initialized yet
+    return if (proto.accountId.isEmpty()) {
+      FeedSetting(
+        showPopupMessage = true, // Default to true for first-time users
+        showNotificationBadge = true // Default to true for first-time users
+      )
+    } else {
+      FeedSetting(
+        showPopupMessage = proto.showPopupMessage,
+        showNotificationBadge = proto.showNotificationBadge
+      )
+    }
   }
 
   /**
@@ -124,13 +135,31 @@ class FeedSettingsDataStore(
 
   /**
    * Gets the pop-up message setting.
+   * Returns true as default if settings haven't been initialized yet.
    */
-  suspend fun getPopupMessageSetting(): Boolean = getData().showPopupMessage
+  suspend fun getPopupMessageSetting(): Boolean {
+    val data = getData()
+    // If accountId is empty, it means settings haven't been initialized yet
+    return if (data.accountId.isEmpty()) {
+      true // Default to true for first-time users
+    } else {
+      data.showPopupMessage
+    }
+  }
 
   /**
    * Gets the notification badge setting.
+   * Returns true as default if settings haven't been initialized yet.
    */
-  suspend fun getNotificationBadgeSetting(): Boolean = getData().showNotificationBadge
+  suspend fun getNotificationBadgeSetting(): Boolean {
+    val data = getData()
+    // If accountId is empty, it means settings haven't been initialized yet
+    return if (data.accountId.isEmpty()) {
+      true // Default to true for first-time users
+    } else {
+      data.showNotificationBadge
+    }
+  }
 
   /**
    * Gets the account ID for the current settings.

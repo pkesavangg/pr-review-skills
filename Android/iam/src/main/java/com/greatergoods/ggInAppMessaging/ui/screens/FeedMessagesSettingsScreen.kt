@@ -12,12 +12,19 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
+import com.greatergoods.ggInAppMessaging.ui.strings.FeedMessagesSettingsStrings
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedMessagesIntent
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedMessagesViewModel
 
 /**
  * Feed Messages Settings Screen Content
@@ -26,10 +33,27 @@ import com.greatergoods.ggInAppMessaging.theme.IamTheme
  */
 @Composable
 fun FeedMessagesSettingsScreen(
-  onPopUpMessagesToggle: (Boolean) -> Unit,
-  onNotificationBadgesToggle: (Boolean) -> Unit,
-  popUpMessagesEnabled: Boolean = true,
-  notificationBadgesEnabled: Boolean = true,
+  modifier: Modifier = Modifier
+) {
+  val viewModel: FeedMessagesViewModel = hiltViewModel()
+  val state by viewModel.state.collectAsState()
+
+  // Load settings when screen is first displayed
+  LaunchedEffect(Unit) {
+    viewModel.handleIntent(FeedMessagesIntent.LoadFeedSettings)
+  }
+
+  FeedMessagesSettingsContent(
+    state = state,
+    handleIntent = viewModel::handleIntent,
+    modifier = modifier
+  )
+}
+
+@Composable
+private fun FeedMessagesSettingsContent(
+  state: com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedMessagesState,
+  handleIntent: (FeedMessagesIntent) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val iamColors = IamTheme.colors
@@ -41,10 +65,14 @@ fun FeedMessagesSettingsScreen(
   ) {
     // Settings Content
     SettingsContent(
-      popUpMessagesEnabled = popUpMessagesEnabled,
-      notificationBadgesEnabled = notificationBadgesEnabled,
-      onPopUpMessagesToggle = onPopUpMessagesToggle,
-      onNotificationBadgesToggle = onNotificationBadgesToggle,
+      popUpMessagesEnabled = state.popUpMessagesEnabled,
+      notificationBadgesEnabled = state.notificationBadgesEnabled,
+      onPopUpMessagesToggle = { enabled ->
+        handleIntent(FeedMessagesIntent.TogglePopUpMessages(enabled))
+      },
+      onNotificationBadgesToggle = { enabled ->
+        handleIntent(FeedMessagesIntent.ToggleNotificationBadges(enabled))
+      },
     )
   }
 }
@@ -63,7 +91,7 @@ private fun SettingsContent(
   ) {
     // Pop-up Messages Setting
     SettingRow(
-      title = "Pop-up Messages",
+      title = FeedMessagesSettingsStrings.PopUpMessagesTitle,
       isEnabled = popUpMessagesEnabled,
       onToggle = onPopUpMessagesToggle,
     )
@@ -74,7 +102,7 @@ private fun SettingsContent(
     )
     // Notification Badges Setting
     SettingRow(
-      title = "Notification Badges",
+      title = FeedMessagesSettingsStrings.NotificationBadgesTitle,
       isEnabled = notificationBadgesEnabled,
       onToggle = onNotificationBadgesToggle,
     )
@@ -108,10 +136,18 @@ private fun SettingRow(
       onCheckedChange = onToggle,
       // modifier = Modifier.height(56.dp),
       colors = SwitchDefaults.colors(
-        checkedThumbColor = IamTheme.colors.inverseAction,
+        checkedThumbColor = IamTheme.colors.primaryBackground,
         checkedTrackColor = IamTheme.colors.primaryAction,
         uncheckedThumbColor = IamTheme.colors.iconSecondary,
-        uncheckedTrackColor = IamTheme.colors.tertiaryAction,
+        uncheckedTrackColor = IamTheme.colors.utility,
+        disabledCheckedThumbColor = IamTheme.colors.secondaryActionDisabled,
+        disabledCheckedTrackColor = IamTheme.colors.secondaryActionDisabled,
+        disabledUncheckedThumbColor = IamTheme.colors.secondaryActionDisabled,
+        disabledUncheckedTrackColor = IamTheme.colors.secondaryActionDisabled,
+        checkedBorderColor = IamTheme.colors.primaryAction,
+        uncheckedBorderColor = IamTheme.colors.iconSecondary,
+        disabledCheckedBorderColor = IamTheme.colors.secondaryActionDisabled,
+        disabledUncheckedBorderColor = IamTheme.colors.secondaryActionDisabled,
       ),
     )
   }
@@ -120,6 +156,16 @@ private fun SettingRow(
 // Preview removed - @Preview annotation not available in IAM package
 @Preview
 @Composable
-fun SettingsPreview() {
-  FeedMessagesSettingsScreen({}, {})
+fun FeedMessagesSettingsScreenPreview() {
+  // Note: Preview requires a mock ViewModel which is not available in IAM package
+  // This preview is for demonstration purposes only
+  val dummyState = com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedMessagesState(
+    popUpMessagesEnabled = true,
+    notificationBadgesEnabled = true
+  )
+
+  FeedMessagesSettingsContent(
+    state = dummyState,
+    handleIntent = {},
+  )
 }

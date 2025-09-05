@@ -47,13 +47,11 @@ fun FeedItemCard(
     modifier = modifier.fillMaxWidth(),
   ) {
     // Top divider
-    if (showTopDivider) {
       HorizontalDivider(
         modifier = Modifier.fillMaxWidth(),
         thickness = 0.5.dp,
         color = IamTheme.colors.utility,
       )
-    }
 
     // Main content container
     Row(

@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.core.service.BodyCompositionService
 import com.dmdbrands.gurus.weight.core.service.DashboardService
 import com.dmdbrands.gurus.weight.core.service.DeviceInfoService
 import com.dmdbrands.gurus.weight.core.service.DeviceService
+import com.dmdbrands.gurus.weight.core.service.FeedService
 import com.dmdbrands.gurus.weight.core.service.GoalService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.IntegrationService
@@ -40,6 +41,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceInfoRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
+import com.dmdbrands.gurus.weight.domain.repository.IFeedRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
@@ -53,6 +55,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
+import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IIntegrationService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
@@ -60,11 +63,9 @@ import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.service.DialogQueueService
 import com.dmdbrands.gurus.weight.features.common.service.DialogUtility
+import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
-import com.greatergoods.ggInAppMessaging.core.service.FeedStorageService
-import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
-import com.greatergoods.ggInAppMessaging.core.storage.FeedSettingsDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -375,6 +376,14 @@ object ServiceModule {
   ): IDashboardService =
     DashboardService(dashboardRepository, accountRepository)
 
+  @Provides
+  @Singleton
+  fun provideFeedService(
+    feedRepository: IFeedRepository,
+    accountService: IAccountService,
+    ggIAMService: GGInAppMessagingService,
+  ): IFeedService = FeedService(feedRepository, accountService, ggIAMService)
+
   /**
    * Provides the device service implementation.
    * Handles scale/device data operations with automatic synchronization.
@@ -436,37 +445,5 @@ object ServiceModule {
     dialogQueueService = dialogQueueService,
   )
 
-  /**
-   * Provides the FeedSettingsDataStore for IAM feed settings.
-   * @param context The application context.
-   * @return [FeedSettingsDataStore] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideFeedSettingsDataStore(
-    @ApplicationContext context: Context
-  ): FeedSettingsDataStore = FeedSettingsDataStore(context)
-
-  /**
-   * Provides the FeedStorageService for IAM feed data management.
-   * @param feedSettingsDataStore The feed settings DataStore.
-   * @return [FeedStorageService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideFeedStorageService(
-    feedSettingsDataStore: FeedSettingsDataStore
-  ): FeedStorageService = FeedStorageService(feedSettingsDataStore)
-
-  /**
-   * Provides the GGInAppMessagingService for IAM functionality.
-   * @param feedStorageService The feed storage service.
-   * @return [GGInAppMessagingService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideGGInAppMessagingService(
-    feedStorageService: FeedStorageService
-  ): GGInAppMessagingService = GGInAppMessagingService(feedStorageService)
 
 }

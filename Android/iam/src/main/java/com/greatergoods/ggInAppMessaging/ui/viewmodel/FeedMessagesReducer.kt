@@ -43,6 +43,25 @@ object FeedMessagesReducer {
           error = null
         )
       }
+
+      is FeedMessagesIntent.LoadFeedSettings -> {
+        state.copy(
+          isLoadingSettings = true,
+          error = null
+        )
+      }
+
+      is FeedMessagesIntent.TogglePopUpMessages -> {
+        state.copy(
+          popUpMessagesEnabled = intent.enabled
+        )
+      }
+
+      is FeedMessagesIntent.ToggleNotificationBadges -> {
+        state.copy(
+          notificationBadgesEnabled = intent.enabled
+        )
+      }
     }
   }
 
@@ -66,6 +85,31 @@ object FeedMessagesReducer {
       isLoading = false,
       error = error,
       showEmptyState = state.feedItems.isEmpty()
+    )
+  }
+
+  /**
+   * Reduce state for successful settings load
+   */
+  fun onSettingsLoaded(
+    popUpMessagesEnabled: Boolean,
+    notificationBadgesEnabled: Boolean
+  ): (FeedMessagesState) -> FeedMessagesState = { state ->
+    state.copy(
+      popUpMessagesEnabled = popUpMessagesEnabled,
+      notificationBadgesEnabled = notificationBadgesEnabled,
+      isLoadingSettings = false,
+      error = null
+    )
+  }
+
+  /**
+   * Reduce state for settings error
+   */
+  fun onSettingsError(error: String): (FeedMessagesState) -> FeedMessagesState = { state ->
+    state.copy(
+      isLoadingSettings = false,
+      error = error
     )
   }
 }

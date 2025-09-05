@@ -40,12 +40,6 @@ class FeedService @Inject constructor(
 
   private val tag = "FeedService"
 
-  // MARK: - Constants (matching Angular service)
-  private val feedInfoKey = "feedInfo"
-  private val feedLastTriggeredAtKey = "feedLastTriggeredAt"
-
-  // MARK: - Publishers
-
   /**
    * Emits whenever feedItems changes. Consumers can subscribe without needing GG IAM package.
    */
@@ -65,6 +59,7 @@ class FeedService @Inject constructor(
     // Initialize feed settings in a coroutine
     serviceScope.launch {
       val initialFeedSettings = getFeedSettings()
+
     }
 
     // Listen for feed notification changes from the GG IAM service
@@ -83,104 +78,76 @@ class FeedService @Inject constructor(
 
   override suspend fun fetchFeedItems() {
     // TODO: Check network status when Network utility is available
-    // val networkStatus = await Network.getStatus()
-    // if (networkStatus.connected == true) {
     try {
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
       val items = feedRepository.fetchFeedItems()
-
-      // Update GG IAM service with new feeds (matching Angular service)
-      ggIAMService.setFeedItems(items)
-
-      // Also emit to internal flows
+      // TODO: Need to uncomment the setfeeditems
+//            ggIAMService.setFeedItems(items)
+      setMockFeedItems()
       _feedsChanged.emit(items)
       updateNotificationBadge()
       AppLog.i(tag, "Successfully fetched feed items")
     } catch (error: Exception) {
       AppLog.e(tag, "Failed to fetch feed items", error.toString())
-
-      // Emit empty feeds on error (matching Angular service)
       updateNotificationBadge()
     }
-    // }
   }
 
-  override suspend fun updateFeedItem(feedItem: FeedItem, actionType: FeedActionType, variationId: Int?) {
+  override suspend fun updateFeedItem(
+    feedItem: FeedItem,
+    actionType: FeedActionType,
+    variationId: Int?
+  ) {
     val action = buildFeedAction(actionType, variationId)
-    if (feedItem == null) {
-      return
-    }
 
     try {
       feedRepository.updateFeedItem(feedItem.feedPostId, action)
-
-      // If item is read, update local copy (matching Angular service)
-      // Note: The IAM service handles feed updates internally
-      AppLog.d(tag, "Feed item updated, IAM service will handle local updates")
-
-      AppLog.i(tag, "Successfully updated feed item")
-    } catch (error: Exception) {
-      AppLog.e(tag, "Failed to update feed item", error.toString())
-    }
-  }
-
-  override fun getUnreadFeedCount(): Int {
-    return ggIAMService.getUnreadFeedCount()
-  }
-
-  // MARK: - Feed Settings Management
-
-  override suspend fun getFeedSettings(): FeedSetting? {
-    return ggIAMService.getStoredFeedNotificationSetting()
-  }
-
-  // MARK: - Feed Modal Management
-
-  override fun checkAndTriggerFeedModal() {
-    serviceScope.launch {
-      val result = ggIAMService.checkFeedModalTrigger()
-      result?.let { feedItem ->
-        // TODO: Show modal using notification service
-        // notificationService.showModal(...)
-        AppLog.d(tag, "Triggering feed modal for item: $feedItem")
+      val feedItemToUpdate = ggIAMService.getFeedItems().find { item ->
+        item.elementId == feedItem.elementId
       }
+      if (feedItemToUpdate != null) {
+        when (actionType) {
+          FeedActionType.READ -> {
+            // Update the local copy to mark as read
+            feedItemToUpdate.copy(
+              isUnread = false,
+              trigger = null,
+            )
+            // Update the IAM service's stored items
+            // Notify that feed notification changed
+            ggIAMService.emitFeedNotificationChange()
+            AppLog.d(tag, "Marked feed item as read: ${feedItem.elementId}")
+          }
+
+          FeedActionType.TRIGGER -> {
+            // Update the local copy to clear trigger
+            feedItemToUpdate.copy(trigger = null)
+            AppLog.d(tag, "Cleared trigger for feed item: ${feedItem.elementId}")
+          }
+
+          else -> {
+            AppLog.d(
+              tag,
+              "Updated feed item: ${feedItem.elementId} with action: $actionType",
+            )
+          }
+        }
+      } else {
+        AppLog.w(tag, "Feed item not found in local storage: ${feedItem.elementId}")
+      }
+
+      AppLog.i(tag, "Successfully updated feed item: ${feedItem.elementId}")
+    } catch (error: Exception) {
+      AppLog.e(tag, "Failed to update feed item: ${feedItem.elementId}", error.toString())
     }
   }
-
-  // MARK: - Additional Methods (matching Angular service)
-
-  /**
-   * Get the current account ID (matching Angular service's accountId getter)
-   */
-  suspend fun getCurrentAccountId(): String? = accountId()
-
-  /**
-   * Get the feed info offline key (matching Angular service's feedInfoOfflineKey getter)
-   */
-  suspend fun getFeedInfoOfflineKey(): String =
-    "$feedInfoKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
-
-  /**
-   * Get the feed last triggered at key (matching Angular service's feedLastTriggeredAt getter)
-   */
-  suspend fun getFeedLastTriggeredAtKey(): String =
-    "$feedLastTriggeredAtKey${if (getCurrentAccountId() != null) "_${getCurrentAccountId()}" else ""}"
-
-  // MARK: - Cleanup
-
-  override fun clearFeedData() {
-    ggIAMService.clearFeedData()
-    serviceScope.launch {
-      updateNotificationBadge()
-    }
-  }
-
-  // MARK: - Private Helpers
 
   private fun buildFeedAction(actionType: FeedActionType, variationId: Int?): FeedAction {
     val osType = if (requiresMeta(actionType)) "android" else null
     val meta =
-      if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(variationId) else null
+      if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(
+        variationId,
+      ) else null
 
     return FeedAction(
       action = actionType,
@@ -195,14 +162,39 @@ class FeedService @Inject constructor(
       actionType == FeedActionType.TRIGGER)
   }
 
+  override suspend fun getUnreadFeedCount(): Int {
+    return ggIAMService.getUnreadFeedCount()
+  }
+
+  override suspend fun getFeedSettings(): FeedSetting? {
+    return ggIAMService.getStoredFeedNotificationSetting()
+  }
+
+  override fun checkAndTriggerFeedModal() {
+    serviceScope.launch {
+      val result = ggIAMService.checkFeedModalTrigger()
+      result?.let { feedItem ->
+        // TODO: Show modal using notification service
+        // notificationService.showModal(...)
+        AppLog.d(tag, "Triggering feed modal for item: $feedItem")
+      }
+    }
+  }
+
+  override fun clearFeedData() {
+    ggIAMService.clearFeedData()
+    serviceScope.launch {
+      updateNotificationBadge()
+    }
+  }
+
   // MARK: - Notification Badge Helper
   private suspend fun updateNotificationBadge() {
     val feedSettings = getFeedSettings()
-    val badgeShouldShow = getUnreadFeedCount() > 0 && (feedSettings?.showNotificationBadge ?: true)
+    val badgeShouldShow =
+      getUnreadFeedCount() > 0 && (feedSettings?.showNotificationBadge ?: true)
     _notificationBadgeUpdated.emit(badgeShouldShow)
   }
-
-  // MARK: - Mock Data for Testing
 
   /**
    * Set mock feed items for testing purposes
@@ -219,8 +211,9 @@ class FeedService @Inject constructor(
             messageTypeText = "LIGHTENING DEAL",
             subtitleFeedText = "Ends in 48 hours",
             subtitleModalText = "This feed item came from the main app's FeedService",
+            linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
             feedType = FeedTypes.LINK,
-            linkText = "https://shop.greatergoods.com",
+            linkText = "Shop now",
             feedPostId = "mockPost001",
             accountId = "testAccount",
             titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
@@ -274,7 +267,8 @@ class FeedService @Inject constructor(
             subtitleFeedText = "Ends in 48 hours",
             subtitleModalText = "This is another mock item from FeedService",
             feedType = FeedTypes.LANDING,
-            linkText = "https://example.com",
+            linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+            linkText = "shop now",
             feedPostId = "mockPost002",
             accountId = "testAccount",
             landingPage = LandingPage(

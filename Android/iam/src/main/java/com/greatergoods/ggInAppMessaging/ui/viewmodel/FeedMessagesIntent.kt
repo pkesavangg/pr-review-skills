@@ -19,4 +19,13 @@ sealed class FeedMessagesIntent {
 
   /** Handle retry after error */
   object Retry : FeedMessagesIntent()
+
+  /** Load feed settings */
+  object LoadFeedSettings : FeedMessagesIntent()
+
+  /** Toggle pop-up messages setting */
+  data class TogglePopUpMessages(val enabled: Boolean) : FeedMessagesIntent()
+
+  /** Toggle notification badges setting */
+  data class ToggleNotificationBadges(val enabled: Boolean) : FeedMessagesIntent()
 }

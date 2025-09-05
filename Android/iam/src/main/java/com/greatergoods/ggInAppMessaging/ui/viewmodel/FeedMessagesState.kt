@@ -17,5 +17,14 @@ data class FeedMessagesState(
   val error: String? = null,
 
   /** Whether to show empty state */
-  val showEmptyState: Boolean = false
+  val showEmptyState: Boolean = false,
+
+  /** Whether pop-up messages are enabled */
+  val popUpMessagesEnabled: Boolean = true,
+
+  /** Whether notification badges are enabled */
+  val notificationBadgesEnabled: Boolean = true,
+
+  /** Whether settings are currently loading */
+  val isLoadingSettings: Boolean = false
 )

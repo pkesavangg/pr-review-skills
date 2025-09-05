@@ -1,9 +1,19 @@
+import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+import org.gradle.kotlin.dsl.android
+import org.gradle.kotlin.dsl.kotlin
+import org.gradle.kotlin.dsl.libs
+import org.gradle.kotlin.dsl.`maven-publish`
+import org.gradle.kotlin.dsl.protobuf
+import org.gradle.kotlin.dsl.publishing
+
 plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.proto)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.hilt)
+  kotlin("kapt")
   `maven-publish`
 }
 
@@ -91,6 +101,14 @@ dependencies {
   // browser
   implementation(libs.androidx.browser)
 
+  // Hilt dependencies
+  implementation(libs.hilt.android)
+  kapt(libs.hilt.android.compiler)
+  implementation(libs.hilt.navigation.compose)
+
+  // ViewModel Compose
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+
   // Testing
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)
@@ -101,6 +119,10 @@ dependencies {
   debugImplementation(libs.androidx.ui.test.manifest)
 }
 
+// Allow references to generated code
+kapt {
+  correctErrorTypes = true
+}
 
 protobuf {
   protoc {
