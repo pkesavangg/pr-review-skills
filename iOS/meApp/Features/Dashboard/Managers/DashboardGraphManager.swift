@@ -1240,6 +1240,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
 
+        // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
+        if period == .total {
+            if calendar.isDate(minDate, equalTo: maxDate, toGranularity: .month) {
+                // Use title-cased month abbreviation (e.g., Sep 2025)
+                return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
+            }
+        }
+
         // Special handling for month: snap range to actual month boundaries based on the center
         if period == .month {
             // Use the center of the provided range to determine the month being shown

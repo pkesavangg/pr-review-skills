@@ -356,9 +356,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
-            return 28 // Less space for 3+ digit values
+            return 22 // More space for 3+ digit values
         } else {
-            return 34 // More space for 1-2 digit values
+            return 18 // Less space for 1-2 digit values
         }
     }
     

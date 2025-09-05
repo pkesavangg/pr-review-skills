@@ -28,6 +28,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
+    private let goalChipTrailingPadding: CGFloat = 20
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
@@ -144,26 +145,32 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         ForEach(viewModel.yAxisTicks, id: \.self) { tick in
             // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
             // so it doesn't overlap with the axis baseline (which makes it look thicker).
-            let effectiveTick: Double = {
-                guard viewModel.hasXAxis else { return tick }
-                let lower = viewModel.yAxisDomain.lowerBound
-                let upper = viewModel.yAxisDomain.upperBound
-                let epsilon: Double = 1e-6
-                let domainRange = upper - lower
-                let availableHeight = max(1, viewModel.chartFrame.height -  (viewModel.hasXAxis ? 18 : 0))
-                let onePointValue = domainRange / Double(availableHeight)
-                // Only nudge the bottom-most tick when lower domain is negative.
-                if abs(tick - lower) <= epsilon {
-                    return lower < 0 ? (tick + onePointValue) : tick
-                }
-                if abs(tick - upper) <= epsilon { return tick - onePointValue }
-                return tick
-            }()
+            let effectiveTick: Double = adjustedTick(tick)
             RuleMark(y: .value("YGrid", effectiveTick))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
         }
+    }
+
+    // Helper: Adjusts a tick value to avoid overlap with axis baselines
+    private func adjustedTick(_ tick: Double) -> Double {
+        guard viewModel.hasXAxis else { return tick }
+        let lower = viewModel.yAxisDomain.lowerBound
+        let upper = viewModel.yAxisDomain.upperBound
+        let epsilon: Double = 1e-6
+        let domainRange = upper - lower
+        let xAxisHeight: CGFloat = viewModel.hasXAxis ? 18 : 0
+        let availableHeight = max(1, viewModel.chartFrame.height - xAxisHeight)
+        let onePointValue = domainRange / Double(availableHeight)
+        // Only nudge the bottom-most tick when lower domain is negative.
+        if abs(tick - lower) <= epsilon {
+            return lower < 0 ? (tick + onePointValue) : tick
+        }
+        if abs(tick - upper) <= epsilon {
+            return tick - onePointValue
+        }
+        return tick
     }
     
     @ChartContentBuilder
@@ -318,11 +325,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalPosition = viewModel.getGoalChipPosition()
-        let xOffset = 20
         
         goalWeightChip(viewModel.goalWeight)
             .position(
-                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - CGFloat(xOffset) : 320,
+                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
                 y: goalPosition.yPosition
             )
             .animation(
