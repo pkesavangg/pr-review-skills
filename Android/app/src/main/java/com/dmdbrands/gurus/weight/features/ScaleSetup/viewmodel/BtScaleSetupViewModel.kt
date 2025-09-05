@@ -112,7 +112,9 @@ constructor(
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
     } else if (currentState.step == BtScaleSetupStep.SCALE_INFO) {
-      if (isPermissionGranted) {
+      val areRequiredPermissionsEnabled = AppPermissionsHelper
+        .areRequiredPermissionsEnabled(state.value.permissions, scaleInit.sku)
+      if (areRequiredPermissionsEnabled) {
         handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
       } else {
         // Check and request permissions sequentially

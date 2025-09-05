@@ -252,8 +252,16 @@ constructor(
             AppLog.d(TAG, "Permission granted status changed: $isPermissionGranted -> $areRequiredPermissionsEnabled")
             isPermissionGranted = areRequiredPermissionsEnabled
           }
+          if (!areRequiredPermissionsEnabled) {
+            if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
+              AppLog.d(TAG, "Permissions not granted, moving to permissions step")
+              handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
+            }
+          }
+          handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
         }
-        handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing permissions", e)
       }
     }
   }
