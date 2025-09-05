@@ -127,8 +127,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     	func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        // Group by YYYY-MM prefix
-        let grouped = Dictionary(grouping: entries) { String($0.entryTimestamp.prefix(7)) }
+        // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
+        let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
 
         var result: [HistoryMonth] = []
 
@@ -161,7 +161,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return String(format: "%04d-%02d", comps.year ?? 0, comps.month ?? 0)
         }
         let grouped = Dictionary(grouping: entries) { (entry) -> String in
-            String(entry.entryTimestamp.prefix(7))
+            DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         }
         var result: [HistoryMonth] = []
         for month in months {
@@ -468,9 +468,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Aggregation Helpers
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
-        // Group entries by day (YYYY-MM-DD)
+        // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
-            return DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
+            return DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         }
 
         return grouped.compactMap { (day, dayEntries) -> BathScaleWeightSummary? in
@@ -521,9 +521,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Aggregate entries by month, returning BathScaleWeightSummary for each month
     func aggregateByMonth(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
 
-        // Group entries by month (YYYY-MM)
+        // Group entries by month (YYYY-MM), converting UTC to local timezone
         let grouped = Dictionary(grouping: entries) { entry -> String in
-          return DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+          return DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         }
 
         return grouped.compactMap { (month, monthEntries) -> BathScaleWeightSummary? in
@@ -681,8 +681,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         logger.log(level: .info, tag: tag, message: "Handling entry addition: \(entry.id)")
 
-        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
-        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
 
         // Fetch all entries for the affected day and month
         let dayEntries = try await getEntries(forDay: dayKey)
@@ -728,8 +728,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         logger.log(level: .info, tag: tag, message: "Handling entry deletion: \(entry.id)")
 
-        let dayKey = DateTimeTools.getDateStringFromDate(entry.entryTimestamp)
-        let monthKey = DateTimeTools.getMonthStringFromDate(entry.entryTimestamp)
+        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
+        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
 
         // Fetch remaining entries for the affected day and month
         let dayEntries = try await getEntries(forDay: dayKey)

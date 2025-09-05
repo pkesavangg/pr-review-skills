@@ -27,6 +27,18 @@ final class DateTimeTools {
         return df
     }
     
+    /// Returns a new (non-cached) DateFormatter configured with format, locale and optional timezone.
+    /// Use this when you need to mutate formatter properties (like timeZone) to avoid side-effects on cached instances.
+    private static func ephemeralFormatter(_ format: String, timeZone: TimeZone? = nil) -> DateFormatter {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.dateFormat = format
+        if let tz: TimeZone = timeZone {
+            df.timeZone = tz
+        }
+        return df
+    }
+    
     // MARK: - Formatters
     /// Shared ISO8601 formatter with fractional seconds for parsing and formatting ISO strings.
     private static let isoFormatter: ISO8601DateFormatter = {
@@ -107,6 +119,22 @@ final class DateTimeTools {
     static func getDateStringFromDate(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }
         return formatter("yyyy-MM-dd").string(from: date)
+    }
+    
+    /// Formats a UTC date string to 'yyyy-MM-dd' in the local timezone.
+    /// - Parameter dateString: The UTC date string to format.
+    /// - Returns: The formatted date string in local timezone.
+    static func getLocalDateStringFromUTCDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        return ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
+    }
+    
+    /// Formats a UTC date string to 'yyyy-MM' in the local timezone.
+    /// - Parameter dateString: The UTC date string to format.
+    /// - Returns: The formatted month string in local timezone.
+    static func getLocalMonthStringFromUTCDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        return ephemeralFormatter("yyyy-MM", timeZone: TimeZone.current).string(from: date)
     }
     
     static func getDateFromDateString(_ dateString: String, format: String) -> Date {
@@ -246,9 +274,7 @@ final class DateTimeTools {
     /// - Parameter date: The date to format.
     /// - Returns: The formatted date string.
     static func formatDateToYMD_Local(_ date: Date) -> String {
-        let df = formatter("yyyy-MM-dd")
-        df.timeZone = TimeZone.current
-        return df.string(from: date)
+        return ephemeralFormatter("yyyy-MM-dd", timeZone: TimeZone.current).string(from: date)
     }
     
     static func getTimestamp(_ dateString: String) -> Int64 {
