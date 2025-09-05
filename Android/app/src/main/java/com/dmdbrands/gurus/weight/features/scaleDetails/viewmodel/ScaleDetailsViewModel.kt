@@ -268,7 +268,7 @@ constructor(
         // Note: Form will be repopulated with updated nickname when dialog reopens
         // because setScaleDetails() observes device changes and updates the form
       } catch (e: Exception) {
-        AppLog.e("SaveScaleName", "Reset Password failed", e.toString())
+        AppLog.e("SaveScaleName", "Reset Password failed", e)
         showToast(ScaleNameDialogStrings.Toast.Error)
       } finally {
         dialogQueueService.dismissLoader()
@@ -290,7 +290,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e("requestPermission", "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e("requestPermission", "Error requesting permission ${permissionType}", e)
       }
     }
   }

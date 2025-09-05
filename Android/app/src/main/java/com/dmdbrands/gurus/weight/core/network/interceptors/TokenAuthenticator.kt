@@ -31,13 +31,13 @@ class TokenAuthenticator @Inject constructor(
         
         // Avoid retrying for public endpoints or repeated attempts
         if (NetworkConfig.isPublicEndpoint(request.url.encodedPath) || responseCount(response) > 1) {
-            AppLog.d(TAG, "Skipping token refresh for public endpoint or repeated attempt")
+            AppLog.v(TAG, "Skipping token refresh for public endpoint or repeated attempt")
             return null
         }
 
         // Extract account ID from request headers
         val accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
-        AppLog.d(TAG, "Attempting token refresh for account: $accountId")
+        AppLog.v(TAG, "Attempting token refresh for account: $accountId")
 
         // Try to refresh the token
         return runBlocking {
@@ -54,7 +54,7 @@ class TokenAuthenticator @Inject constructor(
                     return@runBlocking null
                 }
 
-                AppLog.d(TAG, "Refreshing token for account: $accountId")
+                AppLog.v(TAG, "Refreshing token for account: $accountId")
                 val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
                 
                 if (newTokenResponse.accessToken.isNullOrEmpty()) {
@@ -73,7 +73,7 @@ class TokenAuthenticator @Inject constructor(
 
                 // Update tokens in TokenManager
                 tokenManager.setTokens(newToken)
-                AppLog.d(TAG, "Successfully refreshed tokens for account: $accountId")
+                AppLog.v(TAG, "Successfully refreshed tokens for account: $accountId")
 
                 // Build new request with fresh access token
                 val newRequest = response.request.newBuilder()
@@ -82,7 +82,7 @@ class TokenAuthenticator @Inject constructor(
 
                 return@runBlocking newRequest
             } catch (e: Exception) {
-                AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+                AppLog.e(TAG, "Token refresh failed for account: $accountId", e)
                 return@runBlocking null
             }
         }

@@ -76,7 +76,7 @@ constructor(
     private val accountTokens = mutableMapOf<String, Token>()
 
     override suspend fun setTokens(token: Token) {
-        AppLog.d(TAG, "Setting tokens for account: ${token.accountId}")
+        AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
         accountTokens[token.accountId] = token
         userDataStore.updateAccountTokens(
             accountId = token.accountId,
@@ -89,7 +89,7 @@ constructor(
     }
 
     override fun setOtherUserToken(token: Token?) {
-        AppLog.d(TAG, "Setting other user token")
+        AppLog.v(TAG, "Setting other user token")
         _otherUserToken.value = token
     }
 
@@ -102,7 +102,7 @@ constructor(
     }
 
     override fun setTokenRefreshed(refreshed: Boolean) {
-        AppLog.d(TAG, "Setting token refreshed: $refreshed")
+        AppLog.v(TAG, "Setting token refreshed: $refreshed")
         _tokenRefreshed.value = refreshed
     }
 
@@ -112,7 +112,7 @@ constructor(
     }
 
     override suspend fun refreshToken(): Boolean {
-        AppLog.d(TAG, "Refreshing token")
+        AppLog.v(TAG, "Refreshing token")
         // This method should be implemented in the repository or a service, not here.
         // Always return false for now to avoid DI cycles.
         return false
@@ -125,7 +125,7 @@ constructor(
                 val expirationDate = Date(expiresAt.toLong())
                 expirationDate.before(Date())
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error checking token expiration", e.toString())
+                AppLog.e(TAG, "Error checking token expiration", e)
                 true
             }
         } ?: true
@@ -168,7 +168,7 @@ constructor(
             }?.key
 
     override suspend fun loadAllTokens() {
-        AppLog.d(TAG, "Loading all tokens from UserDataStore")
+        AppLog.v(TAG, "Loading all tokens from UserDataStore")
         accountTokens.clear()
         val allAccounts = userDataStore.getData().accounts
         allAccounts.forEach { (id, userAccount) ->

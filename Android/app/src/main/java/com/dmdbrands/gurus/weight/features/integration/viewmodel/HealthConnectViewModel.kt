@@ -205,7 +205,10 @@ class HealthConnectViewModel @Inject constructor(
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.INSTALLED,
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.UPDATE_REQUIRED -> {
                 // Check for user conflict
-                val isAlreadyUsed = try { healthConnectService.checkIfAlreadyUsed() } catch (e: Exception) { false }
+                val isAlreadyUsed = try { healthConnectService.checkIfAlreadyUsed() } catch (e: Exception) {
+                    AppLog.e("HealthConnectViewModel", "Failed to check if Health Connect is already used", e)
+                    false
+                }
                 if (!isAlreadyUsed) {
                     return HealthConnectSetup.USER_CONFLICT
                 }
@@ -245,6 +248,7 @@ class HealthConnectViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                AppLog.e("HealthConnectViewModel", "Failed to initialize Health Connect", e)
                 _state.update { currentState ->
                     currentState.copy(
                         errorMessage = "Failed to initialize Health Connect: ${e.message}"
@@ -284,6 +288,7 @@ class HealthConnectViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            AppLog.e("HealthConnectViewModel", "Failed to handle Health Connect connection", e)
         }
         finally {
             dialogQueueService.dismissLoader()
@@ -300,6 +305,7 @@ class HealthConnectViewModel @Inject constructor(
           healthConnectService.turnOnIntegration()
           navigationService.navigateBack()
         } catch (e: Exception) {
+          AppLog.e("HealthConnectViewModel", "Failed to finish Health Connect integration", e)
           _state.update { currentState ->
             currentState.copy(errorMessage = "Failed to finish integration: ${e.message}")
           }
@@ -318,6 +324,7 @@ class HealthConnectViewModel @Inject constructor(
             try {
                 healthConnectService.openHealthConnect(true)
             } catch (e: Exception) {
+                AppLog.e("HealthConnectViewModel", "Failed to open Health Connect", e)
                 _state.update { currentState ->
                     currentState.copy(errorMessage = "Failed to open Health Connect: ${e.message}")
                 }
@@ -336,7 +343,7 @@ class HealthConnectViewModel @Inject constructor(
                 navigationService.navigateBack()
                 AppLog.d("ChangePasswordViewModel", "Successfully navigated back from change password")
             } catch (e: Exception) {
-                AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e.toString())
+                AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e)
             }
         }
     }

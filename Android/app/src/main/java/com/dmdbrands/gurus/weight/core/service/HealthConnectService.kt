@@ -85,7 +85,7 @@ class HealthConnectService @Inject constructor(
     CoroutineScope(Dispatchers.IO).launch {
       accountRepository.getActiveAccount().collect { account ->
         currentAccountId = account?.id
-        AppLog.d(tag, "Account changed, updated global accountId: $currentAccountId")
+        AppLog.v(tag, "Account changed, updated global accountId: $currentAccountId")
       }
       currentAccountId?.let {
         entryService.latestEntry.collect { entry ->
@@ -156,7 +156,7 @@ class HealthConnectService @Inject constructor(
       isLoaded = true
       AppLog.i(tag, "Health Connect service initialized successfully.")
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to initialize Health Connect service", e.toString())
+      AppLog.e(tag, "Failed to initialize Health Connect service", e)
       isLoaded = false
     }
   }
@@ -186,7 +186,7 @@ class HealthConnectService @Inject constructor(
     return try {
       healthConnect.isAvailable()
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check Health Connect availability", e.toString())
+      AppLog.e(tag, "Failed to check Health Connect availability", e)
       false
     }
   }
@@ -198,7 +198,7 @@ class HealthConnectService @Inject constructor(
     return try {
       healthConnect.getStatus()
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to get Health Connect status", e.toString())
+      AppLog.e(tag, "Failed to get Health Connect status", e)
       HealthConnectStatus.UNAVAILABLE
     }
   }
@@ -210,7 +210,7 @@ class HealthConnectService @Inject constructor(
     return try {
       healthConnect.getPermissionStatus(requestingPermissions)
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check permission status", e.toString())
+      AppLog.e(tag, "Failed to check permission status", e)
       HealthConnectPermissionStatus.NONE
     }
   }
@@ -227,7 +227,7 @@ class HealthConnectService @Inject constructor(
         callback(result)
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to request authorization", e.toString())
+      AppLog.e(tag, "Failed to request authorization", e)
       callback(HealthConnectRequestStatus.CANCELLED)
     }
   }
@@ -248,7 +248,7 @@ class HealthConnectService @Inject constructor(
         result
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to open Health Connect", e.toString())
+      AppLog.e(tag, "Failed to open Health Connect", e)
       false
     }
   }
@@ -271,7 +271,7 @@ class HealthConnectService @Inject constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Exception while revoking permissions", e.toString())
+      AppLog.e(tag, "Exception while revoking permissions", e)
       false
     }
   }
@@ -292,7 +292,7 @@ class HealthConnectService @Inject constructor(
       AppLog.d(tag, "Health Connect integration check for account ${currentAccount.id}: $isIntegrated")
       isIntegrated
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check Health Connect integration", e.toString())
+      AppLog.e(tag, "Failed to check Health Connect integration", e)
       false
     }
   }
@@ -319,7 +319,7 @@ class HealthConnectService @Inject constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to handle Health Connect intent", e.toString())
+      AppLog.e(tag, "Failed to handle Health Connect intent", e)
     }
   }
 
@@ -354,7 +354,7 @@ class HealthConnectService @Inject constructor(
       }
       return true
     } catch (e: Exception) {
-      AppLog.e(tag, "User denied health connect permission or sync failed", e.toString())
+      AppLog.e(tag, "User denied health connect permission or sync failed", e)
       dialogQueueService.dismissLoader()
       dialogQueueService.showDialog(
         DialogModel.Alert(
@@ -417,7 +417,7 @@ class HealthConnectService @Inject constructor(
       healthConnect.saveData(finalData)
       // Optionally, set a flag or observable for successful sync
     } catch (e: Exception) {
-      AppLog.e(tag, "User denied health connect permission or save failed", e.toString())
+      AppLog.e(tag, "User denied health connect permission or save failed", e)
       throw e
     }
   }
@@ -449,7 +449,7 @@ class HealthConnectService @Inject constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Exception while deleting Health Connect data", e.toString())
+      AppLog.e(tag, "Exception while deleting Health Connect data", e)
       false
     }
   }
@@ -478,7 +478,7 @@ class HealthConnectService @Inject constructor(
       integrationRepository.updateLocalAccount()
       true
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to turn on integration", e.toString())
+      AppLog.e(tag, "Failed to turn on integration", e)
       false
     }
 
@@ -515,7 +515,7 @@ class HealthConnectService @Inject constructor(
       dialogQueueService.showToast(Toast(HealthConnectStrings.ToastStrings.removeHC))
       true
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to remove Health Connect integration", e.toString())
+      AppLog.e(tag, "Failed to remove Health Connect integration", e)
       false
     }
   }
@@ -554,7 +554,7 @@ class HealthConnectService @Inject constructor(
       AppLog.i(tag, "Health Connect cleared successfully")
       true
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to clear Health Connect", e.toString())
+      AppLog.e(tag, "Failed to clear Health Connect", e)
       false
     }
   }
@@ -583,7 +583,7 @@ class HealthConnectService @Inject constructor(
         turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check permission changes", e.toString())
+      AppLog.e(tag, "Failed to check permission changes", e)
     }
   }
 
@@ -615,7 +615,7 @@ class HealthConnectService @Inject constructor(
       }
       return false
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check multiple device connection", e.toString())
+      AppLog.e(tag, "Failed to check multiple device connection", e)
       false
     }
   }
@@ -635,7 +635,7 @@ class HealthConnectService @Inject constructor(
       AppLog.i(tag, "Retrieved ${approvedPermissions.size} approved permissions")
       approvedPermissions.toList()
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to get approved permission list", e.toString())
+      AppLog.e(tag, "Failed to get approved permission list", e)
       emptyList()
     }
   }
@@ -737,7 +737,7 @@ class HealthConnectService @Inject constructor(
       }
       false
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check Health Connect out of sync status", e.toString())
+      AppLog.e(tag, "Failed to check Health Connect out of sync status", e)
       false
     }
   }
@@ -916,14 +916,14 @@ class HealthConnectService @Inject constructor(
 
   suspend fun setHealthConnectIntegrationStatus(accountId: String, integrated: Boolean) {
     try {
-      AppLog.d(tag, "Setting Health Connect integration status: $integrated for account: $accountId")
+              AppLog.v(tag, "Setting Health Connect integration status: $integrated for account: $accountId")
 
       if (integrated) {
         // Set integration status to true
         healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
         // Set assignedTo to current account ID when integrating
         healthConnectRepository.setAssignedTo(accountId, accountId)
-        AppLog.d(tag, "Health Connect assigned to account: $accountId")
+        AppLog.v(tag, "Health Connect assigned to account: $accountId")
       } else {
         // Check if this account is currently integrated
         val currentData = healthConnectRepository.getAccountByID(accountId)
@@ -933,11 +933,11 @@ class HealthConnectService @Inject constructor(
           healthConnectRepository.setHcIntegrationStatus(accountId, false)
           // Clear assignedTo when disintegrating
           healthConnectRepository.clearAssignedTo(accountId)
-          AppLog.d(tag, "Health Connect disintegrated from account: $accountId")
+          AppLog.v(tag, "Health Connect disintegrated from account: $accountId")
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to set Health Connect integration status", e.toString())
+      AppLog.e(tag, "Failed to set Health Connect integration status", e)
       throw e
     }
   }

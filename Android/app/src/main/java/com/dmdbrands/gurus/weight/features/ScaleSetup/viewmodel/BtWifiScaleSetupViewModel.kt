@@ -245,7 +245,7 @@ constructor(
         // After deletion, restart connection
         restartConnection()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error deleting users", e.toString())
+        AppLog.e(TAG, "Error deleting users", e)
       }
     }
   }
@@ -266,7 +266,7 @@ constructor(
         refreshUserListAfterAccountChange()
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error deleting user with token: $token", e.toString())
+      AppLog.e(TAG, "Error deleting user with token: $token", e)
     }
   }
 
@@ -613,7 +613,7 @@ constructor(
           handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating user list after account change", e.toString())
+        AppLog.e(TAG, "Error updating user list after account change", e)
       }
     }
   }
@@ -699,7 +699,7 @@ constructor(
         navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e)
       }
     }
   }
@@ -721,7 +721,7 @@ constructor(
         ggDeviceService.scanForPairing()
         startObservingDevices()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during wake up process", e.toString())
+        AppLog.e(TAG, "Error during wake up process", e)
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.WAKEUP,
@@ -826,7 +826,7 @@ constructor(
           }
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e.toString())
+        AppLog.e(TAG, "Error during bluetooth connection", e)
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.CONNECTING_BLUETOOTH,
@@ -859,7 +859,7 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetDuplicateUserList(duplicateList))
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking duplicate user list", e.toString())
+      AppLog.e(TAG, "Error checking duplicate user list", e)
     }
   }
 
@@ -881,7 +881,7 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during fetching user list", e.toString())
+      AppLog.e(TAG, "Error during fetching user list", e)
       // Show error state to user
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -940,7 +940,7 @@ constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during network gathering", e.toString())
+      AppLog.e(TAG, "Error during network gathering", e)
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.GATHERING_NETWORK,
@@ -1004,7 +1004,7 @@ constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wifi connection", e.toString())
+      AppLog.e(TAG, "Error during wifi connection", e)
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.CONNECTING_WIFI,
@@ -1051,7 +1051,7 @@ constructor(
     try {
       subscribeToLiveData()
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wifi connection", e.toString())
+      AppLog.e(TAG, "Error during wifi connection", e)
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.STEP_ON,
@@ -1077,7 +1077,7 @@ constructor(
         delay(5 * 60 * 1000)
         throw Exception("Measurement failed")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during wifi connection", e.toString())
+        AppLog.e(TAG, "Error during wifi connection", e)
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.MEASUREMENT,
@@ -1141,7 +1141,7 @@ constructor(
           deviceService.updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during settings update", e.toString())
+        AppLog.e(TAG, "Error during settings update", e)
         handleIntent(
           BtWifiScaleSetupIntent.SetStepConnectionState(
             BtWifiSetupStep.UPDATE_SETTINGS,
@@ -1289,7 +1289,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e(TAG, "Error requesting permission ${permissionType}", e)
       }
     }
   }

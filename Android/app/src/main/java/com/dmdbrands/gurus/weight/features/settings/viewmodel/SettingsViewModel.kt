@@ -58,7 +58,9 @@ constructor(
 ) {
   override fun provideInitialState(): SettingsState = SettingsState()
 
-  private val TAG = "SettingsViewModel"
+  companion object {
+    private const val TAG = "SettingsViewModel"
+  }
 
   init {
     getUserProfile()
@@ -219,7 +221,7 @@ constructor(
   }
 
   fun onExportDataClick() {
-    AppLog.d("TAG", "Export data clicked")
+    AppLog.d(TAG, "Export data clicked")
 
     // Show confirmation dialog
     dialogQueueService.enqueue(
@@ -233,7 +235,7 @@ constructor(
           dialogQueueService.dismissCurrent()
         },
         onCancel = {
-          AppLog.d("TAG", "User cancelled export")
+          AppLog.d(TAG, "User cancelled export")
           dialogQueueService.dismissCurrent()
         },
       ),
@@ -256,7 +258,7 @@ constructor(
         exportService.exportCsvWithPrompt()
         AppLog.i(TAG, ExportStrings.ExportCompleted)
       } catch (e: HttpException) {
-        AppLog.e(TAG, ExportStrings.ExportFailed, e.toString())
+        AppLog.e(TAG, ExportStrings.ExportFailed, e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -277,7 +279,7 @@ constructor(
         ),
       selectedItem = state.value.account?.gender,
       onConfirm = { selectedSex ->
-        AppLog.d("SettingsViewModel", "Biological sex modal onConfirm called with: $selectedSex")
+        AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
         selectedSex?.let { gender ->
           onBiologicalSexUpdate(gender)
         }
@@ -321,7 +323,7 @@ constructor(
         accountService.updateProfile(updatedCurrentProfile)
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating biological sex", e.toString())
+        AppLog.e(TAG, "Error updating biological sex", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -377,7 +379,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating activity level", e.toString())
+        AppLog.e(TAG, "Error updating activity level", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -445,7 +447,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating unit type", e.toString())
+        AppLog.e(TAG, "Error updating unit type", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -454,22 +456,22 @@ constructor(
   }
 
   fun onBiologicalSexClick() {
-    AppLog.d("SettingsViewModel", "Biological sex clicked")
+    AppLog.d(TAG, "Biological sex clicked")
     showBiologicalSexModal()
   }
 
   fun onActivityLevelClick() {
-    AppLog.d("SettingsViewModel", "Activity level clicked")
+    AppLog.d(TAG, "Activity level clicked")
     showActivityLevelModal()
   }
 
   fun onUnitTypeClick() {
-    AppLog.d("SettingsViewModel", "Unit type clicked")
+    AppLog.d(TAG, "Unit type clicked")
     showUnitTypeModal()
   }
 
   fun onHeightClick() {
-    AppLog.d("SettingsViewModel", "Height clicked")
+    AppLog.d(TAG, "Height clicked")
     showHeightModal()
   }
 
@@ -538,7 +540,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating height", e.toString())
+        AppLog.e(TAG, "Error updating height", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -547,21 +549,21 @@ constructor(
   }
 
   fun onGoalSettingClick() {
-    AppLog.d("SettingsViewModel", "Goal setting clicked")
+    AppLog.d(TAG, "Goal setting clicked")
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.Goal)
     }
   }
 
   fun onWeightlessClick() {
-    AppLog.d("SettingsViewModel", "Weightless clicked")
+    AppLog.d(TAG, "Weightless clicked")
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.Weightless)
     }
   }
 
   fun onStreakClick() {
-    AppLog.d("SettingsViewModel", "Streak clicked")
+    AppLog.d(TAG, "Streak clicked")
     showStreakModal()
   }
 
@@ -613,7 +615,7 @@ constructor(
         )
         AppLog.i(TAG, "Successfully updated weightless mode")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating weightless mode", e.toString())
+        AppLog.e(TAG, "Error updating weightless mode", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -621,7 +623,7 @@ constructor(
   }
 
   fun onAppearanceClick() {
-    AppLog.d("SettingsViewModel", "Appearance clicked")
+    AppLog.d(TAG, "Appearance clicked")
     showAppearanceModal()
   }
 
@@ -692,7 +694,7 @@ constructor(
         handleIntent(SettingsIntent.UpdateThemeMode(displayString))
         AppLog.i(TAG, "Successfully updated appearance to $displayString")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating appearance", e.toString())
+        AppLog.e(TAG, "Error updating appearance", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -744,7 +746,7 @@ constructor(
         userSettingsService.toggleStreakSetting(isStreakOn = isStreakOn)
         AppLog.i(TAG, "Successfully updated streak mode")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating streak mode", e.toString())
+        AppLog.e(TAG, "Error updating streak mode", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -752,7 +754,7 @@ constructor(
   }
 
   fun onNotificationsClick() {
-    AppLog.d("SettingsViewModel", "Notifications clicked")
+    AppLog.d(TAG, "Notifications clicked")
     showNotificationsModal()
   }
 
@@ -835,7 +837,7 @@ constructor(
           AppLog.e(TAG, "Notification settings update returned null account")
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating notification settings", e.toString())
+        AppLog.e(TAG, "Error updating notification settings", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -844,17 +846,17 @@ constructor(
   }
 
   fun onMessagesClick() {
-    AppLog.d("SettingsViewModel", "Messages clicked")
+    AppLog.d(TAG, "Messages clicked")
     // TODO: Navigate to messages settings
   }
 
   fun onAppPermissionsClick() {
-    AppLog.d("SettingsViewModel", "App permissions clicked")
+    AppLog.d(TAG, "App permissions clicked")
     // TODO: Navigate to app permissions screen
   }
 
   fun onHelpClick() {
-    AppLog.d("SettingsViewModel", "Help clicked")
+    AppLog.d(TAG, "Help clicked")
     // TODO: Navigate to help screen
   }
 
@@ -897,7 +899,7 @@ constructor(
           navigationService.reInitialize()
         }
       } catch (e: Exception) {
-        AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+        AppLog.e(TAG, "Failed to log out", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -910,7 +912,7 @@ constructor(
       try {
         accountService.logoutAll()
       } catch (e: Exception) {
-        AppLog.e("SettingsViewModel", "Failed to log out all accounts", e.toString())
+        AppLog.e(TAG, "Failed to log out all accounts", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -918,13 +920,13 @@ constructor(
   }
 
   fun onDeleteAccountClick() {
-    AppLog.d("SettingsViewModel", "Delete account clicked")
+    AppLog.d(TAG, "Delete account clicked")
     // TODO: Show delete account confirmation dialog
   }
 
   fun onSwitchAccountClick() {
     navigateTo(AppRoute.AccountSettings.MyAccounts)
-    AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
+    AppLog.d(TAG, "Navigating to My Accounts")
   }
 
   private fun showAccountSwitchInfoModal() {

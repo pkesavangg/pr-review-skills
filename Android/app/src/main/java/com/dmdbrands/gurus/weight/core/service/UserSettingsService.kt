@@ -55,7 +55,7 @@ class UserSettingsService
           userSettingsRepository.updateStreakSettingOffline(streakRequest)
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error toggling streak setting", e.toString())
+        AppLog.e(TAG, "Error toggling streak setting", e)
         throw e
       }
 
@@ -92,7 +92,7 @@ class UserSettingsService
           userSettingsRepository.updateWeightlessSettingOffline(weightlessRequest)
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error toggling weightless setting", e.toString())
+        AppLog.e(TAG, "Error toggling weightless setting", e)
         throw e
       }
     }

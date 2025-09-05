@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.addScale.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.util.ScaleSetupNavigationUtils
@@ -32,25 +33,31 @@ constructor(
     )
 
   override fun handleIntent(intent: AddScaleIntent) {
+    AppLog.d(TAG, "Handling add scale intent: ${intent::class.simpleName}")
     super.handleIntent(intent)
     when (intent) {
       is AddScaleIntent.Submit -> {
+        AppLog.d(TAG, "Submit intent received")
         onSubmitModelNumber()
       }
 
       is AddScaleIntent.ShowHelp -> {
+        AppLog.d(TAG, "Show help intent received")
         showModelNumberHelpPopup()
       }
 
       is AddScaleIntent.OpenScaleChooser -> {
+        AppLog.d(TAG, "Open scale chooser intent received")
         navigateTo(AppRoute.AccountSettings.ChooseScale)
       }
 
       is AddScaleIntent.OpenScaleSettings -> {
+        AppLog.d(TAG, "Open scale settings intent received for scaleId: ${intent.scaleId}")
         navigateTo(AppRoute.AccountSettings.ScaleDetails(intent.scaleId))
       }
 
       is AddScaleIntent.OpenSelectedScaleSetup -> {
+        AppLog.d(TAG, "Open selected scale setup intent received for SKU: ${intent.sku}")
         checkAndNavigateToScaleSetup(intent.sku)
       }
 
@@ -59,6 +66,7 @@ constructor(
   }
 
   init {
+    AppLog.d(TAG, "AddScaleViewModel initialized")
     viewModelScope.launch {
       // Collect saved scales from DeviceService
       deviceService.pairedScales.collect { devices ->
@@ -68,19 +76,30 @@ constructor(
   }
 
   private fun onSubmitModelNumber() {
+    AppLog.d(TAG, "Submitting model number form")
     val modelNumberForm = state.value.form
-    modelNumberForm.validate()
-    if (modelNumberForm.isValid) {
+    val isValid = modelNumberForm.validate()
+    AppLog.d(TAG, "Form validation result: $isValid")
+    
+    if (isValid) {
       val modelNumber = state.value.form.controls.modelNumber.value
+      AppLog.d(TAG, "Model number submitted: $modelNumber")
       checkAndNavigateToScaleSetup(modelNumber)
+    } else {
+      AppLog.w(TAG, "Form validation failed")
     }
   }
 
   private fun checkAndNavigateToScaleSetup(sku: String) {
+    AppLog.d(TAG, "Checking and navigating to scale setup for SKU: $sku")
     val scaleInfo = SCALES.find { it.sku == sku }
     val setupType = scaleInfo?.setupType
     val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
+    
+    AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, setup type: $setupType, already paired: $isScaleAlreadyPaired")
+    
     if (setupType == ScaleSetupType.AppSync && isScaleAlreadyPaired) {
+      AppLog.d(TAG, "Scale is already paired, showing confirmation dialog")
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = PairedScaleExistsAlert.Title,
@@ -88,31 +107,50 @@ constructor(
           confirmText = PairedScaleExistsAlert.Pair,
           cancelText = PairedScaleExistsAlert.Cancel,
           onConfirm = {
+            AppLog.d(TAG, "User confirmed pairing existing scale")
             navigateToSelectedScaleSetup(sku)
             dialogQueueService.dismissCurrent()
           },
         ),
       )
     } else {
+      AppLog.d(TAG, "Proceeding to scale setup")
       navigateToSelectedScaleSetup(sku)
     }
   }
 
   private fun navigateToSelectedScaleSetup(sku: String) {
+    AppLog.d(TAG, "Navigating to selected scale setup for SKU: $sku")
     val scaleInfo = SCALES.find { it.sku == sku }
     if (scaleInfo != null) {
+      AppLog.d(TAG, "Scale info found: ${scaleInfo.productName}, setup type: ${scaleInfo.setupType}")
       when (scaleInfo.setupType) {
-        ScaleSetupType.AppSync -> navigateTo(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
-        ScaleSetupType.Bluetooth -> navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku))
-        ScaleSetupType.Lcbt -> navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku))
-        ScaleSetupType.BtWifiR4 -> navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
+        ScaleSetupType.AppSync -> {
+          AppLog.d(TAG, "Navigating to AppSync scale setup")
+          navigateTo(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
+        }
+        ScaleSetupType.Bluetooth -> {
+          AppLog.d(TAG, "Navigating to Bluetooth scale setup")
+          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku))
+        }
+        ScaleSetupType.Lcbt -> {
+          AppLog.d(TAG, "Navigating to Lcbt scale setup")
+          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku))
+        }
+        ScaleSetupType.BtWifiR4 -> {
+          AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
+          navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
+        }
         ScaleSetupType.Wifi,
         ScaleSetupType.EspTouchWifi -> {
+          AppLog.d(TAG, "Navigating to WiFi scale setup")
           // Use the ScaleSetupNavigationUtils to determine the correct route with ScaleInfo and wifiSetupType
           val route = ScaleSetupNavigationUtils.createWifiSetupRoute(scaleInfo)
           navigateTo(route)
         }
       }
+    } else {
+      AppLog.w(TAG, "Scale info not found for SKU: $sku")
     }
   }
 
@@ -120,12 +158,23 @@ constructor(
    * Shows the Model number help popup.
    */
   private fun showModelNumberHelpPopup() {
+    AppLog.d(TAG, "Showing model number help popup")
     dialogUtility.showModelNumberHelpDialog()
   }
 
   private fun navigateTo(route: AppRoute) {
+    AppLog.d(TAG, "Navigating to route: $route")
     viewModelScope.launch {
-      navigationService.navigateTo(route)
+      try {
+        navigationService.navigateTo(route)
+        AppLog.d(TAG, "Successfully navigated to route: $route")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error navigating to route: $route", e)
+      }
     }
+  }
+
+  companion object {
+    private const val TAG = "AddScaleViewModel"
   }
 }

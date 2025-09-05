@@ -160,7 +160,7 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
 @Composable
 private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
   val activity = LocalActivity.current
-  rememberCoroutineScope()
+  val scope = rememberCoroutineScope()
   SettingsSection(
     title = DebugMenuStrings.SectionHeaders.AppTroubleshooting,
     items = listOf(
@@ -179,15 +179,15 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
         type = SettingsItemType.None,
         color = SettingColorType.Danger,
         onClick = {
-          AppLog.i("DebugMenuScreen", "Clear data clicked")
+          AppLog.i(TAG, "Clear data clicked")
           handleIntent(
             DebugMenuIntent.ClearAllData {
-              AppLog.i("DebugMenuScreen", "Activity finish callback triggered!")
+              AppLog.i(TAG, "Activity finish callback triggered!")
               try {
                 // Properly finish the activity after clearing data
                 activity?.finish()
               } catch (e: Exception) {
-                AppLog.e("DebugMenuScreen", "Error finishing activity", e.toString())
+                AppLog.e(TAG, "Error finishing activity", e)
               }
             },
           )
@@ -244,3 +244,5 @@ private fun DebugMenuScreenPreview() {
     )
   }
 }
+
+private const val TAG = "DebugMenuScreen"

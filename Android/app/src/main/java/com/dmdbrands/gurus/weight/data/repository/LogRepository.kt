@@ -67,7 +67,7 @@ class LogRepository
                     isInitialized = true
                     AppLog.d("LogRepository", "Initialized with session ID: $currentSessionId")
                 } catch (e: Exception) {
-                    AppLog.e("LogRepository", "Failed to initialize logging system", e.toString())
+                    AppLog.e("LogRepository", "Failed to initialize logging system", e)
                     throw e
                 }
             }
@@ -82,7 +82,7 @@ class LogRepository
                 }
                 emitAll(logDao.getAllLogs())
             }.catch { e ->
-                AppLog.e("LogRepository", "Error fetching logs", e.toString())
+                AppLog.e("LogRepository", "Error fetching logs", e)
                 emit(emptyList())
             }
 
@@ -93,7 +93,7 @@ class LogRepository
                 }
                 emitAll(logDao.getLogsByAccountId(accountId))
             }.catch { e ->
-                AppLog.e("LogRepository", "Error fetching logs for account $accountId", e.toString())
+                AppLog.e("LogRepository", "Error fetching logs for account $accountId", e)
                 emit(emptyList())
             }
 
@@ -104,7 +104,7 @@ class LogRepository
                 }
                 emitAll(logDao.getLogsBySessionId(currentSessionId))
             }.catch { e ->
-                AppLog.e("LogRepository", "Error fetching logs for session $currentSessionId", e.toString())
+                AppLog.e("LogRepository", "Error fetching logs for session $currentSessionId", e)
                 emit(emptyList())
             }
 
@@ -134,7 +134,7 @@ class LogRepository
                     )
                 logDao.insertLog(logEntry)
             } catch (e: Exception) {
-                AppLog.e("LogRepository", "Failed to log message", e.toString())
+                AppLog.e("LogRepository", "Failed to log message", e)
             }
         }
 
@@ -166,7 +166,7 @@ class LogRepository
                 logDao.deleteAllLogs()
                 AppLog.d("LogRepository", "All logs cleared")
             } catch (e: Exception) {
-                AppLog.e("LogRepository", "Failed to clear logs", e.toString())
+                AppLog.e("LogRepository", "Failed to clear logs", e)
                 throw e
             }
         }
@@ -212,7 +212,7 @@ class LogRepository
                     throw Exception("Failed to send logs: HTTP ${response.code()} - $errorText")
                 }
             } catch (e: Exception) {
-                AppLog.e("LogRepository", "Failed to send logs", e.toString())
+                AppLog.e("LogRepository", "Failed to send logs", e)
                 throw e
             }
         }
@@ -230,7 +230,7 @@ class LogRepository
                 deleteLogsByAccountId(currentAccountId)
                 AppLog.i("LogRepository", "Logs cleared for account: $currentAccountId")
             } catch (e: Exception) {
-                AppLog.e("LogRepository", "Failed to clear logs for current account", e.toString())
+                AppLog.e("LogRepository", "Failed to clear logs for current account", e)
                 throw e
             }
         }

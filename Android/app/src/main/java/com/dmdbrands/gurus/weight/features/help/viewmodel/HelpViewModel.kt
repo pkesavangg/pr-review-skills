@@ -57,7 +57,7 @@ class HelpViewModel @Inject constructor(
             try {
                 navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu)
             } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to navigate to debug menu", e.toString())
+                AppLog.e(TAG, "Failed to navigate to debug menu", e)
             }
         }
     }
@@ -78,7 +78,7 @@ class HelpViewModel @Inject constructor(
             try {
                 navigationService.navigateBack()
             } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to navigate back from help", e.toString())
+                AppLog.e(TAG, "Failed to navigate back from help", e)
             }
         }
     }

@@ -35,7 +35,7 @@ object DateTimeConverter {
         .toInstant()
         .toEpochMilli()
     } catch (e: Exception) {
-      AppLog.e("DateTimeConverter", "Failed to convert ISO string to timestamp", e.toString())
+      AppLog.e("DateTimeConverter", "Failed to convert ISO string to timestamp", e)
       0L
     }
   }
@@ -53,7 +53,7 @@ object DateTimeConverter {
         defaultZone,
       ).format(formatter)
     } catch (e: Exception) {
-      AppLog.e("DateTimeConverter", "Failed to convert timestamp to ISO string", e.toString())
+      AppLog.e("DateTimeConverter", "Failed to convert timestamp to ISO string", e)
       ""
     }
   }

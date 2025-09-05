@@ -130,7 +130,7 @@ constructor(
 
       AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to update device info", e.toString())
+      AppLog.e(TAG, "Failed to update device info", e)
       throw e
     }
   }
@@ -145,7 +145,7 @@ constructor(
       AppLog.d(TAG, "Retrieved FCM token from DataStore: $token")
       token
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to get FCM token from DataStore", e.toString())
+      AppLog.e(TAG, "Failed to get FCM token from DataStore", e)
       ""
     }
 }
