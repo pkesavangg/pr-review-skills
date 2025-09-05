@@ -44,6 +44,15 @@ protocol SectionViewModelProtocol: ObservableObject {
     var xAxisValues: [Date] { get }
     var isAtLeftBoundary: Bool { get }
     
+    // MARK: - Stroke & Point Sizing
+    var lineWidth: CGFloat { get }
+    var basePointDiameter: CGFloat { get }
+    var selectedPointDiameter: CGFloat { get }
+    var basePointArea: CGFloat { get }
+    var selectedPointArea: CGFloat { get }
+    func pointArea(isSelected: Bool) -> CGFloat
+    func symbolArea(forDiameter diameter: CGFloat) -> CGFloat
+    
     // MARK: - Initialization and Configuration
     func configure(with store: DashboardStore)
     
@@ -66,12 +75,18 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Chart Position Calculations
     func getChartPosition(for date: Date, value: Double) -> CGPoint?
+    /// Returns the actual X value that should be plotted for a given data date.
+    /// Default behavior is to use the same date; specific periods can override
+    /// to shift points (e.g., center monthly averages between month ticks).
+    func plotXDate(for original: Date) -> Date
     
     // MARK: - X-Axis Label Generation
     func formatXAxisLabel(for date: Date) -> String?
     
     // MARK: - Chart Content Helpers
     func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]]
+    func shouldShowSolidLine(for date: Date) -> Bool
+    func formatSelectedXAxisLabel() -> String?
     
     // MARK: - Data Management
     func refreshData()

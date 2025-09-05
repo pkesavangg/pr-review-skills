@@ -76,9 +76,9 @@ struct ThemeGlowModifier: ViewModifier {
     func body(content: Content) -> some View {
         content.shadow(
             color: theme.glow,
-            radius: BorderRadius.lg,
-            x: 0,
-            y: 0
+            radius: BorderRadius.xs,
+            x: 2,
+            y: 2
         )
     }
 }

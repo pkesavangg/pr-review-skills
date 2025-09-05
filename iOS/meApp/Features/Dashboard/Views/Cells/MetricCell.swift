@@ -27,6 +27,7 @@ class MetricCell: UICollectionViewCell {
     private var currentStore: DashboardStore?
     private var currentDashboardType: DashboardType = .dashboard12
     private var currentIsBeingDragged: Bool = false
+    private var currentParentView: DashboardMetricsParentView = .dashboard
     private var isLongPressed: Bool = false
     private var isTapped: Bool = false
     private var suppressOverlay: Bool = false
@@ -39,6 +40,7 @@ class MetricCell: UICollectionViewCell {
             MetricCardView(
                 value: "0",
                 label: "Placeholder",
+                icon: nil,
                 dashboardType: .dashboard12,
                 isEditMode: false,
                 isRemoved: false,
@@ -48,7 +50,8 @@ class MetricCell: UICollectionViewCell {
                 isDropTarget: false,
                 onDrop: { _, _ in false },
                 onDropTargetChanged: { _ in },
-                verticalPadding: MetricCardView.twelveCardVerticalPadding
+                verticalPadding: MetricCardView.twelveCardVerticalPadding,
+                parentView: .dashboard
             )
         )
         
@@ -98,19 +101,24 @@ class MetricCell: UICollectionViewCell {
     ///   - dashboardType: The dashboard type for styling
     ///   - store: The dashboard store for formatting
     ///   - isBeingDragged: Whether this cell is currently being dragged
-    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
+    ///   - parentView: The context in which this cell is displayed (dashboard vs R4ScaleSetup)
+    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
         representedItem = item
         currentStore = store
         currentDashboardType = dashboardType
         currentIsBeingDragged = isBeingDragged
+        currentParentView = parentView
         
         // Determine if this item is removed using the new removal state
         let itemIsRemoved = store.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
+        let displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
+
         let metricCardView = MetricCardView(
-            value: store.formattedMetricValue(for: (item.preLabel, item.value)),
+            value: displayValue,
             label: item.label,
+            icon: item.icon,
             dashboardType: dashboardType,
             isEditMode: store.state.ui.isEditMode,
             isRemoved: itemIsRemoved,
@@ -137,7 +145,8 @@ class MetricCell: UICollectionViewCell {
             onDropTargetChanged: { _ in },
             verticalPadding: dashboardType == .dashboard12 
                 ? MetricCardView.twelveCardVerticalPadding 
-                : MetricCardView.fourCardVerticalPadding
+                : MetricCardView.fourCardVerticalPadding,
+            parentView: parentView
         )
         
         // Only apply EditModeOverlay when in edit mode
@@ -203,6 +212,7 @@ class MetricCell: UICollectionViewCell {
             MetricCardView(
                 value: "0",
                 label: "Placeholder",
+                icon: nil,
                 dashboardType: .dashboard12,
                 isEditMode: false,
                 isRemoved: false,
@@ -212,7 +222,8 @@ class MetricCell: UICollectionViewCell {
                 isDropTarget: false,
                 onDrop: { _, _ in false },
                 onDropTargetChanged: { _ in },
-                verticalPadding: MetricCardView.twelveCardVerticalPadding
+                verticalPadding: MetricCardView.twelveCardVerticalPadding,
+                parentView: .dashboard
             )
         )
         hostingController?.rootView = placeholderView
@@ -236,7 +247,7 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay, parentView: currentParentView)
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -247,7 +258,7 @@ class MetricCell: UICollectionViewCell {
             isTapped = true
             // Reconfigure to hide overlay during drag
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true, parentView: currentParentView)
             }
         @unknown default:
             break
@@ -303,7 +314,7 @@ class MetricCell: UICollectionViewCell {
         
         // Reconfigure the cell with isBeingDragged = true to hide the overlay
         if let item = representedItem, let store = currentStore {
-            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true)
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: true, parentView: currentParentView)
         }
     }
     
@@ -315,7 +326,7 @@ class MetricCell: UICollectionViewCell {
         
         // Reconfigure the cell with isBeingDragged = false to show the overlay
         if let item = representedItem, let store = currentStore {
-            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false)
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: false, parentView: currentParentView)
         }
     }
     
@@ -380,7 +391,7 @@ class MetricCell: UICollectionViewCell {
         
         // Reconfigure the cell with the new drag state
         if let item = representedItem, let store = currentStore {
-            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged)
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged, parentView: currentParentView)
         }
     }
 
@@ -393,7 +404,33 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = true
         }
         if let item = representedItem, let store = currentStore {
-            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressed)
+            configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressed, parentView: currentParentView)
+        }
+    }
+    
+    /// Updates the cell's appearance when dragging outside boundaries
+    /// - Parameter isOutsideBounds: Whether the drag is currently outside allowed boundaries
+    func updateBoundaryState(_ isOutsideBounds: Bool) {
+        if isOutsideBounds {
+            // Add visual feedback for out-of-bounds drag
+            layer.borderWidth = 2.0
+            layer.borderColor = UIColor.systemRed.cgColor
+            alpha = 0.6
+            
+            // Add a subtle shake animation to indicate invalid drop zone
+            let shake = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            shake.timingFunction = CAMediaTimingFunction(name: .linear)
+            shake.duration = 0.6
+            shake.values = [-2.0, 2.0, -2.0, 2.0, -1.0, 1.0, -0.5, 0.5, 0.0]
+            layer.add(shake, forKey: "shake")
+        } else {
+            // Restore normal drag appearance
+            layer.borderWidth = 0.0
+            layer.borderColor = UIColor.clear.cgColor
+            alpha = 1.0
+            
+            // Remove shake animation
+            layer.removeAnimation(forKey: "shake")
         }
     }
     
@@ -418,7 +455,7 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = true
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
             }
             guard let item = representedItem,
               let callback = onMetricLongPressCallback else { return }
@@ -431,7 +468,7 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = false
             // Reconfigure to show overlay after long press ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged)
+                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
             }
             break
         default:

@@ -253,7 +253,6 @@ constructor(
     try {
       if (isFromProfile) {
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-        return
       }
       accountRepository.updateProfile(profileUpdateRequest)
       showSuccessToast(

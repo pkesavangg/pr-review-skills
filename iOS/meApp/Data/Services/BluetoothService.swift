@@ -583,6 +583,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 switch dataType {
                 case .userData: return .ACCOUNT
                 case .history: return .HISTORY
+                case .wifi: return .WIFI
+                case .settings: return .SETTINGS
                 case .all: return .ALL
                 }
             }()

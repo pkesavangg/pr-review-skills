@@ -44,6 +44,7 @@ fun ScalePermissions(
         PermissionSettings(
             permissionGroups = permissionGroups,
             onRequestPermission = onRequestPermission,
+            requiredPermissions = emptySet() // Scale setup shows grey for unauthorized permissions
         )
     }
 }

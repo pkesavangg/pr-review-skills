@@ -4,6 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.greatergoods.blewrapper.GGPermissionService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -17,6 +19,7 @@ import javax.inject.Inject
 class AppPermissionsViewModel @Inject constructor(
   private val permissionService: GGPermissionService,
   private val dialogUtility: IDialogUtility,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<AppPermissionsState, AppPermissionsIntent>(
   reducer = AppPermissionReducer(),
 ) {
@@ -26,6 +29,7 @@ class AppPermissionsViewModel @Inject constructor(
 
   init {
     subscribePermissions()
+    subscribePairedScales()
   }
 
   override fun handleIntent(intent: AppPermissionsIntent) {
@@ -43,7 +47,18 @@ class AppPermissionsViewModel @Inject constructor(
     viewModelScope.launch {
       permissionService.permissionCallBackFlow.collect { permissions ->
         handleIntent(AppPermissionsIntent.SetPermissions(permissions))
+      }
+    }
+  }
 
+  /**
+   * Subscribes to paired scales to determine required permissions.
+   */
+  private fun subscribePairedScales() {
+    viewModelScope.launch {
+      deviceService.pairedScales.collect { pairedScales ->
+        val requiredPermissions = AppPermissionsHelper.getRequiredPermissionSets(pairedScales)
+        handleIntent(AppPermissionsIntent.SetRequiredPermissions(requiredPermissions))
       }
     }
   }

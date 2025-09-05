@@ -15,18 +15,18 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
     // MARK: - Private Properties
     private let originalMetrics: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
-        (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.waterUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.boneUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, nil),
-        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.proteinUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, nil),
-        (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, nil)
+        (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, AppAssets.bodyFatIcon),
+        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, AppAssets.muscleIcon),
+        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.waterUnit, nil, AppAssets.waterIcon),
+        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, AppAssets.heartIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.boneUnit, nil, AppAssets.boneIcon),
+        (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
+        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, AppAssets.subcutaneousFatIcon),
+        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.proteinUnit, nil, AppAssets.proteinIcon),
+        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, AppAssets.skeletalMuscleIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, AppAssets.bmrIcon),
+        (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
     ]
 
     // MARK: - Fallback Values Structure
@@ -256,10 +256,14 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
-            return state.metrics
+            // In edit mode, show all metrics (both removed and non-removed) so users can manage them
+            // Non-removed metrics first, then removed metrics
+            let nonRemovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+            let removedMetricsArray = state.metrics.filter { removedMetrics.contains($0.label) }
+            return nonRemovedMetrics + removedMetricsArray
         } else {
+            // In non-edit mode, only show non-removed metrics
             let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
-
             
             switch dashboardType {
             case .dashboard4:
@@ -267,7 +271,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 return result
             case .dashboard12:
                 let result = Array(allUnremovedMetrics.prefix(12))
-
                 return result
             }
         }

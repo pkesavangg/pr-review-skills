@@ -14,13 +14,23 @@ import Charts
 @MainActor
 final class TotalSectionViewModel: BaseSectionViewModel {
     
+    // MARK: - Constants
+    
+    /// Number of days to expand domain when there's only one data point
+    private static let domainExpansionDays: Int = 3
+    
+    /// Fallback time interval for domain expansion (90 days in seconds)
+    private static let fallbackDomainExpansion: TimeInterval = 90 * 24 * 60 * 60
+    
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .total
     }
     
-    override var maxGapForConnectedSegments: TimeInterval {
-        return 365 * 24 * 60 * 60 // 1 year gap for total view
+    /// Connect across any gap in Total view
+    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
+        let sorted = dataPoints.sorted { $0.date < $1.date }
+        return sorted.isEmpty ? [] : [sorted]
     }
     
     override var hasXAxis: Bool {
@@ -30,6 +40,11 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     override var pointSize: CGFloat {
         return 16 // Smaller points for total view (many data points)
     }
+
+    // Explicitly restate for clarity (optional overrides)
+    override var lineWidth: CGFloat { 2 }
+    override var basePointDiameter: CGFloat { 4 }
+    override var selectedPointDiameter: CGFloat { 8 }
     
     // MARK: - Total-specific properties
     
@@ -46,7 +61,17 @@ final class TotalSectionViewModel: BaseSectionViewModel {
             let now = Date()
             return now...now
         }
-        
+
+        // If there is only one point, expand the domain by 3 months on both sides
+        if minDate == maxDate {
+            let calendar = Calendar.current
+            let expandedStart = calendar.date(byAdding: .month, value: -Self.domainExpansionDays, to: minDate)
+                ?? minDate.addingTimeInterval(-Self.fallbackDomainExpansion)
+            let expandedEnd = calendar.date(byAdding: .month, value: Self.domainExpansionDays, to: maxDate)
+                ?? maxDate.addingTimeInterval(Self.fallbackDomainExpansion)
+            return expandedStart...expandedEnd
+        }
+
         return minDate...maxDate
     }
     

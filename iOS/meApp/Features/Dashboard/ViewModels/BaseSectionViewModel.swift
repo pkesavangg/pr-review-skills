@@ -48,6 +48,42 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var hasXAxis: Bool {
         return timePeriod != .total // Total period has no X-axis
     }
+
+    // MARK: - Stroke & Point Sizing (moved from view)
+    
+    /// Line width used by charts for this period (3 for week/month/year, 2 for total)
+    var lineWidth: CGFloat {
+        return hasXAxis ? 3 : 2
+    }
+    
+    /// Base point diameter for this period (8 for week/month/year, 4 for total)
+    var basePointDiameter: CGFloat {
+        return hasXAxis ? 8 : 4
+    }
+    
+    /// Selected point diameter for this period (16 for week/month/year, 8 for total)
+    var selectedPointDiameter: CGFloat {
+        return hasXAxis ? 16 : 8
+    }
+    
+    /// Area value expected by Charts' `symbolSize` for the base point
+    var basePointArea: CGFloat { symbolArea(forDiameter: basePointDiameter) }
+    
+    /// Area value expected by Charts' `symbolSize` for the selected point
+    var selectedPointArea: CGFloat { symbolArea(forDiameter: selectedPointDiameter) }
+    
+    /// Returns the point area based on selection state
+    /// - Parameter isSelected: whether the point is selected
+    /// - Returns: area in pt^2 for use with `symbolSize`
+    func pointArea(isSelected: Bool) -> CGFloat {
+        return isSelected ? selectedPointArea : basePointArea
+    }
+    
+    /// Converts a circle diameter (in pt) to the area value expected by Charts' `symbolSize`
+    func symbolArea(forDiameter diameter: CGFloat) -> CGFloat {
+        let r = diameter / 2
+        return .pi * r * r
+    }
     
     var dateRange: ClosedRange<Date> {
         // Default implementation for scrollable views - use visible domain
@@ -271,7 +307,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip position (with X-axis adjustment)
     func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
-        let goalWeight = self.goalWeight
+        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? 0
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -329,7 +365,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         let visibleDomainLength = self.visibleDomainLength
         guard visibleDomainLength.isFinite && visibleDomainLength > 0 else { return nil }
         
-        let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
+        // Use the plotting X-date which may be shifted (e.g., mid-month for year view)
+        let effectiveDate = plotXDate(for: date)
+        let timeFromScrollPosition = effectiveDate.timeIntervalSince(xScrollPosition)
         let xRatio = timeFromScrollPosition / visibleDomainLength
         let xPosition = chartFrame.width * xRatio
         
@@ -356,12 +394,26 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         return CGPoint(x: adjustedX, y: adjustedY)
     }
+
+    /// Default implementation: use the original date for plotting
+    func plotXDate(for original: Date) -> Date {
+        return original
+    }
     
     // MARK: - X-Axis Label Generation
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
     func formatXAxisLabel(for date: Date) -> String? {
         return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
+    }
+    
+    func formatSelectedXAxisLabel() -> String? {
+        guard
+            let store = dashboardStore,
+            let date = store.state.graph.selectedPoint?.date 
+        else { return nil }
+
+        return dashboardStore?.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers
@@ -440,7 +492,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when the dashboard store's cached Y-axis values change during scrolling
     func syncYAxisFromStore() {
         guard let store = dashboardStore else { return }
-        
+
         // Read cached values from dashboard store
         if let cachedDomain = store.state.graph.cachedYAxisDomain {
             // Animate domain transition when cache updates
@@ -448,12 +500,38 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 self.yAxisDomain = cachedDomain
             }
         }
-        
+
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
             // Suppress animation for tick changes
             withTransaction(Transaction(animation: nil)) {
                 self.yAxisTicks = cachedTicks
             }
+        }
+    }
+
+    /// Determines if a date should show a solid vertical line (start of week/month/year)
+    /// - Parameter date: The date to check
+    /// - Returns: True if the date represents the start of a major period
+    func shouldShowSolidLine(for date: Date) -> Bool {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.weekday, .day, .month], from: date)
+
+        switch timePeriod {
+        case .week:
+            // For week view, show solid line for the start of the week per locale
+            guard let weekday = components.weekday else { return false }
+            return weekday == calendar.firstWeekday
+
+        case .month:
+            // For month view, show solid line for 1st of month
+            return components.day == 1
+
+        case .year:
+            // For year view, show solid line for January 1st
+            return components.month == 1 && components.day == 1
+
+        default:
+            return false
         }
     }
 }

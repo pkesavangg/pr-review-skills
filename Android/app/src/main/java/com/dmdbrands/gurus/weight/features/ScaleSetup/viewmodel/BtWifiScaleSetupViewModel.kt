@@ -425,7 +425,8 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.ReplaceAccount(newUserName))
       }
     } else if (currentState.currentStep == BtWifiSetupStep.WIFI_PASSWORD) {
-      connectToWifi()
+      // Transition to CONNECTING_WIFI step, which will automatically trigger connectToWifi()
+      handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_WIFI))
     } else if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST) {
       // Check if WiFi is already connected
       if (!currentState.connectedSSID.isNullOrEmpty()) {
@@ -956,6 +957,7 @@ constructor(
    */
   private fun connectToWifi() {
     AppLog.d(TAG, "Starting wifi connection process")
+    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.CONNECTING_WIFI,
@@ -978,12 +980,15 @@ constructor(
                 ConnectionState.Success,
               ),
             )
+            // Update WiFi details in background but don't block progression
             updateWifiDetails()
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
               onExitSetup(true)
               return@launch
             }
+            // Allow user to proceed to customization
             handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+            // Automatically proceed to customization step after showing success status
             handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
           } else {
             AppLog.w(TAG, "Wifi connection failed")

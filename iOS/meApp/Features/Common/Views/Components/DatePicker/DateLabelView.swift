@@ -11,6 +11,8 @@ import SwiftUI
 struct DateLabelView: View {
     /// The date to display.
     let date: Date
+    /// Whether the date picker is currently open/selected.
+    var isSelected: Bool = false
     /// Action to perform when the label is tapped.
     let onTap: () -> Void
     @Environment(\.appTheme) var theme
@@ -28,9 +30,12 @@ struct DateLabelView: View {
     }()
 
     var body: some View {
-        ChipView(text: formattedDateString) {
-            onTap()
-        }
+        ChipView(
+            text: formattedDateString,
+            style: .bordered,
+            isSelected: isSelected,
+            onTap: onTap
+        )
     }
 }
 

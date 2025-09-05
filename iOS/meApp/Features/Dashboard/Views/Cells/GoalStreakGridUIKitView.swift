@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 
 struct GoalStreakGridUIKitView: UIViewRepresentable {
+    var parentView: DashboardMetricsParentView = .dashboard
     @ObservedObject var store: DashboardStore
     
     func makeUIView(context: Context) -> UICollectionView {
@@ -65,6 +66,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             coordinator.lastGoalCardRemoved = newGoalCardRemoved
             coordinator.lastGoalCardPosition = newGoalCardPosition
             coordinator.lastStreakGridOrder = newStreakGridOrder
+            
+            // Force collection view to recalculate its intrinsic content size
+            DispatchQueue.main.async {
+                collectionView.layoutIfNeeded()
+                if let customCollectionView = collectionView as? CustomCollectionView {
+                    customCollectionView.invalidateIntrinsicContentSize()
+                }
+            }
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
@@ -80,7 +89,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(store: store, gridModel: buildGridModelFromStoreState())
+        let c = Coordinator(store: store, gridModel: buildGridModelFromStoreState())
+        c.parentView = parentView
+        return c
     }
     
     // MARK: - Private Methods
@@ -231,6 +242,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         var lastStreakGridOrder: [String] = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
+        var parentView: DashboardMetricsParentView = .dashboard
 
         private var lastDropTargetIndexPath: IndexPath?
         private var lastDropTargetItemType: MileStoneType?
@@ -251,6 +263,38 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         private var lastDroppedStreakId: String?
         private var lastDroppedGoalCard: Bool = false
         private var isAwaitingDropEnd: Bool = false
+        
+        // MARK: - Boundary Detection for Active vs Removed Items
+        
+        /// Returns the number of non-removed (active) items that can be reordered
+        private var activeItemsCount: Int {
+            let activeStreaks = gridModel.mileStones.filter { widget in
+                switch widget {
+                case .goalCard:
+                    return !store.state.ui.isGoalCardRemoved
+                case .streak(let item):
+                    return !store.isStreakRemoved(item.label)
+                }
+            }
+            return activeStreaks.count
+        }
+        
+        /// Returns the first index of removed items (where dropping should be prevented)
+        private var firstRemovedIndex: Int {
+            return activeItemsCount
+        }
+        
+        /// Returns true if the item at the given index is removed
+        private func isItemRemoved(at index: Int) -> Bool {
+            guard index < gridModel.mileStones.count else { return false }
+            let widget = gridModel.mileStones[index]
+            switch widget {
+            case .goalCard:
+                return store.state.ui.isGoalCardRemoved
+            case .streak(let item):
+                return store.isStreakRemoved(item.label)
+            }
+        }
         
         init(store: DashboardStore, gridModel: MileStoneGridModel) {
             self.store = store
@@ -276,6 +320,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return cell
             case .streak(let item):
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
+                cell.parentView = parentView
                 cell.configure(
                     with: item, 
                     store: store
@@ -316,8 +361,37 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // MARK: - Drag & Drop
         
+        func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
+            // Only allow moving items that are non-removed (active) items
+            return store.state.ui.isEditMode && indexPath.item < firstRemovedIndex
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, targetIndexPathForMoveFromItemAt originalIndexPath: IndexPath, toProposedIndexPath proposedIndexPath: IndexPath) -> IndexPath {
+            let maxValidIndex = firstRemovedIndex - 1
+            
+            // Prevent any moves to/from removed item indices
+            if originalIndexPath.item >= firstRemovedIndex || proposedIndexPath.item >= firstRemovedIndex {
+                return originalIndexPath // Return original position to cancel the move
+            }
+            
+            // Ensure proposed destination is within valid range (0 to maxValidIndex)
+            if proposedIndexPath.item < 0 {
+                return IndexPath(item: 0, section: proposedIndexPath.section)
+            } else if proposedIndexPath.item >= firstRemovedIndex {
+                return IndexPath(item: maxValidIndex, section: proposedIndexPath.section)
+            }
+            
+            return proposedIndexPath
+        }
+        
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             guard store.state.ui.isEditMode else { return [] }
+            
+            // Only allow dragging of non-removed (active) items
+            if isItemRemoved(at: indexPath.item) || indexPath.item >= firstRemovedIndex {
+                return [] // Return empty array to prevent drag of removed items
+            }
+            
             let widget = gridModel.mileStones[indexPath.item]
             let itemProvider: NSItemProvider
             switch widget {
@@ -441,37 +515,47 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
 
+            // Completely prevent any drops on removed items
+            // Use .cancel instead of .forbidden to avoid slashed circle visual effect
+            if let destinationIndexPath = destinationIndexPath, destinationIndexPath.item >= firstRemovedIndex {
+                return UICollectionViewDropProposal(operation: .cancel)
+            }
+            
+            // Also check if destination would cause issues - only allow drops on active items
+            guard let destinationIndexPath = destinationIndexPath, 
+                  destinationIndexPath.item >= 0 && destinationIndexPath.item < firstRemovedIndex else {
+                return UICollectionViewDropProposal(operation: .cancel)
+            }
+
             // Neutralize haptics when hovering over the goal card by using an unspecified intent
-            if let indexPath = destinationIndexPath, indexPath.item >= 0, indexPath.item < gridModel.mileStones.count {
-                let target = gridModel.mileStones[indexPath.item]
+            if destinationIndexPath.item >= 0, destinationIndexPath.item < gridModel.mileStones.count {
+                let target = gridModel.mileStones[destinationIndexPath.item]
                 if case .goalCard = target {
                     let intent: UICollectionViewDropProposal.Intent = .unspecified
                     // Avoid changing proposal repeatedly while staying on goal card
-                    if lastProposalIntent == intent && lastProposalIndexPath == indexPath {
+                    if lastProposalIntent == intent && lastProposalIndexPath == destinationIndexPath {
                         return UICollectionViewDropProposal(operation: .move, intent: intent)
                     } else {
                         lastProposalIntent = intent
-                        lastProposalIndexPath = indexPath
+                        lastProposalIndexPath = destinationIndexPath
                         return UICollectionViewDropProposal(operation: .move, intent: intent)
                     }
                 }
             }
 
-            if let destinationIndexPath = destinationIndexPath {
-                // Only show drop target indicator when there's a meaningful change
-                let shouldShowIndicator = shouldShowDropTargetIndicator(
-                    at: destinationIndexPath,
-                    in: collectionView,
-                    for: session
-                )
-                
-                if shouldShowIndicator {
-                    showDropTargetIndicator(at: destinationIndexPath, in: collectionView)
-                }
-                // Cache proposal for non-goal targets to avoid frequent system changes
-                lastProposalIntent = .insertAtDestinationIndexPath
-                lastProposalIndexPath = destinationIndexPath
+            // Only show drop target indicator when there's a meaningful change
+            let shouldShowIndicator = shouldShowDropTargetIndicator(
+                at: destinationIndexPath,
+                in: collectionView,
+                for: session
+            )
+            
+            if shouldShowIndicator {
+                showDropTargetIndicator(at: destinationIndexPath, in: collectionView)
             }
+            // Cache proposal for non-goal targets to avoid frequent system changes
+            lastProposalIntent = .insertAtDestinationIndexPath
+            lastProposalIndexPath = destinationIndexPath
             
             return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
         }
@@ -803,7 +887,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             } else {
                 return // Invalid drop item
             }
-            
+
+            // Prevent dropping on removed items - only allow drops on active items
+            if destinationIndexPath.item >= firstRemovedIndex {
+                collectionView.reloadData() // Reset to original state
+                return
+            }
+
+            // Also prevent moving FROM removed items (should already be blocked, but extra safety)
+            if sourceIndexPath.item >= firstRemovedIndex {
+                collectionView.reloadData() // Reset to original state
+                return
+            }
 
             // Widgets and apps are pushed to maintain proper spacing
             let sourceIndex = sourceIndexPath.item
@@ -836,34 +931,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 CATransaction.setAnimationDuration(0)
                 
                 UIView.performWithoutAnimation {
+                    // Update all visible cells instantly without reconfiguration
                     let visibleIndexPaths = collectionView.indexPathsForVisibleItems
                     for indexPath in visibleIndexPaths {
-                        guard indexPath.item < self.gridModel.mileStones.count,
-                              let cell = collectionView.cellForItem(at: indexPath) else { continue }
+                        guard let cell = collectionView.cellForItem(at: indexPath) else { continue }
                         
                         if let streakCell = cell as? StreakCardCell {
-                            let itemForCell = self.gridModel.mileStones[indexPath.item]
-                            if case .streak(let streakItem) = itemForCell {
-                                // Always reconfigure to ensure proper overlay visibility after drop
-                                streakCell.configure(
-                                    with: streakItem, 
-                                    store: self.store,
-                                    onMetricLongPress: { label in
-                                        // Handle long press for streak items if needed
-                                    },
-                                    onSelectMetric: { label in
-                                        // Handle selection for streak items if needed
-                                    }
-                                )
-                                streakCell.isRemoved = self.store.isStreakRemoved(streakItem.label)
-                                // Clear any shadow effects that might remain
-                                streakCell.clearAllShadowEffects()
-                            }
+                            // Clear any shadow effects that might remain without reconfiguring
+                            streakCell.clearAllShadowEffects()
                         } else if let goalCell = cell as? GoalCardCell {
-                            // Always reconfigure to ensure proper overlay visibility after drop
-                            goalCell.configure(with: self.store)
-                            goalCell.isRemoved = self.store.state.ui.isGoalCardRemoved
-                            // Clear any shadow effects that might remain
+                            // Clear any shadow effects that might remain without reconfiguring
                             goalCell.clearAllShadowEffects()
                         }
                     }
@@ -1161,6 +1238,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+            // Immediately clear drag state when drop session ends
+            store.state.ui.isGoalCardBeingDragged = false
+            
             // Clear drag operation flag
             if let custom = collectionView as? CustomCollectionView {
                 custom.isInDragOperation = false
@@ -1180,60 +1260,64 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     cell.transform = .identity
                     cell.contentView.transform = .identity
                     
-                    // Restore overlay visibility if in edit mode - follow exact pattern from MetricGridUIKitView
-                    if self.store.state.ui.isEditMode {
-                        if let streakCell = cell as? StreakCardCell {
-                            streakCell.updateDragState(false)
-                            streakCell.setOverlaySuppressed(false)
-                            // Force clear all shadow effects to prevent shadow artifacts
-                            streakCell.clearAllShadowEffects()
-                        } else if let goalCell = cell as? GoalCardCell {
-                            goalCell.updateDragState(false)
-                            goalCell.setOverlaySuppressed(false)
-                            // Force clear all shadow effects to prevent shadow artifacts
-                            goalCell.clearAllShadowEffects()
-                        }
+                    // Restore overlay visibility if in edit mode
+                    if let streakCell = cell as? StreakCardCell {
+                        streakCell.setOverlaySuppressed(false)
+                        // Force clear all shadow effects to prevent shadow artifacts
+                        streakCell.clearAllShadowEffects()
+                    } else if let goalCell = cell as? GoalCardCell {
+                        goalCell.setOverlaySuppressed(false)
+                        // Force clear all shadow effects to prevent shadow artifacts
+                        goalCell.clearAllShadowEffects()
                     }
                 }
             }
             CATransaction.commit()
 
-            // Clear any remaining drag state
-            store.state.ui.isGoalCardBeingDragged = false
-            
-            // Reset drop target tracking
-            resetDropTargetTracking()
-            
-            // Add a delay to ensure layout has fully settled before restoring overlays
-            if store.state.ui.isEditMode && isAwaitingDropEnd {
-                // First, mark that we're no longer awaiting drop end
-                self.isAwaitingDropEnd = false
-                
-                // Then add a delay before restoring overlays
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // After the delay, force a layout pass on all cells
-                    UIView.performWithoutAnimation {
-                        collectionView.layoutIfNeeded()
-                        
-                        // Now restore overlays on all cells
+            if store.state.ui.isEditMode {
+                let restore = {
+                    if let targetId = self.lastDroppedStreakId,
+                       let targetCell = collectionView.visibleCells.first(where: { cell in
+                           guard let streakCell = cell as? StreakCardCell, let rep = streakCell.representedItem else { return false }
+                           return rep.id.uuidString == targetId
+                       }) as? StreakCardCell {
+                        targetCell.setOverlaySuppressed(false)
+                        targetCell.setNeedsLayout()
+                        targetCell.layoutIfNeeded()
+                    } else if self.lastDroppedGoalCard,
+                              let targetCell = collectionView.visibleCells.first(where: { cell in
+                                  return cell is GoalCardCell
+                              }) as? GoalCardCell {
+                        targetCell.setOverlaySuppressed(false)
+                        targetCell.setNeedsLayout()
+                        targetCell.layoutIfNeeded()
+                    } else {
+                        // Fallback: restore all if we cannot identify the dropped cell
                         for cell in collectionView.visibleCells {
                             if let streakCell = cell as? StreakCardCell {
                                 streakCell.setOverlaySuppressed(false)
+                                streakCell.setNeedsLayout()
+                                streakCell.layoutIfNeeded()
                             } else if let goalCell = cell as? GoalCardCell {
                                 goalCell.setOverlaySuppressed(false)
+                                goalCell.setNeedsLayout()
+                                goalCell.layoutIfNeeded()
                             }
                         }
                     }
-                    
-                    // Clear tracking state
+                    self.isAwaitingDropEnd = false
                     self.lastDroppedStreakId = nil
                     self.lastDroppedGoalCard = false
                 }
+                restore()
             } else {
                 isAwaitingDropEnd = false
                 lastDroppedStreakId = nil
                 lastDroppedGoalCard = false
             }
+            
+            // Reset drop target tracking
+            resetDropTargetTracking()
         }
         
         /// Saves the current grid order to DashboardStore UI state
