@@ -92,7 +92,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         GoalMilestoneDisplay(
           account = state.account,
           latestWeight = state.latestWeight,
-          modifier = Modifier.padding(bottom = spacing.md),
+          modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.md),
         )
       }
       Spacer(modifier = Modifier.padding(top = if (!canDisplayMilestone) spacing.md else 0.dp))

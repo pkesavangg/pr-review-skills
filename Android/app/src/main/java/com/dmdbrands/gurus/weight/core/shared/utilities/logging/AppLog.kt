@@ -54,4 +54,22 @@ object AppLog {
         Timber.tag(tag).e(throwable, message)
         logger?.e(tag, message, throwable)
     }
+
+    fun v(
+        tag: String,
+        message: String,
+        data: String? = null,
+    ) {
+        Timber.tag(tag).v(message)
+        logger?.v(tag, message, data)
+    }
+
+    fun a(
+        tag: String,
+        message: String,
+        data: String? = null,
+    ) {
+        Timber.tag(tag).wtf(message)
+        logger?.a(tag, message, data)
+    }
 }

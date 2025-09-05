@@ -27,12 +27,14 @@ import androidx.compose.foundation.verticalScroll
  * @param permissionGroups List of permission groups to display
  * @param onRequestPermission Callback invoked when a permission item is clicked
  * @param modifier Modifier for the root composable
+ * @param requiredPermissions Set of permission types that are required (for App permissions context)
  */
 @Composable
 fun PermissionSettings(
     permissionGroups: List<PermissionGroup>,
     onRequestPermission: (String) -> Unit,
     modifier: Modifier = Modifier,
+    requiredPermissions: Set<String> = emptySet(),
 ) {
     Column(
         modifier = modifier
@@ -55,6 +57,7 @@ fun PermissionSettings(
                     PermissionItem(
                         item = item,
                         onClick = { onRequestPermission(item.key) },
+                        isRequired = requiredPermissions.contains(item.key)
                     )
                     if (index < group.items.size - 1) {
                         HorizontalDivider(color = MeTheme.colorScheme.utility, thickness = 0.5.dp)

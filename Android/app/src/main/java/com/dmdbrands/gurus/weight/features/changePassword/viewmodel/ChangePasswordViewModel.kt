@@ -74,7 +74,7 @@ constructor(
                     handleIntent(ChangePasswordIntent.Error(ChangePasswordStrings.ErrorMessage))
                 }
             } catch (e: Exception) {
-                AppLog.e("ChangePasswordViewModel", "Change password failed", e.toString())
+                AppLog.e("ChangePasswordViewModel", "Change password failed", e)
                 handleIntent(ChangePasswordIntent.Error(ChangePasswordStrings.ErrorMessage))
             } finally {
                 dialogQueueService.dismissLoader()
@@ -148,7 +148,7 @@ constructor(
                     ),
                 )
             } catch (e: Exception) {
-                AppLog.e("resetPasswordForCurrentUser", "Reset Password failed", e.toString())
+                AppLog.e("resetPasswordForCurrentUser", "Reset Password failed", e)
 
                 // Show error toast
                 dialogQueueService.showToast(
@@ -217,7 +217,7 @@ constructor(
                 navigationService.navigateBack()
                 AppLog.d("ChangePasswordViewModel", "Successfully navigated back from change password")
             } catch (e: Exception) {
-                AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e.toString())
+                AppLog.e("ChangePasswordViewModel", "Failed to navigate back from change password", e)
             }
         }
     }

@@ -60,7 +60,7 @@ init {
       setHcIntegrationStatus(accountId, integrated)
       AppLog.d(tag, "Health Connect integration status updated: $integrated for account: $accountId")
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to update Health Connect integration status", e.toString())
+      AppLog.e(tag, "Failed to update Health Connect integration status", e)
     }
   }
 
@@ -72,7 +72,7 @@ init {
       updateOutOfSync(accountId, outOfSync)
       AppLog.d(tag, "Out of sync status updated: $outOfSync for account: $accountId")
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to update out of sync status", e.toString())
+      AppLog.e(tag, "Failed to update out of sync status", e)
     }
   }
 
@@ -88,7 +88,7 @@ init {
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to observe account changes", e.toString())
+      AppLog.e(tag, "Failed to observe account changes", e)
     }
   }
 
@@ -197,7 +197,7 @@ init {
         throw Exception("Integration Conflict: Health Connect is already assigned to another account")
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check Health Connect assignment", e.toString())
+      AppLog.e(tag, "Failed to check Health Connect assignment", e)
       throw e
     }
   }
@@ -383,7 +383,7 @@ init {
         addAccount(accountId, updatedData)
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to store integration data", e.toString())
+      AppLog.e(tag, "Failed to store integration data", e)
     }
   }
 
@@ -408,7 +408,7 @@ init {
           isCurrentDeviceDeleted = false,
         )
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to get stored integration data", e.toString())
+      AppLog.e(tag, "Failed to get stored integration data", e)
       null
     }
   }
@@ -433,7 +433,7 @@ init {
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to set Health Connect integration status", e.toString())
+      AppLog.e(tag, "Failed to set Health Connect integration status", e)
     }
   }
 }

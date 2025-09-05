@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 
 struct GoalStreakGridUIKitView: UIViewRepresentable {
+    var parentView: DashboardMetricsParentView = .dashboard
     @ObservedObject var store: DashboardStore
     
     func makeUIView(context: Context) -> UICollectionView {
@@ -88,7 +89,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(store: store, gridModel: buildGridModelFromStoreState())
+        let c = Coordinator(store: store, gridModel: buildGridModelFromStoreState())
+        c.parentView = parentView
+        return c
     }
     
     // MARK: - Private Methods
@@ -239,6 +242,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         var lastStreakGridOrder: [String] = []
         var store: DashboardStore
         var gridModel: MileStoneGridModel
+        var parentView: DashboardMetricsParentView = .dashboard
 
         private var lastDropTargetIndexPath: IndexPath?
         private var lastDropTargetItemType: MileStoneType?
@@ -316,6 +320,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return cell
             case .streak(let item):
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
+                cell.parentView = parentView
                 cell.configure(
                     with: item, 
                     store: store

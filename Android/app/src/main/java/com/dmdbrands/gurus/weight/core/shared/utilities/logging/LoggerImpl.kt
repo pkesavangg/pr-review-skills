@@ -68,6 +68,24 @@ class LoggerImpl
             logToDb(tag, message, "e", throwable.toString())
         }
 
+        override fun v(
+            tag: String,
+            message: String,
+            data: String?,
+        ) {
+            Timber.tag(tag).v(message)
+            logToDb(tag, message, "v", data)
+        }
+
+        override fun a(
+            tag: String,
+            message: String,
+            data: String?,
+        ) {
+            Timber.tag(tag).wtf(message)
+            logToDb(tag, message, "a", data)
+        }
+
         private fun logToDb(
             tag: String,
             message: String,

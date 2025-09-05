@@ -37,6 +37,7 @@ constructor(
 ) : BaseIntentViewModel<LoginState, LoginIntent>(
   reducer = LoginReducer(),
 ) {
+  private val TAG = "LoginViewModel"
   @AssistedFactory
   interface Factory {
     fun create(email: String? = null): LoginViewModel
@@ -98,7 +99,7 @@ constructor(
         handleIntent(LoginIntent.ShowMaxAccountAlert)
       } catch (e: Exception) {
         handleIntent(LoginIntent.Error(e.toString()))
-        AppLog.e("onSubmit", "Login failed", e.toString())
+        AppLog.e(TAG, "Login failed", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -150,7 +151,7 @@ constructor(
       try {
         navigationService.navigateBack()
       } catch (e: Exception) {
-        AppLog.e("Login viewModel navigateBack", "Failed to navigate back from login", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from login", e)
       }
     }
   }

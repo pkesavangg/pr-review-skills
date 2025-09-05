@@ -20,6 +20,7 @@ constructor(
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
+  private val TAG = "HistoryViewModel"
   override fun provideInitialState(): HistoryState = HistoryState()
 
   override fun handleIntent(intent: HistoryIntent) {
@@ -76,7 +77,7 @@ constructor(
    * Handles export data click by showing confirmation dialog.
    */
   fun onExportDataClick() {
-    AppLog.d("HistoryViewModel", "Export data clicked")
+    AppLog.d(TAG, "Export data clicked")
 
     // Show confirmation dialog
     dialogQueueService.enqueue(
@@ -90,7 +91,7 @@ constructor(
           dialogQueueService.dismissCurrent()
         },
         onCancel = {
-          AppLog.d("HistoryViewModel", "User cancelled export")
+          AppLog.d(TAG, "User cancelled export")
           dialogQueueService.dismissCurrent()
         },
       ),
@@ -101,7 +102,7 @@ constructor(
    * Performs the actual export operation with loading and error handling.
    */
   private fun performExport() {
-    AppLog.i("HistoryViewModel", ExportStrings.ExportStarted)
+    AppLog.i(TAG, ExportStrings.ExportStarted)
 
     // Show loading spinner
     dialogQueueService.showLoader(
@@ -111,9 +112,9 @@ constructor(
     viewModelScope.launch {
       try {
         exportService.exportCsvWithPrompt()
-        AppLog.i("HistoryViewModel", ExportStrings.ExportCompleted)
+        AppLog.i(TAG, ExportStrings.ExportCompleted)
       } catch (e: Exception) {
-        AppLog.e("HistoryViewModel", ExportStrings.ExportFailed, e.toString())
+        AppLog.e(TAG, ExportStrings.ExportFailed, e)
       } finally {
         dialogQueueService.dismissLoader()
       }

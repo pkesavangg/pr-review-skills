@@ -78,7 +78,7 @@ class NotificationService
           updatedAccount
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Notification settings update failed", e.toString())
+        AppLog.e(TAG, "Notification settings update failed", e)
         null
       }
     }

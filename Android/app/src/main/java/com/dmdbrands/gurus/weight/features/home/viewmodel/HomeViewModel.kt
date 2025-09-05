@@ -51,6 +51,7 @@ constructor(
   private val accountService: IAccountService,
   dialogQueueService: IDialogQueueService
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
+  private val TAG = "HomeViewModel"
   override fun provideInitialState(): HomeState = HomeState()
 
   init {
@@ -179,7 +180,7 @@ constructor(
           },
         )
       } catch (e: Exception) {
-        AppLog.e("HomeViewModel", "Error handling new entry: ${e.message}", e)
+        AppLog.e(TAG, "Error handling new entry: ${e.message}", e)
         dialogQueueService.showToast(
           Toast(message = "Failed to process AppSync data: ${e.message}"),
         )
@@ -202,12 +203,12 @@ constructor(
         when (event) {
           WeightOnlyModeEventType.SHOW_ALERT -> {
             handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(true))
-            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be shown")
+            AppLog.d(TAG, "Weight-only mode bottom sheet should be shown")
           }
 
           WeightOnlyModeEventType.HIDE_ALERT -> {
             handleIntent(HomeIntent.SetShowWeightOnlyModeBottomSheet(false))
-            AppLog.d("HomeViewModel", "Weight-only mode bottom sheet should be hidden")
+            AppLog.d(TAG, "Weight-only mode bottom sheet should be hidden")
           }
 
           else -> {
@@ -225,7 +226,7 @@ constructor(
     viewModelScope.launch {
       deviceService.isWeightOnlyModeAlertShown.collect { isAlertShown ->
         handleIntent(HomeIntent.SetWeightOnlyModeDismissed(isAlertShown))
-        AppLog.d("HomeViewModel", "Weight-only mode alert dismissed state updated: $isAlertShown")
+        AppLog.d(TAG, "Weight-only mode alert dismissed state updated: $isAlertShown")
       }
     }
   }
@@ -237,7 +238,7 @@ constructor(
   private fun onWeightOnlyModeEnable() {
     viewModelScope.launch {
       try {
-        AppLog.d("HomeViewModel", "Enabling weight-only mode via AppViewModel")
+        AppLog.d(TAG, "Enabling weight-only mode via AppViewModel")
 
         val pairedScales = deviceService.pairedScales.first()
         val scalesToUpdate = pairedScales.filter { device ->
@@ -259,9 +260,9 @@ constructor(
               handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
               // This would call the scale service to update settings
               // ggDeviceService.updateSetting(...) - implementation depends on your scale service
-              AppLog.d("HomeViewModel", "Updated settings for scale: ${scale.device?.deviceName}")
+              AppLog.d(TAG, "Updated settings for scale: ${scale.device?.deviceName}")
             } catch (e: Exception) {
-              AppLog.e("HomeViewModel", "Failed to update scale settings", e.toString())
+              AppLog.e(TAG, "Failed to update scale settings", e)
             }
           }
 
@@ -273,7 +274,7 @@ constructor(
 
         // Dismiss the bottom sheet
       } catch (e: Exception) {
-        AppLog.e("HomeViewModel", "Failed to enable weight-only mode", e.toString())
+        AppLog.e(TAG, "Failed to enable weight-only mode", e)
         dialogQueueService.showToast(
           Toast(message = "Failed to update scale settings"),
         )
@@ -291,6 +292,6 @@ constructor(
    */
   private fun onWeightOnlyModeAlertDismiss() {
     deviceService.weightOnlyModeDismissAlert { handleWeightOnlyDismiss() }
-    AppLog.d("HomeViewModel", "Weight-only mode bottom sheet dismissed")
+    AppLog.d(TAG, "Weight-only mode bottom sheet dismissed")
   }
 }

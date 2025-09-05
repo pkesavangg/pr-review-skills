@@ -38,6 +38,7 @@ constructor(
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
+  private val TAG = "EntryViewModel"
   override fun provideInitialState(): EntryState =
     EntryState(
       form =
@@ -158,7 +159,7 @@ constructor(
         _state.value.form.resetForm()
         navigationService.navigateBack(AppRoute.Home)
       } catch (e: Exception) {
-        AppLog.e("EntryViewModel", "Error saving entry: ${e.message}", e)
+        AppLog.e(TAG, "Error saving entry: ${e.message}", e)
         dialogQueueService.showToast(
           Toast(
             message = "Failed to save entry: ${e.message}",
@@ -203,11 +204,11 @@ constructor(
         // Mark the form as touched and dirty to enable save button for AppSync editing
 
         AppLog.i(
-          "EntryViewModel",
+          TAG,
           "AppSync data loaded and form marked as touched/dirty - isDirty: ${_state.value.form.isDirty}, isTouched: ${_state.value.form.isTouched}",
         )
       } catch (e: Exception) {
-        AppLog.e("EntryViewModel", "Failed to load AppSync data", e.toString())
+        AppLog.e(TAG, "Failed to load AppSync data", e)
         dialogQueueService.showToast(
           Toast(message = "Failed to load AppSync data: ${e.message}"),
         )

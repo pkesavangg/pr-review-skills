@@ -46,7 +46,7 @@ class IntegrationViewModel @Inject constructor(
    */
   private var currentAccount: Account? = null
   private var isTabHidden = false
-
+  private val TAG = "IntegrationViewModel"
   /**
    * Current OAuth provider being processed (tracked locally for OAuth flow).
    */
@@ -64,7 +64,7 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       accountService.activeAccountFlow.collectLatest { account ->
         currentAccount = account
-        AppLog.d("IntegrationViewModel", "Active account updated: ${account?.id}")
+        AppLog.d(TAG, "Active account updated: ${account?.id}")
       }
 
       loadIntegrations()
@@ -99,12 +99,12 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         confirmRemoveIntegration()
-        AppLog.d("IntegrationViewModel", "Successfully removed Health Connect integration")
+        AppLog.d(TAG, "Successfully removed Health Connect integration")
       } catch (e: Exception) {
         AppLog.e(
-          "IntegrationViewModel",
+          TAG,
           "Failed to remove Health Connect integration",
-          e.toString(),
+          e,
         )
       }
     }
@@ -150,7 +150,7 @@ class IntegrationViewModel @Inject constructor(
         customTabManager.subscribeChromeState().collect { state ->
           when (state) {
             ChromeTabState.TabHidden -> {
-              AppLog.d("IntegrationViewModel", "Custom tab hidden - OAuth flow may be completed")
+              AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed")
               if (!isTabHidden) {
                 isTabHidden = true
                 checkOAuthFlowCompletion()
@@ -158,11 +158,11 @@ class IntegrationViewModel @Inject constructor(
             }
 
             ChromeTabState.TabShown -> {
-              AppLog.d("IntegrationViewModel", "Custom tab shown")
+              AppLog.d(TAG, "Custom tab shown")
             }
 
             null -> {
-              AppLog.d("IntegrationViewModel", "Custom tab state is null")
+              AppLog.d(TAG, "Custom tab state is null")
             }
 
             else -> {}
@@ -170,9 +170,9 @@ class IntegrationViewModel @Inject constructor(
         }
       } catch (e: Exception) {
         AppLog.e(
-          "IntegrationViewModel",
+          TAG,
           "Failed to setup custom tab monitoring",
-          e.toString(),
+          e,
         )
       }
       isTabHidden = false
@@ -204,18 +204,18 @@ class IntegrationViewModel @Inject constructor(
             }
           }
           handleIntent(IntegrationIntent.SetIntegrations(updatedIntegrations))
-          AppLog.d("IntegrationViewModel", "Loaded ${updatedIntegrations.size} integrations with status")
+          AppLog.d(TAG, "Loaded ${updatedIntegrations.size} integrations with status")
           if (!skipInvalidIntegrationsCheck) {
             val inactiveProviders = integrationService.checkForInactiveIntegrations()
             if (inactiveProviders.isNotEmpty()) {
-              AppLog.d("IntegrationViewModel", "Found ${inactiveProviders.size} inactive integrations, showing alert")
+              AppLog.d(TAG, "Found ${inactiveProviders.size} inactive integrations, showing alert")
               showReintegrateAlert(inactiveProviders)
             }
             skipInvalidIntegrationsCheck = true
           }
         }
       } catch (e: Exception) {
-        AppLog.e("IntegrationViewModel", "Failed to load integrations", e.toString())
+        AppLog.e(TAG, "Failed to load integrations", e)
       }
       subscribeBrowserState()
 
@@ -281,7 +281,7 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         val accountId = currentAccount?.id ?: run {
-          AppLog.w("IntegrationViewModel", "No current account available for connecting to $provider")
+          AppLog.w(TAG, "No current account available for connecting to $provider")
           return@launch
         }
         if (provider.requiresOAuth()) {
@@ -289,10 +289,10 @@ class IntegrationViewModel @Inject constructor(
         } else if (provider.isPlatformSpecific()) {
           handleIntent(IntegrationIntent.CheckHealthConnectAvailability)
         } else {
-          AppLog.w("IntegrationViewModel", "Unsupported provider type: $provider")
+          AppLog.w(TAG, "Unsupported provider type: $provider")
         }
       } catch (e: Exception) {
-        AppLog.e("IntegrationViewModel", "Failed to connect to $provider", e.toString())
+        AppLog.e(TAG, "Failed to connect to $provider", e)
       }
     }
   }
@@ -302,20 +302,20 @@ class IntegrationViewModel @Inject constructor(
    */
   private fun refreshIntegrationStatus() {
     viewModelScope.launch {
-      AppLog.d("IntegrationViewModel", "Refreshing integration status")
+      AppLog.d(TAG, "Refreshing integration status")
       runCatching {
         integrationService.getIntegrationsWithStatus().first()
       }.onSuccess { integrations ->
         handleIntent(IntegrationIntent.SetIntegrations(integrations))
         AppLog.d(
-          "IntegrationViewModel",
+          TAG,
           "Successfully refreshed integration status - ${integrations.size} integrations updated",
         )
       }.onFailure { e ->
         AppLog.e(
-          "IntegrationViewModel",
+          TAG,
           "Failed to refresh integration status",
-          e.toString(),
+          e,
         )
       }
     }
@@ -329,7 +329,7 @@ class IntegrationViewModel @Inject constructor(
       try {
         navigationService.navigateBack()
       } catch (e: Exception) {
-        AppLog.e("IntegrationViewModel", "Failed to navigate back", e.toString())
+        AppLog.e(TAG, "Failed to navigate back", e)
       }
     }
   }
@@ -340,7 +340,7 @@ class IntegrationViewModel @Inject constructor(
   private fun startOAuthFlow(provider: IntegrationProvider, accountId: String) {
     viewModelScope.launch {
       try {
-        AppLog.d("IntegrationViewModel", "Starting OAuth flow for $provider")
+        AppLog.d(TAG, "Starting OAuth flow for $provider")
         // Set the current OAuth provider locally
         currentOAuthProvider = provider
         dialogQueueService.showLoader(
@@ -351,9 +351,9 @@ class IntegrationViewModel @Inject constructor(
         dialogQueueService.dismissLoader()
       } catch (e: Exception) {
         AppLog.e(
-          "IntegrationViewModel",
+          TAG,
           "Failed to start OAuth flow for $provider",
-          e.toString(),
+          e,
         )
         handleIntent(
           IntegrationIntent.OAuthFlowFailed(
@@ -372,28 +372,28 @@ class IntegrationViewModel @Inject constructor(
     val currentProvider = currentOAuthProvider
     if (currentProvider == null) {
       AppLog.w(
-        "IntegrationViewModel",
+        TAG,
         "No current OAuth provider found - OAuth flow may have been cancelled or not properly initialized",
       )
       return
     }
     viewModelScope.launch {
-      AppLog.d("IntegrationViewModel", "Checking OAuth flow completion for provider: $currentProvider")
+      AppLog.d(TAG, "Checking OAuth flow completion for provider: $currentProvider")
       runCatching {
         val (isConnected, _) = integrationService.getIntegrationStatus(currentProvider)
         if (isConnected) {
           // OAuth was successful
-          AppLog.d("IntegrationViewModel", "OAuth flow completed successfully for $currentProvider")
+          AppLog.d(TAG, "OAuth flow completed successfully for $currentProvider")
           val integrations = integrationService.getIntegrationsWithStatus().first()
           handleIntent(IntegrationIntent.SetIntegrations(integrations))
           showSuccessAlert()
         } else {
           // OAuth may have failed or been cancelled
-          AppLog.w("IntegrationViewModel", "OAuth flow completed but integration not connected for $currentProvider")
+          AppLog.w(TAG, "OAuth flow completed but integration not connected for $currentProvider")
           showErrorAlert()
         }
       }.onFailure { e ->
-        AppLog.e("IntegrationViewModel", "Failed to check OAuth flow completion for $currentProvider", e.toString())
+        AppLog.e(TAG, "Failed to check OAuth flow completion for $currentProvider", e)
       }
     }
   }
@@ -432,7 +432,7 @@ class IntegrationViewModel @Inject constructor(
   private fun disconnectIntegration(integration: IntegrationItem) {
     viewModelScope.launch {
       try {
-        AppLog.d("IntegrationViewModel", "Disconnecting from ${integration.provider}")
+        AppLog.d(TAG, "Disconnecting from ${integration.provider}")
         // Show loading while disconnecting
         dialogQueueService.showLoader("Disconnecting...")
 
@@ -442,7 +442,7 @@ class IntegrationViewModel @Inject constructor(
         // Only update UI after successful disconnection
         refreshIntegrationStatus() // This will get fresh state from server
 
-        AppLog.d("IntegrationViewModel", "Successfully disconnected from ${integration.provider}")
+        AppLog.d(TAG, "Successfully disconnected from ${integration.provider}")
         dialogQueueService.dismissLoader()
 
         // Show success toast
@@ -453,9 +453,9 @@ class IntegrationViewModel @Inject constructor(
         )
       } catch (e: Exception) {
         AppLog.e(
-          "IntegrationViewModel",
+          TAG,
           "Failed to disconnect from ${integration.provider}",
-          e.toString(),
+          e,
         )
         dialogQueueService.dismissLoader()
 
@@ -478,10 +478,10 @@ class IntegrationViewModel @Inject constructor(
    */
   private suspend fun checkForInactiveIntegrations(): List<IntegrationProvider> {
     return try {
-      AppLog.d("IntegrationViewModel", "Checking for inactive integrations via IntegrationService")
+      AppLog.d(TAG, "Checking for inactive integrations via IntegrationService")
       integrationService.checkForInactiveIntegrations()
     } catch (e: Exception) {
-      AppLog.e("IntegrationViewModel", "Failed to check for inactive integrations", e.toString())
+      AppLog.e(TAG, "Failed to check for inactive integrations", e)
       emptyList()
     }
   }
@@ -531,7 +531,7 @@ class IntegrationViewModel @Inject constructor(
 
       for (provider in inactiveProviders) {
         try {
-          AppLog.d("IntegrationViewModel", "Disabling inactive integration: $provider")
+          AppLog.d(TAG, "Disabling inactive integration: $provider")
 
           // Immediately update UI to show disconnected state
           handleIntent(
@@ -543,9 +543,9 @@ class IntegrationViewModel @Inject constructor(
           )
           integrationService.disconnectIntegration(provider)
           disableResults.add(true)
-          AppLog.d("IntegrationViewModel", "Successfully disabled inactive integration: $provider")
+          AppLog.d(TAG, "Successfully disabled inactive integration: $provider")
         } catch (e: Exception) {
-          AppLog.e("IntegrationViewModel", "Failed to disable inactive integration: $provider", e.toString())
+          AppLog.e(TAG, "Failed to disable inactive integration: $provider", e)
           disableResults.add(false)
           // On error, mark as invalid (still connected but invalid)
           handleIntent(
@@ -618,9 +618,9 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         navigationService.navigateTo(AppRoute.Integration.HealthConnect)
-        AppLog.d("IntegrationViewModel", "Navigating to Health Connect integration")
+        AppLog.d(TAG, "Navigating to Health Connect integration")
       } catch (e: Exception) {
-        AppLog.e("IntegrationViewModel", "Failed to navigate to Health Connect", e.toString())
+        AppLog.e(TAG, "Failed to navigate to Health Connect", e)
       }
     }
   }
