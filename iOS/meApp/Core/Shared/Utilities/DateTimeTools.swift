@@ -109,6 +109,26 @@ final class DateTimeTools {
         return formatter("yyyy-MM-dd").string(from: date)
     }
     
+    /// Formats a UTC date string to 'yyyy-MM-dd' in the local timezone.
+    /// - Parameter dateString: The UTC date string to format.
+    /// - Returns: The formatted date string in local timezone.
+    static func getLocalDateStringFromUTCDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        let df = formatter("yyyy-MM-dd")
+        df.timeZone = TimeZone.current
+        return df.string(from: date)
+    }
+    
+    /// Formats a UTC date string to 'yyyy-MM' in the local timezone.
+    /// - Parameter dateString: The UTC date string to format.
+    /// - Returns: The formatted month string in local timezone.
+    static func getLocalMonthStringFromUTCDate(_ dateString: String) -> String {
+        guard let date = parse(dateString) else { return invalidString }
+        let df = formatter("yyyy-MM")
+        df.timeZone = TimeZone.current
+        return df.string(from: date)
+    }
+    
     static func getDateFromDateString(_ dateString: String, format: String) -> Date {
         // Validate input
         guard !dateString.isEmpty else { return Date() }

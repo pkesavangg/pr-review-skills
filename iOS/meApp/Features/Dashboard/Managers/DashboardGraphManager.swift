@@ -1220,13 +1220,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
 
+        // Special handling for month: snap range to actual month boundaries based on the center
+        if period == .month {
+            // Use the center of the provided range to determine the month being shown
+            let span = maxDate.timeIntervalSince(minDate)
+            let center = minDate.addingTimeInterval(max(0, span / 2))
+
+            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
+                let startOfMonth = monthInterval.start
+                // dateInterval end is exclusive; show inclusive end as last day of month
+                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
+
+                let startDay = calendar.component(.day, from: startOfMonth)
+                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
+                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
+                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
+                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
+
+                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            }
+            // Fallback to generic logic below if month boundaries cannot be determined
+        }
+
         // Adjust the displayed end date to be inclusive of the visible range.
         // Our X-axis generation may append a phantom tick beyond the last real value
         // (e.g., +1 day for week, +1 month for year). The label should not show this.
         let inclusiveEndDate: Date = {
             switch period {
-            case .week, .month:
+            case .week:
                 return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
+            case .month:
+                // Month-specific case handled above; keep default to avoid double-adjusting
+                return maxDate
             case .year:
                 return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
             case .total:

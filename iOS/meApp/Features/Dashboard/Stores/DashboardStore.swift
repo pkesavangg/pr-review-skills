@@ -419,12 +419,13 @@ class DashboardStore: ObservableObject {
     /// Returns the average weight for the current visible or all operations
     @MainActor
     func getCurrentAverageWeight() -> Double {
-        // Use strict on-screen visible operations (exclude any offscreen buffer)
-        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        if visibleOps.isEmpty {
+        // Prefer strict on-screen visible operations; if empty, fall back to buffered visible range
+        // This avoids returning 0.0 when the left boundary barely excludes entries (e.g., UTC vs local midnight)
+        let strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let opsToUse = strictVisibleOps.isEmpty ? visibleOperations : strictVisibleOps
+        if opsToUse.isEmpty {
             return 0
         }
-        let opsToUse = visibleOps
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
