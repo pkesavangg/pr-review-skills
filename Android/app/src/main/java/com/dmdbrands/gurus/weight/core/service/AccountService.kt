@@ -122,7 +122,7 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      showErrorToast(header, msg)
+      // showErrorToast(header, msg)
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -522,7 +522,7 @@ constructor(
       appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
       true
     } catch (e: Exception) {
-              AppLog.e(TAG, "Token update failed", e)
+      AppLog.e(TAG, "Token update failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
       false
     }
