@@ -178,7 +178,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         let referenceDate = viewModel.hasXAxis ?
         viewModel.xAxisValues.last
         : viewModel.xAxisValues.first
-        if let referenceDate = referenceDate {
+        if let referenceDate = referenceDate, viewModel.hasXAxis {
             let domainLength = viewModel.visibleDomainLength
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
