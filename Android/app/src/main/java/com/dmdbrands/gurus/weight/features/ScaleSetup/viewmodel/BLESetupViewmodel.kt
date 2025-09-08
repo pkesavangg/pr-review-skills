@@ -433,6 +433,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             },
           ),
       ),
+      params =
+        mapOf(
+          "showGuide" to true,
+          "onGuideClick" to {
+            openProductGuide()
+            dialogQueueService.dismissCurrent()
+          },
+        ),
     )
   }
 
