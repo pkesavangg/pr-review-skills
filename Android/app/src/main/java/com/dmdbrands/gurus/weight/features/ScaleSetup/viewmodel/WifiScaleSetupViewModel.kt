@@ -396,14 +396,6 @@ constructor(
             },
           ),
       ),
-      params =
-        mapOf(
-          "showGuide" to true,
-          "onGuideClick" to {
-            openProductGuide()
-            dialogQueueService.dismissCurrent()
-          },
-        ),
     )
   }
 
