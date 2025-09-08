@@ -99,7 +99,13 @@ struct WifiSelectionView: View {
                 .fontWeight(.bold)
                 .foregroundColor(theme.textHeading)
             
-            WifiNetworksListView(networks: [network], onNetworkSelected: onNetworkSelected)
+            // Connected network row should not navigate to password entry and should not show chevron.
+            WifiNetworksListView(
+                networks: [network],
+                onNetworkSelected: { _ in },
+                isInteractive: false,
+                showChevron: false
+            )
         }
     }
     

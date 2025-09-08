@@ -616,6 +616,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
+        case .availableWifiList:
+            // If a network is already connected, proceed without asking for password
+            if connectedWifiNetwork != nil {
+                navigateToStep(.customizeSettings)
+            } else {
+                moveToNextStep()
+            }
         case .wifiPassword:
             handleWifiPasswordConnect()
         case .viewSettings:
