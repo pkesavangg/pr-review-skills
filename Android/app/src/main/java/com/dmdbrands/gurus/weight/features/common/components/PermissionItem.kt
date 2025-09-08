@@ -86,10 +86,12 @@ fun PermissionItem(
         )
       }
     }
-    AppIcon(
-      id = AppIcons.Default.RightCaret,
-      contentDescription = "Action",
-    )
+    if(!isGranted) {
+      AppIcon(
+        id = AppIcons.Default.RightCaret,
+        contentDescription = "Action",
+      )
+    }
   }
 }
 

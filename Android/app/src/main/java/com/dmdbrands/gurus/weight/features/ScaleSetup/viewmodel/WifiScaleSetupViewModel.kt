@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.service.WifiSetupInfo
@@ -386,8 +387,22 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
+        params =
+          mapOf(
+            "showGuide" to true,
+            "onGuideClick" to {
+              openProductGuide()
+              dialogQueueService.dismissCurrent()
+            },
+          ),
       ),
     )
+  }
+
+  private fun openProductGuide() {
+    val sku = state.value.sku
+    val url = "${AppConfig.PRODUCT_URL}/$sku"
+    openInAppBrowser(url)
   }
 
   /**
@@ -870,6 +885,7 @@ constructor(
             startSmartConnect()
             return // Don't proceed to next step yet
           }
+
           "Finish", "close", "exit", "Close" -> {
             startExitSetup(true)
             return
