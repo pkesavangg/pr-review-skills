@@ -15,6 +15,8 @@ struct MetricsSectionView: View {
     let metrics: Binding<[ScaleMetricSetting]>
     let onValueChanged: () -> Void
     let onMove: (IndexSet, Int) -> Void
+    /// Optional toggle handler so parent/view-model can control reordering logic
+    let onToggle: ((ScaleMetricSetting, Bool) -> Void)?
     
     // Optional parameters for customization
     let showIcon: Bool
@@ -23,12 +25,14 @@ struct MetricsSectionView: View {
         metrics: Binding<[ScaleMetricSetting]>,
         onValueChanged: @escaping () -> Void,
         onMove: @escaping (IndexSet, Int) -> Void,
-        showIcon: Bool = true
+        showIcon: Bool = true,
+        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil
     ) {
         self.metrics = metrics
         self.onValueChanged = onValueChanged
         self.onMove = onMove
         self.showIcon = showIcon
+        self.onToggle = onToggle
     }
     
     var body: some View {
@@ -41,10 +45,16 @@ struct MetricsSectionView: View {
                     isDisabled: !metric.isEnabled
                 )
                 .onChange(of: metric.isEnabled) { oldValue, newValue in
-                    onValueChanged()
+                    if let onToggle = onToggle {
+                        onToggle(metric, newValue)
+                    } else {
+                        onValueChanged()
+                    }
                 }
                 .listRowBackground(theme.backgroundPrimary)
                 .listRowInsets(EdgeInsets())
+                // Hide/disable the drag (reorder) indicator for disabled metrics
+                .moveDisabled(!metric.isEnabled)
             }
             .onMove { indices, newOffset in
                 onMove(indices, newOffset)

@@ -193,6 +193,39 @@ final class DisplayMetricsViewModel: ObservableObject {
         displayMetricsValue = enabledMetrics.map { $0.key }.joined(separator: ",")
     }
     
+    // MARK: - Toggle Reorder Helpers
+    /// Reorders body metrics when a toggle changes, preserving the order of already-disabled items
+    /// and appending the newly disabled item to the very end of the disabled group (or enabled group when turning on).
+    func handleBodyMetricToggle(key: String, isEnabled: Bool) {
+        metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
+        updateDisplayMetricsValue()
+    }
+    
+    /// Same as `handleBodyMetricToggle` but for progress metrics list.
+    func handleProgressMetricToggle(key: String, isEnabled: Bool) {
+        progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
+        updateDisplayMetricsValue()
+    }
+
+    /// Core reordering routine used by both body and progress metric toggles.
+    private func reorderMetricsOnToggle(items: [ScaleMetricSetting], key: String, isEnabled: Bool) -> [ScaleMetricSetting] {
+        var current = items
+        guard let idx = current.firstIndex(where: { $0.key == key }) else { return items }
+        var changed = current.remove(at: idx)
+        changed.isEnabled = isEnabled
+        if isEnabled == false {
+            let enabled = current.filter { $0.isEnabled }
+            var disabled = current.filter { !$0.isEnabled }
+            disabled.append(changed)
+            return enabled + disabled
+        } else {
+            var enabled = current.filter { $0.isEnabled }
+            let disabled = current.filter { !$0.isEnabled }
+            enabled.append(changed)
+            return enabled + disabled
+        }
+    }
+    
     func saveDisplayMetrics() async {
         guard let preference = scale.r4ScalePreference else { return }
         
