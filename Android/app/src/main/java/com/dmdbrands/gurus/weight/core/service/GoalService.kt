@@ -96,7 +96,7 @@ constructor(
 
       updatedAccount
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error updating goal", e.toString())
+      AppLog.e(TAG, "Error updating goal", e)
       null
     }
   }
@@ -181,7 +181,7 @@ constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error showing goal met message", e.toString())
+      AppLog.e(TAG, "Error showing goal met message", e)
     }
   }
 
@@ -203,7 +203,7 @@ constructor(
       }
       // If setNewGoal is true, we're already navigating to goal screen
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error handling goal met", e.toString())
+      AppLog.e(TAG, "Error handling goal met", e)
     }
   }
 
@@ -267,7 +267,7 @@ constructor(
       )
       updatedAccount
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to create goal during signup", e.toString())
+      AppLog.e(TAG, "Failed to create goal during signup", e)
       null
     }
 
@@ -290,7 +290,7 @@ constructor(
 
       // Check if user has a goal set (check goal type)
       val currentGoal = getCurrentGoal().first()
-      if (currentGoal != null) {
+      if (currentGoal?.goalType != null) {
         AppLog.d(TAG, "User already has a goal set (${currentGoal.type}), skipping goal card")
         return
       }
@@ -307,7 +307,7 @@ constructor(
       showSetGoalPopup()
       goalAlertDataStore.setGoalCardValue(account.id, "true")
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking goal card", e.toString())
+      AppLog.e(TAG, "Error checking goal card", e)
     }
   }
 

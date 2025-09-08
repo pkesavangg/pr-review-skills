@@ -72,7 +72,32 @@ struct DashboardScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if store.state.ui.isEditMode {
                 DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
-                    store.restartWiggleAnimations()
+store.restartWiggleAnimations()
+                }
+            }
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                await MainActor.run {
+                    store.objectWillChange.send()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                // Force UI update to reflect the changes
+                await MainActor.run {
+                    store.objectWillChange.send()
+                    // Force a complete refresh of the dashboard state
+                    store.refreshDashboardState()
+                }
+            }
+        }
+        .onAppear {
+            Task {
+                await store.loadDashboardConfigurationFromAPI()
+                await MainActor.run {
+                    store.objectWillChange.send()
                 }
             }
         }
@@ -94,7 +119,16 @@ struct DashboardScreen: View {
                 store.cancelEdit()
             }
             if newTab == .dash {
-                DispatchQueue.main.async { store.resetGridLayout() }
+                Task {
+                    await store.loadDashboardConfigurationFromAPI()
+                    await MainActor.run {
+                        store.objectWillChange.send()
+                    }
+                }
+                
+                DispatchQueue.main.async { 
+                    store.resetGridLayout()
+                }
             }
         }
     }
@@ -114,9 +148,7 @@ struct DashboardScreen: View {
                         }
                     }
                 if !store.allContentRemoved && store.state.data.hasAnyEntries {
-                    metricsGridSection()
-                    dividerSection()
-                    goalStreakSection()
+                    DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
                 if store.state.data.hasAnyEntries {
                     actionButtons()
@@ -137,44 +169,7 @@ struct DashboardScreen: View {
         )
         .padding(.top, .zero)
     }
-    
-    private func metricsGridSection() -> some View {
-        Group {
-            if !store.metricsToShow.isEmpty {
-                MetricGridUIKitView(store: store, onMetricLongPress: { label in
-                    store.state.ui.selectedMetricLabel = label
-                    openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
-                })
-                .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
-                .padding(.top, .spacingSM)
-                .id(store.state.ui.gridLayoutId)
-                .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-            }
-        }
-    }
-    
-    private func dividerSection() -> some View {
-        Group {
-            if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
-                Divider()
-                    .foregroundColor(theme.statusUtilityPrimary)
-                    .padding(.horizontal, .spacingLG)
-                    .padding(.top, .spacingSM)
-            }
-        }
-    }
-    
-    private func goalStreakSection() -> some View {
-        Group {
-            if store.shouldShowGoalCardOrStreaks {
-                GoalStreakGridUIKitView(store: store)
-                    .frame(minHeight: store.shouldShowGoalCardOrStreaks ? 100 : 200)
-                    .id(store.state.ui.gridLayoutId)
-                    .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
-            }
-        }
-    }
-    
+
     private func actionButtons() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
             if store.state.ui.isEditMode {

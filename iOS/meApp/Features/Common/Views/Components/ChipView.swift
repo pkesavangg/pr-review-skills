@@ -10,6 +10,7 @@ struct ChipView: View {
     @Environment(\.appTheme) private var theme
     let text: String
     var style: ChipStyle = .normal
+    var isSelected: Bool = false
     var onTap: (() -> Void)? = nil
     
     var body: some View {
@@ -28,7 +29,7 @@ struct ChipView: View {
                 )
                 .overlay(
                     Group {
-                        if style == .bordered {
+                        if style == .bordered && isSelected {
                             RoundedRectangle(cornerRadius: .radiusXS)
                                 .stroke(theme.actionPrimary, lineWidth: 1.5)
                         }
@@ -40,9 +41,17 @@ struct ChipView: View {
 
 #Preview {
     VStack(spacing: 20) {
-        ChipView(text: "Bordered Chip") // Uses .normal style
+        ChipView(text: "Normal Chip") // Uses .normal style
         
-        ChipView(text: "Bordered Chip", style: .bordered) {
+        ChipView(text: "Bordered Chip (Always)", style: .bordered) {
+            print("Tapped!")
+        }
+        
+        ChipView(text: "Selected Chip", style: .bordered, isSelected: true) {
+            print("Tapped!")
+        }
+        
+        ChipView(text: "Unselected Chip", style: .bordered, isSelected: false) {
             print("Tapped!")
         }
     }

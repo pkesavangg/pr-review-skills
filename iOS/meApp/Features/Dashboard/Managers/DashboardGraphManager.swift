@@ -920,21 +920,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        // NEVER recalculate X-axis values during scrolling to prevent axis jumping
-        if state.isScrolling {
-            if !lastXAxisValues.isEmpty && lastXAxisPeriod == period {
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll to prevent jumping")
+        // During scrolling we usually want to keep ticks stable, but when the window
+        // moves significantly or approaches dataset edges we must recompute so the
+        // trailing phantom tick (extra space) appears immediately, avoiding the post-scroll
+        // "jump" of the last data point.
+        if state.isScrolling, !lastXAxisValues.isEmpty, lastXAxisPeriod == period {
+            let domainLength: TimeInterval = visibleDomainLength(for: period)
+            let lastPos = lastXAxisScrollPosition ?? state.xScrollPosition
+            let delta = abs(scrollPosition.timeIntervalSince(lastPos))
+
+            // Heuristic: allow reuse unless the user moved > ~1/6 of the domain or is near edges
+            let movedFar = delta > (domainLength / 6.0)
+
+            // Edge detection: if the right or left boundary is close to the dataset edges,
+            // recompute so we include the empty trailing/leading space immediately.
+            let allDates: [Date] = operations.map { $0.date }
+            let minDate = allDates.min() ?? scrollPosition
+            let maxDate = allDates.max() ?? scrollPosition
+            let leftEdge = scrollPosition
+            let rightEdge = scrollPosition.addingTimeInterval(domainLength)
+            let nearLeft = leftEdge <= minDate.addingTimeInterval(domainLength / 4.0)
+            let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
+
+            if !(movedFar || nearLeft || nearRight) {
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
 
-        let domainLength = visibleDomainLength(for: period)
-        let allDates = operations.map(\.date)
+        let domainLength: TimeInterval = visibleDomainLength(for: period)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min() else { return [] }
-        let buffer = domainLength * 2
+        let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
-        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
         let xAxisValues: [Date]
@@ -958,7 +978,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
     func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
-        let allDates = operations.map(\.date)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
             return Date()
         }
@@ -995,9 +1015,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
 
         let domainLength = visibleDomainLength(for: period)
-        let buffer = domainLength * 2
-        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let buffer: TimeInterval = domainLength * 2.0
+        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
@@ -1220,13 +1240,46 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
 
+        // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
+        if period == .total {
+            if calendar.isDate(minDate, equalTo: maxDate, toGranularity: .month) {
+                // Use title-cased month abbreviation (e.g., Sep 2025)
+                return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
+            }
+        }
+
+        // Special handling for month: snap range to actual month boundaries based on the center
+        if period == .month {
+            // Use the center of the provided range to determine the month being shown
+            let span = maxDate.timeIntervalSince(minDate)
+            let center = minDate.addingTimeInterval(max(0, span / 2))
+
+            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
+                let startOfMonth = monthInterval.start
+                // dateInterval end is exclusive; show inclusive end as last day of month
+                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
+
+                let startDay = calendar.component(.day, from: startOfMonth)
+                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
+                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
+                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
+                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
+
+                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            }
+            // Fallback to generic logic below if month boundaries cannot be determined
+        }
+
         // Adjust the displayed end date to be inclusive of the visible range.
         // Our X-axis generation may append a phantom tick beyond the last real value
         // (e.g., +1 day for week, +1 month for year). The label should not show this.
         let inclusiveEndDate: Date = {
             switch period {
-            case .week, .month:
+            case .week:
                 return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
+            case .month:
+                // Month-specific case handled above; keep default to avoid double-adjusting
+                return maxDate
             case .year:
                 return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
             case .total:

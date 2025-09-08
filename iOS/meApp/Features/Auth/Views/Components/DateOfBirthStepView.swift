@@ -26,10 +26,22 @@ struct DateOfBirthStepView: View {
                 ) {
                     withAnimation { showDatePicker.toggle() }
                 }
-                // The date picker appears when showDatePicker is true
-                DatePickerView(isPresented: $showDatePicker,
-                               date: $signupStore.signupForm.birthday.value,
-                               endDate: maxDate)
+                VStack(alignment: .leading, spacing: 4) {
+                    DateLabelView(
+                        date: signupStore.signupForm.birthday.value,
+                        isSelected: showDatePicker
+                    ) {
+                        withAnimation { showDatePicker.toggle() }
+                    }
+                    .padding(.top, .spacingMD)
+                    .padding(.leading, 2)
+                    // The date picker appears when showDatePicker is true
+                    DatePickerView(isPresented: $showDatePicker,
+                                   date: $signupStore.signupForm.birthday.value,
+                                   endDate: maxDate)
+                        
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.top, .spacingLG)
         }

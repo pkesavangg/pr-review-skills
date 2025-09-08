@@ -167,6 +167,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let customizeSettingsLang = BtWifiScaleSetupStrings.CustomizeSettingsStrings.self
     
+    // Dashboard store used for the Dashboard Metrics customization view
+    private let dashboardStore = DashboardStore()
+    
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
         guard let scaleItem else { return [] }
@@ -290,6 +293,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                 self?.hasCustomizeChanges = true
                                 self?.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
                             }
+                            
+                        case .dashboardMetrics:
+                            ScrollView {
+                                DashboardMetricsSection(
+                                    store: dashboardStore,
+                                    parentView: .R4ScaleSetup,
+                                    openMetricInfoWithoutSelection: .constant(nil)
+                                )
+                                .padding(.top, .spacingSM)
+                            }
+                            .scrollIndicators(.hidden)
+                            
                         default:
                             // For now, other settings show placeholder
                             VStack {
@@ -507,6 +522,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Exit / Help
     private func performExitCleanup() {
+        // Post notification to refresh dashboard when setup is dismissed
+        NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+        
         dismissAction?()
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
@@ -605,7 +623,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .customizeSettings:
             handleCustomizeSettingsNext()
         case .scaleConnected:
-            dismissAction?()
+            // Post notification to refresh dashboard when setup completes, right before dismissing
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+                self.dismissAction?()
+            }
         default:
             moveToNextStep()
         }
@@ -785,7 +807,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             break
         case .dashboardMetrics:
+            // Mark that changes were made so the flow can treat it as updated
+            // Dashboard metrics will be saved to API when Next button is clicked
             self.hasCustomizeChanges = true
+            self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             break
         default:
             break
@@ -1618,7 +1643,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            let _ = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            let saveDashboardMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            
+            // Save dashboard metrics to API when Next button is clicked
+            if saveDashboardMetrics {
+                dashboardStore.saveChanges()
+                // Post notification to refresh dashboard screen when user returns to it
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            }
             
             // Get current preference or create default
             let currentPreference = savedScale.r4ScalePreference ?? {

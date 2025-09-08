@@ -185,7 +185,7 @@ constructor(
         "Device updated: ${device.device?.deviceName}, isWeighOnlyModeEnabledByOthers: ${updatedDevice.isWeighOnlyModeEnabledByOthers}",
       )
     } catch (e: Exception) {
-      AppLog.e(tag, "Error updating device", e.toString())
+      AppLog.e(tag, "Error updating device", e)
     }
   }
 
@@ -327,7 +327,7 @@ constructor(
               deviceRepository.saveScalePreferencesToApi(updatedPref.toR4ScalePreferenceApiModel())
               savedDevice = savedDevice.copy(preferences = updatedPref)
             } catch (e: Exception) {
-              AppLog.e(tag, "Error syncing preference for ${savedDevice.id}", e.toString())
+              AppLog.e(tag, "Error syncing preference for ${savedDevice.id}", e)
               savedDevice = savedDevice.copy(
                 preferences = savedDevice.preferences?.copy(isSynced = false),
               )
@@ -335,7 +335,7 @@ constructor(
           }
           syncedDevicesToStore.add(savedDevice)
         } catch (e: Exception) {
-          AppLog.e(tag, "Error syncing device ${device.id}", e.toString())
+          AppLog.e(tag, "Error syncing device ${device.id}", e)
           unsyncedDevices.add(
             device.copy(
               isSynced = false,
@@ -350,12 +350,12 @@ constructor(
           deviceRepository.deleteDeviceFromApi(device.id)
           deviceRepository.deleteDeviceFromDb(device.id)
         } catch (e: Exception) {
-          AppLog.e(tag, "Error deleting device ${device.id}", e.toString())
+          AppLog.e(tag, "Error deleting device ${device.id}", e)
           unsyncedDevices.add(device)
         }
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "General sync error for account $currentAccountId", e.toString())
+      AppLog.e(tag, "General sync error for account $currentAccountId", e)
       tempDevice?.let {
         unsyncedDevices.add(
           it.copy(
@@ -384,7 +384,7 @@ constructor(
         }
       } + unsyncedDevices.map { it.copy(isSynced = false) }
     } catch (e: Exception) {
-      AppLog.e(tag, "Error fetching devices from API", e.toString())
+      AppLog.e(tag, "Error fetching devices from API", e)
       syncedDevicesToStore.map { it.copy(isSynced = true) } + unsyncedDevices.map { it.copy(isSynced = false) }
     }
 
@@ -396,7 +396,7 @@ constructor(
       // 8. Refresh the pairedScales StateFlow to reflect changes in UI
       fetchScales(currentAccountId)
     } catch (e: Exception) {
-      AppLog.e(tag, "Error storing final device list", e.toString())
+      AppLog.e(tag, "Error storing final device list", e)
     }
   }
 
@@ -446,7 +446,7 @@ constructor(
       deviceRepository.updateDeviceNickname(deviceId, nickname)
       AppLog.d(tag, "Scale nickname updated successfully")
     } catch (e: Exception) {
-      AppLog.e(tag, "Error updating scale nickname", e.toString())
+      AppLog.e(tag, "Error updating scale nickname", e)
     }
   }
 
@@ -475,7 +475,7 @@ constructor(
       AppLog.d(tag, "Scale preferences updated successfully")
       true
     } catch (e: Exception) {
-      AppLog.e(tag, "Error updating scale preferences", e.toString())
+      AppLog.e(tag, "Error updating scale preferences", e)
       false
     }
   }
@@ -490,7 +490,7 @@ constructor(
     try {
       deviceRepository.getDevice(deviceId).first()
     } catch (e: Exception) {
-      AppLog.e(tag, "Error getting scale", e.toString())
+      AppLog.e(tag, "Error getting scale", e)
       null
     }
 
@@ -529,7 +529,7 @@ constructor(
       _pairedScales.value.any { it.device?.broadcastId == broadcastId }
       deviceRepository.deviceExistsByBroadcastId(broadcastId).first()
     } catch (e: Exception) {
-      AppLog.e(tag, "Error checking scale existence by broadcast ID", e.toString())
+      AppLog.e(tag, "Error checking scale existence by broadcast ID", e)
       false
     }
 
@@ -543,7 +543,7 @@ constructor(
     try {
       _pairedScales.value.any { it.device?.macAddress == mac }
     } catch (e: Exception) {
-      AppLog.e(tag, "Error checking scale existence by MAC", e.toString())
+      AppLog.e(tag, "Error checking scale existence by MAC", e)
       false
     }
 
@@ -557,7 +557,7 @@ constructor(
     try {
       deviceRepository.getDeviceByBroadcastId(broadcastId).first()
     } catch (e: Exception) {
-      AppLog.e(tag, "Error getting scale by broadcast ID", e.toString())
+      AppLog.e(tag, "Error getting scale by broadcast ID", e)
       null
     }
 
@@ -571,7 +571,7 @@ constructor(
     try {
       deviceRepository.getDeviceByMac(mac, this.currentAccountId ?: "").first()
     } catch (e: Exception) {
-      AppLog.e(tag, "Error getting scale by MAC", e.toString())
+      AppLog.e(tag, "Error getting scale by MAC", e)
       null
     }
 
@@ -600,7 +600,7 @@ constructor(
       AppLog.d(tag, "Scale token retrieved successfully")
       token
     } catch (e: Exception) {
-      AppLog.e(tag, "Error getting scale token", e.toString())
+      AppLog.e(tag, "Error getting scale token", e)
       null
     }
   }

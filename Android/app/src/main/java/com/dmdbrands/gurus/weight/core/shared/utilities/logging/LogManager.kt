@@ -77,7 +77,7 @@ class LogManager
             logRepository.sendLogs()
             AppLog.i("LogManager", "Logs sent successfully")
         } catch (e: Exception) {
-            AppLog.e("LogManager", "Failed to send logs", e.toString())
+            AppLog.e("LogManager", "Failed to send logs", e)
             throw e
         }
     }

@@ -74,6 +74,7 @@ fun AppPermissionsContent(
       onRequestPermission = { permissionType ->
         handleIntent(AppPermissionsIntent.RequestPermission(permissionType))
       },
+      requiredPermissions = state.requiredPermissions // Show red for required unauthorized permissions
     )
   }
 }

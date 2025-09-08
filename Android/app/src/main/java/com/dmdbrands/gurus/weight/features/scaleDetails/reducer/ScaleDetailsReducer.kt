@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.reducer
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
@@ -9,6 +7,9 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.scaleDetails.Enums.ScaleSettingSteps
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleNameDialogStrings
+import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 
 /**
  * Controls for Scale Name Dialog form.
@@ -38,6 +39,13 @@ data class ScaleDetailsState(
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val settingsScreenStep: ScaleSettingSteps = ScaleSettingSteps.NONE,
   val connectedSSID: String = "",
+  val deviceInfo: GGDeviceDetail? = null,
+  val isSessionImpedanceEnabled: Boolean = false,
+  val enableTestingFeatures: Boolean = false,
+  val isStartAnimationEnabled: Boolean = false,
+  val isEndAnimationEnabled: Boolean = false,
+  val currentTimeFormat: String = "12H", // "12H" or "24H"
+  val currentClearDataSelection: String? = null, // "ALL", "WIFI", etc.
 ) : IReducer.State
 
 /**
@@ -71,6 +79,26 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   data class SetSettingsScreenStep(val step: ScaleSettingSteps) : ScaleDetailsIntent
   data class SetScaleUsers(val users: List<GGBTUser>) : ScaleDetailsIntent
   data class RequestPermission(val permissionType: String) : ScaleDetailsIntent
+
+  // Testing Features Intents
+  data class SetDeviceDetail(val deviceInfo: GGDeviceDetail) : ScaleDetailsIntent
+  data class ToggleSessionImpedance(val enabled: Boolean) : ScaleDetailsIntent
+
+  // Firmware Update Intents
+  object StartFirmwareUpdate : ScaleDetailsIntent
+  data class StartScheduledFirmwareUpdate(val timestamp: Long) : ScaleDetailsIntent
+
+  // Additional Settings Intents
+  object DownloadLogs : ScaleDetailsIntent
+  data class ClearScaleData(val dataType: String) : ScaleDetailsIntent
+  data class ChangeTimeFormat(val is12Hour: Boolean) : ScaleDetailsIntent
+  data class ToggleScaleAnimation(val isStartAnimation: Boolean, val enabled: Boolean) : ScaleDetailsIntent
+  object ResetFirmware : ScaleDetailsIntent
+  object RestoreFactorySettings : ScaleDetailsIntent
+
+  // Dialog Management Intents (handled by dialog service)
+  object ShowTimeFormatDialog : ScaleDetailsIntent
+  object ShowClearDataDialog : ScaleDetailsIntent
 }
 
 /**
@@ -97,6 +125,36 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
 
       is ScaleDetailsIntent.SetPermissions -> state.copy(permissions = intent.permissions)
       is ScaleDetailsIntent.SetSettingsScreenStep -> state.copy(settingsScreenStep = intent.step)
+      is ScaleDetailsIntent.SetDeviceDetail -> state.copy(deviceInfo = intent.deviceInfo)
+      // Testing Features Reducers
+      is ScaleDetailsIntent.ToggleSessionImpedance -> state.copy(isSessionImpedanceEnabled = intent.enabled)
+
+      // Firmware Update Reducers
+      ScaleDetailsIntent.StartFirmwareUpdate -> state.copy()
+      is ScaleDetailsIntent.StartScheduledFirmwareUpdate -> state.copy()
+
+      // Additional Settings Reducers
+      ScaleDetailsIntent.DownloadLogs -> state.copy()
+      is ScaleDetailsIntent.ClearScaleData -> state.copy(
+        currentClearDataSelection = intent.dataType,
+      )
+
+      is ScaleDetailsIntent.ChangeTimeFormat -> state.copy(
+        currentTimeFormat = if (intent.is12Hour) "12H" else "24H",
+      )
+
+      is ScaleDetailsIntent.ToggleScaleAnimation -> state.copy(
+        isStartAnimationEnabled = if (intent.isStartAnimation) intent.enabled else state.isStartAnimationEnabled,
+        isEndAnimationEnabled = if (!intent.isStartAnimation) intent.enabled else state.isEndAnimationEnabled,
+      )
+
+      ScaleDetailsIntent.ResetFirmware -> state.copy()
+      ScaleDetailsIntent.RestoreFactorySettings -> state.copy()
+
+      // Dialog Management Reducers (no state changes needed - handled by dialog service)
+      ScaleDetailsIntent.ShowTimeFormatDialog -> state.copy()
+      ScaleDetailsIntent.ShowClearDataDialog -> state.copy()
+
       else -> state.copy()
     }
 }

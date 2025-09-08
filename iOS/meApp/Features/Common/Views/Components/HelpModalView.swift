@@ -33,7 +33,7 @@ struct HelpModalView: View {
             .padding(.bottom, .spacingXS)
             
             VStack(spacing: .spacingSM) {
-                Image(appAssets.ggLogoLarge)
+                Image(themeManager.isDarkMode ? appAssets.ggLogoLight : appAssets.ggLogoLarge)
                     .resizable()
                     .frame(width: 100, height: 100)
                 

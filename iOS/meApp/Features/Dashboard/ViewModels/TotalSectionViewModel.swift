@@ -14,13 +14,25 @@ import Charts
 @MainActor
 final class TotalSectionViewModel: BaseSectionViewModel {
     
+    // MARK: - Constants
+    
+    /// Number of months to expand domain for small/medium spans
+    private static let domainExpansionMonths: Int = 3
+    /// Number of months to expand domain for very large spans (> 2 years)
+    private static let longSpanExpansionMonths: Int = 6
+    
+    /// Fallback time interval for domain expansion (90 days in seconds)
+    private static let fallbackDomainExpansion: TimeInterval = 90 * 24 * 60 * 60
+    
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .total
     }
     
-    override var maxGapForConnectedSegments: TimeInterval {
-        return 365 * 24 * 60 * 60 // 1 year gap for total view
+    /// Connect across any gap in Total view
+    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
+        let sorted = dataPoints.sorted { $0.date < $1.date }
+        return sorted.isEmpty ? [] : [sorted]
     }
     
     override var hasXAxis: Bool {
@@ -45,14 +57,35 @@ final class TotalSectionViewModel: BaseSectionViewModel {
             let now = Date()
             return now...now
         }
-        
+
         let dates = operations.map { $0.date }
         guard let minDate = dates.min(), let maxDate = dates.max() else {
             let now = Date()
             return now...now
         }
-        
-        return minDate...maxDate
+
+        let calendar = Calendar.current
+
+        // Determine padding months based on overall span
+        let yearDiff = calendar.dateComponents([.year], from: minDate, to: maxDate).year ?? 0
+        let paddingMonths: Int
+        if minDate == maxDate {
+            // Single point → 3 months padding each side (existing behavior)
+            paddingMonths = Self.domainExpansionMonths
+        } else if yearDiff > 2 {
+            // More than 2 years span → add 6 months padding on both sides
+            paddingMonths = Self.longSpanExpansionMonths
+        } else {
+            // Up to and including 2 years span → add 3 months padding on both sides
+            paddingMonths = Self.domainExpansionMonths
+        }
+
+        let expandedStart = calendar.date(byAdding: .month, value: -paddingMonths, to: minDate)
+            ?? minDate.addingTimeInterval(-Self.fallbackDomainExpansion)
+        let expandedEnd = calendar.date(byAdding: .month, value: paddingMonths, to: maxDate)
+            ?? maxDate.addingTimeInterval(Self.fallbackDomainExpansion)
+
+        return expandedStart...expandedEnd
     }
     
     /// Always at left boundary for total view (no scrolling)
@@ -99,45 +132,40 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     
     override func getChartPosition(for date: Date, value: Double) -> CGPoint? {
         guard chartFrame.width > 0 else { return nil }
-        
-        // For TOTAL period, calculate position based on actual data range
-        let allOperations = chartOperations
-        guard !allOperations.isEmpty else { return nil }
-        
-        let allDates = allOperations.map { $0.date }
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return nil }
-        
-        let totalTimeRange = maxDate.timeIntervalSince(minDate)
+
+        // Use the padded dateRange to align overlay positions with Chart plotting
+        let domain = self.dateRange
+        let totalTimeRange = domain.upperBound.timeIntervalSince(domain.lowerBound)
         let xPosition: CGFloat
         if totalTimeRange > 0 {
-            let timeFromStart = date.timeIntervalSince(minDate)
+            let timeFromStart = date.timeIntervalSince(domain.lowerBound)
             let xRatio = timeFromStart / totalTimeRange
             xPosition = chartFrame.width * xRatio
         } else {
             xPosition = chartFrame.width > 0 ? chartFrame.width / 2 : 0 // Single point, center it
         }
-        
+
         // Calculate y position relative to y-axis domain
         let domainRange = yAxisDomain.upperBound - yAxisDomain.lowerBound
         guard domainRange > 0, chartFrame.height > 0 else {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
-        
+
         // No X-axis adjustment needed for total period
         let availableChartHeight = chartFrame.height
-        
+
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
-        
+
         // Calculate position within the available chart area
         let yPosition = (availableChartHeight * (1 - yRatio)) // Invert because chart y grows downward
-        
+
         // Add padding offsets for left boundary
         let adjustedX = xPosition + 4 // spacingXS approximation
         let adjustedY = yPosition
-        
+
         return CGPoint(x: adjustedX, y: adjustedY)
     }
     

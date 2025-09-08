@@ -66,7 +66,7 @@ class OfflineHandlerService
         // Sync user settings data if there are unsynced user settings accounts
         AppLog.i(TAG, "Selective offline sync process completed")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Offline sync process failed", e.toString())
+        AppLog.e(TAG, "Offline sync process failed", e)
       }
     }
 
@@ -92,7 +92,7 @@ class OfflineHandlerService
            accountRepository.updateProfile(profileUpdateRequest)
           AppLog.i(TAG, "Successfully synced profile data for account: ${unSyncedAccount.id}")
         } catch (e: Exception) {
-          AppLog.e(TAG, "Error syncing profile data for account ${unSyncedAccount.id}", e.toString())
+          AppLog.e(TAG, "Error syncing profile data for account ${unSyncedAccount.id}", e)
         }
     }
 
@@ -126,7 +126,7 @@ class OfflineHandlerService
         bodyCompositionRepository.updateBodyCompInDB(unsyncedAccount.id, weightCompSettings)
         AppLog.i(TAG, "Successfully synced body composition data for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing body composition data for account ${unsyncedAccount.id}", e.toString())
+        AppLog.e(TAG, "Error syncing body composition data for account ${unsyncedAccount.id}", e)
       }
     }
 
@@ -160,7 +160,7 @@ class OfflineHandlerService
         notificationRepository.updateNotificationSettingsInDB(unsyncedAccount.id, notificationSettings)
         AppLog.i(TAG, "Successfully synced notification settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing notification settings for account ${unsyncedAccount.id}", e.toString())
+        AppLog.e(TAG, "Error syncing notification settings for account ${unsyncedAccount.id}", e)
       }
     }
 
@@ -184,7 +184,7 @@ class OfflineHandlerService
         goalRepository.updateGoalSetting(goalData)
         AppLog.i(TAG, "Successfully synced goal settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to sync goal settings for account ${unsyncedAccount.id}", e.toString())
+        AppLog.e(TAG, "Failed to sync goal settings for account ${unsyncedAccount.id}", e)
       }
     }
 
@@ -206,7 +206,7 @@ class OfflineHandlerService
         userSettingsRepository.updateStreakSetting(streakRequest)
         AppLog.i(TAG, "Successfully synced streak settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to sync streak settings for account ${unsyncedAccount.id}", e.toString())
+        AppLog.e(TAG, "Failed to sync streak settings for account ${unsyncedAccount.id}", e)
       }
     }
 
@@ -229,7 +229,7 @@ class OfflineHandlerService
         userSettingsRepository.updateWeightlessSetting(weightlessRequest)
         AppLog.i(TAG, "Successfully synced weightless settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to sync weightless settings for account ${unsyncedAccount.id}", e.toString())
+        AppLog.e(TAG, "Failed to sync weightless settings for account ${unsyncedAccount.id}", e)
       }
     }
   }

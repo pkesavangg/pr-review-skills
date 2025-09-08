@@ -23,9 +23,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var touchInteractionMode: TouchInteractionMode = .none
     @State private var initialTouchPoint: CGPoint = .zero
     @State private var decisionTimer: Timer?
+    // Enable Y-axis animation only after first render to avoid blank-first-frame
+    @State private var enableYAxisAnimation: Bool = false
     
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
+    private let goalChipTrailingPadding: CGFloat = 20
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
@@ -63,8 +66,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
-                .padding(.leading, viewModel.isAtLeftBoundary ? .spacingXS : 0)
-                .padding(.trailing, .spacingXS)
+                .padding(.leading, 0)
                 .background(
                     GeometryReader { geo in
                         theme.textInverse
@@ -84,11 +86,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .onAppear {
                     viewModel.initializeChart()
                 }
+                // Re-enable Chart-level animation after first frame to animate subsequent domain changes
+                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
-                // Animate only when Y-axis domain changes to smoothly resize content
-                .animation(.easeInOut(duration: 0.25), value: viewModel.yAxisDomain)
-                
+                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
                 // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
@@ -115,6 +116,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
         .onAppear {
             viewModel.configure(with: dashboardStore)
+            // Flip on animation after first frame so the initial mount does not animate
+            DispatchQueue.main.async { enableYAxisAnimation = true }
         }
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
             viewModel.refreshData()
@@ -142,23 +145,32 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         ForEach(viewModel.yAxisTicks, id: \.self) { tick in
             // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
             // so it doesn't overlap with the axis baseline (which makes it look thicker).
-            let effectiveTick: Double = {
-                guard viewModel.hasXAxis else { return tick }
-                let lower = viewModel.yAxisDomain.lowerBound
-                let upper = viewModel.yAxisDomain.upperBound
-                let epsilon: Double = 1e-6
-                let domainRange = upper - lower
-                let availableHeight = max(1, viewModel.chartFrame.height -  (viewModel.hasXAxis ? 18 : 0))
-                let onePointValue = domainRange / Double(availableHeight)
-                if abs(tick - lower) <= epsilon { return tick + onePointValue }
-                if abs(tick - upper) <= epsilon { return tick - onePointValue }
-                return tick
-            }()
+            let effectiveTick: Double = adjustedTick(tick)
             RuleMark(y: .value("YGrid", effectiveTick))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
         }
+    }
+
+    // Helper: Adjusts a tick value to avoid overlap with axis baselines
+    private func adjustedTick(_ tick: Double) -> Double {
+        guard viewModel.hasXAxis else { return tick }
+        let lower = viewModel.yAxisDomain.lowerBound
+        let upper = viewModel.yAxisDomain.upperBound
+        let epsilon: Double = 1e-6
+        let domainRange = upper - lower
+        let xAxisHeight: CGFloat = viewModel.hasXAxis ? 18 : 0
+        let availableHeight = max(1, viewModel.chartFrame.height - xAxisHeight)
+        let onePointValue = domainRange / Double(availableHeight)
+        // Only nudge the bottom-most tick when lower domain is negative.
+        if abs(tick - lower) <= epsilon {
+            return lower < 0 ? (tick + onePointValue) : tick
+        }
+        if abs(tick - upper) <= epsilon {
+            return tick - onePointValue
+        }
+        return tick
     }
     
     @ChartContentBuilder
@@ -166,7 +178,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         let referenceDate = viewModel.hasXAxis ?
         viewModel.xAxisValues.last
         : viewModel.xAxisValues.first
-        if let referenceDate = referenceDate {
+        if let referenceDate = referenceDate, viewModel.hasXAxis {
             let domainLength = viewModel.visibleDomainLength
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
@@ -183,7 +195,22 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private var yAxisBaseline: some ChartContent {
         // Show baseline only for Total view (no X-axis)
         if !viewModel.hasXAxis {
-            RuleMark(x: .value("YBaselineTrailing", viewModel.dateRange.upperBound))
+            // Draw both leading (start) and trailing (end) vertical boundaries.
+            // Nudge them inward by half a point in time to avoid edge clipping.
+            let domain = viewModel.dateRange
+            let domainLength = domain.upperBound.timeIntervalSince(domain.lowerBound)
+            let width = max(1, viewModel.chartFrame.width)
+            let secondsPerPoint = domainLength / Double(width)
+            let halfPointOffset = secondsPerPoint * 0.5
+            
+            let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
+            let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
+            
+            RuleMark(x: .value("YBaselineLeading", leadingX))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                .zIndex(-1)
+            RuleMark(x: .value("YBaselineTrailing", trailingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
                 .zIndex(-1)
@@ -215,9 +242,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
+            let xDate = viewModel.plotXDate(for: point.date)
             // Invisible tap target
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
@@ -225,7 +253,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Line mark
             LineMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value),
                 series: .value("Series", "\(point.series)-\(segmentIndex)")
             )
@@ -235,7 +263,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             
             // Visible point mark
             PointMark(
-                x: .value("Date", point.date),
+                x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
             .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
@@ -246,7 +274,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
         if let selectedPoint = viewModel.selectedPoint, viewModel.showCrosshair {
-            RuleMark(x: .value("Date", selectedPoint.date))
+            let xDate = viewModel.plotXDate(for: selectedPoint.date)
+            RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
                 .foregroundStyle(theme.actionSecondary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
@@ -260,11 +289,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
                     Text(dashboardStore.formatYAxisTickLabel(doubleValue))
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .fontOpenSans(.subHeading2)
+                        .multilineTextAlignment(.leading)
+                        .fontWeight(.regular)
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: yAxisLabelWidth, alignment: .trailing)
+                        .frame(width: yAxisLabelWidth, alignment: .center)
                 }
             }
         }
@@ -295,11 +325,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalPosition = viewModel.getGoalChipPosition()
-        let xOffset = viewModel.getGoalChipXOffset()
         
         goalWeightChip(viewModel.goalWeight)
             .position(
-                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - xOffset : 320,
+                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
                 y: goalPosition.yPosition
             )
             .animation(
@@ -314,10 +343,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private func goalWeightChip(_ value: Double) -> some View {
         Text(dashboardStore.formatYAxisTickLabel(value))
             .fontWeight(.bold)
-            .font(.body)
-            .foregroundColor(.white)
+            .fontOpenSans(.body3)
+            .foregroundColor(theme.actionInverse)
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
     }
 }
@@ -337,7 +366,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
@@ -381,6 +410,14 @@ extension View {
                         }
                     }
                 }
+                // Add padding to left side of chart area
+                .chartPlotStyle { plot in
+                    if viewModel.isAtLeftBoundary {
+                        plot.padding(.leading, .spacingXS)
+                    } else {
+                        plot
+                    }
+                }
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
@@ -404,7 +441,17 @@ extension View {
             self
                 .chartXScale(domain: viewModel.dateRange)
                 .chartXAxis {
-                    // No X-axis for total view
+                    // Reserve space for X-axis to keep chart height consistent with other sections
+                    AxisMarks(position: .bottom) { _ in
+                        // Hide grid/ticks but keep label height via an invisible label
+                        AxisGridLine().foregroundStyle(.clear)
+                        AxisTick().foregroundStyle(.clear)
+                        AxisValueLabel {
+                            Text("00")
+                                .font(.caption)
+                                .opacity(0) // invisible but reserves height
+                        }
+                    }
                 }
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },

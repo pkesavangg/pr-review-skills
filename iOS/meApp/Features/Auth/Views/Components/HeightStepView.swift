@@ -20,17 +20,15 @@ struct HeightStepView: View {
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
             // Height Selection Chip
-            ChipView(
-                text: signupStore.getFormattedHeight(),
-                style: (signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker) ? .bordered : .normal,
-                onTap: {
-                    withAnimation {
+                // Height Selection Chip
+                ChipView(
+                    text: signupStore.getFormattedHeight(),
+                    style: .bordered,
+                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
+                    onTap: {
                         signupStore.showHeightPicker()
                     }
-                }
-            )
-            .padding(.top, .spacingMD)
-            .padding(.leading, 2)
+                )
         }
         .pickerSheet(
             isPresented: $signupStore.showHeightInchesPicker,

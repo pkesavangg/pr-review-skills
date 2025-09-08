@@ -34,19 +34,19 @@ struct YAxisCalculator {
         chartHeight: CGFloat = 265,
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
-
         guard !operations.isEmpty else {
             // No data — use last scale if available, otherwise show goal weight as center
             if let lastScale = lastScale {
-                return lastScale
+                return sanitizeToNonNegativeUniformTicks(scale: lastScale, desiredTickCount: max(2, lastScale.ticks.count))
             } else {
-                return createFallbackScale(goalWeight: goalWeight)
+                let fallback = createFallbackScale(goalWeight: goalWeight)
+                return sanitizeToNonNegativeUniformTicks(scale: fallback, desiredTickCount: max(2, fallback.ticks.count))
             }
         }
 
         // Handle small datasets (1-2 entries) with special logic
         if operations.count <= 2 {
-            return handleSmallDataset(
+            let small = handleSmallDataset(
                 operations: operations,
                 goalWeight: goalWeight,
                 isWeightlessMode: isWeightlessMode,
@@ -54,6 +54,7 @@ struct YAxisCalculator {
                 convertStoredWeightToDisplay: convertStoredWeightToDisplay,
                 lastScale: lastScale
             )
+            return sanitizeToNonNegativeUniformTicks(scale: small, desiredTickCount: max(3, small.ticks.count))
         }
 
         let average = calculateAverage(
@@ -95,7 +96,7 @@ struct YAxisCalculator {
         // Align domain to adjusted tick range so plot bounds match horizontal rules
         let domainMin = buffered.ticks.first ?? scale.min
         let domainMax = buffered.ticks.last ?? scale.max
-        return YAxisScale(
+        let initial = YAxisScale(
             min: domainMin,
             max: domainMax,
             step: buffered.step,
@@ -103,6 +104,8 @@ struct YAxisCalculator {
             domain: domainMin...domainMax,
             average: average
         )
+
+        return sanitizeToNonNegativeUniformTicks(scale: initial, desiredTickCount: max(3, initial.ticks.count))
     }
 
     /// Calculate average weight from operations
@@ -282,6 +285,70 @@ struct YAxisCalculator {
                 domain: domainMin...domainMax,
                 average: goalWeight
             )
+        }
+    }
+
+    /// Build a non-negative, uniform Y-axis from 0 with exactly `desiredTickCount` ticks.
+    /// Ensures ticks are monotonically increasing and aligned to a "nice" step.
+    private static func sanitizeToNonNegativeUniformTicks(scale: YAxisScale, desiredTickCount: Int) -> YAxisScale {
+        // Only sanitize if any negative ticks or negative domain/min would be produced
+        let hasNegativeTicks = scale.ticks.contains { $0 < 0 } || scale.min < 0 || scale.domain.lowerBound < 0
+        guard hasNegativeTicks else { return scale }
+
+        let count = max(2, desiredTickCount)
+
+        // Use the existing upper bound to preserve data headroom, but clamp to non-negative
+        let upperBoundCandidate = max(scale.max, scale.domain.upperBound, scale.ticks.last ?? 0)
+        let upper = max(0, upperBoundCandidate)
+
+        // Compute step so that (count - 1) * step >= upper, snapping to a nice step
+        let rawStep = (upper <= 0) ? 1.0 : (upper / Double(count - 1))
+        let step = pickNiceStep(atLeast: max(rawStep, 0.0001))
+
+        // Normalize top tick to a multiple of step
+        let stepsNeeded = ceil(upper / step)
+        let top = max(step, stepsNeeded * step)
+
+        // Rebuild non-negative uniform ticks from 0..top with `count` items
+        var ticks: [Double] = []
+        if count > 1 {
+            let evenStep = top / Double(count - 1)
+            for i in 0..<(count) {
+                // Round each tick to nearest multiple of a small epsilon to avoid floating artifacts
+                let value = Double(i) * evenStep
+                ticks.append(value)
+            }
+        } else {
+            ticks = [0]
+        }
+
+        let minVal: Double = 0
+        let maxVal: Double = ticks.last ?? step
+        return YAxisScale(
+            min: minVal,
+            max: maxVal,
+            step: ticks.count > 1 ? (ticks[1] - ticks[0]) : step,
+            ticks: ticks,
+            domain: minVal...maxVal,
+            average: scale.average
+        )
+    }
+
+    /// Pick a "nice" step size that is >= threshold using the same nice numbers logic.
+    private static func pickNiceStep(atLeast threshold: Double) -> Double {
+        // Determine magnitude (power of 10)
+        let magnitude = pow(10.0, floor(log10(max(threshold, 1e-9))))
+        let normalized = threshold / magnitude
+
+        // Same nice set as ImprovedNiceScaleCalculator
+        let niceNumbers: [Double] = [1, 2, 5, 10, 15, 20, 25, 40, 50, 100]
+
+        // Find first nice >= normalized, otherwise bump magnitude
+        if let candidate = niceNumbers.first(where: { $0 >= normalized }) {
+            return candidate * magnitude
+        } else {
+            // If none is big enough, move to next order of magnitude with the smallest nice number
+            return (niceNumbers.first ?? 1) * magnitude * 10.0
         }
     }
 }

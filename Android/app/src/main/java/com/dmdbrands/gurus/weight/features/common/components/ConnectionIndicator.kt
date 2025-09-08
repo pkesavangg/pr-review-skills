@@ -14,18 +14,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.components.strings.ConnectionIndicatorStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -68,7 +66,7 @@ fun ConnectionIndicator(
 
   val contentDescription = when (connectionState) {
     ConnectionIndicatorState.Connecting -> "Connection in progress"
-    ConnectionIndicatorState.Failed ->  "Connection Failed"
+    ConnectionIndicatorState.Failed -> "Connection Failed"
   }
 
   Box(
@@ -76,7 +74,7 @@ fun ConnectionIndicator(
     contentAlignment = Alignment.Center,
   ) {
     // Large pulsing circle (only when connecting, behind everything)
-    if(!showIndicatorAlone) {
+    if (!showIndicatorAlone) {
       PulsingCircle(
         color = pulsingCircleColor,
         shouldAnimate = true,
@@ -87,7 +85,7 @@ fun ConnectionIndicator(
       modifier = Modifier
         .size(90.dp)
         .clip(CircleShape)
-        .background(mainCircleColor)
+        .background(mainCircleColor),
     )
 
     // White icon on top
@@ -128,7 +126,8 @@ private fun PulsingCircle(
       .size(170.dp)
       .scale(if (shouldAnimate) scale else 1.0f)
       .clip(CircleShape)
-      .background(color),
+      .background(color)
+      .blur(radius = 4.dp),
   )
 }
 
@@ -144,7 +143,7 @@ private fun PreviewConnectionIndicatorConnecting() {
       ConnectionIndicator(
         indicatorIcon = AppIcons.Default.WifiIndicator,
         connectionState = ConnectionIndicatorState.Connecting,
-        showIndicatorAlone = true
+        showIndicatorAlone = true,
       )
       // WiFi connecting
       ConnectionIndicator(

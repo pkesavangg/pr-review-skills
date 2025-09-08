@@ -613,7 +613,7 @@ struct AlertStrings {
         static let title = "Are you sure you want to skip Wi-Fi?"
         static let message = "After setup, find additional WiFi settings or the MAC Address via scale settings."
         static let skipButton = "Skip"
-        static let goBackButton = "GO BACK"
+        static let goBackButton = "BACK"
     }
 
     struct PermissionDisabledAlert {
@@ -793,6 +793,7 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let ggLogoLight = "ggLogoLight"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
     static let close = "close"
