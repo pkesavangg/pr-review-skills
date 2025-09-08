@@ -18,6 +18,9 @@ protocol SectionViewModelProtocol: ObservableObject {
     var showCrosshair: Bool { get set }
     var scrollPosition: Date { get set }
     var isScrolling: Bool { get set }
+    /// The preferred, possibly snapped, date to propagate to the store on selection.
+    /// Defaults to `selectedDate` but allows specialized view models to override behavior.
+    var preferredSelectedDate: Date? { get }
     
     // MARK: - Chart Configuration
     var chartFrame: CGRect { get }

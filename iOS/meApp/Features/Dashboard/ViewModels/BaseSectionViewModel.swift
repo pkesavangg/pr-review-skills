@@ -20,6 +20,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
+    /// Default implementation simply returns the current `selectedDate`.
+    /// Subclasses can override by setting `selectedDate` to a snapped value
+    /// or by providing a different preferred date if needed.
+    var preferredSelectedDate: Date? { selectedDate }
+    
     // MARK: - Chart Configuration
     var chartFrame: CGRect = .zero
     var yAxisDomain: ClosedRange<Double> = 0...100

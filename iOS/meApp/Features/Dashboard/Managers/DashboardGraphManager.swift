@@ -156,7 +156,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let t = date.timeIntervalSinceReferenceDate
             let v0 = mapWeight(Int(prev.weight))
             let v1 = mapWeight(Int(next.weight))
-            let denom = max(t1 - t0, 1) // avoid divide by zero
+            let denom = t1 - t0
+            // Identical timestamps: return boundary value directly to avoid undefined ratio
+            if denom == 0 { return v0 }
             let ratio = min(max((t - t0) / denom, 0), 1)
             return v0 + (v1 - v0) * ratio
         }

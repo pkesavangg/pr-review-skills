@@ -431,8 +431,8 @@ extension View {
                                 // If the view-model decided there is no value at this position,
                                 // do not show crosshair nor propagate a selection to the store.
                                 if viewModel.showCrosshair {
-                                    // Use snapped date from view model when available
-                                    let dateToSend = (viewModel as? WeekSectionViewModel)?.selectedDate ?? viewModel.selectedDate ?? selectedDate
+                                    // Use view model's preferredSelectedDate if provided, else fallback to raw selection
+                                    let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
                                     Task {
                                         await dashboardStore.handleChartSelection(at: dateToSend)
                                     }
@@ -472,7 +472,7 @@ extension View {
                         // Update dashboard store selection using snapped date when available
                         if let rawDate = newValue {
                             if viewModel.showCrosshair {
-                                let dateToSend = viewModel.selectedDate ?? rawDate
+                                let dateToSend = viewModel.preferredSelectedDate ?? rawDate
                                 Task {
                                     await dashboardStore.handleChartSelection(at: dateToSend)
                                 }

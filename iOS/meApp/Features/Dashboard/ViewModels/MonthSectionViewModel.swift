@@ -108,12 +108,16 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             selectedDate = startTick
             showCrosshair = true
         } else {
-            // Pick the nearest candidate inside the section
-            let chosen = candidates.min { a, b in
-                abs(a.timeIntervalSince(clampedDate)) < abs(b.timeIntervalSince(clampedDate))
-            } ?? candidates.first!
-            selectedDate = chosen
-            showCrosshair = true
+            // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
+            if let chosen = candidates.min(by: { a, b in
+                let da = abs(a.timeIntervalSince(clampedDate))
+                let db = abs(b.timeIntervalSince(clampedDate))
+                if da == db { return a < b }
+                return da < db
+            }) {
+                selectedDate = chosen
+                showCrosshair = true
+            }
         }
         // Do not compute selectedPoint here; DashboardStore updates metrics using nearest point
     }
