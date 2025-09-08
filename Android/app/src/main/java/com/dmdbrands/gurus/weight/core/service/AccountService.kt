@@ -123,7 +123,7 @@ constructor(
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
       showErrorToast(header, msg)
-      AppLog.e(TAG, "Login failed", e)
+              AppLog.e(TAG, "Token update failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
     }
