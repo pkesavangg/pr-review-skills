@@ -23,24 +23,21 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         return 14 * 24 * 60 * 60 // 14 days gap for week view
     }
 
-    /// Plot daily aggregates midway between adjacent day ticks.
-    /// Our X-axis ticks for week are anchored at local noon for each day (see
-    /// `generateVisibleWeeklyXAxisWithBuffer`). To render a day's value between
-    /// its label and the next day's label, we use the midpoint between the two
-    /// consecutive noons, which typically lands at local midnight between them
-    /// (DST-safe).
+    /// Returns the X-axis date used to plot a single-day aggregate in Week view.
+    /// We place each day's value at that day's local noon:
+    /// - Visually centers the point within the day's time span on the timeline.
+    /// - Avoids DST boundary issues since noon is safely within the day.
+    /// The week chart's X-axis ticks are generated in local time as well, so
+    /// aligning points to local noon keeps them consistently aligned with labels.
     override func plotXDate(for original: Date) -> Date {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Calendar.current.timeZone
         cal.locale = Calendar.current.locale
 
         let dayStart = cal.startOfDay(for: original)
-        guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart),
-              let nextNoon = cal.date(byAdding: .hour, value: 0, to: noon) else {
+        guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart) else {
             return super.plotXDate(for: original)
         }
-
-        let half = nextNoon.timeIntervalSince(noon) / 2
-        return noon.addingTimeInterval(half)
+        return noon
     }
 }
