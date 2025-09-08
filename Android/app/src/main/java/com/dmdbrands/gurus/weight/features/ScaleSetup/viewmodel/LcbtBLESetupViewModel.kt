@@ -67,9 +67,14 @@ constructor(
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
-    } else if (currentSetupState.step == LcbtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
-      AppLog.d(TAG, "Moving from scale info to wakeup step")
-      handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.WAKEUP))
+    } else if (currentSetupState.step == LcbtScaleSetupStep.SCALE_INFO) {
+      if (isPermissionGranted) {
+        handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.WAKEUP))
+      } else {
+        // Check and request permissions sequentially
+        handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
+        permissionAccess()
+      }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
       if (currentState.nextStep != null)
@@ -247,7 +252,6 @@ constructor(
             AppLog.d(TAG, "Permission granted status changed: $isPermissionGranted -> $areRequiredPermissionsEnabled")
             isPermissionGranted = areRequiredPermissionsEnabled
           }
-
           if (!areRequiredPermissionsEnabled) {
             if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
               AppLog.d(TAG, "Permissions not granted, moving to permissions step")

@@ -45,7 +45,9 @@ import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.Enums.ScaleSettingSteps
+import com.dmdbrands.gurus.weight.features.scaleDetails.components.AdditionalSettingsScreen
 import com.dmdbrands.gurus.weight.features.scaleDetails.components.BluetoothPermissionScreen
+import com.dmdbrands.gurus.weight.features.scaleDetails.components.SoftwareUpdateScreen
 import com.dmdbrands.gurus.weight.features.scaleDetails.components.WifiMacAddressScreen
 import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleDetailsIntent.SetSettingsScreenStep
@@ -99,6 +101,8 @@ fun ScaleDetailsScreenContent(
     } else {
       ScaleDetailsStrings.WeightOnly
     }
+  val isR4Scale = scaleSetupType == ScaleSetupType.BtWifiR4
+  val canEnableTestingFeatures = state.enableTestingFeatures
 
   var bottomSheetVisible by remember { mutableStateOf(false) }
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -139,6 +143,34 @@ fun ScaleDetailsScreenContent(
 
         ScaleSettingSteps.WIFI_MAC_ADDRESS -> {
           WifiMacAddressScreen(
+            state = state,
+            handleIntent = handleIntent,
+            onClose = {
+              coroutineScope.launch {
+                sheetState.hide()
+                bottomSheetVisible = false
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+              }
+            },
+          )
+        }
+
+        ScaleSettingSteps.SOFTWARE_UPDATE -> {
+          SoftwareUpdateScreen(
+            state = state,
+            handleIntent = handleIntent,
+            onClose = {
+              coroutineScope.launch {
+                sheetState.hide()
+                bottomSheetVisible = false
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+              }
+            },
+          )
+        }
+
+        ScaleSettingSteps.ADDITIONAL_SETTINGS -> {
+          AdditionalSettingsScreen(
             state = state,
             handleIntent = handleIntent,
             onClose = {
@@ -361,6 +393,58 @@ fun ScaleDetailsScreenContent(
             ),
           ),
       )
+      // Testing Features Section (similar to Angular implementation)
+      if (isR4Scale && canEnableTestingFeatures) {
+        SettingsSection(
+          title = ScaleDetailsStrings.Others,
+          items = listOf(
+            SettingsItem(
+              title = ScaleDetailsStrings.ScaleMac,
+              type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
+            ),
+            SettingsItem(
+              title = ScaleDetailsStrings.SoftwareUpdate,
+              type = SettingsItemType.Action(),
+              enabled = isConnected,
+              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+              onClick = {
+                if (!isConnected) {
+                  return@SettingsItem
+                }
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.SOFTWARE_UPDATE))
+                bottomSheetVisible = true
+              },
+            ),
+            SettingsItem(
+              title = ScaleDetailsStrings.OtherSettings,
+              type = SettingsItemType.Action(),
+              enabled = isConnected,
+              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+              onClick = {
+                if (!isConnected) {
+                  return@SettingsItem
+                }
+                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.ADDITIONAL_SETTINGS))
+                bottomSheetVisible = true
+              },
+            ),
+            SettingsItem(
+              title = ScaleDetailsStrings.SessionImpedance,
+              type = SettingsItemType.Toggle(
+                checked = state.isSessionImpedanceEnabled,
+                onCheckedChange = { enabled ->
+                  if (!isConnected) {
+                    return@Toggle
+                  }
+                  handleIntent(ScaleDetailsIntent.ToggleSessionImpedance(enabled))
+                },
+              ),
+              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+              enabled = isConnected,
+            ),
+          ),
+        )
+      }
     }
   }
 }

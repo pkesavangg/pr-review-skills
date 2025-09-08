@@ -68,7 +68,7 @@ fun SettingsScreenContent(
         onEditProfileClick = { },
         onAvatarLongPress = {
           handleIntent(SettingsIntent.SwitchAccount)
-        }
+        },
       )
       Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
       // Account Settings Section
@@ -252,6 +252,22 @@ fun SettingsScreenContent(
             ),
           ),
       )
+      // Developer/Testing Section (only show when testing features are enabled)
+      if (state.enableTestingFeatures) {
+        SettingsSection(
+          title = "Developer Options",
+          items =
+            listOf(
+              SettingsItem(
+                title = "0412 Scale Filter",
+                type = SettingsItemType.Dropdown(state.selectedMacAddress),
+                onClick = {
+                  handleIntent(SettingsIntent.ShowMacAddressFilterModal)
+                },
+              ),
+            ),
+        )
+      }
 
       // Log Out and Delete Account
       SettingsSection(

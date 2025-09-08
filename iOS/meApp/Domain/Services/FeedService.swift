@@ -17,7 +17,8 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     /// Emits whenever `feedItems` changes. Consumers can subscribe without needing GG IAM package.
     let feedsChanged = PassthroughSubject<[FeedItem], Never>()
     let feedSettingsChanged = PassthroughSubject<GGFeedSetting?, Never>()
-    let notificationBadgeUpdated = PassthroughSubject<Bool, Never>()
+    // Use CurrentValueSubject so late subscribers receive the latest state immediately
+    let notificationBadgeUpdated = CurrentValueSubject<Bool, Never>(false)
     
     private let tag = "FeedService"
     private var cancellables = Set<AnyCancellable>()
@@ -55,6 +56,18 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                 self.updateNotificationBadge()
             }
             .store(in: &cancellables)
+        
+        ggIAMService
+            .promoCodeCopied
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] feedSettings in
+                guard let self = self else { return }
+                notificationService.showToast(ToastModel(message: "Promo Code Copied!"))
+            }
+            .store(in: &cancellables)
+        
+        // Seed initial badge state for any late subscribers
+        updateNotificationBadge()
     }
     
     // MARK: - Feed Items Management
