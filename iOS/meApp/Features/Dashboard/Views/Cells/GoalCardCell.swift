@@ -365,6 +365,7 @@ class GoalCardCell: UICollectionViewCell {
         }
     }
 
+
     /// Force clear all shadow effects - call this when items are dropped
     func clearAllShadowEffects() {
         layer.shadowOpacity = 0.0

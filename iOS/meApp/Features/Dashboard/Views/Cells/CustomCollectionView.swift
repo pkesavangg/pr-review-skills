@@ -16,6 +16,9 @@ public class CustomCollectionView: UICollectionView {
     public var suspendIntrinsicInvalidation: Bool = false
     public var isInDragOperation: Bool = false
     
+    // Boundary detection support (used by goal/streak grid for strict boundaries)
+    public var boundaryDetector: GridBoundaryDetector?
+    
     public override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
         super.init(frame: frame, collectionViewLayout: layout)
         setupIntrinsicSizeObserver()
@@ -83,20 +86,24 @@ public class CustomCollectionView: UICollectionView {
             let estimatedColumns = max(1, Int(availableWidth / (estimatedItemWidth + flowLayout.minimumInteritemSpacing)))
             let estimatedRows = Int(ceil(Double(itemCount) / Double(estimatedColumns)))
             
-            // Calculate estimated height
+            // Calculate estimated height with increased bottom padding for last row
             let estimatedItemHeight: CGFloat = 70 // Typical metric card height
             let totalSpacing = CGFloat(max(0, estimatedRows - 1)) * flowLayout.minimumLineSpacing
             let totalInsets = flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
             
-            return CGFloat(estimatedRows) * estimatedItemHeight + totalSpacing + totalInsets
+            // Add optimal bottom padding for last row items during drag operations
+            let extraBottomPadding: CGFloat = 20 // Fine-tuned additional space for last row
+            return CGFloat(estimatedRows) * estimatedItemHeight + totalSpacing + totalInsets + extraBottomPadding
         }
         
-        // Fallback estimation for other layout types
+        // Fallback estimation for other layout types with extra bottom padding
         let estimatedRowHeight: CGFloat = 102 // Item height + spacing
         let estimatedColumns = bounds.width > 500 ? 4 : (itemCount > 4 ? 3 : 2) // Device-based estimation
         let estimatedRows = Int(ceil(Double(itemCount) / Double(estimatedColumns)))
         
-        return max(100, CGFloat(estimatedRows) * estimatedRowHeight + 40) 
+        // Add optimal bottom padding for last row items
+        let extraBottomPadding: CGFloat = 20
+        return max(100, CGFloat(estimatedRows) * estimatedRowHeight + 40 + extraBottomPadding) 
     }
     
     // MARK: - Animation Suppression Methods
@@ -154,5 +161,9 @@ public class CustomCollectionView: UICollectionView {
             UIView.setAnimationsEnabled(animationsWereEnabled)
         }
     }
+    
+    // MARK: - Boundary Detection Support
+    // Note: Touch-based drag constraint was ineffective with UICollectionView's built-in drag system
+    // Boundary enforcement is now handled in dropSessionDidUpdate for real-time feedback
 }
 

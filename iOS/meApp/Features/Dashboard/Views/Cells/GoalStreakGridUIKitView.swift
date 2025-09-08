@@ -84,8 +84,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         coordinator.lastIsEditMode = newIsEditMode
         
-        // Update drag interaction enabled state
-        collectionView.dragInteractionEnabled = newIsEditMode
+        // Keep system drag disabled; we use interactive movement with strict clamping
+        collectionView.dragInteractionEnabled = false
     }
     
     func makeCoordinator() -> Coordinator {
@@ -101,7 +101,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let layout = UICollectionViewFlowLayout()
         layout.minimumInteritemSpacing = 16         // gap between columns
         layout.minimumLineSpacing = 32              // gap between rows
-        layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16) // outer margin
+        layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 32, right: 16) // fine-tuned bottom margin for last row
         return layout
     }
     
@@ -126,6 +126,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         collectionView.register(GoalCardCell.self, forCellWithReuseIdentifier: "GoalCardCell")
         collectionView.register(StreakCardCell.self, forCellWithReuseIdentifier: "StreakCardCell")
         collectionView.reorderingCadence = .immediate
+        // Allow the lifted item overlay to render beyond bounds without clipping
+        collectionView.clipsToBounds = false
         
         // Disable selection to prevent visual feedback
         collectionView.allowsSelection = false
@@ -159,9 +161,20 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     private func setupCollectionView(_ collectionView: UICollectionView, context: Context) {
         collectionView.dataSource = context.coordinator
         collectionView.delegate = context.coordinator
-        collectionView.dragDelegate = context.coordinator
-        collectionView.dropDelegate = context.coordinator
-        collectionView.dragInteractionEnabled = store.state.ui.isEditMode
+        // Disable system drag/drop; use interactive movement with strict clamping
+        collectionView.dragDelegate = nil
+        collectionView.dropDelegate = nil
+        collectionView.dragInteractionEnabled = false
+        
+        // Set up boundary detection for custom collection view
+        if let customCollectionView = collectionView as? CustomCollectionView {
+            customCollectionView.boundaryDetector = context.coordinator.boundaryDetector
+        }
+
+        // Add long-press gesture for interactive movement
+        let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.15
+        collectionView.addGestureRecognizer(longPress)
     }
     
     /// Builds the grid model using the saved order from DashboardStore UI state
@@ -264,6 +277,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         private var lastDroppedGoalCard: Bool = false
         private var isAwaitingDropEnd: Bool = false
         
+        // Interactive movement tracking to preserve shape/size and clamp by full frame
+        private var interactiveMovingIndexPath: IndexPath?
+        private var interactiveMovingItemSize: CGSize = .zero
+        private var lastBoundaryHapticTime: Date?
+        // Preserve identity of dragged item so size doesn't morph when index changes
+        private var draggedStreakId: String?
+        private var isDraggingGoalCard: Bool = false
+        
+        // MARK: - Boundary Detection Properties
+        public var boundaryDetector: GridBoundaryDetector
+        
         // MARK: - Boundary Detection for Active vs Removed Items
         
         /// Returns the number of non-removed (active) items that can be reordered
@@ -299,6 +323,138 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         init(store: DashboardStore, gridModel: MileStoneGridModel) {
             self.store = store
             self.gridModel = gridModel
+            self.boundaryDetector = GridBoundaryDetector(gridType: .goalStreak)
+        }
+        
+        // MARK: - Boundary Detection Methods
+        
+        /// Configures boundary constraints based on current grid layout
+        /// Creates STRICT boundaries to prevent items from even touching the divider
+        private func configureBoundaryConstraints(for collectionView: UICollectionView) {
+            // Calculate the actual content height of the goal/streak grid
+            let contentSize = collectionView.collectionViewLayout.collectionViewContentSize
+            let contentInsets = collectionView.contentInset
+            let actualGridHeight = contentSize.height + contentInsets.top + contentInsets.bottom
+            
+            // Add optimal bottom slack during interactive movement so last row has sufficient space to move
+            // Use balanced slack: 1.3x item height + row spacing + bottom padding
+            let extraBottomSlack: CGFloat = {
+                guard interactiveMovingItemSize != .zero else { 
+                    // Fallback calculation when item size is not available
+                    let rowSpacing: CGFloat = 32
+                    let bottomInset: CGFloat = 32 // Use the fine-tuned bottom inset
+                    let estimatedItemHeight: CGFloat = 70 // Typical streak item height
+                    return estimatedItemHeight * 1.3 + rowSpacing + bottomInset
+                }
+                let rowSpacing: CGFloat = 32
+                let bottomInset: CGFloat = 32 // Use the fine-tuned bottom inset
+                return interactiveMovingItemSize.height * 1.3 + rowSpacing + bottomInset
+            }()
+            
+            // Use full grid height with generous bottom slack; block only a compact strip above the divider via exclude zone
+            let dividerY = actualGridHeight
+            boundaryDetector.updateGoalStreakConstraints(gridHeight: actualGridHeight + extraBottomSlack, dividerY: dividerY)
+            
+            #if DEBUG
+            print("GoalStreakGrid STRICT Boundary Constraints - GridHeight: \(actualGridHeight + extraBottomSlack), DividerY: \(dividerY), BottomSlack: \(extraBottomSlack)")
+            print("Items will be strictly contained within height: \(actualGridHeight + extraBottomSlack)")
+            #endif
+        }
+
+        // MARK: - Interactive Movement (Strictly Clamped)
+        @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard let collectionView = gesture.view as? UICollectionView else { return }
+            guard store.state.ui.isEditMode else { return }
+
+            switch gesture.state {
+            case .began:
+                let location = gesture.location(in: collectionView)
+                if let indexPath = collectionView.indexPathForItem(at: location), indexPath.item < firstRemovedIndex {
+                    configureBoundaryConstraints(for: collectionView)
+                    boundaryDetector.updateGridBounds(for: collectionView)
+                    interactiveMovingIndexPath = indexPath
+                    // Capture current item size to prevent shape change during drag
+                    if let cell = collectionView.cellForItem(at: indexPath) {
+                        interactiveMovingItemSize = cell.bounds.size
+                    } else if let attrs = collectionView.layoutAttributesForItem(at: indexPath) {
+                        interactiveMovingItemSize = attrs.bounds.size
+                    } else {
+                        // Fallback compute from model
+                        let widget = gridModel.mileStones[indexPath.item]
+                        let contentWidth = collectionView.bounds.width - 32 // section insets left+right
+                        let interItemSpacing: CGFloat = 16
+                        switch widget {
+                        case .goalCard:
+                            interactiveMovingItemSize = CGSize(width: contentWidth, height: 120)
+                        case .streak:
+                            let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
+                            let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
+                            interactiveMovingItemSize = CGSize(width: itemWidth, height: 70)
+                        }
+                    }
+                    // Track dragged item identity to preserve size regardless of index changes
+                    let widget = gridModel.mileStones[indexPath.item]
+                    switch widget {
+                    case .goalCard:
+                        isDraggingGoalCard = true
+                        draggedStreakId = nil
+                    case .streak(let item):
+                        isDraggingGoalCard = false
+                        draggedStreakId = item.id.uuidString
+                    }
+                    collectionView.beginInteractiveMovementForItem(at: indexPath)
+                }
+            case .changed:
+                // Clamp the movement strictly away from divider/metric grid
+                let location = gesture.location(in: collectionView)
+                let clampedPoint = boundaryDetector.constrainDragLocation(location, in: collectionView)
+                // Further clamp by full frame so item never clips at edges
+                var targetCenter = clampedPoint
+                if interactiveMovingItemSize != .zero, let superview = collectionView.superview {
+                    // Build frame centered at clampedPoint in collection coords
+                    let frame = CGRect(
+                        x: clampedPoint.x - interactiveMovingItemSize.width / 2,
+                        y: clampedPoint.y - interactiveMovingItemSize.height / 2,
+                        width: interactiveMovingItemSize.width,
+                        height: interactiveMovingItemSize.height
+                    )
+                    // Constrain using detector (returns frame in collection coords after conversion)
+                    let constrainedFrame = boundaryDetector.constrainDragFrame(frame, in: collectionView)
+                    targetCenter = CGPoint(x: constrainedFrame.midX, y: constrainedFrame.midY)
+                    _ = superview // keep reference used above
+                }
+                // Provide subtle haptic when hitting boundary (throttled)
+                if abs(targetCenter.y - location.y) > 0.5 {
+                    let now = Date()
+                    if lastBoundaryHapticTime == nil || now.timeIntervalSince(lastBoundaryHapticTime!) > 0.25 {
+                        boundaryDetector.provideBoundaryFeedback()
+                        lastBoundaryHapticTime = now
+                    }
+                }
+                collectionView.updateInteractiveMovementTargetPosition(targetCenter)
+            case .ended:
+                collectionView.endInteractiveMovement()
+                // Recompute bounds after drop as height/order may have changed
+                configureBoundaryConstraints(for: collectionView)
+                boundaryDetector.updateGridBounds(for: collectionView)
+                collectionView.collectionViewLayout.invalidateLayout()
+                collectionView.layoutIfNeeded()
+                if let custom = collectionView as? CustomCollectionView {
+                    custom.invalidateIntrinsicContentSize()
+                }
+                interactiveMovingIndexPath = nil
+                interactiveMovingItemSize = .zero
+                isDraggingGoalCard = false
+                draggedStreakId = nil
+            default:
+                collectionView.cancelInteractiveMovement()
+                configureBoundaryConstraints(for: collectionView)
+                boundaryDetector.updateGridBounds(for: collectionView)
+                interactiveMovingIndexPath = nil
+                interactiveMovingItemSize = .zero
+                isDraggingGoalCard = false
+                draggedStreakId = nil
+            }
         }
         
         // MARK: - UICollectionViewDataSource
@@ -335,6 +491,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // MARK: - UICollectionViewDelegateFlowLayout
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+            // Preserve shape/size of the dragged item regardless of its index during reordering
+            if interactiveMovingItemSize != .zero {
+                let widget = gridModel.mileStones[indexPath.item]
+                switch widget {
+                case .goalCard:
+                    if isDraggingGoalCard { return interactiveMovingItemSize }
+                case .streak(let item):
+                    if let draggedId = draggedStreakId, draggedId == item.id.uuidString {
+                        return interactiveMovingItemSize
+                    }
+                }
+            }
             let widget = gridModel.mileStones[indexPath.item]
             let contentWidth = collectionView.bounds.width - 32
             let interItemSpacing: CGFloat = 16
@@ -351,7 +519,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
             let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32.0 : 16.0
-            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 16.0, right: 16.0)
+            return UIEdgeInsets(top: topInset, left: 16.0, bottom: 32.0, right: 16.0) // fine-tuned bottom inset for last row
         }
         
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
@@ -382,6 +550,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             }
             
             return proposedIndexPath
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+            // Update the underlying model to match the interactive movement
+            guard sourceIndexPath.item < firstRemovedIndex && destinationIndexPath.item < firstRemovedIndex else { return }
+            let sourceIndex = sourceIndexPath.item
+            let destinationIndex = destinationIndexPath.item
+            gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
+            persistGridOrderToStore()
         }
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
@@ -493,6 +670,34 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             guard store.state.ui.isEditMode else {
                 // Use .cancel to avoid showing the slashed-circle icon
                 return UICollectionViewDropProposal(operation: .cancel)
+            }
+            
+            // Configure strict boundary constraints first
+            configureBoundaryConstraints(for: collectionView)
+            
+            // Get current drag location and apply STRICT constraints
+            let dropLocation = session.location(in: collectionView)
+            let constrainedLocation = boundaryDetector.constrainDragLocation(dropLocation, in: collectionView)
+            
+            // Check if the location needed to be constrained (STRICT boundary enforcement)
+            let isLocationConstrained = !dropLocation.equalTo(constrainedLocation)
+            
+            if isLocationConstrained {
+                // Provide immediate haptic feedback when hitting STRICT boundary
+                boundaryDetector.provideBoundaryFeedback()
+                
+                // Use .forbidden to show immediate "not allowed" feedback
+                // This prevents any false hope of being able to drop in forbidden areas
+                return UICollectionViewDropProposal(operation: .forbidden)
+            }
+            
+            // Additional check: ensure we're not in any exclude zones
+            let canDragAtLocation = boundaryDetector.canDragAtLocation(constrainedLocation, in: collectionView)
+            
+            if !canDragAtLocation {
+                // Double-check with haptic feedback for exclude zones
+                boundaryDetector.provideBoundaryFeedback()
+                return UICollectionViewDropProposal(operation: .forbidden)
             }
             
             // Only accept drops from the same grid (goal/streak items)
@@ -1061,6 +1266,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionWillBegin session: UIDragSession) {
+            // Initialize boundary detection
+            configureBoundaryConstraints(for: collectionView)
+            boundaryDetector.updateGridBounds(for: collectionView)
+            
             // Set drag operation flag for smooth animations
             if let custom = collectionView as? CustomCollectionView {
                 custom.isInDragOperation = true
@@ -1073,7 +1282,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
             CATransaction.commit()
             
-            // Immediately hide EditModeOverlay on the dragged cell
+            // Hide EditModeOverlay on the dragged cell
             if let draggedItem = session.items.first {
                 let milestone: MileStoneType?
                 if let wrapper = draggedItem.localObject as? DragItemWrapper,
@@ -1105,6 +1314,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
         func collectionView(_ collectionView: UICollectionView, dragSessionDidEnd session: UIDragSession) {
+            // Clear boundary detection state
+            boundaryDetector.resetBoundaryState()
+            
             // Clear drag operation flag
             if let custom = collectionView as? CustomCollectionView {
                 custom.isInDragOperation = false
@@ -1350,5 +1562,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             lastDropTargetItemType = nil
             lastDropTargetChangeTime = nil
         }
+        
     }
 }

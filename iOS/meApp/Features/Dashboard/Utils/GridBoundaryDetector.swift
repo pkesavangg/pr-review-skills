@@ -9,53 +9,152 @@ import UIKit
 
 /// Shared utility for boundary detection across all grid components
 /// Provides consistent boundary detection behavior for drag and drop operations
-class GridBoundaryDetector {
+public class GridBoundaryDetector {
+    
+    // MARK: - Boundary Configuration
+    
+    public enum GridType {
+        case metric
+        case goalStreak
+    }
+    
+    public struct BoundaryConstraints: Hashable {
+        public let maxWidth: CGFloat
+        public let maxHeight: CGFloat
+        public let minY: CGFloat
+        public let excludeZones: [CGRect] // Areas where dragging is not allowed
+        
+        public init(maxWidth: CGFloat, maxHeight: CGFloat, minY: CGFloat, excludeZones: [CGRect]) {
+            self.maxWidth = maxWidth
+            self.maxHeight = maxHeight
+            self.minY = minY
+            self.excludeZones = excludeZones
+        }
+        
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(maxWidth)
+            hasher.combine(maxHeight)
+            hasher.combine(minY)
+            hasher.combine(excludeZones.count)
+            for zone in excludeZones {
+                hasher.combine(zone.origin.x)
+                hasher.combine(zone.origin.y)
+                hasher.combine(zone.size.width)
+                hasher.combine(zone.size.height)
+            }
+        }
+        
+        public static let metric = BoundaryConstraints(
+            maxWidth: UIScreen.main.bounds.width,
+            maxHeight: .greatestFiniteMagnitude,
+            minY: 0,
+            excludeZones: []
+        )
+        
+        public static func goalStreak(gridHeight: CGFloat, dividerY: CGFloat) -> BoundaryConstraints {
+            return BoundaryConstraints(
+                maxWidth: UIScreen.main.bounds.width,
+                maxHeight: gridHeight,
+                minY: 0,
+                excludeZones: [
+                    // Keep a more compact no-go zone just above the divider (reduced height)
+                    CGRect(x: 0, y: max(0, dividerY - 16), width: UIScreen.main.bounds.width, height: 16)
+                ]
+            )
+        }
+    }
     
     // MARK: - Properties
     
     private var gridBounds: CGRect = .zero
     private var isDragOutsideBounds: Bool = false
     private var boundaryFeedbackGenerator: UIImpactFeedbackGenerator?
+    private var currentGridType: GridType = .metric
+    private var currentConstraints: BoundaryConstraints = .metric
+    
+    // Cache to prevent excessive recalculation and logging
+    private var lastCollectionViewFrame: CGRect = .zero
+    private var lastContentSize: CGSize = .zero
+    private var lastConstraintsHash: Int = 0
+    #if DEBUG
+    private var lastLogTime: Date = .distantPast
+    #endif
     
     // MARK: - Initialization
     
-    init() {
+    public init(gridType: GridType = .metric) {
+        self.currentGridType = gridType
+        self.currentConstraints = gridType == .metric ? .metric : .goalStreak(gridHeight: 0, dividerY: 0)
         self.boundaryFeedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+    }
+    
+    // MARK: - Configuration Methods
+    
+    /// Updates the boundary constraints for goal/streak grid
+    /// - Parameters:
+    ///   - gridHeight: Total height of the goal/streak grid
+    ///   - dividerY: Y position of the divider that streak items should not touch
+    public func updateGoalStreakConstraints(gridHeight: CGFloat, dividerY: CGFloat) {
+        currentConstraints = .goalStreak(gridHeight: gridHeight, dividerY: dividerY)
     }
     
     // MARK: - Boundary Detection Methods
     
     /// Updates the grid bounds for boundary detection
     /// Uses precise grid dimensions: height = grid content height, width = screen width
-    func updateGridBounds(for collectionView: UICollectionView) {
+    /// Uses caching to prevent excessive recalculation during drag operations
+    public func updateGridBounds(for collectionView: UICollectionView) {
         // Get the actual content size of the collection view layout
         let contentSize = collectionView.collectionViewLayout.collectionViewContentSize
         let contentInsets = collectionView.contentInset
+        let collectionViewFrame = collectionView.frame
+        let constraintsHash = currentConstraints.hashValue
+        
+        // Check if we need to recalculate (cache optimization)
+        if collectionViewFrame == lastCollectionViewFrame && 
+           contentSize == lastContentSize && 
+           constraintsHash == lastConstraintsHash {
+            return // No need to recalculate, use cached values
+        }
+        
+        // Update cache
+        lastCollectionViewFrame = collectionViewFrame
+        lastContentSize = contentSize
+        lastConstraintsHash = constraintsHash
         
         // Calculate precise grid content height including insets
         let actualGridHeight = contentSize.height + contentInsets.top + contentInsets.bottom
         
-        // Use screen width for horizontal boundaries
-        let screenWidth = UIScreen.main.bounds.width
-        
-        // Get collection view's position in its superview for Y positioning
-        let collectionViewFrame = collectionView.frame
+        // Apply constraints based on grid type
+        let constrainedWidth = min(currentConstraints.maxWidth, UIScreen.main.bounds.width)
+        let constrainedHeight = min(currentConstraints.maxHeight, actualGridHeight)
         
         // Set precise boundaries:
-        // - X: 0 to screen width (full screen width)
-        // - Y: collection view's Y position to Y position + actual grid height
+        // - X: 0 to constrained width
+        // - Y: collection view's Y position + minY to Y position + constrained height
         gridBounds = CGRect(
             x: 0,
-            y: collectionViewFrame.origin.y,
-            width: screenWidth,
-            height: actualGridHeight
+            y: collectionViewFrame.origin.y + currentConstraints.minY,
+            width: constrainedWidth,
+            height: constrainedHeight
         )
- 
+        
+        // Debug logging for boundary testing (limited frequency to prevent console flooding)
+        #if DEBUG
+        let now = Date()
+        if now.timeIntervalSince(lastLogTime) > 2.0 { // Log max once every 2 seconds
+            print("GridBoundaryDetector (\(currentGridType)) - Constrained Width: \(constrainedWidth), Grid Height: \(constrainedHeight)")
+            print("GridBoundaryDetector Bounds: \(gridBounds)")
+            print("Collection View Frame: \(collectionViewFrame), Content Size: \(contentSize)")
+            print("Exclude Zones: \(currentConstraints.excludeZones)")
+            lastLogTime = now
+        }
+        #endif
     }
     
     /// Checks if a drag location is within the precise grid boundaries
     /// Uses superview coordinates to check against exact grid dimensions
-    func isDragLocationWithinBounds(_ location: CGPoint, in view: UIView) -> Bool {
+    public func isDragLocationWithinBounds(_ location: CGPoint, in view: UIView) -> Bool {
         guard let collectionView = view as? UICollectionView else { return false }
         guard let superview = collectionView.superview else { return false }
         
@@ -67,11 +166,126 @@ class GridBoundaryDetector {
         // Check against precise grid boundaries in superview coordinate system
         let isWithinPreciseBounds = gridBounds.contains(locationInSuperview)
         
-        return isWithinPreciseBounds
+        // If within basic bounds, check exclude zones
+        if isWithinPreciseBounds {
+            // Check if location is in any exclude zone
+            for excludeZone in currentConstraints.excludeZones {
+                if excludeZone.contains(locationInSuperview) {
+                    return false // Location is in an excluded area
+                }
+            }
+            return true // Within bounds and not in any exclude zone
+        }
+        
+        return false // Outside basic bounds
+    }
+    
+    /// Checks if a drag can be allowed at the given location
+    /// Returns false if the drag should be blocked (prevents drag operation entirely)
+    public func canDragAtLocation(_ location: CGPoint, in view: UIView) -> Bool {
+        return isDragLocationWithinBounds(location, in: view)
+    }
+    
+    /// Constrains a drag location to stay within allowed boundaries
+    /// Returns the constrained location that respects boundary limits
+    /// Implements strict boundary enforcement similar to SwiftUI drag limiting
+    public func constrainDragLocation(_ location: CGPoint, in view: UIView) -> CGPoint {
+        guard let collectionView = view as? UICollectionView else { return location }
+        guard let superview = collectionView.superview else { return location }
+        
+        updateGridBounds(for: collectionView)
+        
+        // Convert drag location from collection view to superview coordinates
+        let locationInSuperview = collectionView.convert(location, to: superview)
+        
+        // Apply strict constraints - similar to SwiftUI drag limiting
+        var constrainedLocation = locationInSuperview
+        
+        // First, constrain to basic grid bounds
+        constrainedLocation.x = max(gridBounds.minX, min(gridBounds.maxX, locationInSuperview.x))
+        constrainedLocation.y = max(gridBounds.minY, min(gridBounds.maxY, locationInSuperview.y))
+        
+        // Apply STRICT exclude zone constraints - prevent entering forbidden areas entirely
+        for excludeZone in currentConstraints.excludeZones {
+            // Use a more compact buffer so last row has maximum usable space
+            let strictBufferZone = excludeZone.insetBy(dx: -4, dy: -4)
+            
+            if strictBufferZone.contains(constrainedLocation) {
+                // For STRICT boundaries, always push to the top edge (safest direction away from divider)
+                // This ensures items can NEVER get close to the divider area
+                constrainedLocation.y = strictBufferZone.minY - 1 // Minimal safety margin
+                
+                // Ensure we don't go outside horizontal bounds
+                constrainedLocation.x = max(gridBounds.minX, min(gridBounds.maxX, constrainedLocation.x))
+                
+                // Re-constrain to ensure we're still within grid bounds
+                constrainedLocation.y = max(gridBounds.minY, constrainedLocation.y)
+            }
+        }
+        
+        // Convert back to collection view coordinates
+        return superview.convert(constrainedLocation, to: collectionView)
+    }
+    
+    /// Calculates a strictly constrained frame for a dragged item
+    /// Similar to SwiftUI's drag constraint approach
+    public func constrainDragFrame(_ frame: CGRect, in view: UIView) -> CGRect {
+        guard let collectionView = view as? UICollectionView else { return frame }
+        guard let superview = collectionView.superview else { return frame }
+        
+        updateGridBounds(for: collectionView)
+        
+        // Convert frame to superview coordinates
+        let frameInSuperview = collectionView.convert(frame, to: superview)
+        var constrainedFrame = frameInSuperview
+        
+        // Constrain the entire frame to stay within grid bounds
+        // Ensure the frame doesn't go outside the allowed area
+        constrainedFrame.origin.x = max(gridBounds.minX, min(gridBounds.maxX - constrainedFrame.width, frameInSuperview.origin.x))
+        constrainedFrame.origin.y = max(gridBounds.minY, min(gridBounds.maxY - constrainedFrame.height, frameInSuperview.origin.y))
+        
+        // Check against exclude zones - ensure the entire frame doesn't intersect
+        for excludeZone in currentConstraints.excludeZones {
+            let bufferZone = excludeZone.insetBy(dx: -6, dy: -6) // Reduced 6pt buffer for more space
+            
+            if constrainedFrame.intersects(bufferZone) {
+                // Move the frame to avoid intersection
+                let frameBottom = constrainedFrame.maxY
+                let frameTop = constrainedFrame.minY
+                let frameRight = constrainedFrame.maxX
+                let frameLeft = constrainedFrame.minX
+                
+                // Calculate distances to move frame outside buffer zone
+                let moveUp = bufferZone.minY - frameBottom
+                let moveDown = frameTop - bufferZone.maxY
+                let moveLeft = bufferZone.minX - frameRight
+                let moveRight = frameLeft - bufferZone.maxX
+                
+                // Choose the smallest movement that avoids intersection
+                let movements = [
+                    (abs(moveUp), CGPoint(x: 0, y: moveUp)),
+                    (abs(moveDown), CGPoint(x: 0, y: moveDown)),
+                    (abs(moveLeft), CGPoint(x: moveLeft, y: 0)),
+                    (abs(moveRight), CGPoint(x: moveRight, y: 0))
+                ].filter { $0.0 >= 0 } // Only consider valid movements
+                
+                if let minMovement = movements.min(by: { $0.0 < $1.0 }) {
+                    constrainedFrame.origin.x += minMovement.1.x
+                    constrainedFrame.origin.y += minMovement.1.y
+                }
+                
+                // Re-constrain to grid bounds after adjustment
+                constrainedFrame.origin.x = max(gridBounds.minX, min(gridBounds.maxX - constrainedFrame.width, constrainedFrame.origin.x))
+                constrainedFrame.origin.y = max(gridBounds.minY, min(gridBounds.maxY - constrainedFrame.height, constrainedFrame.origin.y))
+            }
+        }
+        
+        // Convert back to collection view coordinates
+        return superview.convert(constrainedFrame, to: collectionView)
     }
     
     /// Provides haptic feedback when drag crosses boundary
-    func provideBoundaryFeedback() {
+    public func provideBoundaryFeedback() {
         boundaryFeedbackGenerator?.prepare()
         boundaryFeedbackGenerator?.impactOccurred()
     }
@@ -81,12 +295,12 @@ class GridBoundaryDetector {
     ///   - isOutside: Whether the drag is currently outside bounds
     ///   - collectionView: The collection view being dragged in
     ///   - draggedItemId: The ID of the item being dragged
-    ///   - updateCellBoundaryState: Closure to update the specific cell's boundary state
-    func updateDragBoundaryState(
+    ///   - updateCellBoundaryState: Closure to update the specific cell's boundary state (deprecated)
+    public func updateDragBoundaryState(
         _ isOutside: Bool,
         for collectionView: UICollectionView,
         draggedItemId: String?,
-        updateCellBoundaryState: @escaping (String?, Bool) -> Void
+        updateCellBoundaryState: @escaping (String?, Bool) -> Void = { _, _ in }
     ) {
         guard isDragOutsideBounds != isOutside else { return }
         
@@ -96,11 +310,7 @@ class GridBoundaryDetector {
             // Provide haptic feedback when crossing boundary
             provideBoundaryFeedback()
             
-            // Update visual feedback on dragged cell
-            updateCellBoundaryState(draggedItemId, true)
-        } else {
-            // Restore normal drag appearance when back within bounds
-            updateCellBoundaryState(draggedItemId, false)
+            // Note: Visual feedback removed - drag operations are now blocked at boundaries
         }
     }
     
@@ -127,18 +337,18 @@ class GridBoundaryDetector {
     // MARK: - Boundary State Management
     
     /// Gets the current boundary state
-    var isCurrentlyOutsideBounds: Bool {
+    public var isCurrentlyOutsideBounds: Bool {
         return isDragOutsideBounds
     }
     
     /// Resets the boundary state
-    func resetBoundaryState() {
+    public func resetBoundaryState() {
         isDragOutsideBounds = false
         gridBounds = .zero
     }
     
     /// Returns the current grid bounds
-    func getGridBounds() -> CGRect {
+    public func getGridBounds() -> CGRect {
         return gridBounds
     }
 }
