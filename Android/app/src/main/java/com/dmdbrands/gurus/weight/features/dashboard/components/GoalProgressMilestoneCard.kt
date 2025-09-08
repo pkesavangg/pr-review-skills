@@ -52,8 +52,8 @@ fun GoalProgressMilestoneCard(
   onBadgeClick: () -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
-  val badgeOffsetX = (-28).dp
-  val badgeOffsetY = MeTheme.spacing.sm
+  val badgeOffsetX = MeTheme.spacing.x4s
+  val badgeOffsetY = MeTheme.spacing.x4s
   // Defensive: computations aren't used for UI anymore; GoalMilestoneDisplay owns logic.
   // Keep locals only if needed for future UI extensions.
 
@@ -67,6 +67,7 @@ fun GoalProgressMilestoneCard(
       repeatMode = RepeatMode.Reverse,
     ),
   )
+  val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
 
   BadgedBox(
     badge = {
@@ -79,12 +80,12 @@ fun GoalProgressMilestoneCard(
             .offset(x = badgeOffsetX, y = badgeOffsetY)
             .size(24.dp)
             .clickable { onBadgeClick() }
-            .border(1.dp, MeTheme.colorScheme.iconPrimary, CircleShape),
+            .border(1.dp, iconTint, CircleShape),
         ) {
           Icon(
             imageVector = if (isVisible) Icons.Default.Remove else Icons.Default.Add,
             contentDescription = if (isVisible) "Remove goal progress" else "Add goal progress",
-            tint = MeTheme.colorScheme.iconPrimary,
+            tint = iconTint,
             modifier = Modifier.size(14.dp),
           )
         }

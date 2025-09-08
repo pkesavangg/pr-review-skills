@@ -135,7 +135,7 @@ fun AnimatedStatCard(
       repeatMode = RepeatMode.Reverse,
     ),
   )
-
+  val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
   BadgedBox(
     badge = {
       if (inEditMode && !isDragging) {
@@ -145,7 +145,7 @@ fun AnimatedStatCard(
           modifier = Modifier
             .size(24.dp)
             .clickable { onBadgeClick() }
-            .border(1.dp, MeTheme.colorScheme.iconPrimary, CircleShape),
+            .border(1.dp, iconTint, CircleShape),
         ) {
           Icon(
             imageVector =
@@ -154,7 +154,7 @@ fun AnimatedStatCard(
               else
                 Icons.Default.Add,
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
-            tint = MeTheme.colorScheme.iconPrimary,
+            tint = iconTint,
             modifier = Modifier.size(14.dp),
           )
         }
