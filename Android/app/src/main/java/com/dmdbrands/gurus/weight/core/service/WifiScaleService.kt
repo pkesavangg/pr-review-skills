@@ -84,6 +84,7 @@ class WifiScaleService @Inject constructor(
   @ApplicationContext private val context: Context
 ) {
   private lateinit var currentActivity: ComponentActivity
+  private var TAG = "WifiScaleService"
 
   fun initialise(activity: ComponentActivity) {
     currentActivity = activity
@@ -175,7 +176,10 @@ class WifiScaleService @Inject constructor(
               is SmartConfigResult.Failure -> {
                 val errorMsg =
                   "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}"
-                AppLog.e(TAG, "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}")
+                AppLog.e(
+                  TAG,
+                  "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}",
+                )
                 onError(errorMsg)
               }
             }

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -113,6 +114,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         AppLog.d(TAG, "Next intent received")
         onNext()
       }
+
       ScaleSetupIntent.Back -> {
         AppLog.d(TAG, "Back intent received")
         onBack()
@@ -150,7 +152,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   protected open fun onScanResponse(response: GGScanResponse.DeviceDetail, onDeviceFound: (GGDeviceDetail) -> Unit) {
     val ggDeviceDetail = response.data
     AppLog.d(TAG, "Received scan response: ${response.type}, protocol: ${ggDeviceDetail.protocolType}")
-    
+
     when (response.type) {
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == protocolType) {
@@ -335,14 +337,39 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
+        params =
+          mapOf(
+            "showGuide" to true,
+            "onGuideClick" to {
+              openProductGuide()
+              dialogQueueService.dismissCurrent()
+            },
+          ),
       ),
+      params =
+        mapOf(
+          "showGuide" to true,
+          "onGuideClick" to {
+            openProductGuide()
+            dialogQueueService.dismissCurrent()
+          },
+        ),
     )
+  }
+
+  private fun openProductGuide() {
+    val sku = state.value.scaleSetupState.sku
+    val url = "${AppConfig.PRODUCT_URL}/$sku"
+    openInAppBrowser(url)
   }
 
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
-    AppLog.d(TAG, "Exit setup requested - isSetupFinished: $isSetupFinished, connection status: ${discoveredScale?.connectionStatus}")
+    AppLog.d(
+      TAG,
+      "Exit setup requested - isSetupFinished: $isSetupFinished, connection status: ${discoveredScale?.connectionStatus}",
+    )
     if (isSetupFinished) {
       AppLog.d(TAG, "Setup is finished, proceeding to exit")
       onExit(isSetupFinished)

@@ -90,12 +90,14 @@ fun ScaleMetricItem(
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
       ) {
         // Drag handle
-        AppIcon(
-          id = AppIcons.Default.DragHandler,
-          contentDescription = "Drag handle",
-          modifier = dragHandleModifier.size(24.dp),
-          type = AppIconType.Tertiary,
-        )
+        if(metric.isEnabled) {
+          AppIcon(
+            id = AppIcons.Default.DragHandler,
+            contentDescription = "Drag handle",
+            modifier = dragHandleModifier.size(24.dp),
+            type = AppIconType.Tertiary,
+          )
+        }
 
         // Toggle switch
         AppToggle(

@@ -50,9 +50,8 @@ constructor(
     fun create(scaleInit: SetupInitData<BtScaleSetupStep>): BtScaleSetupViewModel
   }
 
-
   init {
-    AppLog.d(TAG, "BtScaleSetupViewModel initialized for SKU: $sku")
+    AppLog.d(TAG, "BtScaleSetupViewModel initialized for SKU: ${state.value.scaleSetupState.sku}")
     lazyInit()
   }
 
