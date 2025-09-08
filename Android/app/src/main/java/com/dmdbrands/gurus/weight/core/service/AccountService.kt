@@ -115,7 +115,6 @@ constructor(
       AppLog.d(TAG, "login() successful for email: $email")
       savedAccount
     } catch (e: HttpException) {
-      val header = ToastStrings.Error.LoginError.Header
       val msg =
         when (e.code()) {
           HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
@@ -123,8 +122,8 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      showErrorToast(header, msg)
-      AppLog.e(TAG, "Token update failed", e)
+      showErrorToast(message = msg)
+      AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
     }
