@@ -29,7 +29,7 @@ struct ChipView: View {
                 )
                 .overlay(
                     Group {
-                        if style == .bordered && isSelected {
+                        if isSelected {
                             RoundedRectangle(cornerRadius: .radiusXS)
                                 .stroke(theme.actionPrimary, lineWidth: 1.5)
                         }

@@ -13,8 +13,6 @@ struct DateLabelView: View {
     let date: Date
     /// Whether the date picker is currently open/selected.
     var isSelected: Bool = false
-    /// Action to perform when the label is tapped.
-    var chipStyle: ChipStyle?
     let onTap: () -> Void
     @Environment(\.appTheme) var theme
 

@@ -52,21 +52,15 @@ struct ManualEntryScreen: View {
                         
                         HStack(spacing: .spacingSM) {
                             DateLabelView(date: entryStore.manualEntryForm.date.value,
-                                          chipStyle: entryStore.showDatePicker ? .bordered : .normal
+                                          isSelected: entryStore.showDatePicker
                             ) {
                                 withAnimation { entryStore.showDatePicker.toggle()
-                                    if entryStore.showTimePicker {
-                                        entryStore.showTimePicker = false
-                                    }
                                 }
                             }
                             TimeLabelView(time: entryStore.manualEntryForm.time.value,
-                                          chipStyle: entryStore.showTimePicker ? .bordered : .normal) {
+                                          isSelected: entryStore.showTimePicker) {
                                 withAnimation {
                                     entryStore.showTimePicker.toggle()
-                                    if entryStore.showDatePicker {
-                                        entryStore.showDatePicker = false
-                                    }
                                 }
                             }
                         }

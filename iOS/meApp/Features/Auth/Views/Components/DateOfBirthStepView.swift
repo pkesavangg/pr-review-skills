@@ -19,31 +19,22 @@ struct DateOfBirthStepView: View {
     
     var body: some View {
         SignupStepWrapper(title: dateOfBirthStepLang.title, subtitle: dateOfBirthStepLang.subtitle) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 0) {
                 DateLabelView(
                     date: signupStore.signupForm.birthday.value,
-                    chipStyle: showDatePicker ? ChipStyle.bordered : ChipStyle.normal
+                    isSelected: showDatePicker
                 ) {
                     withAnimation { showDatePicker.toggle() }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    DateLabelView(
-                        date: signupStore.signupForm.birthday.value,
-                        isSelected: showDatePicker
-                    ) {
-                        withAnimation { showDatePicker.toggle() }
-                    }
-                    .padding(.top, .spacingMD)
-                    .padding(.leading, 2)
-                    // The date picker appears when showDatePicker is true
-                    DatePickerView(isPresented: $showDatePicker,
-                                   date: $signupStore.signupForm.birthday.value,
-                                   endDate: maxDate)
-                        
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, .spacingLG)
+                .padding(.leading, 2)
+                // The date picker appears when showDatePicker is true
+                DatePickerView(isPresented: $showDatePicker,
+                               date: $signupStore.signupForm.birthday.value,
+                               endDate: maxDate)
+                    
             }
-            .padding(.top, .spacingLG)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
