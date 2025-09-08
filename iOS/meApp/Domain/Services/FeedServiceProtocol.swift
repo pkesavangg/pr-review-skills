@@ -15,7 +15,7 @@ protocol FeedServiceProtocol: AnyObject {
     var feedSettingsChanged: PassthroughSubject<GGFeedSetting?, Never> { get }
 
     /// Emits when the notification badge should be updated
-    var notificationBadgeUpdated: PassthroughSubject<Bool, Never> { get }
+    var notificationBadgeUpdated: CurrentValueSubject<Bool, Never> { get }
 
     // MARK: - Feed Items Management
 
