@@ -327,7 +327,18 @@ class DashboardStore: ObservableObject {
     }
     
     var displayWeight: Double? {
-        // If a point is selected, show its weight value
+        // If a crosshair date is selected (can be on empty day), compute interpolated weight at that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+        }
+
+        // If a concrete point is selected, show its weight value
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return nil }
@@ -338,7 +349,7 @@ class DashboardStore: ObservableObject {
             }
         }
         
-        // When no point is selected, show average of visible region if available
+        // When no selection, show average of visible region if available
         let opsToUse = visibleOperations
         
         // Check if weightless mode is enabled
@@ -355,6 +366,10 @@ class DashboardStore: ObservableObject {
     }
     
     var weightLabel: String {
+        // If a crosshair date is selected, show that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.formatSelectedDate(selectedDate, for: state.graph.selectedPeriod)
+        }
         
         // If a point is selected, show its date
         if let selectedPoint = state.graph.selectedPoint {

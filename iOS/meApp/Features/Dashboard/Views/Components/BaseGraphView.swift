@@ -102,10 +102,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 
                 // Selection callout overlay
-                if let selectedPoint = viewModel.selectedPoint,
+                if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
                    let displayWeight = viewModel.displayWeight,
                    viewModel.showCrosshair {
-                    selectionCallout(for: selectedPoint, weight: displayWeight)
+                    selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
                 // Goal chip overlay
@@ -243,12 +243,15 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
             let xDate = viewModel.plotXDate(for: point.date)
+            // Only enlarge the point that exactly matches the VM's selected date
+            let vmSelected = viewModel.selectedDate
+            let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
             // Invisible tap target
             PointMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
+            .symbolSize(isThisPointSelected ? (viewModel.selectedPointArea * 2) : viewModel.basePointArea)
             .foregroundStyle(.clear)
             
             // Line mark
@@ -266,15 +269,15 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
+            .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
             .foregroundStyle(by: .value("Series", point.series))
         }
     }
     
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = viewModel.selectedPoint, viewModel.showCrosshair {
-            let xDate = viewModel.plotXDate(for: selectedPoint.date)
+        if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue), viewModel.showCrosshair {
+            let xDate = viewModel.plotXDate(for: selectedDate)
             RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
                 .foregroundStyle(theme.actionSecondary)
@@ -301,10 +304,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
     
     // MARK: - Selection Callout
-    
     @ViewBuilder
-    private func selectionCallout(for selectedPoint: BathScaleWeightSummary, weight: Double) -> some View {
-        if let chartPosition = viewModel.getChartPosition(for: selectedPoint.date, value: weight) {
+    private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
+        if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: weight) {
             // Base positioning relative to the selected point
             let isOnLeftSide = chartPosition.x < viewModel.chartFrame.width / 2
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
@@ -321,7 +323,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
     
     // MARK: - Goal Chip Callout
-    
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalPosition = viewModel.getGoalChipPosition()
@@ -427,10 +428,19 @@ extension View {
                             if let selectedDate = newValue {
                                 localSelectedXValue.wrappedValue = newValue
                                 viewModel.handleChartSelection(at: newValue)
-                                
-                                // Update dashboard store selection
-                                Task {
-                                    await dashboardStore.handleChartSelection(at: selectedDate)
+                                // If the view-model decided there is no value at this position,
+                                // do not show crosshair nor propagate a selection to the store.
+                                if viewModel.showCrosshair {
+                                    // Use snapped date from view model when available
+                                    let dateToSend = (viewModel as? WeekSectionViewModel)?.selectedDate ?? viewModel.selectedDate ?? selectedDate
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: nil)
+                                    }
                                 }
                             }
                         }
@@ -459,10 +469,15 @@ extension View {
                         localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
                         
-                        // Update dashboard store selection
-                        if let selectedDate = newValue {
-                            Task {
-                                await dashboardStore.handleChartSelection(at: selectedDate)
+                        // Update dashboard store selection using snapped date when available
+                        if let rawDate = newValue {
+                            if viewModel.showCrosshair {
+                                let dateToSend = viewModel.selectedDate ?? rawDate
+                                Task {
+                                    await dashboardStore.handleChartSelection(at: dateToSend)
+                                }
+                            } else {
+                                Task { await dashboardStore.handleChartSelection(at: nil) }
                             }
                         }
                     }

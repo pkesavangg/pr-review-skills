@@ -95,6 +95,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // Hide any existing crosshair first
         state.showCrosshair = false
+        // Persist the raw selected X position so UI can render crosshair even if there's no data point
+        state.selectedXValue = selectedDate
 
         guard !operations.isEmpty else { return }
 
@@ -116,6 +118,52 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
             resetMetrics()
         }
+    }
+
+    /// Computes an interpolated display weight at a given date using surrounding summaries.
+    /// If only one side exists, falls back to that side's display weight.
+    func interpolatedDisplayWeight(
+        at date: Date,
+        from operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double? {
+        guard !operations.isEmpty else { return nil }
+
+        // Find the immediate neighbors around the target date
+        let sorted = operations.sorted { $0.date < $1.date }
+        var previous: BathScaleWeightSummary?
+        var next: BathScaleWeightSummary?
+
+        for op in sorted {
+            if op.date <= date { previous = op } else { next = op; break }
+        }
+
+        // Helper to map stored weight to display/weightless value
+        func mapWeight(_ w: Int) -> Double {
+            if isWeightlessMode {
+                guard let anchor = anchorWeight else { return 0 }
+                return convertWeight(w) - anchor
+            }
+            return convertWeight(w)
+        }
+
+        if let prev = previous, let next = next {
+            // Linear interpolation by time
+            let t0 = prev.date.timeIntervalSinceReferenceDate
+            let t1 = next.date.timeIntervalSinceReferenceDate
+            let t = date.timeIntervalSinceReferenceDate
+            let v0 = mapWeight(Int(prev.weight))
+            let v1 = mapWeight(Int(next.weight))
+            let denom = max(t1 - t0, 1) // avoid divide by zero
+            let ratio = min(max((t - t0) / denom, 0), 1)
+            return v0 + (v1 - v0) * ratio
+        }
+
+        if let prev = previous { return mapWeight(Int(prev.weight)) }
+        if let next = next { return mapWeight(Int(next.weight)) }
+        return nil
     }
 
     func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {

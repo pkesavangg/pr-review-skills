@@ -19,8 +19,10 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         return .week
     }
     
-    override var maxGapForConnectedSegments: TimeInterval {
-        return 14 * 24 * 60 * 60 // 14 days gap for week view
+    /// Connect across any gap in week view
+    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
+        let sorted = dataPoints.sorted { $0.date < $1.date }
+        return sorted.isEmpty ? [] : [sorted]
     }
 
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
@@ -39,5 +41,44 @@ final class WeekSectionViewModel: BaseSectionViewModel {
             return super.plotXDate(for: original)
         }
         return noon
+    }
+
+    /// Override selection to snap to nearest day tick (noon) and
+    /// hide the crosshair if the snapped day has no data.
+    override func handleChartSelection(at date: Date?) {
+        guard let date = date else { return }
+        guard dashboardStore != nil else { return }
+
+        // Exclude the trailing phantom tick when snapping
+        let ticks = xAxisValues
+        let realTicks: [Date] = ticks.count > 1 ? Array(ticks.dropLast()) : ticks
+        guard !realTicks.isEmpty else { return }
+
+        // Snap to nearest tick by absolute time distance
+        let snapped = realTicks.min { a, b in
+            abs(a.timeIntervalSince(date)) < abs(b.timeIntervalSince(date))
+        } ?? date
+
+        // Determine whether the snapped X falls within the drawn line bounds.
+        // For week view a continuous line exists only between the first and last points.
+        // Show crosshair if snapped is within [firstPoint, lastPoint], else hide it.
+        let effectiveDates = chartOperations
+            .map { plotXDate(for: $0.date) }
+            .sorted()
+
+        if let first = effectiveDates.first, let last = effectiveDates.last {
+            if snapped >= first && snapped <= last {
+                selectedDate = snapped
+                showCrosshair = true
+            } else {
+                selectedDate = nil
+                showCrosshair = false
+            }
+        } else {
+            // No data → hide selection
+            selectedDate = nil
+            showCrosshair = false
+        }
+        // Do not compute selectedPoint here; DashboardStore will update metrics using nearest point
     }
 }

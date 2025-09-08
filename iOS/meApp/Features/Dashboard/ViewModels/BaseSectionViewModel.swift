@@ -416,12 +416,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     func formatSelectedXAxisLabel() -> String? {
-        guard
-            let store = dashboardStore,
-            let date = store.state.graph.selectedPoint?.date 
-        else { return nil }
-
-        return dashboardStore?.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+        guard let store = dashboardStore else { return nil }
+        // Prefer the view model's snapped selection first for immediate UI sync
+        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
+        guard let date else { return nil }
+        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers

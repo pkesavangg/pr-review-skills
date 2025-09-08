@@ -69,8 +69,8 @@ struct HistoryMonthListScreen: View {
                 }
             }
          })
-        .onChange(of: historyStore.isEmptyState) { _, isEmpty in
-            if isEmpty {
+        .onChange(of: historyStore.entries) { _, entries in
+            if entries.isEmpty {
                 dismiss()
             }
         }
