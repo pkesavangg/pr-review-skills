@@ -12,6 +12,7 @@ struct DateLabelView: View {
     /// The date to display.
     let date: Date
     /// Action to perform when the label is tapped.
+    var chipStyle: ChipStyle?
     let onTap: () -> Void
     @Environment(\.appTheme) var theme
 
@@ -28,7 +29,7 @@ struct DateLabelView: View {
     }()
 
     var body: some View {
-        ChipView(text: formattedDateString) {
+        ChipView(text: formattedDateString, style: chipStyle ?? ChipStyle.normal) {
             onTap()
         }
     }

@@ -45,7 +45,7 @@ struct SignupScreen: View {
             NavbarHeaderView(
                 title: isFromAccountSwitching ? commonLang.signUp.capitalized : "",
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
+                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
@@ -65,7 +65,7 @@ struct SignupScreen: View {
             )
             
             ProgressBarView(progress: signupStore.progressValue)
-                .padding(.spacingSM)
+                .padding([.horizontal, .top], .spacingSM)
             
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,

@@ -12,6 +12,7 @@ struct TimeLabelView: View {
     /// Time to display (only hour & minute parts are considered).
     let time: Date
     /// Action to perform when tapped.
+    var chipStyle: ChipStyle?
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
 
@@ -28,7 +29,7 @@ struct TimeLabelView: View {
     }()
 
     var body: some View {
-        ChipView(text: formattedTimeString) {
+        ChipView(text: formattedTimeString, style: chipStyle ?? .normal) {
             onTap()
         }
     }

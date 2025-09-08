@@ -34,6 +34,12 @@ struct TimePickerView: View {
                 RoundedRectangle(cornerRadius: .radiusMD)
                     .fill(theme.backgroundPrimary)
             )
+            .onAppear {
+                if time > endTime { time = endTime }
+            }
+            .onChange(of: endTime) { _, newEnd in
+                if time > newEnd { time = newEnd }
+            }
         }
     }
 }

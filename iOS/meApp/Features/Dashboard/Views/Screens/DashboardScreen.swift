@@ -84,8 +84,6 @@ struct DashboardScreen: View {
         ) { _ in
             if store.state.ui.isEditMode { store.cancelEdit() }
         }
-        .presentAlert(alertData: $store.state.ui.alertData)
-        .presentLoader(loaderData: store.loaderData)
         .onChange(of: scenePhase) { _, newPhase in
             if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
                 store.cancelEdit()

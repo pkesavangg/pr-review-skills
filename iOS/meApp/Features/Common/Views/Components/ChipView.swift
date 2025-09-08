@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-
 struct ChipView: View {
     @Environment(\.appTheme) private var theme
     let text: String
