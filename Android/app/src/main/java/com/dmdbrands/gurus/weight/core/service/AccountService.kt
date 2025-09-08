@@ -122,7 +122,7 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      // showErrorToast(header, msg)
+      showErrorToast(header, msg)
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
