@@ -18,34 +18,23 @@ struct DateOfBirthStepView: View {
     @State private var showDatePicker = false
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        SignupStepWrapper(title: dateOfBirthStepLang.title, subtitle: dateOfBirthStepLang.subtitle) {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(dateOfBirthStepLang.title)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
+                DateLabelView(
+                    date: signupStore.signupForm.birthday.value,
+                    isSelected: showDatePicker
+                ) {
+                    withAnimation { showDatePicker.toggle() }
+                }
+                .padding(.top, .spacingLG)
+                .padding(.leading, 2)
+                // The date picker appears when showDatePicker is true
+                DatePickerView(isPresented: $showDatePicker,
+                               date: $signupStore.signupForm.birthday.value,
+                               endDate: maxDate)
                     
-                    Text(dateOfBirthStepLang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textHeading)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    DateLabelView(
-                        date: signupStore.signupForm.birthday.value,
-                        isSelected: showDatePicker
-                    ) {
-                        withAnimation { showDatePicker.toggle() }
-                    }
-                    .padding(.top, .spacingMD)
-                    .padding(.leading, 2)
-                    // The date picker appears when showDatePicker is true
-                    DatePickerView(isPresented: $showDatePicker,
-                                   date: $signupStore.signupForm.birthday.value,
-                                   endDate: maxDate)
-                        
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
