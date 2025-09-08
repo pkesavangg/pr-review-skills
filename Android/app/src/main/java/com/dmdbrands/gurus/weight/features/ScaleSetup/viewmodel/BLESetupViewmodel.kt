@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -423,8 +424,22 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
+        params =
+          mapOf(
+            "showGuide" to true,
+            "onGuideClick" to {
+              openProductGuide()
+              dialogQueueService.dismissCurrent()
+            },
+          ),
       ),
     )
+  }
+
+  private fun openProductGuide() {
+    val sku = state.value.scaleSetupState.sku
+    val url = "${AppConfig.PRODUCT_URL}/$sku"
+    openInAppBrowser(url)
   }
 
   private fun onExitSetup(
