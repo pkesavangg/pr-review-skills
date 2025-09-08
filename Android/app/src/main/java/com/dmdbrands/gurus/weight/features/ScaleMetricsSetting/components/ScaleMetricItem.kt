@@ -16,14 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.scaleMetrics
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.AppToggle
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.scaleMetrics
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -90,12 +90,14 @@ fun ScaleMetricItem(
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
       ) {
         // Drag handle
-        AppIcon(
-          id = AppIcons.Default.DragHandler,
-          contentDescription = "Drag handle",
-          modifier = dragHandleModifier.size(24.dp),
-          type = AppIconType.Tertiary,
-        )
+        if(metric.isEnabled) {
+          AppIcon(
+            id = AppIcons.Default.DragHandler,
+            contentDescription = "Drag handle",
+            modifier = dragHandleModifier.size(24.dp),
+            type = AppIconType.Tertiary,
+          )
+        }
 
         // Toggle switch
         AppToggle(
