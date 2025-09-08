@@ -145,7 +145,7 @@ struct AppInputField: View {
                 }
             }
         }
-        .padding(.trailing, 14)
+        .padding(.trailing, .spacingXS)
     }
 
     private var disabledIcon: some View {
@@ -155,7 +155,9 @@ struct AppInputField: View {
 
     private var clearButton: some View {
         Button(action: {
-            value = ""
+            withAnimation {
+                value = ""
+            }
         }) {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)

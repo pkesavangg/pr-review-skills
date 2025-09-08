@@ -31,6 +31,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
@@ -78,8 +79,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private fun onInit() {
     AppLog.d(TAG, "Starting BLESetupViewmodel initialization")
     loadScaleInfo()
-    observeStepChanges()
     observePermissions()
+    observeStepChanges()
   }
 
   // Abstract methods for concrete implementations
@@ -101,6 +102,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private var permissions: GGPermissionStatusMap? = null
 
   var isPermissionGranted = false
+  private var isProcessingPermissions = false
+  private var permissionTimeoutJob: Job? = null
 
   var currentSetupState: SetupState<Step> = SetupState(
     provideInitialState().step,
@@ -314,9 +317,89 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             AppLog.d(TAG, "User confirmed permission request for: $permissionType")
             permissionService.requestPermission(permissionType)
           },
+          onDismiss = {
+            AppLog.d(TAG, "User dismissed permission request for: $permissionType")
+            permissionTimeoutJob?.cancel()
+            isProcessingPermissions = false
+          }
         )
       } catch (e: Exception) {
         AppLog.e(TAG, "Error requesting permission $permissionType", e)
+        permissionTimeoutJob?.cancel()
+        isProcessingPermissions = false
+      }
+    }
+  }
+
+  /**
+   * Handles permission access similar to Angular's permissionAccess() method.
+   * Checks and prompts for required permissions sequentially.
+   */
+  protected fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+
+    // Check if we're already processing permissions to prevent repeated requests
+    if (isProcessingPermissions) {
+      AppLog.d(TAG, "Already processing permissions, skipping")
+      return
+    }
+
+    // Clear any existing timeout
+    permissionTimeoutJob?.cancel()
+
+    // Check Bluetooth Switch permission
+    if (currentPermissions[GGPermissionType.BLUETOOTH_SWITCH] != GGPermissionState.ENABLED) {
+      AppLog.d(TAG, "Requesting Bluetooth Switch permission")
+      isProcessingPermissions = true
+      startPermissionTimeout()
+      handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.BLUETOOTH_SWITCH))
+      return
+    }
+
+    // For Android API 31+ (Android 12+), check NEARBY_DEVICE permission
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+      if (currentPermissions[GGPermissionType.NEARBY_DEVICE] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Nearby Device permission")
+        isProcessingPermissions = true
+        startPermissionTimeout()
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.NEARBY_DEVICE))
+        return
+      }
+    } else {
+      // For older Android versions, check Location permissions
+      if (currentPermissions[GGPermissionType.LOCATION_SWITCH] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location Switch permission")
+        isProcessingPermissions = true
+        startPermissionTimeout()
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION_SWITCH))
+        return
+      }
+
+      if (currentPermissions[GGPermissionType.LOCATION] != GGPermissionState.ENABLED) {
+        AppLog.d(TAG, "Requesting Location permission")
+        isProcessingPermissions = true
+        startPermissionTimeout()
+        handleIntent(ScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION))
+        return
+      }
+    }
+
+    AppLog.d(TAG, "All required permissions are enabled")
+    isProcessingPermissions = false
+  }
+
+  /**
+   * Starts a timeout to reset the permission processing flag in case something goes wrong.
+   */
+  private fun startPermissionTimeout() {
+    permissionTimeoutJob?.cancel()
+    permissionTimeoutJob = viewModelScope.launch {
+      try {
+        delay(30000) // 30 seconds timeout
+        AppLog.w(TAG, "Permission request timeout, resetting processing flag")
+        isProcessingPermissions = false
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error in permission timeout", e)
       }
     }
   }
@@ -441,6 +524,10 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
       }
 
       AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+
+      // Reset processing flag when permissions are updated
+      isProcessingPermissions = false
+
       permissions.toMutableMap().apply {
         put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
       }
@@ -465,6 +552,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         AppLog.e(TAG, "Error loading scale info", e)
       }
     }
+  }
+
+  override fun onCleared() {
+    super.onCleared()
+    permissionTimeoutJob?.cancel()
+    bluetoothTimeoutJob?.cancel()
+    deviceObservationJob?.cancel()
+    entryObservationJob?.cancel()
   }
 
   companion object {

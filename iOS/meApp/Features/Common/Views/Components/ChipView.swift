@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-
 struct ChipView: View {
     @Environment(\.appTheme) private var theme
     let text: String
@@ -30,7 +29,7 @@ struct ChipView: View {
                 )
                 .overlay(
                     Group {
-                        if style == .bordered && isSelected {
+                        if isSelected {
                             RoundedRectangle(cornerRadius: .radiusXS)
                                 .stroke(theme.actionPrimary, lineWidth: 1.5)
                         }

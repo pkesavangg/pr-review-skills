@@ -19,39 +19,27 @@ struct EmailStepView: View {
     var labels = InputFieldLabels.self
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(emailStepLang.title)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-                    
-                    Text(emailStepLang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textHeading)
-                }
-                
-                VStack(spacing: 4) {
-                    // Email Input Field
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.email,
-                            inputType: .email,
-                            errorMessage: signupStore.getError(for: signupStore.signupForm.email),
-                            focusField: .email
-                        ),
-                        value: $signupStore.signupForm.email.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = nil
-                        if signupStore.isNextEnabled {
-                            signupStore.moveToNextStep()
-                        }
+        SignupStepWrapper(title: emailStepLang.title, subtitle: emailStepLang.subtitle) {
+            VStack(spacing: 4) {
+                // Email Input Field
+                AppInputField(
+                    config: TextInputConfig(
+                        label: labels.email,
+                        inputType: .email,
+                        errorMessage: signupStore.getError(for: signupStore.signupForm.email),
+                        focusField: .email
+                    ),
+                    value: $signupStore.signupForm.email.value,
+                    focusedField: $focusedField
+                ) {
+                    focusedField = nil
+                    if signupStore.isNextEnabled {
+                        signupStore.moveToNextStep()
                     }
                 }
-                .padding(.top, .spacingLG)
-                Spacer()
             }
+            .padding(.top, .spacingLG)
+            Spacer()
         }
         .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
     }

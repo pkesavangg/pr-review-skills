@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.core.di
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
+import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.service.AppSyncService
+import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.BodyCompositionService
 import com.dmdbrands.gurus.weight.core.service.DashboardService
 import com.dmdbrands.gurus.weight.core.service.DeviceInfoService
@@ -22,6 +24,7 @@ import com.dmdbrands.gurus.weight.data.api.IExportAPI
 import com.dmdbrands.gurus.weight.data.services.EntryService
 import com.dmdbrands.gurus.weight.data.services.ExportService
 import com.dmdbrands.gurus.weight.data.storage.datastore.BaseProtoDataStore
+import com.dmdbrands.gurus.weight.data.storage.datastore.BluetoothPreferencesDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.GoalAlertDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
@@ -102,6 +105,26 @@ object ServiceModule {
   @Provides
   @Singleton
   fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
+
+  /**
+   * Provides a singleton instance of [AppStatusService].
+   * @return [AppStatusService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideAppStatusService(): AppStatusService = AppStatusService
+
+  /**
+   * Provides a singleton instance of [BluetoothPreferencesService].
+   * @param bluetoothPreferencesDataStore The Bluetooth preferences DataStore.
+   * @param appStatusService The app status service for testing features.
+   * @return [BluetoothPreferencesService] instance.
+   */
+  @Provides
+  @Singleton
+  fun provideBluetoothPreferencesService(
+    bluetoothPreferencesDataStore: BluetoothPreferencesDataStore,
+  ): BluetoothPreferencesService = BluetoothPreferencesService(bluetoothPreferencesDataStore)
 
   /**
    * Provides a singleton instance of [IWifiscaleService].
@@ -370,10 +393,12 @@ object ServiceModule {
     userDataStore: UserDataStore,
     fcmDataStore: FcmDataStore,
     healthConnectDataStore: HealthConnectDataStore,
+    bluetoothPreferencesDataStore: BluetoothPreferencesDataStore,
   ): Set<BaseProtoDataStore<*>> = setOf(
     userDataStore,
     fcmDataStore,
     healthConnectDataStore,
+    bluetoothPreferencesDataStore,
   )
 
   @Provides
