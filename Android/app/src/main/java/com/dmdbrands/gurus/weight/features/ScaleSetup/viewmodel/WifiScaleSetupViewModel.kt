@@ -396,14 +396,6 @@ constructor(
             },
           ),
       ),
-      params =
-        mapOf(
-          "showGuide" to true,
-          "onGuideClick" to {
-            openProductGuide()
-            dialogQueueService.dismissCurrent()
-          },
-        ),
     )
   }
 
@@ -893,6 +885,7 @@ constructor(
             startSmartConnect()
             return // Don't proceed to next step yet
           }
+
           "Finish", "close", "exit", "Close" -> {
             startExitSetup(true)
             return

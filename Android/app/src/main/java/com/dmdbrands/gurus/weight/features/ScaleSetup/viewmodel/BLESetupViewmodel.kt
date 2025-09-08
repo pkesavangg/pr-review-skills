@@ -119,14 +119,17 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         AppLog.d(TAG, "Back intent received")
         onBack()
       }
+
       ScaleSetupIntent.Skip -> {
         AppLog.d(TAG, "Skip intent received")
         onSkip()
       }
+
       ScaleSetupIntent.TryAgain -> {
         AppLog.d(TAG, "Try again intent received")
         onTryAgain()
       }
+
       is ScaleSetupIntent.ExitSetup -> {
         AppLog.d(TAG, "Exit setup intent received, isSetupFinished: ${intent.isSetupFinished}")
         onExitSetup(intent.isSetupFinished)
@@ -136,6 +139,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         AppLog.d(TAG, "Open help intent received")
         openHelpModal()
       }
+
       is ScaleSetupIntent.RequestPermission -> {
         AppLog.d(TAG, "Request permission intent received: ${intent.permission}")
         this.requestPermission(intent.permission)
@@ -346,14 +350,6 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             },
           ),
       ),
-      params =
-        mapOf(
-          "showGuide" to true,
-          "onGuideClick" to {
-            openProductGuide()
-            dialogQueueService.dismissCurrent()
-          },
-        ),
     )
   }
 
