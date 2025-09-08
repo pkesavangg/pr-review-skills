@@ -13,6 +13,9 @@ struct TimePickerView: View {
     @Binding var isPresented: Bool
     /// Currently selected time.
     @Binding var time: Date
+    /// The selected calendar date for which the time should apply.
+    /// We align the `time`'s day/month/year to this value to avoid cross-day clamping.
+    var selectedDate: Date
     /// Maximum selectable time (inclusive).
     var endTime: Date = Date()
     @Environment(\.appTheme) private var theme
@@ -35,16 +38,35 @@ struct TimePickerView: View {
                     .fill(theme.backgroundPrimary)
             )
             .onAppear {
-                if time > endTime { time = endTime }
+                let aligned = align(time: time, to: selectedDate)
+                time = aligned > endTime ? endTime : aligned
             }
             .onChange(of: endTime) { _, newEnd in
-                if time > newEnd { time = newEnd }
+                let aligned = align(time: time, to: selectedDate)
+                time = aligned > newEnd ? newEnd : aligned
+            }
+            .onChange(of: selectedDate) { _, newDate in
+                let aligned = align(time: time, to: newDate)
+                time = aligned > endTime ? endTime : aligned
             }
         }
+    }
+
+    /// Aligns a Date's time-of-day to a specific calendar date (preserving hour/minute/second).
+    private func align(time: Date, to date: Date) -> Date {
+        let calendar = Calendar.current
+        var dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: time)
+        dateComponents.hour = timeComponents.hour
+        dateComponents.minute = timeComponents.minute
+        dateComponents.second = timeComponents.second
+        return calendar.date(from: dateComponents) ?? time
     }
 }
 
 #Preview {
-    TimePickerView(isPresented: .constant(true), time: .constant(Date()))
+    TimePickerView(isPresented: .constant(true),
+                   time: .constant(Date()),
+                   selectedDate: Date())
         .environmentObject(Theme.shared)
-} 
+}

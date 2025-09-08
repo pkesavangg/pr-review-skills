@@ -72,6 +72,7 @@ struct ManualEntryScreen: View {
                         
                         TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
+                                       selectedDate: entryStore.manualEntryForm.date.value,
                                        endTime: entryStore.maxSelectableTime)
                     }
                     

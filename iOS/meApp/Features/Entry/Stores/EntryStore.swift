@@ -208,7 +208,7 @@ final class EntryStore: ObservableObject {
         // Clamp time whenever the selected date changes so future time isn't allowed for today
         manualEntryForm.date.$value
             .sink { [weak self] newDate in
-                // Defer to next runloop to ensure latest bound values are visible
+                // Defer to next runloop to avoid re-entrant updates during Combine delivery
                 DispatchQueue.main.async {
                     self?.clampTimeForSelectedDate(selectedDate: newDate)
                 }
@@ -218,6 +218,7 @@ final class EntryStore: ObservableObject {
         // Also clamp when time changes (e.g., user picks a future time while date is today)
         manualEntryForm.time.$value
             .sink { [weak self] newTime in
+                // Defer to next runloop to avoid re-entrant updates during Combine delivery
                 DispatchQueue.main.async {
                     self?.clampTimeForSelectedDate(selectedTime: newTime)
                 }

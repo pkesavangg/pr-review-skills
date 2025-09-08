@@ -36,7 +36,7 @@ final class WeekSectionViewModel: BaseSectionViewModel {
 
         let dayStart = cal.startOfDay(for: original)
         guard let noon = cal.date(byAdding: .hour, value: 12, to: dayStart),
-              let nextNoon = cal.date(byAdding: .day, value: 1, to: noon) else {
+              let nextNoon = cal.date(byAdding: .hour, value: 0, to: noon) else {
             return super.plotXDate(for: original)
         }
 
