@@ -16,6 +16,7 @@ struct AppIconView: View {
     var body: some View {
         Image(icon)
             .renderingMode(.template)
+            .resizable()
             .frame(width: size.width, height: size.height)
     }
 }
