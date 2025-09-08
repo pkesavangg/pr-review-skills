@@ -171,6 +171,7 @@ fun CustomizeScaleSettings(
             metricData = emptyList(),
             visibleKeys = state.dashboardKeys,
             inEditMode = true,
+            isFromSetup = true,
             onMetricsChanged = {
               dashboardMetricKeys = it
             },

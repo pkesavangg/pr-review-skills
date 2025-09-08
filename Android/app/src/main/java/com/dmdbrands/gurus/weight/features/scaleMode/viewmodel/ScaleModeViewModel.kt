@@ -17,7 +17,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import android.util.Log
 
 @HiltViewModel(
   assistedFactory = ScaleModeViewModel.Factory::class,
@@ -62,10 +61,10 @@ constructor(
           device?.let { scaleDevice ->
             AppLog.d(TAG, "Setting scale device: ${scaleDevice.id}")
             handleIntent(ScaleModeIntent.SetScale(scaleDevice))
-            
+
             val shouldMeasureImpedance = scaleDevice.preferences?.shouldMeasureImpedance == true
             val shouldMeasurePulse = scaleDevice.preferences?.shouldMeasurePulse == true
-            
+
             AppLog.d(TAG, "Setting mode - Impedance: $shouldMeasureImpedance, Pulse: $shouldMeasurePulse")
             handleIntent(ScaleModeIntent.SetMode(shouldMeasureImpedance, false))
             handleIntent(ScaleModeIntent.SetHeartRate(shouldMeasurePulse, false))
@@ -98,10 +97,13 @@ constructor(
       showToast(ScaleModeStrings.Toast.Error)
       return
     }
-    
+
     AppLog.d(TAG, "Saving mode settings for scale: ${scale.id}")
-    AppLog.d(TAG, "Current settings - All body metrics: ${currentState.isAllBodyMetrics}, Heart rate: ${currentState.isHeartRateOn}")
-    
+    AppLog.d(
+      TAG,
+      "Current settings - All body metrics: ${currentState.isAllBodyMetrics}, Heart rate: ${currentState.isHeartRateOn}",
+    )
+
     viewModelScope.launch {
       try {
         // Build updated displayMetrics based on heart rate setting
@@ -121,7 +123,10 @@ constructor(
             displayMetrics = updatedDisplayMetrics,
           )!!
 
-        AppLog.d(TAG, "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}")
+        AppLog.d(
+          TAG,
+          "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}",
+        )
 
         // Update scale preferences via API
         val success = deviceService.updateScalePreferences(scaleId, preferences)
@@ -134,6 +139,7 @@ constructor(
           deviceService.syncDevices()
           navigateBack()
         } else {
+          dialogQueueService.dismissLoader()
           AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
           showToast(ScaleModeStrings.Toast.Error)
         }
@@ -149,7 +155,10 @@ constructor(
     currentMetrics: List<String>,
     shouldIncludeHeartRate: Boolean,
   ): List<String> {
-    AppLog.d(TAG, "Updating display metrics for heart rate - Current: ${currentMetrics.size}, Include heart rate: $shouldIncludeHeartRate")
+    AppLog.d(
+      TAG,
+      "Updating display metrics for heart rate - Current: ${currentMetrics.size}, Include heart rate: $shouldIncludeHeartRate",
+    )
     val mutableMetrics = currentMetrics.toMutableList()
     val heartRateMetric = "heartRate"
     val goalMetrics = listOf("bodyFat", "muscleMass", "boneMass", "bodyWater") // Common goal metrics

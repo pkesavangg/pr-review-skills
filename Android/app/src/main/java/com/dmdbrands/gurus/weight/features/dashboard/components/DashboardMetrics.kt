@@ -51,6 +51,7 @@ fun DashboardMetrics(
   inEditMode: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
   selectedStat: Stat? = null,
+  isFromSetup: Boolean = false,
   onMetricClick: (Stat?) -> Unit = {},
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
@@ -98,6 +99,7 @@ fun DashboardMetrics(
     selectedStat = selectedStat,
     onMetricClick = onMetricClick,
     onMetricMoved = onMetricMoved,
+    isFromSetup = isFromSetup,
   )
 
   Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -111,6 +113,7 @@ private fun DashboardMetricsGrid(
   visibleMetrics: List<Stat>,
   hiddenMetrics: List<Stat>,
   inEditMode: Boolean,
+  isFromSetup: Boolean,
   selectedStat: Stat?,
   onMetricClick: (Stat?) -> Unit,
   onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
@@ -167,6 +170,7 @@ private fun DashboardMetricsGrid(
             isDragging = isDragging,
             inEditMode = inEditMode,
             isSelected = isSelected,
+            isFromSetup = isFromSetup,
             modifier = Modifier.draggableHandle(
               enabled = inEditMode,
               onDragStarted = {

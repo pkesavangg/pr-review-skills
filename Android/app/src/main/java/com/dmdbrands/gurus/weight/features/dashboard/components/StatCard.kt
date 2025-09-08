@@ -50,6 +50,7 @@ internal fun StatCard(
   isVisible: Boolean = true,
   isSelected: Boolean = false,
   modifier: Modifier = Modifier,
+  isFromSetup: Boolean = false,
   isPlaceHolder: Boolean = false,
   onMetricClick: (Stat) -> Unit = {}
 ) {
@@ -120,6 +121,7 @@ fun AnimatedStatCard(
   isDragging: Boolean = false,
   isSelected: Boolean? = false,
   isVisible: Boolean = true,
+  isFromSetup: Boolean = true,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
   onClick: () -> Unit = {},
@@ -172,6 +174,7 @@ fun AnimatedStatCard(
       isVisible = isVisible,
       isSelected = isSelected ?: false,
       modifier = modifier,
+      isFromSetup = isFromSetup,
     ) {
       onClick()
     }

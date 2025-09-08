@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
@@ -18,7 +19,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 @HiltViewModel(
   assistedFactory = ScaleDisplayMetricsViewModel.Factory::class,
@@ -92,6 +92,7 @@ constructor(
           navigateBack()
         } else {
           showToast(ScaleDisplayMetricsStrings.Toast.Error)
+          dialogQueueService.dismissLoader()
         }
       } catch (err: Exception) {
         AppLog.e("ScaleDisplayMetricsViewModel", "Failed to save display metrics", err)
