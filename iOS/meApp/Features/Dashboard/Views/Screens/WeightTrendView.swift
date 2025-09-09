@@ -40,11 +40,7 @@ struct WeightTrendView: View {
         }
         // Update store period immediately without animating the whole subtree
         .onChange(of: localSelectedPeriod) { _, newValue in
-            var txn = Transaction()
-            txn.disablesAnimations = true
-            withTransaction(txn) {
-                dashboardStore.updateSelectedPeriod(newValue)
-            }
+            dashboardStore.updateSelectedPeriod(newValue)
         }
     }
     

@@ -9,6 +9,17 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
     private let context: ModelContext = PersistenceController.shared.context
+    
+    /// Executes a fetch on a background ModelContext to avoid blocking the main actor.
+    /// - Parameter work: Closure that performs the fetch using the provided background context.
+    /// - Returns: The result of the fetch work.
+    private func performBackgroundFetch<T>(_ work: @escaping (ModelContext) throws -> T) async throws -> T {
+        let container = PersistenceController.shared.container
+        return try await Task.detached(priority: .userInitiated) {
+            let backgroundContext = ModelContext(container)
+            return try work(backgroundContext)
+        }.value
+    }
 
     // MARK: - CRUD
 
@@ -17,15 +28,19 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: The Entry object, or nil if not found.
     func fetchEntry(byId id: String) async throws -> Entry? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
-        return try context.fetch(descriptor).first
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            return try ctx.fetch(descriptor).first
+        }
     }
 
     /// Fetches all entries stored locally.
     /// - Returns: An array of all Entry objects.
     func fetchAllEntries() async throws -> [Entry] {
-        let descriptor = FetchDescriptor<Entry>()
-        return try context.fetch(descriptor)
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>()
+            return try ctx.fetch(descriptor)
+        }
     }
 
     /// Saves a new entry to the local data store.
@@ -45,19 +60,28 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Deletes an entry by its unique UUID string.
     /// - Parameter id: The UUID string of the entry to delete.
     func deleteEntry(byId id: String) async throws {
-        if let entry = try await fetchEntry(byId: id) {
-            context.delete(entry)
-            try context.save()
+        try await performBackgroundFetch { ctx in
+            guard let uuid = UUID(uuidString: id) else { return () }
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let entry = try ctx.fetch(descriptor).first {
+                ctx.delete(entry)
+                try ctx.save()
+            }
+            return ()
         }
     }
 
     /// Deletes all entries from the local data store.
     func deleteAllEntries() async throws {
-        let all = try await fetchAllEntries()
-        for entry in all {
-            context.delete(entry)
+        try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>()
+            let all = try ctx.fetch(descriptor)
+            for entry in all {
+                ctx.delete(entry)
+            }
+            try ctx.save()
+            return ()
         }
-        try context.save()
     }
 
     // MARK: - Query
@@ -66,15 +90,17 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: An array of Entry objects for the user.
     func fetchEntries(forUserId userId: String, operationType: String? = nil) async throws -> [Entry] {
-        let descriptor: FetchDescriptor<Entry>
-        if let opType = operationType {
-            descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-                $0.accountId == userId && $0.operationType == opType
-            })
-        } else {
-            descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+        return try await performBackgroundFetch { ctx in
+            let descriptor: FetchDescriptor<Entry>
+            if let opType = operationType {
+                descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                    $0.accountId == userId && $0.operationType == opType
+                })
+            } else {
+                descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+            }
+            return try ctx.fetch(descriptor)
         }
-        return try context.fetch(descriptor)
     }
 
     /// Fetches all entries for a specific user and timestamp.
@@ -83,8 +109,10 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - timestamp: The timestamp to filter entries by.
     /// - Returns: An array of Entry objects for the user and timestamp.
     func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] {
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
-        return try context.fetch(descriptor)
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
+            return try ctx.fetch(descriptor)
+        }
     }
 
     /// Fetches all entries for a specific month and user.
@@ -105,12 +133,14 @@ final class EntryRepository: EntryRepositoryProtocol {
         let isoFormatter = ISO8601DateFormatter()
         let startString = isoFormatter.string(from: startDate)
         let endString = isoFormatter.string(from: endDate)
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-            $0.accountId == userId &&
-            $0.entryTimestamp >= startString &&
-            $0.entryTimestamp < endString
-        })
-        return try context.fetch(descriptor)
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == userId &&
+                $0.entryTimestamp >= startString &&
+                $0.entryTimestamp < endString
+            })
+            return try ctx.fetch(descriptor)
+        }
     }
 
     /// Fetches all entries for a specific day and user.
@@ -128,30 +158,36 @@ final class EntryRepository: EntryRepositoryProtocol {
       let isoFormatter = ISO8601DateFormatter()
       let startString = isoFormatter.string(from: startDate)
       let endString = isoFormatter.string(from: endDate)
-      let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-        $0.accountId == userId &&
-        $0.entryTimestamp >= startString &&
-        $0.entryTimestamp < endString
-      })
-      return try context.fetch(descriptor)
+      return try await performBackgroundFetch { ctx in
+          let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+            $0.accountId == userId &&
+            $0.entryTimestamp >= startString &&
+            $0.entryTimestamp < endString
+          })
+          return try ctx.fetch(descriptor)
+      }
     }
 
     /// Fetches all unsynced entries from the local data store.
     /// - Returns: An array of Entry objects that are not synced.
     func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] {
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
-        return try context.fetch(descriptor)
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
+            return try ctx.fetch(descriptor)
+        }
     }
 
     /// Fetches the latest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
     func fetchLatestEntry(forUserId userId: String) async throws -> Entry? {
-        let descriptor = FetchDescriptor<Entry>(
-            predicate: #Predicate { $0.accountId == userId },
-            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
-        )
-        return try context.fetch(descriptor).first
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(
+                predicate: #Predicate { $0.accountId == userId },
+                sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+            )
+            return try ctx.fetch(descriptor).first
+        }
     }
 
     /// Fetches entries from the last N days for a specific user.
@@ -165,10 +201,12 @@ final class EntryRepository: EntryRepositoryProtocol {
         guard let earliest = calendar.date(byAdding: .day, value: -lastNDays, to: now) else { return [] }
         let earliestString = ISO8601DateFormatter().string(from: earliest)
         let nowString = ISO8601DateFormatter().string(from: now)
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
-            $0.accountId == userId && $0.entryTimestamp >= earliestString && $0.entryTimestamp <= nowString
-        })
-        return try context.fetch(descriptor)
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == userId && $0.entryTimestamp >= earliestString && $0.entryTimestamp <= nowString
+            })
+            return try ctx.fetch(descriptor)
+        }
     }
 
     /// Gets the total count of entries for a specific user.
@@ -183,11 +221,13 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The oldest Entry object, or nil if none exist.
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry? {
-        let descriptor = FetchDescriptor<Entry>(
-            predicate: #Predicate { $0.accountId == userId },
-            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .forward)]
-        )
-        return try context.fetch(descriptor).first
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(
+                predicate: #Predicate { $0.accountId == userId },
+                sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .forward)]
+            )
+            return try ctx.fetch(descriptor).first
+        }
     }
 
     /// Checks if an entry with a specific timestamp exists for a user.
@@ -196,8 +236,10 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - entryTimestamp: The timestamp to check for.
     /// - Returns: True if the entry exists, false otherwise.
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool {
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == entryTimestamp })
-        return try context.fetch(descriptor).first != nil
+        return try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == entryTimestamp })
+            return try ctx.fetch(descriptor).first != nil
+        }
     }
 
     // MARK: - Sync
