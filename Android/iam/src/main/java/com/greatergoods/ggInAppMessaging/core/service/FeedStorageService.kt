@@ -76,6 +76,24 @@ class FeedStorageService @Inject constructor(
   suspend fun getNotificationBadgeSetting(): Boolean = feedSettingsDataStore.getNotificationBadgeSetting()
 
   /**
+   * Get the last time a feed modal was triggered
+   */
+  suspend fun getFeedLastTriggeredAt(): Long? = feedSettingsDataStore.getFeedLastTriggeredAt()
+
+  /**
+   * Store the last time a feed modal was triggered
+   */
+  suspend fun storeFeedLastTriggeredAt(timestamp: Long, accountId: String = "") {
+    try {
+      IAMLogger.d(tag, "Storing feed last triggered at: $timestamp for account: $accountId")
+      feedSettingsDataStore.storeFeedLastTriggeredAt(timestamp, accountId)
+    } catch (e: Exception) {
+      IAMLogger.e(tag, "Failed to store feed last triggered at", e.toString())
+      throw e
+    }
+  }
+
+  /**
    * Clear all feed settings
    */
   suspend fun clearAll(): Boolean {

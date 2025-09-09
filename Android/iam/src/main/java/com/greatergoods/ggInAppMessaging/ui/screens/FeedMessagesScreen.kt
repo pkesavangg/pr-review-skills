@@ -44,6 +44,7 @@ import com.greatergoods.ggInAppMessaging.util.LinkOpener
 @Composable
 fun FeedMessagesScreen(
     onSettingsPress: () -> Unit,
+    onNavigateToFeedLanding: (com.greatergoods.ggInAppMessaging.domain.models.FeedItem) -> Unit = { _ -> },
     modifier: Modifier = Modifier,
 ) {
     // Create ViewModel using Hilt
@@ -103,13 +104,21 @@ fun FeedMessagesScreen(
                         FeedItemCard(
                             feedItem = feedItem,
                             onItemClick = { item ->
-                                if (item.feedType == FeedTypes.LINK) {
-                                    LinkOpener.openInCustomTab(
-                                        context = context,
-                                        url = item.linkTarget,
-                                        // toolbarColor = android.graphics.Color.parseColor("#1976D2"), // Material Blue
-                                        showTitle = true,
-                                    )
+                                when (item.feedType) {
+                                    FeedTypes.LINK -> {
+                                        LinkOpener.openInCustomTab(
+                                            context = context,
+                                            url = item.linkTarget,
+                                            // toolbarColor = android.graphics.Color.parseColor("#1976D2"), // Material Blue
+                                            showTitle = true,
+                                        )
+                                    }
+                                    FeedTypes.LANDING -> {
+                                        onNavigateToFeedLanding(item)
+                                    }
+                                    else -> {
+                                        // Handle unknown feed types or do nothing
+                                    }
                                 }
                             },
                         )

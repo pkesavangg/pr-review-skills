@@ -180,7 +180,6 @@ fun SettingsScreenContent(
             ),
           ),
       )
-
       // App Settings Section
       SettingsSection(
         title = SettingsScreenStrings.AppSettings,
@@ -196,6 +195,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.Messages,
               type = SettingsItemType.Action(),
+              showUnreadIndicator = state.showUnreadFeedIndication,
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.FeedMessages)

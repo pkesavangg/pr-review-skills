@@ -14,6 +14,8 @@ data class IamColors(
   val primaryBackground: Color,
   val primaryBackgroundDisabled: Color,
   val secondaryBackground: Color,
+  val subSecondaryBackground: Color,
+  val tertiaryBackground: Color,
 
   // Action
   val primaryFocusedAction: Color,
@@ -71,6 +73,8 @@ private val DefaultIamColors = IamColors(
   primaryBackground = Color.White,
   primaryBackgroundDisabled = Color(0xFFF5F5F5),
   secondaryBackground = Color(0xFFF6F4F1),
+  subSecondaryBackground = Color(0xFF424242),
+  tertiaryBackground = Color(0x33424242),
 
   // Action
   primaryFocusedAction = Color(0xFF1565C0),
@@ -144,7 +148,7 @@ object IamTheme {
 fun ProvideIamTheme(
   content: @Composable () -> Unit
 ) {
-  CompositionLocalProvider(LocalIamColors provides IamTheme.colors,LocalIamTypography provides IamTypography,) {
+  CompositionLocalProvider(LocalIamColors provides IamTheme.colors, LocalIamTypography provides IamTypography) {
     content()
   }
 }

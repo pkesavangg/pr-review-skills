@@ -15,6 +15,8 @@ data class AppState(
   val isScaleDiscovered: Boolean = false,
   val hasScanStarted: Boolean = false,
   val sku: String = "0412",
+  val unreadFeedCount: Int = 0,
+  val showUnreadFeedIndication: Boolean = false,
 ) : IReducer.State
 
 /**
@@ -29,6 +31,8 @@ sealed interface AppIntent : IReducer.Intent {
 
   data object OnPopUpConnect : AppIntent
   data object OnPopUpDismiss : AppIntent
+  data class SetUnreadFeedCount(val count: Int) : AppIntent
+  data class SetShowUnreadFeedIndication(val show: Boolean) : AppIntent
 }
 
 /**
@@ -46,6 +50,8 @@ class AppReducer() : IReducer<AppState, AppIntent> {
       is AppIntent.SetSku -> state.copy(sku = intent.sku)
       is AppIntent.SetScaleDiscovered -> state.copy(isScaleDiscovered = intent.isScaleDiscovered)
       is AppIntent.SetScanStatus -> state.copy(hasScanStarted = intent.hasScanStarted)
+      is AppIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
+      is AppIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       else -> state
     }
   }

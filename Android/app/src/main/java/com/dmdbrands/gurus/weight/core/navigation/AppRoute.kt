@@ -205,5 +205,14 @@ sealed class AppRoute : NavKey {
 
   @Serializable
   data object FeedMessagesSettings : AppRoute()
+
+  @Serializable
+  data object FeedLanding : AppRoute()
+
+  @Serializable
+  data object FeedTest : AppRoute()
+
+  @Serializable
+  data object FeedFAQ : AppRoute()
 }
 

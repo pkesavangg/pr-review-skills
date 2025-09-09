@@ -11,63 +11,96 @@ import kotlinx.coroutines.flow.Flow
  */
 interface IFeedService {
 
-  // MARK: - Publishers
+    // MARK: - Publishers
 
-  /**
-   * Emits whenever feed items are changed
-   */
-  val feedsChanged: Flow<List<FeedItem>>
+    /**
+     * Emits whenever feed items are changed
+     */
+    val feedsChanged: Flow<List<FeedItem>>
 
-  /**
-   * Emits when feed settings are updated
-   */
-  val feedSettingsChanged: Flow<FeedSetting?>
+    /**
+     * Emits when feed settings are updated
+     */
+    val feedSettingsChanged: Flow<FeedSetting?>
 
-  /**
-   * Emits when the notification badge should be updated
-   */
-  val notificationBadgeUpdated: Flow<Boolean>
+    /**
+     * Emits when the notification badge should be updated
+     */
+    val notificationBadgeUpdated: Flow<Boolean>
 
-  // MARK: - Feed Items Management
+    // MARK: - Feed Items Management
 
-  /**
-   * Fetches all feed items from the backend and updates local state.
-   */
-  suspend fun fetchFeedItems()
+    /**
+     * Fetches all feed items from the backend and updates local state.
+     */
+    suspend fun fetchFeedItems()
 
-  /**
-   * Updates a feed item's state with the given action.
-   * @param feedItem The feed item to update
-   * @param actionType The type of action (read, trigger, click, etc.)
-   * @param variationId Optional variation ID for certain action types
-   */
-  suspend fun updateFeedItem(feedItem: FeedItem, actionType: FeedActionType, variationId: Int?)
+    /**
+     * Updates a feed item's state with the given action.
+     * @param feedItem The feed item to update
+     * @param actionType The type of action (read, trigger, click, etc.)
+     * @param variationId Optional variation ID for certain action types
+     */
+    suspend fun updateFeedItem(feedItem: FeedItem, actionType: FeedActionType, variationId: Int?)
 
-  /**
-   * Gets the count of unread feed items.
-   * @return Number of unread feed items
-   */
-  suspend fun getUnreadFeedCount(): Int
+    /**
+     * Gets the count of unread feed items.
+     * @return Number of unread feed items
+     */
+    suspend fun getUnreadFeedCount(): Int
 
-  // MARK: - Feed Settings Management
+    // MARK: - Feed Settings Management
 
-  /**
-   * Gets the stored feed notification settings.
-   * @return FeedSetting if exists, null otherwise
-   */
-  suspend fun getFeedSettings(): FeedSetting?
+    /**
+     * Gets the stored feed notification settings.
+     * @return FeedSetting if exists, null otherwise
+     */
+    suspend fun getFeedSettings(): FeedSetting?
 
-  // MARK: - Feed Modal Management
+    // MARK: - Feed Modal Management
 
-  /**
-   * Checks and displays the feed modal if trigger conditions are met.
-   */
-  fun checkAndTriggerFeedModal()
+    /**
+     * Checks and displays the feed modal if trigger conditions are met.
+     */
+    suspend fun checkAndTriggerFeedModal(): Boolean
 
-  // MARK: - Cleanup
+    // MARK: - Feed Item Actions
 
-  /**
-   * Clears all feed data for the current user.
-   */
-  fun clearFeedData()
+    /**
+     * Handles feed item click based on feed type
+     * @param feedItem The feed item that was clicked
+     * @param onNavigateToFeedLanding Callback for navigating to feed landing screen
+     * @param onOpenExternalLink Callback for opening external links
+     */
+    suspend fun handleFeedItemClick(
+        feedItem: FeedItem,
+        onNavigateToFeedLanding: (FeedItem) -> Unit = { _ -> },
+        onOpenExternalLink: (String) -> Unit = { _ -> }
+    )
+
+    /**
+     * Handles shop now button click - checks feed type and navigates accordingly
+     * @param feedItem The feed item that was clicked
+     * @param onNavigateToFeedLanding Callback for navigating to feed landing screen
+     * @param onOpenExternalLink Callback for opening external links
+     */
+    suspend fun handleShopNowClick(
+        feedItem: FeedItem,
+        onNavigateToFeedLanding: (FeedItem) -> Unit = { _ -> },
+        onOpenExternalLink: (String) -> Unit = { _ -> }
+    )
+
+    /**
+     * Marks a feed item as read with a specific action
+     * @param elementId The element ID of the feed item
+     * @param actionType The action type (e.g., "clicked", "viewed", "dismissed")
+     */
+    suspend fun markFeedAsRead(elementId: String, actionType: String)
+
+    // MARK: - Cleanup
+
+    /**
+     * Clears all feed data for the current user.
+     */
+    fun clearFeedData()
 }

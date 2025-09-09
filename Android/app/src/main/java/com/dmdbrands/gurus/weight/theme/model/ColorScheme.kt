@@ -16,6 +16,8 @@ data class ColorScheme(
   val primaryBackground: Color,
   val primaryBackgroundDisabled: Color,
   val secondaryBackground: Color,
+  val subSecondaryBackground: Color,
+  val tertiaryBackground: Color,
   // Action
   val primaryFocusedAction: Color,
   val primaryAction: Color,

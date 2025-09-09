@@ -1,14 +1,15 @@
 package com.greatergoods.ggInAppMessaging.core.service
 
-import android.util.Log
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Main GG In-App Messaging service
@@ -16,303 +17,340 @@ import javax.inject.Singleton
  */
 @Singleton
 class GGInAppMessagingService @Inject constructor(
-    private val feedStorageService: FeedStorageService
+  private val feedStorageService: FeedStorageService
 ) : IInAppMessagingService {
 
-    private val tag = "GGInAppMessagingService"
+  private val tag = "GGInAppMessagingService"
 
-    // MARK: - Constants
-    private val ONE_WEEK_IN_MILLIS = 7 * 24 * 60 * 60 * 1000L
+  // MARK: - Constants
+  private val ONE_WEEK_IN_MILLIS = 7 * 24 * 60 * 60 * 1000L
 
-    // MARK: - Properties
-    private var accountId: String = ""
-    private val _feedItems = MutableSharedFlow<List<FeedItem>>()
-    override val feedItems = _feedItems.asSharedFlow()
+  // MARK: - Properties
+  private var accountId: String = ""
+  private val _feedItems = MutableSharedFlow<List<FeedItem>>()
+  override val feedItems = _feedItems.asSharedFlow()
 
-    // MARK: - Feed Items Storage
-    private var _storedFeedItems: List<FeedItem> = emptyList()
+  // MARK: - Feed Items Storage
+  private var _storedFeedItems: List<FeedItem> = emptyList()
 
-    // MARK: - Reactive Streams
-    private val _feedNotificationChangedSubject = MutableSharedFlow<Unit>()
-    val feedNotificationChangedSubject = _feedNotificationChangedSubject.asSharedFlow()
+  // MARK: - Reactive Streams
+  private val _feedNotificationChangedSubject = MutableSharedFlow<Unit>()
+  val feedNotificationChangedSubject = _feedNotificationChangedSubject.asSharedFlow()
 
-    /**
-     * Get feed settings flow for reactive updates
-     */
-    override val feedSettingsFlow: Flow<FeedSetting> = feedStorageService.feedSettingsFlow
+  // MARK: - Dialog Events
+  private val _dialogEvents = MutableSharedFlow<IAMDialogEvent>()
+  val dialogEvents: SharedFlow<IAMDialogEvent> = _dialogEvents.asSharedFlow()
 
-    /**
-     * Set account ID for user-specific settings
-     */
-    override fun setAccountId(accountId: String) {
-        this.accountId = accountId
+  // MARK: - Feed Update Events
+  private val _sendUpdateFeed = MutableSharedFlow<FeedUpdateEvent>()
+  val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
+
+  /**
+   * Get feed settings flow for reactive updates
+   */
+  override val feedSettingsFlow: Flow<FeedSetting> = feedStorageService.feedSettingsFlow
+
+  /**
+   * Set account ID for user-specific settings
+   */
+  override fun setAccountId(accountId: String) {
+    this.accountId = accountId
+  }
+
+  /**
+   * Set feed items received from main app's FeedService
+   * This method is called by the main app to provide feed items
+   */
+  override suspend fun setFeedItems(feedItems: List<FeedItem>) {
+    _storedFeedItems = feedItems
+    _feedItems.emit(feedItems)
+  }
+
+  /**
+   * Get feed items - returns stored items from main app or mock data as fallback
+   */
+  override suspend fun getFeedItems(): List<FeedItem> {
+    return _storedFeedItems
+  }
+
+  /**
+   * Get unread feed count - matches Angular implementation
+   * Filters feed items where isUnread is true and returns the count
+   */
+  override suspend fun getUnreadFeedCount(): Int {
+    return try {
+      val currentFeedItems = getFeedItems()
+      val unreadFeeds = currentFeedItems.filter { feed -> feed.isUnread }
+      unreadFeeds.size
+    } catch (e: Exception) {
+      0
     }
+  }
 
-    /**
-     * Set feed items received from main app's FeedService
-     * This method is called by the main app to provide feed items
-     */
-    override suspend fun setFeedItems(feedItems: List<FeedItem>) {
-        Log.d("feeditems", "${feedItems}")
-        _storedFeedItems = feedItems
-        _feedItems.emit(feedItems)
+  /**
+   * Check and initialize stored feed notification settings
+   */
+  override suspend fun checkStoredFeedNotification() {
+    val getFeedData = getStoredFeedNotificationSetting()
+    if (getFeedData == null) {
+      val feedSetting = FeedSetting(
+        showPopupMessage = true,
+        showNotificationBadge = true,
+      )
+      storeFeedNotificationSetting(feedSetting)
     }
+  }
 
-    /**
-     * Get feed items - returns stored items from main app or mock data as fallback
-     */
-    override suspend fun getFeedItems(): List<FeedItem> {
-        return _storedFeedItems
+  /**
+   * Store feed notification settings
+   */
+  override suspend fun storeFeedNotificationSetting(feedSetting: FeedSetting) {
+    try {
+      feedStorageService.updateFeedSettings(feedSetting, accountId)
+      _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
     }
+  }
 
-    /**
-     * Check and initialize stored feed notification settings
-     */
-    override suspend fun checkStoredFeedNotification() {
-        val getFeedData = getStoredFeedNotificationSetting()
-        if (getFeedData == null) {
-            val feedSetting = FeedSetting(
-                showPopupMessage = true,
-                showNotificationBadge = true,
-            )
-            storeFeedNotificationSetting(feedSetting)
+  /**
+   * Get stored feed notification settings
+   */
+  override suspend fun getStoredFeedNotificationSetting(): FeedSetting? {
+    return try {
+      feedStorageService.getFeedSettings()
+    } catch (e: Exception) {
+      null
+    }
+  }
+
+  /**
+   * Update pop-up message setting
+   */
+  override suspend fun updatePopupMessageSetting(showPopupMessage: Boolean) {
+    try {
+      feedStorageService.updatePopupMessageSetting(showPopupMessage, accountId)
+      _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
+    }
+  }
+
+  /**
+   * Update notification badge setting
+   */
+  override suspend fun updateNotificationBadgeSetting(showNotificationBadge: Boolean) {
+    try {
+      feedStorageService.updateNotificationBadgeSetting(showNotificationBadge, accountId)
+      _feedNotificationChangedSubject.tryEmit(Unit)
+    } catch (e: Exception) {
+    }
+  }
+
+  /**
+   * Get pop-up message setting
+   */
+  override suspend fun getPopupMessageSetting(): Boolean {
+    return try {
+      feedStorageService.getPopupMessageSetting()
+    } catch (e: Exception) {
+      true // Default to true
+    }
+  }
+
+  /**
+   * Get notification badge setting
+   */
+  override suspend fun getNotificationBadgeSetting(): Boolean {
+    return try {
+      feedStorageService.getNotificationBadgeSetting()
+    } catch (e: Exception) {
+      true // Default to true
+    }
+  }
+
+  /**
+   * Emit feed notification change
+   */
+  override suspend fun emitFeedNotificationChange() {
+    _feedNotificationChangedSubject.emit(Unit)
+  }
+
+  // MARK: - Methods required by existing FeedService
+
+  /**
+   * Check if feed modal should be triggered - matches Angular implementation
+   * Checks if popup messages are enabled and finds a feed item with login trigger
+   */
+  override suspend fun checkFeedModalTrigger(): Boolean {
+    return try {
+      val feedSetting = getStoredFeedNotificationSetting()
+      if (feedSetting?.showPopupMessage == true) {
+        val currentFeedItems = getFeedItems()
+        val feedItemWithLoginTrigger = currentFeedItems.find { feed ->
+          feed.trigger == "login"
         }
-    }
-
-    /**
-     * Store feed notification settings
-     */
-    override suspend fun storeFeedNotificationSetting(feedSetting: FeedSetting) {
-        try {
-            feedStorageService.updateFeedSettings(feedSetting, accountId)
-            _feedNotificationChangedSubject.tryEmit(Unit)
-        } catch (e: Exception) {
+        if (feedItemWithLoginTrigger != null) {
+          return showFeedModal(feedItemWithLoginTrigger)
+        } else {
+          false
         }
+      } else {
+        false
+      }
+    } catch (e: Exception) {
+      false
     }
+  }
 
-    /**
-     * Get stored feed notification settings
-     */
-    override suspend fun getStoredFeedNotificationSetting(): FeedSetting? {
-        return try {
-            feedStorageService.getFeedSettings()
-        } catch (e: Exception) {
-            null
+  /**
+   * Show feed modal - matches Angular implementation
+   * Handles the modal display logic with cooldown time checking
+   */
+  private suspend fun showFeedModal(feedItem: FeedItem): Boolean {
+    return try {
+      val currentTime = System.currentTimeMillis()
+      val feedLastTriggeredAt = getFeedLastTriggeredAt()
+      if (feedLastTriggeredAt != null) {
+        val feedModalTriggerCoolDownTime = feedLastTriggeredAt + ONE_WEEK_IN_MILLIS
+        return if (feedModalTriggerCoolDownTime < currentTime) {
+          handleFeedModal(feedItem, currentTime)
+        } else {
+          false
         }
+      } else {
+        return handleFeedModal(feedItem, currentTime)
+      }
+    } catch (e: Exception) {
+      false
     }
+  }
 
-    /**
-     * Update pop-up message setting
-     */
-    override suspend fun updatePopupMessageSetting(showPopupMessage: Boolean) {
-        try {
-            feedStorageService.updatePopupMessageSetting(showPopupMessage, accountId)
-            _feedNotificationChangedSubject.tryEmit(Unit)
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to update popup message setting", e)
-        }
+  /**
+   * Handle feed modal - matches Angular implementation
+   * Manages the modal display process
+   */
+  private suspend fun handleFeedModal(feedItem: FeedItem, currentTime: Long): Boolean {
+    return try {
+      // TODO: Implement preloadImage logic if needed
+      // For now, we'll skip image preloading as requested
+
+      // Always show the modal, regardless of whether the image preloads or not
+      showFeedModalPopup(feedItem, currentTime)
+      true
+    } catch (e: Exception) {
+      false
     }
+  }
 
-    /**
-     * Update notification badge setting
-     */
-    override suspend fun updateNotificationBadgeSetting(showNotificationBadge: Boolean) {
-        try {
-            feedStorageService.updateNotificationBadgeSetting(showNotificationBadge, accountId)
-            _feedNotificationChangedSubject.tryEmit(Unit)
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to update notification badge setting", e)
-        }
+  /**
+   * Show feed modal popup - matches Angular implementation
+   * Displays the actual modal and handles the trigger action
+   */
+  private suspend fun showFeedModalPopup(feedItem: FeedItem, triggerTime: Long) {
+    try {
+      // Store the trigger time
+      storeFeedLastTriggeredAt(triggerTime)
+      // Emit dialog event to MeApp
+      _dialogEvents.emit(
+        IAMDialogEvent.ShowFeedModal(
+          feedItem = feedItem,
+          triggerTime = triggerTime,
+        ),
+      )
+    } catch (e: Exception) {
+      throw e // Re-throw to be caught by caller
     }
+  }
 
-    /**
-     * Get pop-up message setting
-     */
-    override suspend fun getPopupMessageSetting(): Boolean {
-        return try {
-            feedStorageService.getPopupMessageSetting()
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to get popup message setting", e)
-            true // Default to true
-        }
+  /**
+   * Get feed last triggered at timestamp
+   * Reads from FeedSettingsDataStore
+   */
+  private suspend fun getFeedLastTriggeredAt(): Long? {
+    return try {
+      feedStorageService.getFeedLastTriggeredAt()
+    } catch (e: Exception) {
+      null
     }
+  }
 
-    /**
-     * Get notification badge setting
-     */
-    override suspend fun getNotificationBadgeSetting(): Boolean {
-        return try {
-            feedStorageService.getNotificationBadgeSetting()
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to get notification badge setting", e)
-            true // Default to true
-        }
+  /**
+   * Store feed last triggered at timestamp
+   * Writes to FeedSettingsDataStore
+   */
+  private suspend fun storeFeedLastTriggeredAt(timestamp: Long) {
+    try {
+      feedStorageService.storeFeedLastTriggeredAt(timestamp, accountId)
+    } catch (e: Exception) {
     }
+  }
 
-    /**
-     * Emit feed notification change
-     */
-    override suspend fun emitFeedNotificationChange() {
-        _feedNotificationChangedSubject.emit(Unit)
+  /**
+   * Clear feed data - matches Angular implementation
+   * Clears stored feed items and emits empty list
+   */
+  override fun clearFeedData() {
+    try {
+      _storedFeedItems = emptyList()
+      _feedItems.tryEmit(emptyList())
+    } catch (e: Exception) {
     }
+  }
 
-    // MARK: - Methods required by existing FeedService
+  /**
+   * Mark a feed item as read
+   * Emits feed update event to trigger API call in main app
+   */
+  override suspend fun markFeedAsRead(elementId: String, actionType: String) {
+    try {
 
-    /**
-     * Get unread feed count - matches Angular implementation
-     * Filters feed items where isUnread is true and returns the count
-     */
-    override suspend fun getUnreadFeedCount(): Int {
-        return try {
-            val currentFeedItems = getFeedItems()
-            val unreadFeeds = currentFeedItems.filter { feed -> feed.isUnread }
-            unreadFeeds.size
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to get unread feed count", e)
-            0
-        }
+      // Find the feed item
+      val feedItem = _storedFeedItems.find { it.elementId == elementId }
+      if (feedItem != null) {
+        // Emit feed update event to trigger API call in main app
+        emitFeedUpdate(feedItem, actionType)
+      } else {
+      }
+    } catch (e: Exception) {
     }
+  }
 
-    /**
-     * Check if feed modal should be triggered - matches Angular implementation
-     * Checks if popup messages are enabled and finds a feed item with login trigger
-     */
-    override suspend fun checkFeedModalTrigger(): Any? {
-        return try {
-            val feedSetting = getStoredFeedNotificationSetting()
-            if (feedSetting?.showPopupMessage == true) {
-                val currentFeedItems = getFeedItems()
-                val feedItemWithLoginTrigger = currentFeedItems.find { feed ->
-                    feed.trigger == "login"
-                }
-                if (feedItemWithLoginTrigger != null) {
-                    Log.d(
-                        tag,
-                        "Found feed item with login trigger: ${feedItemWithLoginTrigger.elementId}"
-                    )
-                    return showFeedModal(feedItemWithLoginTrigger)
-                } else {
-                    Log.d(tag, "No feed item found with login trigger")
-                    false
-                }
-            } else {
-                Log.d(tag, "Popup messages are disabled")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to check feed modal trigger", e)
-            false
-        }
+  /**
+   * Emit feed update event to notify main app to update feed items
+   * This is called when feed items need to be updated via API
+   */
+  override suspend fun emitFeedUpdate(feedItem: FeedItem, actionType: String, variationId: Int?) {
+    try {
+      val updateEvent = FeedUpdateEvent(
+        feedItem = feedItem,
+        actionType = actionType,
+        variationId = variationId,
+      )
+      _sendUpdateFeed.emit(updateEvent)
+    } catch (e: Exception) {
     }
-
-    /**
-     * Show feed modal - matches Angular implementation
-     * Handles the modal display logic with cooldown time checking
-     */
-    private suspend fun showFeedModal(feedItem: FeedItem): Boolean {
-        return try {
-            val currentTime = System.currentTimeMillis()
-            val feedLastTriggeredAt = getFeedLastTriggeredAt()
-
-            if (feedLastTriggeredAt != null) {
-                val feedModalTriggerCoolDownTime = feedLastTriggeredAt + ONE_WEEK_IN_MILLIS
-                if (feedModalTriggerCoolDownTime < currentTime) {
-                    return handleFeedModal(feedItem, currentTime)
-                } else {
-                    Log.d(tag, "Feed modal is in cooldown period")
-                    return false
-                }
-            } else {
-                return handleFeedModal(feedItem, currentTime)
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to show feed modal", e)
-            false
-        }
-    }
-
-    /**
-     * Handle feed modal - matches Angular implementation
-     * Manages the modal display process
-     */
-    private suspend fun handleFeedModal(feedItem: FeedItem, currentTime: Long): Boolean {
-        return try {
-            // TODO: Implement preloadImage logic if needed
-            // For now, we'll skip image preloading as requested
-
-            // Always show the modal, regardless of whether the image preloads or not
-            showFeedModalPopup(feedItem, currentTime)
-            true
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to handle feed modal", e)
-            false
-        }
-    }
-
-    /**
-     * Show feed modal popup - matches Angular implementation
-     * Displays the actual modal and handles the trigger action
-     */
-    private suspend fun showFeedModalPopup(feedItem: FeedItem, triggerTime: Long) {
-        try {
-            // Store the trigger time
-            storeFeedLastTriggeredAt(triggerTime)
-
-            // Send update feed action (matching Angular sendUpdateFeed.next)
-            // This would typically notify other parts of the app about the feed action
-            Log.d(tag, "Triggering feed modal for item: ${feedItem.elementId}")
-
-            // TODO: Implement actual modal display logic
-            // This would typically involve showing a Compose modal or dialog
-            // For now, we'll just log the action
-            Log.d(tag, "Feed modal popup displayed for: ${feedItem.titleText}")
-
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to show feed modal popup", e)
-        }
-    }
-
-    /**
-     * Get feed last triggered at timestamp
-     * This would typically read from storage (DataStore/SharedPreferences)
-     */
-    private suspend fun getFeedLastTriggeredAt(): Long? {
-        return try {
-            // TODO: Implement actual storage retrieval
-            // For now, return null to indicate no previous trigger
-            null
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to get feed last triggered at", e)
-            null
-        }
-    }
-
-    /**
-     * Store feed last triggered at timestamp
-     * This would typically write to storage (DataStore/SharedPreferences)
-     */
-    private suspend fun storeFeedLastTriggeredAt(timestamp: Long) {
-        try {
-            // TODO: Implement actual storage writing
-            Log.d(tag, "Stored feed last triggered at: $timestamp")
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to store feed last triggered at", e)
-        }
-    }
-
-    /**
-     * Clear feed data - matches Angular implementation
-     * Clears stored feed items and emits empty list
-     */
-    override fun clearFeedData() {
-        try {
-            _storedFeedItems = emptyList()
-            _feedItems.tryEmit(emptyList())
-            Log.d(tag, "Cleared all feed data")
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to clear feed data", e)
-        }
-    }
-
-
+  }
 }
+
+/**
+ * IAM Dialog Events for communication with MeApp
+ */
+sealed class IAMDialogEvent {
+  data class ShowFeedModal(
+    val feedItem: FeedItem,
+    val triggerTime: Long
+  ) : IAMDialogEvent()
+
+  data class ShowPromoModal(
+    val promoData: Any // You can define a proper PromoData class later
+  ) : IAMDialogEvent()
+}
+
+/**
+ * Feed Update Event for communication with main app
+ * Triggers API calls to update feed items
+ */
+data class FeedUpdateEvent(
+  val feedItem: FeedItem,
+  val actionType: String,
+  val variationId: Int? = null
+)

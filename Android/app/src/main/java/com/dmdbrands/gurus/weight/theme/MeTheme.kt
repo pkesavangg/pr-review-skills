@@ -136,6 +136,8 @@ private fun iamColorsFromColorScheme(colorScheme: ColorScheme): IamColors {
     primaryBackground = colorScheme.primaryBackground,
     primaryBackgroundDisabled = colorScheme.primaryBackgroundDisabled,
     secondaryBackground = colorScheme.secondaryBackground,
+    subSecondaryBackground = colorScheme.subSecondaryBackground,
+    tertiaryBackground = colorScheme.tertiaryBackground,
 
     // Action
     primaryFocusedAction = colorScheme.primaryFocusedAction,

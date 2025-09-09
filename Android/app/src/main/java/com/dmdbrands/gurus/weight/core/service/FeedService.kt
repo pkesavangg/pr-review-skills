@@ -72,6 +72,17 @@ class FeedService @Inject constructor(
         }
       }
     }
+
+    // Listen for feed update events from the GG IAM service
+    serviceScope.launch {
+      ggIAMService.sendUpdateFeed.collect { updateEvent ->
+        launch {
+          AppLog.d(tag, "Received feed update event: ${updateEvent.actionType} for ${updateEvent.feedItem.elementId}")
+          val feedActionType = convertStringToFeedActionType(updateEvent.actionType)
+          updateFeedItem(updateEvent.feedItem, feedActionType, updateEvent.variationId)
+        }
+      }
+    }
   }
 
   // MARK: - Feed Items Management
@@ -170,21 +181,14 @@ class FeedService @Inject constructor(
     return ggIAMService.getStoredFeedNotificationSetting()
   }
 
-  override fun checkAndTriggerFeedModal() {
-    serviceScope.launch {
+  override suspend fun checkAndTriggerFeedModal(): Boolean {
+    return try {
       val result = ggIAMService.checkFeedModalTrigger()
-      result?.let { feedItem ->
-        // TODO: Show modal using notification service
-        // notificationService.showModal(...)
-        AppLog.d(tag, "Triggering feed modal for item: $feedItem")
-      }
-    }
-  }
-
-  override fun clearFeedData() {
-    ggIAMService.clearFeedData()
-    serviceScope.launch {
-      updateNotificationBadge()
+      AppLog.d(tag, "Feed modal trigger check result: $result")
+      result
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to check feed modal trigger", e.toString())
+      false
     }
   }
 
@@ -217,6 +221,8 @@ class FeedService @Inject constructor(
             feedPostId = "mockPost001",
             accountId = "testAccount",
             titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+            trigger = "login",
+            isUnread = true,
             landingPage = LandingPage(
               feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
               feedPostId = "TvCN6AV5b781rXLSldOziI",
@@ -324,7 +330,130 @@ class FeedService @Inject constructor(
     }
   }
 
+  override suspend fun handleFeedItemClick(
+    feedItem: FeedItem,
+    onNavigateToFeedLanding: (FeedItem) -> Unit,
+    onOpenExternalLink: (String) -> Unit
+  ) {
+    try {
+      AppLog.d(tag, "Handling feed item click: ${feedItem.titleText} (${feedItem.feedType})")
+
+      when (feedItem.feedType) {
+        FeedTypes.LANDING -> {
+          AppLog.d(tag, "Landing feed item clicked: ${feedItem.titleText}")
+          onNavigateToFeedLanding(feedItem)
+        }
+
+        FeedTypes.LINK -> {
+          AppLog.d(tag, "Link feed item clicked: ${feedItem.titleText}")
+          feedItem.linkTarget?.let { link ->
+            onOpenExternalLink(link)
+          }
+        }
+
+        else -> {
+          AppLog.w(tag, "Unknown feed type: ${feedItem.feedType}")
+        }
+      }
+
+      // Mark feed as read regardless of type
+      markFeedAsRead(feedItem.elementId, "clicked")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to handle feed item click", e.toString())
+    }
+  }
+
+  /**
+   * Handles shop now button click - checks feed type and navigates accordingly
+   */
+  override suspend fun handleShopNowClick(
+    feedItem: FeedItem,
+    onNavigateToFeedLanding: (FeedItem) -> Unit,
+    onOpenExternalLink: (String) -> Unit
+  ) {
+    try {
+      AppLog.d(tag, "Handling shop now click: ${feedItem.titleText} (${feedItem.feedType})")
+
+      when (feedItem.feedType) {
+        FeedTypes.LANDING -> {
+          AppLog.d(tag, "Shop now clicked for landing feed item: ${feedItem.titleText}")
+          onNavigateToFeedLanding(feedItem)
+        }
+
+        FeedTypes.LINK -> {
+          AppLog.d(tag, "Shop now clicked for link feed item: ${feedItem.titleText}")
+          // Open external link
+          feedItem.linkTarget?.let { link ->
+            onOpenExternalLink(link)
+          }
+        }
+
+        else -> {
+          AppLog.w(tag, "Unknown feed type for shop now click: ${feedItem.feedType}")
+        }
+      }
+
+      // Mark feed as read
+      markFeedAsRead(feedItem.elementId, "shop_now_clicked")
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to handle shop now click", e.toString())
+    }
+  }
+
+  override suspend fun markFeedAsRead(elementId: String, actionType: String) {
+    try {
+      AppLog.d(tag, "Marking feed as read: $elementId, action: $actionType")
+
+      // Get the feed item to update
+      val feedItems = feedsChanged.first()
+      val feedItem = feedItems.find { it.elementId == elementId }
+
+      if (feedItem != null) {
+        // Update the feed item with the appropriate action type
+        val actionTypeEnum = convertStringToFeedActionType(actionType)
+        updateFeedItem(feedItem, actionTypeEnum, null)
+      } else {
+        AppLog.w(tag, "Feed item not found for elementId: $elementId")
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to mark feed as read", e.toString())
+    }
+  }
+
+  override fun clearFeedData() {
+    serviceScope.launch {
+      try {
+        AppLog.d(tag, "Clearing feed data")
+        ggIAMService.clearFeedData()
+        _feedsChanged.emit(emptyList())
+        _feedSettingsChanged.emit(null)
+        _notificationBadgeUpdated.emit(false)
+        AppLog.d(tag, "Feed data cleared successfully")
+      } catch (e: Exception) {
+        AppLog.e(tag, "Failed to clear feed data", e.toString())
+      }
+    }
+  }
+
   fun cleanup() {
     serviceScope.cancel()
+  }
+
+  /**
+   * Convert string action type to FeedActionType enum
+   * Maps common action types from IAM service to FeedActionType
+   */
+  private fun convertStringToFeedActionType(actionType: String): FeedActionType {
+    return when (actionType.lowercase()) {
+      "read" -> FeedActionType.READ
+      "click" -> FeedActionType.CLICK
+      "trigger" -> FeedActionType.TRIGGER
+      "view" -> FeedActionType.VIEW
+      "dismiss" -> FeedActionType.DISMISS
+      else -> {
+        AppLog.w(tag, "Unknown action type: $actionType, defaulting to READ")
+        FeedActionType.READ
+      }
+    }
   }
 }

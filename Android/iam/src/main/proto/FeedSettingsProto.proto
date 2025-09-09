@@ -20,4 +20,7 @@ message FeedSettings {
 
   /** Last updated timestamp */
   string last_updated = 4;
+
+  /** Last time a feed modal was triggered (for cooldown period) */
+  int64 feed_last_triggered_at = 5;
 }

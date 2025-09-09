@@ -39,9 +39,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsState()
+  val appViewModel: com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel = hiltViewModel()
+  val appState by appViewModel.state.collectAsState()
+  
   HomeScreenContent(
     state = state,
     handleIntent = viewModel::handleIntent,
+    showUnreadFeedIndicator = appState.showUnreadFeedIndication,
   )
 }
 
@@ -49,6 +53,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 fun HomeScreenContent(
   state: HomeState,
   handleIntent: (HomeIntent) -> Unit,
+  showUnreadFeedIndicator: Boolean = false,
 ) {
   val topLevelBackStack = LocalNavBackStack.current
   val context = LocalContext.current
@@ -59,6 +64,7 @@ fun HomeScreenContent(
     bottomBar = {
       MainBottomNav(
         showAppsync = state.showAppsync,
+        showUnreadFeedIndicator = showUnreadFeedIndicator,
         onOpenAppSync = {
           handleIntent(
             HomeIntent.CheckAndRequestPermission { isEnabled ->
@@ -157,6 +163,7 @@ fun HomeScreenPreview() {
     HomeScreenContent(
       state = dummyHomeState,
       handleIntent = {},
+      showUnreadFeedIndicator = false,
     )
   }
 }

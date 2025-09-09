@@ -14,25 +14,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.greatergoods.ggInAppMessaging.features.common.ButtonType
+import com.greatergoods.ggInAppMessaging.features.common.IAMText
+import com.greatergoods.ggInAppMessaging.features.common.IamButton
+import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 import com.greatergoods.ggInAppMessaging.ui.strings.FeedPopupStrings
@@ -103,8 +101,8 @@ fun FeedPopup(
           onClick = onCloseClick,
           modifier = Modifier
             .align(Alignment.TopEnd)
-            .padding(24.dp, 24.dp, 0.dp, 0.dp)
-            .size(24.dp)
+            .padding(24.dp, 24.dp, 24.dp, 0.dp)
+            .size(16.dp)
             .background(
               color = iamColors.primaryBackground,
               shape = CircleShape,
@@ -129,36 +127,28 @@ fun FeedPopup(
       ) {
         // Message Type Label
         if (messageType.isNotEmpty()) {
-          Text(
+          IAMText(
             text = messageType.uppercase(),
             color = iamColors.textSubheading,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
+            textType = TextType.SubHeading,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
           )
         }
 
         // Headline
-        Text(
+        IAMText(
           text = headline,
           color = iamColors.textBody,
-          fontSize = 24.sp,
-          fontWeight = FontWeight.Bold,
+          textType = TextType.Title,
           textAlign = TextAlign.Center,
-          lineHeight = 30.sp,
-          modifier = Modifier.fillMaxWidth(),
         )
 
         // Supporting Text
-        Text(
+        IAMText(
           text = supportingText,
           color = iamColors.textBody,
-          fontSize = 16.sp,
-          fontWeight = FontWeight.Normal,
+          textType = TextType.Body,
           textAlign = TextAlign.Center,
-          lineHeight = 22.sp,
-          modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -169,38 +159,23 @@ fun FeedPopup(
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           // Primary Button
-          Button(
+          IamButton (
             onClick = onPrimaryButtonClick,
             modifier = Modifier
               .height(40.dp)
               .padding(horizontal = 32.dp),
-            colors = ButtonDefaults.buttonColors(
-              containerColor = iamColors.primaryAction,
-            ),
-            shape = RoundedCornerShape(999.dp),
-          ) {
-            Text(
-              text = primaryButtonText.uppercase(),
-              color = iamColors.primaryBackground,
-              fontSize = 16.sp,
-              fontWeight = FontWeight.Bold,
-            )
-          }
+            type = ButtonType.PrimaryFilled,
+            label = primaryButtonText
+          )
 
-          // Secondary Button
-          TextButton(
+          IamButton (
             onClick = onSecondaryButtonClick,
             modifier = Modifier
               .height(40.dp)
               .padding(horizontal = 32.dp),
-          ) {
-            Text(
-              text = secondaryButtonText.uppercase(),
-              color = iamColors.primaryAction,
-              fontSize = 16.sp,
-              fontWeight = FontWeight.Bold,
-            )
-          }
+            type = ButtonType.InlineTextPrimary,
+            label = secondaryButtonText
+          )
         }
       }
     }

@@ -19,6 +19,8 @@ data class SettingsState(
   val currentThemeMode: String = "System Settings",
   val selectedMacAddress: String = "All",
   val enableTestingFeatures: Boolean = false,
+  val unreadFeedCount: Int = 0,
+  val showUnreadFeedIndication: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -72,13 +74,14 @@ sealed interface SettingsIntent : IReducer.Intent {
   object goalSettingModal : SettingsIntent
   object ShowAppearanceModal : SettingsIntent
   data class UpdateThemeMode(val themeMode: String) : SettingsIntent
-  object DeleteAccount : SettingsIntent
-  object ConfirmDeleteAccount : SettingsIntent
-
   // MAC Address Filter Intents (for 0412 scale testing)
   object ShowMacAddressFilterModal : SettingsIntent
   data class UpdateSelectedMacAddress(val macAddress: String) : SettingsIntent
   data class UpdateTestingFeatures(val enabled: Boolean) : SettingsIntent
+  data class SetUnreadFeedCount(val count: Int) : SettingsIntent
+  data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
+  object DeleteAccount : SettingsIntent
+  object ConfirmDeleteAccount : SettingsIntent
 }
 
 /**
@@ -101,6 +104,8 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.UpdateThemeMode -> state.copy(currentThemeMode = intent.themeMode)
       is SettingsIntent.UpdateSelectedMacAddress -> state.copy(selectedMacAddress = intent.macAddress)
       is SettingsIntent.UpdateTestingFeatures -> state.copy(enableTestingFeatures = intent.enabled)
+      is SettingsIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
+      is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       else -> null
       // Add more intent handling as needed
     }

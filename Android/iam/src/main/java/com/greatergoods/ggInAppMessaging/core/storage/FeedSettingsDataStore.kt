@@ -7,20 +7,20 @@ import androidx.datastore.dataStore
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.proto.FeedSettings
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * Extension property to provide FeedSettings DataStore instance from Context.
  */
 val Context.feedSettingsDataStore: DataStore<FeedSettings> by dataStore(
-  fileName = "feed_settings.pb",
-  serializer = FeedSettingsSerializer,
+    fileName = "feed_settings.pb",
+    serializer = FeedSettingsSerializer,
 )
 
 /**
@@ -28,222 +28,257 @@ val Context.feedSettingsDataStore: DataStore<FeedSettings> by dataStore(
  * Provides type-safe storage for pop-up messages and notification badges settings.
  */
 class FeedSettingsDataStore @Inject constructor(
-  @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context,
 ) : BaseProtoDataStore<FeedSettings>(
-  dataStore = context.feedSettingsDataStore,
+    dataStore = context.feedSettingsDataStore,
 ) {
-  private val tag = "FeedSettingsDataStore"
+    private val tag = "FeedSettingsDataStore"
 
-  /**
-   * Emits a Flow of the current feed settings.
-   */
-  val feedSettingsFlow: Flow<FeedSetting> = dataFlow.map { proto ->
-    FeedSetting(
-      showPopupMessage = proto.showPopupMessage,
-      showNotificationBadge = proto.showNotificationBadge
-    )
-  }
-
-  /**
-   * Gets the current feed settings.
-   * Returns default values (true) if settings haven't been initialized yet.
-   */
-  suspend fun getFeedSettings(): FeedSetting {
-    val proto = getData()
-    // If accountId is empty, it means settings haven't been initialized yet
-    return if (proto.accountId.isEmpty()) {
-      FeedSetting(
-        showPopupMessage = true, // Default to true for first-time users
-        showNotificationBadge = true // Default to true for first-time users
-      )
-    } else {
-      FeedSetting(
-        showPopupMessage = proto.showPopupMessage,
-        showNotificationBadge = proto.showNotificationBadge
-      )
+    /**
+     * Emits a Flow of the current feed settings.
+     */
+    val feedSettingsFlow: Flow<FeedSetting> = dataFlow.map { proto ->
+        FeedSetting(
+            showPopupMessage = proto.showPopupMessage,
+            showNotificationBadge = proto.showNotificationBadge
+        )
     }
-  }
 
-  /**
-   * Updates the feed settings.
-   * @param feedSetting The new feed settings to store.
-   * @param accountId The account ID for which these settings apply.
-   */
-  suspend fun updateFeedSettings(feedSetting: FeedSetting, accountId: String = "") {
-    try {
-      IAMLogger.d(tag, "Updating feed settings for account: $accountId")
-      val updated = getData().toBuilder()
-        .setShowPopupMessage(feedSetting.showPopupMessage)
-        .setShowNotificationBadge(feedSetting.showNotificationBadge)
-        .setAccountId(accountId)
-        .setLastUpdated(System.currentTimeMillis().toString())
-        .build()
-
-      updateData { updated }
-      IAMLogger.d(tag, "Successfully updated feed settings")
-    } catch (e: Exception) {
-      IAMLogger.e(tag, "Failed to update feed settings", e.toString())
-      throw e
+    /**
+     * Gets the current feed settings.
+     * Returns default values (true) if settings haven't been initialized yet.
+     */
+    suspend fun getFeedSettings(): FeedSetting {
+        val proto = getData()
+        // If accountId is empty, it means settings haven't been initialized yet
+        return if (proto.accountId.isEmpty()) {
+            FeedSetting(
+                showPopupMessage = true, // Default to true for first-time users
+                showNotificationBadge = true // Default to true for first-time users
+            )
+        } else {
+            FeedSetting(
+                showPopupMessage = proto.showPopupMessage,
+                showNotificationBadge = proto.showNotificationBadge
+            )
+        }
     }
-  }
 
-  /**
-   * Updates only the pop-up message setting.
-   * @param showPopupMessage Whether to show pop-up messages.
-   * @param accountId The account ID for which this setting applies.
-   */
-  suspend fun updatePopupMessageSetting(showPopupMessage: Boolean, accountId: String = "") {
-    try {
-      IAMLogger.d(tag, "Updating popup message setting: $showPopupMessage for account: $accountId")
-      val current = getData()
-      val updated = current.toBuilder()
-        .setShowPopupMessage(showPopupMessage)
-        .setAccountId(accountId)
-        .setLastUpdated(System.currentTimeMillis().toString())
-        .build()
+    /**
+     * Updates the feed settings.
+     * @param feedSetting The new feed settings to store.
+     * @param accountId The account ID for which these settings apply.
+     */
+    suspend fun updateFeedSettings(feedSetting: FeedSetting, accountId: String = "") {
+        try {
+            IAMLogger.d(tag, "Updating feed settings for account: $accountId")
+            val updated = getData().toBuilder()
+                .setShowPopupMessage(feedSetting.showPopupMessage)
+                .setShowNotificationBadge(feedSetting.showNotificationBadge)
+                .setAccountId(accountId)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
 
-      updateData { updated }
-      IAMLogger.d(tag, "Successfully updated popup message setting")
-    } catch (e: Exception) {
-      IAMLogger.e(tag, "Failed to update popup message setting", e.toString())
-      throw e
+            updateData { updated }
+            IAMLogger.d(tag, "Successfully updated feed settings")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to update feed settings", e.toString())
+            throw e
+        }
     }
-  }
 
-  /**
-   * Updates only the notification badge setting.
-   * @param showNotificationBadge Whether to show notification badges.
-   * @param accountId The account ID for which this setting applies.
-   */
-  suspend fun updateNotificationBadgeSetting(showNotificationBadge: Boolean, accountId: String = "") {
-    try {
-      IAMLogger.d(tag, "Updating notification badge setting: $showNotificationBadge for account: $accountId")
-      val current = getData()
-      val updated = current.toBuilder()
-        .setShowNotificationBadge(showNotificationBadge)
-        .setAccountId(accountId)
-        .setLastUpdated(System.currentTimeMillis().toString())
-        .build()
+    /**
+     * Updates only the pop-up message setting.
+     * @param showPopupMessage Whether to show pop-up messages.
+     * @param accountId The account ID for which this setting applies.
+     */
+    suspend fun updatePopupMessageSetting(showPopupMessage: Boolean, accountId: String = "") {
+        try {
+            IAMLogger.d(
+                tag,
+                "Updating popup message setting: $showPopupMessage for account: $accountId"
+            )
+            val current = getData()
+            val updated = current.toBuilder()
+                .setShowPopupMessage(showPopupMessage)
+                .setAccountId(accountId)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
 
-      updateData { updated }
-      IAMLogger.d(tag, "Successfully updated notification badge setting")
-    } catch (e: Exception) {
-      IAMLogger.e(tag, "Failed to update notification badge setting", e.toString())
-      throw e
+            updateData { updated }
+            IAMLogger.d(tag, "Successfully updated popup message setting")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to update popup message setting", e.toString())
+            throw e
+        }
     }
-  }
 
-  /**
-   * Gets the pop-up message setting.
-   * Returns true as default if settings haven't been initialized yet.
-   */
-  suspend fun getPopupMessageSetting(): Boolean {
-    val data = getData()
-    // If accountId is empty, it means settings haven't been initialized yet
-    return if (data.accountId.isEmpty()) {
-      true // Default to true for first-time users
-    } else {
-      data.showPopupMessage
+    /**
+     * Updates only the notification badge setting.
+     * @param showNotificationBadge Whether to show notification badges.
+     * @param accountId The account ID for which this setting applies.
+     */
+    suspend fun updateNotificationBadgeSetting(
+        showNotificationBadge: Boolean,
+        accountId: String = ""
+    ) {
+        try {
+            IAMLogger.d(
+                tag,
+                "Updating notification badge setting: $showNotificationBadge for account: $accountId"
+            )
+            val current = getData()
+            val updated = current.toBuilder()
+                .setShowNotificationBadge(showNotificationBadge)
+                .setAccountId(accountId)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
+
+            updateData { updated }
+            IAMLogger.d(tag, "Successfully updated notification badge setting")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to update notification badge setting", e.toString())
+            throw e
+        }
     }
-  }
 
-  /**
-   * Gets the notification badge setting.
-   * Returns true as default if settings haven't been initialized yet.
-   */
-  suspend fun getNotificationBadgeSetting(): Boolean {
-    val data = getData()
-    // If accountId is empty, it means settings haven't been initialized yet
-    return if (data.accountId.isEmpty()) {
-      true // Default to true for first-time users
-    } else {
-      data.showNotificationBadge
+    /**
+     * Gets the pop-up message setting.
+     * Returns true as default if settings haven't been initialized yet.
+     */
+    suspend fun getPopupMessageSetting(): Boolean {
+        val data = getData()
+        // If accountId is empty, it means settings haven't been initialized yet
+        return if (data.accountId.isEmpty()) {
+            true // Default to true for first-time users
+        } else {
+            data.showPopupMessage
+        }
     }
-  }
 
-  /**
-   * Gets the account ID for the current settings.
-   */
-  suspend fun getAccountId(): String = getData().accountId
-
-  /**
-   * Gets the last updated timestamp.
-   */
-  suspend fun getLastUpdated(): String = getData().lastUpdated
-
-  override fun getDefaultInstance(): FeedSettings = FeedSettings.getDefaultInstance()
-
-  /**
-   * Clears all feed settings data.
-   */
-  override suspend fun clearData() {
-    try {
-      IAMLogger.i(tag, "Clearing feed settings data")
-      super.clearData()
-      IAMLogger.i(tag, "Successfully cleared feed settings data")
-    } catch (e: Exception) {
-      IAMLogger.e(tag, "Failed to clear feed settings data", e.toString())
-      throw e
+    /**
+     * Gets the notification badge setting.
+     * Returns true as default if settings haven't been initialized yet.
+     */
+    suspend fun getNotificationBadgeSetting(): Boolean {
+        val data = getData()
+        // If accountId is empty, it means settings haven't been initialized yet
+        return if (data.accountId.isEmpty()) {
+            true // Default to true for first-time users
+        } else {
+            data.showNotificationBadge
+        }
     }
-  }
+
+    /**
+     * Gets the last time a feed modal was triggered.
+     * Returns null if no feed modal has been triggered yet.
+     */
+    suspend fun getFeedLastTriggeredAt(): Long? {
+        val data = getData()
+        return if (data.feedLastTriggeredAt == 0L || data.feedLastTriggeredAt != null) {
+            null
+        } else {
+            data.feedLastTriggeredAt
+        }
+    }
+
+    /**
+     * Stores the last time a feed modal was triggered.
+     * @param timestamp The timestamp when the feed modal was last triggered.
+     * @param accountId The account ID for which this applies.
+     */
+    suspend fun storeFeedLastTriggeredAt(timestamp: Long, accountId: String = "") {
+        try {
+            IAMLogger.d(tag, "Storing feed last triggered at: $timestamp for account: $accountId")
+            val current = getData()
+            val updated = current.toBuilder()
+                .setFeedLastTriggeredAt(timestamp)
+                .setAccountId(accountId)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
+
+            updateData { updated }
+            IAMLogger.d(tag, "Successfully stored feed last triggered at")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to store feed last triggered at", e.toString())
+            throw e
+        }
+    }
+
+    override fun getDefaultInstance(): FeedSettings = FeedSettings.getDefaultInstance()
+
+    /**
+     * Clears all feed settings data.
+     */
+    override suspend fun clearData() {
+        try {
+            IAMLogger.i(tag, "Clearing feed settings data")
+            super.clearData()
+            IAMLogger.i(tag, "Successfully cleared feed settings data")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to clear feed settings data", e.toString())
+            throw e
+        }
+    }
 }
 
 /**
  * Base class for Proto DataStore operations.
  */
 abstract class BaseProtoDataStore<T : com.google.protobuf.MessageLite>(
-  protected val dataStore: DataStore<T>
+    protected val dataStore: DataStore<T>
 ) {
-  private val tag = "BaseProtoDataStore"
+    private val tag = "BaseProtoDataStore"
 
-  /**
-   * Returns a Flow of the Proto data.
-   */
-  val dataFlow: Flow<T> get() = dataStore.data
+    /**
+     * Returns a Flow of the Proto data.
+     */
+    val dataFlow: Flow<T> get() = dataStore.data
 
-  /**
-   * Returns the current snapshot of the Proto data.
-   */
-  suspend fun getData(): T = dataStore.data.first()
+    /**
+     * Returns the current snapshot of the Proto data.
+     */
+    suspend fun getData(): T = dataStore.data.first()
 
-  /**
-   * Updates the Proto data atomically.
-   */
-  suspend fun updateData(transform: suspend (T) -> T): T {
-    return dataStore.updateData(transform)
-  }
-
-  /**
-   * Gets the default instance of the Proto message.
-   */
-  protected abstract fun getDefaultInstance(): T
-
-  /**
-   * Clears all fields in the Proto message by resetting it to its default instance.
-   */
-  open suspend fun clearData() {
-    try {
-      IAMLogger.i(tag, "Clearing DataStore: ${this::class.simpleName}")
-      updateData { getDefaultInstance() }
-      IAMLogger.i(tag, "Successfully cleared DataStore: ${this::class.simpleName}")
-    } catch (e: Exception) {
-      IAMLogger.e(tag, "Failed to clear DataStore: ${this::class.simpleName}", e.toString())
-      throw e
+    /**
+     * Updates the Proto data atomically.
+     */
+    suspend fun updateData(transform: suspend (T) -> T): T {
+        return dataStore.updateData(transform)
     }
-  }
+
+    /**
+     * Gets the default instance of the Proto message.
+     */
+    protected abstract fun getDefaultInstance(): T
+
+    /**
+     * Clears all fields in the Proto message by resetting it to its default instance.
+     */
+    open suspend fun clearData() {
+        try {
+            IAMLogger.i(tag, "Clearing DataStore: ${this::class.simpleName}")
+            updateData { getDefaultInstance() }
+            IAMLogger.i(tag, "Successfully cleared DataStore: ${this::class.simpleName}")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to clear DataStore: ${this::class.simpleName}", e.toString())
+            throw e
+        }
+    }
 }
 
 /**
  * Serializer for FeedSettings proto.
  */
 object FeedSettingsSerializer : Serializer<FeedSettings> {
-  override val defaultValue: FeedSettings = FeedSettings.getDefaultInstance()
+    override val defaultValue: FeedSettings = FeedSettings.getDefaultInstance()
 
-  override suspend fun readFrom(input: InputStream): FeedSettings =
-    FeedSettings.parseFrom(input)
+    override suspend fun readFrom(input: InputStream): FeedSettings =
+        FeedSettings.parseFrom(input)
 
-  override suspend fun writeTo(
-    t: FeedSettings,
-    output: OutputStream,
-  ) = t.writeTo(output)
+    override suspend fun writeTo(
+        t: FeedSettings,
+        output: OutputStream,
+    ) = t.writeTo(output)
 }

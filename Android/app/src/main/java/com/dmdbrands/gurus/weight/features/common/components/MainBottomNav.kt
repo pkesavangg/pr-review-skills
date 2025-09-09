@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.greatergoods.libs.appsync.startAppSyncScan
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.dashboard.enum.BOTTOM_NAV_ITEMS
@@ -42,7 +41,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
-import android.content.Context
 
 /**
  * Stateless bottom navigation bar.
@@ -52,8 +50,8 @@ import android.content.Context
 fun MainBottomNav(
   badgeVisible: List<AppRoute> = emptyList(),
   showAppsync: Boolean,
-  onOpenAppSync: () -> Unit
-
+  onOpenAppSync: () -> Unit,
+  showUnreadFeedIndicator: Boolean = false,
 ) {
   var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
   val topBackStack = LocalNavBackStack.current
@@ -79,14 +77,15 @@ fun MainBottomNav(
     ) {
       BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
         val isSelected = (selectedItem == item)
-        val icon =
-          if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
+        val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
           if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
         NavigationBarItem(
           icon = {
             BadgedBox(
               badge = {
-                if (item.route in badgeVisible) {
+                val shouldShowBadge = item.route in badgeVisible ||
+                  (item.route == AppRoute.Main.Settings && showUnreadFeedIndicator)
+                if (shouldShowBadge) {
                   // Dot badge
                   Box(
                     modifier =
@@ -167,6 +166,7 @@ fun MainBottomNavDemoScreenPreview() {
   MeAppTheme {
     MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard),
                   showAppsync = false,
+                  showUnreadFeedIndicator = true,
                   onOpenAppSync = {})
   }
 }

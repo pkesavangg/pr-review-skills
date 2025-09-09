@@ -32,73 +32,81 @@ fun NavHost(
   topLevelBackStack: TopLevelBackStack<NavKey>,
   appViewModel: AppViewModel,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    NavigationObserver(
-        appViewModel.navigationService.navigationIntent,
-        topLevelBackStack,
-    )
-    NavDisplay(
-        modifier = Modifier.navigationBarsPadding(),
-        entryDecorators =
-            listOf(
-                rememberSceneSetupNavEntryDecorator(),
-                rememberSavedStateNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App).ifEmpty {
+  val coroutineScope = rememberCoroutineScope()
+  NavigationObserver(
+    appViewModel.navigationService.navigationIntent,
+    topLevelBackStack,
+  )
+  NavDisplay(
+    modifier = Modifier.navigationBarsPadding(),
+    entryDecorators =
       listOf(
-        AppRoute.Init.Loading,
-      )
+        rememberSceneSetupNavEntryDecorator(),
+        rememberSavedStateNavEntryDecorator(),
+        rememberViewModelStoreNavEntryDecorator(),
+      ),
+    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
+    onBack = {
+      coroutineScope.launch {
+        topLevelBackStack.removeLast(AppRoute.App)
+      }
     },
-        onBack = {
-            coroutineScope.launch {
+    entryProvider =
+      entryProvider {
+        entry<AppRoute.Init.Loading> { LoadingScreen() }
+        entry<AppRoute.Home> { HomeScreen() }
+        entry<AppRoute.FeedMessages> {
+          AppFeedMessagesScreen()
+        }
+        entry<AppRoute.FeedLanding> {
+          com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen(
+            onNavigateBack = {
+              coroutineScope.launch {
                 topLevelBackStack.removeLast(AppRoute.App)
-            }
-        },
-        entryProvider =
-            entryProvider {
-                entry<AppRoute.Init.Loading> { LoadingScreen() }
-                entry<AppRoute.Home> { HomeScreen() }
-                entry<AppRoute.FeedMessages> {
-                  AppFeedMessagesScreen(
-                    onBackPress = {
-                      coroutineScope.launch {
-                        topLevelBackStack.removeLast(AppRoute.App)
-                      }
-                    },
-                    onSettingsPress = {
-                      // Navigate to feed messages settings
-                      coroutineScope.launch {
-                        topLevelBackStack.addRoute(AppRoute.FeedMessagesSettings)
-                      }
-                    }
-                  )
-                }
-                authEntries()
-                accountSettingsEntries()
-                scaleDetailEntries()
-                scaleSetupEntries()
-                historyEntries()
-                dashboardEntries()
-                integrationEntries()
-                feedMessagesEntries()
+              }
             },
-        transitionSpec = {
-            // Slide in from right when navigating forward
-            slideInHorizontally(initialOffsetX = { it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { -it })
-        },
-        popTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-        predictivePopTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-    )
+            onNavigateToProduct = { link, variationId ->
+              // TODO: Handle product navigation
+            },
+            onNavigateToFeedLanding = { feedItem ->
+              // TODO: Handle nested navigation if needed
+            },
+          )
+        }
+        entry<AppRoute.FeedFAQ> {
+          com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen(
+            onNavigateBack = {
+              coroutineScope.launch {
+                topLevelBackStack.removeLast(AppRoute.App)
+              }
+            },
+          )
+        }
+        authEntries()
+        accountSettingsEntries()
+        scaleDetailEntries()
+        scaleSetupEntries()
+        historyEntries()
+        dashboardEntries()
+        integrationEntries()
+        feedMessagesEntries()
+      },
+    transitionSpec = {
+      // Slide in from right when navigating forward
+      slideInHorizontally(initialOffsetX = { it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { -it })
+    },
+    popTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+    predictivePopTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+  )
 }
 
 @Composable
