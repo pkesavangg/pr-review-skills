@@ -44,7 +44,7 @@ struct MetricsSectionView: View {
                     icon: showIcon ? metric.imagePath : nil,
                     isDisabled: !metric.isEnabled
                 )
-                .onChange(of: metric.isEnabled) { oldValue, newValue in
+                .onChange(of: metric.isEnabled) { _, newValue in
                     if let onToggle = onToggle {
                         onToggle(metric, newValue)
                     } else {

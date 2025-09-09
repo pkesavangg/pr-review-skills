@@ -213,7 +213,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         guard let idx = current.firstIndex(where: { $0.key == key }) else { return items }
         var changed = current.remove(at: idx)
         changed.isEnabled = isEnabled
-        if isEnabled == false {
+        if !isEnabled {
             let enabled = current.filter { $0.isEnabled }
             var disabled = current.filter { !$0.isEnabled }
             disabled.append(changed)
