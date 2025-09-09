@@ -1,6 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -27,10 +30,29 @@ internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
-  minYTarget: Int,
-  maxYTarget: Int,
+  minYTarget: Int?,
+  maxYTarget: Int?,
   initialTimeStamp: Long? = null
 ): LineCartesianLayer {
+
+  // Animated values for smooth transitions with null safety
+  val animatedMinTarget: Int? = minYTarget?.let { target ->
+    val value by animateIntAsState(
+      targetValue = target,
+      animationSpec = tween(300),
+      label = "minTarget",
+    )
+    value
+  }
+
+  val animatedMaxTarget: Int? = maxYTarget?.let { target ->
+    val value by animateIntAsState(
+      targetValue = target,
+      animationSpec = tween(300),
+      label = "maxTarget",
+    )
+    value
+  }
 
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
@@ -79,11 +101,11 @@ internal fun rememberLineLayerWithConnection(
     rangeProvider =
       object : CartesianLayerRangeProvider {
         override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-          return minYTarget.toDouble()
+          return animatedMinTarget?.toDouble() ?: super.getMinY(minY, maxY, extraStore)
         }
 
         override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-          return maxYTarget.toDouble()
+          return animatedMaxTarget?.toDouble() ?: super.getMaxY(minY, maxY, extraStore)
         }
 
         override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
@@ -103,8 +125,8 @@ internal fun rememberLineLayerWithConnection(
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
-  minYTarget: Int,
-  maxYTarget: Int,
+  minYTarget: Int?,
+  maxYTarget: Int?,
   initialTimeStamp: Long
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
@@ -123,8 +145,8 @@ internal fun primaryLayer(
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
-  minYTarget: Int,
-  maxYTarget: Int,
+  minYTarget: Int?,
+  maxYTarget: Int?,
   initialTimeStamp: Long? = null
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(

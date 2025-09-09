@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -11,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -28,7 +25,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
-import kotlin.math.roundToInt
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -56,35 +52,11 @@ fun GraphView(
   onMetricUpdate: (List<GraphPoint>) -> Unit = {},
   onScroll: (String?) -> Unit = {},
   onLabelUpdate: (String) -> Unit = {},
-  viewModel: GraphViewModel = hiltViewModel()
+  viewModel: GraphViewModel = hiltViewModel(),
 ) {
+
   val state by viewModel.state.collectAsState()
   var point: VicoPoint? by remember { mutableStateOf(null) }
-
-  // Animated values for smooth transitions
-  val animatedMinTarget by animateIntAsState(
-    targetValue = state.minYTarget.roundToInt(),
-    animationSpec = tween(300),
-    label = "minTarget",
-  )
-
-  val animatedSecondaryMinTarget by animateIntAsState(
-    targetValue = state.secondaryMinYTarget.roundToInt(),
-    animationSpec = tween(300),
-    label = "secondaryMinTarget",
-  )
-
-  val animatedMaxTarget by animateIntAsState(
-    targetValue = state.maxYTarget.roundToInt(),
-    animationSpec = tween(300),
-    label = "maxTarget",
-  )
-
-  val animatedSecondaryMaxTarget by animateIntAsState(
-    targetValue = state.secondaryMaxYTarget.roundToInt(),
-    animationSpec = tween(300),
-    label = "secondaryMaxTarget",
-  )
 
   // Scroll state
   val scrollState = rememberVicoScrollState(
@@ -103,44 +75,29 @@ fun GraphView(
     }
   }
 
-  // Handle scroll target changes with frame synchronization
-  LaunchedEffect(state.scrollTarget) {
-    val target = state.scrollTarget
-    repeat(3) { withFrameNanos { } }
-    if (target != null) {
-      scrollState.scroll(Scroll.Absolute.x(target, 0.5f))
-    }
-  }
-
   // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines, segment) {
+  LaunchedEffect(secondaryGraphLines) {
     viewModel.handleIntent(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
         secondaryGraphLines = secondaryGraphLines,
         goal = goal,
-        segment = segment,
       ),
     )
-  }
-
-  // Handle segment changes
-  LaunchedEffect(segment) {
-    viewModel.handleIntent(GraphIntent.HandleSegment(segment))
   }
 
   // Chart layers and components
   val primaryLayer = primaryLayer(
     segment,
-    animatedMinTarget,
-    animatedMaxTarget,
+    state.primaryYAxis?.min?.toInt(),
+    state.primaryYAxis?.max?.toInt(),
     state.initialTimeStamp,
   )
 
   val secondaryLayer = secondaryLayer(
     segment = segment,
-    minYTarget = animatedSecondaryMinTarget,
-    maxYTarget = animatedSecondaryMaxTarget,
+    minYTarget = state.secondaryYAxis?.min?.toInt(),
+    maxYTarget = state.secondaryYAxis?.max?.toInt(),
     initialTimeStamp = state.initialTimeStamp,
   )
 
@@ -203,7 +160,6 @@ fun GraphView(
         }
       },
     segment = segment,
-    stepSize = state.stepSize,
     primaryLayer = primaryLayer,
     secondaryLayer = secondaryLayer,
     markerListener = markerListener,

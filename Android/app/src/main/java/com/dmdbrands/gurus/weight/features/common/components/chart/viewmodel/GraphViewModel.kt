@@ -13,29 +13,37 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
-import android.util.Log
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
  * Follows MVI pattern with clear separation of concerns.
  */
-@OptIn(FlowPreview::class)
-@HiltViewModel
-class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, GraphIntent>(
+@HiltViewModel(
+  assistedFactory = GraphViewModel.Factory::class,
+)
+class GraphViewModel @AssistedInject constructor(
+  @Assisted val segment: GraphSegment
+) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
+
+  @AssistedFactory
+  interface Factory {
+    fun create(segment: GraphSegment): GraphViewModel
+  }
+
   private var hasInitialized = false
   private var onMetricUpdate: (List<GraphPoint>) -> Unit = {}
   private var onScroll: (String?) -> Unit = {}
@@ -48,7 +56,6 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
-      is GraphIntent.HandleSegment -> handleSegmentUpdate(intent.segment)
       is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate(intent.markerIndex)
       else -> null
     }
@@ -60,18 +67,9 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
   private fun initializeGraph(intent: GraphIntent.InitializeGraph) {
     super.handleIntent(intent)
 
-    val graphLines = intent.graphLines
+    intent.graphLines
     val secondaryGraphLines = intent.secondaryGraphLines
     val goal = intent.goal
-
-    // Calculate derived values
-    val timeStamp =
-      graphLines.flatMap { it.points.map { it.x.value.toDouble() }.sortedBy { it } }
-
-    // Set initial targets
-    val minTarget = timeStamp.minByOrNull { it }?.toLong()
-    val maxTarget = timeStamp.maxByOrNull { it }?.toLong()
-    handleIntent(GraphIntent.UpdateTargetRange(minTarget, maxTarget))
 
     // Setup chart model producer
     setupChartModelProducer(secondaryGraphLines, goal)
@@ -103,58 +101,48 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
         }
 
         if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+          calculateYAxis(secondaryGraphLines)
           lineSeries {
             series(
               x = secondaryGraphLines.points.map { it.x.value as Long },
               y = secondaryGraphLines.points.map { it.y.value },
             )
           }
-
-          val secondaryYAxis = secondaryGraphLines.points.map { it.y.value.toDouble() }
-          val secondaryGraphMeta = generateNiceScale(
-            floor(secondaryYAxis.min()),
-            ceil(secondaryYAxis.max()),
-            goalWeight = goal?.goalWeight ?: 0.0,
-          )
-
-          super.handleIntent(
-            GraphIntent.UpdateYAxisTargets(
-              minYTarget = currentState.minYTarget,
-              maxYTarget = currentState.maxYTarget,
-              secondaryMinYTarget = secondaryGraphMeta.min,
-              secondaryMaxYTarget = secondaryGraphMeta.max,
-            ),
-          )
         }
       }
     }
   }
 
-  /**
-   * Handles segment updates and recalculates related values.
-   */
-  private fun handleSegmentUpdate(segment: GraphSegment) {
+  private fun calculateYAxis(secondaryGraphLines: GraphLine) {
     val currentState = _state.value
-    Log.d("handleSegmentUpdate", segment.toString() + "  " + currentState.segment.toString())
-    if (segment != currentState.segment || !hasInitialized) {
-      super.handleIntent(GraphIntent.UpdateSegment(segment))
-      viewModelScope.launch {
-        super.handleIntent(GraphIntent.UpdateIsUpdating(true))
+    // Calculate Y-axis targets
+    val intervalCount = segment.intervalCount().div(2)
+    val paddedMinTarget = currentState.minTarget?.minus(ONE_DAY_MILLIS * intervalCount)
+    val paddedMaxTarget = currentState.maxTarget?.plus(ONE_DAY_MILLIS * intervalCount)
+    if (paddedMinTarget != null && paddedMaxTarget != null) {
+      val paddedSecondaryGraphLines = filterXValuesInRange(
+        listOf(secondaryGraphLines),
+        paddedMinTarget,
+        paddedMaxTarget,
+      )
 
-        val target = currentState.savedTarget ?: currentState.maxTarget
-        val nearest = target?.let {
-          currentState.xLabels.map { it.value.toLong() }
-            .minByOrNull { abs(it - target) }
-        }
-        onScrollValueUpdate(nearest?.toDouble())
+      val secondaryYAxis = paddedSecondaryGraphLines.flatMap { graphLine ->
+        graphLine.points.map { it.y.value.toDouble() }
       }
-      if (!hasInitialized) {
-        hasInitialized = true
+
+      if (secondaryYAxis.isNotEmpty()) {
+        val secondaryGraphMeta = generateNiceScale(
+          floor(secondaryYAxis.min()),
+          ceil(secondaryYAxis.max()),
+          goalWeight = currentState.goal?.goalWeight ?: 0.0,
+        )
+        handleIntent(
+          GraphIntent.UpdateSecondaryYAxis(
+            axisMeta = secondaryGraphMeta,
+          ),
+        )
       }
     }
-
-    super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    super.handleIntent(GraphIntent.UpdateIsUpdating(false))
   }
 
   /**
@@ -172,7 +160,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
         val formattedRange = GraphUtil.formatDateRange(
           currentState.minTarget ?: 0L,
           currentState.maxTarget ?: 0L,
-          currentState.segment,
+          segment,
         )
         onScroll(formattedRange)
 
@@ -215,8 +203,8 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
     // Cancel any existing computation job
     currentState.computationJob?.cancel()
 
-    val job = viewModelScope.launch(Dispatchers.Default) {
-      val formattedRange = GraphUtil.formatDateRange(min, max, currentState.segment)
+    val job = viewModelScope.launch(Dispatchers.IO) {
+      val formattedRange = GraphUtil.formatDateRange(min, max, segment)
       onScroll(formattedRange)
 
       val subset = averageYValuesInRange(
@@ -242,7 +230,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
         onMetricUpdate(graphLines.flatMap { it.points })
 
         // Calculate Y-axis targets
-        val intervalCount = currentState.segment.intervalCount().div(2)
+        val intervalCount = segment.intervalCount().div(2)
         val paddedMinTarget = min.minus(ONE_DAY_MILLIS * intervalCount)
         val paddedMaxTarget = max.plus(ONE_DAY_MILLIS * intervalCount)
 
@@ -260,7 +248,7 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
           var tempMax = ceil(yAxis.max())
           var tempMin = floor(yAxis.min())
 
-          if (currentState.maxYTarget == currentState.minYTarget) {
+          if (currentState.primaryYAxis?.max == currentState.primaryYAxis?.min) {
             tempMax += 1
             tempMin -= 1
           }
@@ -272,42 +260,12 @@ class GraphViewModel @Inject constructor() : BaseIntentViewModel<GraphState, Gra
           )
 
           handleIntent(
-            GraphIntent.UpdateYAxisTargets(
-              minYTarget = graphMeta.min,
-              maxYTarget = graphMeta.max,
+            GraphIntent.UpdatePrimaryYAxis(
+              axisMeta = graphMeta,
             ),
           )
-
-          handleIntent(GraphIntent.UpdateStepSize(graphMeta.step))
-
-          // Handle secondary graph lines
-          currentState.secondaryGraphLines?.let { secondaryGraphLines ->
-            val paddedSecondaryGraphLines = filterXValuesInRange(
-              listOf(secondaryGraphLines),
-              paddedMinTarget,
-              paddedMaxTarget,
-            )
-
-            val secondaryYAxis = paddedSecondaryGraphLines.flatMap { graphLine ->
-              graphLine.points.map { it.y.value.toDouble() }
-            }
-
-            if (secondaryYAxis.isNotEmpty()) {
-              val secondaryGraphMeta = generateNiceScale(
-                floor(secondaryYAxis.min()),
-                ceil(secondaryYAxis.max()),
-                goalWeight = currentState.goal?.goalWeight ?: 0.0,
-              )
-
-              handleIntent(
-                GraphIntent.UpdateYAxisTargets(
-                  minYTarget = graphMeta.min,
-                  maxYTarget = graphMeta.max,
-                  secondaryMinYTarget = secondaryGraphMeta.min,
-                  secondaryMaxYTarget = secondaryGraphMeta.max,
-                ),
-              )
-            }
+          if (currentState.secondaryGraphLines != null) {
+            calculateYAxis(currentState.secondaryGraphLines)
           }
         }
       }

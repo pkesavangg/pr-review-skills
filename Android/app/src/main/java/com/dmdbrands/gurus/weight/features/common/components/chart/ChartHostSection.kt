@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,11 +36,10 @@ import kotlin.math.roundToInt
 @Composable
 internal fun ChartHostSection(
   modifier: Modifier = Modifier,
-  segment: GraphSegment,
   primaryLayer: LineCartesianLayer,
   secondaryLayer: LineCartesianLayer,
+  segment: GraphSegment,
   markerListener: CartesianMarkerVisibilityListener?,
-  stepSize: Double,
   defaultMarker: CartesianMarker,
   xLabels: List<Label>,
   markerIndex: Int?,
@@ -49,101 +47,102 @@ internal fun ChartHostSection(
   modelProducer: CartesianChartModelProducer,
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
-  isEmpty: Boolean = false,
   decorations: Decoration? = null,
   separators: List<Double>
 ) {
 
-  key(segment, isEmpty) {
-    val visibleCount = if (segment == GraphSegment.TOTAL) GraphUtil.calculateTotalIntervalCount(
-      startTime = state.startRangeX,
-      endTime = state.endRangeX,
-      segment = segment,
-    ) else segment.intervalCount()
-    val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+  val visibleCount = if (segment == GraphSegment.TOTAL) GraphUtil.calculateTotalIntervalCount(
+    startTime = state.getXStartRange(segment),
+    endTime = state.getXEndRange(segment),
+    segment = segment,
+  ) else segment.intervalCount()
+  val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
 
-    val primaryChart =
-      rememberCartesianChart(
-        primaryLayer,
-        secondaryLayer,
-        startAxis =
-          VerticalAxis.rememberStart(
-            label = null,
-            line = rememberAxisLineComponent(
+  val primaryChart =
+    rememberCartesianChart(
+      primaryLayer,
+      secondaryLayer,
+      startAxis =
+        VerticalAxis.rememberStart(
+          label = null,
+          itemPlacer =
+            VerticalAxis.ItemPlacer.step(
+              step = { state.secondaryYAxis?.step },
+            ),
+          line = rememberAxisLineComponent(
+            fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+            thickness = 1.dp,
+          ),
+          guideline = null,
+          tickLength = 0.dp,
+        ),
+      topAxis =
+        HorizontalAxis.rememberTop(
+          label = null,
+          line = rememberAxisLineComponent(
+            fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+            thickness = 1.dp,
+          ),
+          guideline = null,
+          tickLength = 0.dp,
+        ),
+      endAxis =
+        VerticalAxis.rememberEnd(
+          valueFormatter =
+            CartesianValueFormatter { _, value, _ ->
+              value.roundToInt().toString()
+            },
+          itemPlacer =
+            VerticalAxis.ItemPlacer.step(
+              step = { state.primaryYAxis?.step },
+            ),
+          size = BaseAxis.Size.fixed(40.dp),
+          line =
+            rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
               thickness = 1.dp,
             ),
-            guideline = null,
-            tickLength = 0.dp,
-          ),
-        topAxis =
-          HorizontalAxis.rememberTop(
-            label = null,
-            line = rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-              thickness = 1.dp,
+          guideline =
+            rememberAxisLineComponent(
+              fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+              thickness = 0.5.dp,
             ),
-            guideline = null,
-            tickLength = 0.dp,
-          ),
-        endAxis =
-          VerticalAxis.rememberEnd(
-            valueFormatter =
-              CartesianValueFormatter { _, value, _ ->
-                value.roundToInt().toString()
-              },
-            itemPlacer =
-              VerticalAxis.ItemPlacer.step(
-                step = { stepSize },
-              ),
-            size = BaseAxis.Size.fixed(40.dp),
-            line =
-              rememberAxisLineComponent(
-                fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-                thickness = 1.dp,
-              ),
-            guideline =
-              rememberAxisLineComponent(
-                fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-                thickness = 0.5.dp,
-              ),
-            label =
-              rememberTextComponent(
-                color = MeTheme.colorScheme.textSubheading,
-                padding = insets(start = 10.dp),
-                textSize = 14.sp,
-              ),
-            tickLength = 0.dp,
-          ),
-        bottomAxis = bottomAxis,
-        marker = emptyMarker(),
-        decorations = listOfNotNull(decorations),
-        markerVisibilityListener = markerListener,
-        persistentMarkers =
+          label =
+            rememberTextComponent(
+              color = MeTheme.colorScheme.textSubheading,
+              padding = insets(start = 10.dp),
+              textSize = 14.sp,
+            ),
+          tickLength = 0.dp,
+        ),
+      bottomAxis = bottomAxis,
+      marker = emptyMarker(),
+      decorations = listOfNotNull(decorations),
+      markerVisibilityListener = markerListener,
+      persistentMarkers =
 
-          if (markerIndex != null) {
-            {
-              defaultMarker at xLabels[markerIndex].value
-            }
-          } else {
-            null
-          },
-        visibleLabelsCount = visibleCount,
-        getXStep = {
-          GraphUtil.calculateXStep(
-            segment,
-          )
+        if (markerIndex != null) {
+          {
+            defaultMarker at xLabels[markerIndex].value
+          }
+        } else {
+          null
         },
-      )
-    CartesianChartHost(
-      chart = primaryChart,
-      modelProducer = modelProducer,
-      modifier = modifier,
-      animationSpec = null,
-      animateIn = false,
-      scrollState = scrollState,
-      zoomState = rememberVicoZoomState(zoomEnabled = false),
-      consumeMoveEvents = true,
+      visibleLabelsCount = visibleCount,
+      getXStep = {
+        GraphUtil.calculateXStep(
+          segment,
+        )
+      },
     )
-  }
+  CartesianChartHost(
+    chart = primaryChart,
+    modelProducer = modelProducer,
+    modifier = modifier,
+    animationSpec = null,
+    animateIn = false,
+    scrollState = scrollState,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    consumeMoveEvents = true,
+  )
 }

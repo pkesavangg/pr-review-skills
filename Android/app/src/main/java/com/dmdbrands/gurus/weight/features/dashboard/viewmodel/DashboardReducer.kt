@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
  * @property visibleKeys List of visible dashboard keys (metrics and milestones).
  * @property dayWiseEntries List of day-wise body scale summaries.
  * @property monthWiseEntries List of month-wise body scale summaries.
+ * @property pagerState Current pager state for horizontal graph navigation.
  */
 data class DashboardState(
   val isLoading: Boolean = false,
@@ -25,7 +26,8 @@ data class DashboardState(
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
   val metricData: List<PeriodBodyScaleSummary> = emptyList(),
-  val goal : Goal? = null
+  val goal: Goal? = null,
+  val pagerState: Int = 0
 ) : IReducer.State
 
 /**
@@ -45,6 +47,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
   data class SetMetricData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetGoal(val goal: Goal?) : DashboardIntent
+  data class SetPagerState(val pagerState: Int) : DashboardIntent
 }
 
 /**
@@ -61,6 +64,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
     is DashboardIntent.SetGoal -> state.copy(goal = intent.goal)
+    is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     else -> state
   }

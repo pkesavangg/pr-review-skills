@@ -2,18 +2,18 @@ package com.greatergoods.meapp.features.common.helper
 
 import kotlin.math.pow
 
+data class AxisMeta(
+  val min: Double,
+  val max: Double,
+  val step: Double,
+  val ticks: List<Double>,
+  val domain: ClosedFloatingPointRange<Double>
+)
+
 object ImprovedNiceScaleCalculator {
   // Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
 
   private val niceNumbers = listOf(1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0)
-
-  data class AxisMeta(
-    val min: Double,
-    val max: Double,
-    val step: Double,
-    val ticks: List<Double>,
-    val domain: ClosedFloatingPointRange<Double>
-  )
 
   fun generateNiceScale(
     minValue: Double,

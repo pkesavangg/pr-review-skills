@@ -2,8 +2,8 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
-import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
+import com.greatergoods.meapp.features.common.helper.AxisMeta
 import kotlinx.coroutines.Job
 
 /**
@@ -15,24 +15,16 @@ sealed interface GraphIntent : IReducer.Intent {
     val graphLines: List<GraphLine>,
     val secondaryGraphLines: GraphLine? = null,
     val goal: Goal? = null,
-    val segment: GraphSegment
   ) : GraphIntent
 
-  /** Update the graph segment */
-  data class HandleSegment(val segment: GraphSegment) : GraphIntent
+  /** Update primary Y-axis */
+  data class UpdatePrimaryYAxis(val axisMeta: AxisMeta) : GraphIntent
 
-  data class UpdateSegment(val segment: GraphSegment) : GraphIntent
+  /** Update secondary Y-axis */
+  data class UpdateSecondaryYAxis(val axisMeta: AxisMeta) : GraphIntent
 
   /** Update target range for the graph */
   data class UpdateTargetRange(val minTarget: Long?, val maxTarget: Long?) : GraphIntent
-
-  /** Update Y-axis targets */
-  data class UpdateYAxisTargets(
-    val minYTarget: Double,
-    val maxYTarget: Double,
-    val secondaryMinYTarget: Double = minYTarget,
-    val secondaryMaxYTarget: Double = maxYTarget
-  ) : GraphIntent
 
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Int?) : GraphIntent

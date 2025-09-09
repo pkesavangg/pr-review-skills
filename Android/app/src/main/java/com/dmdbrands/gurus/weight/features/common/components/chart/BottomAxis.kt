@@ -22,43 +22,30 @@ internal fun bottomAxis(
   separators: List<Double> = emptyList(),
   horizontalItemPlacer: HorizontalAxis.ItemPlacer = HorizontalAxis.ItemPlacer.aligned()
 ): Axis<Axis.Position.Horizontal.Bottom> {
-  return if (segment != GraphSegment.TOTAL)
-    HorizontalAxis.rememberBottom(
-      valueFormatter =
-        CartesianValueFormatter { _, value, _ ->
-          if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
-            value.toLong(),
-            segment,
-          ).lowercase() else " "
-        },
-      itemPlacer = horizontalItemPlacer,
-      guideline = rememberAxisGuidelineComponent(
-        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-        thickness = 1.dp,
-      ),
-      label = rememberAxisLabelComponent(
-        color = MeTheme.colorScheme.textSubheading,
-        textSize = 14.sp,
-      ),
-      tick = rememberAxisGuidelineComponent(),
-      tickLength = 20.dp,
-      horizontalLabelPosition = Position.Horizontal.End,
-      line = rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-        thickness = 1.dp,
-      ),
-      separators = { separators },
-    )
-  else
-    HorizontalAxis.rememberBottom(
-      guideline = null,
-      itemPlacer = horizontalItemPlacer,
-      label = null,
-      tickLength = 0.dp,
-      line = rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
-        thickness = 1.dp,
-      ),
-      separators = { separators },
-    )
+  return HorizontalAxis.rememberBottom(
+    valueFormatter =
+      CartesianValueFormatter { _, value, _ ->
+        if (value.toInt() != 0 || segment != GraphSegment.TOTAL) GraphUtil.formatTimestampForSegment(
+          value.toLong(),
+          segment,
+        ).lowercase() else " "
+      },
+    itemPlacer = horizontalItemPlacer,
+    guideline = rememberAxisGuidelineComponent(
+      fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+      thickness = 1.dp,
+    ),
+    label = rememberAxisLabelComponent(
+      color = MeTheme.colorScheme.textSubheading,
+      textSize = 14.sp,
+    ),
+    tick = rememberAxisGuidelineComponent(),
+    tickLength = 20.dp,
+    horizontalLabelPosition = Position.Horizontal.End,
+    line = rememberAxisLineComponent(
+      fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+      thickness = 1.dp,
+    ),
+    separators = { separators },
+  )
 }

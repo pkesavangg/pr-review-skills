@@ -113,6 +113,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         onSelected = {
           handleIntent(DashboardIntent.SetMetricData(it))
         },
+        onPagerStateChange = { pagerState ->
+          handleIntent(DashboardIntent.SetPagerState(pagerState))
+        }
       )
       if(state.dayWiseEntries.isEmpty()) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
