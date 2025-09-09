@@ -41,6 +41,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     // MARK: - Common Computed Properties
     var chartOperations: [BathScaleWeightSummary] { get }
     var chartSeriesData: [GraphSeries] { get }
+    /// Chart series points that fall within the currently visible X-domain
+    var visibleChartSeriesData: [GraphSeries] { get }
     var goalWeight: Double { get }
     var displayWeight: Double? { get }
     var weightLabel: String { get }

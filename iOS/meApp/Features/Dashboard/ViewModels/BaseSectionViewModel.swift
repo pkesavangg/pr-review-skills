@@ -135,6 +135,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+
+    /// Visible series filtered by the current scroll position and visible domain
+    var visibleChartSeriesData: [GraphSeries] {
+        guard hasXAxis else { return chartSeriesData }
+        let domainLength = visibleDomainLength
+        guard domainLength.isFinite && domainLength > 0 else { return chartSeriesData }
+        let left = scrollPosition.addingTimeInterval(-domainLength / 2)
+        let right = scrollPosition.addingTimeInterval(domainLength / 2)
+        let data = chartSeriesData
+        // Keep only points whose plotted X-date is within visible window
+        return data.filter { point in
+            let xDate = plotXDate(for: point.date)
+            return xDate >= left && xDate <= right
+        }
+    }
     
     /// Goal weight for display
     var goalWeight: Double {

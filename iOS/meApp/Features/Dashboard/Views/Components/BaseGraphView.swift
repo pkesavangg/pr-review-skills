@@ -88,6 +88,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 }
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
+                // Animate when series data changes (even if Y-axis domain/ticks stay the same)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
+                // Animate when switching the selected metric (weight vs other metric)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
                 // Apply touch interaction modifiers only for scrollable charts
@@ -152,7 +156,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .zIndex(-1)
         }
     }
-
+    
     // Helper: Adjusts a tick value to avoid overlap with axis baselines
     private func adjustedTick(_ tick: Double) -> Double {
         guard viewModel.hasXAxis else { return tick }
@@ -350,6 +354,27 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
     }
+    
+    // MARK: - Animation Token
+    /// Lightweight hash token that changes when the VISIBLE plotted series data changes,
+    /// so we can animate line updates even when the Y-axis domain is unchanged.
+    private var seriesAnimationToken: Int {
+        if viewModel.isScrolling { return 0 } // no animations during scroll, skip work
+        let data = viewModel.visibleChartSeriesData
+        var hasher = Hasher()
+        hasher.combine(data.count)
+        if !data.isEmpty {
+            let c = data.count
+            let idxs = c == 1 ? [0] : c == 2 ? [0, 1] : [0, c/4, c/2, (3*c)/4, c-1]
+            for i in Set(idxs).sorted() {
+                let p = data[i]
+                hasher.combine(p.date.timeIntervalSince1970.bitPattern)
+                hasher.combine(p.value.bitPattern)
+                hasher.combine(p.series)
+            }
+        }
+        return hasher.finalize()
+    }
 }
 
 // MARK: - View Extensions for Conditional Modifiers
@@ -411,7 +436,7 @@ extension View {
                         }
                     }
                 }
-                // Add padding to left side of chart area
+            // Add padding to left side of chart area
                 .chartPlotStyle { plot in
                     if viewModel.isAtLeftBoundary {
                         plot.padding(.leading, .spacingXS)
