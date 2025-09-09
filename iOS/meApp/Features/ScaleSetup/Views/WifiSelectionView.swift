@@ -10,6 +10,7 @@ import SwiftUI
 struct WifiSelectionView: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @EnvironmentObject var store: BtWifiScaleSetupStore
     
     let connectedWifiNetwork: WifiDetails?
     let wifiNetworks: [WifiDetails]
@@ -21,15 +22,16 @@ struct WifiSelectionView: View {
     
     var availableNetworks: [WifiDetails] {
         wifiNetworks.filter { network in
-            guard let connectedSSID = connectedWifiNetwork?.ssid else { return true }
-            return network.ssid != connectedSSID
+            guard let connectedNetwork = connectedWifiNetwork else { return true }
+            let isSame = store.isSameNetwork(network, connectedNetwork)
+            return !isSame
         }
     }
     
     var availableNetworksHeight: CGFloat {
         CGFloat(min(itemHeight * availableNetworks.count, itemHeight * (connectedWifiNetwork != nil ? 5 : 7)))
     }
-    
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
@@ -125,7 +127,10 @@ struct WifiSelectionView: View {
 }
 
 #Preview {
-    WifiSelectionView(
+    let store = BtWifiScaleSetupStore()
+    store.configure(with: "0412")
+    
+    return WifiSelectionView(
         connectedWifiNetwork: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
         wifiNetworks: [
             WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
@@ -135,4 +140,5 @@ struct WifiSelectionView: View {
         onRefresh: {},
         onNetworkSelected: { _ in }
     )
+    .environmentObject(store)
 }

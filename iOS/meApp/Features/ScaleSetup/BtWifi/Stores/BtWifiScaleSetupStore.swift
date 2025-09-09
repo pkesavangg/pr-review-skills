@@ -147,7 +147,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
     
+    // MARK: - Computed Properties
+    /// Check if this is being used for settings WiFi configuration
+    var isSettingsContext: Bool {
+        savedScale != nil
+    }
     
+    /// Check if the form is valid for WiFi password entry
+    var isFormValid: Bool {
+        if networkForm.networkHasNoPassword {
+            return true
+        } else {
+            return !networkForm.password.value.isEmpty
+        }
+    }
+
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
         .connectingBluetooth,
@@ -1905,6 +1919,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.networkForm = NetworkForm()
         subscribeToNetworkForm()
     }
+       
+    // MARK: - Network Comparison Methods
+    /// Check if two networks are the same by comparing SSID and MAC address
+    func isSameNetwork(_ network1: WifiDetails, _ network2: WifiDetails) -> Bool {
+        func cleanSSID(_ ssid: String?) -> String {
+            ssid?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "\0", with: "")
+                .lowercased() ?? ""
+        }
+        func cleanMAC(_ mac: String) -> String {
+            mac.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        
+        let ssid1 = cleanSSID(network1.ssid)
+        let ssid2 = cleanSSID(network2.ssid)
+        let mac1 = cleanMAC(network1.macAddress)
+        let mac2 = cleanMAC(network2.macAddress)
+        
+        return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
+}
     
     deinit {
         // Cancel active Combine subscription before releasing it.

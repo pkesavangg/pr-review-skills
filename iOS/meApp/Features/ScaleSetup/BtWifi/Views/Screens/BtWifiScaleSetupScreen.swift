@@ -108,7 +108,11 @@ struct BtWifiScaleSetupScreen: View {
     
     private var footerButtons: some View {
         HStack {
-            if setupStore.currentStep == .availableWifiList {
+            // Hide Back/Next buttons when used for settings WiFi configuration
+            if savedScale != nil {
+                // Settings WiFi configuration - no footer buttons
+                EmptyView()
+            } else if setupStore.currentStep == .availableWifiList {
                 // Show Skip only when no network is already connected.
                 if setupStore.scaleSetupError == .none && setupStore.connectedWifiNetwork == nil {
                     Spacer()
