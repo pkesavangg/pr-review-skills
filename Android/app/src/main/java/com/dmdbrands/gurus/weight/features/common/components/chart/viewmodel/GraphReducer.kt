@@ -25,13 +25,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
-    is GraphIntent.UpdateSavedTarget -> state.copy(savedTarget = intent.target)
-
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
-
-    is GraphIntent.UpdateScrollValue -> state.copy(scrollValue = intent.scrollValue)
-
-    is GraphIntent.UpdateSeparators -> state.copy(separators = intent.separators)
 
     is GraphIntent.UpdateComputationJob -> state.copy(computationJob = intent.job)
 
@@ -46,8 +40,6 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       minTarget = intent.min,
       maxTarget = intent.max,
     )
-
-    is GraphIntent.SetScrollTarget -> state.copy(scrollTarget = intent.target)
 
     else -> state
   }

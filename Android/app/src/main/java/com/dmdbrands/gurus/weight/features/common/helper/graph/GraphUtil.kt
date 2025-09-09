@@ -119,10 +119,11 @@ object GraphUtil {
 
   // region Calculation
   fun calculateTotalIntervalCount(
-    startTime: Long,
-    endTime: Long,
+    startTime: Long?,
+    endTime: Long?,
     segment: GraphSegment
   ): Int {
+    if (startTime == null || endTime == null) return 0
     val step = calculateXStep(segment)
     val duration = endTime - startTime
     return ceil(duration.toDouble() / step).toInt()
@@ -302,16 +303,20 @@ object GraphUtil {
     }
   }
 
-  fun getStartRange(segment: GraphSegment, timeStamp: Long): Long = when (segment) {
-    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).start
-    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).start
-    GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).start
+  fun getStartRange(segment: GraphSegment, timeStamp: Long?): Long? = timeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).start
+      GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).start
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).start
+    }
   }
 
-  fun getEndRange(segment: GraphSegment, timeStamp: Long): Long = when (segment) {
-    GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).end
-    GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).end
-    GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).end
+  fun getEndRange(segment: GraphSegment, timeStamp: Long?): Long? = timeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).end
+      GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).end
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).end
+    }
   }
 
   fun periodStarts(
@@ -319,7 +324,7 @@ object GraphUtil {
     startMillis: Long?,
     endMillis: Long?
   ): List<Long> {
-    if (startMillis == null || endMillis == null || startMillis > endMillis) return emptyList()
+    if (startMillis == null || endMillis == null || startMillis > endMillis || segment == GraphSegment.TOTAL) return emptyList()
 
     val zone = ZoneId.systemDefault()
     val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
@@ -328,7 +333,8 @@ object GraphUtil {
     var cursor = when (segment) {
       GraphSegment.WEEK -> startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
       GraphSegment.MONTH -> startDate.withDayOfMonth(1)
-      GraphSegment.YEAR, GraphSegment.TOTAL -> startDate.withDayOfYear(1)
+      GraphSegment.YEAR -> startDate.withDayOfYear(1)
+      GraphSegment.TOTAL -> startDate.withDayOfYear(1)
     }
 
     val step = when (segment) {

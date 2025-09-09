@@ -48,15 +48,23 @@ internal fun ChartHostSection(
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   decorations: Decoration? = null,
-  separators: List<Double>
 ) {
-
+  val timeStamps = xLabels.map { it.value.toLong() }.sorted()
+  val separators = GraphUtil.periodStarts(
+    segment = segment,
+    startMillis = if (timeStamps.isNotEmpty()) timeStamps.first() else null,
+    endMillis = if (timeStamps.isNotEmpty()) timeStamps.last() else null,
+  ).map { it.toDouble() }
   val visibleCount = if (segment == GraphSegment.TOTAL) GraphUtil.calculateTotalIntervalCount(
     startTime = state.getXStartRange(segment),
     endTime = state.getXEndRange(segment),
     segment = segment,
   ) else segment.intervalCount()
   val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
+  buildList {
+    add(primaryLayer)
+    if (state.secondaryGraphLines != null) add(secondaryLayer)
+  }
 
   val primaryChart =
     rememberCartesianChart(

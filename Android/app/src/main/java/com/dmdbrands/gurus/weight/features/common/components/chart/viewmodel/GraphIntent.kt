@@ -34,14 +34,8 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update updating state */
   data class UpdateIsUpdating(val isUpdating: Boolean) : GraphIntent
 
-  /** Update step size */
-  data class UpdateStepSize(val stepSize: Double) : GraphIntent
-
   /** Update scroll state */
   data class UpdateScrollValue(val scrollValue: Double?) : GraphIntent
-
-  /** Update separators */
-  data class UpdateSeparators(val separators: List<Double>) : GraphIntent
 
   /** Update computation job */
   data class UpdateComputationJob(val job: Job?) : GraphIntent

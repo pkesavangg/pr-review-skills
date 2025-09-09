@@ -18,6 +18,8 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -49,8 +51,15 @@ class GraphViewModel @AssistedInject constructor(
   private var onScroll: (String?) -> Unit = {}
   private var onLabelUpdate: (String) -> Unit = {}
   private var onScrollValueUpdate: suspend (Double?) -> Unit = {}
+  private var currentModelProducerJob: Job? = null
 
   override fun provideInitialState(): GraphState = GraphState()
+
+  override fun onCleared() {
+    super.onCleared()
+    // Cancel any running model producer job
+    currentModelProducerJob?.cancel()
+  }
 
   override fun handleIntent(intent: GraphIntent) {
     super.handleIntent(intent)
@@ -85,35 +94,45 @@ class GraphViewModel @AssistedInject constructor(
     secondaryGraphLines: GraphLine?,
     goal: Goal?
   ) {
+    // Cancel any existing model producer job
+    currentModelProducerJob?.cancel()
+
     val currentState = state.value
     val xLabels = currentState.xLabels
     val ySeries = currentState.yLabels
 
-    viewModelScope.launch {
-      currentState.modelProducer.runTransaction {
-        lineSeries {
-          ySeries.forEach { y ->
-            series(
-              x = xLabels.map { it.value as Long },
-              y = y.map { it.value },
-            )
-          }
-        }
+    currentModelProducerJob = viewModelScope.launch {
+      if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+        calculateYAxis(secondaryGraphLines)
+      }
 
-        if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
-          calculateYAxis(secondaryGraphLines)
+      // Check if job is still active before running transaction
+      if (isActive) {
+        currentState.modelProducer.runTransaction {
           lineSeries {
-            series(
-              x = secondaryGraphLines.points.map { it.x.value as Long },
-              y = secondaryGraphLines.points.map { it.y.value },
-            )
+            ySeries.forEach { y ->
+              series(
+                x = xLabels.map { it.value as Long },
+                y = y.map { it.value },
+              )
+            }
+          }
+
+          if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+            lineSeries {
+              series(
+                x = secondaryGraphLines.points.map { it.x.value as Long },
+                y = secondaryGraphLines.points.map { it.y.value },
+              )
+            }
           }
         }
       }
     }
+    handleIntent(GraphIntent.SetScrollTarget(target = xLabels.maxOfOrNull { it.value.toDouble() }))
   }
 
-  private fun calculateYAxis(secondaryGraphLines: GraphLine) {
+  private fun calculateYAxis(secondaryGraphLines: GraphLine, canAnimate: Boolean = true) {
     val currentState = _state.value
     // Calculate Y-axis targets
     val intervalCount = segment.intervalCount().div(2)
@@ -138,7 +157,7 @@ class GraphViewModel @AssistedInject constructor(
         )
         handleIntent(
           GraphIntent.UpdateSecondaryYAxis(
-            axisMeta = secondaryGraphMeta,
+            axisMeta = secondaryGraphMeta.copy(canAnimate = canAnimate),
           ),
         )
       }
@@ -294,11 +313,12 @@ class GraphViewModel @AssistedInject constructor(
   /**
    * Sets up debounced scroll handling for smooth updates.
    */
+  @OptIn(FlowPreview::class)
   private fun setupDebouncedScrollHandling() {
     viewModelScope.launch {
       state
         .map { it.minTarget to it.maxTarget }
-        .debounce(500)
+        .debounce(300)
         .distinctUntilChanged()
         .collect { (min, max) ->
           if (min != null && max != null) {

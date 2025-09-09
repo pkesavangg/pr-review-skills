@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -58,12 +59,6 @@ fun GraphView(
   val state by viewModel.state.collectAsState()
   var point: VicoPoint? by remember { mutableStateOf(null) }
 
-  // Scroll state
-  val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL,
-    initialScroll = Scroll.Absolute.End,
-  )
-
   // Store callbacks in ViewModel
   DisposableEffect(Unit) {
     viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate) { target ->
@@ -74,9 +69,13 @@ fun GraphView(
       viewModel.handleIntent(GraphIntent.SetScrollTarget(null))
     }
   }
-
+  // Scroll state
+  val scrollState = rememberVicoScrollState(
+    scrollEnabled = segment != GraphSegment.TOTAL,
+    initialScroll = Scroll.Absolute.End,
+  )
   // Initialize graph when data changes
-  LaunchedEffect(secondaryGraphLines) {
+  LaunchedEffect(graphLines, secondaryGraphLines) {
     viewModel.handleIntent(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
@@ -86,19 +85,28 @@ fun GraphView(
     )
   }
 
+  // Calculate stable ranges using remember to prevent fluctuations
+  val xLabels = remember(graphLines) { graphLines.firstNotNullOf { it.points.map { it.x } } }
+  val initialTimeStamp = xLabels.map { it.value.toLong() }.sorted().min()
+  val endTimeStamp = xLabels.map { it.value.toLong() }.sorted().max()
+  val startRange = GraphUtil.getStartRange(segment, initialTimeStamp)
+  val endRange = GraphUtil.getEndRange(segment, endTimeStamp)
+
   // Chart layers and components
   val primaryLayer = primaryLayer(
     segment,
     state.primaryYAxis?.min?.toInt(),
     state.primaryYAxis?.max?.toInt(),
-    state.initialTimeStamp,
+    startRange,
+    endRange,
   )
 
   val secondaryLayer = secondaryLayer(
     segment = segment,
     minYTarget = state.secondaryYAxis?.min?.toInt(),
     maxYTarget = state.secondaryYAxis?.max?.toInt(),
-    initialTimeStamp = state.initialTimeStamp,
+    startRange,
+    endRange,
   )
 
   val defaultMarker = rememberDefaultMarker(state.xLabels, state.markerIndex, segment)
@@ -126,6 +134,7 @@ fun GraphView(
 
   val currentDeviceType = getDeviceType()
   val chartHeight = if (currentDeviceType == DeviceType.Tablet) 400.dp else 300.dp
+
 
   ChartHostSection(
     modifier = modifier
@@ -171,7 +180,6 @@ fun GraphView(
     modelProducer = state.modelProducer,
     scrollState = scrollState,
     horizontalItemPlacer = horizontalItemPlacer,
-    separators = state.separators,
   )
 }
 

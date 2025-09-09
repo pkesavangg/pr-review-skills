@@ -27,7 +27,8 @@ data class DashboardState(
   val selectedStat: Stat? = null,
   val metricData: List<PeriodBodyScaleSummary> = emptyList(),
   val goal: Goal? = null,
-  val pagerState: Int = 0
+  val pagerState: Int = 0,
+  val scrollTarget: Double? = null
 ) : IReducer.State
 
 /**
@@ -48,6 +49,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetMetricData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetGoal(val goal: Goal?) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
+  data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
 }
 
 /**
@@ -65,6 +67,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
     is DashboardIntent.SetGoal -> state.copy(goal = intent.goal)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
+    is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
     DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     else -> state
   }

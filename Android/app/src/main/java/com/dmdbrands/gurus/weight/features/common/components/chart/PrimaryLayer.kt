@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
@@ -19,7 +18,6 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
-import java.util.Calendar
 
 /**
  * Common composable for creating line layers with connection condition.
@@ -32,7 +30,8 @@ internal fun rememberLineLayerWithConnection(
   verticalAxisPosition: Axis.Position.Vertical,
   minYTarget: Int?,
   maxYTarget: Int?,
-  initialTimeStamp: Long? = null
+  startRangeX: Long?,
+  endRangeX: Long?,
 ): LineCartesianLayer {
 
   // Animated values for smooth transitions with null safety
@@ -70,10 +69,25 @@ internal fun rememberLineLayerWithConnection(
     }
   }
 
-  val todayMills = Calendar.getInstance().timeInMillis
+  // Memoize the range provider to prevent unnecessary recomposition
+  val rangeProvider =
+    object : CartesianLayerRangeProvider {
+      override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+        return animatedMinTarget?.toDouble() ?: super.getMinY(minY, maxY, extraStore)
+      }
 
-  val startRangeX = initialTimeStamp?.let { GraphUtil.getStartRange(segment, it) }
-  val endRangeX = GraphUtil.getEndRange(segment, todayMills)
+      override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
+        return animatedMaxTarget?.toDouble() ?: super.getMaxY(minY, maxY, extraStore)
+      }
+
+      override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+        return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
+      }
+
+      override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
+        return endRangeX?.toDouble() ?: super.getMaxX(minX, maxX, extraStore)
+      }
+    }
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
@@ -98,24 +112,7 @@ internal fun rememberLineLayerWithConnection(
       },
     ),
     verticalAxisPosition = verticalAxisPosition,
-    rangeProvider =
-      object : CartesianLayerRangeProvider {
-        override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-          return animatedMinTarget?.toDouble() ?: super.getMinY(minY, maxY, extraStore)
-        }
-
-        override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-          return animatedMaxTarget?.toDouble() ?: super.getMaxY(minY, maxY, extraStore)
-        }
-
-        override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
-          return endRangeX.toDouble()
-        }
-
-        override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
-          return startRangeX?.toDouble() ?: super.getMinX(minX, maxX, extraStore)
-        }
-      },
+    rangeProvider = rangeProvider,
   )
 }
 
@@ -127,7 +124,8 @@ internal fun primaryLayer(
   segment: GraphSegment,
   minYTarget: Int?,
   maxYTarget: Int?,
-  initialTimeStamp: Long
+  startRangeX: Long?,
+  endRangeX: Long?,
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
@@ -135,7 +133,8 @@ internal fun primaryLayer(
     verticalAxisPosition = Axis.Position.Vertical.End,
     minYTarget = minYTarget,
     maxYTarget = maxYTarget,
-    initialTimeStamp = initialTimeStamp,
+    startRangeX = startRangeX,
+    endRangeX = endRangeX,
   )
 }
 
@@ -147,7 +146,8 @@ internal fun secondaryLayer(
   segment: GraphSegment,
   minYTarget: Int?,
   maxYTarget: Int?,
-  initialTimeStamp: Long? = null
+  startRangeX: Long?,
+  endRangeX: Long?,
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
@@ -155,6 +155,7 @@ internal fun secondaryLayer(
     verticalAxisPosition = Axis.Position.Vertical.Start,
     minYTarget = minYTarget,
     maxYTarget = maxYTarget,
-    initialTimeStamp = initialTimeStamp,
+    startRangeX = startRangeX,
+    endRangeX = endRangeX,
   )
 }

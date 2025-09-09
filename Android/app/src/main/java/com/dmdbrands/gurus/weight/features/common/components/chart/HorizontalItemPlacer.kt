@@ -18,7 +18,7 @@ internal fun horizontalItemPlacer(
   onDestinationUpdate: (Long, Long) -> Unit,
 ): HorizontalAxis.ItemPlacer {
   val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
-  return object : HorizontalAxis.ItemPlacer by defaultPlacer {
+  return if (segment != GraphSegment.TOTAL) object : HorizontalAxis.ItemPlacer by defaultPlacer {
     override fun getLabelValues(
       context: CartesianDrawingContext,
       visibleXRange: ClosedFloatingPointRange<Double>,
@@ -58,6 +58,7 @@ internal fun horizontalItemPlacer(
       )
     }
   }
+  else HorizontalAxis.ItemPlacer.aligned()
 }
 
 fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> {

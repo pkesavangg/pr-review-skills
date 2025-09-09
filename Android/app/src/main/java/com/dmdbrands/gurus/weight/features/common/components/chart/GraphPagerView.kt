@@ -144,83 +144,31 @@ fun GraphPagerView(
           factory.create(GraphSegment.entries[page])
         }
 
-        when (currentSegment) {
-          GraphSegment.WEEK -> {
-            WeekGraphView(
-              modifier = Modifier.fillMaxWidth(),
-              secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-              graphLines = listOf(segmentGraphLines),
-              goal = state.goal,
-              onScroll = { subText = it },
-              onMetricUpdate = { graphPoints ->
-                val timeStamps = graphPoints.map { it.x.value.toLong() }
-                val filteredEntries = segmentEntries.filter {
-                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-                }
-                onSelected(filteredEntries)
-              },
-              onLabelUpdate = { labelData = it },
-              viewModel = viewmodel,
-            )
-          }
-
-          GraphSegment.MONTH -> {
-            MonthGraphView(
-              modifier = Modifier.fillMaxWidth(),
-              secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-              graphLines = listOf(segmentGraphLines),
-              goal = state.goal,
-              onScroll = { subText = it },
-              onMetricUpdate = { graphPoints ->
-                val timeStamps = graphPoints.map { it.x.value.toLong() }
-                val filteredEntries = segmentEntries.filter {
-                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-                }
-                onSelected(filteredEntries)
-              },
-              onLabelUpdate = { labelData = it },
-              viewModel = viewmodel,
-            )
-          }
-
-          GraphSegment.YEAR -> {
-            YearGraphView(
-              modifier = Modifier.fillMaxWidth(),
-              secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-              graphLines = listOf(segmentGraphLines),
-              goal = state.goal,
-              onScroll = { subText = it },
-              onMetricUpdate = { graphPoints ->
-                val timeStamps = graphPoints.map { it.x.value.toLong() }
-                val filteredEntries = segmentEntries.filter {
-                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-                }
-                onSelected(filteredEntries)
-              },
-              onLabelUpdate = { labelData = it },
-              viewModel = viewmodel,
-            )
-          }
-
-          GraphSegment.TOTAL -> {
-            TotalGraphView(
-              modifier = Modifier.fillMaxWidth(),
-              secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-              graphLines = listOf(segmentGraphLines),
-              goal = state.goal,
-              onScroll = { subText = it },
-              onMetricUpdate = { graphPoints ->
-                val timeStamps = graphPoints.map { it.x.value.toLong() }
-                val filteredEntries = segmentEntries.filter {
-                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-                }
-                onSelected(filteredEntries)
-              },
-              onLabelUpdate = { labelData = it },
-              viewModel = viewmodel,
-            )
-          }
-        }
+        GraphView(
+          modifier = Modifier
+            .fillMaxWidth()
+            .let {
+              if (currentSegment == GraphSegment.TOTAL) {
+                it.padding(start = 16.dp)
+              } else {
+                it
+              }
+            },
+          secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
+          graphLines = listOf(segmentGraphLines),
+          segment = currentSegment,
+          goal = state.goal,
+          onScroll = { subText = it },
+          onMetricUpdate = { graphPoints ->
+            val timeStamps = graphPoints.map { it.x.value.toLong() }
+            val filteredEntries = segmentEntries.filter {
+              DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+            }
+            onSelected(filteredEntries)
+          },
+          onLabelUpdate = { labelData = it },
+          viewModel = viewmodel,
+        )
       }
     }
 
