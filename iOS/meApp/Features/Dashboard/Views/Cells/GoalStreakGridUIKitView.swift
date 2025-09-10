@@ -413,7 +413,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let clampedPoint = boundaryDetector.constrainDragLocation(location, in: collectionView)
                 // Further clamp by full frame so item never clips at edges
                 var targetCenter = clampedPoint
-                if interactiveMovingItemSize != .zero, let superview = collectionView.superview {
+                if interactiveMovingItemSize != .zero {
                     // Build frame centered at clampedPoint in collection coords
                     let frame = CGRect(
                         x: clampedPoint.x - interactiveMovingItemSize.width / 2,
@@ -424,7 +424,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     // Constrain using detector (returns frame in collection coords after conversion)
                     let constrainedFrame = boundaryDetector.constrainDragFrame(frame, in: collectionView)
                     targetCenter = CGPoint(x: constrainedFrame.midX, y: constrainedFrame.midY)
-                    _ = superview // keep reference used above
                 }
                 // Provide subtle haptic when hitting boundary (throttled)
                 if abs(targetCenter.y - location.y) > 0.5 {

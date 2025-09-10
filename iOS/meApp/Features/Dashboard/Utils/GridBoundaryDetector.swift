@@ -250,12 +250,13 @@ public class GridBoundaryDetector {
                 let moveRight = frameLeft - bufferZone.maxX
                 
                 // Choose the smallest movement that avoids intersection
+                // Only consider movements that actually resolve the intersection (directionally valid)
                 let movements = [
-                    (abs(moveUp), CGPoint(x: 0, y: moveUp)),
-                    (abs(moveDown), CGPoint(x: 0, y: moveDown)),
-                    (abs(moveLeft), CGPoint(x: moveLeft, y: 0)),
-                    (abs(moveRight), CGPoint(x: moveRight, y: 0))
-                ].filter { $0.0 >= 0 } // Only consider valid movements
+                    (abs(moveUp), CGPoint(x: 0, y: moveUp), moveUp < 0),      // move up if frame is below buffer
+                    (abs(moveDown), CGPoint(x: 0, y: moveDown), moveDown > 0), // move down if frame is above buffer
+                    (abs(moveLeft), CGPoint(x: moveLeft, y: 0), moveLeft < 0), // move left if frame is to the right of buffer
+                    (abs(moveRight), CGPoint(x: moveRight, y: 0), moveRight > 0) // move right if frame is to the left of buffer
+                ].filter { $0.2 } // Only valid movements that resolve intersection
                 
                 if let minMovement = movements.min(by: { $0.0 < $1.0 }) {
                     constrainedFrame.origin.x += minMovement.1.x
