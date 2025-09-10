@@ -63,17 +63,8 @@ fun FeedLandingScreenPreview() {
     ),
   )
 
-  FeedLandingScreen(
+  IamFeedLandingScreen(
     feedItem = sampleFeedItem,
-    onPromoCodeClick = { promoCode ->
-      // Handle promo code copy
-    },
-    onShopNowClick = { link ->
-      // Handle shop now click
-    },
-    onProductClick = { link, variationId ->
-      // Handle product click
-    },
   )
 }
 
@@ -115,16 +106,7 @@ fun FeedLandingScreenNoProductsPreview() {
     ),
   )
 
-  FeedLandingScreen(
+  IamFeedLandingScreen(
     feedItem = sampleFeedItemNoProducts,
-    onPromoCodeClick = { promoCode ->
-      // Handle promo code copy
-    },
-    onShopNowClick = { link ->
-      // Handle shop now click
-    },
-    onProductClick = { link, variationId ->
-      // Handle product click
-    },
   )
 }

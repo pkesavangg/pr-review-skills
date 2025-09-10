@@ -43,7 +43,7 @@ fun IAMFeedModal(
         onDismiss()
       },
       onSecondaryButtonClick = {
-        onAction("learn_more")
+        onAction("settings")
         onDismiss()
       },
       onCloseClick = onDismiss,

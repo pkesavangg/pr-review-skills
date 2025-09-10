@@ -18,6 +18,10 @@ import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
+import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
+import com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesSettingsScreen
 import com.dmdbrands.gurus.weight.features.goal.screen.GoalScreen
 import com.dmdbrands.gurus.weight.features.help.screen.HelpScreen
 import com.dmdbrands.gurus.weight.features.history.HistoryScreen
@@ -36,7 +40,6 @@ import com.dmdbrands.gurus.weight.features.scaleMode.screens.ScaleModeScreen
 import com.dmdbrands.gurus.weight.features.settings.SettingsScreen
 import com.dmdbrands.gurus.weight.features.signup.SignupScreen
 import com.dmdbrands.gurus.weight.features.weightless.screen.WeightlessScreen
-import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesSettingsScreen
 
 /**
  * Registers the entries for the authentication screens.
@@ -127,11 +130,8 @@ fun EntryProviderBuilder<NavKey>.historyEntries() {
 }
 
 fun EntryProviderBuilder<NavKey>.feedMessagesEntries() {
-  entry<AppRoute.FeedMessagesSettings> {
-    AppFeedMessagesSettingsScreen(
-      onBackPress = {
-        // Navigation will be handled by the NavHost
-      }
-    )
-  }
+  entry<AppRoute.Feed.FeedMessages> { AppFeedMessagesScreen() }
+  entry<AppRoute.Feed.FeedMessageSetting> { AppFeedMessagesSettingsScreen() }
+  entry<AppRoute.Feed.FeedLanding> { FeedLandingScreen() }
+  entry<AppRoute.Feed.FeedFAQ> { FeedFAQScreen() }
 }

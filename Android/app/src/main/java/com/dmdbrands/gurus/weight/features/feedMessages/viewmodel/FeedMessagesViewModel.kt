@@ -118,7 +118,7 @@ class FeedMessagesViewModel @Inject constructor(
   private fun navigateToSettings() {
     viewModelScope.launch {
       try {
-        navigationService.navigateTo(AppRoute.FeedMessagesSettings)
+        navigationService.navigateTo(AppRoute.Feed.FeedMessageSetting)
       } catch (e: Exception) {
         AppLog.e("FeedMessagesViewModel", "Failed to navigate to settings", e.toString())
       }
@@ -134,7 +134,7 @@ class FeedMessagesViewModel @Inject constructor(
         // Set the selected feed item before navigation
         selectedFeedItemHolder.setSelectedFeedItem(feedItem)
         // Navigate to the feed landing screen
-        navigationService.navigateTo(AppRoute.FeedLanding)
+        navigationService.navigateTo(AppRoute.Feed.FeedLanding)
       } catch (e: Exception) {
         AppLog.e("FeedMessagesViewModel", "Failed to navigate to feed landing", e.toString())
       }

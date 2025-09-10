@@ -14,7 +14,7 @@ import javax.inject.Singleton
  */
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class IamModule {
+abstract class IamBindingModule {
 
   /**
    * Binds IInAppMessagingService interface to GGInAppMessagingService implementation
@@ -25,3 +25,5 @@ abstract class IamModule {
     impl: GGInAppMessagingService
   ): IInAppMessagingService
 }
+
+

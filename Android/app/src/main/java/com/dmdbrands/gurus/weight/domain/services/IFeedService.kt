@@ -97,6 +97,8 @@ interface IFeedService {
      */
     suspend fun markFeedAsRead(elementId: String, actionType: String)
 
+    fun showIAMFeedModal(feedItem: FeedItem)
+
     // MARK: - Cleanup
 
     /**

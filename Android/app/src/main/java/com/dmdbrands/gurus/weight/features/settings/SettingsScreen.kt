@@ -198,7 +198,7 @@ fun SettingsScreenContent(
               showUnreadIndicator = state.showUnreadFeedIndication,
               onClick = {
                 coroutineScope.launch {
-                  backStack.addRoute(AppRoute.FeedMessages)
+                  backStack.addRoute(AppRoute.Feed.FeedMessages)
                 }
               },
             ),

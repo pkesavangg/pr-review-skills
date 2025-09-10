@@ -135,7 +135,7 @@ object TextTypeDefaults {
 
 @Composable
 fun IAMText(
-  text: String = "",
+  text: String  = "",
   textType: TextType,
   modifier: Modifier = Modifier,
   annotatedText: String? = null,
@@ -148,59 +148,69 @@ fun IAMText(
   color: Color? = null,
   onClick: (() -> Unit)? = null,
   onAnnotationClick: ((String) -> Unit)? = null,
+  expiresAt: String? = null,
+  enableRichText: Boolean = false,
 ) {
   val appearance = TextTypeDefaults.appearance(textType, enabled)
 
   val ANNOTATION_TAG = "ANNOTATED_CLICK"
 
-  val finalText = remember(text, annotatedText, spanStyle) {
-    if (annotatedText != null && spanStyle != null) {
-      buildAnnotatedString {
-        when (annotationPosition) {
-          AnnotationPosition.Start -> {
-            pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
-            withStyle(spanStyle) { append(annotatedText) }
-            pop()
-            append(text.removePrefix(annotatedText))
-          }
-
-          AnnotationPosition.End -> {
-            append(text.removeSuffix(annotatedText))
-            pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
-            withStyle(spanStyle) { append(annotatedText) }
-            pop()
-          }
-
-          AnnotationPosition.Middle -> {
-            val startIndex = text.indexOf(annotatedText)
-            if (startIndex != -1) {
-              append(text.substring(0, startIndex))
+  val finalText = remember(text, annotatedText, spanStyle, enableRichText, expiresAt) {
+    when {
+      enableRichText -> {
+        // Use rich text parsing
+        text.parseRichText(expiresAt)
+      }
+      annotatedText != null && spanStyle != null -> {
+        buildAnnotatedString {
+          when (annotationPosition) {
+            AnnotationPosition.Start -> {
               pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
               withStyle(spanStyle) { append(annotatedText) }
               pop()
-              append(text.substring(startIndex + annotatedText.length))
-            } else {
-              append(text) // fallback
+              append(text.removePrefix(annotatedText))
+            }
+
+            AnnotationPosition.End -> {
+              append(text.removeSuffix(annotatedText))
+              pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
+              withStyle(spanStyle) { append(annotatedText) }
+              pop()
+            }
+
+            AnnotationPosition.Middle -> {
+              val startIndex = text.indexOf(annotatedText)
+              if (startIndex != -1) {
+                append(text.substring(0, startIndex))
+                pushStringAnnotation(tag = ANNOTATION_TAG, annotation = annotatedText)
+                withStyle(spanStyle) { append(annotatedText) }
+                pop()
+                append(text.substring(startIndex + annotatedText.length))
+              } else {
+                append(text) // fallback
+              }
             }
           }
         }
       }
-    } else if (canApplyUppercaseStyle) {
-      buildAnnotatedString {
-        text.split(" ").forEachIndexed { index, word ->
-          val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
-          if (isUppercase) {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+      canApplyUppercaseStyle -> {
+        buildAnnotatedString {
+          text.split(" ").forEachIndexed { index, word ->
+            val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
+            if (isUppercase) {
+              withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(word)
+              }
+            } else {
               append(word)
             }
-          } else {
-            append(word)
+            if (index != text.lastIndex) append(" ")
           }
-          if (index != text.lastIndex) append(" ")
         }
       }
-    } else {
-      AnnotatedString(text)
+      else -> {
+        AnnotatedString(text)
+      }
     }
   }
 

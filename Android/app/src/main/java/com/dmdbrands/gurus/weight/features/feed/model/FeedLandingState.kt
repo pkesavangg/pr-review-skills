@@ -45,6 +45,9 @@ sealed class FeedLandingIntent : IReducer.Intent {
   /** Clear error */
   object ClearError : FeedLandingIntent()
 
+  /** Handle back button press */
+  object OnBackPress : FeedLandingIntent()
+
   object OpenFAQ : FeedLandingIntent()
 }
 
@@ -109,6 +112,12 @@ class FeedLandingReducer : IReducer<FeedLandingState, FeedLandingIntent> {
 
     is FeedLandingIntent.ClearError -> {
       state.copy(error = null)
+    }
+
+    FeedLandingIntent.OnBackPress -> {
+      state.copy(
+        lastAction = "Back pressed",
+      )
     }
 
     FeedLandingIntent.OpenFAQ -> {

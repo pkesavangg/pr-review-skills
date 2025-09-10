@@ -29,17 +29,18 @@ import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.ui.screens.strings.FeedLandingScreenStrings
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
 
 /**
  * Reusable composable for the offer header section
  * Displays the main offer title, promo code, and shop now button
+ * Uses intents for click handling following MVI pattern
  */
 @Composable
 fun OfferHeader(
   feedItem: FeedItem,
   isFromFooter: Boolean = false,
-  onPromoCodeClick: (String) -> Unit = {},
-  onShopNowClick: (String?) -> Unit = {},
+  onIntent: (FeedLandingIntent) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   Column(
@@ -54,18 +55,30 @@ fun OfferHeader(
       text = feedItem.titleText,
       textType = TextType.Title,
     )
+
+    // Subtitle with rich text formatting
+    feedItem.subtitleModalText?.let { subtitle ->
+      IAMText(
+        text = subtitle,
+        textType = TextType.SubHeading,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        enableRichText = true,
+        expiresAt = feedItem.expiresAt,
+      )
+    }
+
     if (!isFromFooter) {
       // Promo code section
       PromoCodeSection(
         feedItem = feedItem,
-        onPromoCodeClick = onPromoCodeClick,
+        onIntent = onIntent,
       )
     }
 
     // Shop now button and expiration
     ShopNowSection(
       feedItem = feedItem,
-      onShopNowClick = onShopNowClick,
+      onIntent = onIntent,
     )
   }
 }
@@ -76,7 +89,7 @@ fun OfferHeader(
 @Composable
 private fun PromoCodeSection(
   feedItem: FeedItem,
-  onPromoCodeClick: (String) -> Unit
+  onIntent: (FeedLandingIntent) -> Unit
 ) {
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -95,7 +108,7 @@ private fun PromoCodeSection(
     feedItem.landingPage?.promoCode?.let { promoCode ->
       PromoCodeContainer(
         promoCode = promoCode,
-        onCopyClick = { onPromoCodeClick(promoCode) },
+        onCopyClick = { onIntent(FeedLandingIntent.OnPromoCodeCopyClick) },
       )
     }
   }
@@ -107,7 +120,7 @@ private fun PromoCodeSection(
 @Composable
 private fun ShopNowSection(
   feedItem: FeedItem,
-  onShopNowClick: (String?) -> Unit
+  onIntent: (FeedLandingIntent) -> Unit
 ) {
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,8 +131,8 @@ private fun ShopNowSection(
       label = FeedLandingScreenStrings.ShopNow,
       type = ButtonType.PrimaryFilled,
       enabled = true,
-      // onClick = { onShopNowClick(feedItem.landingPage?.url) },
-    ) { }
+      onClick = { onIntent(FeedLandingIntent.OnOfferHeaderShopNowClick) },
+    )
 
     // Expiration date
     IAMText(

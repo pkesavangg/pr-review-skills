@@ -103,6 +103,7 @@ private fun SupportingTextSection(
         text = title,
         textType = TextType.Subtitle2,
         textAlign = TextAlign.Center,
+        enableRichText = true
       )
     }
 
@@ -112,6 +113,7 @@ private fun SupportingTextSection(
         text = description,
         textType = TextType.Body,
         textAlign = TextAlign.Center,
+        enableRichText = true
       )
     }
   }
@@ -238,6 +240,7 @@ private fun SupportingImageCarousel(
     Row(
       horizontalArrangement = Arrangement.spacedBy(8.dp),
       verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier.padding(top = 16.dp)
     ) {
       repeat(images.size) { index ->
         val currentRealPage = if (images.size <= 1) pagerState.currentPage else {
@@ -248,6 +251,7 @@ private fun SupportingImageCarousel(
           }
         }
         val isActive = index == currentRealPage
+
         Box(
           modifier = Modifier
             .size(7.dp)

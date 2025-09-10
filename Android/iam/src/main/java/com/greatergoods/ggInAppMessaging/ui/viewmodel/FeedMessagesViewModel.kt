@@ -1,15 +1,13 @@
 package com.greatergoods.ggInAppMessaging.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
+import com.greatergoods.ggInAppMessaging.core.viewmodel.BaseIntentViewModel
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
 /**
@@ -19,12 +17,11 @@ import javax.inject.Inject
 @HiltViewModel
 class FeedMessagesViewModel @Inject constructor(
   private val inAppMessagingService: IInAppMessagingService,
-) : ViewModel() {
+) : BaseIntentViewModel<FeedMessagesState, FeedMessagesIntent>() {
 
   private val tag = "FeedMessagesViewModel"
 
-  private val _state = MutableStateFlow(FeedMessagesState())
-  val state: StateFlow<FeedMessagesState> = _state.asStateFlow()
+  override fun provideInitialState(): FeedMessagesState = FeedMessagesState()
 
   init {
     subscribeToFeedItems()
@@ -32,20 +29,19 @@ class FeedMessagesViewModel @Inject constructor(
   }
 
   fun subscribeToFeedItems() {
-    viewModelScope.launch {
-      inAppMessagingService.feedItems.collect { feedItems ->
-        _state.value = FeedMessagesReducer.onFeedItemsLoaded(feedItems)(_state.value)
+    inAppMessagingService.feedItems
+      .onEach { feedItems ->
+        updateState(FeedMessagesReducer.onFeedItemsLoaded(feedItems)(currentState))
       }
-    }
+      .launchIn(viewModelScope)
   }
 
   /**
    * Handle intents following MVI pattern
    */
-  fun handleIntent(intent: FeedMessagesIntent) {
-    val currentState = _state.value
+  override fun handleIntent(intent: FeedMessagesIntent) {
     val newState = FeedMessagesReducer.reduce(currentState, intent)
-    _state.value = newState
+    updateState(newState)
 
     when (intent) {
       is FeedMessagesIntent.LoadFeedItems -> {
@@ -86,16 +82,15 @@ class FeedMessagesViewModel @Inject constructor(
    * Load feed items from service
    */
   private fun loadFeedItems() {
-    viewModelScope.launch {
+    launch {
       try {
         IAMLogger.d(tag, "Loading feed items")
         val feedItems = inAppMessagingService.getFeedItems()
         IAMLogger.d(tag, "Loaded ${feedItems.size} feed items")
-        _state.value = FeedMessagesReducer.onFeedItemsLoaded(feedItems)(_state.value)
+        updateState(FeedMessagesReducer.onFeedItemsLoaded(feedItems)(currentState))
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to load feed items", e.toString())
-        _state.value =
-          FeedMessagesReducer.onError("Failed to load feed items")(_state.value)
+        updateState(FeedMessagesReducer.onError("Failed to load feed items")(currentState))
       }
     }
   }
@@ -107,7 +102,7 @@ class FeedMessagesViewModel @Inject constructor(
     try {
       IAMLogger.d(tag, "Feed item clicked: $elementId")
       // Find the clicked feed item
-      val currentState = _state.value
+      val currentState = state.value
       val clickedItem = currentState.feedItems.find { it.elementId == elementId }
       IAMLogger.d(tag, "Feed type clicked: ${clickedItem?.feedType}")
 
@@ -128,7 +123,7 @@ class FeedMessagesViewModel @Inject constructor(
    * Load feed settings from service
    */
   private fun loadFeedSettings() {
-    viewModelScope.launch {
+    launch {
       try {
         IAMLogger.d(tag, "Loading feed settings")
 
@@ -143,14 +138,13 @@ class FeedMessagesViewModel @Inject constructor(
           "Loaded settings - PopUp: $popUpEnabled, Notification: $notificationEnabled",
         )
 
-        _state.value = FeedMessagesReducer.onSettingsLoaded(
+        updateState(FeedMessagesReducer.onSettingsLoaded(
           popUpMessagesEnabled = popUpEnabled,
           notificationBadgesEnabled = notificationEnabled,
-        )(_state.value)
+        )(currentState))
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to load feed settings", e.toString())
-        _state.value =
-          FeedMessagesReducer.onSettingsError("Failed to load settings")(_state.value)
+        updateState(FeedMessagesReducer.onSettingsError("Failed to load settings")(currentState))
       }
     }
   }
@@ -159,17 +153,14 @@ class FeedMessagesViewModel @Inject constructor(
    * Toggle pop-up messages setting
    */
   private fun togglePopUpMessages(enabled: Boolean) {
-    viewModelScope.launch {
+    launch {
       try {
         IAMLogger.d(tag, "Toggling pop-up messages: $enabled")
         inAppMessagingService.updatePopupMessageSetting(enabled)
         IAMLogger.d(tag, "Successfully updated pop-up messages setting")
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to toggle pop-up messages", e.toString())
-        _state.value =
-          FeedMessagesReducer.onSettingsError("Failed to update pop-up messages setting")(
-            _state.value,
-          )
+        updateState(FeedMessagesReducer.onSettingsError("Failed to update pop-up messages setting")(currentState))
       }
     }
   }
@@ -178,17 +169,14 @@ class FeedMessagesViewModel @Inject constructor(
    * Toggle notification badges setting
    */
   private fun toggleNotificationBadges(enabled: Boolean) {
-    viewModelScope.launch {
+    launch {
       try {
         IAMLogger.d(tag, "Toggling notification badges: $enabled")
         inAppMessagingService.updateNotificationBadgeSetting(enabled)
         IAMLogger.d(tag, "Successfully updated notification badges setting")
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to toggle notification badges", e.toString())
-        _state.value =
-          FeedMessagesReducer.onSettingsError("Failed to update notification badges setting")(
-            _state.value,
-          )
+        updateState(FeedMessagesReducer.onSettingsError("Failed to update notification badges setting")(currentState))
       }
     }
   }
@@ -198,7 +186,7 @@ class FeedMessagesViewModel @Inject constructor(
    * This updates the unread status via API and triggers feed notification changes
    */
   private fun markAllFeedItemsAsRead() {
-    viewModelScope.launch {
+    launch {
       try {
         IAMLogger.d(tag, "Marking all feed items as read")
 

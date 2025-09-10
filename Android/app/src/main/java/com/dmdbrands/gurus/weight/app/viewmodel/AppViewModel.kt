@@ -32,10 +32,8 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetri
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -137,7 +135,7 @@ constructor(
 
       // Initialize feed notification listener
       try {
-        initFeedNotificationListener()
+        updateUnreadFeedCount()
         AppLog.d(TAG, "Feed notification listener initialized")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
@@ -362,7 +360,7 @@ constructor(
         deviceService.setAccountId(account.id)
         feedService.fetchFeedItems()
         // Check for IAM feed modal trigger after fetching feed items
-        checkIAMFeedModalTrigger()
+        feedService.checkAndTriggerFeedModal()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
@@ -781,39 +779,6 @@ constructor(
   }
 
   /**
-   * Checks for IAM feed modal trigger
-   * Similar to the Angular implementation in loading.page.ts
-   */
-  private suspend fun checkIAMFeedModalTrigger() {
-    try {
-      val modalShown = feedService.checkAndTriggerFeedModal()
-      if (modalShown) {
-        AppLog.d(TAG, "IAM feed modal trigger check completed - modal will be shown via dialog events")
-      } else {
-        AppLog.d(TAG, "No IAM feed modal to show")
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to check IAM feed modal trigger", e.toString())
-    }
-  }
-
-  /**
-   * Initializes the feed notification listener
-   * Listens to feed notification changes and updates unread count and indicator visibility
-   */
-  private fun initFeedNotificationListener() {
-    viewModelScope.launch {
-      try {
-        updateUnreadFeedCount()
-        ggInAppMessagingService.feedNotificationChangedSubject.collect {
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error in feed notification listener", e.toString())
-      }
-    }
-  }
-
-  /**
    * Updates the unread feed count and indicator visibility
    */
   private suspend fun updateUnreadFeedCount() {
@@ -851,100 +816,10 @@ constructor(
   private fun handleIAMDialogEvent(event: IAMDialogEvent) {
     when (event) {
       is IAMDialogEvent.ShowFeedModal -> {
-        showIAMFeedModal(event.feedItem)
+        feedService.showIAMFeedModal(event.feedItem)
       }
 
       else -> {}
-    }
-  }
-
-  /**
-   * Shows IAM feed modal using the app's dialog system
-   */
-  private fun showIAMFeedModal(feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem) {
-    try {
-      val dialog = DialogModel.Custom(
-        contentKey = DialogType.IAMFeedModal,
-        params = mapOf(
-          "feedItem" to feedItem,
-          "elementId" to feedItem.elementId, // Store elementId for callback identification
-        ),
-        customPriority = 3, // Medium priority for IAM dialogs
-        customDelayMillis = 0L,
-        onDismiss = {
-          handleFeedModalDismissal(feedItem)
-        },
-        onConfirm = { actionType: Any ->
-          viewModelScope.launch {
-            handleFeedModalAction(feedItem, actionType.toString())
-          }
-        },
-      )
-
-      dialogQueueService.enqueue(dialog)
-      AppLog.d(TAG, "Enqueued IAM feed modal for item: ${feedItem.elementId}")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to show IAM feed modal", e.toString())
-    }
-  }
-
-  /**
-   * Shows IAM promo modal (placeholder for future implementation)
-   */
-  private fun showIAMPromoModal(promoData: Any) {
-    try {
-      AppLog.d(TAG, "Promo modal requested: $promoData")
-      // TODO: Implement promo modal if needed
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to show IAM promo modal", e.toString())
-    }
-  }
-
-  /**
-   * Handles feed modal dismissal
-   */
-  private fun handleFeedModalDismissal(feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem) {
-    try {
-      // Mark as read, update analytics, etc.
-      AppLog.d(TAG, "Feed modal dismissed for: ${feedItem.titleText}")
-      // TODO: Add any additional dismissal logic here
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to handle feed modal dismissal", e.toString())
-    }
-  }
-
-
-  /**
-   * Handles feed modal actions
-   */
-  private suspend fun handleFeedModalAction(
-    feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem,
-    actionType: String
-  ) {
-    try {
-      when (actionType) {
-        "buy_now" -> {
-          // Navigate to product page or open external link
-          AppLog.d(TAG, "Buy now clicked for: ${feedItem.titleText}")
-          // TODO: Add navigation logic here
-        }
-
-        "learn_more" -> {
-          // Navigate to feed landing page
-          AppLog.d(TAG, "Learn more clicked for: ${feedItem.titleText}")
-          try {
-            appNavigationService.navigateTo(AppRoute.FeedLanding)
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to navigate to feed landing", e.toString())
-          }
-        }
-
-        else -> {
-          AppLog.d(TAG, "Unknown action type: $actionType for feed item: ${feedItem.titleText}")
-        }
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to handle feed modal action", e.toString())
     }
   }
 }

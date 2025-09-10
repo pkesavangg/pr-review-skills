@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -31,19 +31,19 @@ import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.ui.screens.strings.FeedLandingScreenStrings
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
 
 /**
  * Reusable composable for featured products section (Fourth part)
  * Displays 1-5 products in a horizontal scrollable image container
  * If no featured products available, shows offer header container as fallback
  * Each product has unique link and can be variants or collection
+ * Uses intents for click handling following MVI pattern
  */
 @Composable
 fun FeaturedProducts(
   feedItem: FeedItem,
-  onProductClick: (String, Int?) -> Unit = { _, _ -> },
-  onPromoCodeClick: (String) -> Unit = {},
-  onShopNowClick: (String?) -> Unit = {},
+  onIntent: (FeedLandingIntent) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val featuredProducts = feedItem.landingPage?.featuredProduct ?: emptyList()
@@ -53,8 +53,7 @@ fun FeaturedProducts(
     OfferHeader(
       feedItem = feedItem,
       isFromFooter = true,
-      onPromoCodeClick = onPromoCodeClick,
-      onShopNowClick = onShopNowClick,
+      onIntent = onIntent,
     )
     return
   }
@@ -77,7 +76,7 @@ fun FeaturedProducts(
     // Products horizontal scrollable container
     ProductsHorizontalScrollContainer(
       products = featuredProducts,
-      onProductClick = onProductClick,
+      onIntent = onIntent,
     )
   }
 }
@@ -89,16 +88,17 @@ fun FeaturedProducts(
 @Composable
 private fun ProductsHorizontalScrollContainer(
   products: List<FeaturedProduct>,
-  onProductClick: (String, Int?) -> Unit
+  onIntent: (FeedLandingIntent) -> Unit
 ) {
   LazyRow(
     horizontalArrangement = Arrangement.spacedBy(40.dp),
     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
   ) {
-    items(products) { product ->
+    itemsIndexed(products) { index, product ->
       ProductCard(
         product = product,
-        onProductClick = onProductClick,
+        productIndex = index,
+        onIntent = onIntent,
         modifier = Modifier.width(200.dp),
       )
     }
@@ -112,7 +112,8 @@ private fun ProductsHorizontalScrollContainer(
 @Composable
 private fun ProductCard(
   product: FeaturedProduct,
-  onProductClick: (String, Int?) -> Unit,
+  productIndex: Int,
+  onIntent: (FeedLandingIntent) -> Unit,
   modifier: Modifier = Modifier
 ) {
   Column(
@@ -153,7 +154,7 @@ private fun ProductCard(
       IamButton(
         label = FeedLandingScreenStrings.Shop.uppercase(),
         type = ButtonType.PrimaryFilled,
-        onClick = { onProductClick(product.linkTarget, product.variationId) },
+        onClick = { onIntent(FeedLandingIntent.OnFeaturedProductClick(productIndex)) },
       )
     }
   }

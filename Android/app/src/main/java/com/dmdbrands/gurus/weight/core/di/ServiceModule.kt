@@ -63,6 +63,7 @@ import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.service.DialogQueueService
 import com.dmdbrands.gurus.weight.features.common.service.DialogUtility
+import com.dmdbrands.gurus.weight.features.feed.shared.SelectedFeedItemHolder
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
@@ -80,35 +81,35 @@ import android.content.Context
 @Module
 @InstallIn(SingletonComponent::class)
 object ServiceModule {
-  /**
-   * Provides a singleton instance of [IAccountService].
-   * @param accountService The implementation of AccountService.
-   * @return [IAccountService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideAccountService(
-    accountRepository: IAccountRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-    storageClearService: StorageClearService,
-  ): IAccountService =
-    AccountService(
-      accountRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
-      storageClearService,
-    )
+    /**
+     * Provides a singleton instance of [IAccountService].
+     * @param accountService The implementation of AccountService.
+     * @return [IAccountService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideAccountService(
+      accountRepository: IAccountRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+      storageClearService: StorageClearService,
+    ): IAccountService =
+      AccountService(
+        accountRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+        storageClearService,
+      )
 
-  /**
-   * Provides a singleton instance of [IAppEventService].
-   * @return [AppEventService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
+    /**
+     * Provides a singleton instance of [IAppEventService].
+     * @return [AppEventService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideAppNavigationService(): IAppNavigationService = AppNavigationService()
 
   /**
    * Provides a singleton instance of [AppStatusService].
@@ -223,227 +224,224 @@ object ServiceModule {
   ): IDeviceInfoService =
     DeviceInfoService(
       context,
-      deviceInfoRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
-      offlineHandlerService,
-      appRepository,
-      accountRepository,
-      healthConnectRepository,
-      integrationRepository,
     )
 
-  /**
-   * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
-   * @param integrationRepository The repository for integration operations.
-   * @param dialogQueueService The service for managing dialog queues.
-   * @return [IntegrationService] instance.
-   */
-  @Provides
-  @Singleton
-  fun provideIntegrationService(
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    accountService: IAccountService,
-    integrationRepository: IIntegrationRepository,
-    appNavigationService: IAppNavigationService,
-    healthConnectRepository: IHealthConnectRepository,
-  ): IIntegrationService =
-    IntegrationService(
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
-      accountService,
-      integrationRepository,
-      healthConnectRepository,
+    /**
+     * Provides a singleton instance of [IIntegrationService] for managing third-party integrations.
+     * @param integrationRepository The repository for integration operations.
+     * @param dialogQueueService The service for managing dialog queues.
+     * @return [IntegrationService] instance.
+     */
+    @Provides
+    @Singleton
+    fun provideIntegrationService(
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      accountService: IAccountService,
+      integrationRepository: IIntegrationRepository,
+      appNavigationService: IAppNavigationService,
+      healthConnectRepository: IHealthConnectRepository,
+    ): IIntegrationService =
+      IntegrationService(
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+        accountService,
+        integrationRepository,
+        healthConnectRepository,
+      )
+
+    /**
+     * Provides the export service implementation.
+     */
+    @Provides
+    @Singleton
+    fun provideExportService(
+      exportAPI: IExportAPI,
+      accountService: IAccountService,
+      dialogQueueService: IDialogQueueService,
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
+
+    /**
+     * Provides the offline handler service implementation.
+     * Handles offline data synchronization and biological sex updates.
+     */
+    @Provides
+    @Singleton
+    fun provideOfflineHandlerService(
+      accountRepository: IAccountRepository,
+      bodyCompositionRepository: IBodyCompositionRepository,
+      notificationRepository: INotificationRepository,
+      userSettingsRepository: IUserSettingsRepository,
+      goalRepository: IGoalRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ): IOfflineHandlerService =
+      OfflineHandlerService(
+        accountRepository,
+        bodyCompositionRepository,
+        notificationRepository,
+        userSettingsRepository,
+        goalRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+      )
+
+    /**
+     * Provides the body composition service implementation.
+     * Handles activity level, weight unit, and height updates with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideBodyCompositionService(
+      bodyCompositionRepository: IBodyCompositionRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ): IBodyCompositionService =
+      BodyCompositionService(
+        bodyCompositionRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+      )
+
+    /**
+     * Provides the notification service implementation.
+     * Handles notification settings with offline support.
+     */
+    @Provides
+    @Singleton
+    fun provideNotificationService(
+      notificationRepository: INotificationRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ): INotificationService =
+      NotificationService(
+        notificationRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+      )
+
+    @Provides
+    @Singleton
+    fun provideUserSettingsService(
+      userSettingsRepository: IUserSettingsRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ): IUserSettingsService =
+      UserSettingsService(userSettingsRepository, connectivityObserver, dialogQueueService, appNavigationService)
+
+    /**
+     * Provides the goal service implementation.
+     * Handles goal management, percentage calculation, and goal completion alerts.
+     */
+    @Provides
+    @Singleton
+    fun provideGoalService(
+      goalRepository: IGoalRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+      goalAlertDataStore: GoalAlertDataStore,
+      accountRepository: IAccountRepository
+    ): IGoalService =
+      GoalService(
+        goalRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+        goalAlertDataStore,
+        accountRepository,
+      )
+
+    @Provides
+    @Singleton
+    fun provideDashboardService(
+      dashboardRepository: IDashboardRepository,
+      accountRepository: IAccountRepository
+    ): IDashboardService =
+      DashboardService(dashboardRepository, accountRepository)
+
+    @Provides
+    @Singleton
+    fun provideSelectedFeedItemHolder(): SelectedFeedItemHolder = SelectedFeedItemHolder()
+
+    @Provides
+    @Singleton
+    fun provideFeedService(
+      feedRepository: IFeedRepository,
+      accountService: IAccountService,
+      ggIAMService: GGInAppMessagingService,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+      selectedFeedItemHolder: SelectedFeedItemHolder,
+      @ApplicationContext context: Context
+    ): IFeedService = FeedService(feedRepository, accountService, ggIAMService, connectivityObserver, dialogQueueService, appNavigationService, selectedFeedItemHolder, context)
+
+    /**
+     * Provides the device service implementation.
+     * Handles scale/device data operations with automatic synchronization.
+     */
+    @Provides
+    @Singleton
+    fun provideDeviceService(
+      @ApplicationContext context: Context,
+      deviceRepository: IDeviceRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
+    ): IDeviceService =
+      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context)
+
+    @Provides
+    @Singleton
+    fun provideDataStores(
+      userDataStore: UserDataStore,
+      fcmDataStore: FcmDataStore,
+      healthConnectDataStore: HealthConnectDataStore,
+    ): Set<BaseProtoDataStore<*>> = setOf(
+      userDataStore,
+      fcmDataStore,
+      healthConnectDataStore,
     )
 
-  /**
-   * Provides the export service implementation.
-   */
-  @Provides
-  @Singleton
-  fun provideExportService(
-    exportAPI: IExportAPI,
-    accountService: IAccountService,
-    dialogQueueService: IDialogQueueService,
-  ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
-
-  /**
-   * Provides the offline handler service implementation.
-   * Handles offline data synchronization and biological sex updates.
-   */
-  @Provides
-  @Singleton
-  fun provideOfflineHandlerService(
-    accountRepository: IAccountRepository,
-    bodyCompositionRepository: IBodyCompositionRepository,
-    notificationRepository: INotificationRepository,
-    userSettingsRepository: IUserSettingsRepository,
-    goalRepository: IGoalRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ): IOfflineHandlerService =
-    OfflineHandlerService(
-      accountRepository,
-      bodyCompositionRepository,
-      notificationRepository,
-      userSettingsRepository,
-      goalRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
+    @Provides
+    @Singleton
+    fun provideStorageClearService(
+      @ApplicationContext context: Context,
+      appDatabase: AppDatabase,
+      dataStores: Set<@JvmSuppressWildcards BaseProtoDataStore<*>>,
+      navigationService: IAppNavigationService
+    ): StorageClearService = StorageClearService(
+      context = context,
+      appDatabase = appDatabase,
+      dataStores = dataStores,
+      navigationService = navigationService,
     )
 
-  /**
-   * Provides the body composition service implementation.
-   * Handles activity level, weight unit, and height updates with offline support.
-   */
-  @Provides
-  @Singleton
-  fun provideBodyCompositionService(
-    bodyCompositionRepository: IBodyCompositionRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ): IBodyCompositionService =
-    BodyCompositionService(
-      bodyCompositionRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
+    /**
+     * Provides the AppSync service implementation.
+     * Handles AppSync data conversion, editing, and saving operations.
+     */
+    @Provides
+    @Singleton
+    fun provideAppSyncService(
+      entryService: IEntryService,
+      accountService: IAccountService,
+      navigationService: IAppNavigationService,
+      dialogQueueService: IDialogQueueService
+    ): IAppSyncService = AppSyncService(
+      entryService = entryService,
+      accountService = accountService,
+      appNavigationService = navigationService,
+      dialogQueueService = dialogQueueService,
     )
-
-  /**
-   * Provides the notification service implementation.
-   * Handles notification settings with offline support.
-   */
-  @Provides
-  @Singleton
-  fun provideNotificationService(
-    notificationRepository: INotificationRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ): INotificationService =
-    NotificationService(
-      notificationRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
-    )
-
-  @Provides
-  @Singleton
-  fun provideUserSettingsService(
-    userSettingsRepository: IUserSettingsRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ): IUserSettingsService =
-    UserSettingsService(userSettingsRepository, connectivityObserver, dialogQueueService, appNavigationService)
-
-  /**
-   * Provides the goal service implementation.
-   * Handles goal management, percentage calculation, and goal completion alerts.
-   */
-  @Provides
-  @Singleton
-  fun provideGoalService(
-    goalRepository: IGoalRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-    goalAlertDataStore: GoalAlertDataStore,
-    accountRepository: IAccountRepository
-  ): IGoalService =
-    GoalService(
-      goalRepository,
-      connectivityObserver,
-      dialogQueueService,
-      appNavigationService,
-      goalAlertDataStore,
-      accountRepository,
-    )
-
-  @Provides
-  @Singleton
-  fun provideDashboardService(
-    dashboardRepository: IDashboardRepository,
-    accountRepository: IAccountRepository
-  ): IDashboardService =
-    DashboardService(dashboardRepository, accountRepository)
-
-  @Provides
-  @Singleton
-  fun provideFeedService(
-    feedRepository: IFeedRepository,
-    accountService: IAccountService,
-    ggIAMService: GGInAppMessagingService,
-  ): IFeedService = FeedService(feedRepository, accountService, ggIAMService)
-
-  /**
-   * Provides the device service implementation.
-   * Handles scale/device data operations with automatic synchronization.
-   */
-  @Provides
-  @Singleton
-  fun provideDeviceService(
-    @ApplicationContext context: Context,
-    deviceRepository: IDeviceRepository,
-    connectivityObserver: IConnectivityObserver,
-    dialogQueueService: IDialogQueueService,
-    appNavigationService: IAppNavigationService,
-  ): IDeviceService =
-    DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context)
-
-  @Provides
-  @Singleton
-  fun provideDataStores(
-    userDataStore: UserDataStore,
-    fcmDataStore: FcmDataStore,
-    healthConnectDataStore: HealthConnectDataStore,
-    bluetoothPreferencesDataStore: BluetoothPreferencesDataStore,
-  ): Set<BaseProtoDataStore<*>> = setOf(
-    userDataStore,
-    fcmDataStore,
-    healthConnectDataStore,
-    bluetoothPreferencesDataStore,
-  )
-
-  @Provides
-  @Singleton
-  fun provideStorageClearService(
-    @ApplicationContext context: Context,
-    appDatabase: AppDatabase,
-    dataStores: Set<@JvmSuppressWildcards BaseProtoDataStore<*>>,
-    navigationService: IAppNavigationService
-  ): StorageClearService = StorageClearService(
-    context = context,
-    appDatabase = appDatabase,
-    dataStores = dataStores,
-    navigationService = navigationService,
-  )
-
-  /**
-   * Provides the AppSync service implementation.
-   * Handles AppSync data conversion, editing, and saving operations.
-   */
-  @Provides
-  @Singleton
-  fun provideAppSyncService(
-    entryService: IEntryService,
-    accountService: IAccountService,
-    navigationService: IAppNavigationService,
-    dialogQueueService: IDialogQueueService
-  ): IAppSyncService = AppSyncService(
-    entryService = entryService,
-    accountService = accountService,
-    appNavigationService = navigationService,
-    dialogQueueService = dialogQueueService,
-  )
-
 
 }

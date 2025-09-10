@@ -153,6 +153,18 @@ sealed class AppRoute : NavKey {
   }
 
   @Serializable
+  sealed class Feed : AppRoute() {
+    @Serializable
+    data object FeedMessages : Feed()
+    @Serializable
+    data object FeedMessageSetting: Feed()
+    @Serializable
+    data object FeedLanding : Feed()
+    @Serializable
+    data object FeedFAQ : Feed()
+  }
+
+  @Serializable
   sealed class ScaleSetup : AppRoute() {
     @Serializable
     data class BtWifiScaleSetup(
@@ -196,23 +208,5 @@ sealed class AppRoute : NavKey {
       val source: MetricInfoSource = MetricInfoSource.DAY
     ) : Dashboard()
   }
-
-  /**
-   * Feed Messages navigation routes
-   */
-  @Serializable
-  data object FeedMessages : AppRoute()
-
-  @Serializable
-  data object FeedMessagesSettings : AppRoute()
-
-  @Serializable
-  data object FeedLanding : AppRoute()
-
-  @Serializable
-  data object FeedTest : AppRoute()
-
-  @Serializable
-  data object FeedFAQ : AppRoute()
 }
 

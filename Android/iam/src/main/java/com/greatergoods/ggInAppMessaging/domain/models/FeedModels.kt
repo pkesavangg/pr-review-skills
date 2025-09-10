@@ -85,7 +85,8 @@ data class FeedItem(
   val trigger: String? = null,
   val expiresAt: String? = null,
   val feedType: String,
-  val landingPage: LandingPage? = null
+  val landingPage: LandingPage? = null,
+  val promoCode: String? = null
 )
 
 /**

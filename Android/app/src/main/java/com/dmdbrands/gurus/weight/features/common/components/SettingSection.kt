@@ -102,8 +102,6 @@ private fun SettingsItemRow(
             SettingColorType.Tertiary -> MeTheme.colorScheme.textSubheading
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
-
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MeTheme.colorScheme.primaryBackground,

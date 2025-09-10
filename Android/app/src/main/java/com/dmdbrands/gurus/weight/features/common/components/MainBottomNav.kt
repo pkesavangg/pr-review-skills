@@ -78,7 +78,7 @@ fun MainBottomNav(
       BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
         val isSelected = (selectedItem == item)
         val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
-          if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
+         if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
         NavigationBarItem(
           icon = {
             BadgedBox(

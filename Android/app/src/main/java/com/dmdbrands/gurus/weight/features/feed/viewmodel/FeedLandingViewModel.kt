@@ -31,6 +31,7 @@ class FeedLandingViewModel @Inject constructor(
 ) {
 
   override fun provideInitialState(): FeedLandingState = FeedLandingState()
+  val TAG = "FeedLandingViewModel"
 
   init {
     // Observe selected feed item changes
@@ -44,9 +45,6 @@ class FeedLandingViewModel @Inject constructor(
       .launchIn(viewModelScope)
   }
 
-  private var onNavigateToFeedLanding: ((FeedItem) -> Unit)? = null
-  private var onNavigateToFAQ: (() -> Unit)? = null
-
   /**
    * Handles incoming intents and updates the state accordingly.
    * @param intent The intent to handle.
@@ -54,23 +52,10 @@ class FeedLandingViewModel @Inject constructor(
   override fun handleIntent(intent: FeedLandingIntent) {
     super.handleIntent(intent)
     when (intent) {
+      is FeedLandingIntent.OnBackPress -> navigateBack()
       is FeedLandingIntent.OpenFAQ -> navigateToFAQ()
       else -> null
     }
-  }
-
-  /**
-   * Sets the navigation callback for feed landing
-   */
-  fun setNavigationCallback(onNavigateToFeedLanding: (FeedItem) -> Unit) {
-    this.onNavigateToFeedLanding = onNavigateToFeedLanding
-  }
-
-  /**
-   * Sets the navigation callback for FAQ
-   */
-  fun setFAQNavigationCallback(onNavigateToFAQ: () -> Unit) {
-    this.onNavigateToFAQ = onNavigateToFAQ
   }
 
   /**
@@ -81,89 +66,22 @@ class FeedLandingViewModel @Inject constructor(
     AppLog.d("FeedLandingViewModel", "Feed item set: ${feedItem.titleText}")
   }
 
+  /**
+   * Navigate back to previous screen
+   */
+  private fun navigateBack() {
+    viewModelScope.launch {
+      try {
+        appNavigationService.navigateBack()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate back", e.toString())
+      }
+    }
+  }
+
   fun navigateToFAQ() {
     viewModelScope.launch {
-      appNavigationService.navigateTo(AppRoute.FeedFAQ)
-    }
-  }
-
-  /**
-   * Handles promo code copy action
-   */
-  fun onPromoCodeClick(promoCode: String) {
-    viewModelScope.launch {
-      try {
-        handleIntent(FeedLandingIntent.OnPromoCodeClick(promoCode))
-
-        // Copy promo code to clipboard
-        // TODO: Implement clipboard functionality
-        AppLog.d("FeedLandingViewModel", "Promo code copied: $promoCode")
-
-        // Mark feed as read when promo code is copied
-        // currentState.feedItem?.let { feedItem ->
-        //     feedService.markFeedAsRead(feedItem.elementId, "promo_code_copied")
-        // }
-      } catch (e: Exception) {
-        AppLog.e("FeedLandingViewModel", "Failed to copy promo code", e.toString())
-        // handleIntent(FeedLandingIntent.SetError("Failed to copy promo code"))
-      }
-    }
-  }
-
-  /**
-   * Handles shop now button click
-   */
-  fun onShopNowClick(link: String?) {
-    viewModelScope.launch {
-      try {
-        handleIntent(FeedLandingIntent.OnShopNowClick(link))
-
-        // Get the current state from the reducer
-        val currentState = state.value
-        currentState.feedItem?.let { feedItem ->
-          AppLog.d("FeedLandingViewModel", "Shop now clicked for: ${feedItem.titleText}")
-
-          // Use FeedService to handle shop now click with proper feed type checking
-          feedService.handleShopNowClick(
-            feedItem = feedItem,
-            onNavigateToFeedLanding = { clickedFeedItem ->
-              AppLog.d("FeedLandingViewModel", "Navigating to landing screen for: ${clickedFeedItem.titleText}")
-              onNavigateToFeedLanding?.invoke(clickedFeedItem)
-            },
-            onOpenExternalLink = { externalLink ->
-              AppLog.d("FeedLandingViewModel", "Opening external link: $externalLink")
-              // TODO: Open external link
-            },
-          )
-        }
-      } catch (e: Exception) {
-        AppLog.e("FeedLandingViewModel", "Failed to handle shop now click", e.toString())
-        handleIntent(FeedLandingIntent.SetError("Failed to handle shop now click"))
-      }
-    }
-  }
-
-  /**
-   * Handles product click action
-   */
-  fun onProductClick(link: String, variationId: Int?) {
-    viewModelScope.launch {
-      try {
-        handleIntent(FeedLandingIntent.OnProductClick(link, variationId))
-
-        AppLog.d("FeedLandingViewModel", "Product clicked: $link, variationId: $variationId")
-
-        // Mark feed as read when product is clicked
-        // currentState.feedItem?.let { feedItem ->
-        //     feedService.markFeedAsRead(feedItem.elementId, "product_clicked")
-        // }
-
-        // TODO: Navigate to product page
-        // This should be handled by the parent composable via callback
-      } catch (e: Exception) {
-        AppLog.e("FeedLandingViewModel", "Failed to handle product click", e.toString())
-        handleIntent(FeedLandingIntent.SetError("Failed to handle product click"))
-      }
+      appNavigationService.navigateTo(AppRoute.Feed.FeedFAQ)
     }
   }
 }

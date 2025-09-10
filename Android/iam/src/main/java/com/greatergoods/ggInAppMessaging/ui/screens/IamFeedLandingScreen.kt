@@ -6,15 +6,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedImage
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedProductVariations
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedProducts
 import com.greatergoods.ggInAppMessaging.ui.components.GreaterGoodsLogo
 import com.greatergoods.ggInAppMessaging.ui.components.OfferHeader
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
+import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingViewModel
 
 /**
  * Feed Landing Screen composable
@@ -24,14 +31,28 @@ import com.greatergoods.ggInAppMessaging.ui.components.OfferHeader
  * 3. Featured product variations image carousel
  * 4. Featured products (1-5 products with unique links)
  * 5. Greater Goods logo
+ *
+ * Uses ViewModel for handling all click actions with data from FeedItem
+ * No callback parameters needed - all data comes from FeedItem
  */
 @Composable
-fun FeedLandingScreen(
+fun IamFeedLandingScreen(
   feedItem: FeedItem,
-  onPromoCodeClick: (String) -> Unit = {},
-  onShopNowClick: (String?) -> Unit = {},
-  onProductClick: (String, Int?) -> Unit = { _, _ -> },
 ) {
+  val viewModel: FeedLandingViewModel = hiltViewModel()
+  val state by viewModel.state.collectAsState()
+
+  // Set the feed item when the screen is first composed
+  LaunchedEffect(feedItem) {
+    viewModel.setFeedItem(feedItem)
+  }
+
+  // Intent dispatcher function
+  val dispatchIntent: (FeedLandingIntent) -> Unit = { intent ->
+    IAMLogger.d("IamFeedLandingScreen", "Received intent: $intent")
+    viewModel.handleIntent(intent)
+  }
+
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -42,8 +63,7 @@ fun FeedLandingScreen(
     // Part 1: Offer header part
     OfferHeader(
       feedItem = feedItem,
-      onPromoCodeClick = onPromoCodeClick,
-      onShopNowClick = onShopNowClick,
+      onIntent = dispatchIntent,
     )
     // Part 2: Featured image (same as feed item image)
     FeaturedImage(feedItem = feedItem)
@@ -60,12 +80,12 @@ fun FeedLandingScreen(
     // For dark mode, small white border (5px) added to images
     FeaturedProducts(
       feedItem = feedItem,
-      onProductClick = onProductClick,
-      onPromoCodeClick = onPromoCodeClick,
-      onShopNowClick = onShopNowClick,
+      onIntent = dispatchIntent,
     )
     // Part 5: Greater Goods logo
-    GreaterGoodsLogo()
+    GreaterGoodsLogo(
+      onIntent = dispatchIntent,
+    )
   }
 }
 

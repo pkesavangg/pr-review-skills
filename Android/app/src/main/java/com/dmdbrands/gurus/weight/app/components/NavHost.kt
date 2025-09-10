@@ -17,7 +17,6 @@ import androidx.navigation3.ui.rememberSceneSetupNavEntryDecorator
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.NavigationObserver
-import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
 import com.dmdbrands.gurus.weight.features.home.HomeScreen
 import com.dmdbrands.gurus.weight.features.loading.LoadingScreen
 import com.example.nav3integration.TopLevelBackStack
@@ -55,33 +54,6 @@ fun NavHost(
       entryProvider {
         entry<AppRoute.Init.Loading> { LoadingScreen() }
         entry<AppRoute.Home> { HomeScreen() }
-        entry<AppRoute.FeedMessages> {
-          AppFeedMessagesScreen()
-        }
-        entry<AppRoute.FeedLanding> {
-          com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen(
-            onNavigateBack = {
-              coroutineScope.launch {
-                topLevelBackStack.removeLast(AppRoute.App)
-              }
-            },
-            onNavigateToProduct = { link, variationId ->
-              // TODO: Handle product navigation
-            },
-            onNavigateToFeedLanding = { feedItem ->
-              // TODO: Handle nested navigation if needed
-            },
-          )
-        }
-        entry<AppRoute.FeedFAQ> {
-          com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen(
-            onNavigateBack = {
-              coroutineScope.launch {
-                topLevelBackStack.removeLast(AppRoute.App)
-              }
-            },
-          )
-        }
         authEntries()
         accountSettingsEntries()
         scaleDetailEntries()

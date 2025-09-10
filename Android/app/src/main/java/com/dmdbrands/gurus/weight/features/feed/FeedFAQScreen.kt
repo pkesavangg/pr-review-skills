@@ -18,13 +18,11 @@ import com.greatergoods.ggInAppMessaging.ui.components.FAQComponent
  */
 @Composable
 fun FeedFAQScreen(
-  onNavigateBack: () -> Unit
 ) {
   AppScaffold(
     title = "FAQ",
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
-        onNavigateBack()
       }
     },
   ) { scaffoldModifier ->

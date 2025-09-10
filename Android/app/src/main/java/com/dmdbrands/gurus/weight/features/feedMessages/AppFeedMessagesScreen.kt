@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.feedMessages
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,11 @@ fun AppFeedMessagesScreen(
 ) {
   val viewModel: FeedMessagesViewModel = hiltViewModel()
   val state by viewModel.state.collectAsState()
+
+  // Handle back button press
+  BackHandler {
+    viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
+  }
 
   // Initialize the screen
   LaunchedEffect(Unit) {

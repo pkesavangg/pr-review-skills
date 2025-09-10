@@ -1,17 +1,24 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.feed.FeedItem
 import com.dmdbrands.gurus.weight.domain.repository.FeedAction
 import com.dmdbrands.gurus.weight.domain.repository.IFeedRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.feed.shared.SelectedFeedItemHolder
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedActionType
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
 
 /**
  * Android equivalent of Angular FeedService
@@ -33,12 +41,16 @@ class FeedService @Inject constructor(
   private val feedRepository: IFeedRepository,
   private val accountService: IAccountService,
   private val ggIAMService: GGInAppMessagingService,
-  // private val notificationService: NotificationHelperService // TODO: Add when available
+  private val connectivityObserver: IConnectivityObserver,
+  private val dialogQueueService: IDialogQueueService,
+  private val appNavigationService: IAppNavigationService,
+  private val selectedFeedItemHolder: SelectedFeedItemHolder,
+  @ApplicationContext private val context: Context
 ) : IFeedService {
 
-  private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+  private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-  private val tag = "FeedService"
+  private val TAG = "FeedService"
 
   /**
    * Emits whenever feedItems changes. Consumers can subscribe without needing GG IAM package.
@@ -77,7 +89,7 @@ class FeedService @Inject constructor(
     serviceScope.launch {
       ggIAMService.sendUpdateFeed.collect { updateEvent ->
         launch {
-          AppLog.d(tag, "Received feed update event: ${updateEvent.actionType} for ${updateEvent.feedItem.elementId}")
+          AppLog.d(TAG, "Received feed update event: ${updateEvent.actionType} for ${updateEvent.feedItem.elementId}")
           val feedActionType = convertStringToFeedActionType(updateEvent.actionType)
           updateFeedItem(updateEvent.feedItem, feedActionType, updateEvent.variationId)
         }
@@ -97,9 +109,9 @@ class FeedService @Inject constructor(
       setMockFeedItems()
       _feedsChanged.emit(items)
       updateNotificationBadge()
-      AppLog.i(tag, "Successfully fetched feed items")
+      AppLog.i(TAG, "Successfully fetched feed items")
     } catch (error: Exception) {
-      AppLog.e(tag, "Failed to fetch feed items", error.toString())
+      AppLog.e(TAG, "Failed to fetch feed items", error.toString())
       updateNotificationBadge()
     }
   }
@@ -127,29 +139,29 @@ class FeedService @Inject constructor(
             // Update the IAM service's stored items
             // Notify that feed notification changed
             ggIAMService.emitFeedNotificationChange()
-            AppLog.d(tag, "Marked feed item as read: ${feedItem.elementId}")
+            AppLog.d(TAG, "Marked feed item as read: ${feedItem.elementId}")
           }
 
           FeedActionType.TRIGGER -> {
             // Update the local copy to clear trigger
             feedItemToUpdate.copy(trigger = null)
-            AppLog.d(tag, "Cleared trigger for feed item: ${feedItem.elementId}")
+            AppLog.d(TAG, "Cleared trigger for feed item: ${feedItem.elementId}")
           }
 
           else -> {
             AppLog.d(
-              tag,
+              TAG,
               "Updated feed item: ${feedItem.elementId} with action: $actionType",
             )
           }
         }
       } else {
-        AppLog.w(tag, "Feed item not found in local storage: ${feedItem.elementId}")
+        AppLog.w(TAG, "Feed item not found in local storage: ${feedItem.elementId}")
       }
 
-      AppLog.i(tag, "Successfully updated feed item: ${feedItem.elementId}")
+      AppLog.i(TAG, "Successfully updated feed item: ${feedItem.elementId}")
     } catch (error: Exception) {
-      AppLog.e(tag, "Failed to update feed item: ${feedItem.elementId}", error.toString())
+      AppLog.e(TAG, "Failed to update feed item: ${feedItem.elementId}", error.toString())
     }
   }
 
@@ -184,10 +196,10 @@ class FeedService @Inject constructor(
   override suspend fun checkAndTriggerFeedModal(): Boolean {
     return try {
       val result = ggIAMService.checkFeedModalTrigger()
-      AppLog.d(tag, "Feed modal trigger check result: $result")
+      AppLog.d(TAG, "Feed modal trigger check result: $result")
       result
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check feed modal trigger", e.toString())
+      AppLog.e(TAG, "Failed to check feed modal trigger", e.toString())
       false
     }
   }
@@ -198,6 +210,127 @@ class FeedService @Inject constructor(
     val badgeShouldShow =
       getUnreadFeedCount() > 0 && (feedSettings?.showNotificationBadge ?: true)
     _notificationBadgeUpdated.emit(badgeShouldShow)
+  }
+
+  /**
+   * Shows IAM feed modal using the app's dialog system
+   */
+  override fun showIAMFeedModal(feedItem: FeedItem) {
+    try {
+      val dialog = DialogModel.Custom(
+        contentKey = DialogType.IAMFeedModal,
+        params = mapOf(
+          "feedItem" to feedItem,
+          "elementId" to feedItem.elementId, // Store elementId for callback identification
+        ),
+        customPriority = 3, // Medium priority for IAM dialogs
+        customDelayMillis = 0L,
+        onDismiss = {
+          handleFeedModalDismissal(feedItem)
+        },
+        onConfirm = { actionType: Any ->
+          serviceScope.launch {
+            handleFeedModalAction(feedItem, actionType.toString())
+          }
+        },
+      )
+
+      dialogQueueService.enqueue(dialog)
+      AppLog.d(TAG, "Enqueued IAM feed modal for item: ${feedItem.elementId}")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to show IAM feed modal", e.toString())
+    }
+  }
+
+  /**
+   * Handles feed modal dismissal
+   */
+  private fun handleFeedModalDismissal(feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem) {
+    try {
+      // Mark as read, update analytics, etc.
+      AppLog.d(TAG, "Feed modal dismissed for: ${feedItem.titleText}")
+      // TODO: Add any additional dismissal logic here
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to handle feed modal dismissal", e.toString())
+    }
+  }
+
+  /**
+   * Handles feed modal actions
+   * Navigates based on feed type: LINK opens external link, LANDING navigates to feed landing screen
+   */
+  private suspend fun handleFeedModalAction(
+    feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem,
+    actionType: String
+  ) {
+    try {
+      AppLog.d(TAG, "Handling feed modal action: $actionType for ${feedItem.titleText} (${feedItem.feedType})")
+
+      when (actionType) {
+        "buy_now", "learn_more" -> {
+          // Handle navigation based on feed type
+          when (feedItem.feedType) {
+            FeedTypes.LINK -> {
+              // Open external link
+              AppLog.d(TAG, "Opening external link for: ${feedItem.titleText}")
+              feedItem.linkTarget?.let { link ->
+                try {
+                  // Use LinkOpener to open external link
+                  val linkOpener = com.greatergoods.ggInAppMessaging.util.LinkOpener
+                  linkOpener.openInCustomTab(
+                    context = context,
+                    url = link,
+                    showTitle = true
+                  )
+                  AppLog.d(TAG, "Successfully opened external link: $link")
+                } catch (e: Exception) {
+                  AppLog.e(TAG, "Failed to open external link: $link", e.toString())
+                }
+              } ?: run {
+                AppLog.w(TAG, "No link target found for feed item: ${feedItem.titleText}")
+              }
+            }
+
+            FeedTypes.LANDING -> {
+              // Set the selected feed item before navigating
+              AppLog.d(TAG, "Setting selected feed item and navigating to feed landing for: ${feedItem.titleText}")
+              try {
+                // Set the feed item in the holder so the landing screen can access it
+                selectedFeedItemHolder.setSelectedFeedItem(feedItem)
+                AppLog.d(TAG, "Set selected feed item: ${feedItem.elementId}")
+
+                // Navigate to feed landing page
+                appNavigationService.navigateTo(AppRoute.Feed.FeedLanding)
+                AppLog.d(TAG, "Successfully navigated to feed landing")
+              } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to navigate to feed landing", e.toString())
+              }
+            }
+
+            else -> {
+              AppLog.w(TAG, "Unknown feed type: ${feedItem.feedType} for feed item: ${feedItem.titleText}")
+            }
+          }
+        }
+
+        "settings" -> {
+          // Navigate to feed messages settings
+          AppLog.d(TAG, "Navigating to feed messages settings from modal")
+          try {
+            appNavigationService.navigateTo(AppRoute.Feed.FeedMessageSetting)
+            AppLog.d(TAG, "Successfully navigated to feed messages settings")
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to navigate to feed messages settings", e.toString())
+          }
+        }
+
+        else -> {
+          AppLog.d(TAG, "Unknown action type: $actionType for feed item: ${feedItem.titleText}")
+        }
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to handle feed modal action", e.toString())
+    }
   }
 
   /**
@@ -323,9 +456,9 @@ class FeedService @Inject constructor(
 
         // Set the mock items in the IAM service
         ggIAMService.setFeedItems(mockItems)
-        AppLog.d(tag, "Set ${mockItems.size} mock feed items in IAM service")
+        AppLog.d(TAG, "Set ${mockItems.size} mock feed items in IAM service")
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to set mock feed items", e.toString())
+        AppLog.e(TAG, "Failed to set mock feed items", e.toString())
       }
     }
   }
@@ -336,30 +469,30 @@ class FeedService @Inject constructor(
     onOpenExternalLink: (String) -> Unit
   ) {
     try {
-      AppLog.d(tag, "Handling feed item click: ${feedItem.titleText} (${feedItem.feedType})")
+      AppLog.d(TAG, "Handling feed item click: ${feedItem.titleText} (${feedItem.feedType})")
 
       when (feedItem.feedType) {
         FeedTypes.LANDING -> {
-          AppLog.d(tag, "Landing feed item clicked: ${feedItem.titleText}")
+          AppLog.d(TAG, "Landing feed item clicked: ${feedItem.titleText}")
           onNavigateToFeedLanding(feedItem)
         }
 
         FeedTypes.LINK -> {
-          AppLog.d(tag, "Link feed item clicked: ${feedItem.titleText}")
+          AppLog.d(TAG, "Link feed item clicked: ${feedItem.titleText}")
           feedItem.linkTarget?.let { link ->
             onOpenExternalLink(link)
           }
         }
 
         else -> {
-          AppLog.w(tag, "Unknown feed type: ${feedItem.feedType}")
+          AppLog.w(TAG, "Unknown feed type: ${feedItem.feedType}")
         }
       }
 
       // Mark feed as read regardless of type
       markFeedAsRead(feedItem.elementId, "clicked")
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to handle feed item click", e.toString())
+      AppLog.e(TAG, "Failed to handle feed item click", e.toString())
     }
   }
 
@@ -372,16 +505,16 @@ class FeedService @Inject constructor(
     onOpenExternalLink: (String) -> Unit
   ) {
     try {
-      AppLog.d(tag, "Handling shop now click: ${feedItem.titleText} (${feedItem.feedType})")
+      AppLog.d(TAG, "Handling shop now click: ${feedItem.titleText} (${feedItem.feedType})")
 
       when (feedItem.feedType) {
         FeedTypes.LANDING -> {
-          AppLog.d(tag, "Shop now clicked for landing feed item: ${feedItem.titleText}")
+          AppLog.d(TAG, "Shop now clicked for landing feed item: ${feedItem.titleText}")
           onNavigateToFeedLanding(feedItem)
         }
 
         FeedTypes.LINK -> {
-          AppLog.d(tag, "Shop now clicked for link feed item: ${feedItem.titleText}")
+          AppLog.d(TAG, "Shop now clicked for link feed item: ${feedItem.titleText}")
           // Open external link
           feedItem.linkTarget?.let { link ->
             onOpenExternalLink(link)
@@ -389,20 +522,20 @@ class FeedService @Inject constructor(
         }
 
         else -> {
-          AppLog.w(tag, "Unknown feed type for shop now click: ${feedItem.feedType}")
+          AppLog.w(TAG, "Unknown feed type for shop now click: ${feedItem.feedType}")
         }
       }
 
       // Mark feed as read
       markFeedAsRead(feedItem.elementId, "shop_now_clicked")
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to handle shop now click", e.toString())
+      AppLog.e(TAG, "Failed to handle shop now click", e.toString())
     }
   }
 
   override suspend fun markFeedAsRead(elementId: String, actionType: String) {
     try {
-      AppLog.d(tag, "Marking feed as read: $elementId, action: $actionType")
+      AppLog.d(TAG, "Marking feed as read: $elementId, action: $actionType")
 
       // Get the feed item to update
       val feedItems = feedsChanged.first()
@@ -413,24 +546,24 @@ class FeedService @Inject constructor(
         val actionTypeEnum = convertStringToFeedActionType(actionType)
         updateFeedItem(feedItem, actionTypeEnum, null)
       } else {
-        AppLog.w(tag, "Feed item not found for elementId: $elementId")
+        AppLog.w(TAG, "Feed item not found for elementId: $elementId")
       }
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to mark feed as read", e.toString())
+      AppLog.e(TAG, "Failed to mark feed as read", e.toString())
     }
   }
 
   override fun clearFeedData() {
     serviceScope.launch {
       try {
-        AppLog.d(tag, "Clearing feed data")
+        AppLog.d(TAG, "Clearing feed data")
         ggIAMService.clearFeedData()
         _feedsChanged.emit(emptyList())
         _feedSettingsChanged.emit(null)
         _notificationBadgeUpdated.emit(false)
-        AppLog.d(tag, "Feed data cleared successfully")
+        AppLog.d(TAG, "Feed data cleared successfully")
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to clear feed data", e.toString())
+        AppLog.e(TAG, "Failed to clear feed data", e.toString())
       }
     }
   }
@@ -451,7 +584,7 @@ class FeedService @Inject constructor(
       "view" -> FeedActionType.VIEW
       "dismiss" -> FeedActionType.DISMISS
       else -> {
-        AppLog.w(tag, "Unknown action type: $actionType, defaulting to READ")
+        AppLog.w(TAG, "Unknown action type: $actionType, defaulting to READ")
         FeedActionType.READ
       }
     }

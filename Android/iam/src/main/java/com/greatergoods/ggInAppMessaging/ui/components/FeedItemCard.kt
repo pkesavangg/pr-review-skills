@@ -27,7 +27,9 @@ import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
 import com.greatergoods.ggInAppMessaging.features.common.ButtonType
+import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
+import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 
@@ -107,13 +109,14 @@ fun FeedItemCard(
             overflow = TextOverflow.Ellipsis,
           )
 
-          // Subtitle text (Ends in X hours)
-          Text(
+          // Subtitle text (Ends in X hours) with rich text formatting
+          IAMText(
             text = feedItem.subtitleFeedText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
+            textType = TextType.Body,
             color = IamTheme.colors.textBody,
             modifier = Modifier.fillMaxWidth(),
+            enableRichText = true,
+            expiresAt = feedItem.expiresAt,
           )
         }
         IamButton(label = feedItem.linkText, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))

@@ -39,13 +39,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsState()
-  val appViewModel: com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel = hiltViewModel()
-  val appState by appViewModel.state.collectAsState()
-  
+
   HomeScreenContent(
     state = state,
     handleIntent = viewModel::handleIntent,
-    showUnreadFeedIndicator = appState.showUnreadFeedIndication,
+    showUnreadFeedIndicator = state.showUnreadFeedIndicator,
   )
 }
 
