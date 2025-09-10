@@ -71,12 +71,14 @@ struct BaseInputField: View {
                 // Password visibility toggle
                 if inputType == .password && !isDisabled {
                     Button(action: {
-                        isSecureTextVisible.toggle()
+                        withAnimation {
+                            isSecureTextVisible.toggle()
+                        }
                     }) {
                         AppIconView(icon: isSecureTextVisible ? AppAssets.eyeClosed : AppAssets.eyeOpen)
                             .foregroundColor(theme.statusIconPrimary)
                     }
-                    .padding(.trailing, 10)
+                    .padding(.trailing, .spacingXS)
                 }
             }
         )

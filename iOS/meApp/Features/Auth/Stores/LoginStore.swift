@@ -66,14 +66,6 @@ final class LoginStore: ObservableObject {
         browserURL ?? URL(string: urlStrings.baseUrl)!
     }
 
-    /// Loader binding for presentLoader
-    var loaderData: Binding<LoaderModel?> {
-        Binding(
-            get: { self.loaderOverride ?? (self.isLoading ? LoaderModel(text: self.lang.loggingAccount) : nil) },
-            set: { _ in }
-        )
-    }
-
     // Navigation
     var onLoginSuccess: (() -> Void)?
     var dismissAction: DismissAction?
@@ -147,7 +139,7 @@ final class LoginStore: ObservableObject {
         guard loginForm.isValid else { return }
 
         isFormSubmitting = true
-        isLoading = true
+        notificationService.showLoader(LoaderModel(text: self.lang.loggingAccount))
         errorMessage = nil
 
         defer {
@@ -174,6 +166,7 @@ final class LoginStore: ObservableObject {
             }
             handleLoginError(error)
         }
+        notificationService.dismissLoader()
     }
 
     private func handleLoginError(_ error: Error) {
@@ -198,7 +191,7 @@ final class LoginStore: ObservableObject {
         resetEmail = emailValue
         showResetPrompt = true
         resetError = nil
-        alertData = AlertModel(
+        let alertData = AlertModel(
             title: alertLang.ResetPasswordAlert.passwordResetTitle,
             message: alertLang.ResetPasswordAlert.enterEmailMessage,
             buttons: [
@@ -211,6 +204,7 @@ final class LoginStore: ObservableObject {
             ],
             inputField: AlertInputField(placeholder: inputFieldLabels.email, value: emailValue.isEmpty ? "" : emailValue, type: .email)
         )
+        notificationService.showAlert(alertData)
     }
 
     private func handlePasswordReset(email: String) async {
@@ -230,7 +224,7 @@ final class LoginStore: ObservableObject {
         }
         isFormSubmitting = true
         isLoading = true
-        loaderOverride = LoaderModel(text: lang.sendingEmail)
+        notificationService.showLoader(LoaderModel(text: lang.sendingEmail))
         do {
             try await accountService.requestPasswordReset(email: trimmedEmail)
             showResetPrompt = false
@@ -247,6 +241,7 @@ final class LoginStore: ObservableObject {
         loaderOverride = nil
         isFormSubmitting = false
         isLoading = false
+        notificationService.dismissLoader()
     }
 
     // MARK: - Show/Hide Password

@@ -26,7 +26,7 @@ struct HelpModalView: View {
             HStack {
                 Spacer()
                 Button(action: onClose) {
-                    AppIconView(icon: appAssets.xmark, size: IconSize(width: 22, height: 20))
+                    AppIconView(icon: appAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }
@@ -40,7 +40,6 @@ struct HelpModalView: View {
                 Text(helpLang.question)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
-                    .padding(.bottom, .spacingSM)
                 
                 Text(helpLang.generalHelp)
                     .fontOpenSans(.body2)
