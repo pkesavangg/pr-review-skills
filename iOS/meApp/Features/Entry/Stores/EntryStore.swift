@@ -41,9 +41,13 @@ final class EntryStore: ObservableObject {
     let tag = "EntryStore"
     
     var maxSelectableTime: Date {
-        // If selected date is today, cap at current time; otherwise end of day
+        // If selected date is today, cap at current time rounded down to the nearest minute
+        // so the limit is stable and does not tick every second causing view churn.
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
-            return Date()
+            let now = Date()
+            let calendar = Calendar.current
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+            return calendar.date(from: comps) ?? now
         } else {
             var comps = Calendar.current.dateComponents([.year, .month, .day], from: manualEntryForm.date.value)
             comps.hour = 23; comps.minute = 59
@@ -416,5 +420,9 @@ final class EntryStore: ObservableObject {
         guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
         control.value = value
         control.validate()
+    }
+    
+    deinit {
+        cancellables.removeAll()
     }
 }
