@@ -161,9 +161,4 @@ public class CustomCollectionView: UICollectionView {
             UIView.setAnimationsEnabled(animationsWereEnabled)
         }
     }
-    
-    // MARK: - Boundary Detection Support
-    // Note: Touch-based drag constraint was ineffective with UICollectionView's built-in drag system
-    // Boundary enforcement is now handled in dropSessionDidUpdate for real-time feedback
 }
-

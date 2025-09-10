@@ -13,11 +13,6 @@ public class GridBoundaryDetector {
     
     // MARK: - Boundary Configuration
     
-    public enum GridType {
-        case metric
-        case goalStreak
-    }
-    
     public struct BoundaryConstraints: Hashable {
         public let maxWidth: CGFloat
         public let maxHeight: CGFloat
@@ -69,7 +64,6 @@ public class GridBoundaryDetector {
     private var gridBounds: CGRect = .zero
     private var isDragOutsideBounds: Bool = false
     private var boundaryFeedbackGenerator: UIImpactFeedbackGenerator?
-    private var currentGridType: GridType = .metric
     private var currentConstraints: BoundaryConstraints = .metric
     
     // Cache to prevent excessive recalculation and logging
@@ -80,9 +74,8 @@ public class GridBoundaryDetector {
     
     // MARK: - Initialization
     
-    public init(gridType: GridType = .metric) {
-        self.currentGridType = gridType
-        self.currentConstraints = gridType == .metric ? .metric : .goalStreak(gridHeight: 0, dividerY: 0)
+    public init() {
+        self.currentConstraints = .metric
         self.boundaryFeedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
     }
     

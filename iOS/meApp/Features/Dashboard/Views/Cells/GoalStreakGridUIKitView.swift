@@ -323,7 +323,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         init(store: DashboardStore, gridModel: MileStoneGridModel) {
             self.store = store
             self.gridModel = gridModel
-            self.boundaryDetector = GridBoundaryDetector(gridType: .goalStreak)
+            self.boundaryDetector = GridBoundaryDetector()
         }
         
         // MARK: - Boundary Detection Methods
