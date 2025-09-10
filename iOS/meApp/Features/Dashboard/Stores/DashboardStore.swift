@@ -395,6 +395,19 @@ class DashboardStore: ObservableObject {
         }
         
         let lastScrollPosition = graphManager.state.xScrollPosition
+        
+        // Stabilize year label: use calendar year containing the CENTER of the visible window
+        // (avoids flipping when the left boundary nudges into previous month/year)
+        if state.graph.selectedPeriod == .year {
+            let cal = Calendar.current
+            let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
+            if let yearInterval = cal.dateInterval(of: .year, for: center) {
+                let minDate = yearInterval.start
+                let maxDate = yearInterval.end
+                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
+            }
+        }
+        
         let minDate = lastScrollPosition
         let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: state.graph.selectedPeriod))
         
@@ -1223,8 +1236,22 @@ class DashboardStore: ObservableObject {
             return
         }
         
-        // For TOTAL period, use all data to ensure Y-axis reflects complete range
-        let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
+        // Choose operations for Y-axis domain
+        // - TOTAL: all operations
+        // - Others: visible operations; if none are visible but the window is crossed by a connecting line,
+        //           use the two bracketing points around the window to compute a meaningful domain
+        var operationsForYAxis: [BathScaleWeightSummary]
+        if state.graph.selectedPeriod == .total {
+            operationsForYAxis = continuousOperations
+        } else {
+            let visible = visibleOperations
+            if visible.isEmpty {
+                let bracket = graphManager.getBracketingOperations(from: continuousOperations)
+                operationsForYAxis = bracket.isEmpty ? continuousOperations : bracket
+            } else {
+                operationsForYAxis = visible
+            }
+        }
         
         // Apply cache update in a transaction that disables animations to prevent layout jumps
         graphManager.calculateAndCacheYAxisDomain(

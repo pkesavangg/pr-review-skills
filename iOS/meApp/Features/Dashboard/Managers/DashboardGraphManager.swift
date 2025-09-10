@@ -859,6 +859,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return strictlyVisible
     }
 
+    /// Returns the operations that immediately bracket the current visible window
+    /// - Note: Uses the store convention where `xScrollPosition` is the LEFT edge of the visible window.
+    ///         When there are no points inside the visible window, these two points determine the
+    ///         connecting line that traverses the window. We use them to compute a meaningful Y-axis.
+    func getBracketingOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
+        guard !operations.isEmpty else { return [] }
+
+        // Determine the visible window [leftEdge, rightEdge]
+        let leftEdge: Date = state.xScrollPosition
+        let rightEdge: Date = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
+
+        // Find the last operation at or before the left edge
+        let previous = operations
+            .filter { $0.date <= leftEdge }
+            .max(by: { $0.date < $1.date })
+
+        // Find the first operation at or after the right edge
+        let next = operations
+            .filter { $0.date >= rightEdge }
+            .min(by: { $0.date < $1.date })
+
+        // If not found on one side, try to at least capture the closest on that side of the window
+        // This helps when the rightEdge lies beyond the last entry or leftEdge before the first.
+        let fallbackPrev = previous ?? operations.filter { $0.date < rightEdge }.max(by: { $0.date < $1.date })
+        let fallbackNext = next ?? operations.filter { $0.date > leftEdge }.min(by: { $0.date < $1.date })
+
+        var result: [BathScaleWeightSummary] = []
+        if let p = fallbackPrev { result.append(p) }
+        if let n = fallbackNext, result.last?.date != n.date { result.append(n) }
+        return result
+    }
+
     /// Forces recalculation of visible operations and clears cache
     /// Use this after programmatically setting scroll position
     func forceVisibleOperationsRecalculation() {
@@ -1289,24 +1321,24 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+        // Normalize order to avoid inverted labels when inputs are swapped or nudged
+        let startDate = min(minDate, maxDate)
+        let endDate = max(minDate, maxDate)
 
         // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
         if period == .total {
-            if calendar.isDate(minDate, equalTo: maxDate, toGranularity: .month) {
-                // Use title-cased month abbreviation (e.g., Sep 2025)
+            if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
                 return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
             }
         }
 
         // Special handling for month: snap range to actual month boundaries based on the center
         if period == .month {
-            // Use the center of the provided range to determine the month being shown
-            let span = maxDate.timeIntervalSince(minDate)
-            let center = minDate.addingTimeInterval(max(0, span / 2))
+            let span = endDate.timeIntervalSince(startDate)
+            let center = startDate.addingTimeInterval(max(0, span / 2))
 
             if let monthInterval = calendar.dateInterval(of: .month, for: center) {
                 let startOfMonth = monthInterval.start
-                // dateInterval end is exclusive; show inclusive end as last day of month
                 let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
 
                 let startDay = calendar.component(.day, from: startOfMonth)
@@ -1317,41 +1349,53 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
                 return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
             }
-            // Fallback to generic logic below if month boundaries cannot be determined
         }
 
-        // Adjust the displayed end date to be inclusive of the visible range.
-        // Our X-axis generation may append a phantom tick beyond the last real value
-        // (e.g., +1 day for week, +1 month for year). The label should not show this.
-        let inclusiveEndDate: Date = {
-            switch period {
-            case .week:
-                return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
-            case .month:
-                // Month-specific case handled above; keep default to avoid double-adjusting
-                return maxDate
-            case .year:
-                return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
-            case .total:
-                return maxDate
-            }
-        }()
+        // For year: clamp to full month boundaries inside the visible window
+        if period == .year {
+            // Robust: derive the label purely from the mid-point year, ignoring phantom edges
+            let span = endDate.timeIntervalSince(startDate)
+            let mid = startDate.addingTimeInterval(max(0, span / 2))
+            let year = calendar.component(.year, from: mid)
 
-        let startDay = calendar.component(.day, from: minDate)
+            // Jan 1 of the year and Dec 1 of the same year
+            let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? minDate
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startOfYear).lowercased()
+            let startYear = year
+
+            let decOfYear = calendar.date(from: DateComponents(year: year, month: 12, day: 1)) ?? maxDate
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: decOfYear).lowercased()
+            let endYear = year
+
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+        }
+
+        // For total: snap both ends to month starts for stability (independent of any phantom months)
+        if period == .total {
+            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
+            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
+
+            if endMonthStart < startMonthStart {
+                endMonthStart = startMonthStart
+            }
+
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
+            let startYear = calendar.component(.year, from: startMonthStart)
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
+            let endYear = calendar.component(.year, from: endMonthStart)
+
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+        }
+
+        // Default (week) with inclusive end-day handling
+        let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
+        let startDay = calendar.component(.day, from: startDate)
         let endDay = calendar.component(.day, from: inclusiveEndDate)
-        let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
+        let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
         let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
-        let startYear = calendar.component(.year, from: minDate)
         let endYear = calendar.component(.year, from: inclusiveEndDate)
 
-        switch period {
-        case .week, .month:
-            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
-        case .year:
-            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
-        case .total:
-            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
-        }
+        return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
     }
 
     func fallbackTimeLabel(for period: TimePeriod) -> String {

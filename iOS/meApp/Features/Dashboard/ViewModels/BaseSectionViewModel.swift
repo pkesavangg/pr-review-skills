@@ -233,8 +233,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return 
         }
         
-        // Use visible operations for Y-axis calculation (different from Total)
-        let operations = store.visibleOperations.isEmpty ? chartOperations : store.visibleOperations
+        // Use visible operations for Y-axis calculation.
+        // If there are no visible points but the line crosses the window, use bracketing points
+        var operations: [BathScaleWeightSummary]
+        if hasXAxis {
+            let visible = store.visibleOperations
+            if visible.isEmpty {
+                let bracket = store.graphManager.getBracketingOperations(from: chartOperations)
+                operations = bracket.isEmpty ? chartOperations : bracket
+            } else {
+                operations = visible
+            }
+        } else {
+            operations = chartOperations
+        }
         
         // Get Y-axis scale from graph manager
         let yAxisScale = store.graphManager.getYAxisScale(
