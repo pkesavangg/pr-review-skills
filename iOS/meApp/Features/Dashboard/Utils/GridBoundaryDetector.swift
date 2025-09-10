@@ -76,9 +76,7 @@ public class GridBoundaryDetector {
     private var lastCollectionViewFrame: CGRect = .zero
     private var lastContentSize: CGSize = .zero
     private var lastConstraintsHash: Int = 0
-    #if DEBUG
-    private var lastLogTime: Date = .distantPast
-    #endif
+    
     
     // MARK: - Initialization
     
@@ -139,17 +137,7 @@ public class GridBoundaryDetector {
             height: constrainedHeight
         )
         
-        // Debug logging for boundary testing (limited frequency to prevent console flooding)
-        #if DEBUG
-        let now = Date()
-        if now.timeIntervalSince(lastLogTime) > 2.0 { // Log max once every 2 seconds
-            print("GridBoundaryDetector (\(currentGridType)) - Constrained Width: \(constrainedWidth), Grid Height: \(constrainedHeight)")
-            print("GridBoundaryDetector Bounds: \(gridBounds)")
-            print("Collection View Frame: \(collectionViewFrame), Content Size: \(contentSize)")
-            print("Exclude Zones: \(currentConstraints.excludeZones)")
-            lastLogTime = now
-        }
-        #endif
+        
     }
     
     /// Checks if a drag location is within the precise grid boundaries

@@ -355,10 +355,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let dividerY = actualGridHeight
             boundaryDetector.updateGoalStreakConstraints(gridHeight: actualGridHeight + extraBottomSlack, dividerY: dividerY)
             
-            #if DEBUG
-            print("GoalStreakGrid STRICT Boundary Constraints - GridHeight: \(actualGridHeight + extraBottomSlack), DividerY: \(dividerY), BottomSlack: \(extraBottomSlack)")
-            print("Items will be strictly contained within height: \(actualGridHeight + extraBottomSlack)")
-            #endif
+            
         }
 
         // MARK: - Interactive Movement (Strictly Clamped)
