@@ -20,13 +20,13 @@ final class LoggerService: LoggerServiceProtocol {
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
+    private let kv = KvStorageService.shared
+    private static let lastCleanupKey = "logger_last_cleanup_ts"
     
     init() {
-        Task {
-            do {
-                try await deleteOldLogs()
-            } catch {}
-        }
+        // Run log retention cleanup off the main actor to avoid blocking launch.
+        // We add a short delay so it doesn't contend with initial UI work.
+        Self.scheduleDeleteOldLogsBackground(service: self)
     }
     
     public func log(level: LogLevel,
@@ -50,27 +50,31 @@ final class LoggerService: LoggerServiceProtocol {
         // Do not persist debug logs; only print to system logger
         if level == .debug { return }
         
-        // Capture values in MainActor before entering the queue
+        // // Capture values on MainActor, then offload formatting and save scheduling to a background queue.
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
-        let sessionId = self.sessionId
+        let currentSessionId = self.sessionId
         
-        logQueue.async(flags: .barrier) {
+        logQueue.async(qos: .background, flags: .barrier) {
             let stringifiedData = data.map {
                 ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
             }
-            
-            let entry = LogEntry(
-                accountId: resolvedAccountId,
-                sessionId: sessionId,
-                tag: tag,
-                tagId: String(describing: function),
-                type: level.toLogType,
-                message: message,
-                data: stringifiedData
-            )
-            
-            Task {
-                await self.loggerRepository.saveLogEntry(entry)
+            let tagIdString = String(describing: function)
+            let logType = level.toLogType
+
+            // Bounce to the main actor to create and save the SwiftData model
+            // without capturing main-actor properties from a @Sendable closure.
+            Task { @MainActor in
+                let repo: LoggerRepositoryProtocol = LoggerRepository()
+                let entryToSave = LogEntry(
+                    accountId: resolvedAccountId,
+                    sessionId: currentSessionId,
+                    tag: tag,
+                    tagId: tagIdString,
+                    type: logType,
+                    message: message,
+                    data: stringifiedData
+                )
+                await repo.saveLogEntry(entryToSave)
             }
         }
     }
@@ -251,6 +255,40 @@ final class LoggerService: LoggerServiceProtocol {
         }
         
         return LogsPayload(version: version, logs: formattedLogs)
+    }
+}
+
+// MARK: - Background scheduling
+extension LoggerService {
+    /// Schedules log retention cleanup on a detached background task to avoid blocking the main actor during launch.
+    private static func scheduleDeleteOldLogsBackground(service: LoggerService) {
+        // Use a regular Task pinned to the main actor so we can safely
+        // access main-actor-isolated properties. The repository performs
+        // its own background work for heavy operations.
+        Task { @MainActor in
+            // Run at most once per day
+            let now = Date().timeIntervalSince1970
+            let last = (service.kv.getValue(forKey: Self.lastCleanupKey) as? Double) ?? 0
+            if now - last < 86_400 { return }
+
+            // Give launch a brief, jittered head start to avoid contention
+            let jitterNs = UInt64(Int.random(in: 200_000_000...600_000_000))
+            try? await Task.sleep(nanoseconds: jitterNs)
+            do {
+                // Only run if needed, to avoid waking storage unnecessarily
+                if try await service.loggerRepository.hasLogsOlderThan(olderThanDays: AppConstants.TimeoutsAndRetention.logRetentionDays) {
+                    // Prefer batched deletion to limit CPU spikes
+                    try await service.loggerRepository.deleteLogsOlderThanInBatches(
+                        olderThanDays: AppConstants.TimeoutsAndRetention.logRetentionDays,
+                        batchSize: 400,
+                        interBatchDelayNs: 50_000_000
+                    )
+                    service.kv.setValue(now, forKey: Self.lastCleanupKey)
+                }
+            } catch {
+                // Intentionally ignore failures here; retention is best-effort
+            }
+        }
     }
 }
 

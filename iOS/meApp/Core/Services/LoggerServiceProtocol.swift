@@ -39,7 +39,7 @@ protocol LoggerServiceProtocol {
              data: Any?,
              function: StaticString,
              line: UInt,
-             accountId: String?) async
+             accountId: String?)
     
     /// Gets the current session ID
     /// - Returns: The current session ID as a string

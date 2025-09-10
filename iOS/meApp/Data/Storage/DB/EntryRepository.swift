@@ -54,7 +54,32 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter entry: The updated Entry object.
     /// - Note: SwiftData tracks changes automatically; just save context after making changes.
     func updateEntry(_ entry: Entry) async throws {
-        try context.save()
+        // Capture scalar values to avoid cross-context model usage in the predicate and assignments
+        let id = entry.id
+        let accountId = entry.accountId
+        let entryTimestamp = entry.entryTimestamp
+        let serverTimestamp = entry.serverTimestamp
+        let operationType = entry.operationType
+        let deviceType = entry.deviceType
+        let isSynced = entry.isSynced
+        let isFailedToSync = entry.isFailedToSync
+        let attempts = entry.attempts
+
+        try await performBackgroundFetch { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == id })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.accountId = accountId
+                existing.entryTimestamp = entryTimestamp
+                existing.serverTimestamp = serverTimestamp
+                existing.operationType = operationType
+                existing.deviceType = deviceType
+                existing.isSynced = isSynced
+                existing.isFailedToSync = isFailedToSync
+                existing.attempts = attempts
+                try ctx.save()
+            }
+            return ()
+        }
     }
 
     /// Deletes an entry by its unique UUID string.

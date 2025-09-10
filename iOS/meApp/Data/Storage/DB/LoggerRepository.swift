@@ -103,4 +103,50 @@ final class LoggerRepository: LoggerRepositoryProtocol {
             return ()
         }
     }
+
+    /// Deletes old logs in small batches to reduce CPU spikes and memory usage.
+    /// - Parameters:
+    ///   - days: Retention window in days. Anything older will be deleted.
+    ///   - batchSize: Maximum number of rows to delete per batch.
+    ///   - interBatchDelayNs: Optional delay between batches to yield CPU.
+    func deleteLogsOlderThanInBatches(
+        olderThanDays days: Int,
+        batchSize: Int = 500,
+        interBatchDelayNs: UInt64 = 20_000_000
+    ) async throws {
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+
+        while true {
+            let deletedCount: Int = try await performBackgroundTask { ctx in
+                var descriptor = FetchDescriptor<LogEntry>(
+                    predicate: #Predicate { $0.timestamp < cutoffTimestamp }
+                )
+                descriptor.fetchLimit = batchSize
+
+                let toDelete = try ctx.fetch(descriptor)
+                guard !toDelete.isEmpty else { return 0 }
+                toDelete.forEach { ctx.delete($0) }
+                try ctx.save()
+                return toDelete.count
+            }
+
+            if deletedCount == 0 { break }
+
+            // Yield a bit between batches to avoid prolonged 100% CPU usage
+            try? await Task.sleep(nanoseconds: interBatchDelayNs)
+            try Task.checkCancellation()
+        }
+    }
+
+    func hasLogsOlderThan(olderThanDays days: Int) async throws -> Bool {
+        let cutoffTimestamp = DateTimeTools.getTimestampDaysAgo(days)
+        return try await performBackgroundTask { ctx in
+            var descriptor = FetchDescriptor<LogEntry>(
+                predicate: #Predicate { $0.timestamp < cutoffTimestamp }
+            )
+            descriptor.fetchLimit = 1
+            let result = try ctx.fetch(descriptor)
+            return !result.isEmpty
+        }
+    }
 }
