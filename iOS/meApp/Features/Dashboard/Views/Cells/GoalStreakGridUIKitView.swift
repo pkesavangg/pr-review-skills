@@ -376,6 +376,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     // Capture current item size to prevent shape change during drag
                     if let cell = collectionView.cellForItem(at: indexPath) {
                         interactiveMovingItemSize = cell.bounds.size
+                        
+                        if let streakCell = cell as? StreakCardCell {
+                            streakCell.updateDragState(true)
+                        } else if let goalCell = cell as? GoalCardCell {
+                            goalCell.updateDragState(true)
+                        }
                     } else if let attrs = collectionView.layoutAttributesForItem(at: indexPath) {
                         interactiveMovingItemSize = attrs.bounds.size
                     } else {
@@ -446,6 +452,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 interactiveMovingItemSize = .zero
                 isDraggingGoalCard = false
                 draggedStreakId = nil
+                // Clear drag state highlight from all visible cells
+                for cell in collectionView.visibleCells {
+                    if let streakCell = cell as? StreakCardCell {
+                        streakCell.updateDragState(false)
+                        streakCell.clearAllShadowEffects()
+                    } else if let goalCell = cell as? GoalCardCell {
+                        goalCell.updateDragState(false)
+                        goalCell.clearAllShadowEffects()
+                    }
+                }
             default:
                 collectionView.cancelInteractiveMovement()
                 configureBoundaryConstraints(for: collectionView)
@@ -454,6 +470,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 interactiveMovingItemSize = .zero
                 isDraggingGoalCard = false
                 draggedStreakId = nil
+                // Clear drag state highlight from all visible cells on cancel
+                for cell in collectionView.visibleCells {
+                    if let streakCell = cell as? StreakCardCell {
+                        streakCell.updateDragState(false)
+                        streakCell.clearAllShadowEffects()
+                    } else if let goalCell = cell as? GoalCardCell {
+                        goalCell.updateDragState(false)
+                        goalCell.clearAllShadowEffects()
+                    }
+                }
             }
         }
         

@@ -99,12 +99,14 @@ class GoalCardCell: UICollectionViewCell {
         switch gesture.state {
         case .began:
             isLongPressed = true
+            applySelectionShadow()
             // Reconfigure to hide overlay during long press
             if let store = currentStore {
                 configure(with: store)
             }
         case .ended, .cancelled:
             isLongPressed = false
+            clearAllShadowEffects()
             // Reconfigure to show overlay after long press ends (if in edit mode)
             if let store = currentStore {
                 configure(with: store)
@@ -375,6 +377,12 @@ class GoalCardCell: UICollectionViewCell {
         layer.shadowPath = nil
         layer.setNeedsDisplay()
         layer.displayIfNeeded()
+    }
+    
+    private func applySelectionShadow() {
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 8
+        layer.shadowOffset = CGSize(width: 0, height: 4)
     }
     
     // MARK: - Drag Preview

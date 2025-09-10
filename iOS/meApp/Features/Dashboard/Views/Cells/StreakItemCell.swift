@@ -319,6 +319,12 @@ class StreakCardCell: UICollectionViewCell {
         layer.displayIfNeeded()
     }
 
+    private func applySelectionShadow() {
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 8
+        layer.shadowOffset = CGSize(width: 0, height: 4)
+    }
+
     override func dragStateDidChange(_ dragState: UICollectionViewCell.DragState) {
         super.dragStateDidChange(dragState)
         
@@ -389,6 +395,8 @@ class StreakCardCell: UICollectionViewCell {
         switch gesture.state {
         case .began:
             isLongPressed = true
+            // Apply mild selection shadow to indicate selection like MetricCell
+            applySelectionShadow()
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
@@ -402,6 +410,7 @@ class StreakCardCell: UICollectionViewCell {
             callback(item.label)
         case .ended, .cancelled:
             isLongPressed = false
+            clearAllShadowEffects()
             // Reconfigure to show overlay after long press ends (if in edit mode)
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
