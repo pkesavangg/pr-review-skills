@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -33,9 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
+import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -56,6 +59,30 @@ internal fun StatCard(
 ) {
   val contentHorizonalAlignment =
     if (stat.icon == null || stat.value == null) Alignment.CenterHorizontally else Alignment.Start
+  val hideMetricData = isFromSetup && stat.key is DashboardKey.Metric
+  val metricLabel =
+    if (hideMetricData) stat.label.lowercase() else stat.label.plus(" ").plus(stat.unit ?: "").lowercase()
+  val metricData = buildString {
+    if (stat.valuePrefix != null) {
+      append(stat.valuePrefix)
+    }
+    if (stat.value != null) {
+      append(formatStatValue(stat.value))
+      if (stat.valueSuffix != null) {
+        append(" " + stat.valueSuffix)
+      }
+    } else {
+      if (isFromSetup && stat.key is DashboardKey.Milestone) append("+/-") else append("---")
+    }
+  }
+
+  val shouldShowMetricData = if (isFromSetup) {
+    // In setup mode, do NOT show for dashboard metrics and streak milestones
+    !(stat.key is DashboardKey.Metric || isStreakMilestone(stat) )
+  } else {
+    // Not in setup mode, always show
+    true
+  }
   Card(
     modifier = Modifier
       .fillMaxSize()
@@ -71,11 +98,14 @@ internal fun StatCard(
     Row(
       modifier = modifier
         .fillMaxSize()
-        .padding(vertical = MeTheme.spacing.sm),
+        .padding(vertical = MeTheme.spacing.sm)
+        .then(
+          if (isFromSetup) Modifier.height(64.dp) else Modifier
+        ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
     ) {
-      if (stat.icon != null) {
+      if (stat.icon != null && stat.key is DashboardKey.Milestone) {
         AppIcon(
           id = stat.icon,
           contentDescription = stat.label,
@@ -87,26 +117,25 @@ internal fun StatCard(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = contentHorizonalAlignment,
       ) {
+        if (stat.icon != null && hideMetricData) {
+          AppIcon(
+            id = stat.icon,
+            contentDescription = stat.label,
+            modifier = Modifier.size(24.dp),
+            tintColor = MeTheme.colorScheme.iconPrimary,
+          )
+        }
+        if (shouldShowMetricData) {
+          Text(
+            text = metricData,
+            style = MeTheme.typography.heading4,
+            color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textHeading,
+          )
+        }
         Text(
-          text = buildString {
-            if (stat.valuePrefix != null) {
-              append(stat.valuePrefix)
-            }
-            if (stat.value != null) {
-              append(formatStatValue(stat.value))
-              if (stat.valueSuffix != null) {
-                append(" " + stat.valueSuffix)
-              }
-            } else {
-              append("---")
-            }
-          },
-          style = MeTheme.typography.heading4,
-          color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textHeading,
-        )
-        Text(
-          text = stat.label.plus(" ").plus(stat.unit ?: "").lowercase(),
+          text = metricLabel,
           style = MeTheme.typography.subHeading2,
+          textAlign = TextAlign.Center,
           color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
         )
       }

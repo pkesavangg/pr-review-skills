@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
@@ -71,6 +72,7 @@ constructor(
   @Assisted("userList") private val userList: List<GGBTUser>? = null,
   override val ggDeviceService: GGDeviceService,
   private val deviceService: IDeviceService,
+  private val entryService: IEntryService,
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
@@ -1228,6 +1230,9 @@ constructor(
     viewModelScope.launch {
       dashboardService.getVisibleKeys().collect { dashboardKeys ->
         handleIntent(BtWifiScaleSetupIntent.SetDashboardKeys(dashboardKeys))
+      }
+      entryService.progress.collect {
+        handleIntent(BtWifiScaleSetupIntent.SetGoalProgress(it))
       }
     }
   }

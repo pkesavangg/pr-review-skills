@@ -43,6 +43,7 @@ fun DashboardMilestoneGrid(
   visibleMilestones: List<Stat>,
   hiddenMilestones: List<Stat>,
   inEditMode: Boolean,
+  isFromSetup: Boolean,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
 ) {
@@ -106,6 +107,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = inEditMode,
           isDragging = isDragging,
+          isFromSetup = isFromSetup,
           isVisible = true,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = this,
@@ -130,6 +132,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = true,
           isVisible = false,
+          isFromSetup = isFromSetup,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = null,
         )

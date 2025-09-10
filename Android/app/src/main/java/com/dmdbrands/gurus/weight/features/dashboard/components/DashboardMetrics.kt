@@ -68,13 +68,13 @@ fun DashboardMetrics(
   val visibleMetrics = StatHelper.getMetrics(
     dashboardMetric,
     visibleKeys = metricKeys,
-    useShort = true,
+    useShort = !isFromSetup,
     filterNulls = false,
   )
   val allMetrics = StatHelper.getMetrics(
     dashboardMetric,
     visibleKeys = null,
-    useShort = true,
+    useShort = !isFromSetup,
     filterNulls = false,
   )
   val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
@@ -159,6 +159,7 @@ private fun DashboardMetricsGrid(
         StatCard(
           stat = metric,
           isPlaceHolder = true,
+          isFromSetup = isFromSetup,
         )
         ReorderableItem(
           state = reorderableState,
