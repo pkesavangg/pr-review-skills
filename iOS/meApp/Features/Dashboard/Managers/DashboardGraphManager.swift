@@ -73,7 +73,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             state.clearSelection()
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection cleared")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection cleared")
             return
         }
 
@@ -81,7 +81,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.showCrosshair = false
         state.selectedXValue = selectedDate
 
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
     }
 
     /// Handles complete chart selection including finding closest point and updating metrics
@@ -113,7 +113,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Update metrics with the selected point's values
         do {
             try await updateMetrics(selectedBin)
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
         } catch {
             logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
             resetMetrics()
@@ -181,9 +181,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.selectedPoint = point
         state.showCrosshair = point != nil
         if let point = point {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
         } else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point cleared")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point cleared")
         }
     }
 
@@ -214,7 +214,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .decelerating, .animating:
             state.updateScrollState(isScrolling: true)
         @unknown default:
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
         }
     }
 
@@ -333,7 +333,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> [GraphSeries] {
 
         guard !allOperations.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
 
@@ -356,7 +356,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         var series: [GraphSeries] = []
         
         // Add weight series (always present) from operations to show continuous line
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generating weight series with Y-axis domain: \(yAxisDomain), operations: \(operationsToProcess.count)")
+        // removed verbose generation log to reduce noise
         for summary in operationsToProcess {
             let displayWeight: Double
             if isWeightlessMode {
@@ -396,7 +396,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             selectedMetric: selectedMetric
         )
 
-        logger.log(level: .info, tag: "DashboardGraphManager",
+        logger.log(level: .debug, tag: "DashboardGraphManager",
                   message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
                           "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
                           "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")

@@ -19,15 +19,16 @@ final class LoggerService: LoggerServiceProtocol {
     private let sessionId: String = UUID().uuidString
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
-
+    private var consoleMinimumLogLevel: LogLevel = .info
+    
     init() {
         Task {
             do {
-                 try await deleteOldLogs()
+                try await deleteOldLogs()
             } catch {}
         }
     }
-
+    
     public func log(level: LogLevel,
                     tag: String,
                     message: String,
@@ -36,22 +37,28 @@ final class LoggerService: LoggerServiceProtocol {
                     line: UInt = #line,
                     accountId: String? = nil) {
         
-        systemLogger.log(level: level,
-                         tag: tag,
-                         message: message,
-                         data: data,
-                         function: function,
-                         line: line)
-
+        // Only print to console if level is greater than or equal to consoleMinimumLogLevel if want to see the debug logs remove the if statement
+        if level.rawValue >= consoleMinimumLogLevel.rawValue {
+            systemLogger.log(level: level,
+                             tag: tag,
+                             message: message,
+                             data: data,
+                             function: function,
+                             line: line)
+        }
+        
+        // Do not persist debug logs; only print to system logger
+        if level == .debug { return }
+        
         // Capture values in MainActor before entering the queue
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
         let sessionId = self.sessionId
-
+        
         logQueue.async(flags: .barrier) {
             let stringifiedData = data.map {
                 ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
             }
-
+            
             let entry = LogEntry(
                 accountId: resolvedAccountId,
                 sessionId: sessionId,
@@ -61,33 +68,33 @@ final class LoggerService: LoggerServiceProtocol {
                 message: message,
                 data: stringifiedData
             )
-
+            
             Task {
                 await self.loggerRepository.saveLogEntry(entry)
             }
         }
     }
-
+    
     public func getAllLogs() async throws -> [LogEntry] {
         try await loggerRepository.fetchAllLogs()
     }
-
+    
     public func getCurrentSessionLogs() async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(forSession: sessionId)
     }
-
+    
     public func getLogsForAccount(_ accountId: String) async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(forAccount: accountId)
     }
-
+    
     public func getLogs(from: Date, to: Date) async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(from: from, to: to)
     }
-
+    
     public func deleteLogsForAccount(_ accountId: String) async throws {
         try await loggerRepository.deleteLogs(forAccount: accountId)
     }
-
+    
     public func deleteAllLogs() async throws {
         try await loggerRepository.deleteAllLogs()
     }
@@ -95,29 +102,29 @@ final class LoggerService: LoggerServiceProtocol {
     func deleteOldLogs(_ olderThanDays: Int = AppConstants.TimeoutsAndRetention.logRetentionDays) async throws {
         try await loggerRepository.deleteLogsOlderThan(olderThanDays: olderThanDays)
     }
-        
+    
     public func getCurrentSessionId() -> String {
         return sessionId
     }
-
+    
     /// Sends logs to the server for the current account
     public func sendLogsToServer(accountId: String? = nil, version: String = AppInfo.appVersion) async throws {
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
         guard let resolvedAccountId = resolvedAccountId else {
             throw LoggerServiceError.noActiveAccount
         }
-
+        
         do {
             // Get logs for the account
             let logs = try await getLogsForAccount(resolvedAccountId)
             systemLogger.log(level: .info, tag: "LoggerService", message: "Uploading \(logs.count) logs for accountId=\(resolvedAccountId)")
-
+            
             // Format logs for API
             let logsPayload = formatLogsForAPI(logs, version: version)
-
+            
             // Send to API using LoggerApiRepository
             try await loggerApiRepository.sendLogs(logsPayload)
-
+            
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
             systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")

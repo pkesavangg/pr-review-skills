@@ -45,7 +45,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         do {
             let progress = try await entryService.getProgress()
             try await updateStreakItems(with: progress)
-            logger.log(level: .info, tag: "DashboardStreakManager", message: "Refreshed streak data successfully")
+            logger.log(level: .debug, tag: "DashboardStreakManager", message: "Refreshed streak data successfully")
         } catch {
             logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")
             throw DashboardError.dataLoadingFailed(error)
@@ -118,7 +118,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             state.streakItems = updatedStreakItems
             state.activeStreakItemsCount = updatedStreakItems.count
 
-            logger.log(level: .info, tag: "DashboardStreakManager", message: "Updated streak items with progress data: currentStreak=\(progress.currentStreak), longestStreak=\(progress.longestStreak), week=\(progress.week), month=\(progress.month), year=\(progress.year), total=\(progress.total ?? 0)")
+            logger.log(level: .debug, tag: "DashboardStreakManager", message: "Updated streak items with progress data: currentStreak=\(progress.currentStreak), longestStreak=\(progress.longestStreak), week=\(progress.week), month=\(progress.month), year=\(progress.year), total=\(progress.total ?? 0)")
 
         } catch {
             logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to update streak items: \(error)")
@@ -139,7 +139,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Refresh streak data to get current unit labels
         try await refreshStreakData()
         
-        logger.log(level: .info, tag: "DashboardStreakManager", message: "Streak data reset to defaults with all streaks restored")
+        logger.log(level: .debug, tag: "DashboardStreakManager", message: "Streak data reset to defaults with all streaks restored")
     }
     
     /// Refreshes streak data when unit changes
@@ -147,7 +147,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Re-fetch progress data and update with new unit
         let progress = try await entryService.getProgress()
         try await updateStreakItems(with: progress)
-        logger.log(level: .info, tag: "DashboardStreakManager", message: "Refreshed streak data for unit change")
+        logger.log(level: .debug, tag: "DashboardStreakManager", message: "Refreshed streak data for unit change")
     }
 
     // MARK: - Streak Item Management
@@ -177,7 +177,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             state.activeStreakItemsCount -= 1
         }
 
-        logger.log(level: .info, tag: "DashboardStreakManager", message: "Toggled streak visibility at index: \(index)")
+        logger.log(level: .debug, tag: "DashboardStreakManager", message: "Toggled streak visibility at index: \(index)")
     }
 
     func isStreakRemoved(at index: Int) -> Bool {
@@ -311,7 +311,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Streak Reordering
     func reorderStreakItems(from source: IndexSet, to destination: Int) async throws {
       state.streakItems.move(fromOffsets: source, toOffset: destination)
-      logger.log(level: .info, tag: "DashboardStreakManager", message: "Reordered streak items from \(source) to \(destination)")
+      logger.log(level: .debug, tag: "DashboardStreakManager", message: "Reordered streak items from \(source) to \(destination)")
     }
 
     // MARK: - Streak Validation
@@ -328,7 +328,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             throw DashboardError.invalidMetricData("Active streak items count cannot be negative")
         }
 
-        logger.log(level: .info, tag: "DashboardStreakManager", message: "Streak data validation passed")
+        logger.log(level: .debug, tag: "DashboardStreakManager", message: "Streak data validation passed")
     }
 }
 

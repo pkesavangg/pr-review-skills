@@ -60,17 +60,40 @@ final class ContentViewModel: ObservableObject {
     }
 
     func performAppInitialization() {
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
             if loggedIn {
-                await loadData()
+                // Capture dependencies to use off the main actor
+                let entryService = self.entryService
+                let feedService = self.feedService
+                let bluetoothService = self.bluetoothService
+
+                // Heavy work off-main to avoid UI jank
+                let entries: [Entry] = await Task.detached(priority: .userInitiated) {
+                    await entryService.syncAllEntriesWithRemote()
+                    await entryService.loadDashboardData()
+                    let allEntries = (try? await entryService.getAllEntries()) ?? []
+                    await feedService.fetchFeedItems()
+                    return allEntries
+                }.value
+
+                // UI-affecting calls back on main actor
+                self.entries = entries
+                bluetoothService.initialize()
+                feedService.checkAndTriggerFeedModal()
+                await self.checkAccountFlagsAfterLogin()
             }
+
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
-            
-            // Migrate SQLite data from Ionic app if needed (should run before sync)
-            await entryService.migrateFromSQLiteIfNeeded()
+
+            // Run migration in background so it doesn't block first-frame rendering
+            let entryService = self.entryService
+            Task.detached(priority: .utility) {
+                await entryService.migrateFromSQLiteIfNeeded()
+            }
         }
     }
 

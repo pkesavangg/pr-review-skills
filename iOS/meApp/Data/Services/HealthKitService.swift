@@ -88,9 +88,36 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws {
-        let entries = try await fetchAllEntries()
-        let healthKitData = buildHealthKitData(from: entries)
-        try await hkPackage.saveData(healthKitData)
+        // Get accountId on main actor first
+        let accountId = try await accountService.getActiveAccount()?.accountId
+        guard let accountId else { return }
+
+        // Materialize simple export values off the main actor to avoid cross-context @Model access
+        let exports: [HealthKitExport] = try await Task.detached(priority: .userInitiated) {
+            let container = await PersistenceController.shared.container
+            let bgContext = ModelContext(container)
+            // Avoid referencing enum cases inside #Predicate; compare to a captured String constant instead.
+            let opCreate = "create"
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == accountId && $0.operationType == opCreate
+            })
+            let entries = try bgContext.fetch(descriptor)
+            var items: [HealthKitExport] = []
+            items.reserveCapacity(entries.count)
+            for entry in entries {
+                items.append(HealthKitExport(
+                    timestamp: entry.entryTimestamp,
+                    weight: entry.scaleEntry?.weight,
+                    bodyFat: entry.scaleEntry?.bodyFat,
+                    muscleMass: entry.scaleEntry?.muscleMass,
+                    bmi: entry.scaleEntry?.bmi
+                ))
+            }
+            return items
+        }.value
+
+        let healthKitData = buildHealthKitData(from: exports)
+        try await saveHealthKitData(finalData: healthKitData)
     }
     
     /// Opens the Apple Health app so the user can review permissions.
@@ -204,15 +231,83 @@ public final class HealthKitService: HealthKitServiceProtocol {
         
         return healthKitData
     }
+
+    /// Converts export items into `HealthKitData` payloads without touching SwiftData models.
+    private func buildHealthKitData(from exports: [HealthKitExport]) -> [HealthKitData] {
+        var healthKitData: [HealthKitData] = []
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        for item in exports {
+            guard let timestamp = formatter.date(from: item.timestamp) else { continue }
+
+            if let weight = item.weight {
+                healthKitData.append(HealthKitData(
+                    type: .weight,
+                    value: ConversionTools.convertStoredToLbs(weight),
+                    timestamp: timestamp
+                ))
+            }
+
+            if let bodyFat = item.bodyFat {
+                healthKitData.append(HealthKitData(
+                    type: .bodyFat,
+                    value: ConversionTools.convertStoredToLbs(bodyFat),
+                    timestamp: timestamp
+                ))
+            }
+
+            if let muscleMass = item.muscleMass {
+                healthKitData.append(HealthKitData(
+                    type: .leanBodyMass,
+                    value: ConversionTools.convertStoredToLbs(muscleMass),
+                    timestamp: timestamp
+                ))
+            }
+
+            if let weight = item.weight, let bodyFat = item.bodyFat {
+                let convertedWeight = ConversionTools.convertStoredToLbs(weight)
+                let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
+                let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
+                healthKitData.append(HealthKitData(
+                    type: .leanBodyMass,
+                    value: leanBodyMass,
+                    timestamp: timestamp
+                ))
+            }
+
+            if let bmi = item.bmi {
+                healthKitData.append(HealthKitData(
+                    type: .bmi,
+                    value: ConversionTools.convertStoredToLbs(bmi),
+                    timestamp: timestamp
+                ))
+            }
+        }
+        return healthKitData
+    }
+
+    // MARK: - Local Helper DTO -----------------------------------------------
+    private struct HealthKitExport {
+        let timestamp: String
+        let weight: Int?
+        let bodyFat: Int?
+        let muscleMass: Int?
+        let bmi: Int?
+    }
     
     /// Writes the provided dataset to Apple Health and logs the outcome.
     private func saveHealthKitData(finalData: [HealthKitData]) async throws {
+        if finalData.isEmpty {
+            logger.log(level: .info, tag: tag, message: "HealthKit: No data to save")
+            return
+        }
+
+        // Offload the actual HealthKit write off the main actor to avoid UI hangs.
+        let handler = hkPackage
         do {
-            if finalData.count > 0 {
-                try await hkPackage.saveData(finalData)
-            } else {
-                logger.log(level: .info, tag: tag, message: "HealthKit: No data to save")
-            }
+            try await Task.detached(priority: .userInitiated) {
+                try await handler.saveData(finalData)
+            }.value
         } catch {
             logger.log(level: .error, tag: tag, message: "HealthKit: saveHealthKitData error", data: error)
             throw error

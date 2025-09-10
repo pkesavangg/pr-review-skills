@@ -31,12 +31,14 @@ struct ChooseYourScaleView: View {
                 canShowPresentationIndicator: true
             )
 
-            // Scale list
-            ScaleManualListView { scale in
-                onSelect(scale)
-                dismiss()
+            // Own vertical scrolling inside the sheet to avoid nested scrolls elsewhere
+            ScrollView(.vertical, showsIndicators: false) {
+                ScaleManualListView { scale in
+                    onSelect(scale)
+                    dismiss()
+                }
+                .padding(.top, .spacingSM)
             }
-            .padding(.top, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }
