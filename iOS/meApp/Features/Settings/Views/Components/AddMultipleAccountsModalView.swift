@@ -1,3 +1,4 @@
+
 //  AddMultipleAccountsModalView.swift
 //  meApp
 //
@@ -26,7 +27,7 @@ struct AddMultipleAccountsModalView: View {
             HStack {
                 Spacer()
                 Button(action: onClose) {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 22))
+                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }

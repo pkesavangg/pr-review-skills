@@ -121,13 +121,13 @@ struct MetricDetailView: View {
                         .foregroundColor(theme.textHeading)
 
                     VStack(alignment: .leading, spacing: .spacingXS) {
-
                         ForEach(content.resources, id: \.link) { res in
                             ButtonView(
                                 text: res.title,
                                 type: .inlineTextPrimary,
                                 size: .small,
                                 isDisabled: false,
+                                alignment: .leading,
                                 action: {
                                   if let url = URL(string: res.link) {
                                     presentingBrowserURL = url
@@ -135,6 +135,8 @@ struct MetricDetailView: View {
                                   }
                                 }
                             )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .multilineTextAlignment(.leading)
                         }
                     }
                   }

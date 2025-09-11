@@ -13,6 +13,7 @@ struct ButtonView: View {
     let type: ButtonType
     let size: ButtonSize
     let isDisabled: Bool
+    var alignment: Alignment = .center
     let action: () -> Void
     
     var body: some View {
@@ -21,7 +22,8 @@ struct ButtonView: View {
                 .fontOpenSans(size == .large ? .button1 : .button2)
                 .fontWeight(.bold)
                 .modifier(CustomButtonStyle(type: type, buttonSize: size))
-                .frame(minWidth: 96)
+                .frame(minWidth: 96, alignment: alignment)
+                .multilineTextAlignment(.leading)
         }
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
