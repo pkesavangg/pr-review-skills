@@ -27,7 +27,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             }
 
             guard let goalSettings = account.goalSettings else {
-                logger.log(level: .info, tag: "DashboardGoalManager", message: "No goal settings found for account")
+                logger.log(level: .debug, tag: "DashboardGoalManager", message: "No goal settings found for account")
                 return
             }
 
@@ -63,7 +63,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 state.goalProgress = 1.0
             }
 
-            logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal data loaded successfully - Start: \(state.goalStartWeight), Goal: \(state.goalWeight), Progress: \(state.goalProgress)")
+            logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal data loaded successfully - Start: \(state.goalStartWeight), Goal: \(state.goalWeight), Progress: \(state.goalProgress)")
 
         } catch let error as DashboardError {
             throw error
@@ -81,7 +81,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             }
 
             guard let goalSettings = account.goalSettings else {
-                logger.log(level: .info, tag: "DashboardGoalManager", message: "No goal settings found for progress update")
+                logger.log(level: .debug, tag: "DashboardGoalManager", message: "No goal settings found for progress update")
                 return
             }
 
@@ -109,7 +109,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 state.goalProgress = 1.0
             }
 
-            logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal progress updated - Current: \(currentWeightDisplay), Progress: \(state.goalProgress)")
+            logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal progress updated - Current: \(currentWeightDisplay), Progress: \(state.goalProgress)")
 
         } catch let error as DashboardError {
             throw error
@@ -123,7 +123,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     func refreshGoalDataForUnitChange() async throws {
         // Re-load goal data with new unit
         try await loadGoalData()
-        logger.log(level: .info, tag: "DashboardGoalManager", message: "Refreshed goal data for unit change")
+        logger.log(level: .debug, tag: "DashboardGoalManager", message: "Refreshed goal data for unit change")
     }
 
     // MARK: - Weightless Mode Support
@@ -134,7 +134,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             }
 
             guard let goalSettings = account.goalSettings else {
-                logger.log(level: .info, tag: "DashboardGoalManager", message: "No goal settings found for weightless calculation")
+                logger.log(level: .debug, tag: "DashboardGoalManager", message: "No goal settings found for weightless calculation")
                 return
             }
 
@@ -166,7 +166,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 state.goalProgress = 1.0
             }
 
-            logger.log(level: .info, tag: "DashboardGoalManager", message: "Weightless goal calculated - Anchor: \(anchorWeight), Start: \(state.goalStartWeight), Goal: \(state.goalWeight), Progress: \(state.goalProgress)")
+            logger.log(level: .debug, tag: "DashboardGoalManager", message: "Weightless goal calculated - Anchor: \(anchorWeight), Start: \(state.goalStartWeight), Goal: \(state.goalWeight), Progress: \(state.goalProgress)")
 
         } catch let error as DashboardError {
             throw error
@@ -224,7 +224,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             break
         }
 
-        logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal settings validation passed")
+        logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal settings validation passed")
     }
 
     // MARK: - Goal Analytics
@@ -278,17 +278,17 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     // MARK: - Goal State Management
     func resetGoalState() {
         state = GoalState()
-        logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal state reset to defaults")
+        logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal state reset to defaults")
     }
 
     func updateGoalType(_ type: GoalType) {
         state.goalType = type
-        logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal type updated to: \(type.rawValue)")
+        logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal type updated to: \(type.rawValue)")
     }
 
     func updateGoalUnit(_ unit: WeightUnit) {
         state.goalUnit = unit
-        logger.log(level: .info, tag: "DashboardGoalManager", message: "Goal unit updated to: \(unit.rawValue)")
+        logger.log(level: .debug, tag: "DashboardGoalManager", message: "Goal unit updated to: \(unit.rawValue)")
     }
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
         let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb

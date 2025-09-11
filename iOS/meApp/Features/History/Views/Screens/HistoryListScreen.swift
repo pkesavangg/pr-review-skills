@@ -50,7 +50,6 @@ struct HistoryListScreen: View {
                   .edgesIgnoringSafeArea(.bottom)
           }
           .background(theme.backgroundSecondary)
-
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
               lastTabCheck = tabViewModel.selectedTab

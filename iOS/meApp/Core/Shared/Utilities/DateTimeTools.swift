@@ -9,43 +9,53 @@ final class DateTimeTools {
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
     
-    // MARK: - DateFormatter Cache
-    private static var formatterCache: [String: DateFormatter] = [:]
-    private static let formatterLock = NSLock()
-    
-    /// Returns a cached DateFormatter with the specified format and en_US_POSIX locale.
-    static func formatter(_ format: String) -> DateFormatter {
-        formatterLock.lock()
-        defer { formatterLock.unlock() }
-        if let cached = formatterCache[format] {
-            return cached
+    // MARK: - DateFormatter Cache (Thread-Local)
+    /// Returns a thread-local cached DateFormatter configured with the given format and optional timezone.
+    /// DateFormatter is not thread-safe, so we cache per-thread to avoid contention and repeated allocations.
+    private static func cachedFormatter(_ format: String, timeZone: TimeZone? = nil) -> DateFormatter {
+        let tzKey = timeZone?.identifier ?? "__local__"
+        let key = "DateTimeTools.formatter::" + format + "::" + tzKey
+        if let existing = Thread.current.threadDictionary[key] as? DateFormatter {
+            return existing
         }
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = format
-        formatterCache[format] = df
-        return df
-    }
-    
-    /// Returns a new (non-cached) DateFormatter configured with format, locale and optional timezone.
-    /// Use this when you need to mutate formatter properties (like timeZone) to avoid side-effects on cached instances.
-    private static func ephemeralFormatter(_ format: String, timeZone: TimeZone? = nil) -> DateFormatter {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
         df.dateFormat = format
         if let tz: TimeZone = timeZone {
             df.timeZone = tz
         }
+        Thread.current.threadDictionary[key] = df
         return df
+    }
+
+    /// Returns a cached DateFormatter with the specified format and en_US_POSIX locale.
+    static func formatter(_ format: String) -> DateFormatter {
+        return cachedFormatter(format, timeZone: nil)
+    }
+    
+    /// Returns a new (non-cached) DateFormatter configured with format, locale and optional timezone.
+    /// Use this when you need to mutate formatter properties (like timeZone) to avoid side-effects on cached instances.
+    private static func ephemeralFormatter(_ format: String, timeZone: TimeZone? = nil) -> DateFormatter {
+        // Use thread-local cache keyed by format and timezone instead of allocating new instances.
+        return cachedFormatter(format, timeZone: timeZone)
     }
     
     // MARK: - Formatters
-    /// Shared ISO8601 formatter with fractional seconds for parsing and formatting ISO strings.
-    private static let isoFormatter: ISO8601DateFormatter = {
+    /// Thread-local ISO8601 formatter with fractional seconds. Optional UTC configuration.
+    private static func isoFormatter(useUTC: Bool? = nil) -> ISO8601DateFormatter {
+        let scope = (useUTC == true) ? "utc" : "local"
+        let key = "DateTimeTools.iso8601::" + scope
+        if let existing = Thread.current.threadDictionary[key] as? ISO8601DateFormatter {
+            return existing
+        }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if useUTC == true {
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        }
+        Thread.current.threadDictionary[key] = formatter
         return formatter
-    }()
+    }
     
     // MARK: - Date Formatting
     
@@ -165,13 +175,13 @@ final class DateTimeTools {
     
     /// Returns the current date and time as an ISO8601 string with fractional seconds.
     static func getCurrentDatetimeIsoString() -> String {
-        return isoFormatter.string(from: Date())
+        return isoFormatter().string(from: Date())
     }
     
     /// Converts a date string to an ISO8601 string with fractional seconds. Returns empty string if invalid.
     static func getDatetimeIsoString(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }
-        return isoFormatter.string(from: date)
+        return isoFormatter().string(from: date)
     }
     
     /// Returns the current date and time with timezone as 'yyyy-MM-dd HH:mm:ss.SSSSSSZ'.
@@ -187,7 +197,7 @@ final class DateTimeTools {
             return invalidString
         }
         let zeroed = Calendar.current.date(bySettingHour: 0, minute: 0, second: 0, of: intervalDate) ?? intervalDate
-        return isoFormatter.string(from: zeroed)
+        return isoFormatter().string(from: zeroed)
     }
     
     /// Formats a date string for use with Ionic date pickers as 'yyyy-MM-dd'T'HH:mm:ss'. Returns empty string if invalid.
@@ -239,7 +249,7 @@ final class DateTimeTools {
     /// Returns a Date if successful, or nil if parsing fails.
     static func parse(_ dateString: String) -> Date? {
         // Try ISO8601 first
-        if let date = isoFormatter.date(from: dateString) {
+        if let date = isoFormatter().date(from: dateString) {
             return date
         }
         // Try common formats
@@ -320,11 +330,7 @@ final class DateTimeTools {
             combined = calendar.date(from: comps) ?? combined
         }
         
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if useUTC {
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        }
+        let formatter = isoFormatter(useUTC: useUTC)
         return formatter.string(from: combined)
     }
     

@@ -32,13 +32,14 @@ protocol LoggerServiceProtocol {
     ///   - function: The function name where the log is called
     ///   - line: The line number where the log is called
     ///   - accountId: Optional account ID to associate with the log
+    /// - Note: Debug level logs are not persisted to the database; they are only printed.
     func log(level: LogLevel,
              tag: String,
              message: String,
              data: Any?,
              function: StaticString,
              line: UInt,
-             accountId: String?) async
+             accountId: String?)
     
     /// Gets the current session ID
     /// - Returns: The current session ID as a string

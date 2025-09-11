@@ -74,15 +74,16 @@ struct HistoryMonthListScreen: View {
                 dismiss()
             }
         }
-        .sheet(item: $selectedEntry) { entry in
-            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
-        }
+
         .onDisappear(perform: {
             historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
             historyStore.resetSelectedMonth()
         })
         .refreshable {
             await historyStore.loadEntries(for: month)
+        }
+        .sheet(item: $selectedEntry) { entry in
+            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }
     }
     

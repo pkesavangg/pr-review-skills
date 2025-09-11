@@ -93,7 +93,7 @@ store.restartWiggleAnimations()
                 }
             }
         }
-        .onAppear {
+        .task {
             Task {
                 await store.loadDashboardConfigurationFromAPI()
                 await MainActor.run {
