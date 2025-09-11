@@ -68,7 +68,7 @@ struct LoginScreen: View {
                                 Text(lang.welcomeBack)
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.bottom, .spacingLG)
                                 VStack {
                                     // Email Input Field

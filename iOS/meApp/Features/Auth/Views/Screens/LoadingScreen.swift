@@ -24,7 +24,7 @@ struct LoadingScreen: View {
                     .frame(width: 214, height: 25)
 
                 HStack(alignment: .center) {
-                    Text(lang.loading)
+                    Text(lang.loading.lowercased())
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.backgroundPrimary)
                     
@@ -32,7 +32,7 @@ struct LoadingScreen: View {
                         .offset(y: 1)
                     
                 }
-                .padding(.top, .spacingXL)
+                .padding(.top, .spacing3XL)
 
                 Spacer()
 
