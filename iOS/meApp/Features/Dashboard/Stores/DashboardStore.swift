@@ -1620,16 +1620,17 @@ class DashboardStore: ObservableObject {
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
     private func updateMetricsForCurrentView() {
-        graphManager.updateMetricsForCurrentView(
-            selectedPoint: state.graph.selectedPoint,
-            visibleOperations: visibleOperations,
-            updateMetrics: { selectedPoint in
-                try await self.metricsManager.updateMetrics(with: selectedPoint)
-            },
-            resetMetrics: {
-                self.resetMetricsToLatestEntry()
+        if let selectedPoint = state.graph.selectedPoint {
+            Task {
+                try? await self.metricsManager.updateMetrics(with: selectedPoint)
             }
-        )
+        } else {
+            // No selection: compute visible-window averages for all metrics
+            let ops = self.visibleOperations
+            Task {
+                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+            }
+        }
     }
     
     // MARK: - UI State Management

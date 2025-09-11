@@ -73,7 +73,7 @@ struct ModalViewModifier: ViewModifier {
                         .transition(.opacity)
                     
                     modal.presentedView
-                        .frame(width: min(UIScreen.main.bounds.width * 0.9, 550))
+                    .frame(width: UIScreen.main.bounds.width * 0.75)
                         .padding(.horizontal)
                         .transition(.scale)
                 }

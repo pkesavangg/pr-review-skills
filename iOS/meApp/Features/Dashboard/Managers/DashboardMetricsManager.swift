@@ -819,6 +819,52 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         lastFallbackCacheTime = nil
     }
     
+    // MARK: - Visible Window Averages
+    /// Updates dashboard metric tiles with averages computed from the currently visible operations.
+    /// Falls back to latest historical values per metric when the visible window has no data for that metric.
+    func updateMetricsForVisibleAverage(visibleOperations: [BathScaleWeightSummary]) async {
+        guard !visibleOperations.isEmpty else { return }
+
+        clearFallbackCache()
+        let fallbackValues = await getHistoricalFallbackValues()
+
+        // Helper to compute average for a metric label from summaries
+        func averageForMetric(_ label: String) -> Double? {
+            let values: [Double] = visibleOperations.compactMap { summary in
+                getMetricValue(for: label, from: summary)
+            }
+            guard !values.isEmpty else { return nil }
+            return values.reduce(0, +) / Double(values.count)
+        }
+
+        // Define all metrics and their conversion params in an array
+        let metrics: [(label: String, shouldCompose: Bool, wholeNumber: Bool, fallbackValue: Double?)] = [
+            (DashboardStrings.bmi,           true,  false, fallbackValues.bmi),
+            (DashboardStrings.bodyFat,       true,  false, fallbackValues.bodyFat),
+            (DashboardStrings.muscle,        true,  false, fallbackValues.muscleMass),
+            (DashboardStrings.water,         true,  false, fallbackValues.water),
+            (DashboardStrings.heartBpm,      false, true,  fallbackValues.pulse),
+            (DashboardStrings.bone,          true,  false, fallbackValues.boneMass),
+            (DashboardStrings.visceralFat,   false, true,  fallbackValues.visceralFat),
+            (DashboardStrings.subFat,        true,  false, fallbackValues.subFat),
+            (DashboardStrings.protein,       true,  false, fallbackValues.protein),
+            (DashboardStrings.skelMuscle,    true,  false, fallbackValues.skelMuscle),
+            (DashboardStrings.bmrKcal,       false, true,  fallbackValues.bmr),
+            (DashboardStrings.metAge,        false, true,  fallbackValues.metabolicAge)
+        ]
+
+        for metric in metrics {
+            let avg = averageForMetric(metric.label)
+            let formatted = BodyMetricsConvertor.convert(
+                avg,
+                shouldCompose: metric.shouldCompose,
+                wholeNumber: metric.wholeNumber,
+                fallbackValue: metric.fallbackValue
+            )
+            updateMetricValue(for: metric.label, value: formatted)
+        }
+    }
+    
     private func findLatestValidValue<T: Comparable>(for metricExtractor: (Entry) -> T?, in entries: [Entry]) -> Double? {
         // O(n) pass without sorting; compares ISO timestamps lexicographically
         var bestTs: String? = nil
