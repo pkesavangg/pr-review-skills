@@ -19,15 +19,16 @@ final class LoggerService: LoggerServiceProtocol {
     private let sessionId: String = UUID().uuidString
     private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
-
+    private var consoleMinimumLogLevel: LogLevel = .info
+    private let kv = KvStorageService.shared
+    private static let lastCleanupKey = "logger_last_cleanup_ts"
+    
     init() {
-        Task {
-            do {
-                 try await deleteOldLogs()
-            } catch {}
-        }
+        // Run log retention cleanup off the main actor to avoid blocking launch.
+        // We add a short delay so it doesn't contend with initial UI work.
+        Self.scheduleDeleteOldLogsBackground(service: self)
     }
-
+    
     public func log(level: LogLevel,
                     tag: String,
                     message: String,
@@ -36,58 +37,68 @@ final class LoggerService: LoggerServiceProtocol {
                     line: UInt = #line,
                     accountId: String? = nil) {
         
-        systemLogger.log(level: level,
-                         tag: tag,
-                         message: message,
-                         data: data,
-                         function: function,
-                         line: line)
-
-        // Capture values in MainActor before entering the queue
+        // Only print to console if level is greater than or equal to consoleMinimumLogLevel if want to see the debug logs remove the if statement
+        if level.rawValue >= consoleMinimumLogLevel.rawValue {
+            systemLogger.log(level: level,
+                             tag: tag,
+                             message: message,
+                             data: data,
+                             function: function,
+                             line: line)
+        }
+        
+        // Do not persist debug logs; only print to system logger
+        if level == .debug { return }
+        
+        // // Capture values on MainActor, then offload formatting and save scheduling to a background queue.
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
-        let sessionId = self.sessionId
-
-        logQueue.async(flags: .barrier) {
+        let currentSessionId = self.sessionId
+        
+        logQueue.async(qos: .background, flags: .barrier) {
             let stringifiedData = data.map {
                 ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
             }
+            let tagIdString = String(describing: function)
+            let logType = level.toLogType
 
-            let entry = LogEntry(
-                accountId: resolvedAccountId,
-                sessionId: sessionId,
-                tag: tag,
-                tagId: String(describing: function),
-                type: level.toLogType,
-                message: message,
-                data: stringifiedData
-            )
-
-            Task {
-                await self.loggerRepository.saveLogEntry(entry)
+            // Bounce to the main actor to create and save the SwiftData model
+            // without capturing main-actor properties from a @Sendable closure.
+            Task { @MainActor in
+                let repo: LoggerRepositoryProtocol = LoggerRepository()
+                let entryToSave = LogEntry(
+                    accountId: resolvedAccountId,
+                    sessionId: currentSessionId,
+                    tag: tag,
+                    tagId: tagIdString,
+                    type: logType,
+                    message: message,
+                    data: stringifiedData
+                )
+                await repo.saveLogEntry(entryToSave)
             }
         }
     }
-
+    
     public func getAllLogs() async throws -> [LogEntry] {
         try await loggerRepository.fetchAllLogs()
     }
-
+    
     public func getCurrentSessionLogs() async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(forSession: sessionId)
     }
-
+    
     public func getLogsForAccount(_ accountId: String) async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(forAccount: accountId)
     }
-
+    
     public func getLogs(from: Date, to: Date) async throws -> [LogEntry] {
         try await loggerRepository.fetchLogs(from: from, to: to)
     }
-
+    
     public func deleteLogsForAccount(_ accountId: String) async throws {
         try await loggerRepository.deleteLogs(forAccount: accountId)
     }
-
+    
     public func deleteAllLogs() async throws {
         try await loggerRepository.deleteAllLogs()
     }
@@ -95,29 +106,29 @@ final class LoggerService: LoggerServiceProtocol {
     func deleteOldLogs(_ olderThanDays: Int = AppConstants.TimeoutsAndRetention.logRetentionDays) async throws {
         try await loggerRepository.deleteLogsOlderThan(olderThanDays: olderThanDays)
     }
-        
+    
     public func getCurrentSessionId() -> String {
         return sessionId
     }
-
+    
     /// Sends logs to the server for the current account
     public func sendLogsToServer(accountId: String? = nil, version: String = AppInfo.appVersion) async throws {
         let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
         guard let resolvedAccountId = resolvedAccountId else {
             throw LoggerServiceError.noActiveAccount
         }
-
+        
         do {
             // Get logs for the account
             let logs = try await getLogsForAccount(resolvedAccountId)
             systemLogger.log(level: .info, tag: "LoggerService", message: "Uploading \(logs.count) logs for accountId=\(resolvedAccountId)")
-
+            
             // Format logs for API
             let logsPayload = formatLogsForAPI(logs, version: version)
-
+            
             // Send to API using LoggerApiRepository
             try await loggerApiRepository.sendLogs(logsPayload)
-
+            
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
             systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")
@@ -244,6 +255,40 @@ final class LoggerService: LoggerServiceProtocol {
         }
         
         return LogsPayload(version: version, logs: formattedLogs)
+    }
+}
+
+// MARK: - Background scheduling
+extension LoggerService {
+    /// Schedules log retention cleanup on a detached background task to avoid blocking the main actor during launch.
+    private static func scheduleDeleteOldLogsBackground(service: LoggerService) {
+        // Use a regular Task pinned to the main actor so we can safely
+        // access main-actor-isolated properties. The repository performs
+        // its own background work for heavy operations.
+        Task { @MainActor in
+            // Run at most once per day
+            let now = Date().timeIntervalSince1970
+            let last = (service.kv.getValue(forKey: Self.lastCleanupKey) as? Double) ?? 0
+            if now - last < 86_400 { return }
+
+            // Give launch a brief, jittered head start to avoid contention
+            let jitterNs = UInt64(Int.random(in: 200_000_000...600_000_000))
+            try? await Task.sleep(nanoseconds: jitterNs)
+            do {
+                // Only run if needed, to avoid waking storage unnecessarily
+                if try await service.loggerRepository.hasLogsOlderThan(olderThanDays: AppConstants.TimeoutsAndRetention.logRetentionDays) {
+                    // Prefer batched deletion to limit CPU spikes
+                    try await service.loggerRepository.deleteLogsOlderThanInBatches(
+                        olderThanDays: AppConstants.TimeoutsAndRetention.logRetentionDays,
+                        batchSize: 400,
+                        interBatchDelayNs: 50_000_000
+                    )
+                    service.kv.setValue(now, forKey: Self.lastCleanupKey)
+                }
+            } catch {
+                // Intentionally ignore failures here; retention is best-effort
+            }
+        }
     }
 }
 

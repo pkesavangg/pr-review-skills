@@ -88,6 +88,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 }
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
+                // Animate when series data changes (even if Y-axis domain/ticks stay the same)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
+                // Animate when switching the selected metric (weight vs other metric)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
                 // Apply touch interaction modifiers only for scrollable charts
@@ -102,10 +106,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 )
                 
                 // Selection callout overlay
-                if let selectedPoint = viewModel.selectedPoint,
+                if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
                    let displayWeight = viewModel.displayWeight,
                    viewModel.showCrosshair {
-                    selectionCallout(for: selectedPoint, weight: displayWeight)
+                    selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
                 // Goal chip overlay
@@ -152,7 +156,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .zIndex(-1)
         }
     }
-
+    
     // Helper: Adjusts a tick value to avoid overlap with axis baselines
     private func adjustedTick(_ tick: Double) -> Double {
         guard viewModel.hasXAxis else { return tick }
@@ -243,12 +247,15 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
         ForEach(segment) { point in
             let xDate = viewModel.plotXDate(for: point.date)
+            // Only enlarge the point that exactly matches the VM's selected date
+            let vmSelected = viewModel.selectedDate
+            let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
             // Invisible tap target
             PointMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(point.date == viewModel.selectedPoint?.date ? 200 : viewModel.pointSize)
+            .symbolSize(isThisPointSelected ? (viewModel.selectedPointArea * 2) : viewModel.basePointArea)
             .foregroundStyle(.clear)
             
             // Line mark
@@ -266,15 +273,15 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value)
             )
-            .symbolSize(viewModel.pointArea(isSelected: point.date == viewModel.selectedPoint?.date))
+            .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
             .foregroundStyle(by: .value("Series", point.series))
         }
     }
     
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
-        if let selectedPoint = viewModel.selectedPoint, viewModel.showCrosshair {
-            let xDate = viewModel.plotXDate(for: selectedPoint.date)
+        if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue), viewModel.showCrosshair {
+            let xDate = viewModel.plotXDate(for: selectedDate)
             RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
                 .foregroundStyle(theme.actionSecondary)
@@ -301,10 +308,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
     
     // MARK: - Selection Callout
-    
     @ViewBuilder
-    private func selectionCallout(for selectedPoint: BathScaleWeightSummary, weight: Double) -> some View {
-        if let chartPosition = viewModel.getChartPosition(for: selectedPoint.date, value: weight) {
+    private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
+        if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: weight) {
             // Base positioning relative to the selected point
             let isOnLeftSide = chartPosition.x < viewModel.chartFrame.width / 2
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
@@ -321,7 +327,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
     
     // MARK: - Goal Chip Callout
-    
     @ViewBuilder
     private func goalChipCallout() -> some View {
         let goalPosition = viewModel.getGoalChipPosition()
@@ -348,6 +353,27 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
+    }
+    
+    // MARK: - Animation Token
+    /// Lightweight hash token that changes when the VISIBLE plotted series data changes,
+    /// so we can animate line updates even when the Y-axis domain is unchanged.
+    private var seriesAnimationToken: Int {
+        if viewModel.isScrolling { return 0 } // no animations during scroll, skip work
+        let data = viewModel.visibleChartSeriesData
+        var hasher = Hasher()
+        hasher.combine(data.count)
+        if !data.isEmpty {
+            let c = data.count
+            let idxs = c == 1 ? [0] : c == 2 ? [0, 1] : [0, c/4, c/2, (3*c)/4, c-1]
+            for i in Set(idxs).sorted() {
+                let p = data[i]
+                hasher.combine(p.date.timeIntervalSince1970.bitPattern)
+                hasher.combine(p.value.bitPattern)
+                hasher.combine(p.series)
+            }
+        }
+        return hasher.finalize()
     }
 }
 
@@ -410,7 +436,7 @@ extension View {
                         }
                     }
                 }
-                // Add padding to left side of chart area
+            // Add padding to left side of chart area
                 .chartPlotStyle { plot in
                     if viewModel.isAtLeftBoundary {
                         plot.padding(.leading, .spacingXS)
@@ -427,10 +453,19 @@ extension View {
                             if let selectedDate = newValue {
                                 localSelectedXValue.wrappedValue = newValue
                                 viewModel.handleChartSelection(at: newValue)
-                                
-                                // Update dashboard store selection
-                                Task {
-                                    await dashboardStore.handleChartSelection(at: selectedDate)
+                                // If the view-model decided there is no value at this position,
+                                // do not show crosshair nor propagate a selection to the store.
+                                if viewModel.showCrosshair {
+                                    // Use view model's preferredSelectedDate if provided, else fallback to raw selection
+                                    let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: nil)
+                                    }
                                 }
                             }
                         }
@@ -459,10 +494,15 @@ extension View {
                         localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
                         
-                        // Update dashboard store selection
-                        if let selectedDate = newValue {
-                            Task {
-                                await dashboardStore.handleChartSelection(at: selectedDate)
+                        // Update dashboard store selection using snapped date when available
+                        if let rawDate = newValue {
+                            if viewModel.showCrosshair {
+                                let dateToSend = viewModel.preferredSelectedDate ?? rawDate
+                                Task {
+                                    await dashboardStore.handleChartSelection(at: dateToSend)
+                                }
+                            } else {
+                                Task { await dashboardStore.handleChartSelection(at: nil) }
                             }
                         }
                     }

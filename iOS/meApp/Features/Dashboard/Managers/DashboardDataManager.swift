@@ -40,7 +40,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
@@ -86,7 +86,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Cache Management
     func clearCache() async throws {
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Clearing dashboard cache")
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Clearing dashboard cache")
 
 
         // Clear local state
@@ -96,7 +96,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         state.monthlySummaries.removeAll()
         state.latestWeightStored = 0
 
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Cache cleared successfully")
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Cache cleared successfully")
     }
 
     // MARK: - Data Validation
@@ -116,7 +116,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 
-        logger.log(level: .info, tag: "DashboardDataManager", message: "Cache consistency validation passed")
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Cache consistency validation passed")
     }
 
     // MARK: - Data Analytics

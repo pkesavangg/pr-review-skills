@@ -38,16 +38,22 @@ struct TimePickerView: View {
                     .fill(theme.backgroundPrimary)
             )
             .onAppear {
-                let aligned = align(time: time, to: selectedDate)
-                time = aligned > endTime ? endTime : aligned
+                let aligned = clamp(align(time: time, to: selectedDate), to: endTime)
+                if aligned != time {
+                    time = aligned
+                }
             }
             .onChange(of: endTime) { _, newEnd in
-                let aligned = align(time: time, to: selectedDate)
-                time = aligned > newEnd ? newEnd : aligned
+                let aligned = clamp(align(time: time, to: selectedDate), to: newEnd)
+                if aligned != time {
+                    time = aligned
+                }
             }
             .onChange(of: selectedDate) { _, newDate in
-                let aligned = align(time: time, to: newDate)
-                time = aligned > endTime ? endTime : aligned
+                let aligned = clamp(align(time: time, to: newDate), to: endTime)
+                if aligned != time {
+                    time = aligned
+                }
             }
         }
     }
@@ -61,6 +67,11 @@ struct TimePickerView: View {
         dateComponents.minute = timeComponents.minute
         dateComponents.second = timeComponents.second
         return calendar.date(from: dateComponents) ?? time
+    }
+
+    /// Clamps a candidate time to be no later than the provided end time.
+    private func clamp(_ candidate: Date, to end: Date) -> Date {
+        candidate > end ? end : candidate
     }
 }
 

@@ -130,6 +130,54 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         syncYAxisFromStore()
     }
     
+    /// Total view selection behavior:
+    /// - Only allow selection within the actual data range [firstPoint, lastPoint].
+    /// - Snap the selection to the nearest real data point date.
+    /// - Clear selection if tapping in padded areas outside data (domain padding exists in total view).
+    override func handleChartSelection(at date: Date?) {
+        guard let date = date else { return }
+        guard !chartOperations.isEmpty else {
+            selectedDate = nil
+            showCrosshair = false
+            return
+        }
+
+        // Determine actual plotted data bounds (without padded domain)
+        let ops = chartOperations.sorted { $0.date < $1.date }
+        guard let first = ops.first?.date, let last = ops.last?.date else {
+            selectedDate = nil
+            showCrosshair = false
+            return
+        }
+
+        // Allow a small right-edge slack so the last point is selectable
+        // even if the tap falls slightly into the padded area.
+        let paddedUpper = self.dateRange.upperBound
+        let rightPadding = max(0, paddedUpper.timeIntervalSince(last))
+        let rightSlack = min(rightPadding * 0.5, 14 * 24 * 60 * 60) // up to 14 days or half the padding
+
+        guard date >= first && date <= last.addingTimeInterval(rightSlack) else {
+            selectedDate = nil
+            showCrosshair = false
+            return
+        }
+
+        // Clamp comparison baseline within [first, last] to bias toward the last point
+        let clampedDate = min(max(date, first), last)
+
+        // Snap to the nearest real data point date
+        if let nearest = ops.min(by: { a, b in
+            abs(a.date.timeIntervalSince(clampedDate)) < abs(b.date.timeIntervalSince(clampedDate))
+        }) {
+            selectedDate = nearest.date
+            showCrosshair = true
+            // Let DashboardStore update metrics via handleChartSelection(at:)
+        } else {
+            selectedDate = nil
+            showCrosshair = false
+        }
+    }
+
     override func getChartPosition(for date: Date, value: Double) -> CGPoint? {
         guard chartFrame.width > 0 else { return nil }
 

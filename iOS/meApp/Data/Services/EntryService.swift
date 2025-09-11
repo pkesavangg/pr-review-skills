@@ -78,7 +78,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let deletedEntry = entry
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
-        try await localRepo.saveEntry(deletedEntry)
+        try await localRepo.updateEntry(deletedEntry)
+        
+        try await handleEntryDeleted(deletedEntry)
         await syncUnsyncedEntries()
     }
 
@@ -115,16 +117,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     func getEntries(forMonth month: String) async throws -> [Entry] {
         let accountId = try await getAccountId()
-        return try await localRepo.fetchEntries(forMonth: month, userId: accountId)
+        let entries = try await localRepo.fetchEntries(forMonth: month, userId: accountId)
+        return entries.filter { $0.operationType == OperationType.create.rawValue }
     }
 
     func getEntries(forDay day: String) async throws -> [Entry] {
         let accountId = try await getAccountId()
-        return try await localRepo.fetchEntries(forDay: day, userId: accountId)
+        let entries = try await localRepo.fetchEntries(forDay: day, userId: accountId)
+        return entries.filter { $0.operationType == OperationType.create.rawValue }
     }
 
     // MARK: - Month/History
-    	func getMonthsAll() async throws -> [HistoryMonth] {
+    func getMonthsAll() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
