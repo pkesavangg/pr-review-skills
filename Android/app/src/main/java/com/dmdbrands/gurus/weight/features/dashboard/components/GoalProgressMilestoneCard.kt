@@ -8,14 +8,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -27,10 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
+import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -68,6 +69,7 @@ fun GoalProgressMilestoneCard(
     ),
   )
   val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
+  val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
 
   BadgedBox(
     badge = {
@@ -80,13 +82,13 @@ fun GoalProgressMilestoneCard(
             .offset(x = badgeOffsetX, y = badgeOffsetY)
             .size(24.dp)
             .clickable { onBadgeClick() }
-            .border(1.dp, iconTint, CircleShape),
+            .border(2.dp, iconTint, CircleShape),
         ) {
           Icon(
-            imageVector = if (isVisible) Icons.Default.Remove else Icons.Default.Add,
-            contentDescription = if (isVisible) "Remove goal progress" else "Add goal progress",
+            painter = painterResource(id = metricBadgeIcon),
+            contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
             tint = iconTint,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.fillMaxSize(),
           )
         }
       }
@@ -117,3 +119,4 @@ fun GoalProgressMilestoneCard(
     }
   }
 }
+

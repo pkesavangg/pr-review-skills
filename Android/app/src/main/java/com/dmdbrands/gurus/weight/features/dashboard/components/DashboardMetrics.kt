@@ -205,6 +205,7 @@ private fun DashboardMetricsGrid(
           isVisible = false,
           inEditMode = true,
           isSelected = null,
+          isFromSetup = isFromSetup,
           onBadgeClick = {
             onMetricMoved(false, true, metric)
           },

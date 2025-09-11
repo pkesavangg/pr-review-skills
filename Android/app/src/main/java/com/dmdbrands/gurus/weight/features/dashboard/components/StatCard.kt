@@ -14,13 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -34,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -41,6 +40,7 @@ import com.dmdbrands.gurus.weight.features.common.components.reorderable.Reorder
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -100,7 +100,7 @@ internal fun StatCard(
         .fillMaxSize()
         .padding(vertical = MeTheme.spacing.sm)
         .then(
-          if (isFromSetup) Modifier.height(64.dp) else Modifier
+          if (isFromSetup) Modifier.height(55.dp) else Modifier,
         ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
@@ -124,6 +124,7 @@ internal fun StatCard(
             modifier = Modifier.size(24.dp),
             tintColor = MeTheme.colorScheme.iconPrimary,
           )
+          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
         }
         if (shouldShowMetricData) {
           Text(
@@ -167,6 +168,7 @@ fun AnimatedStatCard(
     ),
   )
   val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
+  val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
   BadgedBox(
     badge = {
       if (inEditMode && !isDragging) {
@@ -174,19 +176,16 @@ fun AnimatedStatCard(
           containerColor = MeTheme.colorScheme.inverseAction,
           contentColor = Color.Transparent,
           modifier = Modifier
+            .offset(0.dp, 4.dp)
             .size(24.dp)
             .clickable { onBadgeClick() }
-            .border(1.dp, iconTint, CircleShape),
+            .border(2.dp, iconTint, CircleShape),
         ) {
           Icon(
-            imageVector =
-              if (isVisible)
-                Icons.Default.Remove
-              else
-                Icons.Default.Add,
+            painter = painterResource(id = metricBadgeIcon),
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
             tint = iconTint,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.fillMaxSize()
           )
         }
       }
