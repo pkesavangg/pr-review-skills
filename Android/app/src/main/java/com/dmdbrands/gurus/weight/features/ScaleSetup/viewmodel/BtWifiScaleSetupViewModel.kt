@@ -359,6 +359,7 @@ constructor(
 
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
               loadDashboardKeys()
+              loadGoalProgress()
               // Refresh the user list to ensure it's up-to-date for duplicate validation
               AppLog.d(TAG, "Entering CUSTOMIZE_SETTINGS step, refreshing user list...")
               // Prevent automatic progression to UPDATE_SETTINGS
@@ -1236,6 +1237,15 @@ constructor(
       }
     }
   }
+
+  private fun loadGoalProgress() {
+    viewModelScope.launch {
+      entryService.progress.collect {
+        handleIntent(BtWifiScaleSetupIntent.SetGoalProgress(it))
+      }
+    }
+  }
+
 
   /**
    * Callback when a new device matching the protocol is found during setup.
