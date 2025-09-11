@@ -26,7 +26,7 @@ struct LogoView: View {
             .aspectRatio(contentMode: .fit)
             .frame(width: 214, height: 25)
             
-            Text(CommonStrings.byGreaterGoods)
+            Text(CommonStrings.byGreaterGoods.lowercased())
                 .fontOpenSans(.subHeading1)
                 .fontWeight(.regular)
                 .foregroundColor(isFromAccountSwitching ? theme.actionSecondary : theme.actionInverse)

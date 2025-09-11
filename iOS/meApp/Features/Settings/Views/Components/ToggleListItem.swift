@@ -64,7 +64,8 @@ struct ToggleListItem: View {
                 .frame(width: 51, height: 31)
                 .padding(.trailing, .spacingSM)
             
-            if showDivider {
+            // Hide divider when the row is disabled
+            if showDivider && !isDisabled {
                 HStack {
                     Divider()
                         .foregroundColor(theme.statusUtilityPrimary)

@@ -18,14 +18,12 @@ struct ModelNumberHelpModalView: View {
             VStack {
                 
                 HStack{
-                    Spacer()
-                    Image(AppAssets.xmark)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 20, height: 20)
+                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
+                        .foregroundColor(theme.statusIconPrimary)
                         .onTapGesture {
                             onClose()
                         }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 
                 Image(AppAssets.skuNumberSticker)

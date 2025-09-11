@@ -37,13 +37,18 @@ final class EntryStore: ObservableObject {
     // Maximum BMI that can be set automatically (matches web)
     private let maxBmiValue: Double = 99.0
     private var cancellables = Set<AnyCancellable>()
+    private var isAdjustingTime = false
     
     let tag = "EntryStore"
     
     var maxSelectableTime: Date {
-        // If selected date is today, cap at current time; otherwise end of day
+        // If selected date is today, cap at current time rounded down to the nearest minute
+        // so the limit is stable and does not tick every second causing view churn.
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
-            return Date()
+            let now = Date()
+            let calendar = Calendar.current
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+            return calendar.date(from: comps) ?? now
         } else {
             var comps = Calendar.current.dateComponents([.year, .month, .day], from: manualEntryForm.date.value)
             comps.hour = 23; comps.minute = 59
@@ -53,13 +58,6 @@ final class EntryStore: ObservableObject {
     
     // MARK: - Init
     init() {
-        // Forward form updates so that SwiftUI refreshes when any control changes
-        manualEntryForm.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-        
         // Update canShowOtherBodyMetrics based on btWifiR4 scale availability
         scaleService.$scales
             .map { scales in
@@ -185,6 +183,9 @@ final class EntryStore: ObservableObject {
     /// - If the date is today, time cannot be in the future.
     /// - If the date is not today, time cannot exceed the end of that day (23:59).
     private func clampTimeForSelectedDate(selectedDate: Date? = nil, selectedTime: Date? = nil) {
+        if isAdjustingTime { return }
+        isAdjustingTime = true
+        defer { isAdjustingTime = false }
         let date = selectedDate ?? manualEntryForm.date.value
         let time = selectedTime ?? manualEntryForm.time.value
         let now = Date()
@@ -207,21 +208,9 @@ final class EntryStore: ObservableObject {
     private func setupDateTimeObservers() {
         // Clamp time whenever the selected date changes so future time isn't allowed for today
         manualEntryForm.date.$value
+            .removeDuplicates()
             .sink { [weak self] newDate in
-                // Defer to next runloop to avoid re-entrant updates during Combine delivery
-                DispatchQueue.main.async {
-                    self?.clampTimeForSelectedDate(selectedDate: newDate)
-                }
-            }
-            .store(in: &cancellables)
-
-        // Also clamp when time changes (e.g., user picks a future time while date is today)
-        manualEntryForm.time.$value
-            .sink { [weak self] newTime in
-                // Defer to next runloop to avoid re-entrant updates during Combine delivery
-                DispatchQueue.main.async {
-                    self?.clampTimeForSelectedDate(selectedTime: newTime)
-                }
+                self?.clampTimeForSelectedDate(selectedDate: newDate)
             }
             .store(in: &cancellables)
     }

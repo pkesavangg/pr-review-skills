@@ -20,6 +20,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
+    /// Default implementation simply returns the current `selectedDate`.
+    /// Subclasses can override by setting `selectedDate` to a snapped value
+    /// or by providing a different preferred date if needed.
+    var preferredSelectedDate: Date? { selectedDate }
+    
     // MARK: - Chart Configuration
     var chartFrame: CGRect = .zero
     var yAxisDomain: ClosedRange<Double> = 0...100
@@ -130,6 +135,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+
+    /// Visible series filtered by the current scroll position and visible domain
+    var visibleChartSeriesData: [GraphSeries] {
+        guard hasXAxis else { return chartSeriesData }
+        let domainLength = visibleDomainLength
+        guard domainLength.isFinite && domainLength > 0 else { return chartSeriesData }
+        let left = scrollPosition.addingTimeInterval(-domainLength / 2)
+        let right = scrollPosition.addingTimeInterval(domainLength / 2)
+        let data = chartSeriesData
+        // Keep only points whose plotted X-date is within visible window
+        return data.filter { point in
+            let xDate = plotXDate(for: point.date)
+            return xDate >= left && xDate <= right
+        }
+    }
     
     /// Goal weight for display
     var goalWeight: Double {
@@ -213,8 +233,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return 
         }
         
-        // Use visible operations for Y-axis calculation (different from Total)
-        let operations = store.visibleOperations.isEmpty ? chartOperations : store.visibleOperations
+        // Use visible operations for Y-axis calculation.
+        // If there are no visible points but the line crosses the window, use bracketing points
+        var operations: [BathScaleWeightSummary]
+        if hasXAxis {
+            let visible = store.visibleOperations
+            if visible.isEmpty {
+                let bracket = store.graphManager.getBracketingOperations(from: chartOperations)
+                operations = bracket.isEmpty ? chartOperations : bracket
+            } else {
+                operations = visible
+            }
+        } else {
+            operations = chartOperations
+        }
         
         // Get Y-axis scale from graph manager
         let yAxisScale = store.graphManager.getYAxisScale(
@@ -416,12 +448,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     func formatSelectedXAxisLabel() -> String? {
-        guard
-            let store = dashboardStore,
-            let date = store.state.graph.selectedPoint?.date 
-        else { return nil }
-
-        return dashboardStore?.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+        guard let store = dashboardStore else { return nil }
+        // Prefer the view model's snapped selection first for immediate UI sync
+        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
+        guard let date else { return nil }
+        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers

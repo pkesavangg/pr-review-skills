@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct DeviceDiscoverSheetModifier: ViewModifier {
+    @Environment(\.appTheme) private var theme
     var height: CGFloat
 
     init(height: CGFloat = 400) {
@@ -20,6 +21,7 @@ struct DeviceDiscoverSheetModifier: ViewModifier {
             .presentationDetents([.height(height)])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(.radiusXL)
+            .presentationBackground(theme.backgroundPrimary)
             .interactiveDismissDisabled(true)
     }
 }
