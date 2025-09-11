@@ -60,8 +60,7 @@ final class ContentViewModel: ObservableObject {
     }
 
     func performAppInitialization() {
-        Task { [weak self] in
-            guard let self else { return }
+        Task {
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
             if loggedIn {

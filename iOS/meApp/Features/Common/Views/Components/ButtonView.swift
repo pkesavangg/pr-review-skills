@@ -13,6 +13,8 @@ struct ButtonView: View {
     let type: ButtonType
     let size: ButtonSize
     let isDisabled: Bool
+    /// Controls both the alignment of the button's frame and the alignment of the text within the button.
+    /// Adjust this to change how the button and its text are positioned horizontally.
     var alignment: Alignment = .center
     let action: () -> Void
     

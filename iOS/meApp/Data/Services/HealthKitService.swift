@@ -97,7 +97,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             let container = await PersistenceController.shared.container
             let bgContext = ModelContext(container)
             // Avoid referencing enum cases inside #Predicate; compare to a captured String constant instead.
-            let opCreate = "create"
+            let opCreate = OperationType.create.rawValue
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == accountId && $0.operationType == opCreate
             })
