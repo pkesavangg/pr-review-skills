@@ -98,7 +98,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     /// Creates the collection view layout with proper spacing and insets
     private func createLayout() -> UICollectionViewFlowLayout {
-        let layout = UICollectionViewFlowLayout()
+        let layout = LeadingAlignedFlowLayout()
         layout.minimumInteritemSpacing = 16         // gap between columns
         layout.minimumLineSpacing = 32              // gap between rows
         layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 32, right: 16) // fine-tuned bottom margin for last row
