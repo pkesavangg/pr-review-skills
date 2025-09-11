@@ -61,7 +61,7 @@ fun SetupLoader(
   Column(
     modifier = modifier,
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(30.dp),
+    verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
     repeat(5) { index ->
       if ((connectionState == ConnectionState.Success || connectionState is ConnectionState.Failed) && index == 2) {

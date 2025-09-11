@@ -9,6 +9,7 @@ import SwiftUI
 
 // MARK: - Picker Sheet Modifier
 struct PickerSheetModifier<T: Hashable>: ViewModifier {
+    @Environment(\.appTheme) private var theme
     @Binding var isPresented: Bool
     let selectedValues: [T]
     let options: [[T]]
@@ -38,6 +39,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
                 .presentationDetents([.height(280)])
                 .presentationDragIndicator(.hidden)
                 .presentationCornerRadius(.radiusSM)
+                .presentationBackground(theme.backgroundPrimary)
                 .modifier(InteractiveDismissModifier(disabled: !allowTapOutside))
             }
     }

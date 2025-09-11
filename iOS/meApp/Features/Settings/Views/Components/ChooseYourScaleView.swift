@@ -21,7 +21,7 @@ struct ChooseYourScaleView: View {
             NavbarHeaderView(
                 title: lang.chooseYourScale,
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
+                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: { EmptyView() },
@@ -31,12 +31,14 @@ struct ChooseYourScaleView: View {
                 canShowPresentationIndicator: true
             )
 
-            // Scale list
-            ScaleManualListView { scale in
-                onSelect(scale)
-                dismiss()
+            // Own vertical scrolling inside the sheet to avoid nested scrolls elsewhere
+            ScrollView(.vertical, showsIndicators: false) {
+                ScaleManualListView { scale in
+                    onSelect(scale)
+                    dismiss()
+                }
+                .padding(.top, .spacingSM)
             }
-            .padding(.top, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }

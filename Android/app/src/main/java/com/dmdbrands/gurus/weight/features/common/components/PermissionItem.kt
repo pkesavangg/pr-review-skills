@@ -30,11 +30,13 @@ enum class PermissionItemStatus {
  *
  * @param item The PermissionItem data class containing all relevant info
  * @param onClick Callback when the item is clicked
+ * @param isRequired Whether this permission is required (affects color for unauthorized permissions)
  */
 @Composable
 fun PermissionItem(
   item: PermissionItemData,
-  onClick: () -> Unit
+  onClick: () -> Unit,
+  isRequired: Boolean = false
 ) {
   // Helper function to get icon based on permission status
   fun getPermissionIcon(): Int {
@@ -45,12 +47,14 @@ fun PermissionItem(
     }
   }
 
-  // Helper function to get icon color based on permission status
+  // Helper function to get icon color based on permission status and requirement
   fun getPermissionIconType(): AppIconType {
     return when (item.status) {
       PermissionItemStatus.Granted -> AppIconType.Primary
-      PermissionItemStatus.Denied -> AppIconType.Danger
-      PermissionItemStatus.NotRequested -> AppIconType.Tertiary
+      PermissionItemStatus.Denied, PermissionItemStatus.NotRequested -> {
+        // For unauthorized permissions, show red if required, grey if not required
+        if (isRequired) AppIconType.Danger else AppIconType.Tertiary
+      }
     }
   }
 
@@ -82,10 +86,12 @@ fun PermissionItem(
         )
       }
     }
-    AppIcon(
-      id = AppIcons.Default.RightCaret,
-      contentDescription = "Action",
-    )
+    if(!isGranted) {
+      AppIcon(
+        id = AppIcons.Default.RightCaret,
+        contentDescription = "Action",
+      )
+    }
   }
 }
 
@@ -106,8 +112,9 @@ fun PermissionItemPreview() {
           disabledDescription = "Allow camera access",
           group = "Camera (AppSync)",
         ),
-      ) {}
-      // Denied permission
+        onClick = {},
+      )
+      // Denied permission (required - red)
       PermissionItem(
         item = PermissionItemData(
           key = "location",
@@ -116,8 +123,10 @@ fun PermissionItemPreview() {
           disabledDescription = "Allow location access",
           group = "Location",
         ),
-      ) {}
-      // Not requested permission
+        onClick = {},
+        isRequired = true
+      )
+      // Not requested permission (not required - grey)
       PermissionItem(
         item = PermissionItemData(
           key = "bluetooth",
@@ -126,7 +135,9 @@ fun PermissionItemPreview() {
           disabledDescription = "Allow Bluetooth access",
           group = "Bluetooth",
         ),
-      ) {}
+        onClick = {},
+        isRequired = false
+      )
     }
   }
 }

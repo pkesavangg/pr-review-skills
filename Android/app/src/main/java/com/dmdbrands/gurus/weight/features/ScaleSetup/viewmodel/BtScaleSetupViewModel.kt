@@ -50,42 +50,56 @@ constructor(
     fun create(scaleInit: SetupInitData<BtScaleSetupStep>): BtScaleSetupViewModel
   }
 
-  private val TAG = "BtScaleSetupViewModel"
-
   init {
+    AppLog.d(TAG, "BtScaleSetupViewModel initialized for SKU: ${state.value.scaleSetupState.sku}")
     lazyInit()
   }
 
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
 
   override suspend fun onSetupFinished() {
+    AppLog.d(TAG, "Setup finished, saving scale")
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     try {
       if (discoveredScale != null) {
+        AppLog.d(TAG, "Saving discovered scale: ${discoveredScale!!.id}")
         deviceService.saveScale(discoveredScale!!)
+        AppLog.i(TAG, "Successfully saved Bluetooth scale")
+      } else {
+        AppLog.w(TAG, "No discovered scale to save")
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error saving Bluetooth scale", e)
     } finally {
       dialogQueueService.dismissLoader()
     }
   }
 
   override fun observePermissions() {
+    AppLog.d(TAG, "Starting permission observation for Bluetooth scale setup")
     viewModelScope.launch {
-      subscribePermissions().collect { newPermissions ->
-        viewModelScope.launch {
-          val areRequiredPermissionsEnabled =
-            AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, scaleInit.sku)
-          handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
-          handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
-          if (isPermissionGranted != areRequiredPermissionsEnabled) {
-            isPermissionGranted = areRequiredPermissionsEnabled
-          }
-          if (!areRequiredPermissionsEnabled) {
-            if (currentSetupState.step != BtScaleSetupStep.PERMISSIONS && currentSetupState.step != BtScaleSetupStep.SCALE_INFO) {
-              handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.PERMISSIONS))
+      try {
+        subscribePermissions().collect { newPermissions ->
+          viewModelScope.launch {
+            val areRequiredPermissionsEnabled =
+              AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, scaleInit.sku)
+            AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
+            handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
+            handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
+            if (isPermissionGranted != areRequiredPermissionsEnabled) {
+              AppLog.d(TAG, "Permission granted status changed: $isPermissionGranted -> $areRequiredPermissionsEnabled")
+              isPermissionGranted = areRequiredPermissionsEnabled
+            }
+            if (!areRequiredPermissionsEnabled) {
+              if (currentSetupState.step != BtScaleSetupStep.PERMISSIONS && currentSetupState.step != BtScaleSetupStep.SCALE_INFO) {
+                AppLog.d(TAG, "Permissions not granted, moving to permissions step")
+                handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.PERMISSIONS))
+              }
             }
           }
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing permissions", e)
       }
     }
   }
@@ -97,8 +111,16 @@ constructor(
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
-    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
-      handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
+    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO) {
+      val areRequiredPermissionsEnabled = AppPermissionsHelper
+        .areRequiredPermissionsEnabled(state.value.permissions, scaleInit.sku)
+      if (areRequiredPermissionsEnabled) {
+        handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
+      } else {
+        // Check and request permissions sequentially
+        handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.PERMISSIONS))
+        permissionAccess()
+      }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
       if (currentState.nextStep != null)
@@ -111,9 +133,10 @@ constructor(
     AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
 
     if (currentState.isFirstStep) {
-      AppLog.d(TAG, "At first step, navigating back")
+      AppLog.d(TAG, "At first step, navigating back to add/edit scales")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
     } else if (currentState.step == BtScaleSetupStep.SELECT_USER && isPermissionGranted) {
+      AppLog.d(TAG, "Moving from select user back to scale info")
       handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SCALE_INFO))
     } else {
       if (currentState.previousStep != null)
@@ -129,20 +152,26 @@ constructor(
   }
 
   override fun onStepChange(step: ScaleSetupStep) {
+    AppLog.d(TAG, "Step changed to: $step")
     when (step) {
       BtScaleSetupStep.PAIRING_MODE -> {
+        AppLog.d(TAG, "Starting pairing mode")
         connectToBluetooth()
       }
 
       BtScaleSetupStep.STEP_ON -> {
+        AppLog.d(TAG, "Starting step on mode")
         collectMeasurement()
       }
 
-      else -> null
+      else -> {
+        AppLog.d(TAG, "No specific action for step: $step")
+      }
     }
   }
 
   override fun handleButtonChanges(step: BtScaleSetupStep) {
+    AppLog.d(TAG, "Handling button changes for step: $step")
     val backEnabled = when (step) {
       BtScaleSetupStep.SETUP_FINISHED, BtScaleSetupStep.SET_DEVICE_USER, BtScaleSetupStep.SCALE_INFO -> false
       else -> true
@@ -152,23 +181,29 @@ constructor(
       BtScaleSetupStep.SELECT_USER -> _state.value.user != null
       else -> true
     }
+    AppLog.d(TAG, "Button states - Back: $backEnabled, Next: $nextEnabled")
     handleIntent(ScaleSetupIntent.BackEnabled(backEnabled))
     handleIntent(ScaleSetupIntent.NextEnabled(nextEnabled))
   }
 
   override fun onTryAgain() {
     val currentStep = state.value.step
+    AppLog.d(TAG, "Trying again for step: $currentStep")
 
     when (currentStep) {
       BtScaleSetupStep.PAIRING_MODE -> {
+        AppLog.d(TAG, "Retrying Bluetooth connection")
         connectToBluetooth()
       }
 
       BtScaleSetupStep.STEP_ON -> {
+        AppLog.d(TAG, "Retrying measurement collection")
         collectMeasurement()
       }
 
-      else -> null
+      else -> {
+        AppLog.w(TAG, "Try again called on step that doesn't support retry: $currentStep")
+      }
     }
   }
 
@@ -176,10 +211,11 @@ constructor(
     // Clear any existing timeout
     clearBluetoothTimeout()
 
-    AppLog.d(TAG, "Connecting to bluetooth")
+    AppLog.d(TAG, "Connecting to Bluetooth")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
       startObservingDevices { data ->
+        AppLog.d(TAG, "Bluetooth device found: ${data.deviceName}")
         discoveredScale = Device(
           device = data,
           deviceType = ScaleSetupType.Bluetooth.value,
@@ -189,18 +225,23 @@ constructor(
         // Clear timeout when device is found
         clearBluetoothTimeout()
 
+        AppLog.d(TAG, "Pairing device: ${discoveredScale!!.id}")
         ggDeviceService.pairDevice(discoveredScale!!.toGGBTDevice()) {
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
+              AppLog.d(TAG, "Device pairing completed successfully")
               ggDeviceService.getDeviceInfo(discoveredScale!!.toGGBTDevice()) { deviceDetails ->
+                AppLog.d(TAG, "Getting device info for: ${discoveredScale!!.id}")
                 discoveredScale = discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED, device = deviceDetails)
                 handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+                AppLog.d(TAG, "Syncing devices after successful pairing")
                 ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
                 onNext()
               }
             }
 
             else -> {
+              AppLog.w(TAG, "Device pairing failed with response: $it")
               showRetryToast()
               handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
             }
@@ -219,7 +260,7 @@ constructor(
         }
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wake up process", e.toString())
+      AppLog.e(TAG, "Error during wake up process", e)
       clearBluetoothTimeout()
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
     }
@@ -230,16 +271,18 @@ constructor(
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
       startObservingEntries { entries ->
+        AppLog.d(TAG, "Measurement collected: ${entries.size} entries")
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         onNext()
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during measurement", e.toString())
+      AppLog.e(TAG, "Error during measurement", e)
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("MEASUREMENT_002")))
     }
   }
 
   private fun showRetryToast() {
+    AppLog.d(TAG, "Showing retry toast")
     dialogQueueService.showToast(
       Toast(
         title = BtScaleSetupStrings.PairingMode.RetryToast.Title,
@@ -247,5 +290,9 @@ constructor(
         action = null,
       ),
     )
+  }
+
+  companion object {
+    private const val TAG = "BtScaleSetupViewModel"
   }
 }

@@ -20,6 +20,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var scrollPosition: Date = Date()
     @Published var isScrolling: Bool = false
     
+    /// Default implementation simply returns the current `selectedDate`.
+    /// Subclasses can override by setting `selectedDate` to a snapped value
+    /// or by providing a different preferred date if needed.
+    var preferredSelectedDate: Date? { selectedDate }
+    
     // MARK: - Chart Configuration
     var chartFrame: CGRect = .zero
     var yAxisDomain: ClosedRange<Double> = 0...100
@@ -130,6 +135,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+
+    /// Visible series filtered by the current scroll position and visible domain
+    var visibleChartSeriesData: [GraphSeries] {
+        guard hasXAxis else { return chartSeriesData }
+        let domainLength = visibleDomainLength
+        guard domainLength.isFinite && domainLength > 0 else { return chartSeriesData }
+        let left = scrollPosition.addingTimeInterval(-domainLength / 2)
+        let right = scrollPosition.addingTimeInterval(domainLength / 2)
+        let data = chartSeriesData
+        // Keep only points whose plotted X-date is within visible window
+        return data.filter { point in
+            let xDate = plotXDate(for: point.date)
+            return xDate >= left && xDate <= right
+        }
+    }
     
     /// Goal weight for display
     var goalWeight: Double {
@@ -149,7 +169,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// X-axis values with buffer
     var xAxisValues: [Date] {
         guard let store = dashboardStore else { return [] }
-        return store.xAxisValuesWithBuffer(for: timePeriod)
+        // Use the live scroll position from this view model so axis ticks (including
+        // trailing phantom ticks) reflect the current gesture immediately and avoid
+        // the "jump" when scroll ends.
+        let liveScrollPosition = self.scrollPosition
+        return store.graphManager.generateVisibleXAxisValues(
+            for: timePeriod,
+            from: store.continuousOperations,
+            scrollPosition: liveScrollPosition
+        )
     }
     
     /// Determines if the chart is scrolled to the leftmost boundary
@@ -205,8 +233,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return 
         }
         
-        // Use visible operations for Y-axis calculation (different from Total)
-        let operations = store.visibleOperations.isEmpty ? chartOperations : store.visibleOperations
+        // Use visible operations for Y-axis calculation.
+        // If there are no visible points but the line crosses the window, use bracketing points
+        var operations: [BathScaleWeightSummary]
+        if hasXAxis {
+            let visible = store.visibleOperations
+            if visible.isEmpty {
+                let bracket = store.graphManager.getBracketingOperations(from: chartOperations)
+                operations = bracket.isEmpty ? chartOperations : bracket
+            } else {
+                operations = visible
+            }
+        } else {
+            operations = chartOperations
+        }
         
         // Get Y-axis scale from graph manager
         let yAxisScale = store.graphManager.getYAxisScale(
@@ -317,15 +357,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         
         // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
+        let availableChartHeight = chartFrame.height - (18)
         
         // If goal weight is outside domain, show at edges
         if goalWeight > domain.upperBound {
-            return (yPosition: -25, placement: .top)
+            return (yPosition: -20, placement: .top)
         }
         
         if goalWeight < domain.lowerBound {
-            return (yPosition: chartFrame.height + 20, placement: .bottom)
+            return (yPosition: chartFrame.height, placement: .bottom)
         }
         
         // Goal weight is within domain, calculate proportional position
@@ -365,7 +405,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         let visibleDomainLength = self.visibleDomainLength
         guard visibleDomainLength.isFinite && visibleDomainLength > 0 else { return nil }
         
-        let timeFromScrollPosition = date.timeIntervalSince(xScrollPosition)
+        // Use the plotting X-date which may be shifted (e.g., mid-month for year view)
+        let effectiveDate = plotXDate(for: date)
+        let timeFromScrollPosition = effectiveDate.timeIntervalSince(xScrollPosition)
         let xRatio = timeFromScrollPosition / visibleDomainLength
         let xPosition = chartFrame.width * xRatio
         
@@ -392,6 +434,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         return CGPoint(x: adjustedX, y: adjustedY)
     }
+
+    /// Default implementation: use the original date for plotting
+    func plotXDate(for original: Date) -> Date {
+        return original
+    }
     
     // MARK: - X-Axis Label Generation
     
@@ -401,12 +448,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     func formatSelectedXAxisLabel() -> String? {
-        guard
-            let store = dashboardStore,
-            let date = store.state.graph.selectedPoint?.date 
-        else { return nil }
-
-        return dashboardStore?.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
+        guard let store = dashboardStore else { return nil }
+        // Prefer the view model's snapped selection first for immediate UI sync
+        let date: Date? = self.selectedDate ?? store.state.graph.selectedXValue ?? store.state.graph.selectedPoint?.date
+        guard let date else { return nil }
+        return store.graphManager.formatSelectedDate(date, for: store.state.graph.selectedPeriod)
     }
     
     // MARK: - Chart Content Helpers

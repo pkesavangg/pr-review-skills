@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
@@ -53,17 +54,21 @@ constructor(
   private val notificationService: INotificationService,
   private val userSettingsService: IUserSettingsService,
   private val healthConnectService: IHealthConnectService,
+  private val bluetoothPreferencesService: BluetoothPreferencesService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
   override fun provideInitialState(): SettingsState = SettingsState()
 
-  private val TAG = "SettingsViewModel"
+  companion object {
+    private const val TAG = "SettingsViewModel"
+  }
 
   init {
     getUserProfile()
     showAccountSwitchInfoModal()
     loadCurrentThemeMode()
+    loadMacAddressSettings()
   }
 
   fun getUserProfile() {
@@ -178,6 +183,10 @@ constructor(
         openInAppBrowser(AppConfig.AppUrls.GreaterGoodsWebsite)
       }
 
+      is SettingsIntent.ShowMacAddressFilterModal -> {
+        onMacAddressFilterClick()
+      }
+
       else -> {}
     }
   }
@@ -219,7 +228,7 @@ constructor(
   }
 
   fun onExportDataClick() {
-    AppLog.d("TAG", "Export data clicked")
+    AppLog.d(TAG, "Export data clicked")
 
     // Show confirmation dialog
     dialogQueueService.enqueue(
@@ -233,7 +242,7 @@ constructor(
           dialogQueueService.dismissCurrent()
         },
         onCancel = {
-          AppLog.d("TAG", "User cancelled export")
+          AppLog.d(TAG, "User cancelled export")
           dialogQueueService.dismissCurrent()
         },
       ),
@@ -256,7 +265,7 @@ constructor(
         exportService.exportCsvWithPrompt()
         AppLog.i(TAG, ExportStrings.ExportCompleted)
       } catch (e: HttpException) {
-        AppLog.e(TAG, ExportStrings.ExportFailed, e.toString())
+        AppLog.e(TAG, ExportStrings.ExportFailed, e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -277,7 +286,7 @@ constructor(
         ),
       selectedItem = state.value.account?.gender,
       onConfirm = { selectedSex ->
-        AppLog.d("SettingsViewModel", "Biological sex modal onConfirm called with: $selectedSex")
+        AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
         selectedSex?.let { gender ->
           onBiologicalSexUpdate(gender)
         }
@@ -321,7 +330,7 @@ constructor(
         accountService.updateProfile(updatedCurrentProfile)
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating biological sex", e.toString())
+        AppLog.e(TAG, "Error updating biological sex", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -377,7 +386,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating activity level", e.toString())
+        AppLog.e(TAG, "Error updating activity level", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -445,7 +454,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating unit type", e.toString())
+        AppLog.e(TAG, "Error updating unit type", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -454,22 +463,22 @@ constructor(
   }
 
   fun onBiologicalSexClick() {
-    AppLog.d("SettingsViewModel", "Biological sex clicked")
+    AppLog.d(TAG, "Biological sex clicked")
     showBiologicalSexModal()
   }
 
   fun onActivityLevelClick() {
-    AppLog.d("SettingsViewModel", "Activity level clicked")
+    AppLog.d(TAG, "Activity level clicked")
     showActivityLevelModal()
   }
 
   fun onUnitTypeClick() {
-    AppLog.d("SettingsViewModel", "Unit type clicked")
+    AppLog.d(TAG, "Unit type clicked")
     showUnitTypeModal()
   }
 
   fun onHeightClick() {
-    AppLog.d("SettingsViewModel", "Height clicked")
+    AppLog.d(TAG, "Height clicked")
     showHeightModal()
   }
 
@@ -538,7 +547,7 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating height", e.toString())
+        AppLog.e(TAG, "Error updating height", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -547,21 +556,21 @@ constructor(
   }
 
   fun onGoalSettingClick() {
-    AppLog.d("SettingsViewModel", "Goal setting clicked")
+    AppLog.d(TAG, "Goal setting clicked")
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.Goal)
     }
   }
 
   fun onWeightlessClick() {
-    AppLog.d("SettingsViewModel", "Weightless clicked")
+    AppLog.d(TAG, "Weightless clicked")
     viewModelScope.launch {
       navigationService.navigateTo(AppRoute.AccountSettings.Weightless)
     }
   }
 
   fun onStreakClick() {
-    AppLog.d("SettingsViewModel", "Streak clicked")
+    AppLog.d(TAG, "Streak clicked")
     showStreakModal()
   }
 
@@ -613,7 +622,7 @@ constructor(
         )
         AppLog.i(TAG, "Successfully updated weightless mode")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating weightless mode", e.toString())
+        AppLog.e(TAG, "Error updating weightless mode", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -621,7 +630,7 @@ constructor(
   }
 
   fun onAppearanceClick() {
-    AppLog.d("SettingsViewModel", "Appearance clicked")
+    AppLog.d(TAG, "Appearance clicked")
     showAppearanceModal()
   }
 
@@ -692,7 +701,7 @@ constructor(
         handleIntent(SettingsIntent.UpdateThemeMode(displayString))
         AppLog.i(TAG, "Successfully updated appearance to $displayString")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating appearance", e.toString())
+        AppLog.e(TAG, "Error updating appearance", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -744,7 +753,7 @@ constructor(
         userSettingsService.toggleStreakSetting(isStreakOn = isStreakOn)
         AppLog.i(TAG, "Successfully updated streak mode")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating streak mode", e.toString())
+        AppLog.e(TAG, "Error updating streak mode", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -752,7 +761,7 @@ constructor(
   }
 
   fun onNotificationsClick() {
-    AppLog.d("SettingsViewModel", "Notifications clicked")
+    AppLog.d(TAG, "Notifications clicked")
     showNotificationsModal()
   }
 
@@ -835,7 +844,7 @@ constructor(
           AppLog.e(TAG, "Notification settings update returned null account")
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error updating notification settings", e.toString())
+        AppLog.e(TAG, "Error updating notification settings", e)
         // Error toast is shown by the service
       } finally {
         dialogQueueService.dismissLoader()
@@ -844,17 +853,17 @@ constructor(
   }
 
   fun onMessagesClick() {
-    AppLog.d("SettingsViewModel", "Messages clicked")
+    AppLog.d(TAG, "Messages clicked")
     // TODO: Navigate to messages settings
   }
 
   fun onAppPermissionsClick() {
-    AppLog.d("SettingsViewModel", "App permissions clicked")
+    AppLog.d(TAG, "App permissions clicked")
     // TODO: Navigate to app permissions screen
   }
 
   fun onHelpClick() {
-    AppLog.d("SettingsViewModel", "Help clicked")
+    AppLog.d(TAG, "Help clicked")
     // TODO: Navigate to help screen
   }
 
@@ -897,7 +906,7 @@ constructor(
           navigationService.reInitialize()
         }
       } catch (e: Exception) {
-        AppLog.e("SettingsViewModel", "Failed to log out", e.toString())
+        AppLog.e(TAG, "Failed to log out", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -910,7 +919,7 @@ constructor(
       try {
         accountService.logoutAll()
       } catch (e: Exception) {
-        AppLog.e("SettingsViewModel", "Failed to log out all accounts", e.toString())
+        AppLog.e(TAG, "Failed to log out all accounts", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -918,13 +927,13 @@ constructor(
   }
 
   fun onDeleteAccountClick() {
-    AppLog.d("SettingsViewModel", "Delete account clicked")
+    AppLog.d(TAG, "Delete account clicked")
     // TODO: Show delete account confirmation dialog
   }
 
   fun onSwitchAccountClick() {
     navigateTo(AppRoute.AccountSettings.MyAccounts)
-    AppLog.d("onSwitchAccountClick", "Navigating to My Accounts")
+    AppLog.d(TAG, "Navigating to My Accounts")
   }
 
   private fun showAccountSwitchInfoModal() {
@@ -983,5 +992,126 @@ constructor(
     } else {
       "Off"
     }
+  }
+
+  /**
+   * Loads MAC address settings from BluetoothPreferencesService.
+   * Initializes the selected MAC address and testing features state.
+   */
+  private fun loadMacAddressSettings() {
+    viewModelScope.launch {
+      try {
+        // Load selected MAC address
+        bluetoothPreferencesService.selectedMacAddress.collect { selectedMac ->
+          handleIntent(SettingsIntent.UpdateSelectedMacAddress(selectedMac))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error loading MAC address settings", e.toString())
+      }
+    }
+
+    viewModelScope.launch {
+      try {
+        // Load testing features state
+        val testingEnabled = bluetoothPreferencesService.enableTestingFeatures
+        handleIntent(SettingsIntent.UpdateTestingFeatures(testingEnabled))
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error loading testing features state", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Handles MAC address filter modal click.
+   * Similar to Angular's onMacAddressSelectionChange method.
+   */
+  private fun onMacAddressFilterClick() {
+    AppLog.d(TAG, "MAC address filter clicked")
+
+    // Only show modal if testing features are enabled
+    if (!state.value.enableTestingFeatures) {
+      AppLog.d(TAG, "Testing features disabled, MAC address filter not available")
+      return
+    }
+
+    showMacAddressFilterModal()
+  }
+
+  /**
+   * Shows the MAC address filter selection modal.
+   * Displays known MAC addresses for 0412 scale filtering.
+   * Similar to Angular's MAC address selection functionality.
+   */
+  private fun showMacAddressFilterModal() {
+    val knownMacAddresses = bluetoothPreferencesService.knownMacAddresses
+
+    val macAddressOptions = knownMacAddresses.map { macAddress ->
+      RadioButtonOption(macAddress, macAddress)
+    }
+
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = "MAC Address Filter (0412 Scales)",
+      options = macAddressOptions,
+      selectedItem = state.value.selectedMacAddress,
+      onConfirm = { selectedMacAddress ->
+        selectedMacAddress?.let { macAddress ->
+          onMacAddressSelectionChange(macAddress)
+        }
+      },
+      onCancel = {
+        AppLog.d(TAG, "MAC address filter selection cancelled")
+      },
+    )
+  }
+
+  /**
+   * Handles MAC address selection change.
+   * Similar to Angular's onMacAddressSelectionChange method.
+   * Updates the selected MAC address locally via BluetoothPreferencesService.
+   */
+  private fun onMacAddressSelectionChange(selectedMacAddress: String) {
+    AppLog.d(TAG, "MAC address selection changed to: $selectedMacAddress")
+
+    // Only process if testing features are enabled
+    if (!state.value.enableTestingFeatures) {
+      AppLog.w(TAG, "Testing features disabled, ignoring MAC address selection")
+      return
+    }
+
+    // Show loading dialog
+    dialogQueueService.showLoader("Updating MAC address filter...")
+
+    viewModelScope.launch {
+      try {
+        // Update selected MAC address locally (similar to Angular implementation)
+        bluetoothPreferencesService.setSelectedMacAddressLocally(selectedMacAddress)
+
+        // Update UI state
+        handleIntent(SettingsIntent.UpdateSelectedMacAddress(selectedMacAddress))
+
+        AppLog.i(TAG, "Successfully updated MAC address filter to: $selectedMacAddress")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error updating MAC address filter", e.toString())
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  /**
+   * Gets the current MAC address filter display text.
+   * @return Current selected MAC address or "All" if not set
+   */
+  fun getMacAddressFilterDisplayText(): String {
+    return state.value.selectedMacAddress
+  }
+
+  /**
+   * Checks if MAC address filter is available (testing features enabled).
+   * @return True if MAC address filter should be shown in settings
+   */
+  fun isMacAddressFilterAvailable(): Boolean {
+    return state.value.enableTestingFeatures
   }
 }

@@ -50,7 +50,7 @@ constructor(
       // This would need to be implemented with actual Bluetooth functionality
       // TODO: Implement actual Bluetooth device log retrieval
     } catch (e: Exception) {
-      AppLog.e(TAG, "sendScaleLog - Error sending scale logs", e.toString())
+      AppLog.e(TAG, "Error sending scale logs", e)
       throw e
     }
   }
@@ -66,7 +66,7 @@ constructor(
       AppLog.i(TAG, "exportCsvWithPrompt - CSV export completed successfully")
     } catch (e: HttpException) {
       showErrorToast(action = AccountSettingsAction.EXPORT_CSV, e)
-      AppLog.e(TAG, "exportCsvWithPrompt - Error during CSV export", e.toString())
+      AppLog.e(TAG, "Error during CSV export", e)
       throw e
     }
   }
@@ -87,7 +87,7 @@ constructor(
         AppLog.i(TAG, "exportCsvToEmail - CSV sent via Dashboard4 API")
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "exportCsvToEmail - Error sending CSV to email", e.toString())
+      AppLog.e(TAG, "Error sending CSV to email", e)
       throw e
     }
   }

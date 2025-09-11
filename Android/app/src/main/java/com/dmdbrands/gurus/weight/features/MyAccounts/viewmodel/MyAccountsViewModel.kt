@@ -91,7 +91,7 @@ class MyAccountsViewModel @Inject constructor(
                     accountService.switchAccount(account, true)
                     navigationService.reInitialize()
                 } catch (e: Exception) {
-                    AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}")
+                    AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}", e)
                 }
             }
         }
@@ -141,7 +141,7 @@ class MyAccountsViewModel @Inject constructor(
                 try {
                     accountService.logout(account.id, account.fcmToken)
                 } catch (e: Exception) {
-                    AppLog.e("onRemoveAccount", e.toString())
+                    AppLog.e("onRemoveAccount", "Failed to remove account", e)
                 } finally {
                     dialogQueueService.dismissLoader()
                 }

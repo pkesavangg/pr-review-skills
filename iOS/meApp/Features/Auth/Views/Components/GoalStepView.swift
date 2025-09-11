@@ -20,74 +20,63 @@ struct GoalStepView: View {
     let labels = InputFieldLabels.self
     
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(goalStepLang.title)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-                    
-                    Text(goalStepLang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textHeading)
+        SignupStepWrapper(title: goalStepLang.title, subtitle: goalStepLang.subtitle) {
+            VStack {
+                SegmentedButtonView(
+                    segments: GoalTypeSegment.allCases,
+                    selectedSegment: $selectedSegment
+                )
+                .onChange(of: selectedSegment) { oldValue, newValue in
+                    signupStore.signupForm.goalType.value = newValue.goalTypeValue
                 }
-                VStack {
-                    SegmentedButtonView(
-                        segments: GoalTypeSegment.allCases,
-                        selectedSegment: $selectedSegment
-                    )
-                    .onChange(of: selectedSegment) { oldValue, newValue in
-                        signupStore.signupForm.goalType.value = newValue.goalTypeValue
-                    }
-                    
-                    VStack(spacing: 4) {
-                        // Current Weight Input
-                        if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
-                            MetricInputField(
-                                config: TextInputConfig(
-                                    label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
-                                    placeholder: "0.0",
-                                    inputType: .metric,
-                                    errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
-                                    isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
-                                    focusField: .currentWeight,
-                                    maxLength: 4,
-                                    maxValue: 999.9
-                                ),
-                                value: $signupStore.signupForm.currentWeight.value,
-                                focusedField: $focusedField,
-                                onCommit: {
-                                    focusedField = .goalWeight
-                                }
-                            )
-                        }
-                        
+                
+                VStack(spacing: 4) {
+                    // Current Weight Input
+                    if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
                         MetricInputField(
                             config: TextInputConfig(
-                                label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                                label: "\(labels.startingWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
                                 placeholder: "0.0",
                                 inputType: .metric,
-                                errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
-                                focusField: .goalWeight,
+                                errorMessage: signupStore.getError(for: signupStore.signupForm.currentWeight),
+                                isDisabled: signupStore.signupForm.goalType.value == GoalType.maintain.rawValue,
+                                focusField: .currentWeight,
                                 maxLength: 4,
                                 maxValue: 999.9
                             ),
-                            value: $signupStore.signupForm.goalWeight.value,
+                            value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
                             onCommit: {
-                                focusedField = nil
+                                focusedField = .goalWeight
                             }
                         )
-                        
-                        CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
-                                         text: labels.useMetric)
                     }
-                    .padding(.top, .spacingMD)
+                    
+                    MetricInputField(
+                        config: TextInputConfig(
+                            label: "\(labels.goalWeight) (\(signupStore.signupForm.useMetric.value ? "kg" : "lbs"))",
+                            placeholder: "0.0",
+                            inputType: .metric,
+                            errorMessage: signupStore.getError(for: signupStore.signupForm.goalWeight),
+                            focusField: .goalWeight,
+                            maxLength: 4,
+                            maxValue: 999.9
+                        ),
+                        value: $signupStore.signupForm.goalWeight.value,
+                        focusedField: $focusedField,
+                        onCommit: {
+                            focusedField = nil
+                        }
+                    )
+                    
+                    CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
+                                     text: labels.useMetric)
                 }
-                .padding(.top, .spacingLG)
-                .onChange(of: signupStore.signupForm.goalType.value) { oldValue, newValue in
-                    selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
-                }
+                .padding(.top, .spacingMD)
+            }
+            .padding(.top, .spacingLG)
+            .onChange(of: signupStore.signupForm.goalType.value) { oldValue, newValue in
+                selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
             }
             .padding(.bottom, .spacing3XL)
         }

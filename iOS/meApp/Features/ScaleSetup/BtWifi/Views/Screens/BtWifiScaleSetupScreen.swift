@@ -50,7 +50,7 @@ struct BtWifiScaleSetupScreen: View {
             NavbarHeaderView(
                 title: scaleSetupLang.setupHeader(sku),
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 25, height: 22))
+                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
@@ -108,13 +108,41 @@ struct BtWifiScaleSetupScreen: View {
     
     private var footerButtons: some View {
         HStack {
-            if setupStore.currentStep == .availableWifiList {
-                if setupStore.scaleSetupError == .none  {
+            // Hide Back/Next buttons when used for settings WiFi configuration
+            if savedScale != nil {
+                // Settings WiFi configuration - no footer buttons
+                EmptyView()
+            } else if setupStore.currentStep == .availableWifiList {
+                // Show Skip only when no network is already connected.
+                if setupStore.scaleSetupError == .none && setupStore.connectedWifiNetwork == nil {
                     Spacer()
                     ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {
                         setupStore.handleSkipWifiStep()
                     })
                     Spacer()
+                } else {
+                    // Otherwise, show the standard Back/Next buttons.
+                    ButtonView(text: commonLang.back,
+                               type: .inlineTextPrimary,
+                               size: .small,
+                               isDisabled: setupStore.shouldDisableBackButton(),
+                               action: {
+                        withAnimation {
+                            hideKeyboard()
+                            setupStore.handleBackButtonClick()
+                        }
+                    })
+                    Spacer()
+                    ButtonView(text: setupStore.nextButtonText,
+                               type: .filledPrimary,
+                               size: .small,
+                               isDisabled: !setupStore.isNextEnabled,
+                               action: {
+                        withAnimation {
+                            hideKeyboard()
+                            setupStore.handleNextButtonClick()
+                        }
+                    })
                 }
             } else if setupStore.currentStep == .scaleConnected {
                 // Show centered finish button for scaleConnected step

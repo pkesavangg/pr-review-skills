@@ -85,8 +85,10 @@ enum MetricContentRepository {
                     "Bone mass decreases with age. In order to maintain healthy bone mass as you get older, it's important to eat a balanced diet, get enough calcium, and engage in regular, weight-bearing exercise."
                 ],
                 resources: [
-                    MetricResource(title: "Mayo Clinic", link: "https://www.mayoclinic.org/healthy-lifestyle/adult-health/in-depth/bone-health/art-20045060"),
-                    MetricResource(title: "American Academy of Orthopedic Surgeons", link: "https://orthoinfo.aaos.org/en/staying-healthy/healthy-bones-at-every-age/")
+                    MetricResource(title: "Mayo Clinic",
+                                   link: "https://www.mayoclinic.org/healthy-lifestyle/adult-health/in-depth/bone-health/art-20045060"),
+                    MetricResource(title: "American Academy of Orthopedic Surgeons",
+                                   link: "https://orthoinfo.aaos.org/en/staying-healthy/healthy-bones-at-every-age/")
                 ])
         case .visceralFatLevel:
             return MetricDetailContent(

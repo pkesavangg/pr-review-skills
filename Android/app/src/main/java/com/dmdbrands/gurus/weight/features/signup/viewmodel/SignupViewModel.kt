@@ -146,7 +146,7 @@ constructor(
           handleIntent(SignupIntent.Error("Something went wrong"))
         }
       } catch (e: Exception) {
-        AppLog.e(TAG, "Signup failed", e.toString())
+        AppLog.e(TAG, "Signup failed", e)
         handleIntent(SignupIntent.Error("Signup failed"))
       } finally {
         dialogQueueService.dismissLoader()
@@ -193,7 +193,7 @@ constructor(
         navigationService.navigateBack(topLevel = null)
         AppLog.d(TAG, "Successfully navigated back from signup")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from signup", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from signup", e)
       }
     }
   }

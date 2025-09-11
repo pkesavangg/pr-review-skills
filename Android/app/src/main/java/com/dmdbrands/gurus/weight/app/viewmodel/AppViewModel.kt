@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
+import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
@@ -77,7 +78,8 @@ constructor(
   private val ggDeviceService: GGDeviceService,
   private val healthConnectService: IHealthConnectService,
   private val deviceInfoService: IDeviceInfoService,
-  private val workManager: WorkManager
+  private val workManager: WorkManager,
+  private val bluetoothPreferencesService: BluetoothPreferencesService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -106,15 +108,15 @@ constructor(
         logManager.cleanupOldLogs(5)
         AppLog.i("MainActivity", "Cleaning up old logs")
       } catch (e: Exception) {
-        AppLog.e("MainActivity", "Failed to cleanup old logs", e.toString())
+        AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
       // Load all tokens into TokenManager's in-memory map
       try {
         tokenManager.loadAllTokens()
-        AppLog.d(TAG, "Loaded all tokens into TokenManager")
+        AppLog.v(TAG, "Loaded all tokens into TokenManager")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to load tokens into TokenManager", e.toString())
+        AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
       initialize()
     }
@@ -298,7 +300,7 @@ constructor(
       AppLog.d(TAG, "Checked login status for all accounts")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking login status", e.toString())
+      AppLog.e(TAG, "Error checking login status", e)
       false
     }
 
@@ -343,7 +345,7 @@ constructor(
       }
     } catch (e: Exception) {
       routeToLandingOrApp()
-      AppLog.e(TAG, "Load data failed", e.toString())
+      AppLog.e(TAG, "Load data failed", e)
     }
   }
 
@@ -415,17 +417,29 @@ constructor(
           if (canShowPopUp && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
             if (currentRoute !is AppRoute.ScaleSetup) {
-              handleIntent(AppIntent.SetScaleDiscovered(true))
-              handleIntent(AppIntent.SetSku(data.getSKU()))
-              sku = data.getSKU()
-              discoveredBroadcastId = data.broadcastId
-              val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
-                device = data,
-                deviceType = ScaleSetupType.Lcbt.value,
-                sku = sku,
-              )
-              ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
-              canShowPopUp = false
+              // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
+              val deviceSku = data.getSKU()
+              val shouldShow = if (deviceSku == "0412") {
+                bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+              } else {
+                true // Don't filter non-0412 scales
+              }
+
+              if (shouldShow) {
+                handleIntent(AppIntent.SetScaleDiscovered(true))
+                handleIntent(AppIntent.SetSku(deviceSku))
+                sku = deviceSku
+                discoveredBroadcastId = data.broadcastId
+                val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
+                  device = data,
+                  deviceType = ScaleSetupType.Lcbt.value,
+                  sku = sku,
+                )
+                ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
+                canShowPopUp = false
+              } else {
+                AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+              }
             }
           }
         }
@@ -567,7 +581,7 @@ constructor(
           ),
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during saving entry", e.toString())
+        AppLog.e(TAG, "Error during saving entry", e)
       }
     }
   }
@@ -613,7 +627,7 @@ constructor(
         healthConnectService.checkHealthConnectPermissionDisabled()
         AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to check Health Connect permission", e.toString())
+        AppLog.e(TAG, "Failed to check Health Connect permission", e)
       }
     }
   }

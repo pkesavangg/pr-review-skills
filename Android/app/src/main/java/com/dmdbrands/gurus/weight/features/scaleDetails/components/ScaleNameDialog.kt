@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,7 +44,16 @@ fun ScaleNameModal(
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }
-  // Set email when the modal is first shown
+
+  // Repopulate form with current scale name when dialog opens
+  LaunchedEffect(state.scale) {
+    state.scale?.let { scale ->
+      val scaleName = scale.nickname ?: ""
+      if (scaleName.isNotEmpty() && state.scaleNameForm.controls.name.value != scaleName) {
+        viewModel.handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+      }
+    }
+  }
 
   BaseModal(
     title = ScaleNameDialogStrings.Title,
@@ -56,12 +66,10 @@ fun ScaleNameModal(
     secondaryAction = ActionButton(
       text = ScaleNameDialogStrings.CancelButton,
       action = {
-        state.scaleNameForm.resetForm()
         onDismiss()
       },
     ),
     onDismiss = {
-      state.scaleNameForm.resetForm()
       onDismiss()
     },
     modifier = modifier.clickable(

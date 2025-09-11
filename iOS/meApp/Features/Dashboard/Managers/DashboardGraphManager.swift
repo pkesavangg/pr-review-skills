@@ -73,7 +73,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             state.clearSelection()
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection cleared")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection cleared")
             return
         }
 
@@ -81,7 +81,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.showCrosshair = false
         state.selectedXValue = selectedDate
 
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
     }
 
     /// Handles complete chart selection including finding closest point and updating metrics
@@ -95,6 +95,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // Hide any existing crosshair first
         state.showCrosshair = false
+        // Persist the raw selected X position so UI can render crosshair even if there's no data point
+        state.selectedXValue = selectedDate
 
         guard !operations.isEmpty else { return }
 
@@ -111,11 +113,59 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Update metrics with the selected point's values
         do {
             try await updateMetrics(selectedBin)
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
         } catch {
             logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
             resetMetrics()
         }
+    }
+
+    /// Computes an interpolated display weight at a given date using surrounding summaries.
+    /// If only one side exists, falls back to that side's display weight.
+    func interpolatedDisplayWeight(
+        at date: Date,
+        from operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double? {
+        guard !operations.isEmpty else { return nil }
+
+        // Find the immediate neighbors around the target date
+        let sorted = operations.sorted { $0.date < $1.date }
+        var previous: BathScaleWeightSummary?
+        var next: BathScaleWeightSummary?
+
+        for op in sorted {
+            if op.date <= date { previous = op } else { next = op; break }
+        }
+
+        // Helper to map stored weight to display/weightless value
+        func mapWeight(_ w: Int) -> Double {
+            if isWeightlessMode {
+                guard let anchor = anchorWeight else { return 0 }
+                return convertWeight(w) - anchor
+            }
+            return convertWeight(w)
+        }
+
+        if let prev = previous, let next = next {
+            // Linear interpolation by time
+            let t0 = prev.date.timeIntervalSinceReferenceDate
+            let t1 = next.date.timeIntervalSinceReferenceDate
+            let t = date.timeIntervalSinceReferenceDate
+            let v0 = mapWeight(Int(prev.weight))
+            let v1 = mapWeight(Int(next.weight))
+            let denom = t1 - t0
+            // Identical timestamps: return boundary value directly to avoid undefined ratio
+            if denom == 0 { return v0 }
+            let ratio = min(max((t - t0) / denom, 0), 1)
+            return v0 + (v1 - v0) * ratio
+        }
+
+        if let prev = previous { return mapWeight(Int(prev.weight)) }
+        if let next = next { return mapWeight(Int(next.weight)) }
+        return nil
     }
 
     func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {
@@ -131,9 +181,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.selectedPoint = point
         state.showCrosshair = point != nil
         if let point = point {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
         } else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Selected point cleared")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point cleared")
         }
     }
 
@@ -164,7 +214,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .decelerating, .animating:
             state.updateScrollState(isScrolling: true)
         @unknown default:
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
         }
     }
 
@@ -283,7 +333,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> [GraphSeries] {
 
         guard !allOperations.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
 
@@ -306,7 +356,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         var series: [GraphSeries] = []
         
         // Add weight series (always present) from operations to show continuous line
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Generating weight series with Y-axis domain: \(yAxisDomain), operations: \(operationsToProcess.count)")
+        // removed verbose generation log to reduce noise
         for summary in operationsToProcess {
             let displayWeight: Double
             if isWeightlessMode {
@@ -346,7 +396,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             selectedMetric: selectedMetric
         )
 
-        logger.log(level: .info, tag: "DashboardGraphManager",
+        logger.log(level: .debug, tag: "DashboardGraphManager",
                   message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
                           "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
                           "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
@@ -809,6 +859,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return strictlyVisible
     }
 
+    /// Returns the operations that immediately bracket the current visible window
+    /// - Note: Uses the store convention where `xScrollPosition` is the LEFT edge of the visible window.
+    ///         When there are no points inside the visible window, these two points determine the
+    ///         connecting line that traverses the window. We use them to compute a meaningful Y-axis.
+    func getBracketingOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
+        guard !operations.isEmpty else { return [] }
+
+        // Determine the visible window [leftEdge, rightEdge]
+        let leftEdge: Date = state.xScrollPosition
+        let rightEdge: Date = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
+
+        // Find the last operation at or before the left edge
+        let previous = operations
+            .filter { $0.date <= leftEdge }
+            .max(by: { $0.date < $1.date })
+
+        // Find the first operation at or after the right edge
+        let next = operations
+            .filter { $0.date >= rightEdge }
+            .min(by: { $0.date < $1.date })
+
+        // If not found on one side, try to at least capture the closest on that side of the window
+        // This helps when the rightEdge lies beyond the last entry or leftEdge before the first.
+        let fallbackPrev = previous ?? operations.filter { $0.date < rightEdge }.max(by: { $0.date < $1.date })
+        let fallbackNext = next ?? operations.filter { $0.date > leftEdge }.min(by: { $0.date < $1.date })
+
+        var result: [BathScaleWeightSummary] = []
+        if let p = fallbackPrev { result.append(p) }
+        if let n = fallbackNext, result.last?.date != n.date { result.append(n) }
+        return result
+    }
+
     /// Forces recalculation of visible operations and clears cache
     /// Use this after programmatically setting scroll position
     func forceVisibleOperationsRecalculation() {
@@ -920,21 +1002,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        // NEVER recalculate X-axis values during scrolling to prevent axis jumping
-        if state.isScrolling {
-            if !lastXAxisValues.isEmpty && lastXAxisPeriod == period {
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll to prevent jumping")
+        // During scrolling we usually want to keep ticks stable, but when the window
+        // moves significantly or approaches dataset edges we must recompute so the
+        // trailing phantom tick (extra space) appears immediately, avoiding the post-scroll
+        // "jump" of the last data point.
+        if state.isScrolling, !lastXAxisValues.isEmpty, lastXAxisPeriod == period {
+            let domainLength: TimeInterval = visibleDomainLength(for: period)
+            let lastPos = lastXAxisScrollPosition ?? state.xScrollPosition
+            let delta = abs(scrollPosition.timeIntervalSince(lastPos))
+
+            // Heuristic: allow reuse unless the user moved > ~1/6 of the domain or is near edges
+            let movedFar = delta > (domainLength / 6.0)
+
+            // Edge detection: if the right or left boundary is close to the dataset edges,
+            // recompute so we include the empty trailing/leading space immediately.
+            let allDates: [Date] = operations.map { $0.date }
+            let minDate = allDates.min() ?? scrollPosition
+            let maxDate = allDates.max() ?? scrollPosition
+            let leftEdge = scrollPosition
+            let rightEdge = scrollPosition.addingTimeInterval(domainLength)
+            let nearLeft = leftEdge <= minDate.addingTimeInterval(domainLength / 4.0)
+            let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
+
+            if !(movedFar || nearLeft || nearRight) {
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
 
-        let domainLength = visibleDomainLength(for: period)
-        let allDates = operations.map(\.date)
+        let domainLength: TimeInterval = visibleDomainLength(for: period)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min() else { return [] }
-        let buffer = domainLength * 2
+        let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
-        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
         let xAxisValues: [Date]
@@ -958,7 +1060,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
     func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
-        let allDates = operations.map(\.date)
+        let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
             return Date()
         }
@@ -995,9 +1097,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
 
         let domainLength = visibleDomainLength(for: period)
-        let buffer = domainLength * 2
-        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2 - buffer))
-        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2 + buffer))
+        let buffer: TimeInterval = domainLength * 2.0
+        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
@@ -1219,36 +1321,81 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
+        // Normalize order to avoid inverted labels when inputs are swapped or nudged
+        let startDate = min(minDate, maxDate)
+        let endDate = max(minDate, maxDate)
 
-        // Adjust the displayed end date to be inclusive of the visible range.
-        // Our X-axis generation may append a phantom tick beyond the last real value
-        // (e.g., +1 day for week, +1 month for year). The label should not show this.
-        let inclusiveEndDate: Date = {
-            switch period {
-            case .week, .month:
-                return calendar.date(byAdding: .day, value: -1, to: maxDate) ?? maxDate
-            case .year:
-                return calendar.date(byAdding: .month, value: -1, to: maxDate) ?? maxDate
-            case .total:
-                return maxDate
+        // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
+        if period == .total {
+            if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
+                return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
             }
-        }()
+        }
 
-        let startDay = calendar.component(.day, from: minDate)
+        // Special handling for month: snap range to actual month boundaries based on the center
+        if period == .month {
+            let span = endDate.timeIntervalSince(startDate)
+            let center = startDate.addingTimeInterval(max(0, span / 2))
+
+            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
+                let startOfMonth = monthInterval.start
+                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
+
+                let startDay = calendar.component(.day, from: startOfMonth)
+                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
+                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
+                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
+                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
+
+                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            }
+        }
+
+        // For year: clamp to full month boundaries inside the visible window
+        if period == .year {
+            // Robust: derive the label purely from the mid-point year, ignoring phantom edges
+            let span = endDate.timeIntervalSince(startDate)
+            let mid = startDate.addingTimeInterval(max(0, span / 2))
+            let year = calendar.component(.year, from: mid)
+
+            // Jan 1 of the year and Dec 1 of the same year
+            let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? minDate
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startOfYear).lowercased()
+            let startYear = year
+
+            let decOfYear = calendar.date(from: DateComponents(year: year, month: 12, day: 1)) ?? maxDate
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: decOfYear).lowercased()
+            let endYear = year
+
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+        }
+
+        // For total: snap both ends to month starts for stability (independent of any phantom months)
+        if period == .total {
+            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
+            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
+
+            if endMonthStart < startMonthStart {
+                endMonthStart = startMonthStart
+            }
+
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
+            let startYear = calendar.component(.year, from: startMonthStart)
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
+            let endYear = calendar.component(.year, from: endMonthStart)
+
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+        }
+
+        // Default (week) with inclusive end-day handling
+        let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
+        let startDay = calendar.component(.day, from: startDate)
         let endDay = calendar.component(.day, from: inclusiveEndDate)
-        let startMonth = DateTimeTools.formatter("LLL").string(from: minDate).lowercased()
+        let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
         let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
-        let startYear = calendar.component(.year, from: minDate)
         let endYear = calendar.component(.year, from: inclusiveEndDate)
 
-        switch period {
-        case .week, .month:
-            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
-        case .year:
-            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
-        case .total:
-            return "\(startMonth) \(startYear) - \(endMonth), \(endYear)"
-        }
+        return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
     }
 
     func fallbackTimeLabel(for period: TimePeriod) -> String {

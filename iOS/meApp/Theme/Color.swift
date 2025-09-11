@@ -70,6 +70,22 @@ enum AppColors {
         let logoPrimary: Color
         let logoSecondary: Color
         
+        // GG Named Colors (asset-backed defaults provided via extension)
+        let ggBackground: Color
+        let ggPrimary: Color
+        let ggSecondary100: Color
+        let ggSecondary900: Color
+
+        // Promo palette colors
+        let promoBlue100: Color
+        let promoBlue900: Color
+        let promoGreen100: Color
+        let promoGreen900: Color
+        let promoRed100: Color
+        let promoRed900: Color
+        
+        
+        
         static func forTheme(_ theme: Theme) -> Palette {
             switch theme {
             case .primary:

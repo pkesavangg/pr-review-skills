@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -45,32 +46,46 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
    * Starts observing device scan responses. Call this when you want to begin collecting devices.
    */
   protected fun startObservingDevices() {
+    AppLog.d(TAG, "Starting device observation")
     deviceObservationJob?.cancel()
     deviceObservationJob = viewModelScope.launch {
-      ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
-        .collect { scanResponse ->
-          onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
-        }
+      try {
+        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.DeviceDetail }
+          .collect { scanResponse ->
+            AppLog.d(TAG, "Received device scan response: ${scanResponse::class.simpleName}")
+            onScanResponse(scanResponse as GGScanResponse.DeviceDetail)
+          }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing device scan responses", e)
+      }
     }
   }
 
   protected fun stopObservingDevices() {
+    AppLog.d(TAG, "Stopping device observation")
     deviceObservationJob?.cancel()
     deviceObservationJob = null
   }
 
   protected fun stopObservingEntries() {
+    AppLog.d(TAG, "Stopping entry observation")
     entryObservationJob?.cancel()
     entryObservationJob = null
   }
 
   protected fun startObservingEntries() {
+    AppLog.d(TAG, "Starting entry observation")
     if (entryObservationJob == null) {
       entryObservationJob = viewModelScope.launch {
-        ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
-          .collect { scanResponse ->
-            onEntryResponse(scanResponse as GGScanResponse.Entry)
-          }
+        try {
+          ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
+            .collect { scanResponse ->
+              AppLog.d(TAG, "Received entry scan response: ${scanResponse::class.simpleName}")
+              onEntryResponse(scanResponse as GGScanResponse.Entry)
+            }
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error observing entry scan responses", e)
+        }
       }
     }
   }
@@ -95,12 +110,15 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
       }
     } else {
       // Original logic with network connectivity check
+      AppLog.d(TAG, "Using combined permission and network flow")
       combine(
         permissionService.permissionCallBackFlow,
         connectivityObserver.observe(),
       ) { permissions, networkState ->
         val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
         val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
+
+        AppLog.d(TAG, "Network status: $networkStatus, WiFi switch status: $wifiSwitchStatus")
 
         // WiFi switch is enabled if either network is available OR WiFi switch is enabled
         val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
@@ -111,10 +129,15 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
           GGPermissionState.DISABLED
         }
 
+        AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
         permissions.toMutableMap().apply {
           put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
         }
       }
     }
+  }
+
+  companion object {
+    private const val TAG = "ScaleSetupViewmodel"
   }
 }

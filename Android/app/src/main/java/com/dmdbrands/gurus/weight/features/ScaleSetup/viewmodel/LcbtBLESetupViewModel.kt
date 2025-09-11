@@ -50,13 +50,13 @@ constructor(
   }
 
   private val sku = setupInit.sku
-  private val TAG = "LcbtScaleSetupViewModel"
 
   override fun provideInitialState(): LCBTScaleSetupState {
     return LCBTScaleSetupState()
   }
 
   init {
+    AppLog.d(TAG, "LcbtBLESetupViewModel initialized for SKU: $sku")
     lazyInit()
   }
 
@@ -67,8 +67,14 @@ constructor(
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
-    } else if (currentSetupState.step == LcbtScaleSetupStep.SCALE_INFO && isPermissionGranted) {
-      handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.WAKEUP))
+    } else if (currentSetupState.step == LcbtScaleSetupStep.SCALE_INFO) {
+      if (isPermissionGranted) {
+        handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.WAKEUP))
+      } else {
+        // Check and request permissions sequentially
+        handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
+        permissionAccess()
+      }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
       if (currentState.nextStep != null)
@@ -77,11 +83,18 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
+    AppLog.d(TAG, "Setup finished, saving LCBT scale")
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     try {
       if (discoveredScale != null) {
+        AppLog.d(TAG, "Saving discovered LCBT scale: ${discoveredScale!!.id}")
         deviceService.saveScale(discoveredScale!!)
+        AppLog.i(TAG, "Successfully saved LCBT scale")
+      } else {
+        AppLog.w(TAG, "No discovered LCBT scale to save")
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error saving LCBT scale", e)
     } finally {
       dialogQueueService.dismissLoader()
     }
@@ -92,7 +105,7 @@ constructor(
     AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
 
     if (currentState.isFirstStep) {
-      AppLog.d(TAG, "At first step, navigating back")
+      AppLog.d(TAG, "At first step, navigating back to add/edit scales")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
     } else {
       AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
@@ -111,30 +124,39 @@ constructor(
 
     when (currentStep) {
       LcbtScaleSetupStep.WAKEUP -> {
+        AppLog.d(TAG, "Retrying wake up process")
         wakeUpScale()
       }
 
       LcbtScaleSetupStep.CONNECTING_BLUETOOTH -> {
+        AppLog.d(TAG, "Retrying Bluetooth connection")
         connectToBluetooth()
       }
 
-      else -> null
+      else -> {
+        AppLog.w(TAG, "Try again called on step that doesn't support retry: $currentStep")
+      }
     }
   }
 
   override fun onStepChange(step: ScaleSetupStep) {
+    AppLog.d(TAG, "Step changed to: $step")
     viewModelScope.launch {
       when (step) {
 
         LcbtScaleSetupStep.WAKEUP -> {
+          AppLog.d(TAG, "Starting wake up process")
           wakeUpScale()
         }
 
         LcbtScaleSetupStep.CONNECTING_BLUETOOTH -> {
+          AppLog.d(TAG, "Starting Bluetooth connection")
           connectToBluetooth()
         }
 
-        else -> null
+        else -> {
+          AppLog.d(TAG, "No specific action for step: $step")
+        }
       }
     }
   }
@@ -144,6 +166,7 @@ constructor(
    */
   private fun wakeUpScale() {
     // Always set loading state to ensure UI updates
+    AppLog.d(TAG, "Starting wake up scale process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     // Clear any existing timeout and stop any existing device observation
     clearBluetoothTimeout()
@@ -160,11 +183,11 @@ constructor(
     }
 
     // Start collecting device scan responses only now
-    AppLog.d(TAG, "Starting wake up scale process")
-
     try {
+      AppLog.d(TAG, "Starting device scan for wake up")
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
+        AppLog.d(TAG, "LCBT device found: ${data.deviceName}")
         viewModelScope.launch {
           discoveredScale = Device(
             device = data,
@@ -173,12 +196,13 @@ constructor(
           )
           // Clear timeout when device is found
           clearBluetoothTimeout()
+          AppLog.d(TAG, "Waiting 2 seconds before proceeding")
           delay(2000)
           onNext()
         }
       }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wake up process", e.toString())
+      AppLog.e(TAG, "Error during wake up process", e)
       clearBluetoothTimeout()
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
     }
@@ -186,9 +210,9 @@ constructor(
 
   private fun connectToBluetooth() {
     // Always set loading state to ensure UI updates
+    AppLog.d(TAG, "Starting Bluetooth connection process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
-    AppLog.d(TAG, "Connecting to bluetooth")
     bluetoothTimeoutJob = viewModelScope.launch {
       delay(bluetoothTimeout)
       AppLog.d(TAG, "Bluetooth connection timeout reached")
@@ -196,17 +220,20 @@ constructor(
     }
     viewModelScope.launch {
       try {
+        AppLog.d(TAG, "Updating device connection status")
         deviceService.onDeviceUpdate(
           discoveredScale?.device!!,
           connectionStatus = BLEStatus.CONNECTED,
         )
         clearBluetoothTimeout() // Cancel timeout on success
+        AppLog.d(TAG, "Waiting 3 seconds after connection")
         delay(3000)
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        AppLog.d(TAG, "Waiting 2 seconds before proceeding")
         delay(2000)
         onNext()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e.toString())
+        AppLog.e(TAG, "Error during bluetooth connection", e)
         clearBluetoothTimeout()
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("BT_002")))
       }
@@ -214,22 +241,32 @@ constructor(
   }
 
   override fun observePermissions() {
+    AppLog.d(TAG, "Starting permission observation for LCBT scale setup")
     viewModelScope.launch {
-      subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
-        handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
-        if (isPermissionGranted != areRequiredPermissionsEnabled) {
-          isPermissionGranted = areRequiredPermissionsEnabled
-        }
-
-        if (!areRequiredPermissionsEnabled) {
-          if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
-            handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
+      try {
+        subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
+          val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
+          AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
+          handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
+          if (isPermissionGranted != areRequiredPermissionsEnabled) {
+            AppLog.d(TAG, "Permission granted status changed: $isPermissionGranted -> $areRequiredPermissionsEnabled")
+            isPermissionGranted = areRequiredPermissionsEnabled
           }
+          if (!areRequiredPermissionsEnabled) {
+            if (currentSetupState.step != LcbtScaleSetupStep.PERMISSIONS && currentSetupState.step != LcbtScaleSetupStep.SCALE_INFO) {
+              AppLog.d(TAG, "Permissions not granted, moving to permissions step")
+              handleIntent(ScaleSetupIntent.SetNewStep(LcbtScaleSetupStep.PERMISSIONS))
+            }
+          }
+          handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
         }
-        handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
-
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing permissions", e)
       }
     }
+  }
+
+  companion object {
+    private const val TAG = "LcbtBLESetupViewModel"
   }
 }

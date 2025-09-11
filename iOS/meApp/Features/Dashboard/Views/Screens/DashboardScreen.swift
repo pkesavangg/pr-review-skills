@@ -93,7 +93,7 @@ store.restartWiggleAnimations()
                 }
             }
         }
-        .onAppear {
+        .task {
             Task {
                 await store.loadDashboardConfigurationFromAPI()
                 await MainActor.run {
@@ -109,8 +109,6 @@ store.restartWiggleAnimations()
         ) { _ in
             if store.state.ui.isEditMode { store.cancelEdit() }
         }
-        .presentAlert(alertData: $store.state.ui.alertData)
-        .presentLoader(loaderData: store.loaderData)
         .onChange(of: scenePhase) { _, newPhase in
             if store.state.ui.isEditMode && (newPhase == .background || newPhase == .inactive) {
                 store.cancelEdit()

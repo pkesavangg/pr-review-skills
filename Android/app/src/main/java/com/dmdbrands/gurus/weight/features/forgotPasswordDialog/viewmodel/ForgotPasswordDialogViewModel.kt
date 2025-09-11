@@ -27,6 +27,7 @@ constructor(
 ) : BaseIntentViewModel<ForgotPasswordDialogState, ForgotPasswordDialogIntent>(
   reducer = ForgotPasswordDialogReducer(),
 ) {
+  private val TAG = "ForgotPasswordDialogViewModel"
   override fun provideInitialState(): ForgotPasswordDialogState {
     return ForgotPasswordDialogState(
       form = FormGroup(ForgotPasswordDialogFormControls.create()),
@@ -93,11 +94,11 @@ constructor(
     viewModelScope.launch {
       try {
         accountService.resetPassword(email)
-        AppLog.i("resetPassword", "Password reset requested for email: $email")
+        AppLog.i(TAG, "Password reset requested for email: $email")
         handleIntent(ForgotPasswordDialogIntent.Success)
       } catch (e: Exception) {
         handleIntent(ForgotPasswordDialogIntent.Error("Reset Password failed"))
-        AppLog.e("resetPassword", "Reset Password failed", e.toString())
+        AppLog.e(TAG, "Reset Password failed", e)
       } finally {
         dialogQueueService.dismissLoader()
         resetForm()

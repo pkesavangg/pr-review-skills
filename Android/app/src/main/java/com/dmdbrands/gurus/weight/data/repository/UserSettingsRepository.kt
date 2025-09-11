@@ -57,7 +57,7 @@ class UserSettingsRepository
                   isSynced = false,
                 )
               accountDao.updateStreaksSettings(streaksSettingsEntity)
-              AppLog.e(TAG, "Error updating streak setting to server", e.toString())
+              AppLog.e(TAG, "Error updating streak setting to server", e)
 
             }
           }
@@ -87,7 +87,7 @@ class UserSettingsRepository
               )
             accountDao.updateWeightlessSettings(weightlessSettingsEntity)
           } catch (e: Exception) {
-            AppLog.e(TAG, "Error updating weightless setting", e.toString())
+            AppLog.e(TAG, "Error updating weightless setting", e)
 
             // Handle offline mode - update local database only
             val activeAccount = accountDao.getActiveAccount().first()
@@ -135,7 +135,7 @@ class UserSettingsRepository
                     updatedAccount?.let { AccountEntityMapper.toDomainFromAccountWithRelations(it) }
                 }
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error updating streak setting offline", e.toString())
+                AppLog.e(TAG, "Error updating streak setting offline", e)
                 null
             }
 
@@ -170,7 +170,7 @@ class UserSettingsRepository
                 null
               }
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error updating weightless setting offline", e.toString())
+                AppLog.e(TAG, "Error updating weightless setting offline", e)
                 null
             }
 

@@ -29,8 +29,8 @@ struct LoginScreen: View {
             NavbarHeaderView(
                 title: isFromAccountSwitching ? commonLang.logIn.capitalized : "",
                 leadingContent: {
-                    Image(AppAssets.xmark)
-                        .frame(width: 24, height: 24)
+                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
+                        .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
                     Button {
@@ -56,7 +56,7 @@ struct LoginScreen: View {
             GeometryReader { geometry in
                 VStack {
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .center) {
+                        VStack(alignment: .center, spacing: 0) {
                             
                             // Only show spacer when keyboard is not visible
                             if keyboardHeight == 0 {
@@ -69,7 +69,7 @@ struct LoginScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                     .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding(.bottom, .spacingLG)
+                                    .padding(.bottom, .spacingXL)
                                 VStack {
                                     // Email Input Field
                                     AppInputField(
@@ -191,8 +191,6 @@ struct LoginScreen: View {
             url: store.presentingBrowserURL,
             isPresented: store.isBrowserPresented
         )
-        .presentLoader(loaderData: store.loaderData)
-        .presentAlert(alertData: $store.alertData)
         .keyboardObserver(keyboardHeight: $keyboardHeight)
         .onAppear {
             store.isFromAccountSwitching = isFromAccountSwitching

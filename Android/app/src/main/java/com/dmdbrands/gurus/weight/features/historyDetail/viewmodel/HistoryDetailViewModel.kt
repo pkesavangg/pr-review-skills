@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -28,16 +29,28 @@ class HistoryDetailViewModel @AssistedInject constructor(
     override fun provideInitialState(): HistoryDetailState = HistoryDetailState()
 
     init {
+        AppLog.d(TAG, "HistoryDetailViewModel initialized for month: $month")
         loadHistoryDetail()
     }
 
     private fun loadHistoryDetail() {
+        AppLog.d(TAG, "Loading history details for month: $month")
         viewModelScope.launch {
-            entryService.monthDetails(month).collect {
-                if (it.isNotEmpty())
-                    handleIntent(HistoryDetailIntent.SetHistoryItems(month, it.filterIsInstance<ScaleEntry>()))
-                else
-                    navigationService.navigateBack()
+            try {
+                entryService.monthDetails(month).collect { entries ->
+                    AppLog.d(TAG, "Received ${entries.size} entries for month: $month")
+                    if (entries.isNotEmpty()) {
+                        val scaleEntries = entries.filterIsInstance<ScaleEntry>()
+                        AppLog.d(TAG, "Filtered to ${scaleEntries.size} scale entries")
+                        handleIntent(HistoryDetailIntent.SetHistoryItems(month, scaleEntries))
+                    } else {
+                        AppLog.w(TAG, "No entries found for month: $month, navigating back")
+                        navigationService.navigateBack()
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error loading history details for month: $month", e)
+                navigationService.navigateBack()
             }
         }
     }
@@ -46,12 +59,19 @@ class HistoryDetailViewModel @AssistedInject constructor(
         super.handleIntent(intent)
         when (intent) {
             is HistoryDetailIntent.Refresh -> {
+                AppLog.d(TAG, "Refreshing history details")
                 viewModelScope.launch {
-                    entryService.syncOperations()
+                    try {
+                        entryService.syncOperations()
+                        AppLog.d(TAG, "Sync operations completed")
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "Error during sync operations", e)
+                    }
                 }
             }
 
             is HistoryDetailIntent.DeleteEntry -> {
+                AppLog.d(TAG, "Delete entry intent received for entry: ${intent.entry.entry.id}")
                 showDeleteEntryDialog(intent.entry)
             }
 
@@ -68,6 +88,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
                     confirmText = HistoryDetailScreenStrings.DeleteButton,
                     cancelText = HistoryDetailScreenStrings.CancelButton,
                     onConfirm = {
+                        AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
                         dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
                         viewModelScope.launch {
                             entryService.deleteEntry(entry)
@@ -84,5 +105,9 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 ),
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "HistoryDetailViewModel"
     }
 }

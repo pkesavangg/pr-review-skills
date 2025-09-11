@@ -153,7 +153,7 @@ constructor(
         handleIntent(WeightlessIntent.Success)
         AppLog.i(tag, "Weightless settings saved successfully")
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to save weightless settings", e.toString())
+        AppLog.e(tag, "Failed to save weightless settings", e)
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -219,7 +219,7 @@ constructor(
       try {
         navigationService.navigateBack()
       } catch (e: Exception) {
-        AppLog.e(tag, "Failed to navigate back from weightless screen", e.toString())
+        AppLog.e(tag, "Failed to navigate back from weightless screen", e)
       }
     }
   }
