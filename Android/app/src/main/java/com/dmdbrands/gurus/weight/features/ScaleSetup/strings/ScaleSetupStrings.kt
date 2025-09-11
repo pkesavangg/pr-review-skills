@@ -18,8 +18,10 @@ object ScaleSetupStrings {
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
     const val WifiScaleButtonText = "Get your scale’s MAC address"
-    const val Subtitle =
-      "If you have trouble setting up your scale, connect with our team by tapping the help button in the top right."
+    fun Subtitle(setupType: ScaleSetupType) =   when (setupType) {
+      ScaleSetupType.BtWifiR4-> "If you have trouble setting up your scale, connect with our team by tapping the help button in the top right."
+      else -> "If you’re having trouble setting up your scale, press the help button in the top right to connect with our team."
+    }
   }
 
   object ExitSetupAlert {

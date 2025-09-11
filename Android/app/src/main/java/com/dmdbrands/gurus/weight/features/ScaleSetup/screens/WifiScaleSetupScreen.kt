@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.WifiMacAddress
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonDisplayValue
@@ -174,6 +175,7 @@ fun WifiScaleSetupScreenContent(
             WifiScaleSetupStep.SCALE_INFO -> {
               com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo(
                 sku = state.sku,
+                setupType = ScaleSetupType.Wifi,
                 buttonText = ScaleSetupStrings.ScaleInfo.WifiScaleButtonText,
                 onButtonClick = { onIntent(WifiScaleSetupIntent.OnGetScaleMacAddress()) },
               )
