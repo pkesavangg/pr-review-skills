@@ -65,7 +65,10 @@ struct DisplayMetricsScreen: View {
                         viewModel.updateMetrics(updatedMetrics)
                         viewModel.updateDisplayMetricsValue()
                     },
-                    showIcon: true
+                    showIcon: true,
+                    onToggle: { item, isOn in
+                        viewModel.handleBodyMetricToggle(key: item.key, isEnabled: isOn)
+                    }
                 )
                 
                 // Progress Metrics Section
@@ -81,7 +84,10 @@ struct DisplayMetricsScreen: View {
                         viewModel.updateProgressMetrics(updatedMetrics)
                         viewModel.updateDisplayMetricsValue()
                     },
-                    showIcon: false
+                    showIcon: false,
+                    onToggle: { item, isOn in
+                        viewModel.handleProgressMetricToggle(key: item.key, isEnabled: isOn)
+                    }
                 )
             }
             .scrollContentBackground(.hidden)
