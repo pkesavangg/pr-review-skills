@@ -421,8 +421,4 @@ final class EntryStore: ObservableObject {
         control.value = value
         control.validate()
     }
-    
-    deinit {
-        cancellables.removeAll()
-    }
 }
