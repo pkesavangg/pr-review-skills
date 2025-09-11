@@ -1238,18 +1238,29 @@ class DashboardStore: ObservableObject {
         
         // Choose operations for Y-axis domain
         // - TOTAL: all operations
-        // - Others: visible operations; if none are visible but the window is crossed by a connecting line,
-        //           use the two bracketing points around the window to compute a meaningful domain
+        // - Others: visible operations PLUS bracketing points to account for line segments extending beyond visible window
         var operationsForYAxis: [BathScaleWeightSummary]
         if state.graph.selectedPeriod == .total {
             operationsForYAxis = continuousOperations
         } else {
             let visible = visibleOperations
+            let bracket = graphManager.getBracketingOperations(from: continuousOperations)
+            
             if visible.isEmpty {
-                let bracket = graphManager.getBracketingOperations(from: continuousOperations)
+                // No visible points - use bracketing points or all data as fallback
                 operationsForYAxis = bracket.isEmpty ? continuousOperations : bracket
             } else {
-                operationsForYAxis = visible
+                // Combine visible points with bracketing points for complete line coverage
+                // This ensures Y-axis accounts for line segments that extend beyond the visible window
+                // Manually deduplicate by entryTimestamp since BathScaleWeightSummary doesn't conform to Hashable
+                var combinedOperations = visible
+                for bracketOp in bracket {
+                    // Only add if not already present (check by entryTimestamp for uniqueness)
+                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                        combinedOperations.append(bracketOp)
+                    }
+                }
+                operationsForYAxis = combinedOperations.sorted { $0.date < $1.date }
             }
         }
         
