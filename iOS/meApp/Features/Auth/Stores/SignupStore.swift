@@ -196,7 +196,6 @@ final class SignupStore: ObservableObject {
                     HelpModalView {
                         self.notificationService.dismissModal()
                     }
-                    .frame(maxWidth: UIScreen.main.bounds.width * 0.75)
                     Spacer()
                 }
             )
