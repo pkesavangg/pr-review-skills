@@ -342,7 +342,7 @@ constructor(
       if (loggedInAccounts.isEmpty()) {
         AppLog.d(TAG, "No non-active logged-in accounts found in offline mode. Returning true.")
         // Emit true to trigger integration checks even in offline mode
-        _checkIntegrations.value = true
+        _checkIntegrations.value = false
         return true
       }
       val anyExpired = loggedInAccounts.any { it.isExpired }
@@ -365,7 +365,7 @@ constructor(
           "No non-active logged-in accounts found in checkLoginStatusForLoggedInAccounts(). Returning true.",
         )
         // Emit true to trigger integration checks
-        _checkIntegrations.value = true
+        _checkIntegrations.value = false
         return true
       }
       for (account in loggedInAccounts) {

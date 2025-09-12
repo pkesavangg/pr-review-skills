@@ -126,11 +126,13 @@ constructor(
     viewModelScope.launch {
       workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().collect { workInfos ->
         if (workInfos.isEmpty()) {
+          appNavigationService.replaceStack(AppRoute.Init.Loading)
           val account = accountService.getCurrentAccount()
           initLoadingData(account)
           initEvents()
         } else {
           if (workInfos.all { it.state.isFinished }) {
+            appNavigationService.replaceStack(AppRoute.Init.Loading)
             val account = accountService.getCurrentAccount()
             initLoadingData(account)
             initEvents()

@@ -134,8 +134,8 @@ private fun DashboardMetricsGrid(
   )
 
   val columnCount = when (currentDeviceType) {
-    DeviceType.Phone -> 3
     DeviceType.Tablet -> 4
+    else -> 3
   }
   LazyVerticalGrid(
     columns = GridCells.Fixed(count = columnCount),

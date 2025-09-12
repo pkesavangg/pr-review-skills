@@ -7,38 +7,25 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
  */
 class GraphReducer : IReducer<GraphState, GraphIntent> {
   override fun reduce(state: GraphState, intent: GraphIntent): GraphState? = when (intent) {
-    is GraphIntent.InitializeGraph -> state.copy(
-      graphLines = intent.graphLines,
-      secondaryGraphLines = intent.secondaryGraphLines,
-      segment = intent.segment,
-      goal = intent.goal,
-    )
-
-    is GraphIntent.UpdateSegment -> state.copy(segment = intent.segment)
+    is GraphIntent.InitializeGraph ->
+      state.copy(
+        graphLines = intent.graphLines,
+        secondaryGraphLines = intent.secondaryGraphLines,
+        goal = intent.goal,
+      )
 
     is GraphIntent.UpdateTargetRange -> state.copy(
       minTarget = intent.minTarget,
       maxTarget = intent.maxTarget,
     )
 
-    is GraphIntent.UpdateYAxisTargets -> state.copy(
-      minYTarget = intent.minYTarget,
-      maxYTarget = intent.maxYTarget,
-      secondaryMinYTarget = intent.secondaryMinYTarget,
-      secondaryMaxYTarget = intent.secondaryMaxYTarget,
-    )
+    is GraphIntent.UpdatePrimaryYAxis -> state.copy(primaryYAxis = intent.axisMeta)
+
+    is GraphIntent.UpdateSecondaryYAxis -> state.copy(secondaryYAxis = intent.axisMeta)
 
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
-    is GraphIntent.UpdateSavedTarget -> state.copy(savedTarget = intent.target)
-
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
-
-    is GraphIntent.UpdateStepSize -> state.copy(stepSize = intent.stepSize)
-
-    is GraphIntent.UpdateScrollValue -> state.copy(scrollValue = intent.scrollValue)
-
-    is GraphIntent.UpdateSeparators -> state.copy(separators = intent.separators)
 
     is GraphIntent.UpdateComputationJob -> state.copy(computationJob = intent.job)
 
@@ -53,5 +40,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       minTarget = intent.min,
       maxTarget = intent.max,
     )
+
+    else -> state
   }
 }
