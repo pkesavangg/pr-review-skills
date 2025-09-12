@@ -313,7 +313,7 @@ fun BtWifiScaleSetupScreenContent(
             WifiSelection(
               wifiList = state.wifiList,
               title = BtWifiScaleSetupStrings.WifiList.Title,
-              subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
+              subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle(!state.connectedSSID.isNullOrEmpty()),
               configuredSSID = state.connectedSSID,
               onSelect = { selectedSSID ->
                 // Check if the selected network is already connected

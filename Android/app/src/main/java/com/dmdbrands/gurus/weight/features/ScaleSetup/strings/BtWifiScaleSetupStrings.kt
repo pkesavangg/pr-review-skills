@@ -58,7 +58,7 @@ object BtWifiScaleSetupStrings {
 
   object WifiList {
     const val Title = "Select a 2.4 GHz Network"
-    const val Subtitle =
+    fun Subtitle(isConfigured: Boolean) = if(isConfigured) "Continue or choose a different 2.4 GHz Wi-Fi network." else
       "If you have multiple Wi-Fi networks, pick the 2.4 GHz network closest to your scale."
     const val NoNetworks = "Unable to gather networks.."
   }
