@@ -161,12 +161,12 @@ constructor(
    */
   private fun loadEntries() {
     viewModelScope.launch {
-      entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
+      entryService.daywiseBodyScaleAverages.collect { dayWise ->
         handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
       }
     }
     viewModelScope.launch {
-      entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
+      entryService.monthlyBodyScaleAverages.collect { monthWise ->
         handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
       }
     }

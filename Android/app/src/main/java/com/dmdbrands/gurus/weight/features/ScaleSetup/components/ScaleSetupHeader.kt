@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -11,10 +10,10 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 @Composable
 fun ScaleSetupHeader(
@@ -55,7 +54,7 @@ fun ScaleSetupHeaderPreview() {
       onHelp = {},
     ) {
         Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-          ScaleInfo("0412")
+          ScaleInfo("0412", setupType = ScaleSetupType.BtWifiR4)
         }
     }
   }
