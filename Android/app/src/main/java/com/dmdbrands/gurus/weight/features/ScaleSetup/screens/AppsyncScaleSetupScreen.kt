@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -146,7 +147,7 @@ fun AppsyncScaleSetupScreenContent(
       pageContent = { step ->
         when (step) {
           AppsyncScaleSetupStep.SCALE_INFO -> {
-            ScaleInfo(sku = state.sku)
+            ScaleInfo(sku = state.sku, setupType = ScaleSetupType.AppSync,)
           }
 
           AppsyncScaleSetupStep.PERMISSIONS -> {
