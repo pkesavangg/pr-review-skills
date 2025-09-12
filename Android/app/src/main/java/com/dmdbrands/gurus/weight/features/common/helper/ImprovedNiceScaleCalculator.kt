@@ -2,18 +2,17 @@ package com.greatergoods.meapp.features.common.helper
 
 import kotlin.math.pow
 
+data class AxisMeta(
+  val min: Double,
+  val max: Double,
+  val step: Double,
+  val canAnimate: Boolean = true,
+)
+
 object ImprovedNiceScaleCalculator {
   // Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
 
   private val niceNumbers = listOf(1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0)
-
-  data class AxisMeta(
-    val min: Double,
-    val max: Double,
-    val step: Double,
-    val ticks: List<Double>,
-    val domain: ClosedFloatingPointRange<Double>
-  )
 
   fun generateNiceScale(
     minValue: Double,
@@ -63,7 +62,7 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return AxisMeta(maxOf(evenMin, 0.0), evenMax, step, ticks.distinct().sorted(), evenMin..evenMax)
+      return AxisMeta(maxOf(evenMin, 0.0), evenMax, step)
     } else {
       step = 1.0
       var current = finalMin
@@ -71,7 +70,7 @@ object ImprovedNiceScaleCalculator {
         ticks.add(current)
         current += step
       }
-      return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+      return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
     }
   }
 
@@ -100,7 +99,7 @@ object ImprovedNiceScaleCalculator {
       current += step
     }
 
-    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
   }
 
   private fun handleNormalRange(
@@ -155,7 +154,7 @@ object ImprovedNiceScaleCalculator {
       }
     }
 
-    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step, ticks.distinct().sorted(), finalMin..finalMax)
+    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
   }
 
   private fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {

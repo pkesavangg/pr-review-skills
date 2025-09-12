@@ -233,22 +233,42 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return 
         }
         
-        // Use visible operations for Y-axis calculation.
-        // If there are no visible points but the line crosses the window, use bracketing points
+        // Use visible operations plus bracketing points for Y-axis calculation
+        // This ensures the Y-axis accounts for line segments extending beyond the visible window
+        // 
+        // PROBLEM: When viewing "this week" with start value 50, but previous week's Saturday was 200,
+        // the line goes up from 200->50 but Y-axis only considers visible points (50), making the
+        // line appear to come from nowhere and extend beyond the chart bounds.
+        //
+        // SOLUTION: Include bracketing points (previous/next operations outside visible window)
+        // so Y-axis domain accounts for the full range of the connecting line segments.
         var operations: [BathScaleWeightSummary]
         if hasXAxis {
             let visible = store.visibleOperations
+            let bracket = store.graphManager.getBracketingOperations(from: chartOperations)
+            
+            // Combine visible operations with bracketing points for comprehensive Y-axis calculation
+            // This prevents Y-axis from being too narrow when lines extend beyond visible window
             if visible.isEmpty {
-                let bracket = store.graphManager.getBracketingOperations(from: chartOperations)
+                // No visible points - use bracketing points or all data as fallback
                 operations = bracket.isEmpty ? chartOperations : bracket
             } else {
-                operations = visible
+                // Combine visible points with bracketing points for complete line coverage
+                // Manually deduplicate by entryTimestamp since BathScaleWeightSummary doesn't conform to Hashable
+                var combinedOperations = visible
+                for bracketOp in bracket {
+                    // Only add if not already present (check by entryTimestamp for uniqueness)
+                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                        combinedOperations.append(bracketOp)
+                    }
+                }
+                operations = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
         } else {
             operations = chartOperations
         }
         
-        // Get Y-axis scale from graph manager
+        // Get Y-axis scale from graph manager using the calculated operations (visible + bracketing)
         let yAxisScale = store.graphManager.getYAxisScale(
             from: operations,
             goalWeight: goalWeight,

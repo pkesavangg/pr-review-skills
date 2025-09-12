@@ -13,30 +13,46 @@ import UIKit
 class LeadingAlignedFlowLayout: UICollectionViewFlowLayout {
     
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
-        let attributes = super.layoutAttributesForElements(in: rect)
+
+        guard let attributes = super.layoutAttributesForElements(in: rect)?.map({ $0.copy() as! UICollectionViewLayoutAttributes }) else {
+            return nil
+        }
         
-        // Ensure items align to the leading edge
-        var leftMargin = sectionInset.left
-        var maxY: CGFloat = -1.0
-        
-        attributes?.forEach { layoutAttributes in
-            let indexPath = layoutAttributes.indexPath
-            
-            // If this is a new row, reset the left margin
-            if layoutAttributes.frame.origin.y >= maxY {
-                leftMargin = sectionInset.left
+        // Only adjust cell attributes; leave supplementary/decoration untouched
+        let cellAttributes = attributes.filter { $0.representedElementCategory == .cell }
+            .sorted { lhs, rhs in
+                // Stable sort by row (y), then x to process in visual order
+                if abs(lhs.frame.origin.y - rhs.frame.origin.y) > 1.0 {
+                    return lhs.frame.origin.y < rhs.frame.origin.y
+                } else {
+                    return lhs.frame.origin.x < rhs.frame.origin.x
+                }
             }
-            
-            // Set the x position to align to the leading edge
-            layoutAttributes.frame.origin.x = leftMargin
-            
-            // Update left margin for next item
-            leftMargin += layoutAttributes.frame.width + minimumInteritemSpacing
-            
-            // Update maxY for row detection
-            maxY = max(maxY, layoutAttributes.frame.maxY)
+        
+        let leftInset = sectionInset.left
+        let interItem = minimumInteritemSpacing
+        var currentRowY: CGFloat = -CGFloat.greatestFiniteMagnitude
+        var leftMargin: CGFloat = leftInset
+        
+        for attr in cellAttributes {
+            let y = attr.frame.origin.y
+            // Detect new row using small epsilon to account for floating-point drift during reordering
+            if abs(y - currentRowY) > 1.0 {
+                currentRowY = y
+                leftMargin = leftInset
+            }
+            var frame = attr.frame
+            frame.origin.x = leftMargin
+            attr.frame = frame
+            leftMargin += frame.width + interItem
         }
         
         return attributes
+    }
+
+    override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
+        // Invalidate on bounds changes (e.g., during interactive movement) to keep alignment correct
+        // Only invalidate layout if the width changes to improve performance
+        return newBounds.width != collectionView?.bounds.width
     }
 } 

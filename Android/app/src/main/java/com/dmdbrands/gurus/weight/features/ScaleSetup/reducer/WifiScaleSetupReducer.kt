@@ -542,6 +542,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             currentStep = previousStep,
             isNavigating = true, // Set navigation state during transition
             canProceedToNext = false,
+            nextButtonText = "Next", // Reset button text to default when going back
             error = null,
             isLastStep = false,
           )
