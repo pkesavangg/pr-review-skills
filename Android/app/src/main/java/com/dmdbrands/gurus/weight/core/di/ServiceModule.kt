@@ -224,6 +224,15 @@ object ServiceModule {
   ): IDeviceInfoService =
     DeviceInfoService(
       context,
+      deviceInfoRepository,
+      connectivityObserver,
+      dialogQueueService,
+      appNavigationService,
+      offlineHandlerService,
+      appRepository,
+      accountRepository,
+      healthConnectRepository,
+      integrationRepository,
     )
 
     /**
