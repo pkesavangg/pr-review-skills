@@ -18,11 +18,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -82,9 +78,6 @@ class GraphViewModel @AssistedInject constructor(
 
     // Setup chart model producer
     setupChartModelProducer(secondaryGraphLines, goal)
-
-    // Setup continuous debounced scroll handling
-    setupDebouncedScrollHandling()
   }
 
   /**
@@ -216,7 +209,7 @@ class GraphViewModel @AssistedInject constructor(
   /**
    * Handles scroll events and updates the visible range.
    */
-  private fun handleScroll(min: Long, max: Long) {
+  fun handleScroll(min: Long, max: Long) {
     val currentState = state.value
 
     // Cancel any existing computation job
@@ -308,23 +301,5 @@ class GraphViewModel @AssistedInject constructor(
     this.onScroll = onScroll
     this.onLabelUpdate = onLabelUpdate
     this.onScrollValueUpdate = scrollToValue
-  }
-
-  /**
-   * Sets up debounced scroll handling for smooth updates.
-   */
-  @OptIn(FlowPreview::class)
-  private fun setupDebouncedScrollHandling() {
-    viewModelScope.launch {
-      state
-        .map { it.minTarget to it.maxTarget }
-        .debounce(300)
-        .distinctUntilChanged()
-        .collect { (min, max) ->
-          if (min != null && max != null) {
-            handleScroll(min, max)
-          }
-        }
-    }
   }
 }

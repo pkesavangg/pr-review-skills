@@ -13,31 +13,16 @@ import java.time.ZonedDateTime
  */
 @Composable
 internal fun horizontalItemPlacer(
-  isEnabled: Boolean,
   segment: GraphSegment,
-  onDestinationUpdate: (Long, Long) -> Unit,
 ): HorizontalAxis.ItemPlacer {
   val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
-  return if (segment != GraphSegment.TOTAL) object : HorizontalAxis.ItemPlacer by defaultPlacer {
+  return object : HorizontalAxis.ItemPlacer by defaultPlacer {
     override fun getLabelValues(
       context: CartesianDrawingContext,
       visibleXRange: ClosedFloatingPointRange<Double>,
       fullXRange: ClosedFloatingPointRange<Double>,
       maxLabelWidth: Float,
     ): List<Double> {
-      if (isEnabled) {
-        val (min, max) = if (segment != GraphSegment.TOTAL) {
-          visibleXRange.start.toLong() to visibleXRange.endInclusive.toLong()
-        } else {
-          with(context.model.models.first()) {
-            minX.toLong() to maxX.toLong()
-          }
-        }
-
-        // Only trigger onDestinationUpdate if not the first time for this segment
-        onDestinationUpdate(min, max)
-      }
-
       return if (segment == GraphSegment.YEAR)
         fullXRange.monthStartTimestampsMillis()
       else defaultPlacer.getLabelValues(
@@ -58,7 +43,6 @@ internal fun horizontalItemPlacer(
       )
     }
   }
-  else HorizontalAxis.ItemPlacer.aligned()
 }
 
 fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> {

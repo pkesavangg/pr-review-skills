@@ -1,9 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -34,25 +32,6 @@ internal fun rememberLineLayerWithConnection(
   endRangeX: Long?,
 ): LineCartesianLayer {
 
-  // Animated values for smooth transitions with null safety
-  val animatedMinTarget: Int? = minYTarget?.let { target ->
-    val value by animateIntAsState(
-      targetValue = target,
-      animationSpec = tween(300),
-      label = "minTarget",
-    )
-    value
-  }
-
-  val animatedMaxTarget: Int? = maxYTarget?.let { target ->
-    val value by animateIntAsState(
-      targetValue = target,
-      animationSpec = tween(300),
-      label = "maxTarget",
-    )
-    value
-  }
-
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
       false
@@ -70,14 +49,14 @@ internal fun rememberLineLayerWithConnection(
   }
 
   // Memoize the range provider to prevent unnecessary recomposition
-  val rangeProvider =
+  val rangeProvider = remember(minYTarget, maxYTarget) {
     object : CartesianLayerRangeProvider {
       override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-        return animatedMinTarget?.toDouble() ?: super.getMinY(minY, maxY, extraStore)
+        return minYTarget?.toDouble() ?: super.getMinY(minY, maxY, extraStore)
       }
 
       override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore): Double {
-        return animatedMaxTarget?.toDouble() ?: super.getMaxY(minY, maxY, extraStore)
+        return maxYTarget?.toDouble() ?: super.getMaxY(minY, maxY, extraStore)
       }
 
       override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore): Double {
@@ -88,6 +67,7 @@ internal fun rememberLineLayerWithConnection(
         return endRangeX?.toDouble() ?: super.getMaxX(minX, maxX, extraStore)
       }
     }
+  }
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(

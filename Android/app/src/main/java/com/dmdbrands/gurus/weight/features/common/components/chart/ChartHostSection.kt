@@ -21,13 +21,11 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.compose.common.insets
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.core.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarkerVisibilityListener
@@ -47,7 +45,7 @@ internal fun ChartHostSection(
   modelProducer: CartesianChartModelProducer,
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
-  decorations: Decoration? = null,
+  goalMarker: VerticalAxis.MarkerDecoration? = null,
 ) {
   val timeStamps = xLabels.map { it.value.toLong() }.sorted()
   val separators = GraphUtil.periodStarts(
@@ -104,12 +102,13 @@ internal fun ChartHostSection(
             VerticalAxis.ItemPlacer.step(
               step = { state.primaryYAxis?.step },
             ),
-          size = BaseAxis.Size.fixed(40.dp),
+          size = BaseAxis.Size.fixed(50.dp),
           line =
             rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
               thickness = 1.dp,
             ),
+          markerDecoration = goalMarker,
           guideline =
             rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
@@ -118,14 +117,12 @@ internal fun ChartHostSection(
           label =
             rememberTextComponent(
               color = MeTheme.colorScheme.textSubheading,
-              padding = insets(start = 10.dp),
               textSize = 14.sp,
             ),
           tickLength = 0.dp,
         ),
       bottomAxis = bottomAxis,
       marker = emptyMarker(),
-      decorations = listOfNotNull(decorations),
       markerVisibilityListener = markerListener,
       persistentMarkers =
 
@@ -147,8 +144,6 @@ internal fun ChartHostSection(
     chart = primaryChart,
     modelProducer = modelProducer,
     modifier = modifier,
-    animationSpec = null,
-    animateIn = false,
     scrollState = scrollState,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     consumeMoveEvents = true,

@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -26,6 +27,10 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import com.patrykandpatrick.vico.core.common.Point as VicoPoint
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -42,6 +47,7 @@ import com.patrykandpatrick.vico.core.common.Point as VicoPoint
  * @param onLabelUpdate Callback for label updates, returns updated label string.
  * @param viewModel The GraphViewModel instance (injected via Hilt).
  */
+@OptIn(FlowPreview::class)
 @Composable
 fun GraphView(
   modifier: Modifier = Modifier,
@@ -101,6 +107,8 @@ fun GraphView(
     endRange,
   )
 
+  val visibleRanges = scrollState.visibleRange.collectAsState()
+
   val secondaryLayer = secondaryLayer(
     segment = segment,
     minYTarget = state.secondaryYAxis?.min?.toInt(),
@@ -110,15 +118,24 @@ fun GraphView(
   )
 
   val defaultMarker = rememberDefaultMarker(state.xLabels, state.markerIndex, segment)
-  val decorations = rememberHorizontalLine(goal = goal)
+  val goalMarker = rememberGoalMarker(goal = goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(
-    isEnabled = !state.isUpdating,
     segment = segment,
-    onDestinationUpdate = { min, max ->
-      viewModel.handleIntent(GraphIntent.SetScrollRange(min, max))
-    },
   )
+
+  LaunchedEffect(visibleRanges) {
+    Log.d("CHECKING", scrollState.value.toString())
+    snapshotFlow { visibleRanges.value?.visibleXRange?.start to visibleRanges.value?.visibleXRange?.endInclusive }
+      .debounce(300)
+      .distinctUntilChanged()
+      .collect { (min, max) ->
+        if (min != null && max != null) {
+          viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
+          viewModel.handleScroll(min.toLong(), max.toLong())
+        }
+      }
+  }
 
   val markerListener = markerListener(
     point = point,
@@ -133,7 +150,11 @@ fun GraphView(
   )
 
   val currentDeviceType = getDeviceType()
-  val chartHeight = if (currentDeviceType == DeviceType.Tablet) 400.dp else 300.dp
+  val chartHeight = when (currentDeviceType) {
+    DeviceType.Tablet -> 400.dp
+    DeviceType.Phone -> 300.dp
+    DeviceType.Fold -> 250.dp
+  }
 
 
   ChartHostSection(
@@ -173,7 +194,7 @@ fun GraphView(
     secondaryLayer = secondaryLayer,
     markerListener = markerListener,
     defaultMarker = defaultMarker,
-    decorations = decorations,
+    goalMarker = goalMarker,
     xLabels = state.xLabels,
     markerIndex = state.markerIndex,
     state = state,
