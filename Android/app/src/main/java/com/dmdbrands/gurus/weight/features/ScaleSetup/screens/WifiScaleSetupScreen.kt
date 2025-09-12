@@ -131,6 +131,7 @@ fun WifiScaleSetupScreenContent(
     HorizontalPagerWithBottomNavigation(
       steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
+      shouldCenterMiddleContent = true,
       pagerState = pagerState,
       leadingContent = {
         AppButton(
