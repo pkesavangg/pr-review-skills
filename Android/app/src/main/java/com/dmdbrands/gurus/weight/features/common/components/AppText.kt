@@ -47,6 +47,7 @@ enum class TextType {
   ListTitle2,
   ListSubtitle,
   NoteTitle,
+  CardTitle
 }
 
 object TextTypeDefaults {
@@ -119,6 +120,12 @@ object TextTypeDefaults {
       TextType.NoteTitle ->
         TextAppearance(
           style = typography.heading6,
+          color = colorScheme.textHeading,
+        )
+
+      TextType.CardTitle ->
+        TextAppearance(
+          style = typography.heading3,
           color = colorScheme.textHeading,
         )
     }

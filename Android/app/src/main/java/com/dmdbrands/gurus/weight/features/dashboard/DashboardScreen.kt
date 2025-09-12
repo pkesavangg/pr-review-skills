@@ -40,7 +40,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.HistoryGraph
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
-import com.dmdbrands.gurus.weight.features.history.components.HistoryEmptyState
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme

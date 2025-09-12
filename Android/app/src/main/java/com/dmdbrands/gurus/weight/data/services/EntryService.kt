@@ -70,6 +70,21 @@ constructor(
   private val _monthYear = MutableStateFlow<List<HistoryMonth>>(listOf())
   private val monthYear: StateFlow<List<HistoryMonth>> = _monthYear.asStateFlow()
 
+  // Add new MutableStateFlow properties for body scale data
+  private val _monthlyBodyScaleAverages = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val monthlyBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>> =
+    _monthlyBodyScaleAverages.asStateFlow()
+
+  private val _monthlyBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _monthlyBodyScaleLatest.asStateFlow()
+
+  private val _daywiseBodyScaleAverages = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>> =
+    _daywiseBodyScaleAverages.asStateFlow()
+
+  private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
+  override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
+
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Combined flow for account properties - initialized with defaults
@@ -224,6 +239,16 @@ constructor(
       updateLatestEntry(accountId)
     }
 
+    // Add new body scale data updates
+    repositoryScope.launch {
+      updateMonthlyBodyScaleAveragesWithJoin()
+    }
+
+    // Add new body scale data updates
+    repositoryScope.launch {
+      updateDaywiseBodyScaleAveragesWithJoin()
+    }
+
     // Check for goal card after account data is updated
     repositoryScope.launch {
       try {
@@ -251,6 +276,10 @@ constructor(
     _last7Days.value = emptyList()
     _last30Days.value = emptyList()
     _monthYear.value = emptyList()
+    _monthlyBodyScaleAverages.value = emptyList()
+    _monthlyBodyScaleLatest.value = emptyList()
+    _daywiseBodyScaleAverages.value = emptyList()
+    _daywiseBodyScaleLatest.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
     accountId = null
@@ -530,6 +559,26 @@ constructor(
     }
   }
 
+  private suspend fun updateMonthlyBodyScaleAveragesWithJoin() {
+    try {
+      getMonthlyBodyScaleAveragesWithJoin()
+        .collect {
+          _monthlyBodyScaleAverages.value = it
+        }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating monthly entry averages", e)
+    }
+  }
+
+  private suspend fun updateDaywiseBodyScaleAveragesWithJoin() {
+    try {
+      getDaywiseBodyScaleAveragesWithJoin()
+        .collect { _daywiseBodyScaleAverages.value = it }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating day wise entry averages", e)
+    }
+  }
+
   /**
    * Calculates progress based on the latest entry, last 7 days, and last 30 days data.
    * This function is used by the progress Flow to reactively calculate progress.
@@ -656,7 +705,7 @@ constructor(
   /**
    * Gets monthly averages of body scale data for an account using JOINs.
    */
-  override fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+  private fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getMonthlyBodyScaleAveragesWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
@@ -667,7 +716,7 @@ constructor(
   /**
    * Gets the latest body scale entry for each month for an account using JOINs.
    */
-  override fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+  private fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getMonthlyBodyScaleLatestWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
@@ -678,7 +727,7 @@ constructor(
   /**
    * Gets daywise averages of body scale data for an account using JOINs.
    */
-  override fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+  private fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getDaywiseBodyScaleAveragesWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
@@ -689,7 +738,7 @@ constructor(
   /**
    * Gets the latest body scale entry for each day for an account using JOINs.
    */
-  override fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
+  private fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>> =
     combine(
       entryRepository.getDaywiseBodyScaleLatestWithJoin(this.accountId ?: ""),
       weightSettingsFlow,
