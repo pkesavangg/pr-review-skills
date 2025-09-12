@@ -14,10 +14,10 @@ val BOTTOM_NAV_ITEMS =
             label = DashboardString.BottomNav.dash,
         ),
         BottomNavItem(
-            route = AppRoute.Main.Entry,
-            icon = AppIcons.Default.Plus,
-            selectedIcon = AppIcons.Filled.Plus,
-            label = DashboardString.BottomNav.entry,
+          route = AppRoute.Main.Entry,
+          icon = AppIcons.Outlined.PlusCircle,
+          selectedIcon = AppIcons.Filled.Plus,
+          label = DashboardString.BottomNav.entry,
         ),
         BottomNavItem(
             route = AppRoute.Main.History,

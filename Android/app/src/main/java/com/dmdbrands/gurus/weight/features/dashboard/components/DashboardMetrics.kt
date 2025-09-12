@@ -51,6 +51,7 @@ fun DashboardMetrics(
   inEditMode: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
   selectedStat: Stat? = null,
+  isFromSetup: Boolean = false,
   onMetricClick: (Stat?) -> Unit = {},
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
@@ -67,13 +68,13 @@ fun DashboardMetrics(
   val visibleMetrics = StatHelper.getMetrics(
     dashboardMetric,
     visibleKeys = metricKeys,
-    useShort = true,
+    useShort = !isFromSetup,
     filterNulls = false,
   )
   val allMetrics = StatHelper.getMetrics(
     dashboardMetric,
     visibleKeys = null,
-    useShort = true,
+    useShort = !isFromSetup,
     filterNulls = false,
   )
   val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
@@ -98,6 +99,7 @@ fun DashboardMetrics(
     selectedStat = selectedStat,
     onMetricClick = onMetricClick,
     onMetricMoved = onMetricMoved,
+    isFromSetup = isFromSetup,
   )
 
   Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -111,6 +113,7 @@ private fun DashboardMetricsGrid(
   visibleMetrics: List<Stat>,
   hiddenMetrics: List<Stat>,
   inEditMode: Boolean,
+  isFromSetup: Boolean,
   selectedStat: Stat?,
   onMetricClick: (Stat?) -> Unit,
   onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
@@ -156,6 +159,7 @@ private fun DashboardMetricsGrid(
         StatCard(
           stat = metric,
           isPlaceHolder = true,
+          isFromSetup = isFromSetup,
         )
         ReorderableItem(
           state = reorderableState,
@@ -167,6 +171,7 @@ private fun DashboardMetricsGrid(
             isDragging = isDragging,
             inEditMode = inEditMode,
             isSelected = isSelected,
+            isFromSetup = isFromSetup,
             modifier = Modifier.draggableHandle(
               enabled = inEditMode,
               onDragStarted = {
@@ -200,6 +205,7 @@ private fun DashboardMetricsGrid(
           isVisible = false,
           inEditMode = true,
           isSelected = null,
+          isFromSetup = isFromSetup,
           onBadgeClick = {
             onMetricMoved(false, true, metric)
           },
