@@ -1260,7 +1260,8 @@ class DashboardStore: ObservableObject {
                         combinedOperations.append(bracketOp)
                     }
                 }
-                operationsForYAxis = combinedOperations.sorted { $0.date < $1.date }
+                // Sort using the same key used for deduplication to ensure consistency
+                operationsForYAxis = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
         }
         
