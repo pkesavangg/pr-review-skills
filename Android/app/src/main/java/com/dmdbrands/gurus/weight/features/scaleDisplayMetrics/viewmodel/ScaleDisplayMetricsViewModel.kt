@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
@@ -91,8 +92,10 @@ constructor(
           navigateBack()
         } else {
           showToast(ScaleDisplayMetricsStrings.Toast.Error)
+          dialogQueueService.dismissLoader()
         }
       } catch (err: Exception) {
+        AppLog.e("ScaleDisplayMetricsViewModel", "Failed to save display metrics", err)
         dialogQueueService.dismissLoader()
         showToast(ScaleDisplayMetricsStrings.Toast.Error)
       }

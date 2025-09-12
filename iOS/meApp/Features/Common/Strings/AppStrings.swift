@@ -613,7 +613,7 @@ struct AlertStrings {
         static let title = "Are you sure you want to skip Wi-Fi?"
         static let message = "After setup, find additional WiFi settings or the MAC Address via scale settings."
         static let skipButton = "Skip"
-        static let goBackButton = "GO BACK"
+        static let goBackButton = "BACK"
     }
 
     struct PermissionDisabledAlert {
@@ -700,6 +700,23 @@ struct LegalStrings {
     static let andText = "&"
 }
 
+struct FirmwareUpdateStrings {
+    static let title = "Software Update"
+    static let version = "Version"
+    static let alreadyUpdated = "You are already on the latest version."
+    static let now = "Now"
+    static let schedule = "Schedule"
+    static let message = "A new firmware version"
+    static let message1 = "is available. You can either upgrade now or schedule to upgrade at a later time."
+    static let nowDetails = "A new version is available with performance and stability improvement."
+    static let message2 = "We will start the update immediately. Keep the scale powered."
+    static let upgrade = "Upgrade"
+    static let upgradeNow = "Upgrade Now"
+    static let updatingFirmware = "Updating firmware..."
+    static let updateTriggered = "Firmware update requested"
+    static let date = "Date"
+}
+
 
 
 /// Constants for App Assets used in the app
@@ -709,6 +726,7 @@ struct AppAssets {
     static let closeCircle = "closeCircle"
     static let helpCircle = "helpCircle"
     static let xmark = "xmark"
+    static let xmarkSmall = "xmarkSmall"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
     static let wgLogoDark = "wgLogoDark"
@@ -775,6 +793,7 @@ struct AppAssets {
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
     static let ggLogoSmall = "ggLogoSmall"
     static let ggLogoLarge = "ggLogoLarge"
+    static let ggLogoLight = "ggLogoLight"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
     static let close = "close"

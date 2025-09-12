@@ -126,7 +126,7 @@ struct MyScalesScreen: View {
                 VStack(alignment: .center, spacing: 0) {
                     MetricInputField(
                         config: TextInputConfig(
-                            label: lang.modelNumber,
+                            label: lang.modelNumber.lowercased(),
                             inputType: .metric,
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,

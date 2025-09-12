@@ -29,7 +29,8 @@ data class Device(
   val token: String? = null,
   val preferences: Preferences? = null,
   val isDeleted: Boolean = false,
-  val isSynced: Boolean = false
+  val isSynced: Boolean = false,
+  val latestVersion: String? = null
 ) : GGCacheDevice {
 
   fun getAppType(): String {

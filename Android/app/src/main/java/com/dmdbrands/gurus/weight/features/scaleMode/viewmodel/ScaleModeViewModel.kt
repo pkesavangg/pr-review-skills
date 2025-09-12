@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.scaleMode.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
@@ -16,7 +17,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import android.util.Log
 
 @HiltViewModel(
   assistedFactory = ScaleModeViewModel.Factory::class,
@@ -37,6 +37,7 @@ constructor(
   override fun provideInitialState(): ScaleModeState = ScaleModeState()
 
   override fun handleIntent(intent: ScaleModeIntent) {
+    AppLog.d(TAG, "Handling scale mode intent: ${intent::class.simpleName}")
     super.handleIntent(intent)
     when (intent) {
       ScaleModeIntent.Back -> onBack()
@@ -47,24 +48,36 @@ constructor(
   }
 
   init {
+    AppLog.d(TAG, "ScaleModeViewModel initialized for scaleId: $scaleId")
     initScaleMode()
   }
 
   private fun initScaleMode() {
+    AppLog.d(TAG, "Initializing scale mode for scaleId: $scaleId")
     viewModelScope.launch {
-      deviceService.pairedScales.collect { devices ->
-        val device = devices.find { it.id == scaleId }
-        Log.d("modee", device.toString())
-        device?.let { scaleDevice ->
-          handleIntent(ScaleModeIntent.SetScale(scaleDevice))
-          handleIntent(ScaleModeIntent.SetMode(scaleDevice.preferences?.shouldMeasureImpedance == true, false))
-          handleIntent(ScaleModeIntent.SetHeartRate(scaleDevice.preferences?.shouldMeasurePulse == true, false))
+      try {
+        deviceService.pairedScales.collect { devices ->
+          val device = devices.find { it.id == scaleId }
+          device?.let { scaleDevice ->
+            AppLog.d(TAG, "Setting scale device: ${scaleDevice.id}")
+            handleIntent(ScaleModeIntent.SetScale(scaleDevice))
+
+            val shouldMeasureImpedance = scaleDevice.preferences?.shouldMeasureImpedance == true
+            val shouldMeasurePulse = scaleDevice.preferences?.shouldMeasurePulse == true
+
+            AppLog.d(TAG, "Setting mode - Impedance: $shouldMeasureImpedance, Pulse: $shouldMeasurePulse")
+            handleIntent(ScaleModeIntent.SetMode(shouldMeasureImpedance, false))
+            handleIntent(ScaleModeIntent.SetHeartRate(shouldMeasurePulse, false))
+          }
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error initializing scale mode", e)
       }
     }
   }
 
   private fun openBiaModel() {
+    AppLog.d(TAG, "Opening BIA modal")
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.BiaModal,
@@ -73,15 +86,24 @@ constructor(
   }
 
   private fun saveModeSettings() {
+    AppLog.d(TAG, "Saving mode settings")
     dialogQueueService.showLoader(
       message = ScaleModeStrings.LoaderMessage,
     )
     val currentState = state.value
     val scale = currentState.scale
     if (scale == null) {
+      AppLog.w(TAG, "No scale found for saving mode settings")
       showToast(ScaleModeStrings.Toast.Error)
       return
     }
+
+    AppLog.d(TAG, "Saving mode settings for scale: ${scale.id}")
+    AppLog.d(
+      TAG,
+      "Current settings - All body metrics: ${currentState.isAllBodyMetrics}, Heart rate: ${currentState.isHeartRateOn}",
+    )
+
     viewModelScope.launch {
       try {
         // Build updated displayMetrics based on heart rate setting
@@ -91,6 +113,8 @@ constructor(
             shouldIncludeHeartRate = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
           )
 
+        AppLog.d(TAG, "Updated display metrics count: ${updatedDisplayMetrics.size}")
+
         // Create R4ScalePreferenceApiModel with updated values
         val preferences =
           scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
@@ -99,20 +123,28 @@ constructor(
             displayMetrics = updatedDisplayMetrics,
           )!!
 
+        AppLog.d(
+          TAG,
+          "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}",
+        )
+
         // Update scale preferences via API
         val success = deviceService.updateScalePreferences(scaleId, preferences)
 
         if (success) {
+          AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
           dialogQueueService.dismissLoader()
           showToast(ScaleModeStrings.Toast.Success)
           // Refresh scale data to get updated preferences
           deviceService.syncDevices()
           navigateBack()
         } else {
+          dialogQueueService.dismissLoader()
+          AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
           showToast(ScaleModeStrings.Toast.Error)
         }
       } catch (err: Exception) {
-        Log.e("ScaleModeViewModel", "Error saving mode settings", err)
+        AppLog.e(TAG, "Error saving mode settings", err)
         dialogQueueService.dismissLoader()
         showToast(ScaleModeStrings.Toast.Error)
       }
@@ -123,6 +155,10 @@ constructor(
     currentMetrics: List<String>,
     shouldIncludeHeartRate: Boolean,
   ): List<String> {
+    AppLog.d(
+      TAG,
+      "Updating display metrics for heart rate - Current: ${currentMetrics.size}, Include heart rate: $shouldIncludeHeartRate",
+    )
     val mutableMetrics = currentMetrics.toMutableList()
     val heartRateMetric = "heartRate"
     val goalMetrics = listOf("bodyFat", "muscleMass", "boneMass", "bodyWater") // Common goal metrics
@@ -131,20 +167,27 @@ constructor(
       // Add heart rate - insert before goal metrics if possible, otherwise append
       val insertIndex = mutableMetrics.indexOfFirst { goalMetrics.contains(it) }
       if (insertIndex != -1) {
+        AppLog.d(TAG, "Adding heart rate metric before goal metrics at index: $insertIndex")
         mutableMetrics.add(insertIndex, heartRateMetric)
       } else {
+        AppLog.d(TAG, "Adding heart rate metric at end")
         mutableMetrics.add(heartRateMetric)
       }
     } else if (!shouldIncludeHeartRate && mutableMetrics.contains(heartRateMetric)) {
       // Remove heart rate
+      AppLog.d(TAG, "Removing heart rate metric")
       mutableMetrics.remove(heartRateMetric)
+    } else {
+      AppLog.d(TAG, "No changes needed for heart rate metric")
     }
 
+    AppLog.d(TAG, "Updated metrics count: ${mutableMetrics.size}")
     return mutableMetrics
   }
 
   private fun onBack() {
     if (state.value.hasModeChanged) {
+      AppLog.d(TAG, "Mode has changed, showing unsaved changes dialog")
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = ScaleModeStrings.UnsavedChanges.Title,
@@ -152,23 +195,31 @@ constructor(
           confirmText = ScaleModeStrings.UnsavedChanges.Leave,
           cancelText = ScaleModeStrings.UnsavedChanges.Cancel,
           onConfirm = {
+            AppLog.d(TAG, "User confirmed leaving with unsaved changes")
             navigateBack()
             initScaleMode()
           },
         ),
       )
     } else {
+      AppLog.d(TAG, "No changes detected, navigating back directly")
       navigateBack()
     }
   }
 
   private fun navigateBack() {
     viewModelScope.launch {
-      navigationService.navigateBack()
+      try {
+        navigationService.navigateBack()
+        AppLog.d(TAG, "Successfully navigated back")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error navigating back", e)
+      }
     }
   }
 
   private fun showToast(message: String) {
+    AppLog.d(TAG, "Showing toast: $message")
     dialogQueueService.showToast(
       Toast(
         title = null,
@@ -176,5 +227,9 @@ constructor(
         action = null,
       ),
     )
+  }
+
+  companion object {
+    private const val TAG = "ScaleModeViewModel"
   }
 }

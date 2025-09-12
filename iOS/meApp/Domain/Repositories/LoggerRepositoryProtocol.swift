@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 03/06/25.
 //
 
-
 import Foundation
 
 @MainActor
@@ -46,4 +45,20 @@ protocol LoggerRepositoryProtocol {
     /// Deletes logs older than a specified number of days.
     /// - Parameter days: The number of days to look back for deletion.
     func deleteLogsOlderThan(olderThanDays days: Int) async throws
+
+    /// Deletes logs older than a specified number of days in small batches to limit CPU spikes.
+    /// - Parameters:
+    ///   - days: The number of days to look back for deletion.
+    ///   - batchSize: Maximum number of rows to delete per batch.
+    ///   - interBatchDelayNs: Delay between batches in nanoseconds to yield CPU.
+    func deleteLogsOlderThanInBatches(
+        olderThanDays days: Int,
+        batchSize: Int,
+        interBatchDelayNs: UInt64
+    ) async throws
+
+    /// Quickly checks if there are any logs older than the given retention window.
+    /// - Parameter days: Retention window in days.
+    /// - Returns: True if at least one old log exists; false otherwise.
+    func hasLogsOlderThan(olderThanDays days: Int) async throws -> Bool
 }

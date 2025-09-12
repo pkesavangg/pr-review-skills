@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
@@ -93,6 +94,7 @@ data class BtWifiScaleSetupState(
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
   val dashboardKeys: List<DashboardKey> = listOf(),
+  val goalProgress: Progress = Progress(),
   val duplicateUser: GGBTUser? = null,
   val duplicateUserList: List<GGBTUser> = listOf(),
   val userList: List<GGBTUser> = listOf(),
@@ -122,6 +124,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   ) : BtWifiScaleSetupIntent
 
   data class SetDashboardKeys(val dashboardKeys: List<DashboardKey>) : BtWifiScaleSetupIntent
+  data class SetGoalProgress(val progress: Progress) : BtWifiScaleSetupIntent
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,
@@ -211,6 +214,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetDuplicateUser -> state.copy(duplicateUser = intent.duplicateUser)
       is BtWifiScaleSetupIntent.SetDuplicateUserList -> state.copy(duplicateUserList = intent.duplicateUserList)
       is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
+      is BtWifiScaleSetupIntent.SetGoalProgress -> state.copy(goalProgress = intent.progress)
       is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)

@@ -20,15 +20,13 @@ struct ScaleManualListView: View {
                     .padding(.horizontal, .spacingSM)
             }
 
-            // Vertical scroll ONLY for the list
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ForEach(filteredScales(scales, for: selectedSegment)) { scale in
-                        Button {
-                            selectedScale(scale)
-                        } label: {
-                             ScaleManualListRowView(scale: scale)
-                        }
+            // IMPORTANT: Avoid nested vertical ScrollViews. Let parent handle vertical scrolling.
+            LazyVStack(spacing: 0) {
+                ForEach(filteredScales(scales, for: selectedSegment)) { scale in
+                    Button {
+                        selectedScale(scale)
+                    } label: {
+                        ScaleManualListRowView(scale: scale)
                     }
                 }
             }

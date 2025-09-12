@@ -27,7 +27,7 @@ suspend fun <T> runCatchingWithHandlers(
     try {
         block()
     } catch (e: Exception) {
-        AppLog.e(tag, "${action?.name ?: "Operation"} failed", e.toString())
+        AppLog.e(tag, "${action?.name ?: "Operation"} failed", e)
         if (action != null && showErrorToast != null) {
             showErrorToast(action, e as? HttpException)
         }

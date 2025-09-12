@@ -51,19 +51,16 @@ struct ManualEntryScreen: View {
                             .foregroundColor(theme.textHeading)
                         
                         HStack(spacing: .spacingSM) {
-                            DateLabelView(date: entryStore.manualEntryForm.date.value) {
+                            DateLabelView(date: entryStore.manualEntryForm.date.value,
+                                          isSelected: entryStore.showDatePicker
+                            ) {
                                 withAnimation { entryStore.showDatePicker.toggle()
-                                    if entryStore.showTimePicker {
-                                        entryStore.showTimePicker = false
-                                    }
                                 }
                             }
-                            TimeLabelView(time: entryStore.manualEntryForm.time.value) {
+                            TimeLabelView(time: entryStore.manualEntryForm.time.value,
+                                          isSelected: entryStore.showTimePicker) {
                                 withAnimation {
                                     entryStore.showTimePicker.toggle()
-                                    if entryStore.showDatePicker {
-                                        entryStore.showDatePicker = false
-                                    }
                                 }
                             }
                         }
@@ -75,6 +72,7 @@ struct ManualEntryScreen: View {
                         
                         TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
+                                       selectedDate: entryStore.manualEntryForm.date.value,
                                        endTime: entryStore.maxSelectableTime)
                     }
                     
@@ -303,6 +301,8 @@ struct ManualEntryScreen: View {
                 .padding(.vertical, .spacingLG)
                 .padding(.bottom, keyboard.currentHeight)
                 .onAppear {
+                    // Ensure time defaults to current when landing on this tab
+                    entryStore.refreshTimeOnTabSelected()
                     // Register a handler that decides whether the tab can be left.
                     registerDeactivation {
                         // If the form is clean we can leave immediately.
@@ -312,6 +312,10 @@ struct ManualEntryScreen: View {
                     }
                 }
                 .onChange(of: tabViewModel.selectedTab) { _, newValue in
+                    // Update time every time Entry tab becomes active
+                    if newValue == .entry {
+                        entryStore.refreshTimeOnTabSelected()
+                    }
                     // Pre-populate form if coming from AppSync **Edit** flow
                     if let metrics = tabViewModel.pendingAppSyncEditMetrics, newValue == .entry {
                         entryStore.populateFromAppSync(metrics: metrics)

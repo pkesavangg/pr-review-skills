@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -25,6 +26,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun ScaleInfo(
   sku: String,
+  modifier: Modifier = Modifier,
+  setupType: ScaleSetupType,
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
 ) {
@@ -42,7 +45,11 @@ fun ScaleInfo(
       AppText(text = scaleName, textType = TextType.Body)
     }
     Spacer(modifier = Modifier.height(spacing.lg))
-    AppText(text = ScaleSetupStrings.ScaleInfo.Subtitle, textType = TextType.Body, textAlign = TextAlign.Center)
+    AppText(
+      text = ScaleSetupStrings.ScaleInfo.Subtitle(setupType = setupType),
+      textType = TextType.Body,
+      textAlign = TextAlign.Center,
+    )
     if (buttonText != null && onButtonClick != null) {
       Spacer(modifier = Modifier.height(spacing.lg))
       AppButton(
@@ -60,6 +67,6 @@ fun ScaleInfo(
 @Composable
 fun ScaleInfoPreview() {
   MeAppTheme {
-    ScaleInfo("0412", buttonText = "Get your scale’s MAC address ", onButtonClick = {})
+    ScaleInfo("0412", buttonText = "Get your scale’s MAC address ", setupType = ScaleSetupType.Lcbt, onButtonClick = {})
   }
 }

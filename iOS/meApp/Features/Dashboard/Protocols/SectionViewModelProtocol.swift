@@ -18,6 +18,9 @@ protocol SectionViewModelProtocol: ObservableObject {
     var showCrosshair: Bool { get set }
     var scrollPosition: Date { get set }
     var isScrolling: Bool { get set }
+    /// The preferred, possibly snapped, date to propagate to the store on selection.
+    /// Defaults to `selectedDate` but allows specialized view models to override behavior.
+    var preferredSelectedDate: Date? { get }
     
     // MARK: - Chart Configuration
     var chartFrame: CGRect { get }
@@ -38,11 +41,22 @@ protocol SectionViewModelProtocol: ObservableObject {
     // MARK: - Common Computed Properties
     var chartOperations: [BathScaleWeightSummary] { get }
     var chartSeriesData: [GraphSeries] { get }
+    /// Chart series points that fall within the currently visible X-domain
+    var visibleChartSeriesData: [GraphSeries] { get }
     var goalWeight: Double { get }
     var displayWeight: Double? { get }
     var weightLabel: String { get }
     var xAxisValues: [Date] { get }
     var isAtLeftBoundary: Bool { get }
+    
+    // MARK: - Stroke & Point Sizing
+    var lineWidth: CGFloat { get }
+    var basePointDiameter: CGFloat { get }
+    var selectedPointDiameter: CGFloat { get }
+    var basePointArea: CGFloat { get }
+    var selectedPointArea: CGFloat { get }
+    func pointArea(isSelected: Bool) -> CGFloat
+    func symbolArea(forDiameter diameter: CGFloat) -> CGFloat
     
     // MARK: - Initialization and Configuration
     func configure(with store: DashboardStore)
@@ -66,12 +80,18 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Chart Position Calculations
     func getChartPosition(for date: Date, value: Double) -> CGPoint?
+    /// Returns the actual X value that should be plotted for a given data date.
+    /// Default behavior is to use the same date; specific periods can override
+    /// to shift points (e.g., center monthly averages between month ticks).
+    func plotXDate(for original: Date) -> Date
     
     // MARK: - X-Axis Label Generation
     func formatXAxisLabel(for date: Date) -> String?
     
     // MARK: - Chart Content Helpers
     func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]]
+    func shouldShowSolidLine(for date: Date) -> Bool
+    func formatSelectedXAxisLabel() -> String?
     
     // MARK: - Data Management
     func refreshData()

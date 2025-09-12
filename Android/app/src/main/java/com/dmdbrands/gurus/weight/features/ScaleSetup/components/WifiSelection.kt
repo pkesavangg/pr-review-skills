@@ -111,6 +111,7 @@ fun WifiSelection(
               index = 0,
               total = 1,
             )
+            Spacer(Modifier.padding(bottom = spacing.sm))
           }
         }
       }
@@ -166,7 +167,7 @@ fun WifiItem(
   isConfigured: Boolean,
   index: Int,
   total: Int,
-  borderRadius: Dp = 0.dp ,
+  borderRadius: Dp = 0.dp,
   onClick: (() -> Unit)? = null,
 ) {
   val shape = when {

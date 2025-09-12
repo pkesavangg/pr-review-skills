@@ -53,7 +53,7 @@ abstract class BaseProtoDataStore<T : MessageLite>(
             updateData { getDefaultInstance() }
             AppLog.i(tag, "Successfully cleared DataStore: ${this::class.simpleName}")
         } catch (e: Exception) {
-            AppLog.e(tag, "Failed to clear DataStore: ${this::class.simpleName}", e.toString())
+            AppLog.e(tag, "Failed to clear DataStore: ${this::class.simpleName}", e)
             throw e
         }
     }

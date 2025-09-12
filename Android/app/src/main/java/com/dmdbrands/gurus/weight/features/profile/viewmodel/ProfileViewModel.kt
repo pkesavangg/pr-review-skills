@@ -26,6 +26,7 @@ class ProfileViewModel @Inject constructor(
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
   reducer = ProfileReducer(),
 ) {
+  private val TAG = "ProfileViewModel"
 
   init {
     // Load profile data when ViewModel is created
@@ -72,13 +73,13 @@ class ProfileViewModel @Inject constructor(
               ),
             ),
           )
-          AppLog.i("ProfileViewModel", "Profile data loaded successfully")
+          AppLog.i(TAG, "Profile data loaded successfully")
         } else {
           handleIntent(ProfileIntent.Error(ProfileStrings.Error.MessageGeneric))
-          AppLog.w("ProfileViewModel", "No current account found")
+          AppLog.w(TAG, "No current account found")
         }
       } catch (e: Exception) {
-        AppLog.e("ProfileViewModel", "Failed to load profile", e.toString())
+        AppLog.e(TAG, "Failed to load profile", e)
         handleIntent(ProfileIntent.Error(ProfileStrings.Error.MessageGeneric))
       }
     }
@@ -119,9 +120,9 @@ class ProfileViewModel @Inject constructor(
         accountService.updateProfile(profileUpdateRequest, true)
         handleIntent(ProfileIntent.Success)
         navigateBack()
-        AppLog.i("ProfileViewModel", "Profile updated successfully")
+        AppLog.i(TAG, "Profile updated successfully")
       } catch (e: Exception) {
-        AppLog.e("ProfileViewModel", "Profile update failed", e.toString())
+        AppLog.e(TAG, "Profile update failed", e)
         handleIntent(ProfileIntent.Error(ProfileStrings.Error.MessageGeneric))
       } finally {
         dialogQueueService.dismissLoader()
@@ -135,7 +136,7 @@ class ProfileViewModel @Inject constructor(
   private fun onUpdateSuccess() {
     // Show success message
     // You might want to navigate back or show a success dialog
-    AppLog.i("ProfileViewModel", "Profile update completed successfully")
+    AppLog.i(TAG, "Profile update completed successfully")
   }
 
   /**
@@ -175,9 +176,9 @@ class ProfileViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         navigationService.navigateBack()
-        AppLog.d("ProfileViewModel", "Successfully navigated back from profile")
+        AppLog.d(TAG, "Successfully navigated back from profile")
       } catch (e: Exception) {
-        AppLog.e("ProfileViewModel", "Failed to navigate back from profile", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from profile", e)
       }
     }
   }

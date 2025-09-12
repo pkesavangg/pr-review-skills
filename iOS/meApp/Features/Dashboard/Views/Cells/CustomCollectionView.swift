@@ -16,6 +16,9 @@ public class CustomCollectionView: UICollectionView {
     public var suspendIntrinsicInvalidation: Bool = false
     public var isInDragOperation: Bool = false
     
+    // Boundary detection support (used by goal/streak grid for strict boundaries)
+    public var boundaryDetector: GridBoundaryDetector?
+    
     public override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
         super.init(frame: frame, collectionViewLayout: layout)
         setupIntrinsicSizeObserver()
@@ -40,7 +43,10 @@ public class CustomCollectionView: UICollectionView {
     // Override intrinsic content size to ensure proper sizing
     override public var intrinsicContentSize: CGSize {
         let contentSize = self.collectionViewLayout.collectionViewContentSize
-        return CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
+        
+        let height = contentSize.height > 0 ? contentSize.height : calculateEstimatedHeight()
+        
+        return CGSize(width: UIView.noIntrinsicMetric, height: height)
     }
     
     public override func layoutSubviews() {
@@ -61,6 +67,43 @@ public class CustomCollectionView: UICollectionView {
             if self.suspendIntrinsicInvalidation { return }
             self.invalidateIntrinsicContentSize()
         }
+    }
+    
+    /// Calculates estimated height when collection view content size is not yet available
+    /// This prevents layout jumping during initial load
+    private func calculateEstimatedHeight() -> CGFloat {
+        // Get data source item count
+        guard let dataSource = self.dataSource else { return 100 }
+        let itemCount = dataSource.collectionView(self, numberOfItemsInSection: 0)
+        
+        // Estimate based on typical cell sizes and layout
+        if let flowLayout = collectionViewLayout as? UICollectionViewFlowLayout {
+            // Use flow layout spacing and insets for calculation
+            let availableWidth = bounds.width - flowLayout.sectionInset.left - flowLayout.sectionInset.right
+            
+            // Estimate columns based on available width and typical item size
+            let estimatedItemWidth: CGFloat = 120 // Typical metric card width
+            let estimatedColumns = max(1, Int(availableWidth / (estimatedItemWidth + flowLayout.minimumInteritemSpacing)))
+            let estimatedRows = Int(ceil(Double(itemCount) / Double(estimatedColumns)))
+            
+            // Calculate estimated height with increased bottom padding for last row
+            let estimatedItemHeight: CGFloat = 70 // Typical metric card height
+            let totalSpacing = CGFloat(max(0, estimatedRows - 1)) * flowLayout.minimumLineSpacing
+            let totalInsets = flowLayout.sectionInset.top + flowLayout.sectionInset.bottom
+            
+            // Add optimal bottom padding for last row items during drag operations
+            let extraBottomPadding: CGFloat = 20 // Fine-tuned additional space for last row
+            return CGFloat(estimatedRows) * estimatedItemHeight + totalSpacing + totalInsets + extraBottomPadding
+        }
+        
+        // Fallback estimation for other layout types with extra bottom padding
+        let estimatedRowHeight: CGFloat = 102 // Item height + spacing
+        let estimatedColumns = bounds.width > 500 ? 4 : (itemCount > 4 ? 3 : 2) // Device-based estimation
+        let estimatedRows = Int(ceil(Double(itemCount) / Double(estimatedColumns)))
+        
+        // Add optimal bottom padding for last row items
+        let extraBottomPadding: CGFloat = 20
+        return max(100, CGFloat(estimatedRows) * estimatedRowHeight + 40 + extraBottomPadding) 
     }
     
     // MARK: - Animation Suppression Methods
@@ -119,4 +162,3 @@ public class CustomCollectionView: UICollectionView {
         }
     }
 }
-

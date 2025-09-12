@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun DashboardMilestone(
   progress: Progress,
   inEditMode: Boolean = false,
+  isFromSetup: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   modifier: Modifier = Modifier
@@ -90,6 +91,7 @@ fun DashboardMilestone(
       visibleMilestones = visibleMilestones,
       hiddenMilestones = hiddenMilestones,
       inEditMode = inEditMode,
+      isFromSetup = isFromSetup,
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       progress = progress,

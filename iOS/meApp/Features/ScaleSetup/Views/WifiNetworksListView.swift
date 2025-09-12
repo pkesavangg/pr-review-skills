@@ -12,15 +12,37 @@ struct WifiNetworksListView: View {
     
     let networks: [WifiDetails]
     let onNetworkSelected: (WifiDetails) -> Void
+    let isInteractive: Bool
+    let showChevron: Bool
+    
+    init(
+        networks: [WifiDetails],
+        onNetworkSelected: @escaping (WifiDetails) -> Void,
+        isInteractive: Bool = true,
+        showChevron: Bool = true
+    ) {
+        self.networks = networks
+        self.onNetworkSelected = onNetworkSelected
+        self.isInteractive = isInteractive
+        self.showChevron = showChevron
+    }
     
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             ForEach(networks, id: \.id) { network in
-                Button(action: {
-                    onNetworkSelected(network)
-                }) {
-                    networkListItem(network: network) {
-                        onNetworkSelected(network)
+                Group {
+                    if isInteractive {
+                        Button(action: {
+                            onNetworkSelected(network)
+                        }) {
+                            networkListItem(network: network, showChevron: showChevron) {
+                                onNetworkSelected(network)
+                            }
+                        }
+                    } else {
+                        networkListItem(network: network, showChevron: showChevron) {
+                            // Non-interactive row – no action
+                        }
                     }
                 }
                 if network.id != networks.last?.id {
@@ -37,12 +59,11 @@ struct WifiNetworksListView: View {
     }
     
     @ViewBuilder
-    private func networkListItem(network: WifiDetails, onNetworkSelected: @escaping () -> Void) -> some View {
+    private func networkListItem(network: WifiDetails, showChevron: Bool, onNetworkSelected: @escaping () -> Void) -> some View {
         ListItemView(
             leadingImage: AppAssets.wifi,
             title: network.ssid ?? "Unknown Network",
-            trailing: Image(AppAssets.chevronRight)
-                .foregroundColor(theme.actionPrimary),
+            trailing: Group { if showChevron { Image(AppAssets.chevronRight).foregroundColor(theme.actionPrimary) } },
             rowHeight: 48,
             onTap: onNetworkSelected,
             verticalPadding: .zero

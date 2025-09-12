@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.greatergoods.blewrapper.GGPermissionService
@@ -50,29 +51,41 @@ constructor(
     fun create(sku: String): AppsyncScaleSetupViewModel
   }
 
-  private val TAG = "AppsyncScaleSetupViewModel"
-
   override fun provideInitialState(): AppsyncScaleSetupState = AppsyncScaleSetupState()
 
   override fun handleIntent(intent: AppsyncScaleSetupIntent) {
+    AppLog.d(TAG, "Handling appsync scale setup intent: ${intent::class.simpleName}")
     super.handleIntent(intent)
     when (intent) {
-      is AppsyncScaleSetupIntent.Next -> onNext()
-      is AppsyncScaleSetupIntent.ExitSetup ->
+      is AppsyncScaleSetupIntent.Next -> {
+        AppLog.d(TAG, "Next intent received")
+        onNext()
+      }
+      is AppsyncScaleSetupIntent.ExitSetup -> {
+        AppLog.d(TAG, "Exit setup intent received, isSetupFinished: ${intent.isSetupFinished}")
         onExitSetup(intent.isSetupFinished)
+      }
 
-      AppsyncScaleSetupIntent.OpenHelp -> openHelpModal()
-      is AppsyncScaleSetupIntent.RequestPermission -> requestPermission(
-        intent.permissionType,
-      )
+      AppsyncScaleSetupIntent.OpenHelp -> {
+        AppLog.d(TAG, "Open help intent received")
+        openHelpModal()
+      }
+      is AppsyncScaleSetupIntent.RequestPermission -> {
+        AppLog.d(TAG, "Request permission intent received: ${intent.permissionType}")
+        requestPermission(intent.permissionType)
+      }
 
-      is AppsyncScaleSetupIntent.HandleAppSyncResult -> handleAppSyncResult(intent.result)
+      is AppsyncScaleSetupIntent.HandleAppSyncResult -> {
+        AppLog.d(TAG, "Handle AppSync result intent received")
+        handleAppSyncResult(intent.result)
+      }
 
       else -> {}
     }
   }
 
   init {
+    AppLog.d(TAG, "AppsyncScaleSetupViewModel initialized for SKU: $sku")
     loadScaleInfo()
     observePermissions()
     observeSetup()
@@ -82,14 +95,20 @@ constructor(
    * Loads scale information based on the provided SKU.
    */
   private fun loadScaleInfo() {
-    handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
     AppLog.d(TAG, "Loading scale info for SKU: $sku")
+    handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
   }
 
   private fun observePermissions() {
+    AppLog.d(TAG, "Starting permission observation")
     viewModelScope.launch {
-      permissionService.permissionCallBackFlow.collect { permissions ->
-        handleIntent(AppsyncScaleSetupIntent.SetPermissions(permissions))
+      try {
+        permissionService.permissionCallBackFlow.collect { permissions ->
+          AppLog.d(TAG, "Permission status updated: ${permissions.size} permissions")
+          handleIntent(AppsyncScaleSetupIntent.SetPermissions(permissions))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing permissions", e)
       }
     }
   }
@@ -107,34 +126,43 @@ constructor(
         val areRequiredPermissionsEnabled = AppPermissionsHelper
           .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
         val currentState = state.value
+        AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
         // If permissions are enabled and we're on PERMISSIONS step, auto-advance
         if (areRequiredPermissionsEnabled && currentState.currentStep == AppsyncScaleSetupStep.PERMISSIONS) {
           AppLog.d(TAG, "Permissions granted, auto-advancing to next step")
           handleIntent(AppsyncScaleSetupIntent.Next)
         } else {
-          requestPermission(GGPermissionType.CAMERA)
-          AppLog.w(TAG, "Cannot proceed: required permissions not granted")
+          // Check and request permissions sequentially
+          permissionAccess()
         }
       }
 
       else -> {
+        AppLog.d(TAG, "Proceeding to next step for: ${currentState.currentStep}")
         // For other steps, just move to next
       }
     }
   }
 
   private fun handleAppSyncResult(result: AppSyncResult) {
+    AppLog.d(TAG, "Handling AppSync result - canceled: ${result.canceled}, manual: ${result.manual}")
     if (result.canceled || !result.manual) {
+      AppLog.d(TAG, "AppSync result indicates proceeding to next step")
       handleIntent(AppsyncScaleSetupIntent.Next)
+    } else {
+      AppLog.d(TAG, "AppSync result indicates manual mode, not proceeding")
     }
   }
 
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
+    AppLog.d(TAG, "Exit setup requested - isSetupFinished: $isSetupFinished, isLastStep: ${state.value.isLastStep}")
     if (isSetupFinished || state.value.isLastStep) {
+      AppLog.d(TAG, "Setup is finished, checking and saving scale")
       checkAndSaveScale()
     } else {
+      AppLog.d(TAG, "Setup not finished, showing exit confirmation dialog")
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
@@ -142,6 +170,7 @@ constructor(
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
           cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
           onConfirm = {
+            AppLog.d(TAG, "User confirmed exit setup")
             navigateBack()
           },
         ),
@@ -150,26 +179,40 @@ constructor(
   }
 
   private fun checkAndSaveScale() {
+    AppLog.d(TAG, "Checking and saving scale for SKU: $sku")
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     viewModelScope.launch {
-      val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
-      if (alreadyPairedScale != null) {
-        deviceService.deleteScale(alreadyPairedScale.id)
+      try {
+        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
+        if (alreadyPairedScale != null) {
+          AppLog.d(TAG, "Found already paired scale, deleting: ${alreadyPairedScale.id}")
+          deviceService.deleteScale(alreadyPairedScale.id)
+        }
+
+        val scaleInfo = SCALES.find { it.sku == state.value.sku }
+        AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}")
+
+        val appSyncDevice = Device(
+          device = GGDeviceDetail(
+            deviceName = scaleInfo?.productName ?: "",
+            macAddress = "",
+            identifier = "",
+          ),
+          sku = state.value.sku,
+          deviceType = ScaleSetupType.AppSync.value,
+          nickname = scaleInfo?.productName!!,
+        )
+
+        AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
+        deviceService.saveScale(appSyncDevice)
+        AppLog.i(TAG, "Successfully saved AppSync scale")
+        dialogQueueService.dismissLoader()
+        navigateBack()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error checking and saving scale", e)
+        dialogQueueService.dismissLoader()
+        navigateBack()
       }
-      val scaleInfo = SCALES.find { it.sku == state.value.sku }
-      val appSyncDevice = Device(
-        device = GGDeviceDetail(
-          deviceName = scaleInfo?.productName ?: "",
-          macAddress = "",
-          identifier = "",
-        ),
-        sku = state.value.sku,
-        deviceType = ScaleSetupType.AppSync.value,
-        nickname = scaleInfo?.productName!!,
-      )
-      deviceService.saveScale(appSyncDevice)
-      dialogQueueService.dismissLoader()
-      navigateBack()
     }
   }
 
@@ -177,6 +220,7 @@ constructor(
    * Opens the Help modal.
    */
   private fun openHelpModal() {
+    AppLog.d(TAG, "Opening help modal")
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HelpPopup,
@@ -184,6 +228,7 @@ constructor(
           mapOf(
             "showGuide" to true,
             "onGuideClick" to {
+              AppLog.d(TAG, "User clicked on guide in help modal")
               openProductGuide()
               dialogQueueService.dismissCurrent()
             },
@@ -196,12 +241,13 @@ constructor(
    * Navigates back from the setup screen.
    */
   private fun navigateBack() {
+    AppLog.d(TAG, "Navigating back from AppSync scale setup")
     viewModelScope.launch {
       try {
         navigationService.navigateBack()
-        AppLog.d(TAG, "Successfully navigated back from scale setup")
+        AppLog.d(TAG, "Successfully navigated back from AppSync scale setup")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from scale setup", e.toString())
+        AppLog.e(TAG, "Failed to navigate back from AppSync scale setup", e)
       }
     }
   }
@@ -209,40 +255,73 @@ constructor(
   private fun openProductGuide() {
     val sku = state.value.sku
     val url = "${AppConfig.PRODUCT_URL}/$sku"
+    AppLog.d(TAG, "Opening product guide URL: $url")
     openInAppBrowser(url)
+  }
+
+  /**
+   * Handles permission access similar to Angular's permissionAccess() method.
+   * For AppSync setup, only camera permission is required.
+   */
+  private fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+
+    // Check Camera permission for AppSync setup
+    if (currentPermissions[GGPermissionType.CAMERA] != GGPermissionState.ENABLED) {
+      AppLog.d(TAG, "Requesting Camera permission")
+      handleIntent(AppsyncScaleSetupIntent.RequestPermission(GGPermissionType.CAMERA))
+      return
+    }
+
+    AppLog.d(TAG, "All required permissions are enabled")
   }
 
   /**
    * Requests a specific permission with rationale alert using the permission service.
    */
   private fun requestPermission(permissionType: String) {
+    AppLog.d(TAG, "Requesting permission: $permissionType")
     viewModelScope.launch {
       try {
         dialogUtility.permissionAlert(
           permissionType = permissionType,
           onRequest = {
+            AppLog.d(TAG, "User confirmed permission request for: $permissionType")
             permissionService.requestPermission(permissionType)
           },
         )
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e.toString())
+        AppLog.e(TAG, "Error requesting permission $permissionType", e)
       }
     }
   }
 
   private fun observeSetup() {
+    AppLog.d(TAG, "Starting setup observation")
     viewModelScope.launch {
-      state.collect {
-        when (it.currentStep) {
-          AppsyncScaleSetupStep.PERMISSIONS -> {
-            val areRequiredPermissionsEnabled = AppPermissionsHelper
-              .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
-            handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(areRequiredPermissionsEnabled))
-          }
+      try {
+        state.collect { currentState ->
+          when (currentState.currentStep) {
+            AppsyncScaleSetupStep.PERMISSIONS -> {
+              val areRequiredPermissionsEnabled = AppPermissionsHelper
+                .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+              AppLog.d(TAG, "Permissions step - required permissions enabled: $areRequiredPermissionsEnabled")
+              handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(areRequiredPermissionsEnabled))
+            }
 
-          else -> handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(true))
+            else -> {
+              AppLog.d(TAG, "Non-permissions step, enabling next button")
+              handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(true))
+            }
+          }
         }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing setup", e)
       }
     }
+  }
+
+  companion object {
+    private const val TAG = "AppsyncScaleSetupViewModel"
   }
 }

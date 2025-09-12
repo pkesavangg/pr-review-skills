@@ -79,7 +79,7 @@ object DateTimeConverter {
         defaultZone,
       ).format(formatter)
     } catch (e: Exception) {
-      AppLog.e("DateTimeConverter", "Failed to convert timestamp to ISO string", e.toString())
+      AppLog.e("DateTimeConverter", "Failed to convert timestamp to ISO string", e)
       ""
     }
   }

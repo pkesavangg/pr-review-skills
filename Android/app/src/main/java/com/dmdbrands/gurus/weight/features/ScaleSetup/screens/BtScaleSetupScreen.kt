@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -118,7 +119,7 @@ fun BtScaleSetupScreenContent(
         ) {
           when (step) {
             BtScaleSetupStep.SCALE_INFO -> {
-              ScaleInfo(sku = sku)
+              ScaleInfo(sku = sku, setupType = ScaleSetupType.Bluetooth,)
             }
 
             BtScaleSetupStep.PERMISSIONS -> {

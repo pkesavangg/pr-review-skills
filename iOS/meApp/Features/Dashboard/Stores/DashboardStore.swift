@@ -130,7 +130,7 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] newWeightUnit in
-                self?.logger.log(level: .info, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
+                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -141,7 +141,7 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] isWeightlessOn in
-                self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
+                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -152,7 +152,7 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] weightlessWeight in
-                self?.logger.log(level: .info, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
+                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -327,7 +327,18 @@ class DashboardStore: ObservableObject {
     }
     
     var displayWeight: Double? {
-        // If a point is selected, show its weight value
+        // If a crosshair date is selected (can be on empty day), compute interpolated weight at that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+        }
+
+        // If a concrete point is selected, show its weight value
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return nil }
@@ -338,7 +349,7 @@ class DashboardStore: ObservableObject {
             }
         }
         
-        // When no point is selected, show average of visible region if available
+        // When no selection, show average of visible region if available
         let opsToUse = visibleOperations
         
         // Check if weightless mode is enabled
@@ -355,6 +366,10 @@ class DashboardStore: ObservableObject {
     }
     
     var weightLabel: String {
+        // If a crosshair date is selected, show that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.formatSelectedDate(selectedDate, for: state.graph.selectedPeriod)
+        }
         
         // If a point is selected, show its date
         if let selectedPoint = state.graph.selectedPoint {
@@ -380,6 +395,19 @@ class DashboardStore: ObservableObject {
         }
         
         let lastScrollPosition = graphManager.state.xScrollPosition
+        
+        // Stabilize year label: use calendar year containing the CENTER of the visible window
+        // (avoids flipping when the left boundary nudges into previous month/year)
+        if state.graph.selectedPeriod == .year {
+            let cal = Calendar.current
+            let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
+            if let yearInterval = cal.dateInterval(of: .year, for: center) {
+                let minDate = yearInterval.start
+                let maxDate = yearInterval.end
+                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
+            }
+        }
+        
         let minDate = lastScrollPosition
         let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: state.graph.selectedPeriod))
         
@@ -419,12 +447,13 @@ class DashboardStore: ObservableObject {
     /// Returns the average weight for the current visible or all operations
     @MainActor
     func getCurrentAverageWeight() -> Double {
-        let visibleOps = visibleOperations
-        if visibleOps.isEmpty {
+        // Prefer strict on-screen visible operations; if empty, fall back to buffered visible range
+        // This avoids returning 0.0 when the left boundary barely excludes entries (e.g., UTC vs local midnight)
+        let strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let opsToUse = strictVisibleOps.isEmpty ? visibleOperations : strictVisibleOps
+        if opsToUse.isEmpty {
             return 0
         }
-        let opsToUse = visibleOps
-        
         let weightValues = opsToUse.map { summary -> Double in
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return 0 }
@@ -470,7 +499,7 @@ class DashboardStore: ObservableObject {
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            logger.log(level: .info, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
+            logger.log(level: .debug, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
         }
         
     }
@@ -580,7 +609,7 @@ class DashboardStore: ObservableObject {
     }
     
     // Delegate configuration loading to respective managers
-    private func loadDashboardConfigurationFromAPI() async {
+    func loadDashboardConfigurationFromAPI() async {
         do {
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
@@ -588,8 +617,17 @@ class DashboardStore: ObservableObject {
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
             
+            // Mark loading as complete
+            await MainActor.run {
+                objectWillChange.send()
+            }
+            
             logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
+            // Even on error, update UI state
+            await MainActor.run {
+                objectWillChange.send()
+            }
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
         }
     }
@@ -791,7 +829,7 @@ class DashboardStore: ObservableObject {
         
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
-            logger.log(level: .info, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
         }
     }
     
@@ -813,7 +851,7 @@ class DashboardStore: ObservableObject {
         UIView.clearWiggleIntervalCache()
         
         resetGridLayout()
-        logger.log(level: .info, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
+        logger.log(level: .debug, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
     
     func selectMetric(_ label: String) {
@@ -853,7 +891,7 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await self.goalManager.loadGoalData()
-                self.logger.log(level: .info, tag: "DashboardStore", message: "Goal data reloaded after settings change")
+                self.logger.log(level: .debug, tag: "DashboardStore", message: "Goal data reloaded after settings change")
             } catch {
                 self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reload goal data after settings change: \(error)")
             }
@@ -878,7 +916,7 @@ class DashboardStore: ObservableObject {
         // Force UI update to reflect the new metric type
         objectWillChange.send()
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
+        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
     }
     
     /// Handles unit changes by refreshing streak data and goal data
@@ -887,11 +925,11 @@ class DashboardStore: ObservableObject {
             do {
                 // Refresh streak data with new unit
                 try await streakManager.refreshStreakDataForUnitChange()
-                logger.log(level: .info, tag: "DashboardStore", message: "Refreshed streak data for unit change")
+                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed streak data for unit change")
                 
                 // Refresh goal data with new unit
                 try await goalManager.refreshGoalDataForUnitChange()
-                logger.log(level: .info, tag: "DashboardStore", message: "Refreshed goal data for unit change")
+                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed goal data for unit change")
                 
                 // Trigger UI update to refresh views with new unit
                 await MainActor.run {
@@ -1013,7 +1051,7 @@ class DashboardStore: ObservableObject {
     private func resetGridOrder() {
         state.ui.streakGridOrder = []
         state.ui.goalCardPosition = 0
-        logger.log(level: .info, tag: "DashboardStore", message: "Reset grid order to default")
+        logger.log(level: .debug, tag: "DashboardStore", message: "Reset grid order to default")
     }
     
     /// Enhanced reset that properly restores removed items and reverses reordering
@@ -1120,6 +1158,11 @@ class DashboardStore: ObservableObject {
         
         self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
+
+        // For TOTAL period, immediately compute and show visible-window averages
+        if period == .total {
+            updateMetricsForCurrentView()
+        }
     }
     
     // Delegate chart selection to GraphManager
@@ -1139,6 +1182,9 @@ class DashboardStore: ObservableObject {
             },
             resetMetrics: {
                 self.resetMetricsToLatestEntry()
+            },
+            setMetricPlaceholders: {
+                self.metricsManager.setPlaceholdersForAllMetrics()
             }
         )
         
@@ -1198,8 +1244,34 @@ class DashboardStore: ObservableObject {
             return
         }
         
-        // For TOTAL period, use all data to ensure Y-axis reflects complete range
-        let operationsForYAxis = state.graph.selectedPeriod == .total ? continuousOperations : visibleOperations
+        // Choose operations for Y-axis domain
+        // - TOTAL: all operations
+        // - Others: visible operations PLUS bracketing points to account for line segments extending beyond visible window
+        var operationsForYAxis: [BathScaleWeightSummary]
+        if state.graph.selectedPeriod == .total {
+            operationsForYAxis = continuousOperations
+        } else {
+            let visible = visibleOperations
+            let bracket = graphManager.getBracketingOperations(from: continuousOperations)
+            
+            if visible.isEmpty {
+                // No visible points - use bracketing points or all data as fallback
+                operationsForYAxis = bracket.isEmpty ? continuousOperations : bracket
+            } else {
+                // Combine visible points with bracketing points for complete line coverage
+                // This ensures Y-axis accounts for line segments that extend beyond the visible window
+                // Manually deduplicate by entryTimestamp since BathScaleWeightSummary doesn't conform to Hashable
+                var combinedOperations = visible
+                for bracketOp in bracket {
+                    // Only add if not already present (check by entryTimestamp for uniqueness)
+                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                        combinedOperations.append(bracketOp)
+                    }
+                }
+                // Sort using the same key used for deduplication to ensure consistency
+                operationsForYAxis = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
+            }
+        }
         
         // Apply cache update in a transaction that disables animations to prevent layout jumps
         graphManager.calculateAndCacheYAxisDomain(
@@ -1225,7 +1297,8 @@ class DashboardStore: ObservableObject {
     }
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        return String(format: "%.0f", weight)
+        let rounded = roundedGoalWeight(weight)
+        return String(format: "%.0f", rounded)
     }
     
     func formatChartDate(_ date: Date) -> String {
@@ -1237,6 +1310,10 @@ class DashboardStore: ObservableObject {
             formatter.dateFormat = "MMM yyyy"
         }
         return formatter.string(from: date)
+    }
+    
+    func roundedGoalWeight(_ weight: Double) -> Double {
+        return weight.rounded(.toNearestOrAwayFromZero) // or your preferred rule
     }
     
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
@@ -1399,16 +1476,34 @@ class DashboardStore: ObservableObject {
     ///   - to: The destination index
     func moveMetric(from sourceIndex: Int, to destinationIndex: Int) {
         // Validate indices before performing the move
+        // Restrict moves to only active (non-removed) metrics
+        // Calculate the number of active (non-removed) metrics dynamically
+        let activeMetricsCount = metricsToShow.count - state.ui.removedMetrics.count
+        
         guard sourceIndex != destinationIndex,
-              sourceIndex >= 0 && sourceIndex < metricsManager.state.metrics.count,
-              destinationIndex >= 0 && destinationIndex < metricsManager.state.metrics.count else {
-            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex)")
+              sourceIndex >= 0 && sourceIndex < activeMetricsCount,
+              destinationIndex >= 0 && destinationIndex < activeMetricsCount,
+              sourceIndex < metricsToShow.count,
+              destinationIndex < metricsToShow.count else {
+            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)")
             return
         }
         
-        // Move the metric in the data source
-        let movedMetric = metricsManager.state.metrics.remove(at: sourceIndex)
-        metricsManager.state.metrics.insert(movedMetric, at: destinationIndex)
+        // Get the metrics that are currently being shown
+        let visibleMetrics = metricsToShow
+        let sourceMetric = visibleMetrics[sourceIndex]
+        let destinationMetric = visibleMetrics[destinationIndex]
+        
+        // Find the actual indices in the full metrics array
+        guard let sourceActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == sourceMetric.id }),
+              let destinationActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == destinationMetric.id }) else {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Could not find actual indices for metrics")
+            return
+        }
+        
+        // Move the metric in the data source using actual indices
+        let movedMetric = metricsManager.state.metrics.remove(at: sourceActualIndex)
+        metricsManager.state.metrics.insert(movedMetric, at: destinationActualIndex)
         
         // Update active metrics count if needed
         let currentActiveCount = min(metricsManager.state.activeMetricsCount, metricsManager.state.metrics.count)
@@ -1417,7 +1512,7 @@ class DashboardStore: ObservableObject {
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric from \(sourceIndex) to \(destinationIndex)")
+        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
     
     // MARK: - Graph State Management
@@ -1429,9 +1524,14 @@ class DashboardStore: ObservableObject {
         Task {
             // Clear selection through graph manager
             await graphManager.handleChartSelection(at: nil)
-            
-            // Reset metrics to latest entry values
-            resetMetricsToLatestEntry()
+
+            // For TOTAL period, show visible-window averages instead of latest entry
+            if self.state.graph.selectedPeriod == .total {
+                self.updateMetricsForCurrentView()
+            } else {
+                // Reset metrics to latest entry values for other periods
+                self.resetMetricsToLatestEntry()
+            }
         }
     }
     
@@ -1494,6 +1594,10 @@ class DashboardStore: ObservableObject {
             self.updateWeightDisplayForCurrentView()
             self.updateMetricsForCurrentView()
             
+            // Summary log at end of scroll
+            let count = self.visibleOperations.count
+            self.logger.log(level: .debug, tag: "DashboardStore", message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)")
+
             // Mark scroll end processing as complete
             self.isProcessingScrollEnd = false
         }
@@ -1541,16 +1645,17 @@ class DashboardStore: ObservableObject {
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
     private func updateMetricsForCurrentView() {
-        graphManager.updateMetricsForCurrentView(
-            selectedPoint: state.graph.selectedPoint,
-            visibleOperations: visibleOperations,
-            updateMetrics: { selectedPoint in
-                try await self.metricsManager.updateMetrics(with: selectedPoint)
-            },
-            resetMetrics: {
-                self.resetMetricsToLatestEntry()
+        if let selectedPoint = state.graph.selectedPoint {
+            Task {
+                try? await self.metricsManager.updateMetrics(with: selectedPoint)
             }
-        )
+        } else {
+            // No selection: compute visible-window averages for all metrics
+            let ops = self.visibleOperations
+            Task {
+                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+            }
+        }
     }
     
     // MARK: - UI State Management
@@ -1620,7 +1725,7 @@ class DashboardStore: ObservableObject {
         // Force UI update
         objectWillChange.send()
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
+        logger.log(level: .debug, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
     }
     
     /// Perform actions when dashboard appears
@@ -1630,6 +1735,15 @@ class DashboardStore: ObservableObject {
         loadGoalCardData()
         // Handle any settings changes
         handleSettingsChange()
+        
+        // Refresh dashboard configuration from API to ensure latest changes are reflected
+        Task {
+            await loadDashboardConfigurationFromAPI()
+            await MainActor.run {
+                self.objectWillChange.send()
+            }
+        }
+        
         // After positioning is complete, update Y-axis cache to ensure proper domain calculation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
@@ -1638,7 +1752,23 @@ class DashboardStore: ObservableObject {
             self.objectWillChange.send()
         }
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
+    }
+    
+    /// Force a complete refresh of the dashboard state
+    /// This ensures all UI elements are updated immediately
+    func refreshDashboardState() {
+        // Force refresh of all dashboard components
+        loadLatestEntryData()
+        loadGoalCardData()
+        handleSettingsChange()
+        
+        // Force UI update
+        objectWillChange.send()
+        
+        // Reset grid layout to ensure proper display
+        resetGridLayout()
+
     }
     
     /// Begins an edit session by snapshotting the current state for synchronous revert.

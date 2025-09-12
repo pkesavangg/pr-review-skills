@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package com.dmdbrands.gurus.weight.proto;
+
+option java_multiple_files = true;
+option java_package = "com.dmdbrands.gurus.weight.proto";
+
+// Bluetooth preferences message for 0412 scale setup filtering
+message BluetoothPreferences {
+    string selected_mac_address = 1;
+}

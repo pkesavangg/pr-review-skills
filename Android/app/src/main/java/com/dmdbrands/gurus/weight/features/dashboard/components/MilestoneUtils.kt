@@ -17,6 +17,13 @@ fun isGoalProgressMilestone(milestone: Stat): Boolean {
     }
 }
 
+fun isStreakMilestone(milestone: Stat): Boolean {
+    return when (milestone.key) {
+        is DashboardKey.Milestone -> milestone.key.key == MilestoneKey.CURRENT_STREAK || milestone.key.key == MilestoneKey.LONGEST_STREAK
+        is DashboardKey.Metric -> false
+    }
+}
+
 /**
  * Generates a unique key for milestone items in the grid.
  *

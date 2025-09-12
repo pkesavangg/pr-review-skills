@@ -271,8 +271,8 @@ private fun SettingsSectionPreview() {
                             title = "Custom Icon",
                             type =
                                 SettingsItemType.CustomIcon(
-                                    text = "Custom",
-                                    icon = { AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus") },
+                                  text = "Custom",
+                                  icon = { AppIcon(id = AppIcons.Outlined.PlusCircle, contentDescription = "Plus") },
                                 ),
                             onClick = {}, // Row click (not triggered)
                         ),
@@ -289,7 +289,7 @@ private fun SettingsSectionPreview() {
                                         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus")
+                                        AppIcon(id = AppIcons.Outlined.PlusCircle, contentDescription = "Plus")
                                         Text(
                                             text = "Custom Content",
                                             style = MeTheme.typography.body2,

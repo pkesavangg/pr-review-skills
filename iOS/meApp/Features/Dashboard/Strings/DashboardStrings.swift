@@ -14,7 +14,11 @@ struct DashboardStrings {
     static let metricInfo = "Metric info"
     static let saveChanges = "Save Changes"
     static let resetDashboard = "Reset Dashboard"
-
+    
+    // Dashboard Metrics
+    static let customizeDashboardTitle = "Customize App Dashboard"
+    static let customizeDashboardSubtitle = "Rearrange tiles and/or hide unwanted metrics from your dashboard."
+    
     // Metrics labels, units, preLabels
     static let weight = "weight"
     static let bmi = "bmi"
@@ -40,7 +44,7 @@ struct DashboardStrings {
     static let bmrKcalUnit = "kcal"
     static let metAge = "met age"
     static let metAgeUnit = "yrs"
-
+    
     // Streak/Loss labels
     static let currentStreak = "current streak"
     static let longestStreak = "longest streak"
@@ -48,7 +52,7 @@ struct DashboardStrings {
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"
     static let lbsTotal = "lbs/total"
-
+    
     // Goal Card/Progress strings
     static let goalTypeLabel = "Goal Type: %@"
     static let plus  = "+"
@@ -59,7 +63,7 @@ struct DashboardStrings {
         return "\(unit) to goal"
     }
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {
-           return "\(unit) to \(goalWeight) \(unit) goal weight"
+        return "\(unit) to \(goalWeight) \(unit) goal weight"
     }
     
     // Empty state messages

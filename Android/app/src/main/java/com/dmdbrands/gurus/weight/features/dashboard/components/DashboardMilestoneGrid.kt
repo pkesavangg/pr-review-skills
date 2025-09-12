@@ -43,6 +43,7 @@ fun DashboardMilestoneGrid(
   visibleMilestones: List<Stat>,
   hiddenMilestones: List<Stat>,
   inEditMode: Boolean,
+  isFromSetup: Boolean,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
 ) {
@@ -84,7 +85,7 @@ fun DashboardMilestoneGrid(
       .padding(horizontal = MeTheme.spacing.sm)
       .heightIn(max = 800.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
   ) {
     // Visible milestones (reorderable)
     items(
@@ -108,6 +109,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = inEditMode,
           isDragging = isDragging,
+          isFromSetup = isFromSetup,
           isVisible = true,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = this,
@@ -132,6 +134,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = true,
           isVisible = false,
+          isFromSetup = isFromSetup,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = null,
         )

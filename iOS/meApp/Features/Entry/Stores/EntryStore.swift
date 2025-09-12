@@ -37,13 +37,18 @@ final class EntryStore: ObservableObject {
     // Maximum BMI that can be set automatically (matches web)
     private let maxBmiValue: Double = 99.0
     private var cancellables = Set<AnyCancellable>()
+    private var isAdjustingTime = false
     
     let tag = "EntryStore"
     
     var maxSelectableTime: Date {
-        // If selected date is today, cap at current time; otherwise end of day
+        // If selected date is today, cap at current time rounded down to the nearest minute
+        // so the limit is stable and does not tick every second causing view churn.
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
-            return Date()
+            let now = Date()
+            let calendar = Calendar.current
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+            return calendar.date(from: comps) ?? now
         } else {
             var comps = Calendar.current.dateComponents([.year, .month, .day], from: manualEntryForm.date.value)
             comps.hour = 23; comps.minute = 59
@@ -53,13 +58,6 @@ final class EntryStore: ObservableObject {
     
     // MARK: - Init
     init() {
-        // Forward form updates so that SwiftUI refreshes when any control changes
-        manualEntryForm.objectWillChange
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-        
         // Update canShowOtherBodyMetrics based on btWifiR4 scale availability
         scaleService.$scales
             .map { scales in
@@ -72,6 +70,7 @@ final class EntryStore: ObservableObject {
         initializeObservers()
         setupBmiObservers()
         updateWeightValidators()
+        setupDateTimeObservers()
     }
     
     // MARK: - Public helpers
@@ -83,6 +82,8 @@ final class EntryStore: ObservableObject {
     
     /// Persists the manual entry using `EntryService`.
     func saveEntry() async {
+        // Final guard to ensure we never save a future time when date is today
+        clampTimeForSelectedDate()
         guard manualEntryForm.isValid else { return }
         // Build ISO-8601 timestamp with selected date + time
         let entryTimestamp = DateTimeTools.isoString(date: manualEntryForm.date.value,
@@ -148,6 +149,7 @@ final class EntryStore: ObservableObject {
             text: loaderLang.savingEntry,
         ))
         do {
+            try await Task.sleep(for: .seconds(2))
             try await entryService.saveNewEntry(entry)
             // Reset form after successful save so fields are pristine
             resetForm()
@@ -157,6 +159,78 @@ final class EntryStore: ObservableObject {
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
         }
         notificationService.dismissLoader()
+    }
+    
+    /// Updates the time field whenever the Entry tab is selected.
+    /// - Note: If the selected date is today, sets time to now. If the date is not today,
+    ///   clamps time to `maxSelectableTime` when it's out of bounds. Marks the control as
+    ///   pristine to avoid flagging an automatic update as a user edit.
+    func refreshTimeOnTabSelected() {
+        let now = Date()
+        if Calendar.current.isDateInToday(manualEntryForm.date.value) {
+            manualEntryForm.time.value = now
+            manualEntryForm.time.markAsPristine()
+        } else {
+            let maxTime = maxSelectableTime
+            if manualEntryForm.time.value > maxTime {
+                manualEntryForm.time.value = maxTime
+                manualEntryForm.time.markAsPristine()
+            }
+        }
+    }
+
+    /// Ensures the time value is valid for the currently selected date.
+    /// - If the date is today, time cannot be in the future.
+    /// - If the date is not today, time cannot exceed the end of that day (23:59).
+    private func clampTimeForSelectedDate(selectedDate: Date? = nil, selectedTime: Date? = nil) {
+        if isAdjustingTime { return }
+        isAdjustingTime = true
+        defer { isAdjustingTime = false }
+        let date = selectedDate ?? manualEntryForm.date.value
+        let time = selectedTime ?? manualEntryForm.time.value
+        let now = Date()
+        let combined = combine(date: date, time: time)
+        let newValue: Date = {
+            if Calendar.current.isDateInToday(date) {
+                return combined > now ? now : combined
+            } else {
+                let endOfSelectedDay = endOfDay(for: date)
+                return combined > endOfSelectedDay ? endOfSelectedDay : combined
+            }
+        }()
+        if manualEntryForm.time.value != newValue {
+            manualEntryForm.time.value = newValue
+            manualEntryForm.time.markAsPristine()
+        }
+    }
+
+    /// Observers for date/time cross-field constraints.
+    private func setupDateTimeObservers() {
+        // Clamp time whenever the selected date changes so future time isn't allowed for today
+        manualEntryForm.date.$value
+            .removeDuplicates()
+            .sink { [weak self] newDate in
+                self?.clampTimeForSelectedDate(selectedDate: newDate)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Combines a calendar date and a time-of-day into a single `Date` value.
+    private func combine(date: Date, time: Date) -> Date {
+        let calendar = Calendar.current
+        var dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: time)
+        dateComponents.hour = timeComponents.hour
+        dateComponents.minute = timeComponents.minute
+        dateComponents.second = timeComponents.second
+        return calendar.date(from: dateComponents) ?? date
+    }
+
+    /// Returns 23:59 of the given date in the current calendar/timezone.
+    private func endOfDay(for date: Date) -> Date {
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        comps.hour = 23; comps.minute = 59
+        return Calendar.current.date(from: comps) ?? date
     }
     
     // MARK: - AppSync Edit Helpers
@@ -286,6 +360,7 @@ final class EntryStore: ObservableObject {
         showTimePicker = false
         setupBmiObservers()
         updateWeightValidators()
+        setupDateTimeObservers()
     }
     
     /// Presents an exit confirmation alert when the form has unsaved changes.

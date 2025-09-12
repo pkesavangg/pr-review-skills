@@ -47,7 +47,7 @@ struct PermissionListView: View {
         case .appSync:
             config = ([.camera], PermissionsStrings.cameraPermissionDescription)
         case .btWifi:
-            config = ([.bluetooth, .internet], PermissionsStrings.bluetoothPermissionDescription)
+            config = ([.bluetooth, .internet], PermissionsStrings.locationPermissionDescription)
         case .bluetooth:
             config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
         case .wifi:

@@ -81,6 +81,8 @@ public enum DeviceSettingValue: Sendable, Equatable {
 public enum DeviceClearType: String, Sendable, CaseIterable {
     case userData     = "USER_DATA"
     case history      = "HISTORY"
+    case wifi         = "WIFI"
+    case settings     = "SETTINGS"
     case all          = "ALL"
 }
 

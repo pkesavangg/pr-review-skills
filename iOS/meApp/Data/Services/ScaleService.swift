@@ -54,6 +54,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let logger = LoggerService.shared
     private let migrationService = ScaleMigrationService()
     private var isSyncing = false
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Published State
     @Published private(set) var scales: [Device] = []
@@ -74,6 +75,25 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self._apiRepository = ScaleAPIRepository()
         self.localRepository = ScaleRepository()
         self.localKVRepo = ScaleRepositoryLocal()
+        Task {
+            await refreshScalesFromLocal()
+        }
+        
+        // React to active account changes so the scales list reflects the correct account immediately.
+        if let concreteAccountService = accountService as? AccountService {
+            concreteAccountService.$activeAccount
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] (_: Account?) in
+                    guard let self else { return }
+                    Task { @MainActor in
+                        // Clear current list to avoid showing stale devices while switching
+                        self.scales = []
+                        // Refresh from local storage scoped to the new active account
+                        await self.refreshScalesFromLocal()
+                    }
+                }
+                .store(in: &cancellables)
+        }
     }
     
     /// Initializes the scale service with required dependencies.
@@ -457,7 +477,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func createScaleInLocal(_ device: Device) async throws -> Device {
-        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
+        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server", data: device)
         return try await localRepository.createScale(device)
     }
     

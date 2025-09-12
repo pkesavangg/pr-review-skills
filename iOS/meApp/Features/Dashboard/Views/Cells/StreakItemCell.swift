@@ -47,6 +47,9 @@ class StreakCardCell: UICollectionViewCell {
     private var currentIsBeingDragged: Bool = false
     private var suppressOverlay: Bool = false
     
+    // Parent context for rendering rules
+    var parentView: DashboardMetricsParentView = .dashboard
+    
     // MARK: - Configuration
     
     func configure(with item: MetricItem, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
@@ -63,8 +66,20 @@ class StreakCardCell: UICollectionViewCell {
         // Set the removal state
         isRemoved = store.isStreakRemoved(item.label)
         
+        let streakValue: String
+        if parentView == .R4ScaleSetup {
+            let lower = item.label.lowercased()
+            if lower.contains("current streak") || lower.contains("longest streak") {
+                streakValue = "0"
+            } else {
+                streakValue = "+/-"
+            }
+        } else {
+            streakValue = item.value
+        }
+
         let streakCardView = StreakCardView(
-            value: item.value,
+            value: streakValue,
             label: item.label,
             icon: item.icon,
             isEditMode: store.state.ui.isEditMode,
@@ -293,8 +308,6 @@ class StreakCardCell: UICollectionViewCell {
         }
     }
     
-
-    
     /// Force clear all shadow effects - call this when items are dropped
     func clearAllShadowEffects() {
         layer.shadowOpacity = 0.0
@@ -304,6 +317,12 @@ class StreakCardCell: UICollectionViewCell {
         layer.shadowPath = nil
         layer.setNeedsDisplay()
         layer.displayIfNeeded()
+    }
+
+    private func applySelectionShadow() {
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 8
+        layer.shadowOffset = CGSize(width: 0, height: 4)
     }
 
     override func dragStateDidChange(_ dragState: UICollectionViewCell.DragState) {
@@ -376,6 +395,8 @@ class StreakCardCell: UICollectionViewCell {
         switch gesture.state {
         case .began:
             isLongPressed = true
+            // Apply mild selection shadow to indicate selection like MetricCell
+            applySelectionShadow()
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)
@@ -389,6 +410,7 @@ class StreakCardCell: UICollectionViewCell {
             callback(item.label)
         case .ended, .cancelled:
             isLongPressed = false
+            clearAllShadowEffects()
             // Reconfigure to show overlay after long press ends (if in edit mode)
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)

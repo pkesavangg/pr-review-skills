@@ -1,6 +1,6 @@
 import Foundation
 
-@MainActor
+
 final class LoggerApiRepository: LoggerApiRepositoryProtocol {
     private let httpClient = HTTPClient.shared
 
