@@ -413,7 +413,7 @@ constructor(
           // Call the actual firmware update service (similar to Angular's bluetoothservice.updateFirmware)
           ggDeviceService.startFirmwareUpgrade(scale.toGGBTDevice(), timestamp)
 
-          AppLog.d(TAG, "Firmware update started for scale: ${scale.device?.deviceName}, timestamp: $timestamp")
+          AppLog.d(TAG, "Firmware update started for scale: ${scale.device.deviceName}, timestamp: $timestamp")
 
           if (timestamp == 0L) {
             showToast(ScaleDetailsStrings.FirmwareUpdateStarted)

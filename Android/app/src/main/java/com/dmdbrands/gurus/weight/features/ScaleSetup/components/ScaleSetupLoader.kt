@@ -47,7 +47,7 @@ object SetupLoaderDefaults {
    */
   @Composable
   fun getIcon(iconType: LoaderIconType): Int = when (iconType) {
-    LoaderIconType.Measurement -> AppIcons.Default.BrandLogo
+    LoaderIconType.Measurement -> AppIcons.Default.WgLogo
     LoaderIconType.Error -> AppIcons.Default.ErrorIndicator
     LoaderIconType.Bluetooth -> AppIcons.Default.BluetoothIndicator
     LoaderIconType.Wifi -> AppIcons.Default.WifiIndicator
