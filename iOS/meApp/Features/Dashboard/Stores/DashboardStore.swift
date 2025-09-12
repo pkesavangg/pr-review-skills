@@ -44,7 +44,7 @@ class DashboardStore: ObservableObject {
     let graphManager: DashboardGraphManager
     let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
-    private let dataManager: DashboardDataManager
+     let dataManager: DashboardDataManager
     
     var shouldShowGoalCardOrStreaks: Bool {
             !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
@@ -130,7 +130,6 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] newWeightUnit in
-                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weight unit changed to: \(newWeightUnit.rawValue)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -141,7 +140,6 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] isWeightlessOn in
-                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weightless mode changed to: \(isWeightlessOn)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -152,7 +150,6 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] weightlessWeight in
-                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Weightless anchor weight changed to: \(weightlessWeight)")
                 self?.handleSettingsChange()
             }
             .store(in: &cancellables)
@@ -498,9 +495,7 @@ class DashboardStore: ObservableObject {
                 return goalManager.convertWeightToDisplay(Int(summary.weight))
             }
         }
-        if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            logger.log(level: .debug, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
-        }
+        _ = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count)
         
     }
     
@@ -829,7 +824,6 @@ class DashboardStore: ObservableObject {
         
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
-            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
         }
     }
     
@@ -851,7 +845,6 @@ class DashboardStore: ObservableObject {
         UIView.clearWiggleIntervalCache()
         
         resetGridLayout()
-        logger.log(level: .debug, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
     }
     
     func selectMetric(_ label: String) {
@@ -891,7 +884,6 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await self.goalManager.loadGoalData()
-                self.logger.log(level: .debug, tag: "DashboardStore", message: "Goal data reloaded after settings change")
             } catch {
                 self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reload goal data after settings change: \(error)")
             }
@@ -915,8 +907,6 @@ class DashboardStore: ObservableObject {
         
         // Force UI update to reflect the new metric type
         objectWillChange.send()
-        
-        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
     }
     
     /// Handles unit changes by refreshing streak data and goal data
@@ -925,11 +915,9 @@ class DashboardStore: ObservableObject {
             do {
                 // Refresh streak data with new unit
                 try await streakManager.refreshStreakDataForUnitChange()
-                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed streak data for unit change")
                 
                 // Refresh goal data with new unit
                 try await goalManager.refreshGoalDataForUnitChange()
-                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed goal data for unit change")
                 
                 // Trigger UI update to refresh views with new unit
                 await MainActor.run {
@@ -953,7 +941,6 @@ class DashboardStore: ObservableObject {
             do {
                 try await metricsManager.saveMetricsToAPI()
                 
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -1051,7 +1038,6 @@ class DashboardStore: ObservableObject {
     private func resetGridOrder() {
         state.ui.streakGridOrder = []
         state.ui.goalCardPosition = 0
-        logger.log(level: .debug, tag: "DashboardStore", message: "Reset grid order to default")
     }
     
     /// Enhanced reset that properly restores removed items and reverses reordering
@@ -1232,7 +1218,6 @@ class DashboardStore: ObservableObject {
     func updateYAxisCache() {
         // NEVER update Y-axis domain during active scrolling - this is the root cause of axis jumping
         guard !state.graph.isScrolling else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll to prevent jumping")
             return
         }
         
@@ -1273,8 +1258,6 @@ class DashboardStore: ObservableObject {
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
-        
-        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
     
     
@@ -1503,7 +1486,6 @@ class DashboardStore: ObservableObject {
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
         
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
     
     // MARK: - Graph State Management
@@ -1580,9 +1562,6 @@ class DashboardStore: ObservableObject {
             self.updateWeightDisplayForCurrentView()
             self.updateMetricsForCurrentView()
             
-            // Summary log at end of scroll
-            let count = self.visibleOperations.count
-            self.logger.log(level: .debug, tag: "DashboardStore", message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)")
 
             // Mark scroll end processing as complete
             self.isProcessingScrollEnd = false
@@ -1710,8 +1689,6 @@ class DashboardStore: ObservableObject {
         
         // Force UI update
         objectWillChange.send()
-        
-        logger.log(level: .debug, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
     }
     
     /// Perform actions when dashboard appears
@@ -1737,8 +1714,6 @@ class DashboardStore: ObservableObject {
             self.resetGridLayout()
             self.objectWillChange.send()
         }
-        
-        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
     }
     
     /// Force a complete refresh of the dashboard state
@@ -1775,7 +1750,6 @@ class DashboardStore: ObservableObject {
     
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
     func cancelEdit() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
         // Restore synchronous snapshots first to immediately revert UI/state
         if hasEditSnapshot {
             metricsManager.state.metrics = snapshotMetrics
@@ -1808,7 +1782,6 @@ class DashboardStore: ObservableObject {
 
     /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
     func resetEditSession() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
         
         // First, restore the original state from snapshot
         if hasEditSnapshot {
@@ -1845,7 +1818,5 @@ class DashboardStore: ObservableObject {
         
         // Force UI update to reflect the reset state
         objectWillChange.send()
-        
-        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }

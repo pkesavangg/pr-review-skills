@@ -72,16 +72,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
-            state.clearSelection()
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection cleared")
-            return
+        state.clearSelection()
+        return
         }
 
         // Hide any existing crosshair first
         state.showCrosshair = false
         state.selectedXValue = selectedDate
-
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
     }
 
     /// Handles complete chart selection including finding closest point and updating metrics
@@ -113,7 +110,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Update metrics with the selected point's values
         do {
             try await updateMetrics(selectedBin)
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
         } catch {
             logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
             resetMetrics()
@@ -180,11 +176,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func updateSelectedPoint(_ point: BathScaleWeightSummary?) {
         state.selectedPoint = point
         state.showCrosshair = point != nil
-        if let point = point {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point updated: \(point.date) with weight: \(point.weight)")
-        } else {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point cleared")
-        }
     }
 
     @available(iOS 18.0, *)
@@ -199,7 +190,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
              if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
-                    self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
                     self.latestScrollPosition = nil
             }
             state.updateScrollState(isScrolling: false)
@@ -214,7 +204,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .decelerating, .animating:
             state.updateScrollState(isScrolling: true)
         @unknown default:
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
+            break
         }
     }
 
@@ -230,15 +220,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
-
-                self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
     }
 
     func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries] {
         guard !operations.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
 
@@ -257,7 +244,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let weightMin = weightValues.min(),
               let weightMax = weightValues.max(),
               weightMax > weightMin else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for chart data")
             return []
         }
 
@@ -272,7 +258,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                               )
 
         if canUseCachedData {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
             return lastChartData
         }
 
@@ -312,7 +297,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastChartDataWeightRange = currentWeightRange
         lastChartDataSelectedMetric = selectedMetric
 
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Generated fresh chart data: \(series.count) points, weightRange: \(currentWeightRange), selectedMetric: \(selectedMetric ?? "none")")
         return series
     }
 
@@ -333,7 +317,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> [GraphSeries] {
 
         guard !allOperations.isEmpty else {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
 
@@ -343,7 +326,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             yAxisDomain: yAxisDomain,
             selectedMetric: selectedMetric
         ) {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
             return cachedChartSeriesData
         }
         
@@ -396,10 +378,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             selectedMetric: selectedMetric
         )
 
-        logger.log(level: .debug, tag: "DashboardGraphManager",
-                  message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
-                          "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
-                          "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
     }
 
@@ -412,13 +390,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> Bool {
         // Check if selected metric changed
         guard currentSelectedMetric == lastChartDataSelectedMetric else {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: selected metric changed from \(lastChartDataSelectedMetric ?? "none") to \(currentSelectedMetric ?? "none")")
             return false
         }
 
         // Check if weight range changed significantly
         guard let lastWeightRange = lastChartDataWeightRange else {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: no previous weight range")
             return false
         }
 
@@ -429,7 +405,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Check for significant range size change (more than 25%)
         let spanChangeRatio = abs(currentSpan - lastSpan) / max(lastSpan, 0.1)
         if spanChangeRatio > 0.25 {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range span changed significantly (\(spanChangeRatio * 100)%)")
             return false
         }
 
@@ -440,11 +415,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // If center moved more than 50% of the range span, recalculate
         if centerChange > (max(currentSpan, lastSpan) * 0.5) {
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range center moved significantly (\(centerChange))")
             return false
         }
 
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Can use cached data: ranges are similar enough")
         return true
     }
 
@@ -462,14 +435,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         guard !metricValues.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
             return []
         }
 
         // Calculate dynamic metric range from actual data
         guard let metricMin = metricValues.min(),
               let metricMax = metricValues.max() else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
             return []
         }
 
@@ -536,9 +507,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
                 // Ensure normalized value is within safe bounds
                 guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
-                    logger.log(level: .info, tag: "DashboardGraphManager",
-                              message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
-
                     // Use fallback value within safe bounds
                     let fallbackValue = (safeMin + safeMax) / 2
                     normalizedSeries.append(GraphSeries(
@@ -556,11 +524,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 ))
             }
         }
-
-        logger.log(level: .info, tag: "DashboardGraphManager",
-                  message: "Generated normalized metric series for \(selectedMetric): \(normalizedSeries.count) points, " +
-                          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
-                          "weightRange: \(weightMin)...\(weightMax)")
 
         return normalizedSeries
     }
@@ -584,14 +547,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         guard !metricValues.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
             return []
         }
 
         // Calculate dynamic metric range from visible data
         guard let metricMin = metricValues.min(),
               let metricMax = metricValues.max() else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
             return []
         }
 
@@ -667,8 +628,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
                 // Final validation: ensure the value is definitely within safe bounds
                 guard clampedFinalValue >= safeMin && clampedFinalValue <= safeMax else {
-                    logger.log(level: .info, tag: "DashboardGraphManager",
-                              message: "Metric value \(clampedFinalValue) still out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
                     let fallbackValue = (safeMin + safeMax) / 2
 
                     normalizedSeries.append(GraphSeries(
@@ -686,12 +645,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 ))
             }
         }
-
-        logger.log(level: .info, tag: "DashboardGraphManager",
-  message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
-          "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
-          "weightRange: \(weightMin)...\(weightMax), " +
-          "yAxisDomain: \(yAxisDomain)")
 
         return normalizedSeries
     }
@@ -724,8 +677,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         // Clear chart data cache when period changes
         clearChartDataCache()
-
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
 
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
@@ -797,10 +748,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let maxVisibleEnd = maxDate.addingTimeInterval(centeringBuffer)
         let latestAllowedPosition = maxVisibleEnd.addingTimeInterval(-halfDomain)
         let clampedPosition = max(earliestAllowedPosition, min(position, latestAllowedPosition))
-        if clampedPosition != position {
-            logger.log(level: .info, tag: "DashboardGraphManager",
-                      message: "Enforced scroll boundary: \(position) -> \(clampedPosition), period: \(state.selectedPeriod)")
-        }
         return clampedPosition
     }
 
@@ -833,8 +780,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
 
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
-
         return visibleOps
     }
 
@@ -855,7 +800,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             summary.date >= start && summary.date <= end
         }
 
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated strict visible operations: \(strictlyVisible.count) between \(start) and \(end)")
         return strictlyVisible
     }
 
@@ -897,7 +841,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCalculatedVisibleOps = []
         lastVisibleOpsScrollPosition = nil
         lastVisibleOpsPeriod = nil
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Forced recalculation of visible operations after programmatic scroll position change")
     }
 
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
@@ -1025,7 +968,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
 
             if !(movedFar || nearLeft || nearRight) {
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
@@ -1575,9 +1517,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if let lastOp = operations.last, !simplifiedOps.contains(where: { $0.date == lastOp.date }) {
             simplifiedOps.append(lastOp)
         }
-        
-        logger.log(level: .debug, tag: "DashboardGraphManager", 
-                  message: "Simplified data for scrolling: \(operations.count) -> \(simplifiedOps.count) points")
         
         return simplifiedOps
     }
