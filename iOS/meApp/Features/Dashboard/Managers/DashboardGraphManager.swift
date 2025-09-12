@@ -90,7 +90,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                                      operations: [BathScaleWeightSummary],
                                      updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
                                      resetMetrics: @escaping () -> Void,
-                                     setMetricPlaceholders: @escaping () -> Void = {} ) async {
+                                     setMetricPlaceholders: @escaping () -> Void ) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
 
