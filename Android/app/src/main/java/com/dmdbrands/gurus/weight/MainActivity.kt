@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.service.WifiScaleService
+import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
@@ -56,6 +57,9 @@ class MainActivity : AppCompatActivity() {
   @Inject
   lateinit var wifiScaleService: WifiScaleService
 
+  @Inject
+  lateinit var appReviewManager: IAppReviewManager
+
   /**
    * Called when the activity is starting. Sets up Compose content and handles navigation intents.
    * @param savedInstanceState The previously saved instance state, if any.
@@ -73,6 +77,7 @@ class MainActivity : AppCompatActivity() {
     healthConnectService.initializeHealthConnect(this)
     gGBLEService.createInstance(this)
     wifiScaleService.initialise(this)
+    appReviewManager.initialise(this)
 
     setContent {
       MeApp()

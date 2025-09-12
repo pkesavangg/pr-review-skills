@@ -196,7 +196,7 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
       SettingsItem(
         title = DebugMenuStrings.Actions.ShowAppRate,
         type = SettingsItemType.None,
-        onClick = { handleIntent(DebugMenuIntent.SendLogs) },
+        onClick = { handleIntent(DebugMenuIntent.ShowAppReview) },
       ),
     ),
   )

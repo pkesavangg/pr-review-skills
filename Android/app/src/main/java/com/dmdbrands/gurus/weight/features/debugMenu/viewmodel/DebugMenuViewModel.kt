@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
+import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -31,6 +32,8 @@ class DebugMenuViewModel @Inject constructor(
     private val entryService: IEntryService,
     private val exportService: IExportService,
     private val logManager: LogManager,
+    private val accountFlagService: IAccountFlagService,
+
 ) : BaseIntentViewModel<DebugMenuState, DebugMenuIntent>(
     reducer = DebugMenuReducer(),
 ) {
@@ -59,8 +62,15 @@ class DebugMenuViewModel @Inject constructor(
             is DebugMenuIntent.ResyncEntries -> onResyncEntries()
             is DebugMenuIntent.ClearAllData -> onClearAllData(intent.onDismiss)
             is DebugMenuIntent.SendScaleLogs -> onSendScaleLogs()
+          is DebugMenuIntent.ShowAppReview -> showAppReviewPrompt()
         }
     }
+
+  private fun showAppReviewPrompt(){
+    viewModelScope.launch {
+      accountFlagService.launchAppReview()
+    }
+  }
 
     /**
      * Handles back navigation.

@@ -26,8 +26,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun ScaleInfo(
   sku: String,
-  modifier: Modifier = Modifier,
   setupType: ScaleSetupType,
+  modifier: Modifier = Modifier,
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
 ) {

@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.data.api.EntryApi
+import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
@@ -14,6 +15,7 @@ import com.dmdbrands.gurus.weight.data.api.INotificationAPI
 import com.dmdbrands.gurus.weight.data.api.ISupportAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
 import com.dmdbrands.gurus.weight.data.api.IUserSettingsAPI
+import com.dmdbrands.gurus.weight.data.repository.AccountFlagRepository
 import com.dmdbrands.gurus.weight.data.repository.AccountRepository
 import com.dmdbrands.gurus.weight.data.repository.AppRepository
 import com.dmdbrands.gurus.weight.data.repository.BodyCompositionRepository
@@ -36,6 +38,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
+import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
@@ -170,4 +173,10 @@ object RepositoryModule {
       feedAPI: IFeedAPI,
       accountService: IAccountService,
     ): IFeedRepository = FeedRepository(feedAPI, accountService)
+
+    @Provides
+    @Singleton
+    fun provideAccountFlagRepository(
+        accountFlagAPI: IAccountFlagAPI,
+    ): IAccountFlagRepository = AccountFlagRepository(accountFlagAPI)
 }

@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,7 +68,9 @@ private fun ChangePasswordContent(
     val currentPasswordFocusRequester = remember { FocusRequester() }
     val newPasswordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
-    BackHandler {
+    val scrollState = rememberScrollState()
+
+  BackHandler {
         handleIntent.invoke(ChangePasswordIntent.OnRequestBack)
     }
     AppScaffold(
@@ -90,6 +94,7 @@ private fun ChangePasswordContent(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top,
+            modifier = Modifier.verticalScroll(scrollState)
         ) {
             AppStyledCard {
                 Spacer(Modifier.height(spacing.md))

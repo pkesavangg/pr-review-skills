@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
@@ -33,6 +34,7 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
@@ -48,6 +50,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.domain.repository.ILogRepository
 import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
+import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
@@ -456,5 +459,18 @@ object ServiceModule {
       appNavigationService = navigationService,
       dialogQueueService = dialogQueueService,
     )
+
+
+     /**
+   * Provides the AccountFlag service implementation.
+   * Handles account flag operations and app review flows.
+   */
+  @Provides
+  @Singleton
+  fun provideAccountFlagService(
+    @ApplicationContext context: Context,
+    accountFlagRepository: IAccountFlagRepository,
+    appReviewManager: com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager,
+  ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager)
 
 }

@@ -37,5 +37,8 @@ class DebugMenuReducer : IReducer<DebugMenuState, DebugMenuIntent> {
             is DebugMenuIntent.SendScaleLogs -> {
                 state.copy(isLoading = true)
             }
+          is DebugMenuIntent.ShowAppReview -> {
+            state.copy(isLoading = true)
+          }
         }
 }

@@ -6,8 +6,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,7 +75,9 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
     val emailFocusRequester = remember { FocusRequester() }
     val zipcodeFocusRequester = remember { FocusRequester() }
     val birthdayFocusRequester = remember { FocusRequester() }
-    BackHandler {
+    val scrollState = rememberScrollState()
+
+  BackHandler {
         onBack()
     }
     AppScaffold(
@@ -100,7 +103,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                             interactionSource = interactionSource,
                             indication = null,
                             onClick = { focusManager.clearFocus() },
-                        ),
+                        ).verticalScroll(scrollState),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
@@ -159,8 +162,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         modifier = Modifier.focusRequester(birthdayFocusRequester),
                     )
                 }
-                Spacer(Modifier.height(MeTheme.spacing.md
-                ))
+                Spacer(Modifier.padding(bottom = MeTheme.spacing.xl))
             }
     }
 }

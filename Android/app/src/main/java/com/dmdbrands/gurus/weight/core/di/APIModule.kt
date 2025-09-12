@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.di
 
 import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.data.api.EntryApi
+import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
@@ -132,4 +133,10 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideFeedAPI(httpClient: HttpClient): IFeedAPI = httpClient.createService(IFeedAPI::class.java)
+     * Provides the IAccountFlagAPI implementation using Retrofit.
+     * Used for account flag operations and app review flows.
+     */
+    @Provides
+    @Singleton
+    fun provideAccountFlagAPI(httpClient: HttpClient): IAccountFlagAPI = httpClient.createService(IAccountFlagAPI::class.java)
 }

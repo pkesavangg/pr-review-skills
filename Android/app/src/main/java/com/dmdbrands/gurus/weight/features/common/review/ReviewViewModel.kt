@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.review
 
-import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
@@ -9,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.app.Activity
 
 /**
  * ViewModel class that manages the app review state and business logic.
@@ -56,7 +56,7 @@ class ReviewViewModel
             }
 
             viewModelScope.launch {
-                val success = reviewManager.launchReviewFlow(activity)
+                val success = reviewManager.launchReviewFlow()
                 onResult(success)
             }
         }

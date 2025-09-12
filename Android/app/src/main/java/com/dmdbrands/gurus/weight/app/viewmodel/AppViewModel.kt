@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
+import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
@@ -87,7 +88,8 @@ constructor(
   private val workManager: WorkManager,
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
-  private val ggInAppMessagingService: GGInAppMessagingService
+  private val ggInAppMessagingService: GGInAppMessagingService,
+  private val accountFlagService: IAccountFlagService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -231,6 +233,8 @@ constructor(
             // handle login event
             stopScan()
             initLoadingData(authState.account, true)
+            // Check for account flags after login
+            checkAccountFlags("login")
           }
 
           is AuthState.LoggedOut -> {
@@ -614,6 +618,8 @@ constructor(
             message = "entry saved successfully",
           ),
         )
+        // Check for account flags after entry is saved
+        checkAccountFlags("entry")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during saving entry", e)
       }
@@ -826,6 +832,29 @@ constructor(
       }
     }
   }
+   * Checks for account flags and triggers appropriate actions.
+   * @param trigger The trigger type (e.g., "login", "entry")
+   */
+  private fun checkAccountFlags(trigger: String) {
+    viewModelScope.launch {
+      try {
+        // First get the account flag
+        val accountFlag = accountFlagService.getAccountFlag()
+        if (accountFlag != null) {
+          AppLog.d(TAG, "Found account flag: ${accountFlag.type} for trigger: $trigger")
+          // Check if the flag should be triggered
+          val flagTriggered = accountFlagService.checkAccountFlag(trigger)
+          if (flagTriggered) {
+            AppLog.d(TAG, "Account flag triggered for: $trigger")
+          }
+        } else {
+          AppLog.d(TAG, "No account flags found for trigger: $trigger")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check account flags for trigger: $trigger", e.toString())
+      }
+    }
+  }
 
   /**
    * Handles IAM dialog events and shows appropriate dialogs
@@ -839,4 +868,16 @@ constructor(
       else -> {}
     }
   }
+   * Sets an app review request.
+   * @param appReview The app review data to process
+   */
+  fun setAppReview(appReview: com.dmdbrands.gurus.weight.domain.model.AppReview) {
+    accountFlagService.setAppReview(appReview)
+  }
+
+  /**
+   * Gets the app review flow for observing review requests.
+   * @return Flow of app review data
+   */
+  fun getAppReviewFlow() = accountFlagService.appReviewFlow
 }

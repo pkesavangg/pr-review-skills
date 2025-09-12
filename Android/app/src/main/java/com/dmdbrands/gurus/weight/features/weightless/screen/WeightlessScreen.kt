@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,6 +68,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }
   val weightFocusRequester = remember { FocusRequester() }
+  val scrollState = rememberScrollState()
 
   // Get weight unit from state
   val weightUnit = state.weightUnit
@@ -99,6 +102,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top,
+      modifier = Modifier.verticalScroll(scrollState)
     ) {
       AppStyledCard {
         // Spacer(Modifier.height(spacing.md))

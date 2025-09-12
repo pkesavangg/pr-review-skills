@@ -54,7 +54,7 @@ fun ScaleSetupHeaderPreview() {
       onHelp = {},
     ) {
         Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-          ScaleInfo("0412", setupType = ScaleSetupType.BtWifiR4)
+          ScaleInfo("0412", ScaleSetupType.Wifi) {}
         }
     }
   }

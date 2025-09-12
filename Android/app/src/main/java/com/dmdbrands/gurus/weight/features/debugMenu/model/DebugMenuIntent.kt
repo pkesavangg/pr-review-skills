@@ -12,4 +12,5 @@ sealed class DebugMenuIntent : IReducer.Intent {
     data object ResyncEntries : DebugMenuIntent()
     data class ClearAllData(val onDismiss: () -> Unit) : DebugMenuIntent()
     data object SendScaleLogs : DebugMenuIntent()
+    data object ShowAppReview: DebugMenuIntent()
 }
