@@ -89,7 +89,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleCompleteChartSelection(at selectedDate: Date,
                                      operations: [BathScaleWeightSummary],
                                      updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
-                                     resetMetrics: @escaping () -> Void) async {
+                                     resetMetrics: @escaping () -> Void,
+                                     setMetricPlaceholders: @escaping () -> Void ) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
 
@@ -100,24 +101,35 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         guard !operations.isEmpty else { return }
 
-        // Find the closest data point to the selected date
-        let selectedBin = operations.min { bin1, bin2 in
-            abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
+        // Find exact data point at the selected date (same day/month depending on granularity)
+        // If none exists, keep crosshair but do not set selectedPoint; set placeholders instead.
+        let calendar = Calendar.current
+        let exactPoint: BathScaleWeightSummary? = {
+            switch state.selectedPeriod {
+            case .week, .month:
+                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
+            case .year, .total:
+                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
+            }
+        }()
+
+        if let point = exactPoint {
+            updateSelectedPoint(point)
+            do {
+                try await updateMetrics(point)
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with exact selected point: \(point.date)")
+            } catch {
+                logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
+                resetMetrics()
+            }
+            return
         }
 
-        guard let selectedBin = selectedBin else { return }
-
-        // Set the selected point and show crosshair
-        updateSelectedPoint(selectedBin)
-
-        // Update metrics with the selected point's values
-        do {
-            try await updateMetrics(selectedBin)
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
-        } catch {
-            logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
-            resetMetrics()
-        }
+        // No exact point: keep crosshair visible at selectedXValue, clear selectedPoint and set placeholders
+        state.selectedPoint = nil
+        state.showCrosshair = true
+        setMetricPlaceholders()
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point at selection; showing placeholders")
     }
 
     /// Computes an interpolated display weight at a given date using surrounding summaries.
