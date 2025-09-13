@@ -438,7 +438,7 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty {
+        if visibleOperations.isEmpty && state.graph.selectedPoint == nil{
             return "no entries"
         }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
@@ -1160,9 +1160,9 @@ class DashboardStore: ObservableObject {
         state.ui.hasInitializedChart = true
 
         // For TOTAL period, immediately compute and show visible-window averages
-        if period == .total {
-            updateMetricsForCurrentView()
-        }
+//        if period == .total {
+//            updateMetricsForCurrentView()
+//        }
     }
     
     // Delegate chart selection to GraphManager
@@ -1182,10 +1182,10 @@ class DashboardStore: ObservableObject {
             },
             resetMetrics: {
                 self.resetMetricsToLatestEntry()
-            },
-            setMetricPlaceholders: {
-                self.metricsManager.setPlaceholdersForAllMetrics()
             }
+//            setMetricPlaceholders: {
+//                self.metricsManager.setPlaceholdersForAllMetrics()
+//            }
         )
         
         // Force UI update
@@ -1526,12 +1526,12 @@ class DashboardStore: ObservableObject {
             await graphManager.handleChartSelection(at: nil)
 
             // For TOTAL period, show visible-window averages instead of latest entry
-            if self.state.graph.selectedPeriod == .total {
-                self.updateMetricsForCurrentView()
-            } else {
-                // Reset metrics to latest entry values for other periods
-                self.resetMetricsToLatestEntry()
-            }
+//            if self.state.graph.selectedPeriod == .total {
+//                self.updateMetricsForCurrentView()
+//            } else {
+//                // Reset metrics to latest entry values for other periods
+//                self.resetMetricsToLatestEntry()
+//            }
         }
     }
     

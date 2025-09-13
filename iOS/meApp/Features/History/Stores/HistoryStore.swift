@@ -11,30 +11,30 @@ import SwiftUI
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
 @MainActor
 final class HistoryStore: ObservableObject {
-
+    
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
-
+    
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
-
+    
     // MARK: - Month Detail State
     @Published private(set) var selectedMonth: HistoryMonth?
     @Published private(set) var entries: [Entry] = []
-
+    
     /// Set of entry ids that are currently expanded in the Month Detail screen.
     @Published var expandedEntries: Set<String> = []
-
+    
     // MARK: - Metric Info State
     @Published private(set) var selectedMetric: BodyMetric?
-
+    
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
-
+    
     private var cancellables = Set<AnyCancellable>()
-
+    
     // MARK: - Language Strings
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
@@ -42,15 +42,24 @@ final class HistoryStore: ObservableObject {
     
     /// Logger tag for this store
     private let tag = "HistoryStore"
-
+    private var hasLoadedMonths = false
+    private var monthsLoadTask: Task<Void, Never>? = nil
+    
     // MARK: - Init ------------------------------------------------------
-
+    
     init() {
         entryService.entrySaved
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task {
                     await self.loadMonthsInternal(canShowLoader: false)
+                    // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
+                    if let selectedMonth = self.selectedMonth {
+                        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+                        if monthKey == selectedMonth.id {
+                            await self.loadEntries(for: selectedMonth, showLoader: false)
+                        }
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -59,19 +68,27 @@ final class HistoryStore: ObservableObject {
                 guard let self = self else { return }
                 Task {
                     await self.loadMonthsInternal(canShowLoader: false)
+                    // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
+                    if let selectedMonth = self.selectedMonth {
+                        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+                        if monthKey == selectedMonth.id {
+                            await self.loadEntries(for: selectedMonth, showLoader: false)
+                        }
+                    }
                 }
             }
             .store(in: &cancellables)
     }
-
+    
     // MARK: - Public API --------------------------------------------------
     /// Call onAppear of History list screen.
     func loadMonths() {
-        Task { [weak self] in
-            await self?.loadMonthsInternal()
-        }
+        guard !hasLoadedMonths else { return }
+        hasLoadedMonths = true
+        Task { [weak self] in await self?.loadMonthsInternal() }
     }
-
+    
+    
     /// User tapped a month row.
     func selectMonth(_ month: HistoryMonth) {
         selectedMonth = month
@@ -89,7 +106,7 @@ final class HistoryStore: ObservableObject {
         selectedMonth = nil
         entries = []
     }
-
+    
     /// User tapped a metric inside an expanded entry.
     func selectMetric(_ metric: BodyMetric) {
         selectedMetric = metric
@@ -99,7 +116,7 @@ final class HistoryStore: ObservableObject {
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal()
     }
-
+    
     /// Presents a delete entry confirmation alert.
     /// - Parameters:
     ///   - entry: The entry to be deleted.
@@ -107,14 +124,14 @@ final class HistoryStore: ObservableObject {
     ///   - onCancel:  Executed when user cancels (optional).
     func showDeleteEntryAlert(entry: Entry, onCancel: (() -> Void)? = nil) {
         let alert = AlertModel(
-          title: AlertStrings.DeleteEntryAlert.title,
+            title: AlertStrings.DeleteEntryAlert.title,
             message: AlertStrings.DeleteEntryAlert.message,
             buttons: [
-              AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
-                  Task {
-                      await self.deleteEntryInternal(entry)
-                      onCancel?()
-                  }
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task {
+                        await self.deleteEntryInternal(entry)
+                        onCancel?()
+                    }
                 },
                 AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
                     self.notificationService.dismissAlert()
@@ -140,46 +157,55 @@ final class HistoryStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-
-
+    
+    
     // MARK: - Internal helpers -------------------------------------------
-
+    
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
-        if canShowLoader {
-            notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-        }
-        do {
-            let result = try await entryService.getMonthsAll()
-            await self.loadEntries()
-            months = result
-            isEmptyState = result.isEmpty
-        } catch {
-            months = []
-        }
-        notificationService.dismissLoader()
-    }
-
-    func loadEntries(for month: HistoryMonth? = nil) async {
-        let selectedMonth = month ?? self.selectedMonth
-        
-        guard let selectedMonth else {
-            return
-        }
-        notificationService.showLoader(LoaderModel(text: loaderLang.loading))
-        do {
-            entries = try await entryService.getMonthDetail(month: selectedMonth.id)
-            
-            // Sort entries by entryTimestamp (newest first)
-            entries.sort {
-                DateTimeTools.getTimestamp($0.entryTimestamp) >
-                DateTimeTools.getTimestamp($1.entryTimestamp)
+        guard monthsLoadTask == nil else { return }            // prevent overlap
+        monthsLoadTask = Task { [weak self] in
+            guard let self else { return }
+            if canShowLoader { self.notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
+            defer {
+                if canShowLoader { self.notificationService.dismissLoader() }
+                self.monthsLoadTask = nil
             }
-            isEmptyState = entries.isEmpty
-        } catch {
-            entries = []
+            
+            do {
+                let result = try await self.entryService.getMonthsAll()
+                self.months = result
+                self.isEmptyState = result.isEmpty
+            } catch {
+                self.months = []
+                self.isEmptyState = true
+            }
         }
-        self.notificationService.dismissLoader()
+        await monthsLoadTask?.value
     }
+    
+    func loadEntries(for month: HistoryMonth? = nil, showLoader: Bool = true) async {
+        let selectedMonth = month ?? self.selectedMonth
+        guard let selectedMonth else { return }
+        
+        if showLoader { notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
+        defer { if showLoader { notificationService.dismissLoader() } }
+        
+        do {
+            let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
+            
+            // Parse once per entry, then sort on the parsed timestamp
+            let pairs = fetched.map { entry -> (Entry, Int64) in
+                (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
+            }
+            let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
+            
+            self.entries = sorted
+            self.isEmptyState = sorted.isEmpty
+        } catch {
+            self.entries = []
+        }
+    }
+    
     
     private func deleteEntryInternal(_ entry: Entry) async {
         do {
@@ -190,7 +216,7 @@ final class HistoryStore: ObservableObject {
         }
         notificationService.dismissLoader()
     }
- 
+    
     // MARK: - Export Data
     private func exportData() {
         Task {
