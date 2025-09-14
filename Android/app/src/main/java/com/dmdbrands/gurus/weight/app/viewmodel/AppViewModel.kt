@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -47,6 +48,8 @@ import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
+import com.greatergoods.ggInAppMessaging.core.service.IAMDialogEvent
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -79,7 +82,9 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val deviceInfoService: IDeviceInfoService,
   private val workManager: WorkManager,
-  private val bluetoothPreferencesService: BluetoothPreferencesService
+  private val bluetoothPreferencesService: BluetoothPreferencesService,
+  private val feedService: IFeedService,
+  private val ggInAppMessagingService: GGInAppMessagingService
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -101,6 +106,8 @@ constructor(
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
+  private var unreadFeedCount = 0
+  private var showUnreadFeedIndication = false
 
   init {
     viewModelScope.launch {
@@ -118,6 +125,22 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
+      // Initialize IAM dialog events listener
+      try {
+        initIAMDialogListener()
+        AppLog.d(TAG, "IAM dialog events listener initialized")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to initialize IAM dialog events listener", e.toString())
+      }
+
+      // Initialize feed notification listener
+      try {
+        updateUnreadFeedCount()
+        AppLog.d(TAG, "Feed notification listener initialized")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
+      }
+
       initialize()
     }
   }
@@ -131,6 +154,7 @@ constructor(
           initEvents()
         } else {
           if (workInfos.all { it.state.isFinished }) {
+
             val account = accountService.getCurrentAccount()
             initLoadingData(account)
             initEvents()
@@ -333,6 +357,9 @@ constructor(
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
+        feedService.fetchFeedItems()
+        // Check for IAM feed modal trigger after fetching feed items
+        feedService.checkAndTriggerFeedModal()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
@@ -747,6 +774,51 @@ constructor(
     viewModelScope.launch {
       WeightOnlyModeEventService.emit(WeightOnlyModeEventType.HIDE_ALERT)
       AppLog.d(TAG, "Weight-only mode alert dismissed")
+    }
+  }
+
+  /**
+   * Updates the unread feed count and indicator visibility
+   */
+  private suspend fun updateUnreadFeedCount() {
+    try {
+      val count = feedService.getUnreadFeedCount()
+      val feedSettings = feedService.getFeedSettings()
+      val shouldShow = count > 0 && (feedSettings?.showNotificationBadge ?: true)
+      handleIntent(AppIntent.SetUnreadFeedCount(count))
+      handleIntent(AppIntent.SetShowUnreadFeedIndication(shouldShow))
+      AppLog.d(TAG, "Updated unread feed count: $count, show indicator: $shouldShow")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to update unread feed count", e.toString())
+    }
+  }
+
+  /**
+   * Initializes the IAM dialog events listener
+   * Listens to dialog events from GGInAppMessagingService and shows appropriate dialogs
+   */
+  private fun initIAMDialogListener() {
+    viewModelScope.launch {
+      try {
+        ggInAppMessagingService.dialogEvents.collect { event ->
+          handleIAMDialogEvent(event)
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error in IAM dialog events listener", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Handles IAM dialog events and shows appropriate dialogs
+   */
+  private fun handleIAMDialogEvent(event: IAMDialogEvent) {
+    when (event) {
+      is IAMDialogEvent.ShowFeedModal -> {
+        feedService.showIAMFeedModal(event.feedItem)
+      }
+
+      else -> {}
     }
   }
 }

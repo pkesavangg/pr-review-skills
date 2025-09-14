@@ -15,6 +15,10 @@ interface IEntryService {
   val last30Days: StateFlow<List<Entry>>
   val progress: Flow<Progress>
   val lastUpdated: StateFlow<Long?>
+  val monthlyBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
+  val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
+  val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
+  val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
   suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>>
 
   suspend fun monthDetails(startDate: String): Flow<List<Entry>>
@@ -30,27 +34,4 @@ interface IEntryService {
 
   fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
-  /**
-   * Gets monthly averages of body scale data for an account using JOINs.
-   * @return Flow of monthly averages as PeriodBodyScaleSummary.
-   */
-  fun getMonthlyBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>>
-
-  /**
-   * Gets the latest body scale entry for each month for an account using JOINs.
-   * @return Flow of latest entries per month as PeriodBodyScaleSummary.
-   */
-  fun getMonthlyBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>>
-
-  /**
-   * Gets daywise averages of body scale data for an account using JOINs.
-   * @return Flow of daywise averages as PeriodBodyScaleSummary.
-   */
-  fun getDaywiseBodyScaleAveragesWithJoin(): Flow<List<PeriodBodyScaleSummary>>
-
-  /**
-   * Gets the latest body scale entry for each day for an account using JOINs.
-   * @return Flow of latest entries per day as PeriodBodyScaleSummary.
-   */
-  fun getDaywiseBodyScaleLatestWithJoin(): Flow<List<PeriodBodyScaleSummary>>
 }

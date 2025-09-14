@@ -173,23 +173,20 @@ private fun MaintainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = spacing.md),
+        .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
     Row(
-      verticalAlignment = Alignment.CenterVertically,
+      verticalAlignment = Alignment.Bottom,
       horizontalArrangement = Arrangement.Center,
     ) {
       AppText(
-        textType = TextType.Title,
+        textType = TextType.CardTitle,
         text = distanceText,
       )
       AppText(
-        text = " ${weightUnit.label} ${GoalStrings.To} $displayGoalWeight ${GoalStrings.GoalWeight}",
-        textType = TextType.Body,
-        modifier = Modifier
-          .fillMaxWidth()
-          .alignByBaseline()
-          .padding(top = spacing.x3s),
+        text = "  ${weightUnit.label} ${GoalStrings.To} $displayGoalWeight ${GoalStrings.GoalWeight}",
+        textType = TextType.ListSubtitle,
+        modifier = Modifier.padding(bottom = spacing.xs),
       )
     }
   }
@@ -224,15 +221,15 @@ private fun LoseGainGoalDisplay(
         .padding(vertical = spacing.md),
   ) {
     Row(
-      verticalAlignment = Alignment.CenterVertically,
+      verticalAlignment = Alignment.Bottom,
       horizontalArrangement = Arrangement.SpaceBetween,
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = spacing.sm),
     ) {
-      Row {
+      Row(verticalAlignment = Alignment.Bottom) {
         AppText(
-          textType = TextType.Title,
+          textType = TextType.CardTitle,
           text =
             if (progressPercentage >= 100) {
               toGoal = 0.toString()
@@ -249,24 +246,21 @@ private fun LoseGainGoalDisplay(
         )
         AppText(
           text = " $weightUnit ${GoalStrings.Goal}",
-          textType = TextType.Body,
+          textType = TextType.ListSubtitle,
           color = colorScheme.textBody,
-          modifier = Modifier
-            .alignByBaseline()
-            .padding(top = spacing.x2s),
+          modifier = Modifier.padding(bottom = spacing.xs),
         )
+
       }
-      if (progressPercentage >= 100) {
-        Row {
-          AppText(
-            text = GoalStrings.GoalReached,
-            textType = TextType.Body,
-            color = colorScheme.textBody,
-            textAlign = TextAlign.End,
-            modifier = Modifier
-              // .padding(top = spacing.x3s),
-          )
-        }
+      if(progressPercentage >= 100) {
+        AppText(
+          text = GoalStrings.GoalReached,
+          textType = TextType.ListSubtitle,
+          color = colorScheme.textBody,
+          textAlign = TextAlign.End,
+          modifier = Modifier.padding(bottom = spacing.xs),
+          // .padding(top = spacing.x3s),
+        )
       }
     }
 
@@ -288,13 +282,13 @@ private fun LoseGainGoalDisplay(
     ) {
       AppText(
         text = displayStartingWeight.toString(),
-        textType = TextType.Body,
+        textType = TextType.ListSubtitle,
         color = colorScheme.textHeading,
       )
 
       AppText(
         text = displayGoalWeight.toString(),
-        textType = TextType.Body,
+        textType = TextType.ListSubtitle,
         color = colorScheme.textHeading,
       )
     }

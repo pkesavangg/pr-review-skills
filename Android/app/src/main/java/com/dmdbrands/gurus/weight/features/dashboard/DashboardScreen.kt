@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,17 +40,19 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.HistoryGraph
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
-import com.dmdbrands.gurus.weight.features.history.components.HistoryEmptyState
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 @Composable
 fun DashboardScreen() {
   val viewmodel: DashboardViewModel = hiltViewModel()
   val state by viewmodel.state.collectAsState()
-  val activity = LocalActivity.current
+  val context = LocalContext.current
+  val activity = context as? AppCompatActivity
+
   val scope = rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
   DisposableEffect(lifecycleOwner) {
@@ -70,7 +74,7 @@ fun DashboardScreen() {
         message = "Are you sure you want to exit the dashboard?",
         onConfirm = {
           scope.launch {
-            activity?.finish()
+            activity?.finishAffinity()
           }
         },
       ),
@@ -108,6 +112,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         onSelected = {
           handleIntent(DashboardIntent.SetMetricData(it))
         },
+        onPagerStateChange = { pagerState ->
+          handleIntent(DashboardIntent.SetPagerState(pagerState))
+        }
       )
       if(state.dayWiseEntries.isEmpty()) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))

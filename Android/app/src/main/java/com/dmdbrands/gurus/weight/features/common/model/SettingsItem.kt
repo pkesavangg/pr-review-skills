@@ -56,5 +56,6 @@ data class SettingsItem(
     val type: SettingsItemType = SettingsItemType.Action(),
     val enabled: Boolean = true,
     val color: SettingColorType = SettingColorType.Default,
+    val showUnreadIndicator: Boolean = false,
     val onClick: () -> Unit = {},
 )

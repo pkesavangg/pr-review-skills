@@ -151,7 +151,8 @@ class TopLevelBackStack<T : NavKey>(
     val stack = stacks[topLevelKey] ?: return
     val currentRoute = stack.lastOrNull() ?: return
     if (!canDeactivate(currentRoute)) return
-    if (stack.isNotEmpty()) {
+    if (stack.isNotEmpty() && stack.size > 1) {
+      8677
       stack.removeLastOrNull()
       if (stack.isEmpty()) {
         stacks.remove(topLevelKey)

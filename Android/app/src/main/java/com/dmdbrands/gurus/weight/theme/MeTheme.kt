@@ -26,6 +26,10 @@ import com.dmdbrands.gurus.weight.theme.token.LocalBorderRadius
 import com.dmdbrands.gurus.weight.theme.token.LocalSpacing
 import com.dmdbrands.gurus.weight.theme.token.LocalTypography
 import com.dmdbrands.gurus.weight.theme.token.SpacingToken
+import com.greatergoods.ggInAppMessaging.theme.IamColors
+import com.greatergoods.ggInAppMessaging.theme.LocalIamColors
+import com.greatergoods.ggInAppMessaging.theme.LocalIamTypography
+import com.greatergoods.ggInAppMessaging.theme.model.IamTypography
 import android.app.Activity
 
 val LocalAppTheme =
@@ -75,6 +79,7 @@ private fun StatusBarTheme(colorScheme: ColorScheme) {
 /**
  * Main theme composable that sets up the app's theme.
  * This combines all theme components (colors, typography, spacing, animations) into a single theme.
+ * It also provides IAM colors via LocalComposition for IAM components to access.
  */
 @Composable
 fun MeAppTheme(
@@ -106,6 +111,8 @@ fun MeAppTheme(
     LocalSpacing provides SpacingToken,
     LocalAnimation provides AnimationToken,
     LocalBorderRadius provides BorderRadiusToken,
+    LocalIamColors provides iamColorsFromColorScheme(meAppColorScheme),
+    LocalIamTypography provides IAMTypography(AppTypography),
   ) {
     MaterialTheme(
       colorScheme = MaterialTheme.colorScheme.copy(
@@ -117,6 +124,92 @@ fun MeAppTheme(
       content = content,
     )
   }
+}
+
+/**
+ * Converts a ColorScheme to IamColors for IAM components.
+ * This function takes the app's ColorScheme and maps it directly to IAM colors.
+ */
+private fun iamColorsFromColorScheme(colorScheme: ColorScheme): IamColors {
+  return IamColors(
+    // Background
+    primaryBackground = colorScheme.primaryBackground,
+    primaryBackgroundDisabled = colorScheme.primaryBackgroundDisabled,
+    secondaryBackground = colorScheme.secondaryBackground,
+    subSecondaryBackground = colorScheme.subSecondaryBackground,
+    tertiaryBackground = colorScheme.tertiaryBackground,
+
+    // Action
+    primaryFocusedAction = colorScheme.primaryFocusedAction,
+    primaryAction = colorScheme.primaryAction,
+    primaryActionDisabled = colorScheme.primaryActionDisabled,
+    secondaryAction = colorScheme.secondaryAction,
+    secondaryActionDisabled = colorScheme.secondaryActionDisabled,
+    tertiaryAction = colorScheme.tertiaryAction,
+    tertiaryActionDisabled = colorScheme.tertiaryActionDisabled,
+    tertiaryActionSecondary = colorScheme.tertiaryActionSecondary,
+    inverseAction = colorScheme.inverseAction,
+    inverseActionDisabled = colorScheme.inverseActionDisabled,
+    inverseActionSecondary = colorScheme.inverseActionSecondary,
+    errorAction = colorScheme.errorAction,
+    errorActionDisabled = colorScheme.errorActionDisabled,
+    errorActionSecondary = colorScheme.errorActionSecondary,
+
+    // Status
+    goal = colorScheme.goal,
+    success = colorScheme.success,
+    danger = colorScheme.danger,
+    streak = colorScheme.streak,
+    utility = colorScheme.utility,
+    glow = colorScheme.glow,
+
+    // Icon
+    iconPrimary = colorScheme.iconPrimary,
+    iconPrimaryDisabled = colorScheme.iconPrimaryDisabled,
+    iconSecondary = colorScheme.iconSecondary,
+    iconSecondaryDisabled = colorScheme.iconSecondaryDisabled,
+
+    // Loading
+    loading = colorScheme.loading,
+    loadingError = colorScheme.loadingError,
+
+    // Support
+    overlay = colorScheme.overlay,
+    toastBackground = colorScheme.toastBackground,
+
+    // Text
+    textHeading = colorScheme.textHeading,
+    textBody = colorScheme.textBody,
+    textSubheading = colorScheme.textSubheading,
+    textError = colorScheme.textError,
+    textErrorDisabled = colorScheme.textErrorDisabled,
+
+    // Brand
+    meAppPrimary = colorScheme.meAppPrimary,
+    wgPrimary = colorScheme.wgPrimary,
+  )
+}
+
+private fun IAMTypography(typography: Typography): IamTypography {
+  return IamTypography(
+    typography.heading1,
+    typography.heading2,
+    typography.heading3,
+    typography.heading4,
+    typography.heading5,
+    typography.heading6,
+    typography.subHeading1,
+    typography.subHeading2,
+    typography.body1,
+    typography.body2,
+    typography.body3,
+    typography.body4,
+    typography.body5,
+    typography.link1,
+    typography.link2,
+    typography.button1,
+    typography.button2,
+  )
 }
 
 /**

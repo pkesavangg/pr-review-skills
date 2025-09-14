@@ -17,25 +17,51 @@ import java.time.format.DateTimeFormatter
  */
 object DateTimeConverter {
   private const val ISO_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+  private const val SIMPLE_DATETIME_PATTERN = "yyyy-MM-dd HH:mm:ss"
   private val formatter = DateTimeFormatter.ofPattern(ISO_PATTERN)
-  private val defaultZone = ZoneId.of("America/Los_Angeles")
+  private val simpleDateTimeFormatter = DateTimeFormatter.ofPattern(SIMPLE_DATETIME_PATTERN)
+  private val defaultZone = ZoneId.systemDefault()
 
   /**
    * Converts an ISO date-time string to a timestamp in milliseconds.
+   * Supports multiple date-time formats:
+   * - ISO format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
+   * - Simple format: "yyyy-MM-dd HH:mm:ss"
    *
-   * @param isoString The ISO formatted date-time string
-   * @return Timestamp in milliseconds since epoch, or null if conversion fails
+   * @param isoString The date-time string in various formats
+   * @return Timestamp in milliseconds since epoch, or 0L if conversion fails
    */
   fun isoToTimestamp(isoString: String?): Long {
     return try {
       if (isoString == null) {
         return 0L
       }
-      ZonedDateTime.parse(isoString, this.formatter)
-        .toInstant()
-        .toEpochMilli()
+
+      val zonedDateTime = when {
+        // Try ISO format first (with T and timezone)
+        isoString.contains('T') && (isoString.contains('+') || isoString.contains('Z')) -> {
+          ZonedDateTime.parse(isoString, formatter)
+        }
+        // Try simple datetime format (space instead of T, no timezone)
+        isoString.contains(' ') && !isoString.contains('T') -> {
+          val localDateTime = java.time.LocalDateTime.parse(isoString, simpleDateTimeFormatter)
+          localDateTime.atZone(defaultZone)
+        }
+        // Try ISO format without timezone (assume system timezone)
+        isoString.contains('T') -> {
+          val localDateTime = java.time.LocalDateTime.parse(isoString, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+          localDateTime.atZone(defaultZone)
+        }
+        // Try simple date format (assume start of day in system timezone)
+        else -> {
+          val localDate = java.time.LocalDate.parse(isoString, DateTimeFormatter.ISO_DATE)
+          localDate.atStartOfDay(defaultZone)
+        }
+      }
+
+      zonedDateTime.toInstant().toEpochMilli()
     } catch (e: Exception) {
-      AppLog.e("DateTimeConverter", "Failed to convert ISO string to timestamp", e)
+      AppLog.e("DateTimeConverter", "Failed to convert date string to timestamp: $isoString", e.toString())
       0L
     }
   }
@@ -69,17 +95,28 @@ object DateTimeConverter {
 
   /**
    * Calculates age from a date of birth string.
-   * Supports both ISO date formats: "yyyy-MM-dd" and "yyyy-MM-ddTHH:mm:ss..."
+   * Supports multiple date formats:
+   * - ISO date-time format: "yyyy-MM-ddTHH:mm:ss..."
+   * - Simple datetime format: "yyyy-MM-dd HH:mm:ss"
+   * - ISO date format: "yyyy-MM-dd"
    *
-   * @param dobString Date of birth string in ISO format
+   * @param dobString Date of birth string in various formats
    * @return Age in years, or 0 if parsing fails
    */
   fun calculateAge(dobString: String): Int {
     return try {
       val dob = when {
-        // Handle ISO date-time format (e.g., "2025-08-21T10:15:30")
+        // Handle ISO date-time format with timezone (e.g., "2025-08-21T10:15:30+00:00")
+        dobString.contains('T') && (dobString.contains('+') || dobString.contains('Z')) -> {
+          ZonedDateTime.parse(dobString, formatter).toLocalDate()
+        }
+        // Handle simple datetime format (e.g., "2025-08-21 10:15:30")
+        dobString.contains(' ') && !dobString.contains('T') -> {
+          java.time.LocalDateTime.parse(dobString, simpleDateTimeFormatter).toLocalDate()
+        }
+        // Handle ISO date-time format without timezone (e.g., "2025-08-21T10:15:30")
         dobString.contains('T') -> {
-          ZonedDateTime.parse(dobString, DateTimeFormatter.ISO_DATE_TIME).toLocalDate()
+          java.time.LocalDateTime.parse(dobString, DateTimeFormatter.ISO_LOCAL_DATE_TIME).toLocalDate()
         }
         // Handle ISO date format (e.g., "2025-08-21")
         else -> {
@@ -96,37 +133,36 @@ object DateTimeConverter {
 
   data class TimeRange(val start: Long, val end: Long)
 
-  private val UTC: ZoneId = ZoneOffset.UTC
   private val END_OF_DAY_999: LocalTime = LocalTime.of(23, 59, 59, 999_000_000)
 
-  private fun toUtcDate(millis: Long): LocalDate =
-    Instant.ofEpochMilli(millis).atZone(UTC).toLocalDate()
+  private fun toSystemDate(millis: Long): LocalDate =
+    Instant.ofEpochMilli(millis).atZone(defaultZone).toLocalDate()
 
-  private fun startOfDayUtc(d: LocalDate): Long =
-    d.atStartOfDay(UTC).toInstant().toEpochMilli()
+  private fun startOfDaySystem(d: LocalDate): Long =
+    d.atStartOfDay(defaultZone).toInstant().toEpochMilli()
 
-  private fun endOfDayUtc(d: LocalDate): Long =
-    d.atTime(END_OF_DAY_999).atZone(UTC).toInstant().toEpochMilli()
+  private fun endOfDaySystem(d: LocalDate): Long =
+    d.atTime(END_OF_DAY_999).atZone(defaultZone).toInstant().toEpochMilli()
 
   fun getWeekRange(referenceMillis: Long): TimeRange {
-    val d = toUtcDate(referenceMillis)
+    val d = toSystemDate(referenceMillis)
     val startDate = d.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
     val endDate = d.with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
-    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
+    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
   }
 
   fun getMonthRange(referenceMillis: Long): TimeRange {
-    val d = toUtcDate(referenceMillis)
+    val d = toSystemDate(referenceMillis)
     val ym = YearMonth.from(d)
     val startDate = ym.atDay(1)
     val endDate = ym.atEndOfMonth()
-    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
+    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
   }
 
   fun getYearRange(referenceMillis: Long): TimeRange {
-    val d = toUtcDate(referenceMillis)
+    val d = toSystemDate(referenceMillis)
     val startDate = d.with(java.time.temporal.TemporalAdjusters.firstDayOfYear())
     val endDate = d.with(java.time.temporal.TemporalAdjusters.lastDayOfYear())
-    return TimeRange(startOfDayUtc(startDate), endOfDayUtc(endDate))
+    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
   }
 }

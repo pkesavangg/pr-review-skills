@@ -6,9 +6,9 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
+import com.greatergoods.meapp.features.common.helper.AxisMeta
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import kotlinx.coroutines.Job
-import java.util.Calendar
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
@@ -46,23 +46,18 @@ import java.util.Calendar
 data class GraphState(
   val graphLines: List<GraphLine> = emptyList(),
   val secondaryGraphLines: GraphLine? = null,
-  val segment: GraphSegment = GraphSegment.WEEK,
+  val primaryYAxis: AxisMeta? = null,
+  val secondaryYAxis: AxisMeta? = null,
   val goal: Goal? = null,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,
-  val minYTarget: Double = 0.0,
-  val secondaryMinYTarget: Double = 0.0,
-  val maxYTarget: Double = 220.0,
-  val secondaryMaxYTarget: Double = 220.0,
   val markerIndex: Int? = null,
   val isUpdating: Boolean = false,
   val computationJob: Job? = null,
   val animationJob: Job? = null,
-  val stepSize: Double = 10.0,
-  val scrollValue: Double? = null,
-  val savedTarget: Long? = null,
-  val separators: List<Double> = emptyList()
+  val startRange: Long? = null,
+  val endRange: Long? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
   val xLabels: List<Label> = graphLines.flatMap { graphLine ->
@@ -75,12 +70,24 @@ data class GraphState(
       it.y
     }
   }
-  val initialTimeStamp: Long =
-    this.xLabels.minOfOrNull { it.value.toDouble() }?.toLong() ?: Calendar.getInstance().timeInMillis
-  val endTimeStamp: Long =
-    this.xLabels.maxOfOrNull { it.value.toDouble() }?.toLong() ?: Calendar.getInstance().timeInMillis
-  val startRangeX = GraphUtil.getStartRange(segment, initialTimeStamp)
-  val endRangeX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+  val initialTimeStamp: Long? =
+    this.xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
+  val endTimeStamp: Long? =
+    this.xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
   val selectedData =
     if (markerIndex != null && markerIndex < xLabels.size) graphLines.map { it.points[markerIndex] } else emptyList()
+
+  fun getXStartRange(segment: GraphSegment): Long? {
+    if (graphLines.isEmpty()) return null
+    val xLabels = graphLines.firstNotNullOf { it.points.map { it.x } }
+    val initialTimeStamp = xLabels.map { it.value.toLong() }.sorted().min()
+    return GraphUtil.getStartRange(segment, initialTimeStamp)
+  }
+
+  fun getXEndRange(segment: GraphSegment): Long? {
+    if (graphLines.isEmpty()) return null
+    val xLabels = graphLines.firstNotNullOf { it.points.map { it.x } }
+    val endTimeStamp = xLabels.map { it.value.toLong() }.sorted().max()
+    return GraphUtil.getEndRange(segment, endTimeStamp)
+  }
 }

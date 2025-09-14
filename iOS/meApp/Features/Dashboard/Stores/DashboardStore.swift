@@ -435,7 +435,7 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty {
+        if visibleOperations.isEmpty && state.graph.selectedPoint == nil{
             return "no entries"
         }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
@@ -1144,6 +1144,11 @@ class DashboardStore: ObservableObject {
         
         self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
+
+        // For TOTAL period, immediately compute and show visible-window averages
+//        if period == .total {
+//            updateMetricsForCurrentView()
+//        }
     }
     
     // Delegate chart selection to GraphManager
@@ -1164,6 +1169,9 @@ class DashboardStore: ObservableObject {
             resetMetrics: {
                 self.resetMetricsToLatestEntry()
             }
+//            setMetricPlaceholders: {
+//                self.metricsManager.setPlaceholdersForAllMetrics()
+//            }
         )
         
         // Force UI update
@@ -1245,7 +1253,8 @@ class DashboardStore: ObservableObject {
                         combinedOperations.append(bracketOp)
                     }
                 }
-                operationsForYAxis = combinedOperations.sorted { $0.date < $1.date }
+                // Sort using the same key used for deduplication to ensure consistency
+                operationsForYAxis = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
         }
         
@@ -1497,9 +1506,14 @@ class DashboardStore: ObservableObject {
         Task {
             // Clear selection through graph manager
             await graphManager.handleChartSelection(at: nil)
-            
-            // Reset metrics to latest entry values
-            resetMetricsToLatestEntry()
+
+            // For TOTAL period, show visible-window averages instead of latest entry
+//            if self.state.graph.selectedPeriod == .total {
+//                self.updateMetricsForCurrentView()
+//            } else {
+//                // Reset metrics to latest entry values for other periods
+//                self.resetMetricsToLatestEntry()
+//            }
         }
     }
     

@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
+import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
@@ -49,6 +50,7 @@ constructor(
   private val entryService: com.dmdbrands.gurus.weight.domain.services.IEntryService,
   private val appSyncService: IAppSyncService,
   private val accountService: IAccountService,
+  private val feedService: IFeedService,
   dialogQueueService: IDialogQueueService
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   private val TAG = "HomeViewModel"
@@ -60,6 +62,7 @@ constructor(
     observePermissions()
     subscribeToWeightOnlyModeEvents()
     subscribeToWeightOnlyModeAlertDismissed()
+    observeFeedIndicator()
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -293,5 +296,39 @@ constructor(
   private fun onWeightOnlyModeAlertDismiss() {
     deviceService.weightOnlyModeDismissAlert { handleWeightOnlyDismiss() }
     AppLog.d(TAG, "Weight-only mode bottom sheet dismissed")
+  }
+
+  /**
+   * Observes feed changes and updates the unread feed indicator.
+   */
+  private fun observeFeedIndicator() {
+    viewModelScope.launch {
+      try {
+        // Initial update
+        updateUnreadFeedIndicator()
+
+        // Observe feed changes
+        feedService.feedsChanged.collect {
+          updateUnreadFeedIndicator()
+        }
+      } catch (e: Exception) {
+        AppLog.e("HomeViewModel", "Failed to observe feed indicator", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Updates the unread feed count and indicator visibility.
+   */
+  private suspend fun updateUnreadFeedIndicator() {
+    try {
+      val count = feedService.getUnreadFeedCount()
+      val feedSettings = feedService.getFeedSettings()
+      val shouldShow = count > 0 && (feedSettings?.showNotificationBadge ?: true)
+      handleIntent(HomeIntent.SetShowUnreadFeedIndicator(shouldShow))
+      AppLog.d("HomeViewModel", "Updated unread feed count: $count, show indicator: $shouldShow")
+    } catch (e: Exception) {
+      AppLog.e("HomeViewModel", "Failed to update unread feed indicator", e.toString())
+    }
   }
 }

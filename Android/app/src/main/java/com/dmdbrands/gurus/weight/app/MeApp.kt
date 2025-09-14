@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.app
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -21,8 +22,9 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
+import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.example.nav3integration.rememberTopLevelBackStack
 import kotlinx.coroutines.delay
 
@@ -35,6 +37,8 @@ import kotlinx.coroutines.delay
 fun MeApp() {
   val appViewModel: AppViewModel = hiltViewModel()
   val uiState by appViewModel.state.collectAsState()
+
+  // Keep navigation stack stable - don't let it be affected by theme changes
   val topLevelBackStack =
     rememberTopLevelBackStack(
       Pair(AppRoute.App, AppRoute.Init.Loading),
@@ -43,12 +47,13 @@ fun MeApp() {
     )
 
   MeAppTheme(themeMode = uiState.themeMode) {
+
     Surface(
       modifier =
         Modifier
           .fillMaxSize()
           .imePadding(),
-      color = MeTheme.colorScheme.primaryBackground,
+      color = colorScheme.primaryBackground,
     ) {
       CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
         DialogHost()
@@ -65,7 +70,7 @@ fun MeApp() {
         sheetState = sheetState,
         modifier = Modifier.navigationBarsPadding(),
         onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
-        containerColor = MeTheme.colorScheme.primaryBackground,
+        containerColor = colorScheme.primaryBackground,
       ) {
         ScaleDiscoveredModal(sku = uiState.sku) {
           appViewModel.handleIntent(AppIntent.OnPopUpConnect)

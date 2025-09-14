@@ -1,0 +1,47 @@
+package com.dmdbrands.gurus.weight.features.feedMessages.model
+
+import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+
+/**
+ * Reducer for Feed Messages Screen
+ */
+class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
+  override fun reduce(state: FeedMessagesState, intent: FeedMessagesIntent): FeedMessagesState {
+    return when (intent) {
+      is FeedMessagesIntent.Initialize -> {
+        state.copy(isLoading = true)
+      }
+      is FeedMessagesIntent.Refresh -> {
+        state.copy(isRefreshing = true)
+      }
+      is FeedMessagesIntent.SetFeedItems -> {
+        state.copy(
+          feedItems = intent.feedItems,
+          isLoading = false,
+          isRefreshing = false,
+          error = null
+        )
+      }
+      is FeedMessagesIntent.SetError -> {
+        state.copy(
+          isLoading = false,
+          isRefreshing = false,
+          error = intent.error
+        )
+      }
+      is FeedMessagesIntent.ClearError -> {
+        state.copy(error = null)
+      }
+      is FeedMessagesIntent.SetLoading -> {
+        state.copy(isLoading = true)
+      }
+      is FeedMessagesIntent.SetRefreshing -> {
+        state.copy(isRefreshing = true)
+      }
+      is FeedMessagesIntent.ClearRefreshing -> {
+        state.copy(isRefreshing = false)
+      }
+      else -> state
+    }
+  }
+}

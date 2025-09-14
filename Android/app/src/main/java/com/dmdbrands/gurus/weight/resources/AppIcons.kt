@@ -12,7 +12,6 @@ object AppIcons {
     val Logo = R.drawable.ic_logo
     val BrandLogo = R.drawable.brand_logo
     val WgLogo = R.drawable.wg_logo
-    val Plus = R.drawable.ic_plus_outlined
     val Appsync = R.drawable.ic_appsync
     val Graph = R.drawable.ic_graph
     val History = R.drawable.ic_history
@@ -32,11 +31,14 @@ object AppIcons {
     val WeightOnlyMode = R.drawable.ic_weight_only
     val WeightOnlyModeScale = R.drawable.scale_0412_weight_only
     val Export = R.drawable.export_info
+    val Plus = R.drawable.ic_plus
+    val Minus = R.drawable.ic_minus
   }
 
   object Outlined {
     val Help = R.drawable.ic_info
     val Close = R.drawable.ic_close_outlined
+    val PlusCircle = R.drawable.ic_plus_outlined
     val CheckedCircle = R.drawable.ic_circle_check_outlined
     val MinusCircle = R.drawable.ic_circle_minus_outlined
   }
@@ -48,6 +50,8 @@ object AppIcons {
     val Settings = R.drawable.ic_settings_selected
     val Close = R.drawable.ic_popup_close
     val CaretDown = R.drawable.ic_filled_caret_down
+    val AddCircle = R.drawable.ic_plus_circle_filled
+    val MinusCircle = R.drawable.ic_minus_circle_filled
   }
 
   object Selection {

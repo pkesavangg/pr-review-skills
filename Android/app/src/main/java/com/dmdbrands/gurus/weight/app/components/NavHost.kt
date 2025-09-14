@@ -14,12 +14,12 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSavedStateNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.ui.rememberSceneSetupNavEntryDecorator
-import com.example.nav3integration.TopLevelBackStack
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.NavigationObserver
 import com.dmdbrands.gurus.weight.features.home.HomeScreen
 import com.dmdbrands.gurus.weight.features.loading.LoadingScreen
+import com.example.nav3integration.TopLevelBackStack
 import kotlinx.coroutines.launch
 
 /**
@@ -31,91 +31,91 @@ fun NavHost(
   topLevelBackStack: TopLevelBackStack<NavKey>,
   appViewModel: AppViewModel,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    NavigationObserver(
-        appViewModel.navigationService.navigationIntent,
-        topLevelBackStack,
-    )
-    NavDisplay(
-        modifier = Modifier.navigationBarsPadding(),
-        entryDecorators =
-            listOf(
-                rememberSceneSetupNavEntryDecorator(),
-                rememberSavedStateNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
-        onBack = {
-            coroutineScope.launch {
-                topLevelBackStack.removeLast(AppRoute.App)
-            }
-        },
-        entryProvider =
-            entryProvider {
-                entry<AppRoute.Init.Loading> { LoadingScreen() }
-                entry<AppRoute.Home> { HomeScreen() }
-                authEntries()
-                accountSettingsEntries()
-                scaleDetailEntries()
-                scaleSetupEntries()
-                 historyEntries()
+  val coroutineScope = rememberCoroutineScope()
+  NavigationObserver(
+    appViewModel.navigationService.navigationIntent,
+    topLevelBackStack,
+  )
+  NavDisplay(
+    modifier = Modifier.navigationBarsPadding(),
+    entryDecorators =
+      listOf(
+        rememberSceneSetupNavEntryDecorator(),
+        rememberSavedStateNavEntryDecorator(),
+        rememberViewModelStoreNavEntryDecorator(),
+      ),
+    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
+    onBack = {
+      coroutineScope.launch {
+        topLevelBackStack.removeLast(AppRoute.App)
+      }
+    },
+    entryProvider =
+      entryProvider {
+        entry<AppRoute.Init.Loading> { LoadingScreen() }
+        entry<AppRoute.Home> { HomeScreen() }
+        authEntries()
+        accountSettingsEntries()
+        scaleDetailEntries()
+        scaleSetupEntries()
+        historyEntries()
         dashboardEntries()
-
-              integrationEntries()
-            },
-        transitionSpec = {
-            // Slide in from right when navigating forward
-            slideInHorizontally(initialOffsetX = { it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { -it })
-        },
-        popTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-        predictivePopTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-    )
+        integrationEntries()
+        feedMessagesEntries()
+      },
+    transitionSpec = {
+      // Slide in from right when navigating forward
+      slideInHorizontally(initialOffsetX = { it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { -it })
+    },
+    popTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+    predictivePopTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+  )
 }
 
 @Composable
 fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
-    val coroutineScope = rememberCoroutineScope()
-    NavDisplay(
-        entryDecorators =
-            listOf(
-                rememberSceneSetupNavEntryDecorator(),
-                rememberSavedStateNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(),
-            ),
-        backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
-        onBack = {
-            coroutineScope.launch {
-                topLevelBackStack.removeLast(AppRoute.Home)
-            }
-        },
-        entryProvider =
-            entryProvider {
-                entry<AppRoute.Init.Loading> { LoadingScreen() }
-                topLevelEntries()
-            },
-        transitionSpec = {
-            // Slide in from right when navigating forward
-            slideInHorizontally(initialOffsetX = { it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { -it })
-        },
-        popTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-        predictivePopTransitionSpec = {
-            // Slide in from left when navigating back
-            slideInHorizontally(initialOffsetX = { -it }) togetherWith
-                slideOutHorizontally(targetOffsetX = { it })
-        },
-    )
+  val coroutineScope = rememberCoroutineScope()
+  NavDisplay(
+    entryDecorators =
+      listOf(
+        rememberSceneSetupNavEntryDecorator(),
+        rememberSavedStateNavEntryDecorator(),
+        rememberViewModelStoreNavEntryDecorator(),
+      ),
+    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
+    onBack = {
+      coroutineScope.launch {
+        topLevelBackStack.removeLast(AppRoute.Home)
+      }
+    },
+    entryProvider =
+      entryProvider {
+        entry<AppRoute.Init.Loading> { LoadingScreen() }
+        topLevelEntries()
+      },
+    transitionSpec = {
+      // Slide in from right when navigating forward
+      slideInHorizontally(initialOffsetX = { it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { -it })
+    },
+    popTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+    predictivePopTransitionSpec = {
+      // Slide in from left when navigating back
+      slideInHorizontally(initialOffsetX = { -it }) togetherWith
+        slideOutHorizontally(targetOffsetX = { it })
+    },
+  )
 }

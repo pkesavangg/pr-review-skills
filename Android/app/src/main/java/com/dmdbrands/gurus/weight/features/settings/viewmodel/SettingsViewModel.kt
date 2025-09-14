@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
+import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
@@ -55,6 +56,7 @@ constructor(
   private val userSettingsService: IUserSettingsService,
   private val healthConnectService: IHealthConnectService,
   private val bluetoothPreferencesService: BluetoothPreferencesService,
+  private val feedService: IFeedService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
@@ -69,6 +71,7 @@ constructor(
     showAccountSwitchInfoModal()
     loadCurrentThemeMode()
     loadMacAddressSettings()
+    initFeedNotificationListener()
   }
 
   fun getUserProfile() {
@@ -94,6 +97,37 @@ constructor(
         }
         handleIntent(SettingsIntent.UpdateThemeMode(displayString))
       }
+    }
+  }
+
+  /**
+   * Initializes the feed notification listener for settings screen
+   * Listens to feed notification changes and updates unread count and indicator visibility
+   */
+  private fun initFeedNotificationListener() {
+    viewModelScope.launch {
+      try {
+        updateUnreadFeedCount()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error in feed notification listener", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Updates the unread feed count and indicator visibility for settings screen
+   */
+  private suspend fun updateUnreadFeedCount() {
+    try {
+      val count = feedService.getUnreadFeedCount()
+      val feedSettings = feedService.getFeedSettings()
+      val shouldShow = count > 0 && (feedSettings?.showNotificationBadge ?: true)
+      AppLog.d(TAG, "Updating unread feed count: $count, show indicator: $shouldShow")
+      handleIntent(SettingsIntent.SetUnreadFeedCount(count))
+      handleIntent(SettingsIntent.SetShowUnreadFeedIndication(shouldShow))
+      AppLog.d(TAG, "Updated unread feed count: $count, show indicator: $shouldShow")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to update unread feed count", e.toString())
     }
   }
 

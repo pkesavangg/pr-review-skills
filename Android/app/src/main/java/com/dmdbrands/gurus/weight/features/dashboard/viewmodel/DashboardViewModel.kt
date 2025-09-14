@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
@@ -62,6 +63,7 @@ constructor(
       is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys)
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
+      is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       else -> null
     }
     super.handleIntent(intent)
@@ -161,17 +163,30 @@ constructor(
    */
   private fun loadEntries() {
     viewModelScope.launch {
-      entryService.getDaywiseBodyScaleLatestWithJoin().collect { dayWise ->
+      entryService.daywiseBodyScaleAverages.collect { dayWise ->
         handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
       }
     }
     viewModelScope.launch {
-      entryService.getMonthlyBodyScaleAveragesWithJoin().collect { monthWise ->
+      entryService.monthlyBodyScaleAverages.collect { monthWise ->
         handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
       }
     }
     viewModelScope.launch {
       handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
+    }
+  }
+
+  /**
+   * Handles pager state changes and updates the selected segment accordingly.
+   *
+   * @param pagerState The new pager state index.
+   */
+  private fun handlePagerStateChange(pagerState: Int) {
+    val segments = GraphSegment.entries
+    if (pagerState in segments.indices) {
+      val segment = segments[pagerState]
+      handleIntent(DashboardIntent.SetSelectedSegment(segment))
     }
   }
 

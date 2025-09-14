@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -242,11 +243,15 @@ constructor(
           confirmText = ScaleDetailsStrings.Delete,
           cancelText = ScaleDetailsStrings.Cancel,
           onConfirm = {
+            val scale = state.value.scale!!
             dialogQueueService.dismissCurrent()
             dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
             viewModelScope.launch {
-              deviceService.deleteScale(state.value.scale!!.id)
-              ggDeviceService.deleteAccount(state.value.scale!!.toGGBTDevice(), true) {
+              deviceService.deleteScale(scale.id)
+              if (scale.deviceType == ScaleSetupType.BtWifiR4.value) {
+                ggDeviceService.disconnectDevice(scale.toGGBTDevice())
+              }
+              ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {
                 if (it == GGUserActionResponseType.DELETE_COMPLETED) {
                   dialogQueueService.showToast(
                     Toast(
@@ -413,7 +418,7 @@ constructor(
           // Call the actual firmware update service (similar to Angular's bluetoothservice.updateFirmware)
           ggDeviceService.startFirmwareUpgrade(scale.toGGBTDevice(), timestamp)
 
-          AppLog.d(TAG, "Firmware update started for scale: ${scale.device?.deviceName}, timestamp: $timestamp")
+          AppLog.d(TAG, "Firmware update started for scale: ${scale.device.deviceName}, timestamp: $timestamp")
 
           if (timestamp == 0L) {
             showToast(ScaleDetailsStrings.FirmwareUpdateStarted)

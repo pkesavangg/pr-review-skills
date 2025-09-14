@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.formatTimestamp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -218,7 +219,7 @@ fun BtWifiScaleSetupScreenContent(
 
         when (state.currentStep) {
           BtWifiSetupStep.SCALE_INFO -> {
-            ScaleInfo(sku = state.sku)
+            ScaleInfo(sku = state.sku, setupType = ScaleSetupType.BtWifiR4)
           }
 
           BtWifiSetupStep.PERMISSIONS -> {
@@ -312,7 +313,7 @@ fun BtWifiScaleSetupScreenContent(
             WifiSelection(
               wifiList = state.wifiList,
               title = BtWifiScaleSetupStrings.WifiList.Title,
-              subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle,
+              subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle(!state.connectedSSID.isNullOrEmpty()),
               configuredSSID = state.connectedSSID,
               onSelect = { selectedSSID ->
                 // Check if the selected network is already connected
@@ -408,6 +409,7 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.CollectingMeasurement.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
+              indicatorIcon = LoaderIconType.Measurement,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,

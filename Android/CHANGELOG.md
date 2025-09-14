@@ -1,3 +1,19 @@
+## 5.0.0 - 09/12/2025
+
+### Added
+
+-
+
+### Changed
+
+- Dashboard metrics and milestones drag and drop improvements.
+
+### Fixed
+
+- Resolved loader indicator icon mismatch issue in measurement slide of the 0412 scale setup.
+- Resolved the issue of Goal progress card is not shown in the 0412 customization.
+- Resolved content mismatch issue in scale setup (scale info and network slide).
+
 ## 5.0.0 - 08/14/2025
 
 ### Added
@@ -13,7 +29,6 @@
 -Forked the Vico chart library to compute y-axis values during scrolling (not only after it stops), resolving lag and line/curve overlap.
 -Added consistent separators for Week, Month, Year, and Total views.
 -Updated Wi-Fi error visuals for dark and light modes
-
 
 ## 5.0.0 - 08/01/2025
 

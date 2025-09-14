@@ -43,6 +43,7 @@ fun DashboardMilestoneGrid(
   visibleMilestones: List<Stat>,
   hiddenMilestones: List<Stat>,
   inEditMode: Boolean,
+  isFromSetup: Boolean,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
 ) {
@@ -53,16 +54,18 @@ fun DashboardMilestoneGrid(
   val reorderableState = rememberReorderableLazyGridState(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
-      // Direct reordering with adjusted index, then normalize layout for span-2 item
-      localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
-        val item = removeAt(from.index)
-        add(to.index, item)
+      if (!isGoalProgressMilestone(localVisibleMilestones[to.index])) {
+        // Direct reordering with adjusted index, then normalize layout for span-2 item
+        localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
+          val item = removeAt(from.index)
+          add(to.index, item)
+        }
+
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+
+        // Call the reorder callback with the new order
+        onMilestoneReordered(localVisibleMilestones)
       }
-
-      hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-
-      // Call the reorder callback with the new order
-      onMilestoneReordered(localVisibleMilestones)
     },
   )
   val currentDeviceType = getDeviceType()
@@ -82,7 +85,7 @@ fun DashboardMilestoneGrid(
       .padding(horizontal = MeTheme.spacing.sm)
       .heightIn(max = 800.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
   ) {
     // Visible milestones (reorderable)
     items(
@@ -106,6 +109,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = inEditMode,
           isDragging = isDragging,
+          isFromSetup = isFromSetup,
           isVisible = true,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = this,
@@ -130,6 +134,7 @@ fun DashboardMilestoneGrid(
           milestone = milestone,
           inEditMode = true,
           isVisible = false,
+          isFromSetup = isFromSetup,
           onMilestoneMoved = onMilestoneMoved,
           reorderableScope = null,
         )

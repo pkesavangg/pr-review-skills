@@ -217,6 +217,20 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Utility Methods
+    /// Sets placeholder values for all metrics (used when no exact data point is selected on the chart)
+    func setPlaceholdersForAllMetrics() {
+        let placeholder = DashboardStrings.placeholder
+        state.metrics = state.metrics.enumerated().map { index, item in
+            MetricItem(
+                value: placeholder,
+                label: item.label,
+                unit: item.unit,
+                preLabel: item.preLabel,
+                icon: item.icon
+            )
+        }
+        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Set placeholders for all metrics due to non-point selection")
+    }
     func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
         case DashboardStrings.bmi: return summary.bmi

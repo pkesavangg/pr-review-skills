@@ -262,7 +262,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                         combinedOperations.append(bracketOp)
                     }
                 }
-                operations = combinedOperations.sorted { $0.date < $1.date }
+                operations = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
         } else {
             operations = chartOperations

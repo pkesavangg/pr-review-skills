@@ -333,7 +333,6 @@ fun <T> InputFieldBase(
         onValueChange = onInputChange,
         modifier =
             modifier
-                .height(56.dp)
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->

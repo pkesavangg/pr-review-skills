@@ -1,13 +1,17 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.DateFormatHelper
@@ -96,8 +102,6 @@ private fun SettingsItemRow(
             SettingColorType.Tertiary -> MeTheme.colorScheme.textSubheading
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
-
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MeTheme.colorScheme.primaryBackground,
@@ -111,12 +115,27 @@ private fun SettingsItemRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppText(
-                text = item.title,
-                textType = TextType.Subtitle,
-                color = color,
-                enabled = item.enabled,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Unread indicator dot
+                if (item.showUnreadIndicator) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color.Red),
+                    )
+                }
+
+                AppText(
+                    text = item.title,
+                    textType = TextType.Subtitle,
+                    color = color,
+                    enabled = item.enabled,
+                )
+            }
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
@@ -271,8 +290,8 @@ private fun SettingsSectionPreview() {
                             title = "Custom Icon",
                             type =
                                 SettingsItemType.CustomIcon(
-                                    text = "Custom",
-                                    icon = { AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus") },
+                                  text = "Custom",
+                                  icon = { AppIcon(id = AppIcons.Outlined.PlusCircle, contentDescription = "Plus") },
                                 ),
                             onClick = {}, // Row click (not triggered)
                         ),
@@ -289,7 +308,7 @@ private fun SettingsSectionPreview() {
                                         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        AppIcon(id = AppIcons.Default.Plus, contentDescription = "Plus")
+                                        AppIcon(id = AppIcons.Outlined.PlusCircle, contentDescription = "Plus")
                                         Text(
                                             text = "Custom Content",
                                             style = MeTheme.typography.body2,

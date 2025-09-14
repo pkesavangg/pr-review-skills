@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.api.IDeviceInfoAPI
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
+import com.dmdbrands.gurus.weight.data.api.IFeedAPI
 import com.dmdbrands.gurus.weight.data.api.IGoalAPI
 import com.dmdbrands.gurus.weight.data.api.IHealthConnectAPI
 import com.dmdbrands.gurus.weight.data.api.IIntegrationAPI
@@ -52,7 +53,7 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideUserSettingsAPI(httpClient: HttpClient): IUserSettingsAPI =
-        httpClient.createService(IUserSettingsAPI::class.java)
+      httpClient.createService(IUserSettingsAPI::class.java)
 
     /**
      * Provides a singleton instance of [IDeviceInfoAPI] using the provided [HttpClient].
@@ -66,7 +67,7 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideIntegrationAPI(httpClient: HttpClient): IIntegrationAPI =
-        httpClient.createService(IIntegrationAPI::class.java)
+      httpClient.createService(IIntegrationAPI::class.java)
 
     /**
      * Provides the IHealthConnectAPI implementation using Retrofit.
@@ -75,7 +76,7 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideHealthConnectAPI(httpClient: HttpClient): IHealthConnectAPI =
-        httpClient.createService(IHealthConnectAPI::class.java)
+      httpClient.createService(IHealthConnectAPI::class.java)
 
     @Provides
     @Singleton
@@ -98,7 +99,7 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideNotificationAPI(httpClient: HttpClient): INotificationAPI =
-        httpClient.createService(INotificationAPI::class.java)
+      httpClient.createService(INotificationAPI::class.java)
 
     /**
      * Provides the IGoalAPI implementation using Retrofit.
@@ -123,4 +124,12 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideSupportAPI(httpClient: HttpClient): ISupportAPI = httpClient.createService(ISupportAPI::class.java)
+
+    /**
+     * Provides the IFeedAPI implementation using Retrofit.
+     * Used for feed-related operations.
+     */
+    @Provides
+    @Singleton
+    fun provideFeedAPI(httpClient: HttpClient): IFeedAPI = httpClient.createService(IFeedAPI::class.java)
 }

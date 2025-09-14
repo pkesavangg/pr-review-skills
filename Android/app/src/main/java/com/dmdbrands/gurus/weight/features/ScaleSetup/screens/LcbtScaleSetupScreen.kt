@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
 
@@ -122,7 +123,7 @@ fun LcbtScaleSetupScreenContent(
         ) {
           when (step) {
             LcbtScaleSetupStep.SCALE_INFO -> {
-              ScaleInfo(sku = sku)
+              ScaleInfo(sku = sku, setupType = ScaleSetupType.Lcbt,)
             }
 
             LcbtScaleSetupStep.PERMISSIONS -> {

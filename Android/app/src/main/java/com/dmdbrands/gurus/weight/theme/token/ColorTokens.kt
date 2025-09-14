@@ -17,7 +17,9 @@ internal object LightColorToken {
   // Background
   val primary = ColorPalette.Neutral100 // #FFFFFF
   val primaryDisabled = ColorPalette.Neutral300 // 50% of #FFFFFF
-  val secondary = ColorPalette.Neutral150 // #F6F4F1
+  val secondary = ColorPalette.Neutral150
+  val subSecondary = ColorPalette.Neutral200
+  val tertiary = ColorPalette.Neutral230
 
   // Status
   val goal = ColorPalette.Green200 // #458239
@@ -77,6 +79,8 @@ internal object DarkColorToken {
   val primary = ColorPalette.Neutral900 // #222D39
   val primaryDisabled = ColorPalette.Neutral850 // 50% of #222D39
   val secondary = ColorPalette.Neutral950 // #12161B
+  val subSecondary = ColorPalette.Neutral250
+  val tertiary = ColorPalette.Neutral270
 
   // Status
   val goal = ColorPalette.Green100 // #63B453

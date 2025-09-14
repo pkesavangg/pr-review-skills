@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationLayout
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -171,6 +170,7 @@ fun CustomizeScaleSettings(
             metricData = emptyList(),
             visibleKeys = state.dashboardKeys,
             inEditMode = true,
+            isFromSetup = true,
             onMetricsChanged = {
               dashboardMetricKeys = it
             },
@@ -180,28 +180,12 @@ fun CustomizeScaleSettings(
             modifier = Modifier.padding(horizontal = spacing.lg),
           )
           DashboardMilestone(
-            progress = Progress(),
+            progress = state.goalProgress,
             inEditMode = true,
             visibleKeys = state.dashboardKeys,
+            isFromSetup = true,
             onMilestonesChanged = {
               dashboardMilestoneKeys = it
-            },
-          )
-        }
-      }
-
-      CustomizeSettings.SCALE_METRICS -> {
-        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-        CustomizationLayout(
-          title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
-          subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
-        ) {
-          ScaleMetricsSettingScreen(
-            currentMetrics = scaleMetrics,
-            onMetricsChanged = { metrics ->
-              // UPDATING DISPLAY METRICS ALONE
-              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
-              scaleMetrics = metrics
             },
           )
         }
@@ -227,6 +211,23 @@ fun CustomizeScaleSettings(
             },
             onBioimpedanceClick = {
               // Handle bioimpedance modal - can be implemented if needed
+            },
+          )
+        }
+      }
+
+      CustomizeSettings.SCALE_METRICS -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
+        CustomizationLayout(
+          title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
+          subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
+        ) {
+          ScaleMetricsSettingScreen(
+            currentMetrics = scaleMetrics,
+            onMetricsChanged = { metrics ->
+              // UPDATING DISPLAY METRICS ALONE
+              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
+              scaleMetrics = metrics
             },
           )
         }

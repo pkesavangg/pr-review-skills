@@ -29,7 +29,8 @@ enum class DialogType {
   FinishConnect,
   ScaleName,
   AppsyncEntryPopup,
-  SetGoalPopup
+  SetGoalPopup,
+  IAMFeedModal
 }
 
 @Composable
@@ -228,6 +229,22 @@ fun DialogHost() {
           },
           onClose = {
             dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          }
+        )
+      }
+
+      DialogType.IAMFeedModal -> {
+        val feedItem = dialog.params["feedItem"] as com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+
+        IAMFeedModal(
+          feedItem = feedItem,
+          onDismiss = {
+            dialog.onDismiss?.invoke()
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onAction = { actionType ->
+            dialog.onConfirm?.invoke(actionType)
             dialogQueueViewModel.dismissCurrent()
           }
         )

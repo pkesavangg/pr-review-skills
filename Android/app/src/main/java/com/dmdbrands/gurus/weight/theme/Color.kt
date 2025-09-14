@@ -32,6 +32,8 @@ val LightColorScheme =
     primaryBackground = LightColorToken.primary,
     primaryBackgroundDisabled = LightColorToken.primaryDisabled,
     secondaryBackground = LightColorToken.secondary,
+    subSecondaryBackground = LightColorToken.subSecondary,
+    tertiaryBackground = LightColorToken.tertiary,
     // Support
     overlay = LightColorToken.overlay,
     toastBackground = LightColorToken.toastBackground,
@@ -88,6 +90,8 @@ val DarkColorScheme =
     primaryBackground = DarkColorToken.primary,
     primaryBackgroundDisabled = DarkColorToken.primaryDisabled,
     secondaryBackground = DarkColorToken.secondary,
+    subSecondaryBackground = DarkColorToken.subSecondary,
+    tertiaryBackground = DarkColorToken.tertiary,
     // Support
     overlay = DarkColorToken.overlay,
     toastBackground = DarkColorToken.toastBackground,

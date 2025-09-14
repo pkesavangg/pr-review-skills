@@ -18,6 +18,10 @@ import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
+import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
+import com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
+import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesSettingsScreen
 import com.dmdbrands.gurus.weight.features.goal.screen.GoalScreen
 import com.dmdbrands.gurus.weight.features.help.screen.HelpScreen
 import com.dmdbrands.gurus.weight.features.history.HistoryScreen
@@ -123,4 +127,11 @@ fun EntryProviderBuilder<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
     HistoryDetailScreen(monthDetails.month)
   }
+}
+
+fun EntryProviderBuilder<NavKey>.feedMessagesEntries() {
+  entry<AppRoute.Feed.FeedMessages> { AppFeedMessagesScreen() }
+  entry<AppRoute.Feed.FeedMessageSetting> { AppFeedMessagesSettingsScreen() }
+  entry<AppRoute.Feed.FeedLanding> { FeedLandingScreen() }
+  entry<AppRoute.Feed.FeedFAQ> { FeedFAQScreen() }
 }
