@@ -438,7 +438,7 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty {
+        if visibleOperations.isEmpty && state.graph.selectedPoint == nil{
             return "no entries"
         }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
