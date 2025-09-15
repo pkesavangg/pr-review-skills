@@ -101,17 +101,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         guard !operations.isEmpty else { return }
 
-        // Find the closest data point to the selected date (ORIGINAL WEIGHT BEHAVIOR)
+        // Find the closest data point to the selected date
         let selectedBin = operations.min { bin1, bin2 in
             abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
         }
 
         guard let selectedBin = selectedBin else { return }
 
-        // Set the selected point and show crosshair (ORIGINAL WEIGHT BEHAVIOR)
+        // Set the selected point and show crosshair
         updateSelectedPoint(selectedBin)
 
-        // Update metrics with the selected point's values (ORIGINAL WEIGHT BEHAVIOR)
+        // Update metrics with the selected point's values
         do {
             try await updateMetrics(selectedBin)
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
