@@ -33,7 +33,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
-import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -86,6 +85,9 @@ constructor(
 
         val updatedDevice = device.copy(
           connectionStatus = connectionStatus,
+          device = device.device?.copy(
+            isWifiConfigured = deviceDetail.isWifiConfigured
+          )
         )
 
         currentDevices[deviceIndex] = updatedDevice
@@ -143,6 +145,9 @@ constructor(
       device.copy(
         connectionStatus = if (isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
         isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+        device = device.device?.copy(
+          isWifiConfigured = connectedDevice?.isWifiConfigured
+        )
       )
     }
 
@@ -213,11 +218,9 @@ constructor(
         deviceRepository.getDevices(resolvedAccountId),
         _connectionStatusMap,
       ) { devices, connectionStatusMap ->
-        Log.d("Appviewmodel1", devices.toString())
         devices.map { device ->
           val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
           val isConnected = connectionStatus == BLEStatus.CONNECTED
-          Log.d("Appviewmodel2", device.toString())
           // Calculate isWeighOnlyModeEnabledByOthers based on Angular logic
           val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
             device.preferences.shouldMeasureImpedance == true &&
@@ -228,6 +231,9 @@ constructor(
 
           device.copy(
             connectionStatus = connectionStatus,
+            device = device.device?.copy(
+              isWifiConfigured = device.device.isWifiConfigured
+            ),
             isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
           )
         }
@@ -434,16 +440,16 @@ constructor(
   /**
    * Update a scale's nickname.
    *
-   * @param deviceId The ID of the device
+   * @param device The ID of the device
    * @param nickname The new nickname
    */
   override suspend fun updateScaleNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ) {
-    AppLog.d(tag, "Updating scale nickname: $deviceId -> $nickname")
+    AppLog.d(tag, "Updating scale nickname: $device -> $nickname")
     try {
-      deviceRepository.updateDeviceNickname(deviceId, nickname)
+      deviceRepository.updateDeviceNickname(device, nickname)
       AppLog.d(tag, "Scale nickname updated successfully")
     } catch (e: Exception) {
       AppLog.e(tag, "Error updating scale nickname", e)

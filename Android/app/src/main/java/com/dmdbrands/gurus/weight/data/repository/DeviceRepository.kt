@@ -105,14 +105,12 @@ constructor(
     }
 
   override suspend fun updateDeviceNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ): Device {
-    deviceDao.updateNickname(deviceId, nickname)
-    val device = deviceDao.getDevice(deviceId)?.toDeviceDomainModel()
-    if (device != null)
-      deviceApi.editScale(deviceId, device.copy(nickname = nickname).toApiModel())
-    val deviceDetails = deviceDao.getDevice(deviceId)
+    deviceDao.updateNickname(device.id, nickname)
+    deviceApi.editScale(device.id, device.copy(nickname = nickname).toApiModel())
+    val deviceDetails = deviceDao.getDevice(device.id)
     return deviceDetails?.toDeviceDomainModel() ?: throw IllegalStateException("Device not found")
   }
 

@@ -36,7 +36,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.util.Log
 
 /**
  * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
@@ -182,12 +184,32 @@ constructor(
           updatedScale?.let { scale ->
             currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
             scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-
-            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+            val connectedScales = deviceService.connectedScales.first()
+              val connectedScale = connectedScales.find { it.id == scaleId }
+              // currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+              // scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            if(connectedScale != null){
+              handleIntent(ScaleDetailsIntent.SetScaleInfo(connectedScale))
+            }
             getDeviceInfo()
           }
         }
       }
+
+      deviceService.connectedScales.collect { devices ->
+        val currentScale = state.value.scale
+        if (currentScale != null) {
+          val updatedScale = devices.find { it.id == scaleId }
+          updatedScale?.let {
+              scale ->
+            currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+            Log.d("setscaledetails11","${scale}");
+
+          }
+          }
+        }
     }
   }
 
@@ -196,6 +218,7 @@ constructor(
       deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
+          Log.d("setscaledetails2","${scaleDevice}");
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
@@ -317,8 +340,8 @@ constructor(
     )
     viewModelScope.launch {
       try {
-        deviceService.updateScaleNickname(state.value.scale!!.id, scaleName)
-        AppLog.i("SaveScaleName", "Updated scale name: $scaleName")
+        deviceService.updateScaleNickname(state.value.scale!!, scaleName)
+        AppLog.i("SaveScaleName", "Updated scale name: ${state.value.scale}")
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()
         // Note: Form will be repopulated with updated nickname when dialog reopens

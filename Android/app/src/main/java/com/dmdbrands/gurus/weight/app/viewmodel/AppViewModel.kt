@@ -705,7 +705,7 @@ constructor(
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()
-        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${weightOnlyScales.size}")
+        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${deviceService.isWeightOnlyModeAlertShown.value}")
         if (hasWeightOnlyModeScale && !deviceService.isWeightOnlyModeAlertShown.value) {
           WeightOnlyModeEventService.emit(WeightOnlyModeEventType.SHOW_ALERT)
           deviceService.updateWeightOnlyModeAlertShown(false)

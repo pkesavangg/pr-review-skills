@@ -71,11 +71,11 @@ interface IDeviceService {
   /**
    * Update a scale's nickname.
    *
-   * @param deviceId The ID of the device
+   * @param device The ID of the device
    * @param nickname The new nickname
    */
   suspend fun updateScaleNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   )
 

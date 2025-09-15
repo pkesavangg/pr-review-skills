@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -1102,6 +1103,7 @@ constructor(
         wifiMacAddress = wifiMac,
       ),
     )
+    Log.d("updatewifidetails", "${discoveredScale}")
   }
 
   private fun stepOn() {
