@@ -30,7 +30,6 @@ final class WeekSectionViewModel: BaseSectionViewModel {
 
         // Return cached result if data hasn't changed
         if currentHash == cachedSegmentsHash && !cachedSegmentsResult.isEmpty {
-            print(cachedSegmentsResult.count, "getConnectedSegments Week cachedSegmentsResult")
             return cachedSegmentsResult
         }
 
@@ -42,7 +41,6 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         cachedSegmentsHash = currentHash
         cachedSegmentsResult = result
 
-        print(result.count, "getConnectedSegments Week")
         return result
     }
 

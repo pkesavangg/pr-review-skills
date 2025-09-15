@@ -30,7 +30,6 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         
         // Return cached result if data hasn't changed
         if currentHash == cachedSegmentsHash && !cachedSegmentsResult.isEmpty {
-            print(cachedSegmentsResult.count, "getConnectedSegments Month cachedSegmentsResult")
             return cachedSegmentsResult
         }
         
@@ -42,7 +41,6 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         cachedSegmentsHash = currentHash
         cachedSegmentsResult = result
         
-        print(result.count, "getConnectedSegments Month")
         return result
     }
     

@@ -40,7 +40,6 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         
         // Return cached result if data hasn't changed
         if currentHash == cachedSegmentsHash && !cachedSegmentsResult.isEmpty {
-            print(cachedSegmentsResult.count, "getConnectedSegments cachedSegmentsResult")
             return cachedSegmentsResult
         }
         
@@ -51,7 +50,6 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         // Cache the result
         cachedSegmentsHash = currentHash
         cachedSegmentsResult = result
-        print(result.count, "getConnectedSegments")
         return result
     }
     
