@@ -9,8 +9,7 @@
 import Foundation
 
 enum API {
-    static let baseURL = "https://api.weightgurus.com/v3" // 
-//     static let baseURL = "http://49.207.187.28:3005/wg-server/v3" // Replace with your actual base URL
+    static let baseURL = AppEnvironment.apiBaseURL
 }
 
 enum Endpoint {
