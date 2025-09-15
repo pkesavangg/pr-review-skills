@@ -7,7 +7,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var goalAlertService: GoalAlertService
     @Injector var integrationService: IntegrationsService
     private let accountService: AccountServiceProtocol
-    private let localRepo: EntryRepositoryProtocol = EntryRepository() // Call to main actor-isolated initializer 'init()' in a synchronous nonisolated context
+    private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
     private let migrationService = SQLiteMigrationService()
