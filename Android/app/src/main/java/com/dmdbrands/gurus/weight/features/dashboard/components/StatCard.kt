@@ -168,7 +168,6 @@ fun AnimatedStatCard(
     ),
   )
   val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
-  val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
   BadgedBox(
     badge = {
       if (inEditMode && !isDragging) {
@@ -182,10 +181,10 @@ fun AnimatedStatCard(
             .border(2.dp, iconTint, CircleShape),
         ) {
           Icon(
-            painter = painterResource(id = metricBadgeIcon),
+            painter = painterResource(id = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus),
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
             tint = iconTint,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
           )
         }
       }
