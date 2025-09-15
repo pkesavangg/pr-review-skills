@@ -234,7 +234,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         let placeholder = DashboardStrings.placeholder
         state.metrics = state.metrics.enumerated().map { index, item in
             // Only set placeholder for body metrics, not weight
-            if item.label == DashboardStrings.weight {
+            let bodyMetric = getBodyMetric(for: item.label)
+            if bodyMetric == .weight {
                 // Keep weight value as is - don't set placeholder
                 return item
             } else {
