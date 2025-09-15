@@ -138,6 +138,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         )
         DashboardMilestone(
           progress = state.progress,
+          latestWeight = state.latestWeight,
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->

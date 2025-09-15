@@ -22,6 +22,7 @@ data class DashboardState(
   val visibleKeys: List<DashboardKey> = emptyList(),
   val dayWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
   val monthWiseEntries: List<PeriodBodyScaleSummary> = emptyList(),
+  val latestWeight: Double? = null,
   val progress: Progress = Progress(),
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
@@ -51,6 +52,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
   object OnConnectScale: DashboardIntent
+  data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
 }
 
 /**
@@ -69,7 +71,8 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetGoal -> state.copy(goal = intent.goal)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
-    DashboardIntent.LoadEntries -> state.copy(isLoading = true)
+    is DashboardIntent.LoadEntries -> state.copy(isLoading = true)
+    is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
     else -> state
   }
 }

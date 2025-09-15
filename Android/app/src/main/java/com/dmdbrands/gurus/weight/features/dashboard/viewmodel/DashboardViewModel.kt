@@ -46,6 +46,7 @@ constructor(
     subscribeMetrics()
     subscribeProgress()
     subscribeGoals()
+    subscribeLatestWeight()
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -76,6 +77,20 @@ constructor(
     viewModelScope.launch {
       entryService.progress.collect {
         handleIntent(DashboardIntent.SetProgress(it))
+      }
+    }
+  }
+
+  private fun subscribeLatestWeight(){
+    viewModelScope.launch {
+      entryService.latestEntry.collect {
+          latestEntry ->
+        val latestWeight =
+          when (latestEntry) {
+            is ScaleEntry -> latestEntry.scale.scaleEntry.weight
+            else -> null
+          }
+        handleIntent(DashboardIntent.SetLatestWeight(latestWeight))
       }
     }
   }
