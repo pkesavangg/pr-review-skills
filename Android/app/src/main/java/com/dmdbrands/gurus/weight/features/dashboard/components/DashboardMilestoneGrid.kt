@@ -102,7 +102,7 @@ fun DashboardMilestoneGrid(
       ReorderableItem(
         state = reorderableState,
         key = getMilestoneKey(milestone, isVisible = true),
-        enabled = inEditMode,
+        enabled = inEditMode && !isGoalProgressMilestone(milestone),
       ) { isDragging ->
         MilestoneItem(
           progress = progress,
