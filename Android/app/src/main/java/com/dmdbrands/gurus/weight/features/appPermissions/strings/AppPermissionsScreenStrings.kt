@@ -15,32 +15,32 @@ object AppPermissionsScreenStrings {
   const val NetworkHeader = "Network"
 
   // Bluetooth
-  const val BluetoothEnabledDescription = "Bluetooth authorized"
-  const val BluetoothDisabledDescription = "Allow Bluetooth access"
+  const val BluetoothEnabledDescription = "Bluetooth is turned on"
+  const val BluetoothDisabledDescription = "Turn on Bluetooth"
 
   // Nearby Devices
   const val NearbyDevicesEnabledDescription = "Nearby Devices authorized"
-  const val NearbyDevicesDisabledDescription = "Allow nearby devices access"
+  const val NearbyDevicesDisabledDescription = "Nearby devices is not authorized"
 
   // Location
-  const val LocationEnabledDescription = "Location authorized"
-  const val LocationDisabledDescription = "Allow location access"
+  const val LocationEnabledDescription = "Location access is authorized"
+  const val LocationDisabledDescription = "Authorize location access"
 
   // Network
   const val NetworkEnabledDescription = "Network Connected"
   const val NetworkDisabledDescription = "Network Disconnected"
 
   const val EnabledWifiDescription = "Wi-Fi is Enabled"
-  const val DisabledWifiDescription = "Enable Wi-Fi to Continue"
+  const val DisabledWifiDescription = "Enable Wi-Fi to continue"
 
-  const val LocationSwitchEnabledDescription = "Location services authorized"
-  const val LocationSwitchDisabledDescription = "Allow location services access"
+  const val LocationSwitchEnabledDescription = "Location access is enabled"
+  const val LocationSwitchDisabledDescription = "Enable location on your device"
 
-  const val NotificationsEnabledDescription = "Notifications authorized"
-  const val NotificationsDisabledDescription = "Allow notifications access"
+  const val NotificationsEnabledDescription = "Notifications are enabled"
+  const val NotificationsDisabledDescription = "Enable notifications"
 
-  const val CameraEnabledDescription = "Camera authorized"
-  const val CameraDisabledDescription = "Allow camera access"
+  const val CameraEnabledDescription = "Camera access authorized"
+  const val CameraDisabledDescription = "Authorize camera access"
 
   // Status Labels
   const val Granted = "Granted"
