@@ -104,20 +104,19 @@ constructor(
 
   init {
     repositoryScope.launch {
+      val account = accountRepository.getActiveAccount().first()
       lastUpdated.collect { lastUpdated ->
-        accountId?.let { accountIdValue ->
           try {
-            val entries = getEntriesByDeviceType(accountIdValue, "scale").first()
+            val entries = entryRepository.getEntriesByAccount(account?.id ?: "", false)
             if (entries.size >= 3) {
               goalService.checkGoalCard()
-              AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card")
+              AppLog.d("EntryService", "User has ${entries} scale entries (>= 3), checking goal card")
             } else {
-              AppLog.d("EntryService", "User has only ${entries.size} scale entries, not enough for goal card")
+              AppLog.d("EntryService", "User has only ${entries} scale entries, not enough for goal card")
             }
           } catch (e: Exception) {
             AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
           }
-        }
       }
     }
   }
@@ -254,14 +253,6 @@ constructor(
       try {
         val entries = getEntriesByDeviceType(accountId, "scale").first()
         AppLog.d("EntryService", "Account updated - Found ${entries.size} scale entries for account $accountId")
-
-        // Check if user has 3 or more scale entries to potentially show goal card
-        if (entries.size >= 3) {
-          AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card")
-          goalService.checkGoalCard()
-        } else {
-          AppLog.d("EntryService", "User has only ${entries.size} scale entries, not enough for goal card")
-        }
       } catch (e: Exception) {
         AppLog.e("EntryService", "Error checking entries for goal card after account update", e.toString())
       }
@@ -322,12 +313,6 @@ constructor(
       try {
         val entries = getEntriesByDeviceType(accountId ?: "", "scale").first()
         AppLog.d("EntryService", "Entry added - Found ${entries.size} scale entries for account $accountId")
-
-        // Check if user has 3 or more scale entries to potentially show goal card
-        if (entries.size >= 3) {
-          AppLog.d("EntryService", "User has ${entries.size} scale entries (>= 3), checking goal card after new entry")
-          goalService.checkGoalCard()
-        }
       } catch (e: Exception) {
         AppLog.e("EntryService", "Error checking entries for goal card after adding entry", e.toString())
       }
@@ -373,15 +358,6 @@ constructor(
         try {
           val entries = getEntriesByDeviceType(accountId ?: "", "scale").first()
           AppLog.d("EntryService", "Entries added - Found ${entries.size} scale entries for account $accountId")
-
-          // Check if user has 3 or more scale entries to potentially show goal card
-          if (entries.size >= 3) {
-            AppLog.d(
-              "EntryService",
-              "User has ${entries.size} scale entries (>= 3), checking goal card after new entries",
-            )
-            goalService.checkGoalCard()
-          }
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error checking entries for goal card after adding entries", e.toString())
         }
@@ -501,7 +477,7 @@ constructor(
         }
         // Trigger goal alert if needed
         latestWeight?.let { weight ->
-          goalService.showGoalCompletionAlert(weight)
+          goalService.showGoalCompletionAlert(weight * 10)
         }
       }
 

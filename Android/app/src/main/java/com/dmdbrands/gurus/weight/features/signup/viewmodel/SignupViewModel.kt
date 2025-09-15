@@ -138,7 +138,6 @@ constructor(
             )
             AppLog.d(TAG, "Goal creation completed, proceeding to navigation")
           }
-
           navigationService.replaceStack(AppRoute.Init.Loading)
           AppLog.i(TAG, "Navigation to loading screen successful after signup")
           handleIntent(SignupIntent.Success)

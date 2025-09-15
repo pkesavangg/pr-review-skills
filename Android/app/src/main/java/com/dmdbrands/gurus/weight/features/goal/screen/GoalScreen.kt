@@ -86,7 +86,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
     ) {
       val canDisplayMilestone =
         state.account?.goalType != null && state.account.goalWeight != null && state.account.goalWeight > 0
-      val canShowTitle = state.account?.goalWeight != null
+      val canShowTitle = state.account?.goalType != null
       // Milestone Display Section - showing current goal progress
       if (canDisplayMilestone) {
         GoalMilestoneDisplay(

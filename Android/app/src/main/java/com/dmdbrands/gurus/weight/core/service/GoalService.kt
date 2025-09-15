@@ -18,7 +18,6 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -290,10 +289,6 @@ constructor(
 
       // Check if user has a goal set (check goal type)
       val currentGoal = getCurrentGoal().first()
-      if (currentGoal?.goalType != null) {
-        AppLog.d(TAG, "User already has a goal set (${currentGoal.type}), skipping goal card")
-        return
-      }
 
       val isPopupShowed = goalAlertDataStore.getGoalCardValue(account.id)
       if (isPopupShowed != null) {
@@ -304,8 +299,12 @@ constructor(
       AppLog.i(TAG, "All conditions met - showing goal card popup for account ${account.id}")
 
       // Mark popup as shown first (like Angular implementation)
-      showSetGoalPopup()
-      goalAlertDataStore.setGoalCardValue(account.id, "true")
+      if(
+        account.goalType == null
+      ) {
+        showSetGoalPopup()
+        goalAlertDataStore.setGoalCardValue(account.id, "true")
+      }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error checking goal card", e)
     }
@@ -365,7 +364,6 @@ constructor(
    * Shows goal met alert dialog.
    * Based on Angular's showGoalMetAlert method.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   private fun showGoalMetAlert() {
     isShowingAlert = true
     dialogQueueService.enqueue(
@@ -401,10 +399,9 @@ constructor(
     isShowingAlert = true
     dialogQueueService.enqueue(
       DialogModel.Confirm(
-        title = GoalStrings.GoalLeaveTitle,
         message = GoalStrings.GoalLeaveMessage,
-        confirmText = GoalStrings.UpdateGoalButton,
-        cancelText = GoalStrings.KeepGoalButton,
+        confirmText = GoalStrings.YesButton,
+        cancelText = GoalStrings.NoButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false

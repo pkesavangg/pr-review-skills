@@ -72,7 +72,7 @@ fun GoalMilestoneDisplay(
       goalType = goalType,
       initialWeight = goal.initialWeight,
       goalWeight = goal.goalWeight,
-      latestWeight = currentWeight,
+      latestWeight = currentWeight * 10,
     )
   val displayProgressPercentage = GoalDisplayHelper.computeDisplayProgressPercentage(goalType, goalPercent)
 
@@ -127,13 +127,13 @@ private fun calculateGoalPercentage(
   if (latestWeight <= 0.0) return null // No valid weight data
   when (goalType) {
     GoalType.LOSE -> {
-      progressPercentage = ((latestWeight - goalWeight) / (initialWeight - goalWeight) * 100)
-      percent = 100 - floor(progressPercentage).toInt()
+      progressPercentage = ((latestWeight - goalWeight) / (initialWeight - goalWeight))
+      percent = 100 - floor(progressPercentage * 100).toInt()
     }
 
     GoalType.GAIN -> {
-      progressPercentage = ((latestWeight - initialWeight) / (goalWeight - initialWeight) * 100)
-      percent = floor(progressPercentage).toInt()
+      progressPercentage = ((latestWeight - initialWeight) / (goalWeight - initialWeight))
+      percent = floor(progressPercentage * 100).toInt()
     }
 
     else -> return null // Maintain goals don't have percentage
