@@ -100,13 +100,13 @@ struct GraphView: View {
                 from: dashboardStore.continuousOperations,
                 showingLatest: true
             )
-            //dashboardStore.graphManager.updateScrollPosition(to: optimal)
+            dashboardStore.graphManager.updateScrollPosition(to: optimal)
             
             // Recalculate and cache Y-axis based on the new visible region
             dashboardStore.updateYAxisCache()
             
             // Reset chart identity to fully rebuild the Chart without unwanted animations
-            // chartIdentity = UUID()
+            chartIdentity = UUID()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
