@@ -285,7 +285,6 @@ struct ManualEntryScreen: View {
                     }
                     
                     // Save button
-                    // Save button
                     ButtonView(
                         text: commonLang.save,
                         type: .filledPrimary,
