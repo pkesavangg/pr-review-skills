@@ -52,6 +52,7 @@ class LeadingAlignedFlowLayout: UICollectionViewFlowLayout {
 
     override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
         // Invalidate on bounds changes (e.g., during interactive movement) to keep alignment correct
-        return true
+        // Only invalidate layout if the width changes to improve performance
+        return newBounds.width != collectionView?.bounds.width
     }
 } 

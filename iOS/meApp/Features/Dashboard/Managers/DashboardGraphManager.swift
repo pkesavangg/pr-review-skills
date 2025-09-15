@@ -89,7 +89,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleCompleteChartSelection(at selectedDate: Date,
                                      operations: [BathScaleWeightSummary],
                                      updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
-                                     resetMetrics: @escaping () -> Void) async {
+                                     resetMetrics: @escaping () -> Void,
+                                     setMetricPlaceholders: @escaping () -> Void ) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
 
@@ -117,6 +118,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         } catch {
             logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
             resetMetrics()
+        }
+
+        // ADDITIONAL: Find exact data point for body metrics only (not weight)
+        // If no exact point exists for body metrics, set placeholders
+        let calendar = Calendar.current
+        let exactPoint: BathScaleWeightSummary? = {
+            switch state.selectedPeriod {
+            case .week, .month:
+                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
+            case .year, .total:
+                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
+            }
+        }()
+
+        // Only apply exact point logic for body metrics (not weight)
+        // Weight uses the closest point logic above, body metrics use exact matching
+        if exactPoint == nil {
+            // No exact point for body metrics: set placeholders for body metrics only
+            setMetricPlaceholders()
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point for body metrics; showing placeholders")
         }
     }
 
