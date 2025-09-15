@@ -101,36 +101,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         guard !operations.isEmpty else { return }
 
-        // Find exact data point at the selected date (same day/month depending on granularity)
-        // If none exists, keep crosshair but do not set selectedPoint; set placeholders instead.
-        let calendar = Calendar.current
-        let exactPoint: BathScaleWeightSummary? = {
-            switch state.selectedPeriod {
-            case .week, .month:
-                return operations.first { calendar.isDate($0.date, inSameDayAs: selectedDate) }
-            case .year, .total:
-                return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
-            }
-        }()
-
-        if let point = exactPoint {
-            updateSelectedPoint(point)
-            do {
-                try await updateMetrics(point)
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with exact selected point: \(point.date)")
-            } catch {
-                logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
-                resetMetrics()
-            }
-            return
+        // Find the closest data point to the selected date (ORIGINAL WEIGHT BEHAVIOR)
+        let selectedBin = operations.min { bin1, bin2 in
+            abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
         }
 
         guard let selectedBin = selectedBin else { return }
 
-        // Set the selected point and show crosshair
+        // Set the selected point and show crosshair (ORIGINAL WEIGHT BEHAVIOR)
         updateSelectedPoint(selectedBin)
 
-        // Update metrics with the selected point's values
+        // Update metrics with the selected point's values (ORIGINAL WEIGHT BEHAVIOR)
         do {
             try await updateMetrics(selectedBin)
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(selectedBin.date)")
