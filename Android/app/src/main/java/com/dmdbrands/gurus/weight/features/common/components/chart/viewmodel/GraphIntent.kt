@@ -27,7 +27,7 @@ sealed interface GraphIntent : IReducer.Intent {
   data class UpdateTargetRange(val minTarget: Long?, val maxTarget: Long?) : GraphIntent
 
   /** Update marker index */
-  data class UpdateMarkerIndex(val markerIndex: Int?) : GraphIntent
+  data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
 
   data class UpdateSavedTarget(val target: Long) : GraphIntent
 

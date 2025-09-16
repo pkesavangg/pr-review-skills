@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -23,6 +24,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.floor
+import android.icu.util.Calendar
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
@@ -61,7 +63,8 @@ class GraphViewModel @AssistedInject constructor(
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
-      is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate(intent.markerIndex)
+      is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate()
+      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
       else -> null
     }
   }
@@ -72,18 +75,19 @@ class GraphViewModel @AssistedInject constructor(
   private fun initializeGraph(intent: GraphIntent.InitializeGraph) {
     super.handleIntent(intent)
 
-    intent.graphLines
+    val graphLines = intent.graphLines.first()
     val secondaryGraphLines = intent.secondaryGraphLines
     val goal = intent.goal
 
     // Setup chart model producer
-    setupChartModelProducer(secondaryGraphLines, goal)
+    setupChartModelProducer(graphLines, secondaryGraphLines, goal)
   }
 
   /**
    * Sets up the chart model producer with primary and secondary graph lines.
    */
   private fun setupChartModelProducer(
+    graphLines: GraphLine,
     secondaryGraphLines: GraphLine?,
     goal: Goal?
   ) {
@@ -95,9 +99,6 @@ class GraphViewModel @AssistedInject constructor(
     val ySeries = currentState.yLabels
 
     currentModelProducerJob = viewModelScope.launch {
-      if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
-        calculateYAxis(secondaryGraphLines)
-      }
 
       // Check if job is still active before running transaction
       if (isActive) {
@@ -107,6 +108,7 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = xLabels.map { it.value as Long },
                 y = y.map { it.value },
+                ranges = calculateInitialYRange(graphLines, goal),
               )
             }
           }
@@ -116,6 +118,7 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = secondaryGraphLines.points.map { it.x.value as Long },
                 y = secondaryGraphLines.points.map { it.y.value },
+                ranges = calculateInitialYRange(secondaryGraphLines, goal),
               )
             }
           }
@@ -125,42 +128,48 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.SetScrollTarget(target = xLabels.maxOfOrNull { it.value.toDouble() }))
   }
 
-  private fun calculateYAxis(secondaryGraphLines: GraphLine, canAnimate: Boolean = true) {
-    val currentState = _state.value
-    // Calculate Y-axis targets
+  private fun calculateInitialYRange(graphLines: GraphLine, goal: Goal? = null): CartesianRangeValues {
+    // Get the end and start timestamp
+    val endX = _state.value.endTimeStamp ?: Calendar.getInstance().timeInMillis
+    val startX = GraphUtil.getStartRange(segment, endX) ?: Calendar.getInstance().timeInMillis
+    // calculate with the interval count to get padded range
     val intervalCount = segment.intervalCount().div(2)
-    val paddedMinTarget = currentState.minTarget?.minus(ONE_DAY_MILLIS * intervalCount)
-    val paddedMaxTarget = currentState.maxTarget?.plus(ONE_DAY_MILLIS * intervalCount)
-    if (paddedMinTarget != null && paddedMaxTarget != null) {
-      val paddedSecondaryGraphLines = filterXValuesInRange(
-        listOf(secondaryGraphLines),
-        paddedMinTarget,
-        paddedMaxTarget,
-      )
+    val paddedStartX = startX.minus(ONE_DAY_MILLIS * intervalCount)
+    val paddedEndX = endX.plus(ONE_DAY_MILLIS * intervalCount)
 
-      val secondaryYAxis = paddedSecondaryGraphLines.flatMap { graphLine ->
-        graphLine.points.map { it.y.value.toDouble() }
-      }
+    val paddedGraphLines = filterXValuesInRange(
+      listOf(graphLines),
+      paddedStartX,
+      paddedEndX,
+    )
 
-      if (secondaryYAxis.isNotEmpty()) {
-        val secondaryGraphMeta = generateNiceScale(
-          floor(secondaryYAxis.min()),
-          ceil(secondaryYAxis.max()),
-          goalWeight = currentState.goal?.goalWeight ?: 0.0,
-        )
-        handleIntent(
-          GraphIntent.UpdateSecondaryYAxis(
-            axisMeta = secondaryGraphMeta.copy(canAnimate = canAnimate),
-          ),
-        )
-      }
+    val paddedYAxis = paddedGraphLines.flatMap { graphLine ->
+      graphLine.points.map { it.y.value.toDouble() }
     }
+
+    if (paddedYAxis.isNotEmpty()) {
+      val graphMeta = generateNiceScale(
+        floor(paddedYAxis.min()),
+        ceil(paddedYAxis.max()),
+        goalWeight = goal?.goalWeight ?: 0.0,
+      )
+      return CartesianRangeValues(
+        minY = graphMeta.min,
+        maxY = graphMeta.max,
+        maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+        minX = GraphUtil.getStartRange(segment, _state.value.initialTimeStamp)?.toDouble(),
+      )
+    }
+    return CartesianRangeValues(
+      maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+      minX = GraphUtil.getStartRange(segment, _state.value.initialTimeStamp)?.toDouble(),
+    )
   }
 
   /**
    * Handles updates to selected data and triggers metric updates.
    */
-  private fun handleSelectedDataUpdate(markerIndex: Int?) {
+  private fun handleSelectedDataUpdate() {
     val currentState = state.value
     val selectedData = currentState.selectedData
 
@@ -209,7 +218,7 @@ class GraphViewModel @AssistedInject constructor(
   /**
    * Handles scroll events and updates the visible range.
    */
-  fun handleScroll(min: Long, max: Long) {
+  private fun handleScroll(min: Long, max: Long) {
     val currentState = state.value
 
     // Cancel any existing computation job
@@ -277,7 +286,7 @@ class GraphViewModel @AssistedInject constructor(
             ),
           )
           if (currentState.secondaryGraphLines != null) {
-            calculateYAxis(currentState.secondaryGraphLines)
+            calculateInitialYRange(currentState.secondaryGraphLines)
           }
         }
       }

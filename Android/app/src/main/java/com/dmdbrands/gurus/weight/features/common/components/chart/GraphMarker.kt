@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -22,8 +21,9 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 @Composable
 internal fun rememberDefaultMarker(
   xLabels: List<Label>,
-  markerIndex: Int?,
-  segment: GraphSegment
+  markerIndex: Double?,
+  segment: GraphSegment,
+  yLabelCallback: (List<CharSequence>) -> Unit = {}
 ): CartesianMarker {
   val label =
     rememberTextComponent(
@@ -39,7 +39,7 @@ internal fun rememberDefaultMarker(
   return rememberDefaultCartesianMarker(
     label = label,
     labelPosition = DefaultCartesianMarker.LabelPosition.Top,
-    valueFormatter = valueFormatter(xLabels, markerIndex, segment),
+    valueFormatter = valueFormatter(segment),
     indicator = { color ->
       ShapeComponent(
         fill = fill(color),
@@ -49,7 +49,7 @@ internal fun rememberDefaultMarker(
       )
     },
     guideline = guideline,
-    contentPadding = insets(vertical = 22.dp),
+    yLabelCallback = yLabelCallback,
   )
 }
 
@@ -58,19 +58,15 @@ internal fun rememberDefaultMarker(
  */
 @Composable
 private fun valueFormatter(
-  xLabels: List<Label>,
-  markerIndex: Int?,
   segment: GraphSegment
 ): DefaultCartesianMarker.ValueFormatter =
-  remember(xLabels, markerIndex) {
-    object : DefaultCartesianMarker.ValueFormatter {
-      override fun format(
-        context: CartesianDrawingContext,
-        targets: List<CartesianMarker.Target>,
-      ) = GraphUtil.markerValueFormatter(
-        targets.first().x.toLong(),
-        segment,
-      )
-    }
+  object : DefaultCartesianMarker.ValueFormatter {
+    override fun format(
+      context: CartesianDrawingContext,
+      targets: List<CartesianMarker.Target>,
+    ) = GraphUtil.markerValueFormatter(
+      targets.first().x.toLong(),
+      segment,
+    )
   }
 
