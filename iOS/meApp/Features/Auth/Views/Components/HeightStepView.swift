@@ -16,19 +16,27 @@ struct HeightStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
     let heightStepLang = SignupStrings.HeightStep.self
+    let labels = InputFieldLabels.self
     
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
-            // Height Selection Chip
-            ChipView(
-                text: signupStore.getFormattedHeight(),
-                style: .bordered,
-                isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
-                onTap: {
-                    signupStore.showHeightPicker()
-                }
-            )
-            .padding(.top, .spacingLG)
+            
+            VStack(alignment: .leading, spacing: .spacingLG){
+                // Height Selection Chip
+                ChipView(
+                    text: signupStore.getFormattedHeight(),
+                    style: .bordered,
+                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
+                    onTap: {
+                        signupStore.showHeightPicker()
+                    }
+                )
+                .padding(.top, .spacingLG)
+                
+                CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
+                                 text: labels.useMetric)
+                
+            }
             .padding(.leading, 2)
         }
         .pickerSheet(
