@@ -23,9 +23,10 @@ fun ScalePermissions(
     modifier: Modifier = Modifier,
     permissions: GGPermissionStatusMap,
     onRequestPermission: (String) -> Unit,
+    wifiName: String? = null,
 ) {
     val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
-    val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions)
+    val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions, null, wifiName)
     Column(
         modifier = modifier
             .fillMaxSize()

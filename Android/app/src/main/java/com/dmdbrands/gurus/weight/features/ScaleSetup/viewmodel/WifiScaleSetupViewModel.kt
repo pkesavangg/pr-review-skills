@@ -153,6 +153,9 @@ constructor(
       subscribePermissions(true).collect { permissions ->
         handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
         AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
+        
+        // Refresh WiFi information when permissions change to ensure WiFi name is current
+        updateNetworkStatus()
       }
     }
   }
@@ -409,8 +412,14 @@ constructor(
    * Requests a specific permission using the PermissionService.
    */
   private fun requestPermission(permissionType: String) {
-    if (permissionType == GGPermissionType.WIFI_SWITCH) {
-      permissionService.requestPermission(permissionType)
+    if (permissionType == "WIFI_SWITCH_LOCATION") {
+      // Check if location permissions are granted before allowing WiFi switch request
+      val hasLocationPermissions = isAllLocationPermissionGranted()
+      if (!hasLocationPermissions) {
+        AppLog.w(TAG, "Location permissions not granted")
+        return
+      }
+      permissionService.requestPermission(GGPermissionType.WIFI_SWITCH)
       return
     }
     viewModelScope.launch {
