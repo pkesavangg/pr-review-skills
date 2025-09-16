@@ -542,32 +542,37 @@ constructor(
         }
 
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
-          dialogQueueService.showDialog(
-            ReconnectScale.getDuplicateUserAlert(
-              onConfirm = {
-                viewModelScope.launch {
-                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
-                  if (device == null) {
-                    return@launch
+          try {
+            dialogQueueService.showDialog(
+              ReconnectScale.getDuplicateUserAlert(
+                onConfirm = {
+                  viewModelScope.launch {
+                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                    if (device == null) {
+                      return@launch
+                    }
+                    ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
+                    ggDeviceService.addCacheDevice(data.broadcastId, device)
+                    navigationService.navigateTo(
+                      AppRoute.ScaleSetup.BtWifiScaleSetup(
+                        data.getSKU(),
+                        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                        data.broadcastId,
+                      ),
+                    )
                   }
-                  ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                  ggDeviceService.addCacheDevice(data.broadcastId, device)
-                  navigationService.navigateTo(
-                    AppRoute.ScaleSetup.BtWifiScaleSetup(
-                      data.getSKU(),
-                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                      data.broadcastId,
-                    ),
-                  )
-                }
-              },
-              onCancel = {
-                if (data.broadcastId != null) {
-                  ggDeviceService.skipDevice(data.broadcastId!!)
-                }
-              },
-            ),
-          )
+                },
+                onCancel = {
+                  if (data.broadcastId != null) {
+                    ggDeviceService.skipDevice(data.broadcastId!!)
+                  }
+                },
+              ),
+            )
+          }
+          catch (e: Exception) {
+            AppLog.d(TAG, "Error during duplicate user alert $e")
+          }
         }
 
         else -> null

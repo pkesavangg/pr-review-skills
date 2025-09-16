@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -218,7 +219,6 @@ constructor(
       deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
-          Log.d("setscaledetails2","${scaleDevice}");
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
@@ -259,46 +259,57 @@ constructor(
   }
 
   private fun deleteScaleAlert() {
-    viewModelScope.launch {
-      dialogQueueService.showDialog(
-        DialogModel.Confirm(
-          message = ScaleDetailsStrings.DeleteScaleConfirmation,
-          confirmText = ScaleDetailsStrings.Delete,
-          cancelText = ScaleDetailsStrings.Cancel,
-          onConfirm = {
-            val scale = state.value.scale!!
-            dialogQueueService.dismissCurrent()
-            dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
-            viewModelScope.launch {
-              deviceService.deleteScale(scale.id)
-              if (scale.deviceType == ScaleSetupType.BtWifiR4.value) {
-                ggDeviceService.disconnectDevice(scale.toGGBTDevice())
-              }
-              ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {
-                if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-                  dialogQueueService.showToast(
-                    Toast(
-                      message = ScaleDetailsStrings.DeleteSuccessMessage,
-                    ),
-                  )
-                } else {
-                  dialogQueueService.showToast(
-                    Toast(
-                      message = ScaleDetailsStrings.DeleteErrorMessage,
-                    ),
-                  )
+    try {
+      viewModelScope.launch {
+        dialogQueueService.showDialog(
+          DialogModel.Confirm(
+            message = ScaleDetailsStrings.DeleteScaleConfirmation,
+            confirmText = ScaleDetailsStrings.Delete,
+            cancelText = ScaleDetailsStrings.Cancel,
+            onConfirm = {
+              viewModelScope.launch {
+                val scale = state.value.scale!!
+                dialogQueueService.dismissCurrent()
+                dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
+                if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
+                  ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
+                    if (it == GGUserActionResponseType.DELETE_COMPLETED) {
+                      ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
+                      dialogQueueService.showToast(
+                        Toast(
+                          message = ScaleDetailsStrings.DeleteSuccessMessage,
+                        ),
+                      )
+                    } else {
+                      dialogQueueService.dismissLoader()
+                      dialogQueueService.showToast(
+                        Toast(
+                          message = ScaleDetailsStrings.DeleteErrorMessage,
+                        ),
+                      )
+                    }
+                  }
                 }
+                deviceService.deleteScale(scale.id)
+                dialogQueueService.dismissLoader()
+                navigateBack()
               }
-              dialogQueueService.dismissLoader()
-              navigateBack()
-            }
-          },
-          onDismiss = {
-            dialogQueueService.dismissCurrent()
-          },
-        ),
-      )
+            },
+            onDismiss = {
+              dialogQueueService.dismissCurrent()
+            },
+
+          ),
+
+        )
+      }
     }
+    catch (e: Exception){
+      Log.d("hello5","scaledeleted")
+      dialogQueueService.dismissLoader()
+      AppLog.d(TAG,"Error while deleting an scale")
+    }
+
   }
 
   private fun openScaleUsers() {

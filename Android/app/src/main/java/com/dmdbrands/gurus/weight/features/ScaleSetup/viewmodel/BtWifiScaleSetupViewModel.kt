@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -50,12 +51,12 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -74,6 +75,7 @@ constructor(
   override val ggDeviceService: GGDeviceService,
   private val deviceService: IDeviceService,
   private val entryService: IEntryService,
+  private val deviceRepository: IDeviceRepository,
   private val dashboardService: IDashboardService,
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
@@ -95,6 +97,7 @@ constructor(
 
   private val TAG = "BtWifiScaleSetupViewModel"
   private var deviceConfigured: Boolean = false
+  private var accountId: String? = null
 
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
@@ -135,6 +138,9 @@ constructor(
     observePermissions()
     observeStepChanges()
     initializeSetup()
+    viewModelScope.launch {
+      accountId = accountService.activeAccountFlow.first()?.id
+    }
   }
 
   private fun initializeSetup() {
@@ -201,25 +207,31 @@ constructor(
   }
 
   private fun replaceAccount(userName: String? = null) {
-    viewModelScope.launch {
-      if (userName == null) {
-        ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice()) {
-          // After deleting account, refresh the user list
+    try {
+      viewModelScope.launch {
+        if (userName == null) {
+          ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice()) {
+            // After deleting account, refresh the user list
+            refreshUserListAfterAccountChange()
+          }
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+        } else {
+          discoveredScale =
+            discoveredScale!!.copy(
+              preferences = discoveredScale!!.preferences?.copy(displayName = userName),
+            )
+          // After updating account, refresh the user list
           refreshUserListAfterAccountChange()
+          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         }
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-        handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-      } else {
-        discoveredScale =
-          discoveredScale!!.copy(
-            preferences = discoveredScale!!.preferences?.copy(displayName = userName),
-          )
-        // After updating account, refresh the user list
-        refreshUserListAfterAccountChange()
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-        handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
       }
     }
+    catch (e: Exception){
+      AppLog.d(TAG, "Error replacing account ")
+    }
+
   }
 
   /**
@@ -323,17 +335,44 @@ constructor(
 
   private fun observePermissions() {
     viewModelScope.launch {
-      permissionService.permissionCallBackFlow.collect {
-        handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
+      // Use the same logic as ScaleSetupViewmodel.subscribePermissions to handle WIFI_SWITCH properly
+      combine(
+        permissionService.permissionCallBackFlow,
+        connectivityObserver.observe(),
+      ) { permissions, networkState ->
+        val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
+        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
+
+        AppLog.d(TAG, "Network status: $networkStatus, WiFi switch status: $wifiSwitchStatus")
+
+        // WiFi switch is enabled if either network is available OR WiFi switch is enabled
+        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+          wifiSwitchStatus == GGPermissionState.ENABLED
+        ) {
+          GGPermissionState.ENABLED
+        } else {
+          GGPermissionState.DISABLED
+        }
+
+        AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+        val updatedPermissions = permissions.toMutableMap().apply {
+          put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        }
+
+        handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
+        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(updatedPermissions, sku)
         if (!areRequiredPermissionsEnabled) {
-          if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS && state.value.currentStep != BtWifiSetupStep.SCALE_INFO) {
+          val currentStep = state.value.currentStep
+          val isAtOrAfterCustomizeSettings = currentStep.ordinal >= BtWifiSetupStep.CUSTOMIZE_SETTINGS.ordinal
+          if (currentStep != BtWifiSetupStep.PERMISSIONS &&
+              currentStep != BtWifiSetupStep.SCALE_INFO &&
+              !isAtOrAfterCustomizeSettings) {
             handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
           }
         } else {
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
-      }
+      }.collect { }
     }
   }
 
@@ -369,6 +408,11 @@ constructor(
 
             BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
               connectToBluetooth()
+            }
+
+            BtWifiSetupStep.PERMISSIONS -> {
+              // Ensure permissions step shows "Next" button
+              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
             }
 
             BtWifiSetupStep.DUPLICATES_FOUND -> {
@@ -435,6 +479,7 @@ constructor(
     } else if (currentState.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST) {
       // Check if WiFi is already connected
       if (!currentState.connectedSSID.isNullOrEmpty()) {
+        ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
         // WiFi already connected, go to customization
         AppLog.d(TAG, "WiFi already connected, navigating to CUSTOMIZE_SETTINGS")
         handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
@@ -512,8 +557,12 @@ constructor(
     AppLog.d(TAG, "Skipping current step: ${currentState.currentStep}")
 
     when (currentState.currentStep) {
-      BtWifiSetupStep.GATHERING_NETWORK,
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
+        // Show confirmation dialog for WiFi skip
+        showWifiSkipConfirmation()
+      }
+
+      BtWifiSetupStep.GATHERING_NETWORK -> {
         // Skip to CUSTOMIZE_SETTINGS
         ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
         handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
@@ -524,6 +573,30 @@ constructor(
         onNext()
       }
     }
+  }
+
+  /**
+   * Shows WiFi skip confirmation dialog.
+   */
+  private fun showWifiSkipConfirmation() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = ScaleSetupStrings.SkipWifiPermissions.Title,
+        message = ScaleSetupStrings.SkipWifiPermissions.Message,
+        confirmText = ScaleSetupStrings.SkipWifiPermissions.Skip,
+        cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
+        onConfirm = {
+          // User confirmed skip - proceed to customization
+          AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
+          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+        },
+        onCancel = {
+          // User chose to go back - stay on WiFi list
+          AppLog.d(TAG, "User chose to go back from WiFi skip confirmation")
+        },
+      ),
+    )
   }
 
   private fun onExitSetup(
@@ -751,14 +824,12 @@ constructor(
    */
   private fun connectToBluetooth() {
     handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
-    if (_state.value.currentStep != BtWifiSetupStep.CONNECTING_BLUETOOTH) {
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.CONNECTING_BLUETOOTH,
           ConnectionState.Loading,
         ),
       )
-    }
     viewModelScope.launch {
       try {
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
@@ -776,7 +847,7 @@ constructor(
                     ConnectionState.Success,
                   ),
                 )
-                deviceService.saveScale(discoveredScale!!)
+                saveScale()
                 handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
               }
@@ -850,6 +921,34 @@ constructor(
       }
     }
   }
+  private suspend fun saveScale() {
+    val current = discoveredScale ?: return
+    val scaleID = System.currentTimeMillis().toString()
+    // If your Preferences has `scaleId` (like your TS), update that:
+    val updatedPrefs = current.preferences?.copy(
+      id = scaleID,                      // use `id = scaleID` if your model uses `id`
+    )
+    val updatedDevice = current.copy(
+      id = scaleID,
+      preferences = updatedPrefs
+    )
+    discoveredScale = updatedDevice
+    val accountId = accountService.activeAccountFlow.first()?.id
+    if (accountId != null) {
+      val savedDevice = deviceRepository.saveDeviceToApi(discoveredScale!!, accountId)
+      // Update discoveredScale with the API response (which contains the correct ID)
+      discoveredScale = savedDevice
+      // Update the scale ID in the state
+      handleIntent(BtWifiScaleSetupIntent.SetScaleId(savedDevice.id))
+      deviceService.saveScale(discoveredScale!!)
+      // Update the preferences with the correct scale ID from API
+      if (savedDevice.preferences != null) {
+        val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
+        discoveredScale = savedDevice.copy(preferences = updatedPreferences)
+      }
+    }
+  }
+
 
   /**
    * Checks for duplicate users and creates a list of users to be deleted.
@@ -1103,7 +1202,6 @@ constructor(
         wifiMacAddress = wifiMac,
       ),
     )
-    Log.d("updatewifidetails", "${discoveredScale}")
   }
 
   private fun stepOn() {
@@ -1188,8 +1286,8 @@ constructor(
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
                 viewModelScope.launch {
                   deviceService.updateScalePreferencesByMac(
-                    updatedDevice.device?.macAddress ?: "",
-                    updatedDevice.preferences!!.toR4ScalePreferenceApiModel(),
+                    discoveredScale?.device?.macAddress ?: "",
+                    discoveredScale?.preferences!!.toR4ScalePreferenceApiModel(),
                   )
                   handleIntent(
                     BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -1352,32 +1450,38 @@ constructor(
   }
 
   private fun deleteUser(user: GGBTUser) {
-    dialogQueueService.enqueue(
-      DialogModel.Confirm(
-        title = ScaleUsersStrings.DeleteUserAlert.Title,
-        message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
-        confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
-        cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
-        onConfirm = {
-          // Delete user and update the list
-          viewModelScope.launch {
-            val deleteDevice = discoveredScale?.copy(
-              preferences = discoveredScale?.preferences?.copy(
-                displayName = user.name,
-                shouldMeasureImpedance = user.isBodyMetricsEnabled,
-              ),
-              token = user.token,
-            )
-            ggDeviceService.deleteAccount(deleteDevice!!.toGGBTDevice()) {
-              // After deleting user, refresh the user list to keep it in sync
-              refreshUserListAfterAccountChange()
+    try {
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = ScaleUsersStrings.DeleteUserAlert.Title,
+          message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
+          confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
+          cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+          onConfirm = {
+            // Delete user and update the list
+            viewModelScope.launch {
+              val deleteDevice = discoveredScale?.copy(
+                preferences = discoveredScale?.preferences?.copy(
+                  displayName = user.name,
+                  shouldMeasureImpedance = user.isBodyMetricsEnabled,
+                ),
+                token = user.token,
+              )
+              ggDeviceService.deleteAccount(deleteDevice!!.toGGBTDevice()) {
+                // After deleting user, refresh the user list to keep it in sync
+                refreshUserListAfterAccountChange()
+              }
+              handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
             }
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-            handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-          }
-        },
-      ),
-    )
+          },
+        ),
+      )
+    }
+    catch (e: Exception){
+      AppLog.e(TAG, "Error during user deletion", e)
+    }
+
   }
 
   private fun openProductGuide() {

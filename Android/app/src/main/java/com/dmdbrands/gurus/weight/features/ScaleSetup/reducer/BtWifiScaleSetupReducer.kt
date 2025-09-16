@@ -89,6 +89,8 @@ data class BtWifiScaleSetupState(
   val isLoading: Boolean = false,
   val errorCode: String? = null,
   val isSetupFinished: Boolean = false,
+  // Scale ID for preference management
+  val scaleId: String = "",
   val stepConnectionStates: Map<BtWifiSetupStep, ConnectionState> = mapOf(),
   val canProceedToNext: Boolean = true,
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
@@ -128,6 +130,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   data class SetWifiList(val wifiList: List<GGWifiInfo>) : BtWifiScaleSetupIntent
   data class SetScaleSku(
     val sku: String,
+  ) : BtWifiScaleSetupIntent
+
+  data class SetScaleId(
+    val scaleId: String,
   ) : BtWifiScaleSetupIntent
 
   data class SetCurrentStep(
@@ -220,6 +226,9 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
       is BtWifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
       is BtWifiScaleSetupIntent.SetErrorCode -> state.copy(errorCode = intent.errorCode)
+      is BtWifiScaleSetupIntent.SetScaleId -> state.copy(
+        scaleId = intent.scaleId,
+      )
       is BtWifiScaleSetupIntent.SetStepConnectionState -> state.copy(
         stepConnectionStates = state.stepConnectionStates.toMutableMap().apply {
           put(intent.step, intent.connectionState)
@@ -256,6 +265,12 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.UpdateNextButtonText -> state.copy(nextButtonText = intent.text)
       is BtWifiScaleSetupIntent.RefreshNetworks -> state.copy(currentStep = BtWifiSetupStep.GATHERING_NETWORK)
       BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> state.copy() // Logic handled in ViewModel
+
+      is BtWifiScaleSetupIntent.Back -> {
+        // Reset button text to "Next" by default when going back
+        // Specific steps will override this in their step change logic
+        state.copy(nextButtonText = ScaleSetupStrings.SetupButtons.Next)
+      }
 
       // Scale mode preference reducers
       is BtWifiScaleSetupIntent.SetScaleModePreference -> state.copy(

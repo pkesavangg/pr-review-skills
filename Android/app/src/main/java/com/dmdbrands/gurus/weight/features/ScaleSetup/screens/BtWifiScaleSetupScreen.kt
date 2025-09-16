@@ -200,7 +200,6 @@ fun BtWifiScaleSetupScreenContent(
               type = ButtonType.PrimaryFilled,
               label = when (state.currentStep) {
                 BtWifiSetupStep.WIFI_PASSWORD -> ScaleSetupStrings.SetupButtons.Connect
-                BtWifiSetupStep.AVAILABLE_WIFI_LIST -> ScaleSetupStrings.SetupButtons.Next
                 else -> state.nextButtonText
               },
               size = ButtonSize.Small,
