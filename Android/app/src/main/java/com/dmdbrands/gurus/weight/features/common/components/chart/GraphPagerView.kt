@@ -148,7 +148,7 @@ fun GraphPagerView(
               .fillMaxWidth()
               .let {
                 if (currentSegment == GraphSegment.TOTAL) {
-                  it.padding(start = 16.dp)
+                  it.padding(start = 8.dp)
                 } else {
                   it
                 }

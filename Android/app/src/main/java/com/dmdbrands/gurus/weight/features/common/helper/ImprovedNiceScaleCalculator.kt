@@ -17,94 +17,94 @@ object ImprovedNiceScaleCalculator {
     minValue: Double,
     maxValue: Double,
     goalWeight: Double,
-    targetTickCount: Int = 6
+    isWeightLessMode: Boolean = false,
+    targetTickCount: Int = 5
   ): AxisMeta {
     val actualMin = kotlin.math.floor(minValue)
     val actualMax = kotlin.math.ceil(maxValue)
     val rawRange = actualMax - actualMin
 
     return when {
-      rawRange < 5.0 -> handleSmallRange(actualMin, actualMax, goalWeight)
-      rawRange < 15.0 -> handleMediumRange(actualMin, actualMax, goalWeight)
-      else -> handleNormalRange(actualMin, actualMax, goalWeight, targetTickCount)
+      rawRange < 5.0 -> handleSmallRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
+      rawRange < 15.0 -> handleMediumRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
+      else -> handleNormalRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
     }
   }
 
-  private fun handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double): AxisMeta {
+  private fun handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double, isWeightLessMode: Boolean, targetTickCount: Int): AxisMeta {
     val range = maxOf(dataMax - dataMin, 2.0)
     val padding = range * 0.2
-    var min = kotlin.math.floor(dataMin - padding)
-    var max = kotlin.math.ceil(dataMax + padding)
+    val paddedMin = dataMin - padding
+    val paddedMax = dataMax + padding
 
     val dataCenter = (dataMin + dataMax) / 2
     val dataRange = dataMax - dataMin
     val reasonableGoalRange = dataRange * 2
 
-    val finalMin = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      minOf(min, kotlin.math.floor(goalWeight))
-    else min
+    // Include goal weight if reasonable
+    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      minOf(paddedMin, goalWeight)
+    else paddedMin
 
-    val finalMax = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      maxOf(max, kotlin.math.ceil(goalWeight))
-    else max
+    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      maxOf(paddedMax, goalWeight)
+    else paddedMax
 
-    val actualRange = finalMax - finalMin
-    val step: Double
-    val ticks = mutableListOf<Double>()
+    // Calculate nice step based on range and target tick count
+    val rawRange = maxBound - minBound
+    val roughStep = rawRange / (targetTickCount - 1).coerceAtLeast(1)
+    val step = pickNiceStep(roughStep)
 
-    if (actualRange == 2.0) {
-      val evenMin = if (finalMin % 2 == 0.0) finalMin else finalMin - 1
-      val evenMax = if (finalMax % 2 == 0.0) finalMax else finalMax + 1
-      step = 2.0
-      var current = evenMin
-      while (current <= evenMax) {
-        ticks.add(current)
-        current += step
-      }
-      return AxisMeta(maxOf(evenMin, 0.0), evenMax, step)
-    } else {
-      step = 1.0
-      var current = finalMin
-      while (current <= finalMax) {
-        ticks.add(current)
-        current += step
-      }
-      return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
-    }
+    // Align min/max to nice step
+    val niceMin = kotlin.math.floor(minBound / step) * step
+    val niceMax = kotlin.math.ceil(maxBound / step) * step
+
+    // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
+    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
+    val finalMax = niceMax
+
+    return AxisMeta(finalMin, finalMax, step)
   }
 
-  private fun handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double): AxisMeta {
+  private fun handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double, isWeightLessMode: Boolean, targetTickCount: Int): AxisMeta {
     val range = dataMax - dataMin
     val padding = range * 0.15
-    val min = kotlin.math.floor(dataMin - padding)
-    val max = kotlin.math.ceil(dataMax + padding)
+    val paddedMin = dataMin - padding
+    val paddedMax = dataMax + padding
 
     val dataCenter = (dataMin + dataMax) / 2
     val reasonableGoalRange = range * 2
 
-    val finalMin = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      listOf(min, kotlin.math.floor(goalWeight / 2) * 2, kotlin.math.floor(dataMin)).minOrNull()!!
-    else min
+    // Include goal weight if reasonable
+    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      minOf(paddedMin, goalWeight)
+    else paddedMin
 
-    val finalMax = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      listOf(max, kotlin.math.ceil(goalWeight / 2) * 2, kotlin.math.ceil(dataMax)).maxOrNull()!!
-    else max
+    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      maxOf(paddedMax, goalWeight)
+    else paddedMax
 
-    val step = 2.0
-    val ticks = mutableListOf<Double>()
-    var current = finalMin
-    while (current <= finalMax) {
-      ticks.add(current)
-      current += step
-    }
+    // Calculate nice step based on range and target tick count
+    val rawRange = maxBound - minBound
+    val roughStep = rawRange / (targetTickCount - 1).coerceAtLeast(1)
+    val step = pickNiceStep(roughStep)
 
-    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
+    // Align min/max to nice step
+    val niceMin = kotlin.math.floor(minBound / step) * step
+    val niceMax = kotlin.math.ceil(maxBound / step) * step
+
+    // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
+    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
+    val finalMax = niceMax
+
+    return AxisMeta(finalMin, finalMax, step)
   }
 
   private fun handleNormalRange(
     dataMin: Double,
     dataMax: Double,
     goalWeight: Double,
+    isWeightLessMode: Boolean,
     targetTickCount: Int
   ): AxisMeta {
     val rawRange = dataMax - dataMin
@@ -113,54 +113,50 @@ object ImprovedNiceScaleCalculator {
     val paddedMin = dataMin - padding
     val paddedMax = dataMax + padding
 
-    val step = calculateOptimalStep(paddedMax - paddedMin, targetTickCount)
-    val niceMin = kotlin.math.floor(paddedMin / step) * step
-    val niceMax = kotlin.math.ceil(paddedMax / step) * step
-
     val dataCenter = (dataMin + dataMax) / 2
     val reasonableGoalRange = rawRange * 2
 
-    val finalMin = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      listOf(niceMin, kotlin.math.floor(goalWeight / step) * step, kotlin.math.floor(dataMin)).minOrNull()!!
-    else niceMin
+    // Include goal weight if reasonable
+    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      minOf(paddedMin, goalWeight)
+    else paddedMin
 
-    val finalMax = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      listOf(niceMax, kotlin.math.ceil(goalWeight / step) * step, kotlin.math.ceil(dataMax)).maxOrNull()!!
-    else niceMax
+    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
+      maxOf(paddedMax, goalWeight)
+    else paddedMax
 
-    var currentTick = finalMin
-    var ticks = mutableListOf<Double>()
-    while (currentTick <= finalMax + 0.001) {
-      ticks.add(currentTick)
-      currentTick += step
-    }
+    // Calculate nice step based on range and target tick count
+    val range = maxBound - minBound
+    val roughStep = range / (targetTickCount - 1).coerceAtLeast(1)
+    val step = pickNiceStep(roughStep)
 
-    if (ticks.size < 3) {
-      ticks.clear()
-      val smallerStep = step / 2
-      currentTick = finalMin
-      while (currentTick <= finalMax + 0.001) {
-        ticks.add(currentTick)
-        currentTick += smallerStep
-      }
-    } else if (ticks.size > 6) {
-      ticks.clear()
-      val largerStep = step * 2
-      currentTick = finalMin
-      while (currentTick <= finalMax + 0.001) {
-        ticks.add(currentTick)
-        currentTick += largerStep
-      }
-    }
+    // Align min/max to nice step
+    val niceMin = kotlin.math.floor(minBound / step) * step
+    val niceMax = kotlin.math.ceil(maxBound / step) * step
 
-    return AxisMeta(maxOf(finalMin, 0.0), finalMax, step)
+    // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
+    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
+    val finalMax = niceMax
+
+    return AxisMeta(finalMin, finalMax, step)
   }
 
-  private fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {
-    val roughStep = range / (targetTickCount - 1).coerceAtLeast(1)
-    val magnitude = 10.0.pow(kotlin.math.floor(kotlin.math.log10(roughStep)))
-    val normalizedStep = roughStep / magnitude
-    val closestNice = niceNumbers.minByOrNull { kotlin.math.abs(it - normalizedStep) } ?: 1.0
-    return closestNice * magnitude
+  /**
+   * Pick a "nice" step size that is >= threshold using the nice numbers logic.
+   * This ensures step values are always from the predefined nice numbers list.
+   */
+  private fun pickNiceStep(threshold: Double): Double {
+    // Determine magnitude (power of 10)
+    val magnitude = 10.0.pow(kotlin.math.floor(kotlin.math.log10(maxOf(threshold, 1e-9))))
+    val normalized = threshold / magnitude
+
+    // Find first nice number >= normalized, otherwise bump magnitude
+    val candidate = niceNumbers.firstOrNull { it >= normalized }
+    return if (candidate != null) {
+      candidate * magnitude
+    } else {
+      // If none is big enough, move to next order of magnitude with the smallest nice number
+      (niceNumbers.firstOrNull() ?: 1.0) * magnitude * 10.0
+    }
   }
 }

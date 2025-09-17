@@ -1,12 +1,15 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.animation.core.animateValueAsState
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.TwoWayConverter
+import androidx.compose.animation.core.animateValueAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -33,6 +36,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import kotlin.math.roundToInt
+import android.graphics.Typeface
 
 @Composable
 internal fun ChartHostSection(
@@ -64,7 +68,7 @@ internal fun ChartHostSection(
 
   val doubleVectorConverter = TwoWayConverter<Double, AnimationVector1D>(
     convertToVector = { AnimationVector1D(it.toFloat()) },
-    convertFromVector = { it.value.toDouble() }
+    convertFromVector = { it.value.toDouble() },
   )
 
   val animatedMarkerIndex = if (segment == GraphSegment.TOTAL && markerIndex != null && markerIndex != 0.0) {
@@ -79,6 +83,8 @@ internal fun ChartHostSection(
   } else {
     markerIndex ?: 0.0
   }
+  val resources = LocalResources.current
+  val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
   val primaryChart =
     rememberCartesianChart(
@@ -110,6 +116,11 @@ internal fun ChartHostSection(
             CartesianValueFormatter { _, value, _ ->
               value.roundToInt().toString()
             },
+          itemPlacer = remember(state.primaryYStep) {
+            VerticalAxis.ItemPlacer.step(
+              { state.primaryYStep },
+            )
+          },
           size = BaseAxis.Size.fixed(50.dp),
           line =
             rememberAxisLineComponent(
@@ -124,6 +135,7 @@ internal fun ChartHostSection(
             ),
           label =
             rememberTextComponent(
+              typeface = openSans,
               color = MeTheme.colorScheme.textSubheading,
               textSize = 14.sp,
             ),
@@ -163,7 +175,9 @@ internal fun ChartHostSection(
         } else {
           val targetMarkerIndex =
             getTargetPoints(scrollState.getVisibleAxisLabels(), targets, click, segment)
-          markerIndex = targetMarkerIndex.first()
+          if (targetMarkerIndex.isNotEmpty()) {
+            markerIndex = targetMarkerIndex.first()
+          }
         }
         handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       },

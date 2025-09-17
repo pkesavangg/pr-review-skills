@@ -17,6 +17,8 @@ sealed interface GraphIntent : IReducer.Intent {
     val goal: Goal? = null,
   ) : GraphIntent
 
+  data class UpdatePrimaryYStep(val step: Double) : GraphIntent
+
   /** Update primary Y-axis */
   data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
 

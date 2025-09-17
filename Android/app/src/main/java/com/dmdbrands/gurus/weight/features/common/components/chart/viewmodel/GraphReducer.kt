@@ -14,6 +14,8 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
         goal = intent.goal,
       )
 
+    is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)
+
     is GraphIntent.UpdatePrimaryYAxis -> state.copy(primaryYAxis = intent.yRangeValues)
 
     is GraphIntent.UpdateSecondaryYAxis -> state.copy(secondaryYAxis = intent.yRangeValues)

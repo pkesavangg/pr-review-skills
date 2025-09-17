@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
@@ -19,6 +20,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -33,7 +35,8 @@ import android.icu.util.Calendar
   assistedFactory = GraphViewModel.Factory::class,
 )
 class GraphViewModel @AssistedInject constructor(
-  @Assisted val segment: GraphSegment
+  @Assisted val segment: GraphSegment,
+  private val accountService: IAccountService
 ) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
@@ -105,6 +108,9 @@ class GraphViewModel @AssistedInject constructor(
 
     currentModelProducerJob = viewModelScope.launch {
 
+      // Get weightless mode before entering transaction
+      val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
+
       // Check if job is still active before running transaction
       if (isActive) {
         currentState.modelProducer.runTransaction {
@@ -113,7 +119,7 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = xLabels.map { it.value as Long },
                 y = y.map { it.value },
-                ranges = calculateYAxisRange(graphLines, goal),
+                ranges = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode),
               )
             }
           }
@@ -123,7 +129,12 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = secondaryGraphLines.points.map { it.x.value as Long },
                 y = secondaryGraphLines.points.map { it.y.value },
-                ranges = calculateYAxisRange(secondaryGraphLines, goal),
+                ranges = calculateYAxisRange(
+                  secondaryGraphLines,
+                  goal,
+                  isWeightlessMode = isWeightlessMode,
+                  isSecondary = true,
+                ),
               )
             }
           }
@@ -137,7 +148,9 @@ class GraphViewModel @AssistedInject constructor(
     goal: Goal? = null,
     min: Long? = null,
     max: Long? = null,
-    onInit: Boolean = true
+    onInit: Boolean = true,
+    isSecondary: Boolean = false,
+    isWeightlessMode: Boolean = false,
   ): CartesianRangeValues {
     // Get the end and start timestamp
     val initialTimestamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
@@ -165,10 +178,15 @@ class GraphViewModel @AssistedInject constructor(
 
     if (paddedYAxis.isNotEmpty()) {
       val graphMeta = generateNiceScale(
-        floor(paddedYAxis.min()),
-        ceil(paddedYAxis.max()),
+        minValue = floor(paddedYAxis.min()),
+        maxValue = ceil(paddedYAxis.max()),
         goalWeight = goal?.goalWeight ?: 0.0,
+        isWeightLessMode = isWeightlessMode,
+        targetTickCount = 5,
       )
+      if (!isSecondary) {
+        super.handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
+      }
       return CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
@@ -195,6 +213,8 @@ class GraphViewModel @AssistedInject constructor(
       val formattedRange = GraphUtil.formatDateRange(min, max, segment)
       onRangeUpdate(formattedRange)
 
+      // Get weightless mode for Y-axis calculations
+      val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
       if (isActive) {
         this@GraphViewModel.updateWeightLabel(min, max)
@@ -211,13 +231,21 @@ class GraphViewModel @AssistedInject constructor(
           onInit = false,
           min = min,
           max = max,
+          isWeightlessMode = isWeightlessMode,
         )
         super.handleIntent(
           GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis),
         )
         if (currentState.secondaryGraphLines != null) {
           val secondaryGraphLines =
-            calculateYAxisRange(currentState.secondaryGraphLines, onInit = false, min = min, max = max)
+            calculateYAxisRange(
+              currentState.secondaryGraphLines,
+              onInit = false,
+              min = min,
+              max = max,
+              isSecondary = true,
+              isWeightlessMode = isWeightlessMode,
+            )
           super.handleIntent(
             GraphIntent.UpdateSecondaryYAxis(yRangeValues = secondaryGraphLines),
           )
