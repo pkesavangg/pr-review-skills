@@ -12,6 +12,7 @@ import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
@@ -24,9 +25,11 @@ internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
-  minYTarget: Int?,
-  maxYTarget: Int?,
+  yRangeValues: CartesianRangeValues?,
 ): LineCartesianLayer {
+
+  val minYTarget = yRangeValues?.minY
+  val maxYTarget = yRangeValues?.maxY
 
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
@@ -81,15 +84,13 @@ internal fun rememberLineLayerWithConnection(
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
-  minYTarget: Int?,
-  maxYTarget: Int?,
+  yRangeValues: CartesianRangeValues? = null
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.primaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
-    minYTarget = minYTarget,
-    maxYTarget = maxYTarget,
+    yRangeValues = yRangeValues,
   )
 }
 
@@ -99,14 +100,12 @@ internal fun primaryLayer(
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
-  minYTarget: Int?,
-  maxYTarget: Int?,
+  yRangeValues: CartesianRangeValues? = null
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.secondaryAction,
     verticalAxisPosition = Axis.Position.Vertical.Start,
-    minYTarget = minYTarget,
-    maxYTarget = maxYTarget,
+    yRangeValues = yRangeValues,
   )
 }

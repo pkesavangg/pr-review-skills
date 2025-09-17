@@ -6,8 +6,8 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
-import com.greatergoods.meapp.features.common.helper.AxisMeta
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import kotlinx.coroutines.Job
 
 /**
@@ -46,8 +46,8 @@ import kotlinx.coroutines.Job
 data class GraphState(
   val graphLines: List<GraphLine> = emptyList(),
   val secondaryGraphLines: GraphLine? = null,
-  val primaryYAxis: AxisMeta? = null,
-  val secondaryYAxis: AxisMeta? = null,
+  val primaryYAxis: CartesianRangeValues? = null,
+  val secondaryYAxis: CartesianRangeValues? = null,
   val goal: Goal? = null,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
@@ -56,8 +56,6 @@ data class GraphState(
   val isUpdating: Boolean = false,
   val computationJob: Job? = null,
   val animationJob: Job? = null,
-  val startRange: Long? = null,
-  val endRange: Long? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
   val xLabels: List<Label> = graphLines.flatMap { graphLine ->

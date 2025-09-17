@@ -104,7 +104,6 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
     Column(modifier = Modifier.verticalScroll(scrollState)) {
       HistoryGraph(
         state = state,
-        selectedSegment = selectedSegment,
         selectedStat = selectedStat,
         onSelectSegment = {
           handleIntent(DashboardIntent.SetSelectedSegment(it))

@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -56,11 +55,12 @@ internal fun bottomAxis(
       itemPlacer = horizontalItemPlacer,
       valueFormatter =
         CartesianValueFormatter { _, value, _ ->
-          " "
+          GraphUtil.formatTimestampForSegment(
+            value.toLong(),
+            segment,
+          ).lowercase().first().toString()
         },
       horizontalLabelPosition = Position.Horizontal.End,
-      tick = rememberAxisGuidelineComponent(fill = fill(Color.Transparent)),
-      tickLength = 20.dp,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,

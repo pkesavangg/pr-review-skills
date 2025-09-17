@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.average
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
@@ -44,11 +43,9 @@ class GraphViewModel @AssistedInject constructor(
     fun create(segment: GraphSegment): GraphViewModel
   }
 
-  private var hasInitialized = false
-  private var onMetricUpdate: (List<GraphPoint>) -> Unit = {}
-  private var onScroll: (String?) -> Unit = {}
-  private var onLabelUpdate: (String) -> Unit = {}
-  private var onScrollValueUpdate: suspend (Double?) -> Unit = {}
+  private var onTargetUpdate: (List<Double>, List<Double>) -> Unit = { _, _ -> }
+  private var onRangeUpdate: (String?) -> Unit = { }
+  private var onWeightLabelUpdate: (String) -> Unit = { }
   private var currentModelProducerJob: Job? = null
 
   override fun provideInitialState(): GraphState = GraphState()
@@ -63,7 +60,6 @@ class GraphViewModel @AssistedInject constructor(
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
-      is GraphIntent.UpdateMarkerIndex -> handleSelectedDataUpdate()
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
       else -> null
     }
@@ -108,7 +104,7 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = xLabels.map { it.value as Long },
                 y = y.map { it.value },
-                ranges = calculateInitialYRange(graphLines, goal),
+                ranges = calculateYAxisRange(graphLines, goal),
               )
             }
           }
@@ -118,20 +114,31 @@ class GraphViewModel @AssistedInject constructor(
               series(
                 x = secondaryGraphLines.points.map { it.x.value as Long },
                 y = secondaryGraphLines.points.map { it.y.value },
-                ranges = calculateInitialYRange(secondaryGraphLines, goal),
+                ranges = calculateYAxisRange(secondaryGraphLines, goal),
               )
             }
           }
         }
       }
     }
-    handleIntent(GraphIntent.SetScrollTarget(target = xLabels.maxOfOrNull { it.value.toDouble() }))
   }
 
-  private fun calculateInitialYRange(graphLines: GraphLine, goal: Goal? = null): CartesianRangeValues {
+  private fun calculateYAxisRange(
+    graphLines: GraphLine,
+    goal: Goal? = null,
+    min: Long? = null,
+    max: Long? = null,
+    onInit: Boolean = true
+  ): CartesianRangeValues {
     // Get the end and start timestamp
-    val endX = _state.value.endTimeStamp ?: Calendar.getInstance().timeInMillis
-    val startX = GraphUtil.getStartRange(segment, endX) ?: Calendar.getInstance().timeInMillis
+    val initialTimestamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
+    val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+    val endX = max ?: _state.value.maxTarget ?: endTimeStamp ?: Calendar.getInstance().timeInMillis
+    val startX =
+      min ?: _state.value.minTarget ?: if (segment != GraphSegment.TOTAL)
+        GraphUtil.getStartRange(segment, endX) ?: Calendar.getInstance().timeInMillis
+      else
+        initialTimestamp ?: Calendar.getInstance().timeInMillis
     // calculate with the interval count to get padded range
     val intervalCount = segment.intervalCount().div(2)
     val paddedStartX = startX.minus(ONE_DAY_MILLIS * intervalCount)
@@ -156,63 +163,14 @@ class GraphViewModel @AssistedInject constructor(
       return CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
-        maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-        minX = GraphUtil.getStartRange(segment, _state.value.initialTimeStamp)?.toDouble(),
+        maxX = if (onInit) GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble() else null,
+        minX = if (onInit) GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble() else null,
       )
     }
     return CartesianRangeValues(
       maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-      minX = GraphUtil.getStartRange(segment, _state.value.initialTimeStamp)?.toDouble(),
+      minX = GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble(),
     )
-  }
-
-  /**
-   * Handles updates to selected data and triggers metric updates.
-   */
-  private fun handleSelectedDataUpdate() {
-    val currentState = state.value
-    val selectedData = currentState.selectedData
-
-    // Cancel any existing computation job
-    currentState.computationJob?.cancel()
-
-    if (selectedData.isEmpty()) {
-      val job = viewModelScope.launch(Dispatchers.Default) {
-        val formattedRange = GraphUtil.formatDateRange(
-          currentState.minTarget ?: 0L,
-          currentState.maxTarget ?: 0L,
-          segment,
-        )
-        onScroll(formattedRange)
-
-        val subset = averageYValuesInRange(
-          currentState.graphLines,
-          currentState.minTarget ?: 0L,
-          currentState.maxTarget ?: 0L,
-        )
-
-        if (isActive) {
-          val joinedLabel = subset.values
-            .filterNotNull()
-            .joinToString(" / ") { it.label }
-          onLabelUpdate(joinedLabel)
-
-          val graphLines = filterXValuesInRange(
-            currentState.graphLines,
-            currentState.minTarget ?: 0L,
-            currentState.maxTarget ?: 0L,
-          )
-          onMetricUpdate(graphLines.flatMap { it.points })
-        }
-
-        super.handleIntent(GraphIntent.UpdateComputationJob(null))
-      }
-      super.handleIntent(GraphIntent.UpdateComputationJob(job))
-    } else {
-      onScroll(null)
-      onMetricUpdate(listOf(selectedData.first()))
-      onLabelUpdate(selectedData.first().y.label)
-    }
   }
 
   /**
@@ -226,68 +184,34 @@ class GraphViewModel @AssistedInject constructor(
 
     val job = viewModelScope.launch(Dispatchers.IO) {
       val formattedRange = GraphUtil.formatDateRange(min, max, segment)
-      onScroll(formattedRange)
+      onRangeUpdate(formattedRange)
 
-      val subset = averageYValuesInRange(
-        currentState.graphLines,
-        min,
-        max,
-      )
-
-      super.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-      super.handleIntent(GraphIntent.UpdateSavedTarget(max))
 
       if (isActive) {
-        val joinedLabel = subset.values
-          .filterNotNull()
-          .joinToString(" / ") { it.label }
-        onLabelUpdate(joinedLabel)
-
+        this@GraphViewModel.updateWeightLabel(min, max)
         val graphLines = filterXValuesInRange(
           currentState.graphLines,
           min,
           max,
         )
-        onMetricUpdate(graphLines.flatMap { it.points })
-
-        // Calculate Y-axis targets
-        val intervalCount = segment.intervalCount().div(2)
-        val paddedMinTarget = min.minus(ONE_DAY_MILLIS * intervalCount)
-        val paddedMaxTarget = max.plus(ONE_DAY_MILLIS * intervalCount)
-
-        val paddedGraphLines = filterXValuesInRange(
-          currentState.graphLines,
-          paddedMinTarget,
-          paddedMaxTarget,
+        val currentRangeTimeStamps = graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
+        onTargetUpdate(currentRangeTimeStamps, emptyList())
+        val primaryYAxis = calculateYAxisRange(
+          currentState.graphLines.first(),
+          goal = currentState.goal,
+          onInit = false,
+          min = min,
+          max = max,
         )
-
-        val yAxis = paddedGraphLines.flatMap { graphLine ->
-          graphLine.points.map { it.y.value as Double }
-        }
-
-        if (yAxis.isNotEmpty()) {
-          var tempMax = ceil(yAxis.max())
-          var tempMin = floor(yAxis.min())
-
-          if (currentState.primaryYAxis?.max == currentState.primaryYAxis?.min) {
-            tempMax += 1
-            tempMin -= 1
-          }
-
-          val graphMeta = generateNiceScale(
-            tempMin,
-            tempMax,
-            goalWeight = currentState.goal?.goalWeight ?: 0.0,
+        super.handleIntent(
+          GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis),
+        )
+        if (currentState.secondaryGraphLines != null) {
+          val secondaryGraphLines =
+            calculateYAxisRange(currentState.secondaryGraphLines, onInit = false, min = min, max = max)
+          super.handleIntent(
+            GraphIntent.UpdateSecondaryYAxis(yRangeValues = secondaryGraphLines),
           )
-
-          handleIntent(
-            GraphIntent.UpdatePrimaryYAxis(
-              axisMeta = graphMeta,
-            ),
-          )
-          if (currentState.secondaryGraphLines != null) {
-            calculateInitialYRange(currentState.secondaryGraphLines)
-          }
         }
       }
 
@@ -297,18 +221,28 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.UpdateComputationJob(job))
   }
 
+  private fun updateWeightLabel(min: Long, max: Long) {
+    val subset = averageYValuesInRange(
+      _state.value.graphLines,
+      min,
+      max,
+    )
+    val joinedLabel = subset.values
+      .filterNotNull()
+      .joinToString(" / ") { it.label }
+    onWeightLabelUpdate(joinedLabel)
+  }
+
   /**
    * Sets the callback functions for the graph.
    */
   fun setCallbacks(
-    onMetricUpdate: (List<GraphPoint>) -> Unit,
-    onScroll: (String?) -> Unit,
-    onLabelUpdate: (String) -> Unit,
-    scrollToValue: suspend (Double?) -> Unit
+    onTargetUpdate: (List<Double>, List<Double>) -> Unit,
+    onRangeUpdate: (String?) -> Unit,
+    onWeightLabelUpdate: (String) -> Unit,
   ) {
-    this.onMetricUpdate = onMetricUpdate
-    this.onScroll = onScroll
-    this.onLabelUpdate = onLabelUpdate
-    this.onScrollValueUpdate = scrollToValue
+    this.onTargetUpdate = onTargetUpdate
+    this.onRangeUpdate = onRangeUpdate
+    this.onWeightLabelUpdate = onWeightLabelUpdate
   }
 }

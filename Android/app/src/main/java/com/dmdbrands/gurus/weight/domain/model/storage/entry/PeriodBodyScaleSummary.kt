@@ -11,19 +11,19 @@ data class PeriodBodyScaleSummary(
   val period: String, // "YYYY-MM" for month, "YYYY-MM-DD" for day
   val entryTimestamp: String, // For average: latest timestamp in period; for latest: timestamp of the latest entry
   val weight: Double,
-  val bodyFat: Double?,
-  val muscleMass: Double?,
-  val water: Double?,
-  val bmi: Double?,
-  val bmr: Double?,
-  val metabolicAge: Double?,
-  val proteinPercent: Double?,
-  val pulse: Double?,
-  val skeletalMusclePercent: Double?,
-  val subcutaneousFatPercent: Double?,
-  val visceralFatLevel: Double?,
-  val boneMass: Double?,
-  val impedance: Double?,
+  val bodyFat: Double? = null,
+  val muscleMass: Double? = null,
+  val water: Double? = null,
+  val bmi: Double? = null,
+  val bmr: Double? = null,
+  val metabolicAge: Double? = null,
+  val proteinPercent: Double? = null,
+  val pulse: Double? = null,
+  val skeletalMusclePercent: Double? = null,
+  val subcutaneousFatPercent: Double? = null,
+  val visceralFatLevel: Double? = null,
+  val boneMass: Double? = null,
+  val impedance: Double? = null,
   val unit: WeightUnit
 ) : IUnitProcessable<PeriodBodyScaleSummary> {
   @Ignore

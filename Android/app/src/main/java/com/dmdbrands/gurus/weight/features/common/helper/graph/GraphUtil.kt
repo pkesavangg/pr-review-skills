@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
-import kotlin.math.ceil
 import kotlin.reflect.KProperty1
 
 val dateRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
@@ -115,20 +114,6 @@ object GraphUtil {
     MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
   )
 
-  // endregion
-
-  // region Calculation
-  fun calculateTotalIntervalCount(
-    startTime: Long?,
-    endTime: Long?,
-    segment: GraphSegment
-  ): Int {
-    if (startTime == null || endTime == null) return 0
-    val step = calculateXStep(segment)
-    val duration = endTime - startTime
-    return ceil(duration.toDouble() / step).toInt()
-  }
-
   /**
    * Calculates the X-axis step size for the given [GraphSegment].
    * @return The step size in milliseconds.
@@ -158,7 +143,8 @@ object GraphUtil {
     when (this) {
       GraphSegment.WEEK -> 7
       GraphSegment.MONTH -> 5
-      GraphSegment.YEAR, GraphSegment.TOTAL -> 12
+      GraphSegment.YEAR -> 12
+      GraphSegment.TOTAL -> 100
     } + 1
   // endregion
 

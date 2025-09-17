@@ -53,11 +53,6 @@ internal fun ChartHostSection(
     startMillis = if (timeStamps.isNotEmpty()) timeStamps.first() else null,
     endMillis = if (timeStamps.isNotEmpty()) timeStamps.last() else null,
   ).map { it.toDouble() }
-  val visibleCount = if (segment == GraphSegment.TOTAL) GraphUtil.calculateTotalIntervalCount(
-    startTime = state.getXStartRange(segment),
-    endTime = state.getXEndRange(segment),
-    segment = segment,
-  ) else segment.intervalCount()
   val bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer)
   buildList {
     add(primaryLayer)
@@ -124,12 +119,13 @@ internal fun ChartHostSection(
         } else {
           null
         },
-      visibleLabelsCount = visibleCount,
+      visibleLabelsCount = segment.intervalCount(),
       getXStep = {
         GraphUtil.calculateXStep(
           segment,
         )
       },
+
       onChartClick = { targets, click ->
         var markerIndex: Double? = null
         val max = xLabels.maxOfOrNull { it.value.toDouble() }

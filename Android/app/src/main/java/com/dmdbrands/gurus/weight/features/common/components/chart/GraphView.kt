@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -18,12 +17,10 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import android.icu.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -35,7 +32,7 @@ import android.util.Log
  * @param segment The segment of the graph (e.g., WEEK, MONTH).
  * @param placeHolder Optional placeholder text if no data is present.
  * @param goal Optional goal for reference.
- * @param onMetricUpdate Callback for metric updates, returns list of GraphPoint(s).
+ * @param onTargetsUpdate Callback for metric updates, returns list of GraphPoint(s).
  * @param onScroll Callback for scroll events, returns formatted date range.
  * @param onLabelUpdate Callback for label updates, returns updated label string.
  * @param viewModel The GraphViewModel instance (injected via Hilt).
@@ -49,23 +46,17 @@ fun GraphView(
   segment: GraphSegment = GraphSegment.WEEK,
   placeHolder: String? = null,
   goal: Goal? = null,
-  onMetricUpdate: (List<GraphPoint>) -> Unit = {},
-  onScroll: (String?) -> Unit = {},
-  onLabelUpdate: (String) -> Unit = {},
+  onRangeUpdate: (String?) -> Unit = {},
+  onTargetsUpdate: (targets: List<Double>, fallbackValue: List<Double>) -> Unit = { _, _ -> },
+  onWeightLabelUpdate: (String) -> Unit = {},
   viewModel: GraphViewModel = hiltViewModel(),
 ) {  // Scroll state
 
   val state by viewModel.state.collectAsState()
 
   // Store callbacks in ViewModel
-  DisposableEffect(Unit) {
-    viewModel.setCallbacks(onMetricUpdate, onScroll, onLabelUpdate) { target ->
-      // Store the target for processing in LaunchedEffect
-      viewModel.handleIntent(GraphIntent.SetScrollTarget(target))
-    }
-    onDispose {
-      viewModel.handleIntent(GraphIntent.SetScrollTarget(null))
-    }
+  LaunchedEffect(Unit) {
+    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate, onWeightLabelUpdate)
   }
 
   val initialStartX = GraphUtil.getStartRange(segment, state.endTimeStamp)?.toDouble()
@@ -74,11 +65,8 @@ fun GraphView(
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
-  val scrollState = rememberVicoScrollState(initialScroll = initialScroll)
-
-  LaunchedEffect(scrollState) {
-    Log.i("CHECKING", "LaunchedEffect triggered")
-  }
+  val scrollState =
+    rememberVicoScrollState(scrollEnabled = segment != GraphSegment.TOTAL, initialScroll = initialScroll)
 
   // Initialize graph when data changes
   LaunchedEffect(graphLines, secondaryGraphLines) {
@@ -93,18 +81,21 @@ fun GraphView(
 
   // Chart layers and components
   val primaryLayer = primaryLayer(
-    segment,
-    state.primaryYAxis?.min?.toInt(),
-    state.primaryYAxis?.max?.toInt(),
+    segment = segment,
+    yRangeValues = state.primaryYAxis,
   )
 
   val secondaryLayer = secondaryLayer(
     segment = segment,
-    minYTarget = state.secondaryYAxis?.min?.toInt(),
-    maxYTarget = state.secondaryYAxis?.max?.toInt(),
+    yRangeValues = state.secondaryYAxis,
   )
 
-  val defaultMarker = rememberDefaultMarker(state.xLabels, state.markerIndex, segment)
+  val defaultMarker = rememberDefaultMarker(segment) { fallbackValues ->
+    val weightLabel =
+      state.graphLines.first().points.firstOrNull { it.x.value.toDouble() == state.markerIndex?.toDouble() }?.y?.value?.toString()
+    onWeightLabelUpdate(weightLabel ?: fallbackValues.first().average().toString())
+    onTargetsUpdate(listOfNotNull(state.markerIndex), emptyList())
+  }
   val goalMarker = rememberGoalMarker(goal = goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(

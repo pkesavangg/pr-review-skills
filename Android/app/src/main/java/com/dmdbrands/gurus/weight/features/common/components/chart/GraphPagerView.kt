@@ -158,15 +158,17 @@ fun GraphPagerView(
           graphLines = listOf(segmentGraphLines),
           segment = currentSegment,
           goal = state.goal,
-          onScroll = { subText = it },
-          onMetricUpdate = { graphPoints ->
-            val timeStamps = graphPoints.map { it.x.value.toLong() }
+          onRangeUpdate = { subText = it },
+          onTargetsUpdate = { targets, fallbackValue ->
+            val timeStamps = targets.map { it.toLong() }
             val filteredEntries = segmentEntries.filter {
               DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
             }
             onSelected(filteredEntries)
           },
-          onLabelUpdate = { labelData = it },
+          onWeightLabelUpdate = { label ->
+            labelData = label
+          },
           viewModel = viewmodel,
         )
       }

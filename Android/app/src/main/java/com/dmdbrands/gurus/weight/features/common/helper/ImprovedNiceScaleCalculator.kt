@@ -6,7 +6,6 @@ data class AxisMeta(
   val min: Double,
   val max: Double,
   val step: Double,
-  val canAnimate: Boolean = true,
 )
 
 object ImprovedNiceScaleCalculator {

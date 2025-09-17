@@ -12,7 +12,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 @Composable
 fun HistoryGraph(
   state: DashboardState,
-  selectedSegment: GraphSegment = GraphSegment.WEEK,
   selectedStat: Stat? = null,
   onSelectSegment: (GraphSegment) -> Unit = {},
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,

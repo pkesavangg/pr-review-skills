@@ -5,7 +5,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
@@ -13,6 +12,7 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
+import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
@@ -20,10 +20,8 @@ import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 
 @Composable
 internal fun rememberDefaultMarker(
-  xLabels: List<Label>,
-  markerIndex: Double?,
   segment: GraphSegment,
-  yLabelCallback: (List<CharSequence>) -> Unit = {}
+  yLabelCallback: (List<List<Double>>) -> Unit = {}
 ): CartesianMarker {
   val label =
     rememberTextComponent(
@@ -50,6 +48,8 @@ internal fun rememberDefaultMarker(
     },
     guideline = guideline,
     yLabelCallback = yLabelCallback,
+    interpolationType = InterpolationType.CUBIC,
+    curvature = 0.5f,
   )
 }
 
