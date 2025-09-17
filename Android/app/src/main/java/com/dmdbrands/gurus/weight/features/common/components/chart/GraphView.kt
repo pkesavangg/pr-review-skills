@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,6 +95,7 @@ fun GraphView(
     val weightLabel =
       state.graphLines.first().points.firstOrNull { it.x.value.toDouble() == state.markerIndex?.toDouble() }?.y?.value?.toString()
     onWeightLabelUpdate(weightLabel ?: fallbackValues.first().average().toString())
+    onRangeUpdate(null)
     onTargetsUpdate(listOfNotNull(state.markerIndex), emptyList())
   }
   val goalMarker = rememberGoalMarker(goal = goal)
@@ -103,16 +105,19 @@ fun GraphView(
   )
 
   val currentDeviceType = getDeviceType()
-  val chartHeight = when (currentDeviceType) {
-    DeviceType.Tablet -> 400.dp
-    DeviceType.Phone -> 300.dp
-    DeviceType.Fold -> 250.dp
+  val chartHeight = remember(state.markerIndex) {
+    when (currentDeviceType) {
+      DeviceType.Tablet -> 400.dp
+      DeviceType.Phone -> 350.dp
+      DeviceType.Fold -> 250.dp
+    }
   }
 
 
   ChartHostSection(
     modifier = modifier
-      .height(chartHeight),
+      .height(chartHeight)
+      .fillMaxWidth(),
     segment = segment,
     primaryLayer = primaryLayer,
     secondaryLayer = secondaryLayer,

@@ -61,7 +61,16 @@ class GraphViewModel @AssistedInject constructor(
     when (intent) {
       is GraphIntent.InitializeGraph -> initializeGraph(intent)
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
+      is GraphIntent.UpdateMarkerIndex -> handleMarkerUpdate(intent.markerIndex)
       else -> null
+    }
+  }
+
+  private fun handleMarkerUpdate(index: Double?) {
+    val currentState = _state.value
+    if (index == null && currentState.minTarget != null && currentState.maxTarget != null) {
+      val formattedRange = GraphUtil.formatDateRange(currentState.minTarget, currentState.maxTarget, segment)
+      onRangeUpdate(formattedRange)
     }
   }
 

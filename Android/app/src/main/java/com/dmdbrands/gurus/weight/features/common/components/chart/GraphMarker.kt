@@ -27,7 +27,6 @@ internal fun rememberDefaultMarker(
     rememberTextComponent(
       color = MeTheme.colorScheme.textSubheading,
       textSize = 14.sp,
-      padding = insets(top = -6.dp),
     )
   val guideline = rememberAxisLineComponent(
     fill = fill(MeTheme.colorScheme.textBody),
@@ -46,6 +45,7 @@ internal fun rememberDefaultMarker(
         strokeThicknessDp = 0f,
       )
     },
+    contentPadding = insets(vertical = 16.dp),
     guideline = guideline,
     yLabelCallback = yLabelCallback,
     interpolationType = InterpolationType.CUBIC,

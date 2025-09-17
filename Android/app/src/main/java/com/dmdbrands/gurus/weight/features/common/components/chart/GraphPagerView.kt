@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -63,7 +62,8 @@ fun GraphPagerView(
     pageCount = { GraphSegment.entries.size },
   )
 
-  var subText: String? by remember { mutableStateOf(null) }
+  var subText: String by remember { mutableStateOf("") }
+  var canShowSubText by remember { mutableStateOf(false) }
   var labelData by remember { mutableStateOf("") }
 
   LaunchedEffect(state.selectedSegment) {
@@ -118,13 +118,11 @@ fun GraphPagerView(
         }
       }
 
-      Box(contentAlignment = Alignment.TopStart) {
-        Text(
-          text = subText ?: "No data available",
-          style = MeTheme.typography.subHeading2,
-          color = if (subText != null) MeTheme.colorScheme.textSubheading else Color.Transparent,
-        )
-      }
+      Text(
+        text = subText,
+        style = MeTheme.typography.subHeading2,
+        color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
+      )
     }
 
     // Horizontal pager with graph views
@@ -158,7 +156,14 @@ fun GraphPagerView(
           graphLines = listOf(segmentGraphLines),
           segment = currentSegment,
           goal = state.goal,
-          onRangeUpdate = { subText = it },
+          onRangeUpdate = {
+            if (it != null) {
+              canShowSubText = true
+              subText = it
+            } else {
+              canShowSubText = false
+            }
+          },
           onTargetsUpdate = { targets, fallbackValue ->
             val timeStamps = targets.map { it.toLong() }
             val filteredEntries = segmentEntries.filter {
