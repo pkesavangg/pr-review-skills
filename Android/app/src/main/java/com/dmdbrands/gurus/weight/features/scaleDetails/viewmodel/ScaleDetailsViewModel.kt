@@ -37,7 +37,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.util.Log
 
@@ -183,37 +182,11 @@ constructor(
         if (currentScale != null) {
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
-            currentScale.connectionStatus != BLEStatus.CONNECTED
-            scale.connectionStatus == BLEStatus.CONNECTED
-            val connectedScales = deviceService.connectedScales.first()
-            val connectedScale = connectedScales.find { it.id == scaleId }
-            // Copy connectionStatus from connectedScale if available, else keep the one from paired
-            val scaleWithConnectionStatus = if (connectedScale != null) {
-              scale.copy(connectionStatus = connectedScale.connectionStatus,device = scale.device?.copy(
-                isWifiConfigured = connectedScale.device?.isWifiConfigured
-              ))
-            } else {
-              scale
-            }
-            handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleWithConnectionStatus))
+            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
             getDeviceInfo()
           }
         }
       }
-
-      deviceService.connectedScales.collect { devices ->
-        val currentScale = state.value.scale
-        if (currentScale != null) {
-          val updatedScale = devices.find { it.id == scaleId }
-          updatedScale?.let {
-              scale ->
-            currentScale.connectionStatus != BLEStatus.CONNECTED
-            scale.connectionStatus == BLEStatus.CONNECTED
-            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
-            Log.d("setscaledetails11","${scale}");
-          }
-          }
-        }
     }
   }
 

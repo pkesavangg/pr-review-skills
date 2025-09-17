@@ -363,10 +363,7 @@ constructor(
         val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(updatedPermissions, sku)
         if (!areRequiredPermissionsEnabled) {
           val currentStep = state.value.currentStep
-          val isAtOrAfterCustomizeSettings = currentStep.ordinal >= BtWifiSetupStep.CUSTOMIZE_SETTINGS.ordinal
-          if (currentStep != BtWifiSetupStep.PERMISSIONS &&
-              currentStep != BtWifiSetupStep.SCALE_INFO &&
-              !isAtOrAfterCustomizeSettings) {
+          if (currentStep == BtWifiSetupStep.WAKEUP) {
             handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
           }
         } else {

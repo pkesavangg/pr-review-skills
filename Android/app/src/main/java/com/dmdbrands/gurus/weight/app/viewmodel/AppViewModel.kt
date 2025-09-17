@@ -57,6 +57,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -476,7 +477,8 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
+          Log.d("scale#eventconnected","${data.isWifiConfigured}")
+          // deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -485,7 +487,7 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
-          deviceService.updateConnectedScales(data, false)
+          // deviceService.updateConnectedScales(data, false)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -494,7 +496,8 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
+          Log.d("scale#eventinfo","${data.isWifiConfigured}")
+          // deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -503,7 +506,8 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
+          Log.d("scale#eventwifi","${data.isWifiConfigured}")
+          // deviceService.updateConnectedScales(data, true)
         }
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
