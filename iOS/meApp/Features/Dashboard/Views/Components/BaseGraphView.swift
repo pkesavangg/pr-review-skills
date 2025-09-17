@@ -37,8 +37,8 @@ struct BaseGraphView: View, Equatable {
     
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Compare only essential properties to minimize re-renders
-        return lhs.viewModel.scrollPosition == rhs.viewModel.scrollPosition &&
-        lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
+        return // lhs.viewModel.scrollPosition == rhs.viewModel.scrollPosition &&
+       // lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
         lhs.viewModel.yAxisTicks == rhs.viewModel.yAxisTicks
     }
     
@@ -266,6 +266,7 @@ struct BaseGraphView: View, Equatable {
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         // Use ViewModel's cached grouped series data
+        let _ = { print("🔍 chartContentForSegment called - Series:") }()
         let cachedGroupedSeries = viewModel.getCachedGroupedSeries()
         ForEach(Array(cachedGroupedSeries.keys.sorted()), id: \.self) { seriesName in
             if let seriesPoints = cachedGroupedSeries[seriesName] {
@@ -562,11 +563,11 @@ extension View {
 //                    selectedXValue: localSelectedXValue,
 //                    dashboardStore: dashboardStore
 //                ))
-//                .modifier(ScrollDetectionModifier(
-//                    dashboardStore: dashboardStore,
-//                    hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
-//                    selectedXValue: localSelectedXValue
-//                ))
+                .modifier(ScrollDetectionModifier(
+                    dashboardStore: dashboardStore,
+                    hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
+                    selectedXValue: localSelectedXValue
+                ))
         } else {
             self
         }

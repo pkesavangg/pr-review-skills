@@ -2,8 +2,8 @@ import Foundation
 import Combine
 
 class LoginForm: ObservableForm {
-    var email = FormControl("barathchitti@gmail.com", validators: [.required, .email, .maxLength(100)])
-    var password = FormControl("B@r@th3939", validators: [.required, .minLength(6), .maxLength(50)])
+    var email = FormControl("barathchitti@icloud.com", validators: [.required, .email, .maxLength(100)])
+    var password = FormControl("123456", validators: [.required, .minLength(6), .maxLength(50)])
     let lang = FormErrorMessages.self
     
     var formDidChange: AnyPublisher<Void, Never> {
