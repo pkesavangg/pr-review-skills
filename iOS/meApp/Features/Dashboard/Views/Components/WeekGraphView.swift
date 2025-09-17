@@ -21,6 +21,9 @@ struct WeekGraphView: View {
             viewModel: viewModel,
                     dashboardStore: dashboardStore
         )
+        .onAppear {
+            print("WeekGraphView appeared")
+        }
     }
 }
 

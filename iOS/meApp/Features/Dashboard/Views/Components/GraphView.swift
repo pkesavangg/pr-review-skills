@@ -106,7 +106,7 @@ struct GraphView: View {
             dashboardStore.updateYAxisCache()
             
             // Reset chart identity to fully rebuild the Chart without unwanted animations
-            chartIdentity = UUID()
+            // chartIdentity = UUID()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in

@@ -10,10 +10,10 @@ import Charts
 
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
-struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
+struct BaseGraphView: View, Equatable {
     
     // MARK: - Dependencies
-    @ObservedObject var viewModel: ViewModel
+    @ObservedObject var viewModel: BaseSectionViewModel
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     
@@ -31,6 +31,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private let goalChipTrailingPadding: CGFloat = 20
     private var isScrollable: Bool {
         viewModel.hasXAxis
+    }
+    
+    static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
+        // Compare only essential properties to minimize re-renders
+        return lhs.viewModel.scrollPosition == rhs.viewModel.scrollPosition &&
+        lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
+        lhs.viewModel.yAxisTicks == rhs.viewModel.yAxisTicks
     }
     
     var body: some View {
@@ -81,11 +88,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                             }
                     }
                 )
-                // Conditional preference change handling
+//                // Conditional preference change handling
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                .onAppear {
-                    viewModel.initializeChart()
-                }
+//                .onAppear {
+//                    viewModel.initializeChart()
+//                }
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
                 // Animate when series data changes (even if Y-axis domain/ticks stay the same)
@@ -94,7 +101,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
-                // Apply touch interaction modifiers only for scrollable charts
+//                // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
                     touchInteractionMode: $touchInteractionMode,
@@ -120,17 +127,26 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
         .onAppear {
             viewModel.configure(with: dashboardStore)
+            // Initialize cache in ViewModel (async to avoid publishing warnings)
+            viewModel.updateCachedSeriesDataAsync()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
         }
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
+            // ViewModel will invalidate cache in refreshData()
             viewModel.refreshData()
         }
         .onChange(of: dashboardStore.currentUnit) { _, _ in
+            // ViewModel will invalidate cache in handleSettingsChange()
             viewModel.handleSettingsChange()
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
+            // ViewModel will invalidate cache in handleSettingsChange()
             viewModel.handleSettingsChange()
+        }
+        .onChange(of: dashboardStore.state.ui.selectedMetricLabel) { _, _ in
+            // Invalidate cache when selected metric changes (affects chart series)
+            viewModel.invalidateCache()
         }
         // Conditional scroll position syncing
         .conditionalScrollSyncing(
@@ -223,12 +239,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
-        // Cache series data to prevent recalculation during scroll
-        let seriesData = viewModel.chartSeriesData
-        let groupedSeries = Dictionary(grouping: seriesData) { $0.series }
-        
-        ForEach(Array(groupedSeries.keys.sorted()), id: \.self) { seriesName in
-            if let seriesPoints = groupedSeries[seriesName] {
+        // Use ViewModel's cached grouped series data
+        let cachedGroupedSeries = viewModel.getCachedGroupedSeries()
+        ForEach(Array(cachedGroupedSeries.keys.sorted()), id: \.self) { seriesName in
+            if let seriesPoints = cachedGroupedSeries[seriesName] {
                 chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
             }
         }
@@ -236,33 +250,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
-        let segments = viewModel.getConnectedSegments(from: seriesPoints)
-        
-        ForEach(Array(segments.enumerated()), id: \.offset) { segmentIndex, segment in
-            chartContentForSegment(segment: segment, seriesName: seriesName, segmentIndex: segmentIndex)
-        }
-    }
-    
-    @ChartContentBuilder
-    private func chartContentForSegment(segment: [GraphSeries], seriesName: String, segmentIndex: Int) -> some ChartContent {
-        ForEach(segment) { point in
+        // Points are already pre-sorted by date in updateCachedSeriesData()
+        ForEach(seriesPoints) { point in
             let xDate = viewModel.plotXDate(for: point.date)
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
-            // Invisible tap target
-            PointMark(
-                x: .value("Date", xDate),
-                y: .value(point.series, point.value)
-            )
-            .symbolSize(isThisPointSelected ? (viewModel.selectedPointArea * 2) : viewModel.basePointArea)
-            .foregroundStyle(.clear)
             
             // Line mark
             LineMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value),
-                series: .value("Series", "\(point.series)-\(segmentIndex)")
+                series: .value("Series", point.series)
             )
             .foregroundStyle(by: .value("Series", point.series))
             .interpolationMethod(.monotone)
@@ -354,6 +353,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
     }
+    
+    // MARK: - Cache Management
+    // Cache is now managed by ViewModel - no local cache needed
     
     // MARK: - Animation Token
     /// Lightweight hash token that changes when the VISIBLE plotted series data changes,

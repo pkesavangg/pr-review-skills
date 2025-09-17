@@ -19,51 +19,6 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         return .month
     }
     
-    // MARK: - Connected Segments Caching
-    private var cachedSegmentsHash: Int = 0
-    private var cachedSegmentsResult: [[GraphSeries]] = []
-    
-    /// Connect across any gap in Month view
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        // Create lightweight hash of the data to detect changes
-        let currentHash = createDataHash(from: dataPoints)
-        
-        // Return cached result if data hasn't changed
-        if currentHash == cachedSegmentsHash && !cachedSegmentsResult.isEmpty {
-            return cachedSegmentsResult
-        }
-        
-        // Calculate new result
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        let result = sorted.isEmpty ? [] : [sorted]
-        
-        // Cache the result
-        cachedSegmentsHash = currentHash
-        cachedSegmentsResult = result
-        
-        return result
-    }
-    
-    /// Creates a lightweight hash from GraphSeries data for caching
-    private func createDataHash(from dataPoints: [GraphSeries]) -> Int {
-        var hasher = Hasher()
-        hasher.combine(dataPoints.count)
-        
-        // Sample a few key points to create hash without iterating entire array
-        if !dataPoints.isEmpty {
-            let sortedData = dataPoints.sorted { $0.date < $1.date }
-            hasher.combine(sortedData.first?.date.timeIntervalSince1970)
-            hasher.combine(sortedData.last?.date.timeIntervalSince1970)
-            
-            // Add middle point if we have enough data
-            if sortedData.count > 2 {
-                let midIndex = sortedData.count / 2
-                hasher.combine(sortedData[midIndex].date.timeIntervalSince1970)
-            }
-        }
-        
-        return hasher.finalize()
-    }
 
     /// Month selection rules:
     /// - Determine the current X-axis section [startTick, endTick) using month ticks (1, 8, 15, 22, 29).
@@ -162,29 +117,4 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         // Do not compute selectedPoint here; DashboardStore updates metrics using nearest point
     }
     
-    // MARK: - Cache Management
-    
-    /// Invalidates the segments cache when data changes
-    private func invalidateSegmentsCache() {
-        cachedSegmentsHash = 0
-        cachedSegmentsResult = []
-    }
-    
-    /// Override to invalidate segments cache when configured
-    override func configure(with store: DashboardStore) {
-        invalidateSegmentsCache()
-        super.configure(with: store)
-    }
-    
-    /// Override to invalidate segments cache when data refreshes
-    override func refreshData() {
-        invalidateSegmentsCache()
-        super.refreshData()
-    }
-    
-    /// Override to invalidate segments cache when settings change
-    override func handleSettingsChange() {
-        invalidateSegmentsCache()
-        super.handleSettingsChange()
-    }
 }

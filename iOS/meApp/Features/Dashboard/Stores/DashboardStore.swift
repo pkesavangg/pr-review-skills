@@ -665,21 +665,66 @@ class DashboardStore: ObservableObject {
     // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
     internal func onEntryAdded(_ entry: Entry) {
-        loadLatestEntryData()
-        loadGoalCardData()
-        self.updateYAxisCache()
+        // EntryService already handles incremental summary updates via handleEntryAdded
+        // Ensure all UI updates happen on main thread
+        DispatchQueue.main.async {
+            // Update dashboard-specific data and clear caches
+            self.loadLatestEntryData()
+            self.loadGoalCardData()
+            
+            // Clear cached chart series data to force recalculation
+            self.cachedChartSeriesData = nil
+            
+            // Force UI update
+            self.objectWillChange.send()
+            
+            // Update Y-axis after a brief delay to allow data propagation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.updateYAxisCache()
+            }
+        }
     }
     
     internal func onEntryUpdated(_ entry: Entry) {
-        loadLatestEntryData()
-        loadGoalCardData()
-        self.updateYAxisCache()
+        // EntryService already handles incremental summary updates via handleEntryUpdated
+        // Ensure all UI updates happen on main thread
+        DispatchQueue.main.async {
+            // Update dashboard-specific data and clear caches
+            self.loadLatestEntryData()
+            self.loadGoalCardData()
+            
+            // Clear cached chart series data to force recalculation
+            self.cachedChartSeriesData = nil
+            
+            // Force UI update
+            self.objectWillChange.send()
+            
+            // Update Y-axis after a brief delay to allow data propagation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.updateYAxisCache()
+            }
+        }
     }
     
     internal func onEntryDeleted(_ entry: Entry) {
-        loadLatestEntryData()
-        loadGoalCardData()
-        self.updateYAxisCache()
+        // EntryService already handles incremental summary updates via handleEntryDeleted
+        // Ensure all UI updates happen on main thread
+        DispatchQueue.main.async {
+            // Update dashboard-specific data and clear caches
+            self.loadLatestEntryData()
+            self.loadGoalCardData()
+            
+            // Clear cached chart series data to force recalculation
+            self.cachedChartSeriesData = nil
+            
+            // Force UI update
+            self.objectWillChange.send()
+            
+            // Update Y-axis after a brief delay to allow data propagation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.updateYAxisCache()
+            }
+        }
     }
 
     // MARK: - UI Action Methods

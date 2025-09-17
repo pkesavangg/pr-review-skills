@@ -19,11 +19,6 @@ final class YearSectionViewModel: BaseSectionViewModel {
         return .year
     }
     
-    /// Connect across any gap in Year view
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        return sorted.isEmpty ? [] : [sorted]
-    }
 
     /// Snap to nearest month tick; only show crosshair if the snapped date lies
     /// within the range of plotted data (first..last). Otherwise hide it.
