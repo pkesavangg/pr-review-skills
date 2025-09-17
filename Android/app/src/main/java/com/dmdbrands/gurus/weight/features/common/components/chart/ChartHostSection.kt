@@ -1,5 +1,8 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.animateValueAsState
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -59,6 +62,24 @@ internal fun ChartHostSection(
     if (state.secondaryGraphLines != null) add(secondaryLayer)
   }
 
+  val doubleVectorConverter = TwoWayConverter<Double, AnimationVector1D>(
+    convertToVector = { AnimationVector1D(it.toFloat()) },
+    convertFromVector = { it.value.toDouble() }
+  )
+
+  val animatedMarkerIndex = if (segment == GraphSegment.TOTAL && markerIndex != null && markerIndex != 0.0) {
+    animateValueAsState<Double, AnimationVector1D>(
+      targetValue = markerIndex,
+      typeConverter = doubleVectorConverter,
+      animationSpec = androidx.compose.animation.core.SpringSpec(),
+      visibilityThreshold = null,
+      label = "markerIndexAnimation",
+      finishedListener = null,
+    ).value
+  } else {
+    markerIndex ?: 0.0
+  }
+
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,
@@ -112,9 +133,9 @@ internal fun ChartHostSection(
       marker = emptyMarker(),
       persistentMarkers =
 
-        if (markerIndex != null) {
+        if (animatedMarkerIndex != 0.0) {
           {
-            defaultMarker at markerIndex
+            defaultMarker at animatedMarkerIndex
           }
         } else {
           null
@@ -141,7 +162,7 @@ internal fun ChartHostSection(
           markerIndex = null
         } else {
           val targetMarkerIndex =
-            getTargetPoints(scrollState.getVisibleAxisLabels(), targets, click)
+            getTargetPoints(scrollState.getVisibleAxisLabels(), targets, click, segment)
           markerIndex = targetMarkerIndex.first()
         }
         handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
@@ -164,7 +185,16 @@ internal fun ChartHostSection(
   )
 }
 
-fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double): List<Double> {
+fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
+  if (points.isEmpty()) return emptyList()
+
+  // For TOTAL segment, find nearest targets from click without considering visible labels
+  if (segment == GraphSegment.TOTAL) {
+    val nearestTarget = points.minByOrNull { kotlin.math.abs(it - input) }
+    return listOfNotNull(nearestTarget)
+  }
+
+  // For other segments, use the original logic with visible labels
   if (fullList.isEmpty()) return emptyList()
 
   // find lower and upper bound from full list
@@ -178,7 +208,6 @@ fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double)
 
   // filter targets within the upper and lower bound
   val filteredTargets = points.filter { it in lower..upper }
-
 
   return when {
     filteredTargets.isEmpty() -> {

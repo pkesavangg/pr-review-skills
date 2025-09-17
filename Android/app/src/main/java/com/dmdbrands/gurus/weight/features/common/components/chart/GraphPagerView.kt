@@ -86,50 +86,10 @@ fun GraphPagerView(
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
-    // Header section with current segment info
-    Column(
-      modifier = Modifier.padding(
-        horizontal = MeTheme.spacing.sm,
-        vertical = MeTheme.spacing.x3s,
-      ),
-    ) {
-      Text(
-        text = "${state.selectedSegment.name.lowercase()} average",
-        style = MeTheme.typography.subHeading1,
-        color = MeTheme.colorScheme.textSubheading,
-      )
-
-      Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-          text = labelData.ifBlank { "000.0" },
-          style = MeTheme.typography.heading2,
-          color = MeTheme.colorScheme.textBody,
-        )
-
-        val weightUnit = getWeightUnitForSegment(state, state.selectedSegment)
-        if (labelData.isNotBlank() && weightUnit != null) {
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(
-            text = weightUnit.name.lowercase(),
-            style = MeTheme.typography.subHeading2,
-            color = MeTheme.colorScheme.textSubheading,
-            modifier = Modifier.offset(y = (-10).dp),
-          )
-        }
-      }
-
-      Text(
-        text = subText,
-        style = MeTheme.typography.subHeading2,
-        color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
-      )
-    }
-
-    // Horizontal pager with graph views
+    // Horizontal pager with graph views and headers
     if (state.dayWiseEntries.isEmpty()) {
       EmptyGraph(state.selectedSegment)
     } else {
-
       HorizontalPager(
         state = pagerState,
         userScrollEnabled = false,
@@ -142,40 +102,88 @@ fun GraphPagerView(
           factory.create(GraphSegment.entries[page])
         }
 
-        GraphView(
-          modifier = Modifier
-            .fillMaxWidth()
-            .let {
-              if (currentSegment == GraphSegment.TOTAL) {
-                it.padding(start = 16.dp)
-              } else {
-                it
+        Column {
+          // Header section for current segment
+          Column(
+            modifier = Modifier.padding(
+              horizontal = MeTheme.spacing.sm,
+              vertical = MeTheme.spacing.x3s,
+            ),
+          ) {
+            Text(
+              text = "${currentSegment.name.lowercase()} average",
+              style = MeTheme.typography.subHeading1,
+              color = MeTheme.colorScheme.textSubheading,
+            )
+
+            Row(verticalAlignment = Alignment.Bottom) {
+              Text(
+                text = labelData.ifBlank { "000.0" },
+                style = MeTheme.typography.heading2,
+                color = MeTheme.colorScheme.textBody,
+              )
+
+              val weightUnit = getWeightUnitForSegment(state, currentSegment)
+              if (labelData.isNotBlank() && weightUnit != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  text = weightUnit.name.lowercase(),
+                  style = MeTheme.typography.subHeading2,
+                  color = MeTheme.colorScheme.textSubheading,
+                  modifier = Modifier.offset(y = (-10).dp),
+                )
+              }
+            }
+
+            Text(
+              text = subText.lowercase(),
+              style = MeTheme.typography.subHeading2,
+              color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
+            )
+          }
+
+          // Graph view
+          GraphView(
+            modifier = Modifier
+              .fillMaxWidth()
+              .let {
+                if (currentSegment == GraphSegment.TOTAL) {
+                  it.padding(start = 16.dp)
+                } else {
+                  it
+                }
+              },
+            secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
+            graphLines = listOf(segmentGraphLines),
+            segment = currentSegment,
+            goal = state.goal,
+            onRangeUpdate = {
+              if (currentSegment == state.selectedSegment) {
+                if (it != null) {
+                  canShowSubText = true
+                  subText = it
+                } else {
+                  canShowSubText = false
+                }
               }
             },
-          secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-          graphLines = listOf(segmentGraphLines),
-          segment = currentSegment,
-          goal = state.goal,
-          onRangeUpdate = {
-            if (it != null) {
-              canShowSubText = true
-              subText = it
-            } else {
-              canShowSubText = false
-            }
-          },
-          onTargetsUpdate = { targets, fallbackValue ->
-            val timeStamps = targets.map { it.toLong() }
-            val filteredEntries = segmentEntries.filter {
-              DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-            }
-            onSelected(filteredEntries)
-          },
-          onWeightLabelUpdate = { label ->
-            labelData = label
-          },
-          viewModel = viewmodel,
-        )
+            onTargetsUpdate = { targets, fallbackValue ->
+              if (currentSegment == state.selectedSegment) {
+                val timeStamps = targets.map { it.toLong() }
+                val filteredEntries = segmentEntries.filter {
+                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+                }
+                onSelected(filteredEntries)
+              }
+            },
+            onWeightLabelUpdate = { label ->
+              if (currentSegment == state.selectedSegment) {
+                labelData = label
+              }
+            },
+            viewModel = viewmodel,
+          )
+        }
       }
     }
 

@@ -51,7 +51,7 @@ fun GraphView(
   onTargetsUpdate: (targets: List<Double>, fallbackValue: List<Double>) -> Unit = { _, _ -> },
   onWeightLabelUpdate: (String) -> Unit = {},
   viewModel: GraphViewModel = hiltViewModel(),
-) {  // Scroll state
+) {
 
   val state by viewModel.state.collectAsState()
 
@@ -108,7 +108,7 @@ fun GraphView(
   val chartHeight = remember(state.markerIndex) {
     when (currentDeviceType) {
       DeviceType.Tablet -> 400.dp
-      DeviceType.Phone -> 350.dp
+      DeviceType.Phone -> 300.dp
       DeviceType.Fold -> 250.dp
     }
   }

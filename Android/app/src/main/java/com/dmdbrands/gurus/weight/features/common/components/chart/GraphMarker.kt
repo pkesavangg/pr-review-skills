@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -17,14 +19,20 @@ import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import android.graphics.Typeface
+import androidx.compose.ui.platform.LocalResources
 
 @Composable
 internal fun rememberDefaultMarker(
   segment: GraphSegment,
   yLabelCallback: (List<List<Double>>) -> Unit = {}
 ): CartesianMarker {
+  val resources = LocalResources.current
+  val openSans: Typeface = resources.getFont(R.font.open_sans_regular)
+
   val label =
     rememberTextComponent(
+      typeface = openSans,
       color = MeTheme.colorScheme.textSubheading,
       textSize = 14.sp,
     )
@@ -45,7 +53,7 @@ internal fun rememberDefaultMarker(
         strokeThicknessDp = 0f,
       )
     },
-    contentPadding = insets(vertical = 16.dp),
+    contentPadding = insets(vertical = 29.dp),
     guideline = guideline,
     yLabelCallback = yLabelCallback,
     interpolationType = InterpolationType.CUBIC,
@@ -67,6 +75,6 @@ private fun valueFormatter(
     ) = GraphUtil.markerValueFormatter(
       targets.first().x.toLong(),
       segment,
-    )
+    ).lowercase()
   }
 

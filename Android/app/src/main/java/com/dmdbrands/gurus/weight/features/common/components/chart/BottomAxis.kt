@@ -55,11 +55,10 @@ internal fun bottomAxis(
       itemPlacer = horizontalItemPlacer,
       valueFormatter =
         CartesianValueFormatter { _, value, _ ->
-          GraphUtil.formatTimestampForSegment(
-            value.toLong(),
-            segment,
-          ).lowercase().first().toString()
+          " "
         },
+      tickLength = 0.dp,
+      tick = null,
       horizontalLabelPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
