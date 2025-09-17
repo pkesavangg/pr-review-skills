@@ -31,7 +31,13 @@ object ImprovedNiceScaleCalculator {
     }
   }
 
-  private fun handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double, isWeightLessMode: Boolean, targetTickCount: Int): AxisMeta {
+  private fun handleSmallRange(
+    dataMin: Double,
+    dataMax: Double,
+    goalWeight: Double,
+    isWeightLessMode: Boolean,
+    targetTickCount: Int
+  ): AxisMeta {
     val range = maxOf(dataMax - dataMin, 2.0)
     val padding = range * 0.2
     val paddedMin = dataMin - padding
@@ -66,7 +72,13 @@ object ImprovedNiceScaleCalculator {
     return AxisMeta(finalMin, finalMax, step)
   }
 
-  private fun handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double, isWeightLessMode: Boolean, targetTickCount: Int): AxisMeta {
+  private fun handleMediumRange(
+    dataMin: Double,
+    dataMax: Double,
+    goalWeight: Double,
+    isWeightLessMode: Boolean,
+    targetTickCount: Int
+  ): AxisMeta {
     val range = dataMax - dataMin
     val padding = range * 0.15
     val paddedMin = dataMin - padding
@@ -152,7 +164,7 @@ object ImprovedNiceScaleCalculator {
 
     // Find first nice number >= normalized, otherwise bump magnitude
     val candidate = niceNumbers.firstOrNull { it >= normalized }
-    return if (candidate != null) {
+    return if (candidate != null && candidate * magnitude > 1) {
       candidate * magnitude
     } else {
       // If none is big enough, move to next order of magnitude with the smallest nice number
