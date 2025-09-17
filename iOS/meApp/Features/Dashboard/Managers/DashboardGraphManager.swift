@@ -817,19 +817,30 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
+        // During active scrolling, always return cached result if available
         if state.isScrolling && !lastCalculatedVisibleOps.isEmpty {
             return lastCalculatedVisibleOps
         }
+        
+        // Check if we can reuse cached result based on position change threshold
         if !lastCalculatedVisibleOps.isEmpty,
            let lastPosition = lastVisibleOpsScrollPosition,
            let lastPeriod = lastVisibleOpsPeriod,
            lastPeriod == state.selectedPeriod {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
-            if positionChange < domainLength / 10 {
+            
+            // More aggressive caching: only recalculate if scroll moved > 25% of domain
+            // This reduces calculations from every 10% to every 25% movement
+            let cacheThreshold = domainLength / 4.0 // 25% instead of 10%
+            
+            if positionChange < cacheThreshold {
+                // Use cached result - no expensive recalculation needed
                 return lastCalculatedVisibleOps
             }
         }
+        
+        // Only log when actually performing expensive calculation
         let allDates = operations.map { $0.date }
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
@@ -841,10 +852,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleOps = operations.filter { summary in
             summary.date >= visibleStart && summary.date <= visibleEnd
         }
+        
+        // Update cache
         lastCalculatedVisibleOps = visibleOps
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
 
+        // Only log actual calculations, not cache hits
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
 
         return visibleOps

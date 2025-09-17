@@ -25,6 +25,8 @@ struct BaseGraphView: View, Equatable {
     @State private var decisionTimer: Timer?
     // Enable Y-axis animation only after first render to avoid blank-first-frame
     @State private var enableYAxisAnimation: Bool = false
+    // Scroll position debouncing
+    @State private var scrollUpdateWorkItem: DispatchWorkItem?
     
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
@@ -54,14 +56,6 @@ struct BaseGraphView: View, Equatable {
                 .chartYScale(domain: viewModel.yAxisDomain)
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
-                .chartForegroundStyleScale(mapping: { (seriesName: String) in
-                    switch seriesName {
-                    case DashboardStrings.weight:
-                        return theme.actionPrimary
-                    default:
-                        return theme.actionSecondary
-                    }
-                })
                 // Conditional chart modifiers based on scrollability
                 .conditionalModifiers(
                     isScrollable: isScrollable,
@@ -125,12 +119,44 @@ struct BaseGraphView: View, Equatable {
                 }
             }
         }
+        .chartScrollPosition(x: Binding(
+            get: { viewModel.scrollPosition },
+            set: { newPosition in
+                // Cancel any existing work item
+                scrollUpdateWorkItem?.cancel()
+                
+                // Early exit if position hasn't changed significantly
+                guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.05 else {
+                    return
+                }
+                
+                // Create new debounced work item with weak reference
+                scrollUpdateWorkItem = DispatchWorkItem { [weak viewModel] in
+                    guard let viewModel = viewModel else { return }
+                    // Ensure UI updates happen on main thread
+                    DispatchQueue.main.async {
+                        viewModel.handleScrollPositionChange(newPosition)
+                    }
+                }
+                
+                // Execute after debounce delay
+                DispatchQueue.global(qos: .userInteractive).asyncAfter(
+                    deadline: .now() + 0.15, // Increased to 150ms for better stability
+                    execute: scrollUpdateWorkItem!
+                )
+            }
+        ))
         .onAppear {
             viewModel.configure(with: dashboardStore)
             // Initialize cache in ViewModel (async to avoid publishing warnings)
             viewModel.updateCachedSeriesDataAsync()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
+        }
+        .onDisappear {
+            // Cancel any pending scroll updates to prevent memory leaks
+            scrollUpdateWorkItem?.cancel()
+            scrollUpdateWorkItem = nil
         }
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
             // ViewModel will invalidate cache in refreshData()
@@ -256,14 +282,15 @@ struct BaseGraphView: View, Equatable {
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
-            
             // Line mark
             LineMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(by: .value("Series", point.series))
+            .foregroundStyle(point.series == DashboardStrings.weight
+                                         ? theme.actionPrimary
+                                         : theme.actionSecondary)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
             
@@ -273,7 +300,9 @@ struct BaseGraphView: View, Equatable {
                 y: .value(point.series, point.value)
             )
             .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
-            .foregroundStyle(by: .value("Series", point.series))
+            .foregroundStyle(point.series == DashboardStrings.weight
+                                         ? theme.actionPrimary
+                                         : theme.actionSecondary)
         }
     }
     
@@ -396,15 +425,6 @@ extension View {
             self
                 .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
-                .chartScrollPosition(x: Binding(
-                    get: { viewModel.scrollPosition },
-                    set: { newPosition in
-                        // Debounce scroll position updates to prevent multiple updates per frame
-                        DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(newPosition)
-                        }
-                    }
-                ))
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
@@ -535,18 +555,18 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .modifier(DecisionWindowModifier(
-                    touchInteractionMode: touchInteractionMode,
-                    initialTouchPoint: initialTouchPoint,
-                    decisionTimer: decisionTimer,
-                    selectedXValue: localSelectedXValue,
-                    dashboardStore: dashboardStore
-                ))
-                .modifier(ScrollDetectionModifier(
-                    dashboardStore: dashboardStore,
-                    hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
-                    selectedXValue: localSelectedXValue
-                ))
+//                .modifier(DecisionWindowModifier(
+//                    touchInteractionMode: touchInteractionMode,
+//                    initialTouchPoint: initialTouchPoint,
+//                    decisionTimer: decisionTimer,
+//                    selectedXValue: localSelectedXValue,
+//                    dashboardStore: dashboardStore
+//                ))
+//                .modifier(ScrollDetectionModifier(
+//                    dashboardStore: dashboardStore,
+//                    hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
+//                    selectedXValue: localSelectedXValue
+//                ))
         } else {
             self
         }

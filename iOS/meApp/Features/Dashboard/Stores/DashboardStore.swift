@@ -269,8 +269,22 @@ class DashboardStore: ObservableObject {
     }
     
     var visibleOperations: [BathScaleWeightSummary] {
-        // Use cached operations with improved caching logic in graph manager
+        // During scrolling, use cached result to prevent excessive graph manager calls
+        if state.graph.isScrolling {
+            let timeSinceLastCache = Date().timeIntervalSince(lastVisibleOperationsCacheTime)
+            // Use cache for up to 100ms during scrolling to reduce call frequency
+            if timeSinceLastCache < 0.1 && !cachedVisibleOperations.isEmpty {
+                return cachedVisibleOperations
+            }
+        }
+        
+        // Get fresh result from graph manager (which has its own caching)
         let visible = graphManager.getVisibleOperations(from: continuousOperations)
+        
+        // Update cache
+        cachedVisibleOperations = visible
+        lastVisibleOperationsCacheTime = Date()
+        
         return visible
     }
     
@@ -301,6 +315,10 @@ class DashboardStore: ObservableObject {
     
     // Cache chart series data to prevent excessive recalculation
     private var cachedChartSeriesData: [GraphSeries]?
+    
+    // Cache visible operations to prevent excessive calls to graph manager during scroll
+    private var cachedVisibleOperations: [BathScaleWeightSummary] = []
+    private var lastVisibleOperationsCacheTime: Date = Date.distantPast
     
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
@@ -672,8 +690,10 @@ class DashboardStore: ObservableObject {
             self.loadLatestEntryData()
             self.loadGoalCardData()
             
-            // Clear cached chart series data to force recalculation
+            // Clear cached chart series data and visible operations to force recalculation
             self.cachedChartSeriesData = nil
+            self.cachedVisibleOperations = []
+            self.lastVisibleOperationsCacheTime = Date.distantPast
             
             // Force UI update
             self.objectWillChange.send()
@@ -693,8 +713,10 @@ class DashboardStore: ObservableObject {
             self.loadLatestEntryData()
             self.loadGoalCardData()
             
-            // Clear cached chart series data to force recalculation
+            // Clear cached chart series data and visible operations to force recalculation
             self.cachedChartSeriesData = nil
+            self.cachedVisibleOperations = []
+            self.lastVisibleOperationsCacheTime = Date.distantPast
             
             // Force UI update
             self.objectWillChange.send()
@@ -714,8 +736,10 @@ class DashboardStore: ObservableObject {
             self.loadLatestEntryData()
             self.loadGoalCardData()
             
-            // Clear cached chart series data to force recalculation
+            // Clear cached chart series data and visible operations to force recalculation
             self.cachedChartSeriesData = nil
+            self.cachedVisibleOperations = []
+            self.lastVisibleOperationsCacheTime = Date.distantPast
             
             // Force UI update
             self.objectWillChange.send()
@@ -1655,6 +1679,8 @@ class DashboardStore: ObservableObject {
     private func clearAllCaches() {
         cachedDashboardType = nil
         cachedChartSeriesData = nil
+        cachedVisibleOperations = []
+        lastVisibleOperationsCacheTime = Date.distantPast
         isProcessingScrollEnd = false
     }
     
