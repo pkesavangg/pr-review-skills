@@ -96,9 +96,8 @@ constructor(
   }
 
   private val TAG = "BtWifiScaleSetupViewModel"
-  private var deviceConfigured: Boolean = false
+  private var isScaleConnected: Boolean = false
   private var accountId: String? = null
-
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
   override fun handleIntent(intent: BtWifiScaleSetupIntent) {
@@ -215,6 +214,7 @@ constructor(
             refreshUserListAfterAccountChange()
           }
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         } else {
           discoveredScale =
@@ -224,6 +224,7 @@ constructor(
           // After updating account, refresh the user list
           refreshUserListAfterAccountChange()
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+          handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         }
       }
@@ -295,6 +296,8 @@ constructor(
       // Clear duplicate user state
       handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(null))
       handleIntent(BtWifiScaleSetupIntent.SetDuplicateUserList(emptyList()))
+      // Reset button text to Next before changing step
+      handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
       // Restart from Bluetooth connection step
       handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
     }
@@ -366,6 +369,12 @@ constructor(
           if (currentStep == BtWifiSetupStep.WAKEUP) {
             handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
           }
+          if(currentStep == BtWifiSetupStep.CONNECTING_BLUETOOTH){
+            setBluetoothFailedStatus()
+          }
+          if(currentStep == BtWifiSetupStep.GATHERING_NETWORK){
+            setGatheringNetworkFailed()
+          }
         } else {
           handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
@@ -408,11 +417,12 @@ constructor(
             }
 
             BtWifiSetupStep.PERMISSIONS -> {
-              // Ensure permissions step shows "Next" button
-              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+              // Permissions step uses default "Next" button text (no override needed)
+              // The reducer already sets it to "Next" by default
             }
 
             BtWifiSetupStep.DUPLICATES_FOUND -> {
+              // Only override button text for specific steps that need different text
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Save))
               // Check for duplicate users when entering this step
               checkDuplicateUserList()
@@ -423,6 +433,7 @@ constructor(
             }
 
             BtWifiSetupStep.WIFI_PASSWORD -> {
+              // Only override button text for specific steps that need different text
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Connect))
               // Reset canProceedToNext to false initially, it will be enabled when form validation passes
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
@@ -620,7 +631,7 @@ constructor(
     viewModelScope.launch {
       if (discoveredScale != null) {
         ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-        if (!deviceConfigured) {
+        if (!isScaleConnected) {
           ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
         }
       }
@@ -837,7 +848,7 @@ constructor(
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
-                deviceConfigured = true
+                isScaleConnected = true
                 handleIntent(
                   BtWifiScaleSetupIntent.SetStepConnectionState(
                     BtWifiSetupStep.CONNECTING_BLUETOOTH,
@@ -851,13 +862,7 @@ constructor(
             }
 
             GGUserActionResponseType.CREATION_FAILED -> {
-              handleIntent(
-                BtWifiScaleSetupIntent.SetStepConnectionState(
-                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                  ConnectionState.Failed.Error,
-                ),
-              )
-              handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
+              setBluetoothFailedStatus()
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
             }
 
@@ -875,14 +880,7 @@ constructor(
                 } else {
                   // If we still can't get a username, log error and show generic error
                   AppLog.e(TAG, "Could not determine duplicate username")
-                  handleIntent(
-                    BtWifiScaleSetupIntent.SetStepConnectionState(
-                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                      ConnectionState.Failed.Error,
-                    ),
-                  )
-                  // Use BT_001 for duplicate user error (consistent with existing error code)
-                  handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
+                  setBluetoothFailedStatus()
                 }
               }
             }
@@ -917,6 +915,16 @@ constructor(
         handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }
+  }
+
+  private fun setBluetoothFailedStatus(){
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+        ConnectionState.Failed.Error,
+      ),
+    )
+    handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
   }
   private suspend fun saveScale() {
     val current = discoveredScale ?: return
@@ -1049,6 +1057,13 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during network gathering", e)
+      setGatheringNetworkFailed()
+      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+    }
+  }
+
+  private fun setGatheringNetworkFailed(){
+    if(isScaleConnected){
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
           BtWifiSetupStep.GATHERING_NETWORK,
@@ -1056,8 +1071,8 @@ constructor(
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
     }
+
   }
 
   /**
@@ -1469,6 +1484,7 @@ constructor(
                 refreshUserListAfterAccountChange()
               }
               handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
               handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
             }
           },

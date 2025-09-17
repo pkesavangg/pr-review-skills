@@ -223,7 +223,10 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetGoalProgress -> state.copy(goalProgress = intent.progress)
       is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
-      is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
+      is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(
+        currentStep = intent.step,
+        nextButtonText = ScaleSetupStrings.SetupButtons.Next // Reset to default "Next" for all step changes
+      )
       is BtWifiScaleSetupIntent.SetLoading -> state.copy(isLoading = intent.isLoading)
       is BtWifiScaleSetupIntent.SetErrorCode -> state.copy(errorCode = intent.errorCode)
       is BtWifiScaleSetupIntent.SetScaleId -> state.copy(
@@ -244,7 +247,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
             currentStep = state.steps[nextIndex],
             canProceedToNext = true, // Reset for next step
             errorCode = null,
-            nextButtonText = ScaleSetupStrings.SetupButtons.Next,
+            nextButtonText = ScaleSetupStrings.SetupButtons.Next, // Always reset to "Next" for forward navigation
           )
         } else {
           state.copy(errorCode = null, isSetupFinished = state.isLastStep) // No change if at last step or can't proceed
@@ -268,7 +271,8 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
 
       is BtWifiScaleSetupIntent.Back -> {
         // Reset button text to "Next" by default when going back
-        // Specific steps will override this in their step change logic
+        // This ensures that when users navigate back, they see "Next" by default
+        // Specific steps will override this in their step change logic if needed
         state.copy(nextButtonText = ScaleSetupStrings.SetupButtons.Next)
       }
 
