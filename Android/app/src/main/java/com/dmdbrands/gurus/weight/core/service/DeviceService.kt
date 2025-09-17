@@ -69,7 +69,6 @@ constructor(
     val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
     val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
     val connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED
-
     macAddress.let { macAddress ->
       _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
         this[macAddress] = connectionStatus
@@ -138,7 +137,7 @@ constructor(
 
       val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && connectedDevice != null) {
         device.preferences.shouldMeasureImpedance == true &&
-          (connectedDevice.impedanceSwitchState == false || connectedDevice.impedanceSwitchState == null)
+          (connectedDevice.impedanceSwitchState == false)
       } else {
         false
       }
@@ -150,7 +149,6 @@ constructor(
         )
       )
     }
-
     _pairedScales.value = updatedScales
     val connectedScalesList = updatedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
     _connectedScales.value = connectedScalesList
@@ -163,7 +161,7 @@ constructor(
 
       val updatedDevice = if (isConnected && device.preferences != null && device.device != null) {
         val isWeighOnlyModeEnabledByOthers = device.preferences.shouldMeasureImpedance == true &&
-          device.device.impedanceSwitchState == false
+          device.device.impedanceSwitchState == false || device.device.impedanceSwitchState == null
         device.copy(
           connectionStatus = connectionStatus,
           isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
@@ -217,22 +215,24 @@ constructor(
       combine(
         deviceRepository.getDevices(resolvedAccountId),
         _connectionStatusMap,
-      ) { devices, connectionStatusMap ->
+        _connectedScales
+      ) { devices, connectionStatusMap, connectedScales ->
         devices.map { device ->
-          val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+          // Find the connected device by id (or macAddress, as appropriate)
+          val connectedDevice = connectedScales.find { it.id == device.id }
+          val connectionStatus = connectedDevice?.connectionStatus ?: BLEStatus.DISCONNECTED
           val isConnected = connectionStatus == BLEStatus.CONNECTED
-          // Calculate isWeighOnlyModeEnabledByOthers based on Angular logic
-          val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
-            device.preferences.shouldMeasureImpedance == true &&
-              device.device.impedanceSwitchState == false || device.device.impedanceSwitchState == null
-          } else {
-            false
-          }
+
+          val isWifiConfigured = connectedDevice?.device?.isWifiConfigured ?: false
+
+          val isWeighOnlyModeEnabledByOthers = isConnected &&
+          device.preferences?.shouldMeasureImpedance == true &&
+            (connectedDevice?.device?.impedanceSwitchState == false || connectedDevice?.device?.impedanceSwitchState == null )
 
           device.copy(
             connectionStatus = connectionStatus,
             device = device.device?.copy(
-              isWifiConfigured = device.device.isWifiConfigured
+              isWifiConfigured = isWifiConfigured
             ),
             isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
           )

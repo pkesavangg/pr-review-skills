@@ -183,15 +183,19 @@ constructor(
         if (currentScale != null) {
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
-            currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-            scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            currentScale.connectionStatus != BLEStatus.CONNECTED
+            scale.connectionStatus == BLEStatus.CONNECTED
             val connectedScales = deviceService.connectedScales.first()
-              val connectedScale = connectedScales.find { it.id == scaleId }
-              // currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-              // scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-            if(connectedScale != null){
-              handleIntent(ScaleDetailsIntent.SetScaleInfo(connectedScale))
+            val connectedScale = connectedScales.find { it.id == scaleId }
+            // Copy connectionStatus from connectedScale if available, else keep the one from paired
+            val scaleWithConnectionStatus = if (connectedScale != null) {
+              scale.copy(connectionStatus = connectedScale.connectionStatus,device = scale.device?.copy(
+                isWifiConfigured = connectedScale.device?.isWifiConfigured
+              ))
+            } else {
+              scale
             }
+            handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleWithConnectionStatus))
             getDeviceInfo()
           }
         }
@@ -203,11 +207,10 @@ constructor(
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let {
               scale ->
-            currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-            scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
+            currentScale.connectionStatus != BLEStatus.CONNECTED
+            scale.connectionStatus == BLEStatus.CONNECTED
             handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
             Log.d("setscaledetails11","${scale}");
-
           }
           }
         }
