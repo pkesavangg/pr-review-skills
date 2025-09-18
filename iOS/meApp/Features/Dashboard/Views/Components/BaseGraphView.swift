@@ -10,10 +10,10 @@ import Charts
 
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
-struct BaseGraphView: View, Equatable {
+struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     
     // MARK: - Dependencies
-    @ObservedObject var viewModel: BaseSectionViewModel
+    @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     
