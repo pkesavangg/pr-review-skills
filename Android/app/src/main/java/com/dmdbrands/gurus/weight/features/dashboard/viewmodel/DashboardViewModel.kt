@@ -40,11 +40,13 @@ constructor(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
   init {
-    handleIntent(DashboardIntent.LoadEntries)
-    loadEntries()
-    subscribeMetrics()
-    subscribeProgress()
-    subscribeGoals()
+    viewModelScope.launch {
+      handleIntent(DashboardIntent.LoadEntries)
+      subscribeMetrics()
+      loadEntries()
+      subscribeProgress()
+      subscribeGoals()
+    }
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -88,7 +90,7 @@ constructor(
   private fun subscribeMetrics() {
     viewModelScope.launch {
       // Combine both metric and milestone keys into a single DashboardKey list
-      dashboardService.getVisibleKeys().collect {
+      dashboardService.visibleKeys.collect {
         handleIntent(DashboardIntent.SetVisibleKeys(it))
       }
     }
@@ -161,19 +163,21 @@ constructor(
   /**
    * Loads entries and updates the state accordingly.
    */
-  private fun loadEntries() {
+  private suspend fun loadEntries() {
     viewModelScope.launch {
-      entryService.daywiseBodyScaleAverages.collect { dayWise ->
-        handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
+      viewModelScope.launch {
+        entryService.daywiseBodyScaleAverages.collect { dayWise ->
+          handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
+        }
       }
-    }
-    viewModelScope.launch {
-      entryService.monthlyBodyScaleAverages.collect { monthWise ->
-        handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
+      viewModelScope.launch {
+        entryService.monthlyBodyScaleAverages.collect { monthWise ->
+          handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
+        }
       }
-    }
-    viewModelScope.launch {
-      handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
+      viewModelScope.launch {
+        handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
+      }
     }
   }
 

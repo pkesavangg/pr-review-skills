@@ -55,26 +55,40 @@ data class GraphState(
   val maxTarget: Long? = null,
   val markerIndex: Double? = null,
   val isUpdating: Boolean = false,
+  val isLoading: Boolean = false,
   val computationJob: Job? = null,
   val animationJob: Job? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
-  val xLabels: List<Label> = graphLines.flatMap { graphLine ->
-    graphLine.points.map { point ->
-      point.x
+
+  // Cached computed properties to avoid repeated calculations
+  val xLabels: List<Label> by lazy {
+    graphLines.flatMap { graphLine ->
+      graphLine.points.map { point -> point.x }
     }
   }
-  val yLabels: List<List<Label>> = graphLines.map { graphLine ->
-    graphLine.points.map {
-      it.y
+
+  val yLabels: List<List<Label>> by lazy {
+    graphLines.map { graphLine ->
+      graphLine.points.map { it.y }
     }
   }
-  val initialTimeStamp: Long? =
-    this.xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
-  val endTimeStamp: Long? =
-    this.xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
-  val selectedData =
-    if (markerIndex != null && markerIndex < xLabels.size) graphLines.mapNotNull { it.points.find { it.x.value.toDouble() == markerIndex } } else emptyList()
+
+  val initialTimeStamp: Long? by lazy {
+    xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
+  }
+
+  val endTimeStamp: Long? by lazy {
+    xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
+  }
+
+  val selectedData by lazy {
+    if (markerIndex != null && markerIndex < xLabels.size) {
+      graphLines.mapNotNull { it.points.find { it.x.value.toDouble() == markerIndex } }
+    } else {
+      emptyList()
+    }
+  }
 
   fun getXStartRange(segment: GraphSegment): Long? {
     if (graphLines.isEmpty()) return null

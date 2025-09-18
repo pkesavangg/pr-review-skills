@@ -3,12 +3,14 @@ package com.dmdbrands.gurus.weight.features.dashboard
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -102,23 +104,34 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
 
   AppScaffold(title = null) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
-      HistoryGraph(
-        state = state,
-        selectedStat = selectedStat,
-        onSelectSegment = {
-          handleIntent(DashboardIntent.SetSelectedSegment(it))
-        },
-        onSelected = {
-          handleIntent(DashboardIntent.SetMetricData(it))
-        },
-        onPagerStateChange = { pagerState ->
-          handleIntent(DashboardIntent.SetPagerState(pagerState))
-        }
-      )
-      if(state.dayWiseEntries.isEmpty()) {
+      // Show loading state while data is being processed
+      if (state.isLoading) {
+        Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
+        // You can add a proper loading indicator here
+        androidx.compose.material3.CircularProgressIndicator(
+          modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+      } else {
+        HistoryGraph(
+          state = state,
+          selectedStat = selectedStat,
+          onSelectSegment = {
+            handleIntent(DashboardIntent.SetSelectedSegment(it))
+          },
+          onSelected = {
+            handleIntent(DashboardIntent.SetMetricData(it))
+          },
+          onPagerStateChange = { pagerState ->
+            handleIntent(DashboardIntent.SetPagerState(pagerState))
+          }
+        )
+      }
+
+      if(state.dayWiseEntries.isEmpty() && !state.isLoading) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         EmptyMetric()
-      } else {
+      } else if (!state.isLoading) {
         DashboardMetrics(
           metricData = metricData,
           inEditMode = inEditMode,

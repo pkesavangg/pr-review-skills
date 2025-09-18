@@ -96,8 +96,13 @@ fun GraphPagerView(
         modifier = Modifier.fillMaxWidth(),
       ) { page ->
         val currentSegment = GraphSegment.entries[page]
-        val segmentEntries = getEntriesForSegment(state, currentSegment)
-        val segmentGraphLines = getWeightGraphPointsForSegment(state, currentSegment)
+        // Cache data processing to avoid repeated calculations
+        val segmentEntries = remember(state, currentSegment) {
+          getEntriesForSegment(state, currentSegment)
+        }
+        val segmentGraphLines = remember(state, currentSegment) {
+          getWeightGraphPointsForSegment(state, currentSegment)
+        }
         val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
           factory.create(GraphSegment.entries[page])
         }
@@ -217,13 +222,22 @@ private fun getEntriesForSegment(
 
 /**
  * Gets the weight graph points for the given segment.
+ * Optimized to avoid repeated sorting and processing.
  */
 private fun getWeightGraphPointsForSegment(
   state: DashboardState,
   segment: GraphSegment
 ): GraphLine {
   val entries = getEntriesForSegment(state, segment)
-  return entries.sortedBy { it.entryTimestamp }.toWeightGraphPoints()
+  // Sort only if entries are not already sorted
+  val sortedEntries = if (entries.size <= 1) {
+    entries
+  } else {
+    // Check if already sorted to avoid unnecessary sorting
+    val isSorted = entries.zipWithNext().all { (a, b) -> a.entryTimestamp <= b.entryTimestamp }
+    if (isSorted) entries else entries.sortedBy { it.entryTimestamp }
+  }
+  return sortedEntries.toWeightGraphPoints()
 }
 
 /**

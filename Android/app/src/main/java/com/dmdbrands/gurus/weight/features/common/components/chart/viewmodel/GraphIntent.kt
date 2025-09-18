@@ -31,6 +31,9 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update updating state */
   data class UpdateIsUpdating(val isUpdating: Boolean) : GraphIntent
 
+  /** Update loading state */
+  data class UpdateIsLoading(val isLoading: Boolean) : GraphIntent
+
   /** Update computation job */
   data class UpdateComputationJob(val job: Job?) : GraphIntent
 

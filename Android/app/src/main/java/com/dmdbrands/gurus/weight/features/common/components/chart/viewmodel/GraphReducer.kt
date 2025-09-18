@@ -24,6 +24,8 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)
 
+    is GraphIntent.UpdateIsLoading -> state.copy(isLoading = intent.isLoading)
+
     is GraphIntent.UpdateComputationJob -> state.copy(computationJob = intent.job)
 
     is GraphIntent.ResetGraph -> state.copy(
