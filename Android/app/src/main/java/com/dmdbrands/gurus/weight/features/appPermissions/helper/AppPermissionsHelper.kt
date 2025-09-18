@@ -1,14 +1,15 @@
 package com.dmdbrands.gurus.weight.features.appPermissions.helper
 
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.appPermissions.strings.AppPermissionsScreenStrings
 import com.dmdbrands.gurus.weight.features.common.components.PermissionItemStatus
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import android.os.Build
 
 /**
@@ -17,6 +18,7 @@ import android.os.Build
 data class PermissionItem(
   val key: String,
   val status: PermissionItemStatus,
+  val isDisabled: Boolean = false,
   val enabledDescription: String?,
   val disabledDescription: String?,
   val group: String
@@ -78,6 +80,11 @@ object AppPermissionsHelper {
       group = AppPermissionsScreenStrings.NetworkHeader,
       enabledDescription = AppPermissionsScreenStrings.NetworkEnabledDescription,
       disabledDescription = AppPermissionsScreenStrings.NetworkDisabledDescription,
+    ),
+    CustomPermissionType.WIFI_SWITCH_LOCATION.value to PermissionMeta(
+      group = AppPermissionsScreenStrings.LocationHeader,
+      enabledDescription = AppPermissionsScreenStrings.EnabledWifiDescription,
+      disabledDescription = AppPermissionsScreenStrings.DisabledWifiDescription,
     ),
   )
 
@@ -170,7 +177,7 @@ object AppPermissionsHelper {
         listOf(
           GGPermissionType.LOCATION_SWITCH,
           GGPermissionType.LOCATION,
-          GGPermissionType.WIFI_SWITCH,
+          CustomPermissionType.WIFI_SWITCH_LOCATION.value,
         )
       }
     }
@@ -187,13 +194,14 @@ object AppPermissionsHelper {
   fun getRequiredPermissionsForSetupType(
     sku: String,
     permissionMap: GGPermissionStatusMap,
-    requiredPermissionTypes: List<String>? = null
+    requiredPermissionTypes: List<String>? = null,
+    wifiName: String? = null
   ): List<PermissionGroup> {
     val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
-    val items = getPermissionItems(requiredPermissionTypes, permissionMap, sku)
+    val items = getPermissionItems(requiredPermissionTypes, permissionMap, sku, wifiName)
 
     // Group items by their group header
     val groupedItems = items.groupBy { it.group }
@@ -219,7 +227,6 @@ object AppPermissionsHelper {
       ScaleSetupType.Wifi,
       ScaleSetupType.EspTouchWifi -> listOf(
         AppPermissionsScreenStrings.LocationHeader,
-        AppPermissionsScreenStrings.NetworkHeader,
       )
     }
 
@@ -290,7 +297,10 @@ object AppPermissionsHelper {
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
-      val permissionState = permissionMap[permissionType] ?: PermissionState.NOT_DETERMINED
+      // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
+      val actualPermissionType =
+        if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value) GGPermissionType.WIFI_SWITCH else permissionType
+      val permissionState = permissionMap[actualPermissionType] ?: PermissionState.NOT_DETERMINED
       permissionState == PermissionState.ENABLED
     }
   }
@@ -324,16 +334,26 @@ object AppPermissionsHelper {
   private fun getPermissionItems(
     requiredPermissionTypes: List<String>,
     permissionMap: GGPermissionStatusMap,
-    sku: String? = null
+    sku: String? = null,
+    wifiName: String? = null
   ): List<PermissionItem> {
     // Build PermissionItems for only the required types
     val items = requiredPermissionTypes.mapNotNull { type ->
       val meta = permissionMetaMap[type] ?: return@mapNotNull null
-      val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
-      val status = when (value) {
-        PermissionState.ENABLED -> PermissionItemStatus.Granted
-        PermissionState.DISABLED, PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
-        PermissionState.NOT_REQUESTED, PermissionState.NOT_DETERMINED -> PermissionItemStatus.NotRequested
+      
+      // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
+      val actualPermissionType = if (type == CustomPermissionType.WIFI_SWITCH_LOCATION.value) GGPermissionType.WIFI_SWITCH else type
+      val value = permissionMap[actualPermissionType] ?: PermissionState.NOT_DETERMINED
+
+      // Check if WIFI_SWITCH_LOCATION should be disabled due to missing location permissions
+      val isWifiSwitchLocation = type == CustomPermissionType.WIFI_SWITCH_LOCATION.value
+      val hasLocationPermissions = permissionMap[GGPermissionType.LOCATION_SWITCH] == PermissionState.ENABLED &&
+        permissionMap[GGPermissionType.LOCATION] == PermissionState.ENABLED
+
+      val status = when {
+        isWifiSwitchLocation && !hasLocationPermissions -> PermissionItemStatus.Denied
+        value == PermissionState.ENABLED -> PermissionItemStatus.Granted
+        value == PermissionState.DISABLED || value == PermissionState.PERMANENTLY_DENIED -> PermissionItemStatus.Denied
         else -> PermissionItemStatus.NotRequested
       }
 
@@ -341,12 +361,24 @@ object AppPermissionsHelper {
       val (enabledDescription, disabledDescription) = if (sku == "0384") {
         getCustomDescriptionsForSku0384(type, meta.enabledDescription ?: "", meta.disabledDescription ?: "")
       } else {
-        meta.enabledDescription to meta.disabledDescription
+        // For WIFI_SWITCH_LOCATION, use dynamic WiFi name if available
+        if (type == CustomPermissionType.WIFI_SWITCH_LOCATION.value && wifiName != null) {
+          val enabledDesc = if (wifiName.isNotEmpty()) {
+            "${AppPermissionsScreenStrings.EnabledWifiDescription}$wifiName"
+          } else {
+            AppPermissionsScreenStrings.EnabledWifiDescription
+          }
+          val disabledDesc = AppPermissionsScreenStrings.DisabledWifiDescription
+          enabledDesc to disabledDesc
+        } else {
+          meta.enabledDescription to meta.disabledDescription
+        }
       }
 
       PermissionItem(
         key = type,
         status = status,
+        isDisabled = isWifiSwitchLocation && !hasLocationPermissions,
         enabledDescription = enabledDescription,
         disabledDescription = disabledDescription,
         group = meta.group,
@@ -387,7 +419,9 @@ object AppPermissionsHelper {
       val scaleSetupType = ScaleSetupType.fromString(scale.deviceType)
       when (scaleSetupType) {
         ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> {
-          requiredPermissions.add(GGPermissionType.NOTIFICATION)
+          requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
+          requiredPermissions.add(GGPermissionType.LOCATION)
+          requiredPermissions.add(CustomPermissionType.WIFI_SWITCH_LOCATION.value)
         }
 
         ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> {
