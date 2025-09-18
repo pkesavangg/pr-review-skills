@@ -40,11 +40,26 @@ struct BaseGraphView: View, Equatable {
         viewModel.hasXAxis
     }
     
+    // MARK: - Equatable Implementation
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
-        // Compare only essential properties to minimize re-renders
-        return // lhs.viewModel.scrollPosition == rhs.viewModel.scrollPosition &&
-        // lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
-        lhs.viewModel.yAxisTicks == rhs.viewModel.yAxisTicks
+        // Only compare essential properties that should trigger re-renders
+        let lhsHash = lhs.createViewModelHash()
+        let rhsHash = rhs.createViewModelHash()
+        return lhsHash == rhsHash
+    }
+    
+    // Create a comprehensive hash of properties that affect rendering
+    private func createViewModelHash() -> Int {
+        var hasher = Hasher()
+        hasher.combine(viewModel.yAxisTicks)
+        hasher.combine(viewModel.yAxisDomain.lowerBound)
+        hasher.combine(viewModel.yAxisDomain.upperBound)
+        hasher.combine(viewModel.timePeriod.rawValue)
+        hasher.combine(viewModel.goalWeight)
+        hasher.combine(viewModel.showCrosshair)
+        hasher.combine(viewModel.selectedDate?.timeIntervalSince1970 ?? 0)
+        hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        return hasher.finalize()
     }
     
     var body: some View {
@@ -96,7 +111,7 @@ struct BaseGraphView: View, Equatable {
                 // Animate when switching the selected metric (weight vs other metric)
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
+                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 //                // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
@@ -121,33 +136,6 @@ struct BaseGraphView: View, Equatable {
                 }
             }
         }
-        .chartScrollPosition(x: Binding(
-            get: { viewModel.scrollPosition },
-            set: { newPosition in
-                // Cancel any existing work item
-                scrollUpdateWorkItem?.cancel()
-                
-                // Early exit if position hasn't changed significantly
-                guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.05 else {
-                    return
-                }
-                
-                // Create new debounced work item with weak reference
-                scrollUpdateWorkItem = DispatchWorkItem { [weak viewModel] in
-                    guard let viewModel = viewModel else { return }
-                    // Ensure UI updates happen on main thread
-                    DispatchQueue.main.async {
-                        viewModel.handleScrollPositionChange(newPosition)
-                    }
-                }
-                
-                // Execute after debounce delay
-                DispatchQueue.global(qos: .userInteractive).asyncAfter(
-                    deadline: .now() + 0.15, // Increased to 150ms for better stability
-                    execute: scrollUpdateWorkItem!
-                )
-            }
-        ))
         .onAppear {
             viewModel.configure(with: dashboardStore)
             // Initialize cache in ViewModel (async to avoid publishing warnings)
@@ -295,7 +283,6 @@ struct BaseGraphView: View, Equatable {
     
     @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
-        // Points are already pre-sorted by date in updateCachedSeriesData()
         ForEach(seriesPoints) { point in
             let xDate = viewModel.plotXDate(for: point.date)
             // Only enlarge the point that exactly matches the VM's selected date
@@ -470,6 +457,15 @@ extension View {
             self
                 .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
+                .chartScrollPosition(x: Binding(
+                    get: { viewModel.scrollPosition },
+                    set: { newPosition in
+                        // Debounce scroll position updates to prevent multiple updates per frame
+                        DispatchQueue.main.async {
+                            viewModel.handleScrollPositionChange(newPosition)
+                        }
+                    }
+                ))
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
@@ -600,11 +596,12 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .modifier(ScrollDetectionModifier(
-                    dashboardStore: dashboardStore,
-                    hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
-                    selectedXValue: localSelectedXValue
-                ))
+                .modifier(
+                    ScrollDetectionModifier(
+                        dashboardStore: dashboardStore,
+                        hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
+                        selectedXValue: localSelectedXValue
+                    ))
         } else {
             self
         }
