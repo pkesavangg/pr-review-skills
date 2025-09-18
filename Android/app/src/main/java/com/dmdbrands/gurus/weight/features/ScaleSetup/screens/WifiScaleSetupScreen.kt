@@ -186,6 +186,7 @@ fun WifiScaleSetupScreenContent(
               ScalePermissions(
                 sku = state.sku,
                 permissions = state.permissions,
+                wifiName = state.wifiStatus?.ssid,
                 onRequestPermission = { permissionType ->
                   onIntent(WifiScaleSetupIntent.RequestPermission(permissionType))
                 },
