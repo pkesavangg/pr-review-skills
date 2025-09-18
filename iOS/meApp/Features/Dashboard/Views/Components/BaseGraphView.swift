@@ -81,7 +81,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYScale(domain: viewModel.yAxisDomain)
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
-                .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+               .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
                 .transaction { t in
                   if viewModel.isScrolling { t.animation = nil }
                 }
@@ -119,7 +119,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                             }
                         )
                 )
-                
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
@@ -127,8 +126,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
                 // Animate when switching the selected metric (weight vs other metric)
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
-//                .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-//                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
+                .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
+                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
                     touchInteractionMode: $touchInteractionMode,
