@@ -28,6 +28,11 @@ struct BaseGraphView: View, Equatable {
     // Scroll position debouncing
     @State private var scrollUpdateWorkItem: DispatchWorkItem?
     
+    // MARK: - Cached Chart Data (Performance Optimization)
+    @State private var cachedChartPoints: [GraphSeries] = []
+    @State private var cachedGroupedPoints: [String: [GraphSeries]] = [:]
+    @State private var lastDataHash: Int = 0
+    
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
     private let goalChipTrailingPadding: CGFloat = 20
@@ -150,6 +155,8 @@ struct BaseGraphView: View, Equatable {
             viewModel.configure(with: dashboardStore)
             // Initialize cache in ViewModel (async to avoid publishing warnings)
             viewModel.updateCachedSeriesDataAsync()
+            // Initialize local cache for chart rendering performance
+            updateCachedChartData()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
         }
@@ -161,18 +168,34 @@ struct BaseGraphView: View, Equatable {
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
             // ViewModel will invalidate cache in refreshData()
             viewModel.refreshData()
+            // Update local cache since data changed
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
         }
         .onChange(of: dashboardStore.currentUnit) { _, _ in
             // ViewModel will invalidate cache in handleSettingsChange()
             viewModel.handleSettingsChange()
+            // Update local cache since display values changed
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
             // ViewModel will invalidate cache in handleSettingsChange()
             viewModel.handleSettingsChange()
+            // Update local cache since display values changed
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
         }
         .onChange(of: dashboardStore.state.ui.selectedMetricLabel) { _, _ in
             // Invalidate cache when selected metric changes (affects chart series)
             viewModel.invalidateCache()
+            // Update local cache since series data changed
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
         }
         // Conditional scroll position syncing
         .conditionalScrollSyncing(
@@ -265,11 +288,9 @@ struct BaseGraphView: View, Equatable {
     
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
-        // Use ViewModel's cached grouped series data
-        let _ = { print("🔍 chartContentForSegment called - Series:") }()
-        let cachedGroupedSeries = viewModel.getCachedGroupedSeries()
-        ForEach(Array(cachedGroupedSeries.keys.sorted()), id: \.self) { seriesName in
-            if let seriesPoints = cachedGroupedSeries[seriesName] {
+        // Use cached grouped data to prevent re-creation of LineMark/PointMark on every scroll
+        ForEach(Array(cachedGroupedPoints.keys.sorted()), id: \.self) { seriesName in
+            if let seriesPoints = cachedGroupedPoints[seriesName] {
                 chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
             }
         }
@@ -385,27 +406,55 @@ struct BaseGraphView: View, Equatable {
     }
     
     // MARK: - Cache Management
-    // Cache is now managed by ViewModel - no local cache needed
+    
+    /// Updates cached chart data only when underlying data actually changes
+    private func updateCachedChartData() {
+        let newData = viewModel.getCachedSeriesData()
+        // Create hash to detect actual data changes
+        var hasher = Hasher()
+        hasher.combine(newData.count)
+        if !newData.isEmpty {
+            // Sample key points for efficient hashing
+            let indices = newData.count <= 5 ? Array(0..<newData.count) : [0, newData.count/4, newData.count/2, (3*newData.count)/4, newData.count-1]
+            for i in indices {
+                let point = newData[i]
+                hasher.combine(point.date.timeIntervalSince1970.bitPattern)
+                hasher.combine(point.value.bitPattern)
+                hasher.combine(point.series)
+            }
+        }
+        let newHash = hasher.finalize()
+        
+        // Only update cache if data actually changed
+        if newHash != lastDataHash || cachedChartPoints.isEmpty {
+            cachedChartPoints = newData
+            
+            // Pre-group and sort data for efficient chart rendering
+            let grouped = Dictionary(grouping: cachedChartPoints) { $0.series }
+            cachedGroupedPoints = grouped.mapValues { seriesPoints in
+                seriesPoints.sorted { $0.date < $1.date }
+            }
+            
+            lastDataHash = newHash
+            
+            print("📊 Chart data cache updated - \(newData.count) points, hash: \(newHash)")
+        }
+    }
+    
+    /// Invalidates cache when data changes externally
+    private func invalidateCache() {
+        cachedChartPoints = []
+        cachedGroupedPoints = [:]
+        lastDataHash = 0
+    }
     
     // MARK: - Animation Token
-    /// Lightweight hash token that changes when the VISIBLE plotted series data changes,
+    /// Lightweight hash token that changes when the cached chart data changes,
     /// so we can animate line updates even when the Y-axis domain is unchanged.
     private var seriesAnimationToken: Int {
         if viewModel.isScrolling { return 0 } // no animations during scroll, skip work
-        let data = viewModel.visibleChartSeriesData
-        var hasher = Hasher()
-        hasher.combine(data.count)
-        if !data.isEmpty {
-            let c = data.count
-            let idxs = c == 1 ? [0] : c == 2 ? [0, 1] : [0, c/4, c/2, (3*c)/4, c-1]
-            for i in Set(idxs).sorted() {
-                let p = data[i]
-                hasher.combine(p.date.timeIntervalSince1970.bitPattern)
-                hasher.combine(p.value.bitPattern)
-                hasher.combine(p.series)
-            }
-        }
-        return hasher.finalize()
+        // Use the cached data hash for animation token since it only changes when data actually changes
+        return lastDataHash
     }
 }
 
