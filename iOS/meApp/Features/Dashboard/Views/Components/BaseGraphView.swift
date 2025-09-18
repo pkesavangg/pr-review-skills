@@ -102,7 +102,6 @@ struct BaseGraphView: View, Equatable {
                             }
                     }
                 )
-                //                // Conditional preference change handling
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
@@ -112,7 +111,6 @@ struct BaseGraphView: View, Equatable {
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
-                //                // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
                     touchInteractionMode: $touchInteractionMode,
