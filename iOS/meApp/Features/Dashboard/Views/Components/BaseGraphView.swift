@@ -600,15 +600,6 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-            // DecisionWindowModifier is not required for scrollable charts. 
-            // TODO: Removed after confirming through GraphView testing.
-            //                .modifier(DecisionWindowModifier(
-            //                    touchInteractionMode: touchInteractionMode,
-            //                    initialTouchPoint: initialTouchPoint,
-            //                    decisionTimer: decisionTimer,
-            //                    selectedXValue: localSelectedXValue,
-            //                    dashboardStore: dashboardStore
-            //                ))
                 .modifier(ScrollDetectionModifier(
                     dashboardStore: dashboardStore,
                     hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
