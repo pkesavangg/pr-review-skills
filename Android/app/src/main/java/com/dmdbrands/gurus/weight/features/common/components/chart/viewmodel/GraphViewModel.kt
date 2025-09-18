@@ -5,10 +5,8 @@ import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.ONE_DAY_MILLIS
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -194,25 +192,22 @@ class GraphViewModel @AssistedInject constructor(
         GraphUtil.getStartRange(segment, endX) ?: Calendar.getInstance().timeInMillis
       else
         initialTimestamp ?: Calendar.getInstance().timeInMillis
-    // calculate with the interval count to get padded range
-    val intervalCount = segment.intervalCount().div(2)
-    val paddedStartX = startX.minus(ONE_DAY_MILLIS * intervalCount)
-    val paddedEndX = endX.plus(ONE_DAY_MILLIS * intervalCount)
 
-    val paddedGraphLines = filterXValuesInRange(
+    val visibleGraphLines = filterXValuesInRange(
       listOf(graphLines),
-      paddedStartX,
-      paddedEndX,
+      startX,
+      endX,
     )
 
-    val paddedYAxis = paddedGraphLines.flatMap { graphLine ->
-      graphLine.points.map { it.y.value.toDouble() }
-    }
+    val paddedValues: List<Double> =
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, startX)?.toDouble()) +
+        visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, endX)?.toDouble())
 
-    if (paddedYAxis.isNotEmpty()) {
+    if (paddedValues.isNotEmpty()) {
       val graphMeta = generateNiceScale(
-        minValue = floor(paddedYAxis.min()),
-        maxValue = ceil(paddedYAxis.max()),
+        minValue = floor(paddedValues.min()),
+        maxValue = ceil(paddedValues.max()),
         goalWeight = goal?.goalWeight ?: 0.0,
         isWeightLessMode = isWeightlessMode,
         targetTickCount = 5,

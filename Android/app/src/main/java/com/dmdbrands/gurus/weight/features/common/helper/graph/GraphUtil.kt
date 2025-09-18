@@ -194,6 +194,14 @@ object GraphUtil {
       )
     }
 
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
+    return graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }?.y?.value?.toLong()
+  }
+
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
+    return graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }?.y?.value?.toLong()
+  }
+
   fun averageYValuesInRange(
     graphLines: List<GraphLine>,
     min: Long,
