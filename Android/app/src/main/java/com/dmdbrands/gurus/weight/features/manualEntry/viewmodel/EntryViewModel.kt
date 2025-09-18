@@ -130,7 +130,6 @@ constructor(
                     isResumed = true
                     onConfirm()
                     deactivate()
-                    _state.value.form.resetForm()
                     cont.resume(true)
                   }
                 },
@@ -175,7 +174,7 @@ constructor(
             message = "entry saved successfully!",
           ),
         )
-        _state.value.form.resetForm()
+        deactivate()
         navigationService.navigateBack(AppRoute.Home)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving entry: ${e.message}", e)
