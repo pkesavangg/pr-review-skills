@@ -417,12 +417,46 @@ class DashboardStore: ObservableObject {
         // Stabilize year label: use calendar year containing the CENTER of the visible window
         // (avoids flipping when the left boundary nudges into previous month/year)
         if state.graph.selectedPeriod == .year {
-            let cal = Calendar.current
-            let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
-            if let yearInterval = cal.dateInterval(of: .year, for: center) {
-                let minDate = yearInterval.start
-                let maxDate = yearInterval.end
-                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
+            let ops = visibleOperations
+            if ops.isEmpty {
+                // fallback
+                let cal = Calendar.current
+                let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
+                if let yearInterval = cal.dateInterval(of: .year, for: center) {
+                    let minDate = yearInterval.start
+                    let maxDate = yearInterval.end
+                    return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
+                }
+                return graphManager.fallbackTimeLabel(for: .year)
+            }
+            
+            guard let minDate = ops.map({ $0.date }).min(),
+                  let maxDate = ops.map({ $0.date }).max() else {
+                return graphManager.fallbackTimeLabel(for: .year)
+            }
+            
+            let calendar = Calendar.current
+            let minComponents = calendar.dateComponents([.month, .year], from: minDate)
+            let maxComponents = calendar.dateComponents([.month, .year], from: maxDate)
+            
+            guard let minMonthIndex = minComponents.month,
+                  let maxMonthIndex = maxComponents.month,
+                  let minYear = minComponents.year,
+                  let maxYear = maxComponents.year else {
+                return graphManager.fallbackTimeLabel(for: .year)
+            }
+            
+            let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
+            let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
+            
+            if minYear != maxYear {
+                return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
+            } else {
+                if minMonthIndex == maxMonthIndex {
+                    return "\(minMonth) \(minYear)"
+                } else {
+                    return "\(minYear)"
+                }
             }
         }
         
