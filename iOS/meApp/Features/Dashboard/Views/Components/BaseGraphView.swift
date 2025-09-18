@@ -43,7 +43,7 @@ struct BaseGraphView: View, Equatable {
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Compare only essential properties to minimize re-renders
         return // lhs.viewModel.scrollPosition == rhs.viewModel.scrollPosition &&
-       // lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
+        // lhs.viewModel.isScrolling == rhs.viewModel.isScrolling &&
         lhs.viewModel.yAxisTicks == rhs.viewModel.yAxisTicks
     }
     
@@ -87,11 +87,8 @@ struct BaseGraphView: View, Equatable {
                             }
                     }
                 )
-//                // Conditional preference change handling
+                //                // Conditional preference change handling
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-//                .onAppear {
-//                    viewModel.initializeChart()
-//                }
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
                 // Animate when series data changes (even if Y-axis domain/ticks stay the same)
@@ -100,7 +97,7 @@ struct BaseGraphView: View, Equatable {
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes                
-//                // Apply touch interaction modifiers only for scrollable charts
+                //                // Apply touch interaction modifiers only for scrollable charts
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
                     touchInteractionMode: $touchInteractionMode,
@@ -311,8 +308,8 @@ struct BaseGraphView: View, Equatable {
                 series: .value("Series", point.series)
             )
             .foregroundStyle(point.series == DashboardStrings.weight
-                                         ? theme.actionPrimary
-                                         : theme.actionSecondary)
+                             ? theme.actionPrimary
+                             : theme.actionSecondary)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
             
@@ -323,8 +320,8 @@ struct BaseGraphView: View, Equatable {
             )
             .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
             .foregroundStyle(point.series == DashboardStrings.weight
-                                         ? theme.actionPrimary
-                                         : theme.actionSecondary)
+                             ? theme.actionPrimary
+                             : theme.actionSecondary)
         }
     }
     
@@ -436,8 +433,6 @@ struct BaseGraphView: View, Equatable {
             }
             
             lastDataHash = newHash
-            
-            print("📊 Chart data cache updated - \(newData.count) points, hash: \(newHash)")
         }
     }
     
@@ -605,13 +600,15 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-//                .modifier(DecisionWindowModifier(
-//                    touchInteractionMode: touchInteractionMode,
-//                    initialTouchPoint: initialTouchPoint,
-//                    decisionTimer: decisionTimer,
-//                    selectedXValue: localSelectedXValue,
-//                    dashboardStore: dashboardStore
-//                ))
+            // DecisionWindowModifier is not required for scrollable charts. 
+            // TODO: Removed after confirming through GraphView testing.
+            //                .modifier(DecisionWindowModifier(
+            //                    touchInteractionMode: touchInteractionMode,
+            //                    initialTouchPoint: initialTouchPoint,
+            //                    decisionTimer: decisionTimer,
+            //                    selectedXValue: localSelectedXValue,
+            //                    dashboardStore: dashboardStore
+            //                ))
                 .modifier(ScrollDetectionModifier(
                     dashboardStore: dashboardStore,
                     hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
