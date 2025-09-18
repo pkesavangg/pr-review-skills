@@ -230,7 +230,6 @@ data class WifiScaleSetupState(
 sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class SetScaleSku(val sku: String) : WifiScaleSetupIntent()
   data class SetCurrentStep(val step: WifiScaleSetupStep) : WifiScaleSetupIntent()
-  data class SetLoading(val isLoading: Boolean) : WifiScaleSetupIntent()
   data class SetError(val error: String?) : WifiScaleSetupIntent()
   data class SelectUser(val userNumber: Int) : WifiScaleSetupIntent()
   data class SelectWifiMode(val wifiMode: String) : WifiScaleSetupIntent()
@@ -258,11 +257,8 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class SetShowApMode(val show: Boolean) : WifiScaleSetupIntent()
   data class SetShowError(val show: Boolean) : WifiScaleSetupIntent()
   data class SetPermissionsSkipped(val skipped: Boolean) : WifiScaleSetupIntent()
-  data class SetIsGetMACSetup(val isGetMACSetup: Boolean) : WifiScaleSetupIntent()
-  data class SetSaved(val saved: Boolean) : WifiScaleSetupIntent()
   data class SetNextButtonText(val text: String) : WifiScaleSetupIntent()
   data class SetConnectedToScaleWifi(val isConnected: Boolean) : WifiScaleSetupIntent()
-  data class SetScaleWifiSsid(val ssid: String) : WifiScaleSetupIntent()
   data class SetMacAddress(val macAddress: String) : WifiScaleSetupIntent()
   data class OnGetScaleMacAddress(val macAddress: String = "") : WifiScaleSetupIntent()
   data class OnCopyMacAddress(val macAddress: String) : WifiScaleSetupIntent()
@@ -279,7 +275,6 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   object Back : WifiScaleSetupIntent()
   object Skip : WifiScaleSetupIntent()
   object GoToWifiSettings : WifiScaleSetupIntent()
-  object CheckScaleWifiConnection : WifiScaleSetupIntent()
   object ClearNavigationState : WifiScaleSetupIntent() // Add this to clear navigation state
 }
 
@@ -296,11 +291,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
       is WifiScaleSetupIntent.SetCurrentStep -> state.copy(
         currentStep = intent.step,
         isNavigating = false, // Clear navigation state after direct step change
-      )
-
-      is WifiScaleSetupIntent.SetLoading -> state.copy(
-        isLoading = intent.isLoading,
-        isNavigating = if (!intent.isLoading) false else state.isNavigating, // Clear navigation state when loading finishes
       )
 
       is WifiScaleSetupIntent.SetError -> state.copy(error = intent.error)
@@ -410,13 +400,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           }
 
           // Handle MAC setup flag update for SCALE_INFO step
-          val finalState = if (state.currentStep == WifiScaleSetupStep.SCALE_INFO) {
-            if (state.shouldGetMacAddress) {
-              updatedState.copy(isGetMACSetup = true, shouldGetMacAddress = false)
-            } else {
-              updatedState.copy(isGetMACSetup = false)
-            }
-          } else if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode == "apmode") {
+          val finalState =  if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode == "apmode") {
             // Set showApMode flag when proceeding from WIFI_MODE with AP mode selected
             updatedState.copy(showApMode = true)
           } else if (nextStep == WifiScaleSetupStep.ACTIVATE_SCALE) {
@@ -694,14 +678,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         permissionsSkipped = intent.skipped,
       )
 
-      is WifiScaleSetupIntent.SetIsGetMACSetup -> state.copy(
-        isGetMACSetup = intent.isGetMACSetup,
-      )
-
-      is WifiScaleSetupIntent.SetSaved -> state.copy(
-        saved = intent.saved,
-      )
-
       is WifiScaleSetupIntent.SetNextButtonText -> state.copy(
         nextButtonText = intent.text,
       )
@@ -710,21 +686,12 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         isConnectedToScaleWifi = intent.isConnected,
       )
 
-      is WifiScaleSetupIntent.SetScaleWifiSsid -> state.copy(
-        scaleWifiSsid = intent.ssid,
-      )
-
       is WifiScaleSetupIntent.SetMacAddress -> state.copy(
         macAddress = intent.macAddress,
       )
 
       is WifiScaleSetupIntent.GoToWifiSettings -> {
         // This intent will be handled by the ViewModel to open WiFi settings
-        state.copy()
-      }
-
-      is WifiScaleSetupIntent.CheckScaleWifiConnection -> {
-        // This intent will be handled by the ViewModel to check WiFi connection
         state.copy()
       }
 

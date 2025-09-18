@@ -33,10 +33,12 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStri
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.WifiScaleSetupViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
+import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.components.WifiMacAddress
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
@@ -143,8 +145,9 @@ fun WifiScaleSetupScreenContent(
         )
       },
       middleContent = {
+        AppText("${state.isGetMACSetup}", textType = TextType.Title)
         // Show skip button only on permissions step and NOT in MAC setup mode
-        if (state.showSkipButton) {
+        if (!state.isGetMACSetup && state.currentStep == WifiScaleSetupStep.PERMISSIONS) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.SetupButtons.Skip,
