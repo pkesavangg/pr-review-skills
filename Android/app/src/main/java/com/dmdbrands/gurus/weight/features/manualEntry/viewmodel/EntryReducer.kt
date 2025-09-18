@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
-import java.time.LocalTime
 import java.util.Calendar
 
 /**
@@ -54,16 +53,16 @@ data class EntryForm(
 ) {
 
   companion object {
-    val calendar = Calendar.getInstance()
-    val currentTimeMillis = calendar.timeInMillis
-    val hour = calendar.get(Calendar.HOUR_OF_DAY)
-    val minute = calendar.get(Calendar.MINUTE)
     fun create(
       includeR4ScaleMetrics: Boolean = false,
       weightUnit: WeightUnit? = null,
       height: Int? = 0,
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
     ): EntryForm {
+      val calendar = Calendar.getInstance()
+      val currentTimeMillis = calendar.timeInMillis
+      val hour = calendar.get(Calendar.HOUR_OF_DAY)
+      val minute = calendar.get(Calendar.MINUTE)
       val generalMetrics =
         GeneralMetricsFormControls(
           bodyMassIndex = FormControl.create(
@@ -124,15 +123,7 @@ data class EntryForm(
             },
           ),
           dateTime = FormControl.create(
-            if (scaleEntry != null) {
-              DateTimeValue.DateTime(
-                millis = System.currentTimeMillis(),
-                hour = LocalTime.now().hour,
-                minute = LocalTime.now().minute,
-              )
-            } else {
-              DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute)
-            },
+            DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
             listOf(),
           ),
         )
@@ -189,6 +180,7 @@ data class EntryState(
  * Intent for entry actions, such as loading, selecting, adding, and deleting entries.
  */
 sealed interface EntryIntent : IReducer.Intent {
+  data object UpdateOnRelaunch : EntryIntent
   data object Save : EntryIntent
   data class UpdateForm(
     val form: MultiFormGroup<EntryForm>,

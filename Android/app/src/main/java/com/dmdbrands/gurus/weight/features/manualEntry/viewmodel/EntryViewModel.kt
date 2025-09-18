@@ -91,6 +91,25 @@ constructor(
         saveEntry()
       }
 
+      is EntryIntent.UpdateOnRelaunch -> {
+        viewModelScope.launch {
+          val entryForm =
+            EntryForm.create(
+              includeR4ScaleMetrics = true,
+              weightUnit = state.value.weightMode,
+              height = accountService.activeAccountFlow.first()?.height,
+            )
+          handleIntent(
+            EntryIntent.UpdateForm(
+              form =
+                MultiFormGroup.create(
+                  forms = entryForm,
+                ),
+            ),
+          )
+        }
+      }
+
       else -> null
     }
   }
