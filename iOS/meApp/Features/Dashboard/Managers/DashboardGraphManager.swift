@@ -1594,7 +1594,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     /// Simplifies data during scrolling by reducing the number of points for better performance
     private func simplifyDataForScrolling(_ operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         // For very large datasets, sample every nth point during scrolling
-        let maxPointsDuringScroll = 100 // Limit to 100 points during scroll
+        let maxPointsDuringScroll = 50 // Limit to 50 points during scroll
         
         guard operations.count > maxPointsDuringScroll else {
             return operations

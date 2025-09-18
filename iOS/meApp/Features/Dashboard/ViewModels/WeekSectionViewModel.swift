@@ -12,7 +12,20 @@ import Charts
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class WeekSectionViewModel: BaseSectionViewModel {
+final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
+    
+    static func == (lhs: WeekSectionViewModel, rhs: WeekSectionViewModel) -> Bool {
+        // Compare essential properties that affect rendering
+        lhs.timePeriod == rhs.timePeriod &&
+        lhs.selectedDate == rhs.selectedDate &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.scrollPosition == rhs.scrollPosition &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.yAxisDomain == rhs.yAxisDomain &&
+        lhs.yAxisTicks == rhs.yAxisTicks &&
+        lhs.chartFrame == rhs.chartFrame &&
+        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
+    }
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {

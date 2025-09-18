@@ -10,7 +10,7 @@ import Charts
 
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
-struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
+struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
     
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
@@ -32,6 +32,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State private var cachedChartPoints: [GraphSeries] = []
     @State private var cachedGroupedPoints: [String: [GraphSeries]] = [:]
     @State private var lastDataHash: Int = 0
+    @State private var cachedPlottedPoints: [String: [PlottedGraphSeries]] = [:]
     
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
@@ -47,6 +48,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         let rhsHash = rhs.createViewModelHash()
         return lhsHash == rhsHash
     }
+    
+    // MARK: - Local State (add these)
+    @State private var lastChartFrame: CGRect = .zero
+    @State private var lastChartHeight: CGFloat = .zero
     
     // Create a comprehensive hash of properties that affect rendering
     private func createViewModelHash() -> Int {
@@ -76,6 +81,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .chartYScale(domain: viewModel.yAxisDomain)
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
+                .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+                .transaction { t in
+                  if viewModel.isScrolling { t.animation = nil }
+                }
                 // Conditional chart modifiers based on scrollability
                 .conditionalModifiers(
                     isScrollable: isScrollable,
@@ -89,19 +98,28 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .frame(maxWidth: .infinity, minHeight: 240)
                 .padding(.leading, 0)
                 .background(
-                    GeometryReader { geo in
-                        theme.textInverse
-                            .onAppear {
-                                if isScrollable {
-                                    dashboardStore.state.graph.chartHeight = geo.size.height
-                                }
-                                viewModel.updateChartFrame(geo.frame(in: .local))
+                    // Use a neutral view so we don't trigger style/layout side effects
+                    Color.clear
+                        .background(
+                            GeometryReader { geo in
+                                // 1) Do a one-time assignment on first appearance
+                                Color.clear
+                                    .task {
+                                        assignHeightIfChanged(geo.size.height)
+                                        assignFrameIfChanged(geo.frame(in: .local))
+                                    }
+                                    // 2) Gate size changes
+                                    .onChange(of: geo.size) { _, newSize in
+                                        assignHeightIfChanged(newSize.height)
+                                    }
+                                    // 3) Gate frame changes
+                                    .onChange(of: geo.frame(in: .local)) { _, newFrame in
+                                        assignFrameIfChanged(newFrame)
+                                    }
                             }
-                            .onChange(of: geo.frame(in: .local)) { _, newFrame in
-                                viewModel.updateChartFrame(newFrame)
-                            }
-                    }
+                        )
                 )
+                
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
                 // Re-enable Chart-level animation after first frame to animate subsequent domain changes
                 .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
@@ -109,8 +127,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
                 // Animate when switching the selected metric (weight vs other metric)
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
-                .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
+//                .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
+//                .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
                     touchInteractionMode: $touchInteractionMode,
@@ -120,6 +138,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture,
                     dashboardStore: dashboardStore
                 )
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollTargetBehavior(.viewAligned)
                 
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
@@ -272,20 +292,23 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
         // Use cached grouped data to prevent re-creation of LineMark/PointMark on every scroll
-        ForEach(Array(cachedGroupedPoints.keys.sorted()), id: \.self) { seriesName in
-            if let seriesPoints = cachedGroupedPoints[seriesName] {
+        ForEach(Array(cachedPlottedPoints.keys.sorted()), id: \.self) { seriesName in
+            if let seriesPoints = cachedPlottedPoints[seriesName] {
                 chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
             }
         }
     }
     
     @ChartContentBuilder
-    private func chartContentForSeries(seriesName: String, seriesPoints: [GraphSeries]) -> some ChartContent {
-        ForEach(seriesPoints) { point in
-            let xDate = viewModel.plotXDate(for: point.date)
+    private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
+        ForEach(seriesPoints) { plottedPoint in
+            let point = plottedPoint.original
+            let xDate = plottedPoint.xDate  // Use precomputed
+            
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
+            
             // Line mark
             LineMark(
                 x: .value("Date", xDate),
@@ -410,13 +433,19 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         // Only update cache if data actually changed
         if newHash != lastDataHash || cachedChartPoints.isEmpty {
             cachedChartPoints = newData
-            
-            // Pre-group and sort data for efficient chart rendering
+
+            // Pre-group, sort, and precompute xDates
             let grouped = Dictionary(grouping: cachedChartPoints) { $0.series }
             cachedGroupedPoints = grouped.mapValues { seriesPoints in
                 seriesPoints.sorted { $0.date < $1.date }
             }
-            
+
+            // New: Precompute plotted dates
+            cachedPlottedPoints = cachedGroupedPoints.mapValues { points in
+                points.map { point in
+                    PlottedGraphSeries(original: point, xDate: viewModel.plotXDate(for: point.date))
+                }
+            }
             lastDataHash = newHash
         }
     }
@@ -436,6 +465,28 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         // Use the cached data hash for animation token since it only changes when data actually changes
         return lastDataHash
     }
+    
+    // MARK: - Helpers
+    @inline(__always)
+    private func assignFrameIfChanged(_ newFrame: CGRect) {
+        // Round to avoid microscopic diffs that trigger endless updates
+        let r = newFrame.integral   // or newFrame.standardized if you prefer
+        if r != lastChartFrame {
+            lastChartFrame = r
+            viewModel.updateChartFrame(r)
+        }
+    }
+
+    @inline(__always)
+    private func assignHeightIfChanged(_ newHeight: CGFloat) {
+        let h = round(newHeight) // avoid tiny float wiggles
+        if h != lastChartHeight {
+            lastChartHeight = h
+            if isScrollable {
+                dashboardStore.state.graph.chartHeight = h
+            }
+        }
+    }
 }
 
 // MARK: - View Extensions for Conditional Modifiers
@@ -453,7 +504,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { viewModel.scrollPosition },
@@ -602,6 +653,42 @@ extension View {
                     ))
         } else {
             self
+        }
+    }
+    
+    /// Returns the appropriate chart scroll target behavior based on the time period
+    /// - Parameter period: The time period for the chart
+    /// - Returns: ChartScrollTargetBehavior configured for the specific period
+    func getChartScrollBehavior(for period: TimePeriod) -> some ChartScrollTargetBehavior {
+        switch period {
+        case .week:
+            // For week view: align to start of week (Sunday)
+            return .valueAligned(
+                matching: .init(hour: 12),
+                majorAlignment: .matching(.init(hour: 12, weekday: 1)), // Sunday = 1
+                limitBehavior: .automatic
+            )
+        case .month:
+            // For month view: align to start of month (1st day)
+            return .valueAligned(
+                matching: .init(hour: 0),
+                majorAlignment: .matching(.init(day: 1)),
+                limitBehavior: .automatic
+            )
+        case .year:
+            // For year view: align to start of year (January 1st)
+            return .valueAligned(
+                matching: .init(day: 1, hour: 0),
+                majorAlignment: .matching(.init(month: 1, day: 1)),
+                limitBehavior: .automatic
+            )
+        case .total:
+            // For total view: no specific alignment needed (non-scrollable)
+            return .valueAligned(
+                matching: .init(hour: 0),
+                majorAlignment: .matching(.init(hour: 0)),
+                limitBehavior: .automatic
+            )
         }
     }
     
