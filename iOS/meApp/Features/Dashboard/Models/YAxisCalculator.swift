@@ -35,12 +35,18 @@ struct YAxisCalculator {
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
         guard !operations.isEmpty else {
-            // No data — use last scale if available, otherwise show goal weight as center
+            // No data — use last scale if available, otherwise use a goal-agnostic default fallback
             if let lastScale = lastScale {
-                return sanitizeToNonNegativeUniformTicks(scale: lastScale, desiredTickCount: max(2, lastScale.ticks.count))
+                // Allow negative ticks only in weightless mode
+                return isWeightlessMode
+                ? lastScale
+                : sanitizeToNonNegativeUniformTicks(scale: lastScale, desiredTickCount: max(2, lastScale.ticks.count))
             } else {
                 let fallback = createFallbackScale(goalWeight: goalWeight)
-                return sanitizeToNonNegativeUniformTicks(scale: fallback, desiredTickCount: max(2, fallback.ticks.count))
+                // Fallback is already non-negative; keep consistent behavior
+                return isWeightlessMode
+                ? fallback
+                : sanitizeToNonNegativeUniformTicks(scale: fallback, desiredTickCount: max(2, fallback.ticks.count))
             }
         }
 
@@ -54,7 +60,10 @@ struct YAxisCalculator {
                 convertStoredWeightToDisplay: convertStoredWeightToDisplay,
                 lastScale: lastScale
             )
-            return sanitizeToNonNegativeUniformTicks(scale: small, desiredTickCount: max(3, small.ticks.count))
+            // Allow negative ticks only in weightless mode
+            return isWeightlessMode
+            ? small
+            : sanitizeToNonNegativeUniformTicks(scale: small, desiredTickCount: max(3, small.ticks.count))
         }
 
         let average = calculateAverage(
@@ -105,7 +114,10 @@ struct YAxisCalculator {
             average: average
         )
 
-        return sanitizeToNonNegativeUniformTicks(scale: initial, desiredTickCount: max(3, initial.ticks.count))
+        // Allow negative ticks only in weightless mode
+        return isWeightlessMode
+        ? initial
+        : sanitizeToNonNegativeUniformTicks(scale: initial, desiredTickCount: max(3, initial.ticks.count))
     }
 
     /// Calculate average weight from operations
@@ -173,23 +185,9 @@ struct YAxisCalculator {
         let scaleMin = floor(minValue - padding)
         let scaleMax = ceil(maxValue + padding)
 
-        // Only include goal weight if it's within a reasonable range of the actual data
-        let dataCenter = (minValue + maxValue) / 2
-        let dataRange = maxValue - minValue
-        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
-
-        let finalMin: Double
-        let finalMax: Double
-
-        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
-            // Goal weight is reasonable, include it
-            finalMin = Swift.min(scaleMin, floor(goalWeight - 2))
-            finalMax = Swift.max(scaleMax, ceil(goalWeight + 2))
-        } else {
-            // Goal weight is too far from data, ignore it
-            finalMin = scaleMin
-            finalMax = scaleMax
-        }
+        // Ignore goal weight; keep domain purely data/padding based
+        let finalMin: Double = scaleMin
+        let finalMax: Double = scaleMax
 
 
         // Create simple ticks with appropriate steps for small datasets
@@ -267,23 +265,25 @@ struct YAxisCalculator {
         if let last = lastScale {
             return last
         } else {
-                    // Use improved scale for fallback too
-        let scale = ImprovedNiceScaleCalculator.generateNiceScale(
-            minValue: goalWeight - 5,
-            maxValue: goalWeight + 5,
-            goalWeight: goalWeight,
-            targetTickCount: 3
-        )
-            // Align fallback domain to tick range as well
-            let domainMin = scale.ticks.first ?? scale.min
-            let domainMax = scale.ticks.last ?? scale.max
+            // Goal-independent default fallback
+            let defaultMin: Double = 0
+            let defaultMax: Double = 100
+            let step: Double = 25
+            var ticks: [Double] = []
+            var t = defaultMin
+            while t <= defaultMax + 0.001 {
+                ticks.append(t)
+                t += step
+            }
+            let domainMin = ticks.first ?? defaultMin
+            let domainMax = ticks.last ?? defaultMax
             return YAxisScale(
-                min: scale.min,
-                max: scale.max,
-                step: scale.step,
-                ticks: scale.ticks,
+                min: defaultMin,
+                max: defaultMax,
+                step: step,
+                ticks: ticks,
                 domain: domainMin...domainMax,
-                average: goalWeight
+                average: 0
             )
         }
     }
@@ -401,23 +401,9 @@ fileprivate struct ImprovedNiceScaleCalculator {
         let min = floor(dataMin - padding) // Start from actual data minimum
         let max = ceil(dataMax + padding)  // End at actual data maximum
 
-        // Only include goal weight if it's within a reasonable range of the actual data
-        let dataCenter = (dataMin + dataMax) / 2
-        let dataRange = dataMax - dataMin
-        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
-
-        let finalMin: Double
-        let finalMax: Double
-
-        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
-            // Goal weight is reasonable, include it
-            finalMin = Swift.min(min, floor(goalWeight))
-            finalMax = Swift.max(max, ceil(goalWeight))
-        } else {
-            // Goal weight is too far from data, ignore it
-            finalMin = min
-            finalMax = max
-        }
+        // Ignore goal weight; keep domain purely data/padding based
+        let finalMin: Double = min
+        let finalMax: Double = max
 
                 // Generate ticks with appropriate step size while enforcing limits
         let initialStep = 1.0
@@ -442,23 +428,9 @@ fileprivate struct ImprovedNiceScaleCalculator {
         let min = floor(dataMin - padding)
         let max = ceil(dataMax + padding)
 
-        // Only include goal weight if it's within a reasonable range of the actual data
-        let dataCenter = (dataMin + dataMax) / 2
-        let dataRange = dataMax - dataMin
-        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
-
-        let finalMin: Double
-        let finalMax: Double
-
-        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
-            // Goal weight is reasonable, include it
-            finalMin = Swift.min(min, floor(goalWeight / 2) * 2, floor(dataMin))
-            finalMax = Swift.max(max, ceil(goalWeight / 2) * 2, ceil(dataMax))
-        } else {
-            // Goal weight is too far from data, ignore it
-            finalMin = min
-            finalMax = max
-        }
+        // Ignore goal weight; keep domain purely data/padding based
+        let finalMin: Double = min
+        let finalMax: Double = max
 
         // Generate ticks with appropriate step size while enforcing limits
         let (adjustedStep, adjustedTicks) = YAxisCalculator.enforceTickLimits(
@@ -493,23 +465,9 @@ fileprivate struct ImprovedNiceScaleCalculator {
         let niceMin = floor(paddedMin / step) * step
         let niceMax = ceil(paddedMax / step) * step
 
-        // Only include goal weight if it's within a reasonable range of the actual data
-        let dataCenter = (dataMin + dataMax) / 2
-        let dataRange = dataMax - dataMin
-        let reasonableGoalRange = dataRange * 2 // Goal should be within 2x the data range
-
-        let finalMin: Double
-        let finalMax: Double
-
-        if abs(goalWeight - dataCenter) <= reasonableGoalRange {
-            // Goal weight is reasonable, include it
-            finalMin = min(niceMin, floor(goalWeight / step) * step, floor(dataMin))
-            finalMax = max(niceMax, ceil(goalWeight / step) * step, ceil(dataMax))
-        } else {
-            // Goal weight is too far from data, ignore it
-            finalMin = niceMin
-            finalMax = niceMax
-        }
+        // Ignore goal weight; keep domain purely data/padding based
+        let finalMin: Double = niceMin
+        let finalMax: Double = niceMax
 
         // Generate ticks with appropriate step size while enforcing limits
         let (adjustedStep, adjustedTicks) = YAxisCalculator.enforceTickLimits(
