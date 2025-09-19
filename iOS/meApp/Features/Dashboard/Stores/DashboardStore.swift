@@ -384,86 +384,21 @@ class DashboardStore: ObservableObject {
     }
     
     var weightLabel: String {
-        // If a crosshair date is selected, show that date
-        if let selectedDate = state.graph.selectedXValue {
-            return graphManager.formatSelectedDate(selectedDate, for: state.graph.selectedPeriod)
+        if let label = selectionLabel() {
+            return label
         }
-        
-        // If a point is selected, show its date
-        if let selectedPoint = state.graph.selectedPoint {
-            return graphManager.formatSelectedDate(selectedPoint.date, for: state.graph.selectedPeriod)
-        }
-        
-        if let selectedEntry = state.graph.selectedEntry {
-            if let date = selectedEntry.date {
-                return graphManager.formatSelectedDate(date, for: state.graph.selectedPeriod)
-            }
-            if let originalSummary = continuousOperations.first(where: { $0.entryTimestamp == selectedEntry.entryTimestamp }) {
-                return graphManager.formatSelectedDate(originalSummary.date, for: state.graph.selectedPeriod)
-            }
-        }
-        
-        if state.graph.selectedPeriod == .total {
-            let minDate = continuousOperations.min(by: { $0.date < $1.date })?.date
-            let maxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
-            if let minDate = minDate, let maxDate = maxDate {
-                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
-            }
-            return graphManager.fallbackTimeLabel(for: state.graph.selectedPeriod)
-        }
-        
+        let period = state.graph.selectedPeriod
         let lastScrollPosition = graphManager.state.xScrollPosition
-        
-        // Stabilize year label: use calendar year containing the CENTER of the visible window
-        // (avoids flipping when the left boundary nudges into previous month/year)
-        if state.graph.selectedPeriod == .year {
-            let ops = visibleOperations
-            if ops.isEmpty {
-                // fallback
-                let cal = Calendar.current
-                let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
-                if let yearInterval = cal.dateInterval(of: .year, for: center) {
-                    let minDate = yearInterval.start
-                    let maxDate = yearInterval.end
-                    return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
-                }
-                return graphManager.fallbackTimeLabel(for: .year)
-            }
-            
-            guard let minDate = ops.map({ $0.date }).min(),
-                  let maxDate = ops.map({ $0.date }).max() else {
-                return graphManager.fallbackTimeLabel(for: .year)
-            }
-            
-            let calendar = Calendar.current
-            let minComponents = calendar.dateComponents([.month, .year], from: minDate)
-            let maxComponents = calendar.dateComponents([.month, .year], from: maxDate)
-            
-            guard let minMonthIndex = minComponents.month,
-                  let maxMonthIndex = maxComponents.month,
-                  let minYear = minComponents.year,
-                  let maxYear = maxComponents.year else {
-                return graphManager.fallbackTimeLabel(for: .year)
-            }
-            
-            let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
-            let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
-            
-            if minYear != maxYear {
-                return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
-            } else {
-                if minMonthIndex == maxMonthIndex {
-                    return "\(minMonth) \(minYear)"
-                } else {
-                    return "\(minYear)"
-                }
-            }
+        switch period {
+        case .total:
+            return labelForTotalPeriod()
+        case .year:
+            return labelForYearPeriod(ops: visibleOperations, lastScrollPosition: lastScrollPosition)
+        case .month:
+            return labelForMonthPeriod(ops: visibleOperations, lastScrollPosition: lastScrollPosition)
+        default:
+            return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
-        
-        let minDate = lastScrollPosition
-        let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: state.graph.selectedPeriod))
-        
-        return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: state.graph.selectedPeriod)
     }
     
     // Delegate metric operations to MetricsManager
@@ -1393,6 +1328,118 @@ class DashboardStore: ObservableObject {
     
     // MARK: - Helper Methods
     
+    // Extracted helper to compute selection-based label first
+    private func selectionLabel() -> String? {
+        // If a crosshair date is selected, show that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.formatSelectedDate(selectedDate, for: state.graph.selectedPeriod)
+        }
+        // If a point is selected, show its date
+        if let selectedPoint = state.graph.selectedPoint {
+            return graphManager.formatSelectedDate(selectedPoint.date, for: state.graph.selectedPeriod)
+        }
+        // If an entry is selected, use its date or find matching summary
+        if let selectedEntry = state.graph.selectedEntry {
+            if let date = selectedEntry.date {
+                return graphManager.formatSelectedDate(date, for: state.graph.selectedPeriod)
+            }
+            if let originalSummary = continuousOperations.first(where: { $0.entryTimestamp == selectedEntry.entryTimestamp }) {
+                return graphManager.formatSelectedDate(originalSummary.date, for: state.graph.selectedPeriod)
+            }
+        }
+        return nil
+    }
+
+    private func labelForTotalPeriod() -> String {
+        let minDate = continuousOperations.min(by: { $0.date < $1.date })?.date
+        let maxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
+        if let minDate = minDate, let maxDate = maxDate {
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .total)
+        }
+        return graphManager.fallbackTimeLabel(for: .total)
+    }
+
+    private func labelForYearPeriod(ops: [BathScaleWeightSummary], lastScrollPosition: Date) -> String {
+        if ops.isEmpty {
+            let cal = Calendar.current
+            let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
+            if let yearInterval = cal.dateInterval(of: .year, for: center) {
+                let minDate = yearInterval.start
+                let maxDate = yearInterval.end
+                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
+            }
+            return graphManager.fallbackTimeLabel(for: .year)
+        }
+
+        guard let minDate = ops.map({ $0.date }).min(),
+              let maxDate = ops.map({ $0.date }).max() else {
+            return graphManager.fallbackTimeLabel(for: .year)
+        }
+
+        let calendar = Calendar.current
+        let minComponents = calendar.dateComponents([.month, .year], from: minDate)
+        let maxComponents = calendar.dateComponents([.month, .year], from: maxDate)
+
+        guard let minMonthIndex = minComponents.month,
+              let maxMonthIndex = maxComponents.month,
+              let minYear = minComponents.year,
+              let maxYear = maxComponents.year else {
+            return graphManager.fallbackTimeLabel(for: .year)
+        }
+
+        let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
+        let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
+
+        if minYear != maxYear {
+            return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
+        } else {
+            return "\(minYear)"
+        }
+    }
+
+    private func labelForMonthPeriod(ops: [BathScaleWeightSummary], lastScrollPosition: Date) -> String {
+        if ops.isEmpty {
+            let minDate = lastScrollPosition
+            let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .month)
+        }
+
+        guard let minDate = ops.map({ $0.date }).min(),
+              let maxDate = ops.map({ $0.date }).max() else {
+            return graphManager.fallbackTimeLabel(for: .month)
+        }
+
+        let calendar = Calendar.current
+        let minComponents = calendar.dateComponents([.day, .month, .year], from: minDate)
+        let maxComponents = calendar.dateComponents([.day, .month, .year], from: maxDate)
+
+        guard let minDay = minComponents.day,
+              let maxDay = maxComponents.day,
+              let minMonthIndex = minComponents.month,
+              let maxMonthIndex = maxComponents.month,
+              let minYear = minComponents.year,
+              let maxYear = maxComponents.year else {
+            return graphManager.fallbackTimeLabel(for: .month)
+        }
+
+        let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
+        let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
+
+        if minMonthIndex == maxMonthIndex && minYear == maxYear {
+            return "\(minMonth) \(minYear)"
+        } else if minYear == maxYear {
+            return "\(minDay) \(minMonth) - \(maxDay) \(maxMonth) \(minYear)"
+        } else {
+            return "\(minDay) \(minMonth) \(minYear) - \(maxDay) \(maxMonth) \(maxYear)"
+        }
+    }
+
+    private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {
+        let minDate = lastScrollPosition
+        let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+    }
+
     // Delegate weight formatting to GoalManager
     func formatWeightDisplayText(_ weight: Double?) -> String {
         guard let weight = weight else { return "0.0" }
