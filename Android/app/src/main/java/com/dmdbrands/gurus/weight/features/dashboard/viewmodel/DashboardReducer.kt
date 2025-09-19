@@ -50,6 +50,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetGoal(val goal: Goal?) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
+  object OnConnectScale: DashboardIntent
 }
 
 /**
