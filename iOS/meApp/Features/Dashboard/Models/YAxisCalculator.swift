@@ -14,6 +14,10 @@ struct YAxisScale {
 // MARK: - YAxisCalculator
 
 struct YAxisCalculator {
+    // Fallback defaults for Y-axis when no data is available
+    private static let FALLBACK_MIN: Double = 0
+    private static let FALLBACK_MAX: Double = 100
+    private static let FALLBACK_STEP: Double = 25
 
     /// Calculate Y-axis scale for chart display
     /// - Parameters:
@@ -266,21 +270,18 @@ struct YAxisCalculator {
             return last
         } else {
             // Goal-independent default fallback
-            let defaultMin: Double = 0
-            let defaultMax: Double = 100
-            let step: Double = 25
             var ticks: [Double] = []
-            var t = defaultMin
-            while t <= defaultMax + 0.001 {
+            var t = FALLBACK_MIN
+            while t <= FALLBACK_MAX + 0.001 {
                 ticks.append(t)
-                t += step
+                t += FALLBACK_STEP
             }
-            let domainMin = ticks.first ?? defaultMin
-            let domainMax = ticks.last ?? defaultMax
+            let domainMin = ticks.first ?? FALLBACK_MIN
+            let domainMax = ticks.last ?? FALLBACK_MAX
             return YAxisScale(
-                min: defaultMin,
-                max: defaultMax,
-                step: step,
+                min: FALLBACK_MIN,
+                max: FALLBACK_MAX,
+                step: FALLBACK_STEP,
                 ticks: ticks,
                 domain: domainMin...domainMax,
                 average: 0
