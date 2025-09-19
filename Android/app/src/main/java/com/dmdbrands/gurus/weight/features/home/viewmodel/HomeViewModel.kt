@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 @HiltViewModel
 class HomeViewModel
@@ -182,6 +183,7 @@ constructor(
             }
           },
         )
+        AppLog.i(TAG, "Appsync new entry: ", result.toString())
       } catch (e: Exception) {
         AppLog.e(TAG, "Error handling new entry: ${e.message}", e)
         dialogQueueService.showToast(
