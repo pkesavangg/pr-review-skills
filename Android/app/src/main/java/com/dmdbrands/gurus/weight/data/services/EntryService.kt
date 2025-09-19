@@ -101,22 +101,27 @@ constructor(
 
   private var accountId: String? = null
   private var initialWeight: Double? = null
-
-  init {
+  
+  /**
+   * Initializes goal card monitoring by checking entry count and setting up listeners.
+   * This function monitors the lastUpdated flow and checks if the user has enough entries
+   * to display the goal card.
+   */
+  override fun initializeGoalCardMonitoring() {
     repositoryScope.launch {
       val account = accountRepository.getActiveAccount().first()
       lastUpdated.collect { lastUpdated ->
-          try {
-            val entries = entryRepository.getEntriesByAccount(account?.id ?: "", false)
-            if (entries.size >= 3) {
-              goalService.checkGoalCard()
-              AppLog.d("EntryService", "User has ${entries} scale entries (>= 3), checking goal card")
-            } else {
-              AppLog.d("EntryService", "User has only ${entries} scale entries, not enough for goal card")
-            }
-          } catch (e: Exception) {
-            AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
+        try {
+          val entries = entryRepository.getEntriesByAccount(account?.id ?: "", false)
+          if (entries.size >= 3) {
+            goalService.checkGoalCard()
+            AppLog.d("EntryService", "User has ${entries} scale entries (>= 3), checking goal card")
+          } else {
+            AppLog.d("EntryService", "User has only ${entries} scale entries, not enough for goal card")
           }
+        } catch (e: Exception) {
+          AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
+        }
       }
     }
   }

@@ -140,7 +140,6 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
       }
-
       initialize()
     }
   }
@@ -154,7 +153,6 @@ constructor(
           initEvents()
         } else {
           if (workInfos.all { it.state.isFinished }) {
-
             val account = accountService.getCurrentAccount()
             initLoadingData(account)
             initEvents()
@@ -349,6 +347,7 @@ constructor(
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
+      initialized = false
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
@@ -358,15 +357,16 @@ constructor(
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
         feedService.fetchFeedItems()
-        // Check for IAM feed modal trigger after fetching feed items
-        feedService.checkAndTriggerFeedModal()
-        subscribePermissions()
-        subscribeDeviceCallback()
-        syncScales()
         if (isLoggedIn) {
           deviceInfoService.updateDeviceInfo()
         }
         navigationService.autoLogin()
+        // Check for IAM feed modal trigger after fetching feed items
+        entryService.initializeGoalCardMonitoring()
+        feedService.checkAndTriggerFeedModal()
+        subscribePermissions()
+        subscribeDeviceCallback()
+        syncScales()
       } else {
         routeToLandingOrApp()
       }
