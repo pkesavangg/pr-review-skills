@@ -54,10 +54,11 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -448,7 +449,8 @@ constructor(
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
-                bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+                val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+                isAllow
               } else {
                 true // Don't filter non-0412 scales
               }
@@ -477,8 +479,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          Log.d("scale#eventconnected","${data.isWifiConfigured}")
-          // deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -487,7 +487,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
-          // deviceService.updateConnectedScales(data, false)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -496,8 +495,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          Log.d("scale#eventinfo","${data.isWifiConfigured}")
-          // deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -506,8 +503,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          Log.d("scale#eventwifi","${data.isWifiConfigured}")
-          // deviceService.updateConnectedScales(data, true)
         }
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
@@ -670,11 +665,12 @@ constructor(
 
   private fun startScan() {
     viewModelScope.launch {
-      val account = accountService.getCurrentAccount()
-      if (account != null) {
-        ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, account.toGGBTUserProfile())
-        handleIntent(AppIntent.SetScanStatus(true))
-        AppLog.i(TAG, "Scan started")
+       accountService.activeAccountFlow.map { it?.toGGBTUserProfile() }.distinctUntilChanged().collect { ggBTUserProfile ->
+        if (ggBTUserProfile != null) {
+          ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, ggBTUserProfile)
+          handleIntent(AppIntent.SetScanStatus(true))
+          AppLog.i(TAG, "Scan started")
+        }
       }
     }
   }

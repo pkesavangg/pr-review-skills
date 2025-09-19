@@ -117,7 +117,7 @@ fun BtWifiScaleSetupScreenContent(
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // For WiFi list step, enable Next button if WiFi is already connected
         // or if user has selected a network (handled by canProceedToNext)
-        !state.connectedSSID.isNullOrEmpty() || state.canProceedToNext
+        !state.connectedSSID.isNullOrEmpty()
       }
 
       BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
@@ -125,7 +125,7 @@ fun BtWifiScaleSetupScreenContent(
         state.usernameForm.username.isValueValid()
       }
 
-      else -> state.canProceedToNext
+      else -> true
 
     }
 
@@ -317,13 +317,9 @@ fun BtWifiScaleSetupScreenContent(
               onSelect = { selectedSSID ->
                 // Check if the selected network is already connected
                 if (selectedSSID == state.connectedSSID) {
-                  // Same network selected, user can continue to customization
-                  onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-                  // Don't navigate anywhere - user will click the Continue button to proceed
                 } else {
                   // New network selected, go to password step
                   state.wifiPasswordForm.ssid.onValueChange(selectedSSID)
-                  onIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false)) // Reset to false, will be enabled when password is valid
                   onIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.WIFI_PASSWORD))
                 }
               },

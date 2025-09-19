@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
@@ -29,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -80,7 +82,8 @@ constructor(
   override val permissionService: GGPermissionService,
   override val connectivityObserver: IConnectivityObserver,
   private val dialogUtility: IDialogUtility,
-  private val accountService: IAccountService
+  private val accountService: IAccountService,
+  private val bluetoothPreferencesService: BluetoothPreferencesService,
 ) : ScaleSetupViewmodel<BtWifiScaleSetupState, BtWifiScaleSetupIntent>(
   ggDeviceService, connectivityObserver, permissionService,
   reducer = BtWifiScaleSetupReducer(),
@@ -223,7 +226,6 @@ constructor(
             // After deleting account, refresh the user list
             refreshUserListAfterAccountChange()
           }
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         } else {
@@ -233,7 +235,6 @@ constructor(
             )
           // After updating account, refresh the user list
           refreshUserListAfterAccountChange()
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
         }
@@ -377,8 +378,6 @@ constructor(
         if (!areRequiredPermissionsEnabled) {
           // Use comprehensive permission-based error handling
           handlePermissionBasedErrors()
-        } else {
-          handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
         }
       }.collect { }
     }
@@ -430,14 +429,9 @@ constructor(
               loadGoalProgress()
             }
 
-
-            BtWifiSetupStep.UPDATE_SETTINGS -> {
-              // updateSettings()
-            }
-
             BtWifiSetupStep.STEP_ON -> {
               if (!AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, sku)) {
-                setStepOnFailed()
+                setMeasurementFailed()
               } else {
                 stepOn()
               }
@@ -497,6 +491,11 @@ constructor(
        }
       BtWifiSetupStep.WIFI_PASSWORD -> {
         handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_WIFI))
+        return
+      }
+      BtWifiSetupStep.CONNECTING_WIFI -> {
+       handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+        return
       }
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         if (!currentState.connectedSSID.isNullOrEmpty()) {
@@ -682,7 +681,6 @@ constructor(
       } else {
         currentState.wifiPasswordForm.ssid.isValueValid() && currentState.wifiPasswordForm.password.isValueValid()
       }
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(canProceed))
     }
   }
 
@@ -736,7 +734,6 @@ constructor(
       ),
     )
     handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
   }
 
   private fun setGatheringNetworkFailed(){
@@ -748,50 +745,26 @@ constructor(
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
-      // handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     }
   }
 
-  /**
-   * Sets WiFi connection failed error state
-   */
-  private fun setWifiConnectionFailed() {
-    handleIntent(
-      BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.CONNECTING_WIFI,
-        ConnectionState.Failed.Error,
-      ),
-    )
-    handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
-    // Navigate to customize settings like Angular
-    handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
-  }
 
   /**
    * Sets step on failed error state
    */
   private fun setStepOnFailed() {
-    handleIntent(
-      BtWifiScaleSetupIntent.SetStepConnectionState(
-        BtWifiSetupStep.STEP_ON,
-        ConnectionState.Failed.Error,
-      ),
-    )
-    handleIntent(BtWifiScaleSetupIntent.SetErrorCode("STEP_ON_001"))
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
+    setMeasurementFailed()
   }
 
   /**
    * Sets measurement collection failed error state
    */
   private fun setMeasurementFailed() {
-    onNext()
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.MEASUREMENT,
         ConnectionState.Failed.Error,
-      ),
+      )
     )
     handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_001"))
   }
@@ -895,7 +868,6 @@ constructor(
    * This method scans for devices and handles the pairing flow with a 5-minute timeout.
    */
   private fun pair() {
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.WAKEUP,
@@ -936,7 +908,6 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }
   }
@@ -992,7 +963,8 @@ constructor(
                     ConnectionState.Success,
                   ),
                 )
-                saveScale()
+                discoveredScale = deviceService.saveScale(discoveredScale!!)
+                handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
                 onNext()
               }
             }
@@ -1020,7 +992,6 @@ constructor(
               viewModelScope.launch {
                 fetchUserList(
                   onSuccess = {
-                    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
                     handleIntent(
                       SetCurrentStep(BtWifiSetupStep.USER_LIMIT_REACHED),
                     )
@@ -1044,7 +1015,6 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
       }
     }
   }
@@ -1138,7 +1108,6 @@ constructor(
    */
   private fun gatherNetworks() {
     AppLog.d(TAG, "Starting network gathering process")
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.GATHERING_NETWORK,
@@ -1190,7 +1159,7 @@ constructor(
           setGatheringNetworkFailed()
         }
         BtWifiSetupStep.STEP_ON -> {
-          setStepOnFailed()
+          setMeasurementFailed()
         }
         else -> {}
       }
@@ -1203,7 +1172,6 @@ constructor(
    */
   private fun connectToWifi() {
     AppLog.d(TAG, "Starting wifi connection process with timeout")
-    handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.CONNECTING_WIFI,
@@ -1225,7 +1193,6 @@ constructor(
               ),
             )
             handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_TIMEOUT"))
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           }
         }
 
@@ -1308,7 +1275,6 @@ constructor(
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     }
   }
 
@@ -1408,13 +1374,10 @@ constructor(
         ),
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("STEP_ON_002"))
-      handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
     }
   }
 
   private fun collectMeasurement() {
-    // AppLog.d(TAG, "Starting measurement collection with timeout")
-    // handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
     handleIntent(
       BtWifiScaleSetupIntent.SetStepConnectionState(
         BtWifiSetupStep.MEASUREMENT,
@@ -1436,7 +1399,6 @@ constructor(
               ),
             )
             handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_TIMEOUT"))
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           }
         }
 
@@ -1445,7 +1407,6 @@ constructor(
 
         // Start measurement collection process
         startObservingEntries()
-
       } catch (e: Exception) {
         // Cancel timeout on exception
         measurementTimeoutJob?.cancel()
@@ -1459,7 +1420,6 @@ constructor(
           ),
         )
         handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_002"))
-        handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(false))
       }
     }
   }
@@ -1494,7 +1454,6 @@ constructor(
               ),
             )
             handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_TIMEOUT"))
-            handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
           }
         }
         if (dashboardKeys != null) {
@@ -1540,7 +1499,9 @@ constructor(
               }
             }
           }
+          if(!state.value.hasSavedSettings){
           deviceService.updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
+          }
         }
 
       } catch (e: Exception) {
@@ -1614,7 +1575,16 @@ constructor(
               // Cancel timeout since device was found
               pairingTimeoutJob?.cancel()
               pairingTimeoutJob = null
-
+              val deviceSku = ggDeviceDetail.getSKU()
+              val shouldShow = if (deviceSku == "0412") {
+                val isAllow = bluetoothPreferencesService.shouldShowDevice(ggDeviceDetail.macAddress)
+                isAllow
+              } else {
+                true // Don't filter non-0412 scales
+              }
+              if(!shouldShow){
+                return@launch
+              }
               stopObservingDevices()
               customizeDevice(ggDeviceDetail)
               AppLog.d(TAG, "Wake up successful, proceeding to next step")
@@ -1687,7 +1657,6 @@ constructor(
             ),
           )
           onNext()
-          startObservingEntries()
         }
 
         else -> null
@@ -1717,7 +1686,6 @@ constructor(
                 // After deleting user, refresh the user list to keep it in sync
                 refreshUserListAfterAccountChange()
               }
-              handleIntent(BtWifiScaleSetupIntent.SetCanProceedToNext(true))
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
               handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
             }
