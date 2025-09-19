@@ -193,32 +193,26 @@ class DashboardStore: ObservableObject {
     }
     
     var metricGridColumns: [GridItem] {
-        if cachedDashboardType == nil {
-            cachedDashboardType = determineDashboardTypeFromAccount()
-        }
-        return metricsManager.getMetricGridColumns(for: cachedDashboardType ?? .dashboard4)
+        return metricsManager.getMetricGridColumns(for: effectiveDashboardType)
     }
     
     var metricsToShow: [MetricItem] {
-        // Cache dashboard type to prevent excessive calls during scroll
-        if cachedDashboardType == nil {
-            cachedDashboardType = determineDashboardTypeFromAccount()
-        }
         let result = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: cachedDashboardType ?? .dashboard12,
+            dashboardType: effectiveDashboardType,
             removedMetrics: state.ui.removedMetrics
         )
         return result
     }
     
-    // Cache dashboard type to prevent repeated calls
-    private var cachedDashboardType: DashboardType?
     
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
         // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
-        state.metrics.dashboardType
+        let result = state.metrics.dashboardType
+        logger.log(level: .debug, tag: "DashboardStore", 
+                  message: "effectiveDashboardType: \(result.rawValue)")
+        return result
     }
     
     var streakColumns: [GridItem] {
@@ -554,17 +548,26 @@ class DashboardStore: ObservableObject {
         initializeChart()
     }
     
-    // MARK: - Dashboard Type Management
-    
-    
-    
-    
+    // MARK: - Dashboard Type Management   
+
     
     // MARK: - Dashboard Type Logic
     
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
-        return .dashboard12
+        guard let account = accountService.activeAccount,
+              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
+            return .dashboard12
+        }
+        
+        switch dashboardTypeString {
+        case "dashboard4":
+            return .dashboard4
+        case "dashboard12":
+            return .dashboard12
+        default:
+            return .dashboard12
+        }
     }
     
     // MARK: - Data Loading Methods
@@ -613,6 +616,11 @@ class DashboardStore: ObservableObject {
         do {
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
+            
+            // Sync the dashboard type from metrics manager to store state
+            await MainActor.run {
+                state.metrics.dashboardType = metricsManager.state.dashboardType
+            }
             
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
@@ -1608,7 +1616,6 @@ class DashboardStore: ObservableObject {
     
     /// Clears all performance caches when data changes
     private func clearAllCaches() {
-        cachedDashboardType = nil
         cachedChartSeriesData = nil
         isProcessingScrollEnd = false
     }
