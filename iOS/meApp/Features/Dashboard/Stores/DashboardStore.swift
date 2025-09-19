@@ -345,18 +345,7 @@ class DashboardStore: ObservableObject {
     }
     
     var displayWeight: Double? {
-        // If a crosshair date is selected (can be on empty day), compute interpolated weight at that date
-        if let selectedDate = state.graph.selectedXValue {
-            return graphManager.interpolatedDisplayWeight(
-                at: selectedDate,
-                from: continuousOperations,
-                isWeightlessMode: isWeightlessModeEnabled,
-                anchorWeight: weightlessAnchorWeight,
-                convertWeight: goalManager.convertWeightToDisplay
-            )
-        }
-
-        // If a concrete point is selected, show its weight value
+        // If a concrete point is selected, ALWAYS show its exact weight value
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return nil }
@@ -365,6 +354,17 @@ class DashboardStore: ObservableObject {
             } else {
                 return goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
             }
+        }
+
+        // Else, if a crosshair date is selected (can be on empty day), compute interpolated weight at that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
         }
         
         // When no selection, show average of visible region if available
@@ -425,8 +425,17 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty && state.graph.selectedPoint == nil{
+        if visibleOperations.isEmpty && state.graph.selectedXValue == nil && state.graph.selectedPoint == nil{
             return "no entries"
+        }
+        // If a point is selected, override period label granularity
+        if state.graph.selectedXValue != nil {
+            switch state.graph.selectedPeriod {
+            case .week, .month:
+                return "day average"
+            case .year, .total:
+                return "month average"
+            }
         }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
     }

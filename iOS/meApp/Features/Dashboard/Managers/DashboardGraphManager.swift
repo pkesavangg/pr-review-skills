@@ -101,28 +101,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         guard !operations.isEmpty else { return }
         
-        // Find the closest data point to the selected date
-        let closestDataPoint = operations.min { bin1, bin2 in
-            abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
-        }
-        
-        guard let closestDataPoint = closestDataPoint else { return }
-        
-        // Set the selected point and show crosshair
-        updateSelectedPoint(closestDataPoint)
-        
-        // Update metrics with the selected point's values
-        do {
-            try await updateMetrics(closestDataPoint)
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(closestDataPoint.date)")
-        } catch {
-            logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
-            resetMetrics()
-        }
-        
-        // For body metrics (e.g., body fat, muscle mass), we require an exact data point for the selected date (or month).
-        // If no exact point exists for body metrics, we show placeholders instead.
-        // In contrast, for weight, we use the closest available data point to always display a value.
+        // Determine if there's an exact data point for the selected date based on the current period granularity
         let calendar = Calendar.current
         let exactPoint: BathScaleWeightSummary? = {
             switch state.selectedPeriod {
@@ -133,13 +112,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }()
         
-        // Only apply exact point logic for body metrics (not weight)
-        // Weight uses the closest point logic above, body metrics use exact matching
-        if exactPoint == nil {
-            // No exact point for body metrics: set placeholders for body metrics only
+        // If we have an exact point, select it and update metrics; otherwise keep selection as interpolated-only
+        if let exact = exactPoint {
+            updateSelectedPoint(exact)
+            do {
+                try await updateMetrics(exact)
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with exact selected point: \(exact.date)")
+            } catch {
+                logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
+                resetMetrics()
+            }
+        } else {
+            // No exact point at this date: clear selected point so UI uses interpolated display weight
+            updateSelectedPoint(nil)
+            // For body metrics, show placeholders when there's no exact match
             setMetricPlaceholders()
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point for body metrics; showing placeholders")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point at selection; using interpolation for weight and placeholders for body metrics")
         }
+        
+        // Always show crosshair at the selected X position, even when interpolating between points
+        state.showCrosshair = true
     }
     
     /// Computes an interpolated display weight at a given date using surrounding summaries.
