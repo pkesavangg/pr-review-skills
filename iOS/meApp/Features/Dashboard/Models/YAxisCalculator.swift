@@ -284,7 +284,7 @@ struct YAxisCalculator {
                 step: FALLBACK_STEP,
                 ticks: ticks,
                 domain: domainMin...domainMax,
-                average: 0
+                average: (FALLBACK_MIN + FALLBACK_MAX) / 2
             )
         }
     }
