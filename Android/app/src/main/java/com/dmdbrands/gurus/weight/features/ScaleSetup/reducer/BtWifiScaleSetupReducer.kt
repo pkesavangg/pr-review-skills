@@ -104,6 +104,8 @@ data class BtWifiScaleSetupState(
   // Scale mode preferences - similar to Angular component's setModePreference logic
   val isAllBodyMetrics: Boolean = true, // Default to metrics mode (ScaleModeEnum.metrics)
   val isHeartRateOn: Boolean = false, // Default heart rate off
+  val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
+  val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -204,6 +206,14 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   data class SetHeartRateMode(
     val isHeartRateOn: Boolean,
   ) : BtWifiScaleSetupIntent
+
+  data class SetHasSavedSettings(
+    val hasSavedSettings: Boolean,
+  ) : BtWifiScaleSetupIntent
+
+  data class SetInitialStep(
+    val initialStep: BtWifiSetupStep,
+  ) : BtWifiScaleSetupIntent
 }
 
 /**
@@ -241,17 +251,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
       is BtWifiScaleSetupIntent.SetCanProceedToNext -> state.copy(canProceedToNext = intent.canProceed)
       is BtWifiScaleSetupIntent.Next -> {
-        val nextIndex = state.currentStepIndex + 1
-        if (nextIndex < state.steps.size && state.canProceedToNext) {
-          state.copy(
-            currentStep = state.steps[nextIndex],
-            canProceedToNext = true, // Reset for next step
-            errorCode = null,
-            nextButtonText = ScaleSetupStrings.SetupButtons.Next, // Always reset to "Next" for forward navigation
-          )
-        } else {
-          state.copy(errorCode = null, isSetupFinished = state.isLastStep) // No change if at last step or can't proceed
-        }
+        state.copy(errorCode = null, isSetupFinished = state.isLastStep)
       }
 
       is BtWifiScaleSetupIntent.Skip -> state.copy()
@@ -284,6 +284,8 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
 
       is BtWifiScaleSetupIntent.SetAllBodyMetrics -> state.copy(isAllBodyMetrics = intent.isAllBodyMetrics)
       is BtWifiScaleSetupIntent.SetHeartRateMode -> state.copy(isHeartRateOn = intent.isHeartRateOn)
+      is BtWifiScaleSetupIntent.SetHasSavedSettings -> state.copy(hasSavedSettings = intent.hasSavedSettings)
+      is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
 
       else -> state
     }

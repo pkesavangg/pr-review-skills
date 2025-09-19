@@ -632,8 +632,9 @@ constructor(
     macAddress: String,
     preferences: R4ScalePreferenceApiModel
   ): Boolean {
+    // why are we doing this
     val device = getScaleByMac(macAddress) ?: return false
-    return updateScalePreferences(device.id, preferences)
+    return updateScalePreferences(preferences.scaleId, preferences)
   }
 
   private fun getTimeZoneInMinutes(): Int {

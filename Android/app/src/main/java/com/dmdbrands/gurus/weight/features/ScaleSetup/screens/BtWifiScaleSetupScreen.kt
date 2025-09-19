@@ -144,7 +144,7 @@ fun BtWifiScaleSetupScreenContent(
           state.currentStep == BtWifiSetupStep.PERMISSIONS ||
           state.currentStep == BtWifiSetupStep.DUPLICATES_FOUND ||
           state.currentStep == BtWifiSetupStep.WIFI_PASSWORD ||
-          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) -> {
+          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty() && state.initialStep != BtWifiSetupStep.GATHERING_NETWORK) -> {
           {
             AppButton(
               type = ButtonType.TextPrimary,
@@ -173,7 +173,7 @@ fun BtWifiScaleSetupScreenContent(
           }
         }
 
-        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.connectedSSID.isNullOrEmpty() && !isFromWiFiSetup
+        state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && state.connectedSSID.isNullOrEmpty() && state.initialStep != BtWifiSetupStep.GATHERING_NETWORK
           -> {
           {
             AppButton(
@@ -193,7 +193,7 @@ fun BtWifiScaleSetupScreenContent(
         state.currentStep == BtWifiSetupStep.SCALE_INFO ||
           state.currentStep == BtWifiSetupStep.PERMISSIONS ||
           state.currentStep == BtWifiSetupStep.DUPLICATES_FOUND ||
-          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty()) ||
+          (state.currentStep == BtWifiSetupStep.AVAILABLE_WIFI_LIST && !state.connectedSSID.isNullOrEmpty() && state.initialStep != BtWifiSetupStep.GATHERING_NETWORK) ||
           state.currentStep == BtWifiSetupStep.WIFI_PASSWORD -> {
           {
             AppButton(
