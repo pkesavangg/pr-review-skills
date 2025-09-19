@@ -107,13 +107,17 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
           
             
             // Fully rely on dashboardType parameter from active account
-            if let dashboardTypeString = account.dashboardSettings?.dashboardType,
-               let dashboardType = DashboardType(rawValue: dashboardTypeString) {
-                updateDashboardType(dashboardType)
-            } else {
-                // If no dashboardType is set, use default dashboard12
-                updateDashboardType(.dashboard12)
+            let dashboardTypeString = account.dashboardSettings?.dashboardType
+            let dashboardType: DashboardType
+            switch dashboardTypeString {
+            case "dashboard4":
+                dashboardType = .dashboard4
+            case "dashboard12":
+                dashboardType = .dashboard12
+            default:
+                dashboardType = .dashboard12
             }
+            updateDashboardType(dashboardType)
             
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
@@ -295,7 +299,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// - Uses `DevicePlatform.isTablet` (UIDevice.current.model) to detect iPad.
     /// - iPad: always 4 columns.
     /// - iPhone: 2 columns for 4-metric, 3 columns for 12-metric.
-    func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
+   func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
         if DevicePlatform.isTablet { return 4 }
         switch dashboardType {
         case .dashboard4: return 2
