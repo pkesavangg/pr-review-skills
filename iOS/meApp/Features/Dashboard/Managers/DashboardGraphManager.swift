@@ -827,9 +827,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
-        // During active scrolling, always return cached result if available
+        // During active scrolling, reuse cache ONLY if it still lies fully within the
+        // current strict window boundaries. This avoids left-edge "lingering" where a
+        // point remains visible after crossing the left boundary.
         if state.isScrolling && !lastCalculatedVisibleOps.isEmpty {
-            return lastCalculatedVisibleOps
+            let domainLength = visibleDomainLength(for: state.selectedPeriod)
+            let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
+            let leftEdge = state.xScrollPosition
+            let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+
+            if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
+               let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
+               cachedMin >= leftEdge && cachedMax <= rightEdge {
+                // Cached set is still fully inside current window → safe to reuse
+                return lastCalculatedVisibleOps
+            }
+            // Else fall through and recompute strictly for the new window
         }
         
         // Check if we can reuse cached result based on position change threshold
@@ -845,8 +858,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let cacheThreshold = domainLength / 4.0 // 25% instead of 10%
             
             if positionChange < cacheThreshold {
-                // Use cached result - no expensive recalculation needed
-                return lastCalculatedVisibleOps
+                // Reuse only if cached content is still fully inside the current strict window
+                let leftEdge = state.xScrollPosition
+                let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
+                let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+                if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
+                   let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
+                   cachedMin >= leftEdge && cachedMax <= rightEdge {
+                    return lastCalculatedVisibleOps
+                }
             }
         }
         
@@ -855,10 +875,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let minDate = allDates.min() ?? Date()
         let maxDate = allDates.max() ?? Date()
 
-        let calculatedStart = state.xScrollPosition.addingTimeInterval(-visibleDomainLength(for: state.selectedPeriod) / 4)
-        let calculatedEnd = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
-        let visibleStart = max(calculatedStart, minDate)
-        let visibleEnd = min(calculatedEnd, maxDate)
+        // STRICT window: [leftEdge, rightEdge]
+        // Using strict bounds ensures symmetric inclusion/exclusion on both sides.
+        let leftEdge = state.xScrollPosition
+        let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
+        let rightEdge = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod) * rightMultiplier)
+        let visibleStart = max(leftEdge, minDate)
+        let visibleEnd = min(rightEdge, maxDate)
         let visibleOps = operations.filter { summary in
             summary.date >= visibleStart && summary.date <= visibleEnd
         }
