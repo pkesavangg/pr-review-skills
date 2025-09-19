@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -54,11 +55,13 @@ constructor(
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
-    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "", accountId)
-    if (existingDevice == null)
-      deviceDao.insertDevice(deviceDetails)
-    else
+    val existingDevices = deviceDao.getDevices(accountId).first()
+    val isDeviceExists = existingDevices.any() { it.scale?.id == device.id }
+    if (isDeviceExists) {
       deviceDao.updateDevice(deviceDetails)
+    } else {
+      deviceDao.insertDevice(deviceDetails)
+    }
   }
 
   override suspend fun deleteDeviceFromDb(deviceId: String) {
