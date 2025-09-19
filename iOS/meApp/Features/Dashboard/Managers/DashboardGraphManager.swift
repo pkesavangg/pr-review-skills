@@ -180,7 +180,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         var low = 0, high = n - 1
         while low <= high {
             let mid = (low + high) >> 1
-            if xs[mid] < t {
+            // Use upperBound semantics so exact matches select the right segment (i = upperBound - 1)
+            if xs[mid] <= t {
                 low = mid + 1
             } else {
                 high = mid - 1
@@ -224,7 +225,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             do {
                 let h0 = xs[1] - xs[0]
                 let h1 = xs[2] - xs[1]
-                var d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
+                // Guard against division by zero when consecutive timestamps are identical
+                var d0: Double
+                if h0 + h1 == 0 {
+                    d0 = 0
+                } else {
+                    d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
+                }
                 if d0.sign != m[0].sign { d0 = 0 }
                 else if abs(d0) > 3 * abs(m[0]) { d0 = 3 * m[0] }
                 d[0] = d0
@@ -233,7 +240,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             do {
                 let hm1 = xs[n - 1] - xs[n - 2]
                 let hm2 = xs[n - 2] - xs[n - 3]
-                var dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
+                // Guard against division by zero when consecutive timestamps are identical
+                var dn1: Double
+                if hm1 + hm2 == 0 {
+                    dn1 = 0
+                } else {
+                    dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
+                }
                 if dn1.sign != m[n - 2].sign { dn1 = 0 }
                 else if abs(dn1) > 3 * abs(m[n - 2]) { dn1 = 3 * m[n - 2] }
                 d[n - 1] = dn1
