@@ -251,7 +251,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         case DashboardStrings.water: return summary.water
         case DashboardStrings.heartBpm: return summary.pulse.map { Double($0) }
         case DashboardStrings.bone: return summary.boneMass
-        case DashboardStrings.visceralFat: return summary.visceralFatLevel
+        case DashboardStrings.visceralFat: return summary.visceralFatLevel.map { $0 / 10.0 }
         case DashboardStrings.subFat: return summary.subcutaneousFatPercent
         case DashboardStrings.protein: return summary.proteinPercent
         case DashboardStrings.skelMuscle: return summary.skeletalMusclePercent
@@ -382,7 +382,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
 
         if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat) / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         } else {
             let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
@@ -481,7 +481,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
         }
         if let visceralFat = selectedPoint.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(visceralFat / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         }
         if let subFat = selectedPoint.subcutaneousFatPercent {
@@ -802,7 +802,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     water: water,
                     pulse: pulse,
                     boneMass: boneMass,
-                    visceralFat: visceralFat,
+                    visceralFat: visceralFat.map { $0 / 10.0 },
                     subFat: subFat,
                     protein: protein,
                     skelMuscle: skelMuscle,
