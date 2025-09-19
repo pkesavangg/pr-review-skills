@@ -1430,7 +1430,7 @@ class DashboardStore: ObservableObject {
         } else if minYear == maxYear {
             return "\(minDay) \(minMonth) - \(maxDay) \(maxMonth) \(minYear)"
         } else {
-            return "\(minDay) \(minMonth) \(minYear) - \(maxDay) \(maxMonth) \(maxYear)"
+            return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
         }
     }
 

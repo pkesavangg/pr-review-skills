@@ -57,7 +57,7 @@ struct GraphView: View {
     var body: some View {
         VStack(alignment: .leading){
             // Preserve layout height: fade the label out instead of removing it to avoid jump
-            Text(dashboardStore.weightLabel)
+            Text(dashboardStore.weightLabel.lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 // Hide immediately when the callout is shown (driven by the same VM flag)
