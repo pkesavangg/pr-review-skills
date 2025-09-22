@@ -34,7 +34,7 @@ fun MilestoneItem(
   val hapticFeedback = LocalHapticFeedback.current
   val modifier = if (reorderableScope != null && inEditMode) {
     with(reorderableScope) {
-      Modifier.draggableHandle(
+      Modifier.longPressDraggableHandle(
         enabled = inEditMode,
         onDragStarted = {
           hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -55,6 +55,7 @@ fun MilestoneItem(
       inEditMode = inEditMode,
       isVisible = isVisible,
       modifier = modifier,
+      isDragging = isDragging,
       onBadgeClick = {
         onMilestoneMoved(!isVisible, milestone)
       },

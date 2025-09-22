@@ -172,7 +172,7 @@ private fun DashboardMetricsGrid(
             inEditMode = inEditMode,
             isSelected = isSelected,
             isFromSetup = isFromSetup,
-            modifier = Modifier.draggableHandle(
+            modifier = Modifier.longPressDraggableHandle(
               enabled = inEditMode,
               onDragStarted = {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
