@@ -167,7 +167,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.d(TAG, "New device found with matching protocol: ${ggDeviceDetail.deviceName}")
           viewModelScope.launch {
             try {
-              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress)) {
+              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) && ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value) {
                 AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
                 dialogQueueService.showDialog(
                   DialogModel.Alert(
@@ -270,6 +270,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.e(TAG, "Error observing entry scan responses", e)
         }
       }
+    }
+  }
+
+  protected fun stopPairingDevices(){
+    viewModelScope.launch {
+      AppLog.d(TAG, "Stopping pairing devices")
+      deviceObservationJob?.cancel()
+      ggDeviceService.scanForPairing()
     }
   }
 
