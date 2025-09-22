@@ -1396,7 +1396,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Update connected Wi-Fi network if we have a valid SSID
             if let ssid = wifiStatus.ssid, !ssid.isEmpty, wifiStatus.status == .connected {
                 self.connectedWifiNetwork = WifiDetails(macAddress: wifiStatus.bssid ?? "", ssid: ssid, rssi: 0)
-                LoggerService.shared.log(level: .info, tag: tag, message: "Current Wi-Fi status retrieved: \(ssid)")
             }
         }
     }
