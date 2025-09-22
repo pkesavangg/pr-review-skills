@@ -307,7 +307,7 @@ fun List<Stat>.reorderGridComprehensive(
   val tilesInLastRow = totalRegularTiles % tilesPerRow
 
   val insertPosition = when {
-    // ✅ Case 1: removed from first row → goal to the very beginning
+    // Case 1: removed from first row → goal to the very beginning
     isAfterRemoval && removedFromFirstRow -> 0
 
     // After-removal general behavior (Cases 2 & 3 unchanged)
