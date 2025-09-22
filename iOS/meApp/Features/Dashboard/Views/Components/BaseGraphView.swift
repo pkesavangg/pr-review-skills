@@ -199,6 +199,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 self.updateCachedChartData()
             }
         }
+        // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
+        // are re-plotted against the latest domain
+        .onChange(of: viewModel.yAxisDomain) { _, _ in
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
+        }
+        .onChange(of: viewModel.yAxisTicks) { _, _ in
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
+        }
         // Conditional scroll position syncing
         .conditionalScrollSyncing(
             isScrollable: isScrollable,
@@ -416,6 +428,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let newData = viewModel.getCachedSeriesData()
         // Create hash to detect actual data changes
         var hasher = Hasher()
+        // Include Y-axis domain and ticks so metric line animations trigger when normalization changes
+        hasher.combine(viewModel.yAxisDomain.lowerBound.bitPattern)
+        hasher.combine(viewModel.yAxisDomain.upperBound.bitPattern)
+        hasher.combine(viewModel.yAxisTicks.count)
+        if let firstTick = viewModel.yAxisTicks.first {
+            hasher.combine(firstTick.bitPattern)
+        }
+        if let lastTick = viewModel.yAxisTicks.last {
+            hasher.combine(lastTick.bitPattern)
+        }
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample key points for efficient hashing

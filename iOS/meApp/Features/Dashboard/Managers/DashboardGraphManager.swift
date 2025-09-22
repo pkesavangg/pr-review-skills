@@ -682,13 +682,24 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return []
         }
         
-        // Use visible operations for range calculation but show lines for all operations
-        let visibleMetricValues = visibleOperations.compactMap { summary in
+        // Use visible operations + bracketing operations for metric range calculation
+        // This ensures metric lines don't "jump" when bracketing segments become visible during scrolling
+        let bracketingOperations = getBracketingOperations(from: allOperations)
+        var operationsForMetricRange = visibleOperations
+        
+        // Add bracketing operations if they're not already included
+        for bracketOp in bracketingOperations {
+            if !operationsForMetricRange.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                operationsForMetricRange.append(bracketOp)
+            }
+        }
+        
+        let visibleAndBracketingMetricValues = operationsForMetricRange.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
         
-        // If no visible metric values, use all metric values for range calculation
-        let metricValues = visibleMetricValues.isEmpty ? allMetricValues : visibleMetricValues
+        // If no visible+bracketing metric values, use all metric values for range calculation
+        let metricValues = visibleAndBracketingMetricValues.isEmpty ? allMetricValues : visibleAndBracketingMetricValues
         
         // Calculate dynamic metric range from visible data
         guard let metricMin = metricValues.min(),
@@ -803,7 +814,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
-                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax) (using visible+bracketing ops), " +
                    "weightRange: \(weightMin)...\(weightMax), " +
                    "yAxisDomain: \(yAxisDomain)")
         

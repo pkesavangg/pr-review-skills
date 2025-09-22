@@ -1330,6 +1330,9 @@ class DashboardStore: ObservableObject {
             chartHeight: state.graph.chartHeight
         )
         
+        // Invalidate chart series cache so metric normalization recomputes using the new Y-axis domain
+        cachedChartSeriesData = nil
+        
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
     
