@@ -1069,9 +1069,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleStart = max(adjustedLeftEdge, minDate)
         let visibleEnd = min(adjustedRightEdge, maxDate)
         
-        // Log key parameters for debugging visibility issues
-        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Visible operations calculation: operations=\(operations.count), leftEdge=\(leftEdge), rightEdge=\(rightEdge), adjustedRange=[\(visibleStart), \(visibleEnd)]")
-        
         let visibleOps = operations.filter { summary in
             summary.date >= visibleStart && summary.date <= visibleEnd
         }
