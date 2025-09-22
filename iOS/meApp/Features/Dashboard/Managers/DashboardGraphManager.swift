@@ -760,7 +760,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 yAxisSpan / metricRange
                 
                 // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
-                let epsilon = yAxisSpan * 0.001 // 0.1% of y-axis span
+                let epsilon = yAxisSpan * 0.1 // 0.1% of y-axis span
                 let safeMin = weightMin + epsilon
                 let safeMax = weightMax - epsilon
                 
