@@ -486,6 +486,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
             self.bluetoothService.isSetupInProgress = true
+            
+            // Get current Wi-Fi status immediately for Wi-Fi setup only mode
+            if isWifiSetupOnly {
+                getCurrentWifiStatus()
+            }
         } else {
             self.isWifiSetupOnly = false
         }
@@ -1381,6 +1386,24 @@ final class BtWifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure
         }
+    }
+    
+    /// Gets the current Wi-Fi status immediately without waiting for scale communication
+    private func getCurrentWifiStatus() {
+        Task { @MainActor in
+            let wifiStatus = await wifiScaleService.getConnectedWifiInfo()
+            
+            // Update connected Wi-Fi network if we have a valid SSID
+            if let ssid = wifiStatus.ssid, !ssid.isEmpty, wifiStatus.status == .connected {
+                self.connectedWifiNetwork = WifiDetails(macAddress: wifiStatus.bssid ?? "", ssid: ssid, rssi: 0)
+                LoggerService.shared.log(level: .info, tag: tag, message: "Current Wi-Fi status retrieved: \(ssid)")
+            }
+        }
+    }
+    
+    /// Public method to refresh current Wi-Fi status - can be called from views
+    func refreshCurrentWifiStatus() {
+        getCurrentWifiStatus()
     }
     
     /// Fetches WiFi networks from the scale and handles error cases
