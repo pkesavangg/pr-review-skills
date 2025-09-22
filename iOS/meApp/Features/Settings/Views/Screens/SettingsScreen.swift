@@ -272,7 +272,7 @@ struct SettingsScreen: View {
                 chevronType: .upDown,
                 onTap: { settingsStore.presentNotificationPicker() }))
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.messages, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
             }))
             .listRowInsets()

@@ -81,7 +81,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYScale(domain: viewModel.yAxisDomain)
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
-               .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+                .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
                 .transaction { t in
                   if viewModel.isScrolling { t.animation = nil }
                 }
@@ -137,8 +137,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture,
                     dashboardStore: dashboardStore
                 )
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollTargetBehavior(.viewAligned)
                 
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
