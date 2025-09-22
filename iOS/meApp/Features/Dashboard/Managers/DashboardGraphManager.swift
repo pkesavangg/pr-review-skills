@@ -735,7 +735,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Generate normalized metric series for all operations (to show continuous line)
         // This creates points even for operations without metric values using interpolation
         for summary in allOperations {
-            let finalValue: Double
+            var finalValue: Double = (weightMin + weightMax) / 2
             
             if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
                 // Operation has metric value - use it directly
