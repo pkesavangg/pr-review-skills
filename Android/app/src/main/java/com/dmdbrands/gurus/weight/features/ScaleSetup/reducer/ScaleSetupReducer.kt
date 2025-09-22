@@ -1,9 +1,10 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 
 data class SetupState<T>(
   val step: T,
@@ -48,6 +49,7 @@ data class ScaleSetupState<T>(
   val setupState: SetupState<T>,
   val steps: List<T>,
   val sku: String = "",
+  val scaleInfo: ScaleInfo? = null,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val backEnabled: Boolean = false,
   val nextEnabled: Boolean = true
@@ -85,6 +87,8 @@ sealed interface ScaleSetupIntent : IReducer.Intent {
   data class SetSku(
     val sku: String
   ) : ScaleSetupIntent
+
+  data class SetScaleInfo(val scaleInfo: ScaleInfo?): ScaleSetupIntent
 
   data class BackEnabled(
     val isEnabled: Boolean
@@ -143,6 +147,10 @@ open class ScaleSetupReducer<
 
       is ScaleSetupIntent.SetSku -> baseState.copy(
         sku = intent.sku,
+      )
+
+      is ScaleSetupIntent.SetScaleInfo -> baseState.copy(
+        scaleInfo = intent.scaleInfo,
       )
 
       else -> null

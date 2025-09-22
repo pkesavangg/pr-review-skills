@@ -83,11 +83,12 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
-    AppLog.d(TAG, "Setup finished, saving LCBT scale")
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     try {
       if (discoveredScale != null) {
-        AppLog.d(TAG, "Saving discovered LCBT scale: ${discoveredScale!!.id}")
+        discoveredScale = discoveredScale!!.copy(
+          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale"
+        )
         deviceService.saveScale(discoveredScale!!)
         AppLog.i(TAG, "Successfully saved LCBT scale")
       } else {

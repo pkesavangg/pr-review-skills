@@ -60,6 +60,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private val initialStep = setupInitData.initialStep
   private val sku = setupInitData.sku
   private val broadcastId = setupInitData.broadcastId
+  private val scaleInfo = setupInitData.scaleInfo
 
   protected val ggDeviceService get() = dependencies.ggDeviceService
   protected val connectivityObserver get() = dependencies.connectivityObserver
@@ -173,6 +174,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
                   DialogModel.Alert(
                     title = "Known Scale Discovered",
                     message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
+                    dismissText = "Exit",
                     onDismiss = {
                       AppLog.d(TAG, "User dismissed known scale dialog")
                       onExitSetup(true)
@@ -564,6 +566,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku, initial step: $initialStep")
     handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
+    handleIntent(ScaleSetupIntent.SetScaleInfo(scaleInfo))
     viewModelScope.launch {
       try {
         if (broadcastId != null) {

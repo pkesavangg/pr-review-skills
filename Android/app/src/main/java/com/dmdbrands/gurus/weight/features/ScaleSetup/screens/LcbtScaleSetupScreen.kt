@@ -30,17 +30,20 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
 
 @Composable
 fun LcbtScaleSetupScreen(
   sku: String,
+  scaleInfo: ScaleInfo? = null,
   broadcastId: String? = null,
   initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
 ) {
   val setupInit = SetupInitData(
     sku = sku,
+    scaleInfo = scaleInfo,
     broadcastId = broadcastId,
     initialStep = initialStep,
   )

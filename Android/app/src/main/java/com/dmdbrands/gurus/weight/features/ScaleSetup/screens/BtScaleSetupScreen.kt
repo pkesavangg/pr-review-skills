@@ -32,6 +32,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
+import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -40,10 +41,12 @@ import kotlinx.coroutines.delay
 @Composable
 fun BtScaleSetupScreen(
   sku: String,
+  scaleInfo: ScaleInfo?
 ) {
   val setupInit = SetupInitData(
     sku = sku,
     initialStep = BtScaleSetupStep.SCALE_INFO,
+    scaleInfo = scaleInfo
   )
   val viewModel: BtScaleSetupViewModel =
     hiltViewModel<BtScaleSetupViewModel, BtScaleSetupViewModel.Factory> { factory ->

@@ -190,11 +190,13 @@ constructor(
           ),
         )
       } else if (sku != null) {
+        val scaleInfo = SCALES.find { it.sku == sku }
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
             sku!!,
             discoveredBroadcastId,
             LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+            scaleInfo = scaleInfo,
           ),
         )
       }

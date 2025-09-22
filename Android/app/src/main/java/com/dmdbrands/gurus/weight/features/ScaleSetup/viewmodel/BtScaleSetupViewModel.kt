@@ -372,7 +372,7 @@ constructor(
         discoveredScale = discoveredScale?.copy(
           deviceType = ScaleSetupType.Bluetooth.value,
           device = deviceInfo,
-          nickname = discoveredScale?.nickname ?: "Bluetooth Smart Scale"
+          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale"
         )
         deviceService.saveScale(discoveredScale!!)
       AppLog.d(TAG, "Scale gets saved successfully")
