@@ -242,7 +242,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
     }
         
-        return MileStoneGridModel(mileStones: widgets)
+        // Create the grid model and apply row-wise reordering
+        var gridModel = MileStoneGridModel(mileStones: widgets)
+        let spanCount = DevicePlatform.isTablet ? 4 : 2
+        gridModel.reorderGrid(spanCount: spanCount)
+        
+        return gridModel
     }
     
     // MARK: - Coordinator
@@ -1257,15 +1262,30 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Determine if this is a widget (goal card) or app (streak item)
             let isWidget = widget == .goalCard
+            let columns: Int = DevicePlatform.isTablet ? 4 : 2
   
             if isWidget {
                 // Widget (goal card) logic: Full-width items that push others
-                // Widgets can be placed at any row boundary
-                return destinationIndex
+                // Goal cards should be placed at row boundaries for proper layout
+                let targetRow = destinationIndex / columns
+                let rowStartIndex = targetRow * columns
+                
+                // Check if there are any items in the target row
+                let rowEndIndex = min(rowStartIndex + columns, currentModel.count)
+                let hasItemsInRow = (rowStartIndex..<rowEndIndex).contains { index in
+                    index < currentModel.count && currentModel[index] != .goalCard
+                }
+                
+                if hasItemsInRow {
+                    // If row has items, insert at the beginning to push them down
+                    return rowStartIndex
+                } else {
+                    // If row is empty, place at the calculated position
+                    return min(destinationIndex, currentModel.count)
+                }
             } else {
                 // App (streak item) logic: Grid items that maintain spacing
-                // Apps are placed in grid positions, maintaining column alignment
-                let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                // Streak items are placed in grid positions, maintaining column alignment
                 
                 // Calculate the target row and column
                 let targetRow = destinationIndex / columns
@@ -1274,7 +1294,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Ensure the target position is valid for grid layout
                 let validTargetIndex = targetRow * columns + targetColumn
                 
-                // If the target is occupied by a widget, allow inserting at that index to push it down
+                // If the target is occupied by a goal card, allow inserting at that index to push it down
                 if validTargetIndex < currentModel.count {
                     let targetWidget = currentModel[validTargetIndex]
                     if targetWidget == .goalCard {
@@ -1556,10 +1576,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         /// Saves the current grid order to DashboardStore UI state
         private func persistGridOrderToStore() {
+            // Apply row-wise reordering before persisting
+            let spanCount = DevicePlatform.isTablet ? 4 : 2
+            var reorderedModel = gridModel
+            reorderedModel.reorderGrid(spanCount: spanCount)
+            
             var newStreakOrder: [MetricItem] = []
             var goalCardPosition: Int? = nil
 
-            for (index, widget) in gridModel.mileStones.enumerated() {
+            for (index, widget) in reorderedModel.mileStones.enumerated() {
                 switch widget {
                 case .goalCard:
                     goalCardPosition = index
@@ -1573,6 +1598,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Save goal card position
             store.state.ui.goalCardPosition = goalCardPosition ?? 0
+            
+            // Update the local grid model with the reordered version
+            gridModel = reorderedModel
             
             // Force UI update to reflect the changes
             store.objectWillChange.send()
