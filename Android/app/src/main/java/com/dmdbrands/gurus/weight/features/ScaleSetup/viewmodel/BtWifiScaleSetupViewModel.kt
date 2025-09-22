@@ -324,7 +324,8 @@ constructor(
     viewModelScope.launch {
       permissionService.permissionCallBackFlow.collect {
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(it))
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(it, sku)
+        val areRequiredPermissionsEnabled =
+          AppPermissionsHelper.areRequiredPermissionsEnabled(it, setupType = ScaleSetupType.BtWifiR4)
         if (!areRequiredPermissionsEnabled) {
           if (state.value.currentStep != BtWifiSetupStep.PERMISSIONS && state.value.currentStep != BtWifiSetupStep.SCALE_INFO) {
             handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))

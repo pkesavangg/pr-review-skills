@@ -82,7 +82,7 @@ constructor(
         subscribePermissions().collect { newPermissions ->
           viewModelScope.launch {
             val areRequiredPermissionsEnabled =
-              AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, scaleInit.sku)
+              AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, setupType = ScaleSetupType.Bluetooth)
             AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
             handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
             handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
@@ -113,7 +113,7 @@ constructor(
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
     } else if (currentState.step == BtScaleSetupStep.SCALE_INFO) {
       val areRequiredPermissionsEnabled = AppPermissionsHelper
-        .areRequiredPermissionsEnabled(state.value.permissions, scaleInit.sku)
+        .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Bluetooth)
       if (areRequiredPermissionsEnabled) {
         handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SELECT_USER))
       } else {

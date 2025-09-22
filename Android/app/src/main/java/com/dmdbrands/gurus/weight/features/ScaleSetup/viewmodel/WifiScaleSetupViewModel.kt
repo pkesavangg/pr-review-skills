@@ -152,7 +152,7 @@ constructor(
     viewModelScope.launch {
       subscribePermissions(true).collect { permissions ->
         handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
-        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
+        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
 
         // Refresh WiFi information when permissions change to ensure WiFi name is current
         updateNetworkStatus()
@@ -187,7 +187,7 @@ constructor(
 
             WifiScaleSetupStep.PERMISSIONS -> {
               val areRequiredPermissionsEnabled = AppPermissionsHelper
-                .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+                .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Wifi)
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
               updateNetworkStatus()
             }
