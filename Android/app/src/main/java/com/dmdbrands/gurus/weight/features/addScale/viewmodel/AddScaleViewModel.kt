@@ -131,11 +131,11 @@ constructor(
         }
         ScaleSetupType.Bluetooth -> {
           AppLog.d(TAG, "Navigating to Bluetooth scale setup")
-          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku))
+          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku,scaleInfo))
         }
         ScaleSetupType.Lcbt -> {
           AppLog.d(TAG, "Navigating to Lcbt scale setup")
-          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku))
+          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
         }
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
