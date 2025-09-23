@@ -22,8 +22,7 @@ struct MileStoneGridModel {
         
         switch widget {
         case .goalCard:
-            // Goal card moves normally - the collection view's targetIndexPath handler
-            // ensures it moves to valid row positions
+            // Goal card moves normally - position validation is handled at UI level
             let goalCard = mileStones.remove(at: source)
             mileStones.insert(goalCard, at: destination)
             
@@ -70,12 +69,18 @@ struct MileStoneGridModel {
     
     /// Reorders the grid so goal cards start on new rows when they wouldn't fit
     /// Similar to Android's reorderGrid function
-    mutating func reorderGrid(spanCount: Int) {
+    mutating func reorderGrid(spanCount: Int, hasRemovedStreaks: Bool = false) {
         if mileStones.isEmpty { return }
         
         // Find the first goal card
         guard let goalCardIndex = mileStones.firstIndex(where: { $0 == .goalCard }) else { return }
         if goalCardIndex == mileStones.count - 1 { return }
+        
+        // Count streak items before the goal card
+        let streakCountBeforeGoal = (0..<goalCardIndex).reduce(0) { count, index in
+            if case .streak = mileStones[index] { return count + 1 }
+            return count
+        }
         
         // Calculate how many columns are already used in the current row
         let usedBefore = (0..<goalCardIndex).reduce(0) { total, index in
@@ -86,6 +91,13 @@ struct MileStoneGridModel {
         
         let targetSpan = getItemSpan(for: .goalCard, spanCount: spanCount)
         let remaining = spanCount - usedBefore
+        
+        // Special case: if we have odd number of streaks and goal card is at the end,
+        // keep the current layout (last streak in single row, goal card below)
+        // This applies when streaks are removed
+        if hasRemovedStreaks && streakCountBeforeGoal % spanCount == 1 && goalCardIndex == streakCountBeforeGoal {
+            return // Keep current layout for odd number case when streaks are removed
+        }
         
         // If goal card fits in current row, keep order
         if usedBefore == 0 || targetSpan <= remaining { return }

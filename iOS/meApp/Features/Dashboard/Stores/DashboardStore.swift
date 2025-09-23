@@ -805,6 +805,8 @@ class DashboardStore: ObservableObject {
                 // Sync the UI state with the streak manager after the change
                 await MainActor.run {
                     self.syncRemovalStateFromStreakManager()
+                    // Validate goal card position after streak removal
+                    self.validateGoalCardPosition()
                 }
             }
         }
@@ -815,6 +817,9 @@ class DashboardStore: ObservableObject {
         } else {
             state.ui.removedStreaks.insert(streakLabel)
         }
+        
+        // Validate goal card position immediately
+        validateGoalCardPosition()
     }
     
     func toggleGoalCardRemoval() {
@@ -831,6 +836,38 @@ class DashboardStore: ObservableObject {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
         }
+    }
+    
+    /// Ensures goal card position is valid when streaks are removed
+    func validateGoalCardPosition() {
+        let maxPosition = streakItemsToShow.count
+        let columns = DevicePlatform.isTablet ? 4 : 2
+        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
+        
+        // More flexible validation: allow goal card to be positioned anywhere
+        // The grid building logic will handle the actual layout
+        if state.ui.goalCardPosition > maxPosition {
+            // Only clamp if position is way beyond reasonable bounds
+            state.ui.goalCardPosition = maxPosition
+            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to: \(maxPosition) due to streak removal")
+        }
+        
+        // Additional validation: ensure goal card position is never negative
+        if state.ui.goalCardPosition < 0 {
+            state.ui.goalCardPosition = 0
+            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
+        }
+        
+        // Special case: If goal card is at last position and we're in edit mode with removed streaks,
+        // and the position would cause it to disappear, move it to the next even index
+        if state.ui.isEditMode && hasRemovedStreaks && state.ui.goalCardPosition == maxPosition && maxPosition % 2 == 1 {
+            // Move to the next even index (e.g., from 5th to 4th)
+            let adjustedPosition = maxPosition - 1
+            state.ui.goalCardPosition = adjustedPosition
+            logger.log(level: .debug, tag: "DashboardStore", message: "Edit mode: Goal card moved from \(maxPosition) to \(adjustedPosition) to ensure visibility")
+        }
+        
+        logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
     
     func resetDragState() {
