@@ -569,6 +569,38 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return originalIndexPath // Return original position to cancel the move
             }
             
+            // Get the widget being moved
+            let widget = gridModel.mileStones[originalIndexPath.item]
+            
+            switch widget {
+            case .goalCard:
+                // Goal card should move to row boundaries
+                let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                let targetRow = proposedIndexPath.item / columns
+                let rowStartIndex = targetRow * columns
+                
+                // Return the row start index to ensure goal card starts at row boundary
+                return IndexPath(item: min(rowStartIndex, maxValidIndex), section: proposedIndexPath.section)
+                
+            case .streak:
+                // Find goal card position
+                let goalCardIndex = gridModel.mileStones.firstIndex { widget in
+                    if case .goalCard = widget { return true }
+                    return false
+                }
+                
+                // If trying to move to goal card position, adjust the target
+                if let goalPos = goalCardIndex, proposedIndexPath.item == goalPos {
+                    // If moving from before goal card, place before it
+                    if originalIndexPath.item < goalPos {
+                        return IndexPath(item: max(0, goalPos - 1), section: proposedIndexPath.section)
+                    } else {
+                        // If moving from after goal card, place after it
+                        return IndexPath(item: min(maxValidIndex, goalPos + 1), section: proposedIndexPath.section)
+                    }
+                }
+            }
+            
             // Ensure proposed destination is within valid range (0 to maxValidIndex)
             if proposedIndexPath.item < 0 {
                 return IndexPath(item: 0, section: proposedIndexPath.section)
@@ -1284,8 +1316,29 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     return min(destinationIndex, currentModel.count)
                 }
             } else {
-                // App (streak item) logic: Grid items that maintain spacing
-                // Streak items are placed in grid positions, maintaining column alignment
+                // Streak item logic with goal card position preservation
+                
+                // Find goal card position if it exists
+                var goalCardIndex: Int? = nil
+                for (index, item) in currentModel.enumerated() {
+                    if case .goalCard = item {
+                        goalCardIndex = index
+                        break
+                    }
+                }
+                
+                // If there's a goal card between source and destination
+                if let goalPos = goalCardIndex {
+                    let isGoalBetween = (sourceIndex < goalPos && destinationIndex > goalPos) ||
+                                      (sourceIndex > goalPos && destinationIndex < goalPos)
+                    
+                    if isGoalBetween {
+                        // For streak items moving across the goal card:
+                        // Return the destination index - the streak items will swap positions
+                        // while the goal card stays in place
+                        return destinationIndex
+                    }
+                }
                 
                 // Calculate the target row and column
                 let targetRow = destinationIndex / columns
@@ -1294,12 +1347,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Ensure the target position is valid for grid layout
                 let validTargetIndex = targetRow * columns + targetColumn
                 
-                // If the target is occupied by a goal card, allow inserting at that index to push it down
+                // If the target is occupied by a goal card, maintain its position
                 if validTargetIndex < currentModel.count {
                     let targetWidget = currentModel[validTargetIndex]
                     if targetWidget == .goalCard {
-                        // Insert at goal card index so the goal card is pushed down
-                        return validTargetIndex
+                        // If moving down, place before the goal card
+                        if sourceIndex < validTargetIndex {
+                            return validTargetIndex - 1
+                        }
+                        // If moving up, place after the goal card
+                        else {
+                            return validTargetIndex + 1
+                        }
                     }
                 }
 

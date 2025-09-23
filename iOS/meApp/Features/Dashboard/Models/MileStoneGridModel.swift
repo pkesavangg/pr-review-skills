@@ -12,11 +12,60 @@ struct MileStoneGridModel {
     /// Ordered widgets; can be mutated for reordering
     var mileStones: [MileStoneType]
 
-    /// Move an item from one index to another (goalCard moves row-wise)
+    /// Move an item from one index to another, with special handling for goal card and streak items
     mutating func moveWidget(from source: Int, to destination: Int) {
-        guard source != destination, source >= 0, source < mileStones.count, destination >= 0, destination < mileStones.count else { return }
-        let widget = mileStones.remove(at: source)
-        mileStones.insert(widget, at: destination)
+        guard source != destination, 
+              source >= 0, source < mileStones.count, 
+              destination >= 0, destination < mileStones.count else { return }
+        
+        let widget = mileStones[source]
+        
+        switch widget {
+        case .goalCard:
+            // Goal card moves normally - the collection view's targetIndexPath handler
+            // ensures it moves to valid row positions
+            let goalCard = mileStones.remove(at: source)
+            mileStones.insert(goalCard, at: destination)
+            
+        case .streak:
+            // Find goal card position if it exists
+            let goalCardIndex = mileStones.firstIndex(where: { $0 == .goalCard })
+            
+            if let goalPos = goalCardIndex {
+                // Check if this is a swap between immediate neighbors of goal card
+                let isImmediateNeighborSwap = (
+                    // Moving from immediate before to immediate after goal card
+                    (source == goalPos - 1 && destination == goalPos + 1) ||
+                    // Moving from immediate after to immediate before goal card
+                    (source == goalPos + 1 && destination == goalPos - 1)
+                )
+                
+                if isImmediateNeighborSwap {
+                    // Get the streak item at the destination
+                    let targetWidget = mileStones[destination]
+                    
+                    // Only proceed if target is also a streak item
+                    if case .streak = targetWidget {
+                        // Swap the streak items while keeping goal card in place
+                        let movingStreak = mileStones[source]
+                        mileStones[source] = targetWidget
+                        mileStones[destination] = movingStreak
+                    } else {
+                        // If target is not a streak item, do normal move
+                        let streak = mileStones.remove(at: source)
+                        mileStones.insert(streak, at: destination)
+                    }
+                } else {
+                    // For non-immediate neighbors, do normal move
+                    let streak = mileStones.remove(at: source)
+                    mileStones.insert(streak, at: destination)
+                }
+            } else {
+                // If no goal card, do normal move
+                let streak = mileStones.remove(at: source)
+                mileStones.insert(streak, at: destination)
+            }
+        }
     }
     
     /// Reorders the grid so goal cards start on new rows when they wouldn't fit
