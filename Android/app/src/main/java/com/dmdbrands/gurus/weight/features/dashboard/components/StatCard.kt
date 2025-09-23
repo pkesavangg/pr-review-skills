@@ -249,23 +249,3 @@ private fun formatStatValue(value: Any?): String {
     else -> value.toString()
   }
 }
-
-@Composable
-private fun Modifier.statCardDragShadow(
-  radius: Dp = MeTheme.borderRadius.md,
-  elevation: Dp = 4.dp,
-  yOffset: Dp = 2.dp,
-  ambientAlpha: Float = 0.25f,
-  spotAlpha: Float = 0.60f,
-): Modifier {
-  val glow = MeTheme.colorScheme.glow
-  val density = LocalDensity.current
-  return this.graphicsLayer {
-    shape = RoundedCornerShape(radius)
-    clip = false
-    shadowElevation = with(density) { elevation.toPx() }
-    translationY = with(density) { yOffset.toPx() }
-    ambientShadowColor = glow.copy(alpha = ambientAlpha)
-    spotShadowColor = glow.copy(alpha = spotAlpha)
-  }
-}
