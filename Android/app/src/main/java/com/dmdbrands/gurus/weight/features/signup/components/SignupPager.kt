@@ -102,6 +102,8 @@ fun SignupPager(
               SignupStep.HEIGHT ->
                 HeightStep(
                   heightControl = formControls.height,
+                  useMetricControl = formControls.useMetric,
+                  onMetricToggle = onMetricToggle,
                 )
 
               SignupStep.GOAL ->
@@ -110,8 +112,7 @@ fun SignupPager(
                   goalTypeControl = formControls.goalType,
                   currentWeightControl = formControls.currentWeight,
                   goalWeightControl = formControls.goalWeight,
-                  useMetricControl = formControls.useMetric,
-                  onMetricToggle = onMetricToggle,
+                  isMetric = formControls.useMetric.value,
                   onGoalTypeChange = {}, // Empty callback for signup flow
                   onNext = guardedOnNext,
                   showCurrentWeightForMaintain = false,

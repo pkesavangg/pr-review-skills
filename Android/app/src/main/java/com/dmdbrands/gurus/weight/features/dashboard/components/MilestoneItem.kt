@@ -28,6 +28,7 @@ fun MilestoneItem(
   isFromSetup: Boolean = false,
   isDragging: Boolean = false,
   isVisible: Boolean = true,
+  latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   reorderableScope: ReorderableCollectionItemScope? = null
 ) {
@@ -54,6 +55,7 @@ fun MilestoneItem(
       progress = progress,
       inEditMode = inEditMode,
       isVisible = isVisible,
+      latestWeight = latestWeight ,
       modifier = modifier,
       isDragging = isDragging,
       onBadgeClick = {

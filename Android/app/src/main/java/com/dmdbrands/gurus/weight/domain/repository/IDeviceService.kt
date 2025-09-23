@@ -33,11 +33,7 @@ interface IDeviceService {
     connectionStatus: BLEStatus? = null
   )
 
-  suspend fun updateConnectedScales(deviceDetail: GGDeviceDetail, isConnected: Boolean)
-
   fun getGGBTDevices(): Flow<List<GGBTDevice>>
-
-  suspend fun updateDevice(device: Device)
 
   /**
    * Clear the current account data.
@@ -59,7 +55,7 @@ interface IDeviceService {
    *
    * @param device The device to save
    */
-  suspend fun saveScale(device: Device)
+  suspend fun saveScale(device: Device): Device?
 
   /**
    * Delete a scale from both local database and API.
@@ -71,11 +67,11 @@ interface IDeviceService {
   /**
    * Update a scale's nickname.
    *
-   * @param deviceId The ID of the device
+   * @param device The ID of the device
    * @param nickname The new nickname
    */
   suspend fun updateScaleNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   )
 
@@ -108,14 +104,6 @@ interface IDeviceService {
    * @return List of devices that are not yet synced with the server
    */
   suspend fun getUnsyncedScales(): List<Device>
-
-  /**
-   * Check if a scale exists by broadcast ID.
-   *
-   * @param broadcastId The broadcast ID to check
-   * @return True if the scale exists, false otherwise
-   */
-  suspend fun scaleExistsByBroadcastId(broadcastId: String): Boolean
 
   /**
    * Check if a scale exists by MAC address.

@@ -28,3 +28,10 @@ struct GraphSeries: Identifiable, Equatable, Hashable {
         return lhs.id == rhs.id && lhs.value == rhs.value
     }
 }
+
+// Enhanced point with precomputed xDate
+struct PlottedGraphSeries: Identifiable {
+    let id = UUID()
+    let original: GraphSeries
+    let xDate: Date
+}

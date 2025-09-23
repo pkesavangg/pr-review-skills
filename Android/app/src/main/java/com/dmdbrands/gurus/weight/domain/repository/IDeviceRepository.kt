@@ -38,7 +38,7 @@ interface IDeviceRepository {
   fun getDeviceByPeripheralId(peripheralId: String): Flow<Device?>
 
   suspend fun updateDeviceNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ): Device
 

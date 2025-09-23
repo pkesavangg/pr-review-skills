@@ -12,58 +12,26 @@ import Charts
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class WeekSectionViewModel: BaseSectionViewModel {
+final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
+    
+    static func == (lhs: WeekSectionViewModel, rhs: WeekSectionViewModel) -> Bool {
+        // Compare essential properties that affect rendering
+        lhs.timePeriod == rhs.timePeriod &&
+        lhs.selectedDate == rhs.selectedDate &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.scrollPosition == rhs.scrollPosition &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.yAxisDomain == rhs.yAxisDomain &&
+        lhs.yAxisTicks == rhs.yAxisTicks &&
+        lhs.chartFrame == rhs.chartFrame &&
+        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
+    }
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .week
     }
     
-    // MARK: - Connected Segments Caching
-    private var cachedSegmentsHash: Int = 0
-    private var cachedSegmentsResult: [[GraphSeries]] = []
-
-    /// Connect across any gap in week view with caching
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        // Create lightweight hash of the data to detect changes
-        let currentHash = createDataHash(from: dataPoints)
-
-        // Return cached result if data hasn't changed
-        if currentHash == cachedSegmentsHash && !cachedSegmentsResult.isEmpty {
-            return cachedSegmentsResult
-        }
-
-        // Calculate new result
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        let result = sorted.isEmpty ? [] : [sorted]
-
-        // Cache the result
-        cachedSegmentsHash = currentHash
-        cachedSegmentsResult = result
-
-        return result
-    }
-
-    /// Creates a lightweight hash from GraphSeries data for caching
-    private func createDataHash(from dataPoints: [GraphSeries]) -> Int {
-        var hasher = Hasher()
-        hasher.combine(dataPoints.count)
-
-        // Sample a few key points to create hash without iterating entire array
-        if !dataPoints.isEmpty {
-            let sortedData = dataPoints.sorted { $0.date < $1.date }
-            hasher.combine(sortedData.first?.date.timeIntervalSince1970)
-            hasher.combine(sortedData.last?.date.timeIntervalSince1970)
-
-            // Add middle point if we have enough data
-            if sortedData.count > 2 {
-                let midIndex = sortedData.count / 2
-                hasher.combine(sortedData[midIndex].date.timeIntervalSince1970)
-            }
-        }
-
-        return hasher.finalize()
-    }
 
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
@@ -122,28 +90,4 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         // Do not compute selectedPoint here; DashboardStore will update metrics using nearest point
     }
 
-    // MARK: - Cache Management
-    /// Invalidates the segments cache when data changes
-    private func invalidateSegmentsCache() {
-        cachedSegmentsHash = 0
-        cachedSegmentsResult = []
-    }
-
-    /// Override to invalidate segments cache when configured
-    override func configure(with store: DashboardStore) {
-        invalidateSegmentsCache()
-        super.configure(with: store)
-    }
-
-    /// Override to invalidate segments cache when data refreshes
-    override func refreshData() {
-        invalidateSegmentsCache()
-        super.refreshData()
-    }
-
-    /// Override to invalidate segments cache when settings change
-    override func handleSettingsChange() {
-        invalidateSegmentsCache()
-        super.handleSettingsChange()
-    }
 }

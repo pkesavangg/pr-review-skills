@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -45,6 +46,7 @@ constructor(
     subscribeMetrics()
     subscribeProgress()
     subscribeGoals()
+    subscribeLatestWeight()
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -64,6 +66,8 @@ constructor(
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
+      is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+
       else -> null
     }
     super.handleIntent(intent)
@@ -73,6 +77,20 @@ constructor(
     viewModelScope.launch {
       entryService.progress.collect {
         handleIntent(DashboardIntent.SetProgress(it))
+      }
+    }
+  }
+
+  private fun subscribeLatestWeight(){
+    viewModelScope.launch {
+      entryService.latestEntry.collect {
+          latestEntry ->
+        val latestWeight =
+          when (latestEntry) {
+            is ScaleEntry -> latestEntry.scale.scaleEntry.weight
+            else -> null
+          }
+        handleIntent(DashboardIntent.SetLatestWeight(latestWeight))
       }
     }
   }
@@ -202,6 +220,12 @@ constructor(
           message = "Adding ${entries.size} entries",
         ),
       )
+    }
+  }
+
+  fun navigateTo(route: AppRoute) {
+    viewModelScope.launch {
+      navigationService.navigateTo(route)
     }
   }
 }
