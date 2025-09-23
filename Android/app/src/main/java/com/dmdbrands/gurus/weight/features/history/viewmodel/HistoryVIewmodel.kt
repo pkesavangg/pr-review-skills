@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.history.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -40,6 +41,7 @@ constructor(
       is HistoryIntent.Export -> {
         onExportDataClick()
       }
+      is HistoryIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
 
       else -> null
     }
@@ -118,6 +120,12 @@ constructor(
       } finally {
         dialogQueueService.dismissLoader()
       }
+    }
+  }
+
+  fun navigateTo(route: AppRoute) {
+    viewModelScope.launch {
+      navigationService.navigateTo(route)
     }
   }
 }

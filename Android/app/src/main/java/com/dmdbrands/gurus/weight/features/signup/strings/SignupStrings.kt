@@ -14,7 +14,7 @@ object SignupStrings {
   // BirthdayStep strings
   const val birthdayStepTitle = "When were you born?"
   const val birthdayStepSubtitle =
-    "your age helps us accurately calculate body metrics and healthy ranges. Note: You must be 13+ to make an account."
+    "Your age helps us accurately calculate body metrics and healthy ranges. Note: You must be 13+ to make an account."
   const val birthdayLabel = "Date of Birth"
 
   // GenderStep strings
@@ -54,7 +54,7 @@ object SignupStrings {
   const val passwordLabel = "Password"
   const val confirmPasswordLabel = "confirm password"
   const val zipcodeLabel = "zipcode"
-  const val passwordStepFooter = "By clicking 'COMPLETE', you are agreeing to our"
+  const val passwordStepFooter = "by completing, you are agreeing to our"
   const val And = "&"
   const val TermsOfService = "TERMS OF SERVICE"
   const val PrivacyPolicy = "PRIVACY POLICY"

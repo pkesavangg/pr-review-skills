@@ -80,7 +80,7 @@ constructor(
     val modelNumberForm = state.value.form
     val isValid = modelNumberForm.validate()
     AppLog.d(TAG, "Form validation result: $isValid")
-    
+
     if (isValid) {
       val modelNumber = state.value.form.controls.modelNumber.value
       AppLog.d(TAG, "Model number submitted: $modelNumber")
@@ -95,9 +95,9 @@ constructor(
     val scaleInfo = SCALES.find { it.sku == sku }
     val setupType = scaleInfo?.setupType
     val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
-    
+
     AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, setup type: $setupType, already paired: $isScaleAlreadyPaired")
-    
+
     if (setupType == ScaleSetupType.AppSync && isScaleAlreadyPaired) {
       AppLog.d(TAG, "Scale is already paired, showing confirmation dialog")
       dialogQueueService.enqueue(

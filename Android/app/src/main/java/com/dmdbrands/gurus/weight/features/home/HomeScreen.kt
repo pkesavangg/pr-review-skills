@@ -91,7 +91,7 @@ fun HomeScreenContent(
       )
     },
     floatingActionButton = {
-      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed) {
+      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed && !state.isBodyMetricsEnabled) {
         AppFab(
           showWeightOnlyModeAlert = true,
           onClick = {
@@ -116,8 +116,10 @@ fun HomeScreenContent(
   // Weight-only mode bottom sheet
   if (state.openWeightOnlyModePopup) {
     OpenWeightOnlyModePopup(
+
       onEnable = {
         handleIntent(HomeIntent.OnWeightOnlyModeEnable)
+        handleIntent(HomeIntent.SetBodyMetricsEnabled(true))
       },
       onClose = {
         handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))

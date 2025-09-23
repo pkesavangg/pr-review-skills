@@ -19,7 +19,10 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * Empty state for the history screen, shown when there are no history items.
  */
 @Composable
-fun HistoryEmptyState(onRetry: () -> Unit) {
+fun HistoryEmptyState(
+  onRetry: () -> Unit,
+  onConnectScale: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -36,7 +39,7 @@ fun HistoryEmptyState(onRetry: () -> Unit) {
         )
         AppButton(
             label = HistoryScreenStrings.ConnectScale,
-            onClick = { },
+            onClick = { onConnectScale() },
         )
     }
 }
@@ -45,6 +48,6 @@ fun HistoryEmptyState(onRetry: () -> Unit) {
 @Composable
 fun HistoryEmptyStatePreview() {
     MeAppTheme {
-        HistoryEmptyState(onRetry = {})
+        HistoryEmptyState(onRetry = {}, onConnectScale = {})
     }
 }

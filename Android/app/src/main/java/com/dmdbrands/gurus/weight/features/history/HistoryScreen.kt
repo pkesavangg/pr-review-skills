@@ -76,7 +76,10 @@ fun HistoryScreenContent(
         }
 
         state.historyItems.isEmpty() -> {
-          HistoryEmptyState(onRetry = { handleIntent(HistoryIntent.Retry) })
+          HistoryEmptyState(
+            onRetry = { handleIntent(HistoryIntent.Retry) },
+            onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
+          )
         }
 
         else -> {
