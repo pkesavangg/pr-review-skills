@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -667,11 +668,19 @@ constructor(
 
   private fun startScan() {
     viewModelScope.launch {
-       accountService.activeAccountFlow.map { it?.toGGBTUserProfile() }.distinctUntilChanged().collect { ggBTUserProfile ->
+       accountService.activeAccountFlow.map {
+         it?.toGGBTUserProfile()
+       }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
-          ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, ggBTUserProfile)
+          val latestWeightEntry = entryService.latestEntry.value
+          val currentWeight = when (latestWeightEntry) {
+            is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
+            else -> ggBTUserProfile.weight // Fallback to initial weight
+          }
+          val updatedProfile = ggBTUserProfile.copy(weight = currentWeight)
+          ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
           handleIntent(AppIntent.SetScanStatus(true))
-          AppLog.i(TAG, "Scan started")
+          AppLog.i(TAG, "Scan started with current weight: $currentWeight")
         }
       }
     }

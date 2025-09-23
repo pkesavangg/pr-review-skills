@@ -211,6 +211,9 @@ constructor(
 
   private fun connectToBluetooth() {
     // Always set loading state to ensure UI updates
+    if (setupInit.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH){
+      ggDeviceService.scanForPairing()
+    }
     AppLog.d(TAG, "Starting Bluetooth connection process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
@@ -222,16 +225,15 @@ constructor(
     viewModelScope.launch {
       try {
         AppLog.d(TAG, "Updating device connection status")
+        delay(3000)
         deviceService.onDeviceUpdate(
           discoveredScale?.device!!,
           connectionStatus = BLEStatus.CONNECTED,
         )
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
-        delay(3000)
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         AppLog.d(TAG, "Waiting 2 seconds before proceeding")
-        delay(2000)
         onNext()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)

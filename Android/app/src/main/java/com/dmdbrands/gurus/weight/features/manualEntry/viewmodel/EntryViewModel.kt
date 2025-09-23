@@ -52,7 +52,7 @@ constructor(
       val entryForm =
         EntryForm.create(
           includeR4ScaleMetrics = true,
-          weightUnit = state.value.weightMode,
+          weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
           height = accountService.activeAccountFlow.first()?.height,
         )
       handleIntent(

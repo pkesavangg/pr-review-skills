@@ -103,7 +103,8 @@ data class EntryForm(
                   weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToKg(
                     ConversionTools.convertDisplayToStored(
                       new.toDouble() / 10,
-                      false,
+                      forceMetric = false,
+                      isMetric = false
                     ),
                   )
 

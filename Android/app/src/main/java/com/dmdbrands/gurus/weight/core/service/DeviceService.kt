@@ -80,7 +80,6 @@ constructor(
 
       if (deviceIndex >= 0) {
         val device = currentDevices[deviceIndex]
-        connectionStatus == BLEStatus.CONNECTED
 
         val updatedDevice = device.copy(
           connectionStatus = connectionStatus,

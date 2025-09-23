@@ -1,12 +1,13 @@
 package com.dmdbrands.gurus.weight.domain.model.storage.Account
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
-import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToKg
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 
 /**
  * Domain model representing a user account and its settings.
@@ -81,13 +82,15 @@ data class Account(
         enabled = dashboardMetrics?.contains(it.name) ?: false,
       )
     }
+    val heightCm: Double? =
+      height?.let { ConversionTools.convertStoredHeightToCm(it).toDouble() }
     return GGBTUserProfile(
       name = firstName,
       age = calculateAge(dob),
       sex = gender,
-      unit = weightUnit.name,
+      unit = weightUnit.value,
       weight = initialWeight,
-      height = height?.toDouble(),
+      height = heightCm,
       goalWeight = goalWeight,
       goalType = goalType,
       metrics = metricConfig,
