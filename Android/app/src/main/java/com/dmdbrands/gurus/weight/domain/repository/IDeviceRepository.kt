@@ -49,6 +49,11 @@ interface IDeviceRepository {
     isSynced: Boolean,
   )
 
+  suspend fun markDeviceDeleted(
+    deviceId: String,
+    isDeleted: Boolean,
+  )
+
   // API operations
 
   /**

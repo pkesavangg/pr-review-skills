@@ -124,6 +124,13 @@ constructor(
     deviceDao.updateSyncStatus(deviceId, isSynced)
   }
 
+  override suspend fun markDeviceDeleted(
+    deviceId: String,
+    isDeleted: Boolean,
+  ) {
+    deviceDao.updateDeletionStatus(deviceId, isDeleted)
+  }
+
   // API operations
   override suspend fun getDevicesFromApi(accountId: String): List<Device> {
     val response = deviceApi.getPairedScales()
@@ -153,7 +160,8 @@ constructor(
     if (response.isSuccessful) {
       return true
     } else {
-      throw Exception("Failed to delete device from API: ${response.code()}")
+      val errorBody = response.errorBody()?.string()
+      throw Exception("Failed to delete device from API: ${response.code()}, Error: $errorBody")
     }
   }
 

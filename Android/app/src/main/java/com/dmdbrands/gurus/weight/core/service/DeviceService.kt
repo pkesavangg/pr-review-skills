@@ -251,7 +251,17 @@ constructor(
           deviceRepository.deleteDeviceFromDb(device.id)
         } catch (e: Exception) {
           AppLog.e(tag, "Error deleting device ${device.id}", e)
-          unsyncedDevices.add(device)
+          val errorMessage = e.message ?: ""
+          if (errorMessage.contains("Not Found")) {
+            // Device not found on server, mark as synced and deleted
+            AppLog.d(tag, "Device ${device.id} not found on server, marking as synced and deleted")
+            deviceRepository.markDeviceSynced(device.id, true)
+            deviceRepository.markDeviceDeleted(device.id, true)
+            deviceRepository.deleteDeviceFromDb(device.id)
+            // The device will be removed in the next sync cycle
+          } else {
+            unsyncedDevices.add(device)
+          }
         }
       }
     } catch (e: Exception) {
@@ -274,6 +284,7 @@ constructor(
         if (device != null) {
           it.copy(
             isSynced = true,
+            isDeleted = device.isDeleted, // Preserve the deletion status from local DB
             device = device.device?.copy(
               macAddress = device.device.macAddress,
               isWifiConfigured = device.device.isWifiConfigured,

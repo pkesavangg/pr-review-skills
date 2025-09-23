@@ -103,7 +103,7 @@ constructor(
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = PairedScaleExistsAlert.Title,
-          message = PairedScaleExistsAlert.Message(scaleInfo.productName),
+          message = PairedScaleExistsAlert.Message(scaleInfo.sku),
           confirmText = PairedScaleExistsAlert.Pair,
           cancelText = PairedScaleExistsAlert.Cancel,
           onConfirm = {
