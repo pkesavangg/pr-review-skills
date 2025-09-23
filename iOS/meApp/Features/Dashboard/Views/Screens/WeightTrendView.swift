@@ -57,16 +57,13 @@ struct WeightTrendView: View {
             
             WeightDisplayView(
                 weightText: {
-                    // If a point is selected, show its weight value
-                    if let displayWeight = dashboardStore.displayWeight, let _ = dashboardStore.state.graph.selectedPoint {
-                        let formattedWeight = dashboardStore.formatWeightDisplayText(displayWeight)
-                        return formattedWeight
-                    } else {
-                        // Fallback to average weight
-                        let averageWeight = dashboardStore.getCurrentAverageWeight()
-                        let formattedWeight = dashboardStore.formatWeightDisplayText(averageWeight)
-                        return formattedWeight
+                    // Prefer current selection (exact point or interpolated crosshair) when available
+                    if let displayWeight = dashboardStore.displayWeight {
+                        return dashboardStore.formatWeightDisplayText(displayWeight)
                     }
+                    // Fallback to average weight
+                    let averageWeight = dashboardStore.getCurrentAverageWeight()
+                    return dashboardStore.formatWeightDisplayText(averageWeight)
                 }(),
                 unitText: dashboardStore.unitText
             )
