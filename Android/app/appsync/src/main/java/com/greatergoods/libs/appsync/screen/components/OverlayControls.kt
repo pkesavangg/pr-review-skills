@@ -99,7 +99,7 @@ fun OverlayControls(
 
         // Right side zoom controls
         Column(
-            modifier = Modifier.align(Alignment.CenterEnd),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -173,7 +173,7 @@ fun OverlayControls(
                     colors =
                         ButtonDefaults.buttonColors(
                             containerColor = Color.White,
-                            contentColor = Color.Black,
+                            contentColor = Color.Gray,
                         ),
                 ) {
                     Text(AppSyncStrings.ManualEntry.uppercase())

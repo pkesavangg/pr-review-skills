@@ -4,6 +4,7 @@ import android.graphics.ImageFormat
 import android.media.Image
 import android.util.Log
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.ExperimentalGetImage
 
 /**
  * Utility class for converting YUV_420_888 format images to grayscale ByteArray.
@@ -44,6 +45,7 @@ object YUV420888ToGrayscaleConverter {
                 return null
             }
             
+            @Suppress("UnsafeOptInUsageError")
             val image = imageProxy.image ?: return null
             val yPlane = image.planes[0]
             val yBuffer = yPlane.buffer
