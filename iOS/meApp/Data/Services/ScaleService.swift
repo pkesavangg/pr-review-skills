@@ -276,7 +276,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         device.isWifiConfigured = isWifiConfigured // Reset WiFi config status on connection change
                         devicesUpdated += 1
                     }
-
+                    
                     if devices.count > 0 {
                         try localRepository.context.save()
                         logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
@@ -313,7 +313,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
         }
     }
-
+    
     nonisolated func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
         await MainActor.run {
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
@@ -615,8 +615,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     try await localRepository.permanentlyRemoveDevice(device.id)
                     logger.log(level: .info, tag: tag, message: "Successfully deleted device \(device.id) from server")
                 } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to delete device \(device.id) from server: \(error.localizedDescription)")
-                    // Leave the device marked for deletion to retry later
+                    // Treat "Not found" as success; otherwise, log error and keep for retry
+                    if error.localizedDescription.contains("Not found") {
+                        try await localRepository.permanentlyRemoveDevice(device.id)
+                        logger.log(level: .info, tag: tag, message: "Device \(device.id) already deleted on server, removed locally")
+                    }
                 }
             }
             
@@ -726,7 +729,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private func createPropertiesFromDTO(_ dto: ScaleDTO) -> [String: Any] {
         var properties: [String: Any] = [:]
         
-        if let nickname = dto.nickname { properties["nickname"] = nickname }
+        // Only include nickname if it's a valid string to prevent type errors
+        if let nickname = dto.nickname, nickname is String {
+            properties["nickname"] = nickname
+        }
         //Add Properties here in order to update the device
         return properties
     }

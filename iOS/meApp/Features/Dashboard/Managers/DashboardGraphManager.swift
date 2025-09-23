@@ -954,7 +954,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case DashboardStrings.bone:
             return summary.boneMass
         case DashboardStrings.visceralFat:
-            return summary.visceralFatLevel
+            return summary.visceralFatLevel.map { $0 / 10.0 }
         case DashboardStrings.subFat:
             return summary.subcutaneousFatPercent
         case DashboardStrings.protein:
