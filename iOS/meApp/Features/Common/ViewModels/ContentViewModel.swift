@@ -82,6 +82,10 @@ final class ContentViewModel: ObservableObject {
                 self.entries = entries
                 bluetoothService.initialize()
                 feedService.checkAndTriggerFeedModal()
+                
+                // Sync scales with remote server to ensure all previously saved scales are loaded
+                await scaleService.syncAllScalesWithRemote()
+                
                 await self.checkAccountFlagsAfterLogin()
             }
 
@@ -122,6 +126,10 @@ final class ContentViewModel: ObservableObject {
         }
         await feedService.fetchFeedItems()
         feedService.checkAndTriggerFeedModal()
+        
+        // Sync scales with remote server to ensure all previously saved scales are loaded
+        await scaleService.syncAllScalesWithRemote()
+        
         await checkAccountFlagsAfterLogin()
     }
 

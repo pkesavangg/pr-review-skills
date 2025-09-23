@@ -107,13 +107,17 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
           
             
             // Fully rely on dashboardType parameter from active account
-            if let dashboardTypeString = account.dashboardSettings?.dashboardType,
-               let dashboardType = DashboardType(rawValue: dashboardTypeString) {
-                updateDashboardType(dashboardType)
-            } else {
-                // If no dashboardType is set, use default dashboard12
-                updateDashboardType(.dashboard12)
+            let dashboardTypeString = account.dashboardSettings?.dashboardType
+            let dashboardType: DashboardType
+            switch dashboardTypeString {
+            case "dashboard4":
+                dashboardType = .dashboard4
+            case "dashboard12":
+                dashboardType = .dashboard12
+            default:
+                dashboardType = .dashboard12
             }
+            updateDashboardType(dashboardType)
             
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
@@ -247,7 +251,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         case DashboardStrings.water: return summary.water
         case DashboardStrings.heartBpm: return summary.pulse.map { Double($0) }
         case DashboardStrings.bone: return summary.boneMass
-        case DashboardStrings.visceralFat: return summary.visceralFatLevel
+        case DashboardStrings.visceralFat: return summary.visceralFatLevel.map { $0 / 10.0 }
         case DashboardStrings.subFat: return summary.subcutaneousFatPercent
         case DashboardStrings.protein: return summary.proteinPercent
         case DashboardStrings.skelMuscle: return summary.skeletalMusclePercent
@@ -295,7 +299,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// - Uses `DevicePlatform.isTablet` (UIDevice.current.model) to detect iPad.
     /// - iPad: always 4 columns.
     /// - iPhone: 2 columns for 4-metric, 3 columns for 12-metric.
-    func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
+   func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
         if DevicePlatform.isTablet { return 4 }
         switch dashboardType {
         case .dashboard4: return 2
@@ -378,7 +382,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
 
         if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat) / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         } else {
             let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
@@ -477,7 +481,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
         }
         if let visceralFat = selectedPoint.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(visceralFat / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         }
         if let subFat = selectedPoint.subcutaneousFatPercent {
@@ -798,7 +802,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     water: water,
                     pulse: pulse,
                     boneMass: boneMass,
-                    visceralFat: visceralFat,
+                    visceralFat: visceralFat.map { $0 / 10.0 },
                     subFat: subFat,
                     protein: protein,
                     skelMuscle: skelMuscle,
