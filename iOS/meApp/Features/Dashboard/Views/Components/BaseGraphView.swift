@@ -81,9 +81,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYScale(domain: viewModel.yAxisDomain)
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
-               .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+                .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
                 .transaction { t in
-                  if viewModel.isScrolling { t.animation = nil }
+                    if viewModel.isScrolling { t.animation = nil }
                 }
                 // Conditional chart modifiers based on scrollability
                 .conditionalModifiers(
@@ -108,11 +108,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                                         assignHeightIfChanged(geo.size.height)
                                         assignFrameIfChanged(geo.frame(in: .local))
                                     }
-                                    // 2) Gate size changes
+                                // 2) Gate size changes
                                     .onChange(of: geo.size) { _, newSize in
                                         assignHeightIfChanged(newSize.height)
                                     }
-                                    // 3) Gate frame changes
+                                // 3) Gate frame changes
                                     .onChange(of: geo.frame(in: .local)) { _, newFrame in
                                         assignFrameIfChanged(newFrame)
                                     }
@@ -137,8 +137,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture,
                     dashboardStore: dashboardStore
                 )
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollTargetBehavior(.viewAligned)
                 
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
@@ -195,6 +193,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Invalidate cache when selected metric changes (affects chart series)
             viewModel.invalidateCache()
             // Update local cache since series data changed
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
+        }
+        // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
+        // are re-plotted against the latest domain
+        .onChange(of: viewModel.yAxisDomain) { _, _ in
+            DispatchQueue.main.async {
+                self.updateCachedChartData()
+            }
+        }
+        .onChange(of: viewModel.yAxisTicks) { _, _ in
             DispatchQueue.main.async {
                 self.updateCachedChartData()
             }
@@ -416,6 +426,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let newData = viewModel.getCachedSeriesData()
         // Create hash to detect actual data changes
         var hasher = Hasher()
+        // Include Y-axis domain and ticks so metric line animations trigger when normalization changes
+        hasher.combine(viewModel.yAxisDomain.lowerBound.bitPattern)
+        hasher.combine(viewModel.yAxisDomain.upperBound.bitPattern)
+        hasher.combine(viewModel.yAxisTicks.count)
+        if let firstTick = viewModel.yAxisTicks.first {
+            hasher.combine(firstTick.bitPattern)
+        }
+        if let lastTick = viewModel.yAxisTicks.last {
+            hasher.combine(lastTick.bitPattern)
+        }
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample key points for efficient hashing
@@ -432,13 +452,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         // Only update cache if data actually changed
         if newHash != lastDataHash || cachedChartPoints.isEmpty {
             cachedChartPoints = newData
-
+            
             // Pre-group, sort, and precompute xDates
             let grouped = Dictionary(grouping: cachedChartPoints) { $0.series }
             cachedGroupedPoints = grouped.mapValues { seriesPoints in
                 seriesPoints.sorted { $0.date < $1.date }
             }
-
+            
             // New: Precompute plotted dates
             cachedPlottedPoints = cachedGroupedPoints.mapValues { points in
                 points.map { point in
@@ -475,7 +495,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             viewModel.updateChartFrame(r)
         }
     }
-
+    
     @inline(__always)
     private func assignHeightIfChanged(_ newHeight: CGFloat) {
         let h = round(newHeight) // avoid tiny float wiggles
@@ -644,12 +664,20 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
+                .modifier(DecisionWindowModifier(
+                    touchInteractionMode: touchInteractionMode,
+                    initialTouchPoint: initialTouchPoint,
+                    decisionTimer: decisionTimer,
+                    selectedXValue: localSelectedXValue,
+                    dashboardStore: dashboardStore
+                ))
                 .modifier(
                     ScrollDetectionModifier(
                         dashboardStore: dashboardStore,
                         hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
                         selectedXValue: localSelectedXValue
-                    ))
+                    )
+                )
         } else {
             self
         }

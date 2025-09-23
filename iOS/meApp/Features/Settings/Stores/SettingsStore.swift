@@ -351,6 +351,13 @@ class SettingsStore: ObservableObject {
     
     var streaksOnText: String { (activeAccount?.streaksSettings?.isStreakOn ?? false) ? commonLang.on : commonLang.off }
     
+    /// Dynamic title for the Messages row. When the feed badge is visible, append unread count.
+    var messagesTitleText: String {
+        guard canShowFeedNotificationBadge else { return SettingsStrings.messages }
+        let count = feedService.getUnreadFeedCount()
+        return SettingsStrings.messagesWithNew(count)
+    }
+
     var appearanceModeText: String {
         switch theme.appearanceMode {
         case .light:

@@ -32,6 +32,7 @@ struct SettingsStrings {
     static let appSettings = "App Settings"
     static let notifications = "Notifications"
     static let messages = "Messages"
+    static func messagesWithNew(_ count: Int) -> String { count > 0 ? "Messages (\(count) new)" : messages }
     static let streaks = "Streaks"
     static let appPermissions = "App Permissions"
     static let appearance = "Appearance"

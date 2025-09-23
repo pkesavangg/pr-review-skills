@@ -101,28 +101,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         guard !operations.isEmpty else { return }
         
-        // Find the closest data point to the selected date
-        let closestDataPoint = operations.min { bin1, bin2 in
-            abs(bin1.date.timeIntervalSince(selectedDate)) < abs(bin2.date.timeIntervalSince(selectedDate))
-        }
-        
-        guard let closestDataPoint = closestDataPoint else { return }
-        
-        // Set the selected point and show crosshair
-        updateSelectedPoint(closestDataPoint)
-        
-        // Update metrics with the selected point's values
-        do {
-            try await updateMetrics(closestDataPoint)
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with selected point: \(closestDataPoint.date)")
-        } catch {
-            logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
-            resetMetrics()
-        }
-        
-        // For body metrics (e.g., body fat, muscle mass), we require an exact data point for the selected date (or month).
-        // If no exact point exists for body metrics, we show placeholders instead.
-        // In contrast, for weight, we use the closest available data point to always display a value.
+        // Determine if there's an exact data point for the selected date based on the current period granularity
         let calendar = Calendar.current
         let exactPoint: BathScaleWeightSummary? = {
             switch state.selectedPeriod {
@@ -133,13 +112,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }()
         
-        // Only apply exact point logic for body metrics (not weight)
-        // Weight uses the closest point logic above, body metrics use exact matching
-        if exactPoint == nil {
-            // No exact point for body metrics: set placeholders for body metrics only
+        // If we have an exact point, select it and update metrics; otherwise keep selection as interpolated-only
+        if let exact = exactPoint {
+            updateSelectedPoint(exact)
+            do {
+                try await updateMetrics(exact)
+                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated metrics with exact selected point: \(exact.date)")
+            } catch {
+                logger.log(level: .error, tag: "DashboardGraphManager", message: "Failed to update metrics: \(error)")
+                resetMetrics()
+            }
+        } else {
+            // No exact point at this date: clear selected point so UI uses interpolated display weight
+            updateSelectedPoint(nil)
+            // For body metrics, show placeholders when there's no exact match
             setMetricPlaceholders()
-            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point for body metrics; showing placeholders")
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point at selection; using interpolation for weight and placeholders for body metrics")
         }
+        
+        // Always show crosshair at the selected X position, even when interpolating between points
+        state.showCrosshair = true
     }
     
     /// Computes an interpolated display weight at a given date using surrounding summaries.
@@ -680,16 +672,34 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double
     ) -> [GraphSeries] {
         
-        let operationsToAnalyze = visibleOperations
-        
-        let metricValues = operationsToAnalyze.compactMap { summary in
+        // Use all operations to find any metric values for range calculation
+        let allMetricValues = allOperations.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
         
-        guard !metricValues.isEmpty else {
-            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
+        guard !allMetricValues.isEmpty else {
+            logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric) in entire dataset")
             return []
         }
+        
+        // Use visible operations + bracketing operations for metric range calculation
+        // This ensures metric lines don't "jump" when bracketing segments become visible during scrolling
+        let bracketingOperations = getBracketingOperations(from: allOperations)
+        var operationsForMetricRange = visibleOperations
+        
+        // Add bracketing operations if they're not already included
+        for bracketOp in bracketingOperations {
+            if !operationsForMetricRange.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                operationsForMetricRange.append(bracketOp)
+            }
+        }
+        
+        let visibleAndBracketingMetricValues = operationsForMetricRange.compactMap { summary in
+            getMetricValue(for: selectedMetric, from: summary)
+        }
+        
+        // If no visible+bracketing metric values, use all metric values for range calculation
+        let metricValues = visibleAndBracketingMetricValues.isEmpty ? allMetricValues : visibleAndBracketingMetricValues
         
         // Calculate dynamic metric range from visible data
         guard let metricMin = metricValues.min(),
@@ -723,18 +733,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         var normalizedSeries: [GraphSeries] = []
         
         // Generate normalized metric series for all operations (to show continuous line)
+        // This creates points even for operations without metric values using interpolation
         for summary in allOperations {
+            var finalValue: Double = (weightMin + weightMax) / 2
+            
             if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
-                
-                // Clamp the metric value to the effective range
+                // Operation has metric value - use it directly
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
                 
                 // Directly normalize metric to dynamic y-axis domain for dynamic scaling
                 let metricRange = effectiveMetricMax - effectiveMetricMin
                 guard metricRange > 0 else {
                     // If no metric variation, use middle of y-axis domain
-                    let finalValue = (weightMin + weightMax) / 2
-                    
+                    finalValue = (weightMin + weightMax) / 2
                     normalizedSeries.append(GraphSeries(
                         date: summary.date,
                         value: finalValue,
@@ -758,11 +769,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 
                 // Additional safety check for NaN/infinite values
                 guard clampedFinalValue.isFinite else {
-                    let fallbackValue = (weightMin + weightMax) / 2
-                    
+                    finalValue = (weightMin + weightMax) / 2
                     normalizedSeries.append(GraphSeries(
                         date: summary.date,
-                        value: fallbackValue,
+                        value: finalValue,
                         series: selectedMetric
                     ))
                     continue
@@ -772,31 +782,107 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 guard clampedFinalValue >= safeMin && clampedFinalValue <= safeMax else {
                     logger.log(level: .info, tag: "DashboardGraphManager",
                                message: "Metric value \(clampedFinalValue) still out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
-                    let fallbackValue = (safeMin + safeMax) / 2
-                    
+                    finalValue = (safeMin + safeMax) / 2
                     normalizedSeries.append(GraphSeries(
                         date: summary.date,
-                        value: fallbackValue,
+                        value: finalValue,
                         series: selectedMetric
                     ))
                     continue
                 }
                 
-                normalizedSeries.append(GraphSeries(
-                    date: summary.date,
-                    value: clampedFinalValue,
-                    series: selectedMetric
-                ))
+                finalValue = clampedFinalValue
+            } else {
+                // Operation doesn't have metric value - interpolate from surrounding values
+                finalValue = interpolateMetricValue(
+                    for: summary.date,
+                    from: allOperations,
+                    selectedMetric: selectedMetric,
+                    effectiveMetricMin: effectiveMetricMin,
+                    effectiveMetricMax: effectiveMetricMax,
+                    weightMin: weightMin,
+                    weightMax: weightMax
+                )
             }
+            
+            normalizedSeries.append(GraphSeries(
+                date: summary.date,
+                value: finalValue,
+                series: selectedMetric
+            ))
         }
         
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
-                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax) (using visible+bracketing ops), " +
                    "weightRange: \(weightMin)...\(weightMax), " +
                    "yAxisDomain: \(yAxisDomain)")
         
         return normalizedSeries
+    }
+    
+    /// Interpolates a metric value for a date that doesn't have metric data
+    /// Uses surrounding metric values to create a smooth line
+    private func interpolateMetricValue(
+        for targetDate: Date,
+        from allOperations: [BathScaleWeightSummary],
+        selectedMetric: String,
+        effectiveMetricMin: Double,
+        effectiveMetricMax: Double,
+        weightMin: Double,
+        weightMax: Double
+    ) -> Double {
+        // Find operations with metric values before and after the target date
+        let operationsWithMetric = allOperations.compactMap { operation -> (Date, Double)? in
+            guard let metricValue = getMetricValue(for: selectedMetric, from: operation) else { return nil }
+            return (operation.date, metricValue)
+        }.sorted { $0.0 < $1.0 }
+        
+        guard !operationsWithMetric.isEmpty else {
+            // No metric data available - use middle of weight range
+            return (weightMin + weightMax) / 2
+        }
+        
+        // Find the closest metric values before and after target date
+        let before = operationsWithMetric.last { $0.0 <= targetDate }
+        let after = operationsWithMetric.first { $0.0 >= targetDate }
+        
+        let interpolatedMetricValue: Double
+        
+        if let before = before, let after = after, before.0 != after.0 {
+            // Interpolate between before and after values
+            let timeDiff = after.0.timeIntervalSince(before.0)
+            let targetTimeDiff = targetDate.timeIntervalSince(before.0)
+            let ratio = timeDiff > 0 ? targetTimeDiff / timeDiff : 0
+            interpolatedMetricValue = before.1 + (after.1 - before.1) * ratio
+        } else if let before = before {
+            // Use the closest previous value
+            interpolatedMetricValue = before.1
+        } else if let after = after {
+            // Use the closest next value
+            interpolatedMetricValue = after.1
+        } else {
+            // Fallback to middle of range
+            return (weightMin + weightMax) / 2
+        }
+        
+        // Normalize the interpolated value to the weight range
+        let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, interpolatedMetricValue))
+        let metricRange = effectiveMetricMax - effectiveMetricMin
+        
+        guard metricRange > 0 else {
+            return (weightMin + weightMax) / 2
+        }
+        
+        let yAxisSpan = weightMax - weightMin
+        let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRange
+        
+        // Apply safe bounds
+        let epsilon = yAxisSpan * 0.001
+        let safeMin = weightMin + epsilon
+        let safeMax = weightMax - epsilon
+        
+        return max(safeMin, min(safeMax, normalizedValue))
     }
     
     /// Get static metric ranges as fallback for cases with minimal data variation
@@ -917,9 +1003,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let leftEdge = state.xScrollPosition
             let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
             
+            // Apply the same buffer for cache validation
+            let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+            let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
+            let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
+            
             if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
                let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
-               cachedMin >= leftEdge && cachedMax <= rightEdge {
+               cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
                 // Cached set is still fully inside current window → safe to reuse
                 return lastCalculatedVisibleOps
             }
@@ -943,9 +1034,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let leftEdge = state.xScrollPosition
                 let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
                 let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+                
+                // Apply the same buffer for cache validation
+                let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+                let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
+                let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
+                
                 if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
                    let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
-                   cachedMin >= leftEdge && cachedMax <= rightEdge {
+                   cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
                     return lastCalculatedVisibleOps
                 }
             }
@@ -960,9 +1057,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Using strict bounds ensures symmetric inclusion/exclusion on both sides.
         let leftEdge = state.xScrollPosition
         let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
-        let rightEdge = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod) * rightMultiplier)
-        let visibleStart = max(leftEdge, minDate)
-        let visibleEnd = min(rightEdge, maxDate)
+        let domainLength = visibleDomainLength(for: state.selectedPeriod)
+        let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+        
+        // Add a small buffer to handle timezone edge cases and ensure entries on boundary dates are included
+        // This is especially important for daily summaries where dates are normalized to start of day
+        let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer to handle timezone differences
+        let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
+        let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
+        
+        let visibleStart = max(adjustedLeftEdge, minDate)
+        let visibleEnd = min(adjustedRightEdge, maxDate)
+        
         let visibleOps = operations.filter { summary in
             summary.date >= visibleStart && summary.date <= visibleEnd
         }
