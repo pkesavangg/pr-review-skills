@@ -108,6 +108,7 @@ fun HistoryItem(
         AppIcon(
             id = AppIcons.Default.RightCaret,
             contentDescription = HistoryItemStrings.GoToMonthView,
+            onClick = onClick
         )
     }
 }

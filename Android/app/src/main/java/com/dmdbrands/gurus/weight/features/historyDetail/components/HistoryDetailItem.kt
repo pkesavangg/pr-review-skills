@@ -158,6 +158,7 @@ fun HistoryDetailItemHeader(
             AppIcon(
                 id = AppIcons.Default.RightCaret,
                 contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
+                onClick = onClick,
                 modifier =
                     Modifier
                         .padding(start = MeTheme.spacing.sm)

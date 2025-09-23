@@ -92,6 +92,7 @@ fun PermissionItem(
       AppIcon(
         id = AppIcons.Default.RightCaret,
         contentDescription = "Action",
+        onClick = onClick
       )
     }
   }

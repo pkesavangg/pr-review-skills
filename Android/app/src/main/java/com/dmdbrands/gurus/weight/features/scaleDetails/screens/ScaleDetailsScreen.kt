@@ -300,7 +300,7 @@ fun ScaleDetailsScreenContent(
       )
 
       // Connection Section - Show different items based on setup type
-      if (!isWifiSetup) {
+      if (!isWifiSetup && scaleSetupType != ScaleSetupType.AppSync) {
         SettingsSection(
           title = ScaleDetailsStrings.Connection,
           items =
