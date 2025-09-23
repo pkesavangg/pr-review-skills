@@ -374,7 +374,8 @@ constructor(
         }
 
         handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(updatedPermissions, sku)
+        val areRequiredPermissionsEnabled =
+          AppPermissionsHelper.areRequiredPermissionsEnabled(updatedPermissions, setupType = ScaleSetupType.BtWifiR4)
         if (!areRequiredPermissionsEnabled) {
           // Use comprehensive permission-based error handling
           handlePermissionBasedErrors()
@@ -409,7 +410,11 @@ constructor(
             }
 
             BtWifiSetupStep.GATHERING_NETWORK -> {
-              if (!AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, sku)) {
+              if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
+                  state.value.permissions,
+                  setupType = ScaleSetupType.BtWifiR4,
+                )
+              ) {
                 setGatheringNetworkFailed()
               } else {
                 gatherNetworks()
@@ -430,7 +435,11 @@ constructor(
             }
 
             BtWifiSetupStep.STEP_ON -> {
-              if (!AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, sku)) {
+              if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
+                  state.value.permissions,
+                  setupType = ScaleSetupType.BtWifiR4,
+                )
+              ) {
                 setMeasurementFailed()
               } else {
                 stepOn()
@@ -1148,7 +1157,8 @@ constructor(
    * Handles permission-based errors for different steps, similar to Angular's handlePermissionChange()
    */
   private fun handlePermissionBasedErrors() {
-    val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, sku)
+    val areRequiredPermissionsEnabled =
+      AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.BtWifiR4)
     if (!areRequiredPermissionsEnabled) {
       val currentStep = state.value.currentStep
       when (currentStep) {
