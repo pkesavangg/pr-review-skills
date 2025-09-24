@@ -84,7 +84,7 @@ constructor(
   }
 
   fun enableSessionImpedence(device: Device) {
-    CoroutineScope(Dispatchers.IO).launch {
+    CoroutineScope(Dispatchers.Main).launch {
       ggDeviceService.updateSettings(
         device.toGGBTDevice(),
         GGBTSetting(
@@ -244,7 +244,6 @@ constructor(
     viewModelScope.launch {
       try {
         AppLog.d(TAG, "Enabling weight-only mode via AppViewModel")
-
         val pairedScales = deviceService.pairedScales.first()
         val scalesToUpdate = pairedScales.filter { device ->
           device.connectionStatus == BLEStatus.CONNECTED &&
@@ -253,18 +252,17 @@ constructor(
 
         if (scalesToUpdate.isNotEmpty()) {
           // Show loading toast
-          dialogQueueService.showToast(
-            Toast(message = "Updating scale settings..."),
+          dialogQueueService.showLoader(
+            "Updating scale settings...",
           )
 
           for (scale in scalesToUpdate) {
             // Update scale settings to enable body metrics
             try {
               enableSessionImpedence(scale)
+              dialogQueueService.dismissLoader()
               WeightOnlyModeEventService.events.emit(WeightOnlyModeEventType.HIDE_ALERT)
               handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
-              // This would call the scale service to update settings
-              // ggDeviceService.updateSetting(...) - implementation depends on your scale service
               AppLog.d(TAG, "Updated settings for scale: ${scale.device?.deviceName}")
             } catch (e: Exception) {
               AppLog.e(TAG, "Failed to update scale settings", e)
@@ -283,6 +281,9 @@ constructor(
         dialogQueueService.showToast(
           Toast(message = "Failed to update scale settings"),
         )
+      }
+      finally {
+          dialogQueueService.dismissLoader()
       }
     }
   }

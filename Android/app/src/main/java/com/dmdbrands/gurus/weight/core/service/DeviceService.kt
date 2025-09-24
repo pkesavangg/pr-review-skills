@@ -33,7 +33,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
-import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -70,7 +69,6 @@ constructor(
     val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
     val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
     val connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED
-
     macAddress.let { macAddress ->
       _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
         this[macAddress] = connectionStatus
@@ -86,107 +84,19 @@ constructor(
 
         val updatedDevice = device.copy(
           connectionStatus = connectionStatus,
+          device = device.device?.copy(
+            isWifiConfigured = deviceDetail.isWifiConfigured
+          ),
+          isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null)
         )
 
         currentDevices[deviceIndex] = updatedDevice
         _pairedScales.value = currentDevices
+        _connectedScales.value = currentDevices
       }
     }
     // Optionally log or handle the null case
     // else log.warn("Received update with null MAC address")
-  }
-
-  override suspend fun updateConnectedScales(deviceDetail: GGDeviceDetail, isConnected: Boolean) {
-    val broadcastId = deviceDetail.broadcastId ?: deviceDetail.macAddress
-
-    // Update connected device map (equivalent to Angular's connectedScales Map)
-    _connectedDeviceMap.value = _connectedDeviceMap.value.toMutableMap().apply {
-      if (isConnected) {
-        this[broadcastId] = deviceDetail
-      } else {
-        this.remove(broadcastId)
-      }
-    }
-
-    // Update connectedScales flow with actual Device objects
-    val connectedDeviceDetails = _connectedDeviceMap.value.values
-    val pairedScalesList = _pairedScales.value
-    val connectedScalesList = pairedScalesList.filter { device ->
-      val deviceBroadcastId = device.device?.broadcastId ?: device.device?.macAddress
-      connectedDeviceDetails.any { connectedDevice ->
-        val connectedBroadcastId = connectedDevice.broadcastId ?: connectedDevice.macAddress
-        deviceBroadcastId == connectedBroadcastId
-      }
-    }
-    _connectedScales.value = connectedScalesList
-    // Call updateScaleStatus equivalent (update all scale statuses)
-    updateScaleStatus()
-    AppLog.d(
-      tag,
-      "Connected scales updated: ${if (isConnected) "Added" else "Removed"} ${deviceDetail.deviceName}, Total connected: ${connectedScalesList.size}",
-    )
-  }
-
-  private fun updateScaleStatus() {
-    val connectedDeviceMap = _connectedDeviceMap.value
-    val updatedScales = _pairedScales.value.map { device ->
-      val broadcastId = device.device?.broadcastId ?: device.device?.macAddress
-      val isConnected = broadcastId?.let { connectedDeviceMap.containsKey(it) } ?: false
-      val connectedDevice = broadcastId?.let { connectedDeviceMap[it] }
-
-      val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && connectedDevice != null) {
-        device.preferences.shouldMeasureImpedance == true &&
-          (connectedDevice.impedanceSwitchState == false || connectedDevice.impedanceSwitchState == null)
-      } else {
-        false
-      }
-      device.copy(
-        connectionStatus = if (isConnected) BLEStatus.CONNECTED else BLEStatus.DISCONNECTED,
-        isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
-      )
-    }
-
-    _pairedScales.value = updatedScales
-    val connectedScalesList = updatedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
-    _connectedScales.value = connectedScalesList
-  }
-
-  override suspend fun updateDevice(device: Device) {
-    try {
-      val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
-      val isConnected = connectionStatus == BLEStatus.CONNECTED
-
-      val updatedDevice = if (isConnected && device.preferences != null && device.device != null) {
-        val isWeighOnlyModeEnabledByOthers = device.preferences.shouldMeasureImpedance == true &&
-          device.device.impedanceSwitchState == false
-        device.copy(
-          connectionStatus = connectionStatus,
-          isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
-        )
-      } else {
-        device.copy(
-          connectionStatus = connectionStatus,
-          isWeighOnlyModeEnabledByOthers = false,
-        )
-      }
-
-      deviceRepository.updateDevice(updatedDevice, currentAccountId!!)
-
-      // Update the local state immediately
-      val currentDevices = _pairedScales.value.toMutableList()
-      val deviceIndex = currentDevices.indexOfFirst { it.id == updatedDevice.id }
-      if (deviceIndex >= 0) {
-        currentDevices[deviceIndex] = updatedDevice
-        _pairedScales.value = currentDevices
-      }
-
-      AppLog.d(
-        tag,
-        "Device updated: ${device.device?.deviceName}, isWeighOnlyModeEnabledByOthers: ${updatedDevice.isWeighOnlyModeEnabledByOthers}",
-      )
-    } catch (e: Exception) {
-      AppLog.e(tag, "Error updating device", e)
-    }
   }
 
   /**
@@ -213,22 +123,14 @@ constructor(
         deviceRepository.getDevices(resolvedAccountId),
         _connectionStatusMap,
       ) { devices, connectionStatusMap ->
-        Log.d("Appviewmodel1", devices.toString())
         devices.map { device ->
           val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
-          val isConnected = connectionStatus == BLEStatus.CONNECTED
-          Log.d("Appviewmodel2", device.toString())
-          // Calculate isWeighOnlyModeEnabledByOthers based on Angular logic
-          val isWeighOnlyModeEnabledByOthers = if (isConnected && device.preferences != null && device.device != null) {
-            device.preferences.shouldMeasureImpedance == true &&
-              device.device.impedanceSwitchState == false || device.device.impedanceSwitchState == null
-          } else {
-            false
-          }
 
           device.copy(
             connectionStatus = connectionStatus,
-            isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers,
+            device = device.device?.copy(
+              isWifiConfigured = device.device.isWifiConfigured
+            ),
           )
         }
       }.collect { updatedDevices ->
@@ -261,9 +163,9 @@ constructor(
     currentAccountId = accountId
     // Cancel any existing collector job
     deviceCollectionJob?.cancel()
+    syncDevices()
     fetchScales(accountId)
     // Sync devices from API and local DB
-    syncDevices()
   }
 
   /**
@@ -295,7 +197,6 @@ constructor(
     try {
       // 1. Get locally stored devices
       val storedDevices = deviceRepository.getDevices(currentAccountId!!, false).first().toMutableList()
-
       // 2. Inject a temporary new device if passed
       tempDevice?.let {
         it.copy(isSynced = false)
@@ -316,7 +217,6 @@ constructor(
         try {
           var savedDevice = deviceRepository.saveDeviceToApi(device, currentAccountId!!)
           savedDevice = savedDevice.copy(isSynced = true)
-
           // Sync preference if needed
           if (savedDevice.deviceType == ScaleSetupType.BtWifiR4.value && savedDevice.preferences != null) {
             try {
@@ -351,7 +251,17 @@ constructor(
           deviceRepository.deleteDeviceFromDb(device.id)
         } catch (e: Exception) {
           AppLog.e(tag, "Error deleting device ${device.id}", e)
-          unsyncedDevices.add(device)
+          val errorMessage = e.message ?: ""
+          if (errorMessage.contains("Not Found")) {
+            // Device not found on server, mark as synced and deleted
+            AppLog.d(tag, "Device ${device.id} not found on server, marking as synced and deleted")
+            deviceRepository.markDeviceSynced(device.id, true)
+            deviceRepository.markDeviceDeleted(device.id, true)
+            deviceRepository.deleteDeviceFromDb(device.id)
+            // The device will be removed in the next sync cycle
+          } else {
+            unsyncedDevices.add(device)
+          }
         }
       }
     } catch (e: Exception) {
@@ -369,11 +279,12 @@ constructor(
     // 6. Get fresh data from API and merge with unsynced
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
-      apiDevices.map {
+      apiDevices.map { it ->
         val device = deviceRepository.getDevice(it.id).first()
         if (device != null) {
           it.copy(
             isSynced = true,
+            isDeleted = device.isDeleted, // Preserve the deletion status from local DB
             device = device.device?.copy(
               macAddress = device.device.macAddress,
               isWifiConfigured = device.device.isWifiConfigured,
@@ -406,9 +317,33 @@ constructor(
    *
    * @param device The device to save
    */
-  override suspend fun saveScale(device: Device) {
-    AppLog.d(tag, "saveScale (via syncDevices): ${device.id}")
-    syncDevices(device)
+  override suspend fun saveScale(device: Device): Device? {
+    val current = device
+    val scaleID = System.currentTimeMillis().toString()
+    // If your Preferences has `scaleId` (like your TS), update that:
+    val updatedPrefs = current.preferences?.copy(
+      id = scaleID,                      // use `id = scaleID` if your model uses `id`
+    )
+    var updatedDevice = current.copy(
+      id = scaleID,
+      preferences = updatedPrefs
+    )
+
+   return try{
+      val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+     if (savedDevice.preferences != null) {
+       val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
+       updatedDevice = savedDevice.copy(preferences = updatedPreferences)
+     }
+      syncDevices(savedDevice)
+      AppLog.d(tag, "saveScale (via syncDevices): ${updatedDevice.id}")
+      savedDevice
+    }
+    catch (e: Exception) {
+      AppLog.d(tag, "saveScale (via syncDevices): $e")
+      syncDevices(updatedDevice)
+      null
+    }
   }
 
   /**
@@ -434,16 +369,16 @@ constructor(
   /**
    * Update a scale's nickname.
    *
-   * @param deviceId The ID of the device
+   * @param device The ID of the device
    * @param nickname The new nickname
    */
   override suspend fun updateScaleNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ) {
-    AppLog.d(tag, "Updating scale nickname: $deviceId -> $nickname")
+    AppLog.d(tag, "Updating scale nickname: $device -> $nickname")
     try {
-      deviceRepository.updateDeviceNickname(deviceId, nickname)
+      deviceRepository.updateDeviceNickname(device, nickname)
       AppLog.d(tag, "Scale nickname updated successfully")
     } catch (e: Exception) {
       AppLog.e(tag, "Error updating scale nickname", e)
@@ -518,20 +453,7 @@ constructor(
    */
   override suspend fun getUnsyncedScales(): List<Device> = _pairedScales.value.filter { !it.hasServerID }
 
-  /**
-   * Check if a scale exists by broadcast ID.
-   *
-   * @param broadcastId The broadcast ID to check
-   * @return True if the scale exists, false otherwise
-   */
-  override suspend fun scaleExistsByBroadcastId(broadcastId: String): Boolean =
-    try {
-      _pairedScales.value.any { it.device?.broadcastId == broadcastId }
-      deviceRepository.deviceExistsByBroadcastId(broadcastId).first()
-    } catch (e: Exception) {
-      AppLog.e(tag, "Error checking scale existence by broadcast ID", e)
-      false
-    }
+
 
   /**
    * Check if a scale exists by MAC address.

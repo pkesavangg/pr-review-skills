@@ -13,9 +13,9 @@ struct GraphViewModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .frame(height: 265)
+            .frame(height: 265) 
             .frame(maxWidth: .infinity, minHeight: 240)
-            .padding(.leading, isAtLeftBoundary ? .spacingXS : 0)
+            .padding(.leading, 0)
             .padding(.trailing, .spacingXS)
     }
 }

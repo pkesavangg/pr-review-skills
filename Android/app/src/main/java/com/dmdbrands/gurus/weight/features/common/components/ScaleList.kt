@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -78,7 +77,6 @@ fun ScaleList(
     state = lazyListState,
     modifier = modifier
       .fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(spacing.xs),
   ) {
     header?.let { item(key = "header") { it() } }
     // Header item - Segment control

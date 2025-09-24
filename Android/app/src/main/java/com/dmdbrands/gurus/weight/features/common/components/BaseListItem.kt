@@ -111,6 +111,7 @@ fun BaseListItem(
         id = if (isChecked) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
         contentDescription = checkboxDescription ?: "",
         type = AppIconType.Primary,
+        onClick = onClick,
         modifier = Modifier.size(24.dp),
       )
     }
@@ -185,7 +186,7 @@ fun BaseListItemAllCombinationsPreview() {
       )
       // Checkbox (checked)
       BaseListItem(
-        title = "Checked Checkbox",
+        title = "With Checkbox Selected",
         enableCheckbox = true,
         isChecked = true,
         checkboxDescription = "Select item",

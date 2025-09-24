@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,15 +12,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleUtility
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 enum class ScaleImageSize { Small, Medium, Large }
@@ -47,13 +47,15 @@ fun AppScaleImage(
       modifier =
         Modifier
           .size(ScaleImageDefaults.size(scaleImageSize))
-          .clip(RoundedCornerShape(borderRadius.xs))
-          .shadow(
-              shape = RoundedCornerShape(borderRadius.sm),
-            elevation = spacing.sm,
-            spotColor = colorScheme.glow,
-            ambientColor = colorScheme.glow,
-          ),
+          .dropShadow(
+            shape = RoundedCornerShape(borderRadius.sm),
+            shadow = Shadow(
+              radius = spacing.sm,
+              spread = (-4).dp,
+              color = MeTheme.colorScheme.glow,
+              offset = DpOffset(x = 0.dp, 0.dp),
+            ),
+          ).clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
       Image(

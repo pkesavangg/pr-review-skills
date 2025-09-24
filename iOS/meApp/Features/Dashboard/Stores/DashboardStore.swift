@@ -193,32 +193,26 @@ class DashboardStore: ObservableObject {
     }
     
     var metricGridColumns: [GridItem] {
-        if cachedDashboardType == nil {
-            cachedDashboardType = determineDashboardTypeFromAccount()
-        }
-        return metricsManager.getMetricGridColumns(for: cachedDashboardType ?? .dashboard4)
+        return metricsManager.getMetricGridColumns(for: effectiveDashboardType)
     }
     
     var metricsToShow: [MetricItem] {
-        // Cache dashboard type to prevent excessive calls during scroll
-        if cachedDashboardType == nil {
-            cachedDashboardType = determineDashboardTypeFromAccount()
-        }
         let result = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
-            dashboardType: cachedDashboardType ?? .dashboard12,
+            dashboardType: effectiveDashboardType,
             removedMetrics: state.ui.removedMetrics
         )
         return result
     }
     
-    // Cache dashboard type to prevent repeated calls
-    private var cachedDashboardType: DashboardType?
     
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
         // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
-        state.metrics.dashboardType
+        let result = state.metrics.dashboardType
+        logger.log(level: .debug, tag: "DashboardStore", 
+                  message: "effectiveDashboardType: \(result.rawValue)")
+        return result
     }
     
     var streakColumns: [GridItem] {
@@ -345,18 +339,7 @@ class DashboardStore: ObservableObject {
     }
     
     var displayWeight: Double? {
-        // If a crosshair date is selected (can be on empty day), compute interpolated weight at that date
-        if let selectedDate = state.graph.selectedXValue {
-            return graphManager.interpolatedDisplayWeight(
-                at: selectedDate,
-                from: continuousOperations,
-                isWeightlessMode: isWeightlessModeEnabled,
-                anchorWeight: weightlessAnchorWeight,
-                convertWeight: goalManager.convertWeightToDisplay
-            )
-        }
-
-        // If a concrete point is selected, show its weight value
+        // If a concrete point is selected, ALWAYS show its exact weight value
         if let selectedPoint = state.graph.selectedPoint {
             if isWeightlessModeEnabled {
                 guard let anchorWeight = weightlessAnchorWeight else { return nil }
@@ -365,6 +348,17 @@ class DashboardStore: ObservableObject {
             } else {
                 return goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
             }
+        }
+
+        // Else, if a crosshair date is selected (can be on empty day), compute interpolated weight at that date
+        if let selectedDate = state.graph.selectedXValue {
+            return graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
         }
         
         // When no selection, show average of visible region if available
@@ -393,9 +387,9 @@ class DashboardStore: ObservableObject {
         case .total:
             return labelForTotalPeriod()
         case .year:
-            return labelForYearPeriod(ops: visibleOperations, lastScrollPosition: lastScrollPosition)
+            return labelForYearGridlines()
         case .month:
-            return labelForMonthPeriod(ops: visibleOperations, lastScrollPosition: lastScrollPosition)
+            return labelForMonthGridlines()
         default:
             return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
@@ -425,8 +419,17 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty && state.graph.selectedPoint == nil{
+        if visibleOperations.isEmpty && state.graph.selectedXValue == nil && state.graph.selectedPoint == nil{
             return "no entries"
+        }
+        // If a point is selected, override period label granularity
+        if state.graph.selectedXValue != nil {
+            switch state.graph.selectedPeriod {
+            case .week, .month:
+                return "day average"
+            case .year, .total:
+                return "month average"
+            }
         }
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
     }
@@ -541,17 +544,26 @@ class DashboardStore: ObservableObject {
         initializeChart()
     }
     
-    // MARK: - Dashboard Type Management
-    
-    
-    
-    
+    // MARK: - Dashboard Type Management   
+
     
     // MARK: - Dashboard Type Logic
     
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
-        return .dashboard12
+        guard let account = accountService.activeAccount,
+              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
+            return .dashboard12
+        }
+        
+        switch dashboardTypeString {
+        case "dashboard4":
+            return .dashboard4
+        case "dashboard12":
+            return .dashboard12
+        default:
+            return .dashboard12
+        }
     }
     
     // MARK: - Data Loading Methods
@@ -600,6 +612,11 @@ class DashboardStore: ObservableObject {
         do {
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
+            
+            // Sync the dashboard type from metrics manager to store state
+            await MainActor.run {
+                state.metrics.dashboardType = metricsManager.state.dashboardType
+            }
             
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
@@ -1321,6 +1338,9 @@ class DashboardStore: ObservableObject {
             chartHeight: state.graph.chartHeight
         )
         
+        // Invalidate chart series cache so metric normalization recomputes using the new Y-axis domain
+        cachedChartSeriesData = nil
+        
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
     }
     
@@ -1359,79 +1379,106 @@ class DashboardStore: ObservableObject {
         return graphManager.fallbackTimeLabel(for: .total)
     }
 
-    private func labelForYearPeriod(ops: [BathScaleWeightSummary], lastScrollPosition: Date) -> String {
-        if ops.isEmpty {
-            let cal = Calendar.current
-            let center = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .year) / 2)
-            if let yearInterval = cal.dateInterval(of: .year, for: center) {
-                let minDate = yearInterval.start
-                let maxDate = yearInterval.end
-                return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .year)
-            }
-            return graphManager.fallbackTimeLabel(for: .year)
-        }
+    
 
-        guard let minDate = ops.map({ $0.date }).min(),
-              let maxDate = ops.map({ $0.date }).max() else {
-            return graphManager.fallbackTimeLabel(for: .year)
-        }
-
-        let calendar = Calendar.current
-        let minComponents = calendar.dateComponents([.month, .year], from: minDate)
-        let maxComponents = calendar.dateComponents([.month, .year], from: maxDate)
-
-        guard let minMonthIndex = minComponents.month,
-              let maxMonthIndex = maxComponents.month,
-              let minYear = minComponents.year,
-              let maxYear = maxComponents.year else {
-            return graphManager.fallbackTimeLabel(for: .year)
-        }
-
-        let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
-        let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
-
-        if minYear != maxYear {
-            return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
+    // New: Year label based on visible X-axis gridlines instead of chart points
+    private func labelForYearGridlines() -> String {
+        let period: TimePeriod = .year
+        let leftEdge = graphManager.state.xScrollPosition
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        let ticks = xAxisValuesWithBuffer(for: period)
+        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
+        let startDate: Date
+        let endDate: Date
+        if let first = visibleTicks.first, let last = visibleTicks.last {
+            startDate = first
+            endDate = last
         } else {
-            return "\(minYear)"
+            startDate = leftEdge
+            endDate = rightEdge
         }
+        return formatYearRangeLabel(from: startDate, to: endDate)
     }
 
-    private func labelForMonthPeriod(ops: [BathScaleWeightSummary], lastScrollPosition: Date) -> String {
-        if ops.isEmpty {
-            let minDate = lastScrollPosition
-            let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .month)
+    private func formatYearRangeLabel(from start: Date, to end: Date) -> String {
+        let cal = Calendar.current
+        let sameYear = cal.isDate(start, equalTo: end, toGranularity: .year)
+        if sameYear {
+            // Full calendar year (Jan..Dec) → show just "yyyy"
+            let startMonth = cal.component(.month, from: start)
+            let endMonth = cal.component(.month, from: end)
+            if startMonth == 1 && endMonth == 12 {
+                return DateTimeTools.formatter("yyyy").string(from: start)
+            }
+            // Same calendar year partial → "MMM - MMM, yyyy" (or "MMM yyyy" if same month)
+            let sameMonth = cal.isDate(start, equalTo: end, toGranularity: .month)
+            if sameMonth {
+                return DateTimeTools.formatter("MMM yyyy").string(from: start)
+            }
+            let startStr = DateTimeTools.formatter("MMM").string(from: start)
+            let endStr = DateTimeTools.formatter("MMM, yyyy").string(from: end)
+            return "\(startStr) - \(endStr)"
         }
+        // Cross-year → "MMM yyyy - MMM, yyyy"
+        let s = DateTimeTools.formatter("MMM yyyy").string(from: start)
+        let e = DateTimeTools.formatter("MMM, yyyy").string(from: end)
+        return "\(s) - \(e)"
+    }
 
-        guard let minDate = ops.map({ $0.date }).min(),
-              let maxDate = ops.map({ $0.date }).max() else {
-            return graphManager.fallbackTimeLabel(for: .month)
+    
+
+    // New: Month label based on visible X-axis gridlines instead of chart points
+    private func labelForMonthGridlines() -> String {
+        let period: TimePeriod = .month
+        // Visible window boundaries (strict)
+        let leftEdge = graphManager.state.xScrollPosition
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        // Special-case: if window exactly spans the full month, show "MMM yyyy"
+        if let monthInterval = Calendar.current.dateInterval(of: .month, for: leftEdge) {
+            let startOfMonth = monthInterval.start
+            let inclusiveEnd = Calendar.current.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
+            // Compare by day granularity to avoid hour/timezone differences
+            let coversFullMonth = Calendar.current.isDate(leftEdge, inSameDayAs: startOfMonth) &&
+            Calendar.current.isDate(rightEdge, inSameDayAs: inclusiveEnd)
+            if coversFullMonth {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startOfMonth)
+            }
         }
-
-        let calendar = Calendar.current
-        let minComponents = calendar.dateComponents([.day, .month, .year], from: minDate)
-        let maxComponents = calendar.dateComponents([.day, .month, .year], from: maxDate)
-
-        guard let minDay = minComponents.day,
-              let maxDay = maxComponents.day,
-              let minMonthIndex = minComponents.month,
-              let maxMonthIndex = maxComponents.month,
-              let minYear = minComponents.year,
-              let maxYear = maxComponents.year else {
-            return graphManager.fallbackTimeLabel(for: .month)
-        }
-
-        let minMonth = calendar.shortMonthSymbols[minMonthIndex - 1]
-        let maxMonth = calendar.shortMonthSymbols[maxMonthIndex - 1]
-
-        if minMonthIndex == maxMonthIndex && minYear == maxYear {
-            return "\(minMonth) \(minYear)"
-        } else if minYear == maxYear {
-            return "\(minDay) \(minMonth) - \(maxDay) \(maxMonth) \(minYear)"
+        // Get generated X-axis values (may include buffer); filter to strictly visible window
+        let ticks = xAxisValuesWithBuffer(for: period)
+        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
+        let startDate: Date
+        let endDate: Date
+        if let first = visibleTicks.first, let last = visibleTicks.last {
+            startDate = first
+            endDate = last
         } else {
-            return "\(minMonth) \(minYear) - \(maxMonth), \(maxYear)"
+            // Fallback: use window edges when no ticks fall strictly inside
+            startDate = leftEdge
+            endDate = rightEdge
         }
+        return formatMonthRangeLabel(from: startDate, to: endDate)
+    }
+
+    private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
+        let calendar = Calendar.current
+        let sameYear = calendar.isDate(start, equalTo: end, toGranularity: .year)
+        let sameMonth = calendar.isDate(start, equalTo: end, toGranularity: .month)
+
+        // Cross-year: include years on both sides
+        if !sameYear {
+            let fmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
+        }
+
+        // Same month (within same year): always show "MMM yyyy"
+        if sameMonth {
+            return DateTimeTools.formatter("MMM yyyy").string(from: start)
+        }
+
+        // Cross-month within same year: omit year on sides → "MMM d - MMM d"
+        let fmt = DateTimeTools.formatter("MMM d")
+        return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
     }
 
     private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {
@@ -1758,7 +1805,6 @@ class DashboardStore: ObservableObject {
     
     /// Clears all performance caches when data changes
     private func clearAllCaches() {
-        cachedDashboardType = nil
         cachedChartSeriesData = nil
         cachedVisibleOperations = []
         lastVisibleOperationsCacheTime = Date.distantPast

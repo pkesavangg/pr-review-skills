@@ -92,8 +92,13 @@ object AppPermissionsHelper {
    * Maps the permission state map to a grouped list of UI models for the permissions screen.
    */
   fun mapToPermissionGroups(permissionMap: GGPermissionStatusMap): List<PermissionGroup> {
-    // Build PermissionItems for all known types
+    // Build PermissionItems for all known types, excluding WIFI_SWITCH_LOCATION which is only for WiFi scale setup
     val items = permissionMetaMap.mapNotNull { (type, meta) ->
+      // Skip WIFI_SWITCH_LOCATION in general permissions screen - it's only for WiFi scale setup
+      if (type == CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
+        return@mapNotNull null
+      }
+      
       val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
       val status = when (value) {
         PermissionState.ENABLED -> PermissionItemStatus.Granted
@@ -298,8 +303,13 @@ object AppPermissionsHelper {
 
     return requiredPermissionTypes.all { permissionType ->
       // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
-      val actualPermissionType =
-        if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value) GGPermissionType.WIFI_SWITCH else permissionType
+      // But only for WiFi scale types (Wifi, EspTouchWifi)
+      val actualPermissionType = if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value && 
+        (scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi)) {
+        GGPermissionType.WIFI_SWITCH
+      } else {
+        permissionType
+      }
       val permissionState = permissionMap[actualPermissionType] ?: PermissionState.NOT_DETERMINED
       permissionState == PermissionState.ENABLED
     }

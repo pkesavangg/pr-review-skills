@@ -536,6 +536,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 self.yAxisTicks = cachedTicks
             }
         }
+
+        // Y-axis domain/ticks affect normalized metric series values.
+        // Invalidate and refresh cached series so plotted points match the new domain.
+        invalidateCache()
+        updateCachedSeriesData()
     }
 
     /// Determines if a date should show a solid vertical line (start of week/month/year)

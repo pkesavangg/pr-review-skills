@@ -1,10 +1,9 @@
 package com.dmdbrands.gurus.weight.domain.model.api.device
 
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import java.util.UUID
-import android.util.Log
 
 /**
  * Extension functions to map API models to domain models.
@@ -64,7 +63,6 @@ fun Device.toApiModel(): DeviceApiModel =
 fun convertHexToInt(value: String?): Long? {
   // Scales' broadcastIds and passwords are returned as hex strings, but need to be
   // stored as an integer
-  Log.d("TAG", "convertHexToInt - converting value: $value")
 
   if (value.isNullOrBlank()) return null
   else {

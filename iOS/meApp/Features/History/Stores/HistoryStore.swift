@@ -186,15 +186,30 @@ final class HistoryStore: ObservableObject {
     func loadEntries(for month: HistoryMonth? = nil, showLoader: Bool = true) async {
         let selectedMonth = month ?? self.selectedMonth
         guard let selectedMonth else { return }
-        
+
         if showLoader { notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
         defer { if showLoader { notificationService.dismissLoader() } }
-        
+
         do {
             let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
+            // Log original count for debugging
+            logger.log(level: .debug, tag: tag, message: "Fetched \(fetched.count) entries for month \(selectedMonth.id)")
+            
+            // UI-level deduplication:
+            // Fixes duplicate history entries from wifi scales by grouping on entryTimestamp and keeping the latest by serverTimestamp.
+            let deduplicated = Dictionary(
+                grouping: fetched,
+                by: { $0.entryTimestamp }
+            ).compactMap { $0.value.max(by: { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }) }
+            
+            // Log deduplication results
+            let duplicateCount = fetched.count - deduplicated.count
+            if duplicateCount > 0 {
+                logger.log(level: .info, tag: tag, message: "Removed \(duplicateCount) duplicate entries for month \(selectedMonth.id)")
+            }
             
             // Parse once per entry, then sort on the parsed timestamp
-            let pairs = fetched.map { entry -> (Entry, Int64) in
+            let pairs = deduplicated.map { entry -> (Entry, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
             }
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
@@ -205,7 +220,6 @@ final class HistoryStore: ObservableObject {
             self.entries = []
         }
     }
-    
     
     private func deleteEntryInternal(_ entry: Entry) async {
         do {

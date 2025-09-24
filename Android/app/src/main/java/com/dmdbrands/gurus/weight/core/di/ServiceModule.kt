@@ -280,6 +280,7 @@ object ServiceModule {
     fun provideOfflineHandlerService(
       accountRepository: IAccountRepository,
       bodyCompositionRepository: IBodyCompositionRepository,
+      deviceService: IDeviceService,
       notificationRepository: INotificationRepository,
       userSettingsRepository: IUserSettingsRepository,
       goalRepository: IGoalRepository,
@@ -290,6 +291,7 @@ object ServiceModule {
       OfflineHandlerService(
         accountRepository,
         bodyCompositionRepository,
+        deviceService,
         notificationRepository,
         userSettingsRepository,
         goalRepository,

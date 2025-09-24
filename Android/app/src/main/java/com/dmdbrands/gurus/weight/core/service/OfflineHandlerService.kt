@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +32,7 @@ class OfflineHandlerService
   constructor(
     private val accountRepository: IAccountRepository,
     private val bodyCompositionRepository: IBodyCompositionRepository,
+    private val deviceService: IDeviceService,
     private val notificationRepository: INotificationRepository,
     private val userSettingsRepository: IUserSettingsRepository,
     private val goalRepository: IGoalRepository,
@@ -58,6 +60,8 @@ class OfflineHandlerService
         syncProfileData()
         // Sync body composition data if there are unsynced body comp accounts
         syncBodyCompositionData()
+        // Sync device data if there are unsynced devices
+        syncDeviceData()
         // Sync notification settings if there are unsynced notification accounts
         syncNotificationData()
         syncGoalData()
@@ -230,6 +234,19 @@ class OfflineHandlerService
         AppLog.i(TAG, "Successfully synced weightless settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to sync weightless settings for account ${unsyncedAccount.id}", e)
+      }
+    }
+
+    /**
+     * Syncs device data using DeviceService.
+     */
+    private suspend fun syncDeviceData() {
+      try {
+        AppLog.d(TAG, "Syncing devices using DeviceService")
+        deviceService.syncDevices()
+        AppLog.i(TAG, "Device sync completed")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during device sync", e)
       }
     }
   }
