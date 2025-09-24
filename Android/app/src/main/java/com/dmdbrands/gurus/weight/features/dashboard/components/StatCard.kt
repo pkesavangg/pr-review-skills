@@ -106,7 +106,7 @@ internal fun StatCard(
         .fillMaxSize()
         .padding(vertical = MeTheme.spacing.sm)
         .then(
-          if (isFromSetup) Modifier.height(55.dp) else Modifier,
+          if (isFromSetup) Modifier.height(65.dp) else Modifier,
         ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
@@ -122,15 +122,16 @@ internal fun StatCard(
       Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = contentHorizonalAlignment,
+        modifier = Modifier.fillMaxSize(),
       ) {
         if (stat.icon != null && hideMetricData) {
           AppIcon(
             id = stat.icon,
             contentDescription = stat.label,
             modifier = Modifier.size(24.dp),
-            tintColor = MeTheme.colorScheme.iconPrimary,
+            tintColor = MeTheme.colorScheme.secondaryAction,
           )
-          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+          Spacer(modifier = Modifier.size(MeTheme.spacing.x2s))
         }
         if (shouldShowMetricData) {
           Text(
@@ -144,6 +145,8 @@ internal fun StatCard(
           style = MeTheme.typography.subHeading2,
           textAlign = TextAlign.Center,
           color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
+          maxLines = 2,
+          minLines = 1,
         )
       }
     }
