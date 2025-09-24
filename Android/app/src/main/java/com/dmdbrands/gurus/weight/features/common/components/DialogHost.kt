@@ -199,10 +199,12 @@ fun DialogHost() {
 
       DialogType.ScaleName -> {
         val scaleId = dialog.params["scaleId"] as? String ?: ""
+        val accountId = dialog.params["accountId"] as? String
         ScaleNameModal(
           scaleId = scaleId,
+          accountId = accountId,
           onDismiss = {
-            dialog.onDismiss?.let { it() }
+            dialog.onDismiss?.invoke()
             dialogQueueViewModel.dismissCurrent()
           },
         )

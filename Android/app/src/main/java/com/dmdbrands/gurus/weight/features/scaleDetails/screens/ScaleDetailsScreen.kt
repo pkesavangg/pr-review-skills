@@ -89,7 +89,7 @@ fun ScaleDetailsScreenContent(
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
   val device = state.scale
-  val scaleName = device?.nickname ?: device?.device?.deviceName ?: ""
+  val scaleName = device?.nickname
   val scaleSetupType =
     device?.deviceType?.let { ScaleSetupType.fromString(it) } ?: ScaleSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi
@@ -281,7 +281,7 @@ fun ScaleDetailsScreenContent(
                 title = ScaleDetailsStrings.ScaleName,
                 type =
                   SettingsItemType.TextOnly(
-                    device?.nickname ?: "",
+                    scaleName ?: "",
                   ),
                 onClick = {
                   handleIntent(ScaleDetailsIntent.ShowScaleNameModal)

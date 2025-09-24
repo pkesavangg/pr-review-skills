@@ -31,11 +31,16 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 @Composable
 fun ScaleNameModal(
   scaleId: String,
+  accountId: String? = null,
   onDismiss: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val viewmodelKey = remember(scaleId, accountId) {
+    "scale_${scaleId}_account_${accountId ?: "default"}"
+  }
   val viewModel: ScaleDetailsViewModel =
     hiltViewModel<ScaleDetailsViewModel, ScaleDetailsViewModel.Factory>(
+      key = viewmodelKey,
       creationCallback = { factory ->
         factory.create(scaleId)
       },
@@ -45,10 +50,10 @@ fun ScaleNameModal(
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }
 
-  // Repopulate form with current scale name when dialog opens
+  // Repopulate form with current scale name when scale data changes
   LaunchedEffect(state.scale) {
     state.scale?.let { scale ->
-      val scaleName = scale.nickname ?: ""
+      val scaleName = scale.nickname
       if (scaleName.isNotEmpty() && state.scaleNameForm.controls.name.value != scaleName) {
         viewModel.handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
       }
@@ -100,6 +105,7 @@ fun ScaleNameModalPreview() {
   MeAppTheme {
     ScaleNameModal(
       scaleId = "1212121",
+      accountId = "account123",
       onDismiss = {},
     )
   }

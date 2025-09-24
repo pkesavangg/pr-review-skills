@@ -3,9 +3,11 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -37,8 +39,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.util.Log
 
 /**
  * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
@@ -49,6 +51,7 @@ import android.util.Log
 class ScaleDetailsViewModel
 @AssistedInject
 constructor(
+  private var accountService: AccountService,
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
   private val permissionService: GGPermissionService,
@@ -62,8 +65,15 @@ constructor(
     fun create(scaleId: String): ScaleDetailsViewModel
   }
 
+  private var activeAccount: Account? = null
+
   init {
+    observeAccountChanges()
     provideInitialState()
+    setScaleDetails()
+    observePermissions()
+    configureR4ScaleDetails()
+    observeScaleConnectionChanges()
   }
 
   override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState(
@@ -130,11 +140,12 @@ constructor(
     }
   }
 
-  init {
-    setScaleDetails()
-    observePermissions()
-    configureR4ScaleDetails()
-    observeScaleConnectionChanges()
+  private fun observeAccountChanges(){
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect {
+        activeAccount = it
+      }
+    }
   }
 
   private fun configureR4ScaleDetails() {
@@ -183,6 +194,8 @@ constructor(
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
             handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+            val scaleName = scale.nickname
+            handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
             getDeviceInfo()
           }
         }
@@ -192,13 +205,18 @@ constructor(
 
   private fun setScaleDetails() {
     viewModelScope.launch {
+
+      // Then observe for changes
       deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
+          AppLog.d(TAG, "Updating scale info for: ${scaleDevice.nickname}")
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
           handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+        } ?: run {
+          AppLog.w(TAG, "No device found for scaleId: $scaleId")
         }
       }
     }
@@ -281,7 +299,6 @@ constructor(
       }
     }
     catch (e: Exception){
-      Log.d("hello5","scaledeleted")
       dialogQueueService.dismissLoader()
       AppLog.d(TAG,"Error while deleting an scale")
     }
@@ -300,14 +317,15 @@ constructor(
   }
 
   /**
-   * Opens the Forgot Password modal.
+   * Opens the Scale Name modal.
    */
   private fun openScaleNameModal() {
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.ScaleName,
         params = mapOf(
-          "scaleId" to scaleId,
+          "scaleId" to (state.value.scale?.id ?: scaleId),
+          "accountId" to (activeAccount?.id ?: ""),
         ),
       ),
     )
