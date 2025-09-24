@@ -37,6 +37,7 @@ sealed interface HistoryIntent : IReducer.Intent {
     ) : HistoryIntent
 
     object Export : HistoryIntent
+  object OnConnectScale : HistoryIntent
 }
 
 /**

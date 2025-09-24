@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -19,7 +18,6 @@ import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
-import com.dmdbrands.gurus.weight.features.common.components.AppToggle
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonData
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
@@ -64,18 +62,15 @@ fun GoalStep(
   goalTypeControl: FormControl<String>,
   currentWeightControl: FormControl<String>,
   goalWeightControl: FormControl<String>,
-  useMetricControl: FormControl<Boolean>? = null,
-  onMetricToggle: (Boolean) -> Unit = {},
+  isMetric: Boolean = false,
   onGoalTypeChange: (GoalType) -> Unit = {},
   onNext: () -> Unit = {},
   showCurrentWeightForMaintain: Boolean = true,
-  showMetricToggle: Boolean = true,
   initialWeightUnit: WeightUnit? = null,
 ) {
   val currentWeightFocusRequester = remember { FocusRequester() }
   val goalWeightFocusRequester = remember { FocusRequester() }
 
-  val isMetric = if (showMetricToggle) (useMetricControl?.value ?: false) else initialWeightUnit == WeightUnit.KG
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
   // Initialize weight validators based on initial weight unit or metric toggle
@@ -158,26 +153,6 @@ fun GoalStep(
     )
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
 
-    // Metric Toggle Section - only show if enabled
-    if (showMetricToggle) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        AppText(
-          text = SignupStrings.goalStepUseMetric,
-          textType = TextType.Body,
-        )
-        AppToggle(
-          checked = isMetric,
-          onCheckedChange = { newValue ->
-            useMetricControl?.onValueChange(newValue)
-            onMetricToggle(newValue)
-          },
-        )
-      }
-    }
   }
 }
 
@@ -189,11 +164,8 @@ fun GoalStepPreview() {
       goalTypeControl = FormControl.create("losegain", listOf(FormValidations.required())),
       currentWeightControl = FormControl.create("", listOf(FormValidations.required())),
       goalWeightControl = FormControl.create("", listOf(FormValidations.required())),
-      useMetricControl = FormControl.create(false, emptyList()),
-      onMetricToggle = {},
       onGoalTypeChange = {},
       onNext = {},
-      showMetricToggle = true,
       title = SignupStrings.goalStepTitle,
     )
   }

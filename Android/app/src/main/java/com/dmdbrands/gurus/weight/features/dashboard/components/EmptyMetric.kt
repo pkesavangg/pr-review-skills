@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 @Composable
-fun EmptyMetric() {
+fun EmptyMetric(onConnectScaleClick: () -> Unit) {
   val lang = DashboardString.EmptyMetric
   Column(
     modifier = Modifier
@@ -33,7 +33,7 @@ fun EmptyMetric() {
     )
     AppButton(
       label = lang.connectScale,
-      onClick = { },
+      onClick = { onConnectScaleClick() },
     )
   }
 }

@@ -286,18 +286,13 @@ constructor(
         AppLog.d(TAG, "No active account found, skipping goal card check")
         return
       }
-
-      // Check if user has a goal set (check goal type)
       val currentGoal = getCurrentGoal().first()
-
       val isPopupShowed = goalAlertDataStore.getGoalCardValue(account.id)
       if (isPopupShowed != null) {
         AppLog.d(TAG, "Goal card already shown for account ${account.id}")
         return
       }
-
       AppLog.i(TAG, "All conditions met - showing goal card popup for account ${account.id}")
-
       // Mark popup as shown first (like Angular implementation)
       if(
         account.goalType == null

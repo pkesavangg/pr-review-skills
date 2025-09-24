@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -49,6 +48,7 @@ fun GoalProgressMilestoneCard(
   progress: Progress,
   inEditMode: Boolean,
   isVisible: Boolean = true,
+  latestWeight: Double? = null,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {}
 ) {
@@ -108,10 +108,9 @@ fun GoalProgressMilestoneCard(
       // If we have the required account/goal context, render; otherwise, no-op.
       val account = progress.goal?.account
       if (account != null) {
-        val latest = (progress.latest as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
         GoalMilestoneDisplay(
           account = account,
-          latestWeight = latest,
+          latestWeight = latestWeight,
           modifier = Modifier
             .fillMaxWidth(),
         )

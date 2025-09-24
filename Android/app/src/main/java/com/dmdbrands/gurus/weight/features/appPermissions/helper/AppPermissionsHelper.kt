@@ -298,8 +298,13 @@ object AppPermissionsHelper {
 
     return requiredPermissionTypes.all { permissionType ->
       // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
-      val actualPermissionType =
-        if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value) GGPermissionType.WIFI_SWITCH else permissionType
+      // But only for WiFi scale types (Wifi, EspTouchWifi)
+      val actualPermissionType = if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value && 
+        (scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi)) {
+        GGPermissionType.WIFI_SWITCH
+      } else {
+        permissionType
+      }
       val permissionState = permissionMap[actualPermissionType] ?: PermissionState.NOT_DETERMINED
       permissionState == PermissionState.ENABLED
     }

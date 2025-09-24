@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -44,7 +43,6 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 @Composable
 fun DashboardScreen() {
@@ -118,7 +116,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
       )
       if(state.dayWiseEntries.isEmpty()) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
-        EmptyMetric()
+        EmptyMetric(onConnectScaleClick = {
+          handleIntent(DashboardIntent.OnConnectScale)
+        })
       } else {
         DashboardMetrics(
           metricData = metricData,
@@ -138,6 +138,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         )
         DashboardMilestone(
           progress = state.progress,
+          latestWeight = state.latestWeight,
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->

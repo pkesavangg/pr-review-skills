@@ -29,6 +29,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -504,32 +505,47 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   }
 
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
-    AppLog.d(TAG, "Subscribing to permissions")
-    return combine(
-      permissionService.permissionCallBackFlow,
-      connectivityObserver.observe(),
-    ) { permissions, networkState ->
-      val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-      val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
-
-      AppLog.d(TAG, "Permission status - Network: $networkStatus, WiFi Switch: $wifiSwitchStatus")
-
-      // WiFi switch is enabled if either network is available OR WiFi switch is enabled
-      val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-        wifiSwitchStatus == GGPermissionState.ENABLED
-      ) {
-        GGPermissionState.ENABLED
-      } else {
-        GGPermissionState.DISABLED
+    AppLog.d(TAG, "Subscribing to permissions for protocol: $protocolType")
+    
+    // For Bluetooth and LCBT scales, skip network connectivity check since they don't require WiFi
+    val isBluetoothScale = protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value || 
+                          protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
+    
+    return if (isBluetoothScale) {
+      AppLog.d(TAG, "Bluetooth/LCBT scale detected, skipping network connectivity check")
+      permissionService.permissionCallBackFlow.map { permissions ->
+        // Reset processing flag when permissions are updated
+        isProcessingPermissions = false
+        permissions
       }
+    } else {
+      AppLog.d(TAG, "WiFi-enabled scale detected, using combined permission and network flow")
+      combine(
+        permissionService.permissionCallBackFlow,
+        connectivityObserver.observe(),
+      ) { permissions, networkState ->
+        val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
+        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
 
-      AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+        AppLog.d(TAG, "Permission status - Network: $networkStatus, WiFi Switch: $wifiSwitchStatus")
 
-      // Reset processing flag when permissions are updated
-      isProcessingPermissions = false
+        // WiFi switch is enabled if either network is available OR WiFi switch is enabled
+        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+          wifiSwitchStatus == GGPermissionState.ENABLED
+        ) {
+          GGPermissionState.ENABLED
+        } else {
+          GGPermissionState.DISABLED
+        }
 
-      permissions.toMutableMap().apply {
-        put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+
+        // Reset processing flag when permissions are updated
+        isProcessingPermissions = false
+
+        permissions.toMutableMap().apply {
+          put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        }
       }
     }
   }

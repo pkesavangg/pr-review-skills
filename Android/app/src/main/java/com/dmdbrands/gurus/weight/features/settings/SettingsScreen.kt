@@ -171,7 +171,7 @@ fun SettingsScreenContent(
             ),
             SettingsItem(
               title = SettingsScreenStrings.Weightless,
-              type = SettingsItemType.TextOnly(
+              type = SettingsItemType.Action(
                 viewModel?.getWeightlessDisplayText() ?: "Off",
               ),
               onClick = {

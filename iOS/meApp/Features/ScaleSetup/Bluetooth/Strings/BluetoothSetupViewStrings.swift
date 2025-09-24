@@ -20,7 +20,7 @@ struct BluetoothSetupViewStrings {
     }
     
     struct StepOnViewStrings {
-        static let title = "Time to weigh in!"
+        static let title = "Let’s weigh in!"
         static let description = "Set your scale on a hard, flat surface, step on, and wait for your results."
         static let syncingInfo : (Bool) -> String = { isSynced in
             isSynced ? "Synced!" : "Syncing ..."

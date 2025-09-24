@@ -71,7 +71,13 @@ class GGDeviceService @Inject constructor(
     disconnect: Boolean = false,
     callback: (GGUserActionResponseType) -> Unit
   ) {
-    ggBluetooth.deleteUser(device, disconnect, callback)
+    try {
+      ggBluetooth.deleteUser(device, disconnect, callback)
+    }
+    catch (e: Exception){
+      throw e
+    }
+
   }
 
   fun getUsers(

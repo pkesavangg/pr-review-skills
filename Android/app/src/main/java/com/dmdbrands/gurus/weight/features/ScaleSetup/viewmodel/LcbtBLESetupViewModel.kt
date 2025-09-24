@@ -245,7 +245,8 @@ constructor(
     viewModelScope.launch {
       try {
         subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
-          val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
+          val areRequiredPermissionsEnabled =
+            AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, setupType = ScaleSetupType.Lcbt)
           AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
           handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
           if (isPermissionGranted != areRequiredPermissionsEnabled) {

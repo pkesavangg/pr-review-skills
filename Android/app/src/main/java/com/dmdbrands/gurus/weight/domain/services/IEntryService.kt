@@ -34,4 +34,11 @@ interface IEntryService {
 
   fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
+  /**
+   * Initializes goal card monitoring by checking entry count and setting up listeners.
+   * This function monitors the lastUpdated flow and checks if the user has enough entries
+   * to display the goal card.
+   */
+  fun initializeGoalCardMonitoring()
+
 }
