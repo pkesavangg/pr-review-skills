@@ -115,6 +115,9 @@ final class HistoryStore: ObservableObject {
     func refreshAllEntries() async {
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal()
+        if let selectedMonth {
+            await loadEntries(for: selectedMonth, showLoader: false)
+        }
     }
     
     /// Presents a delete entry confirmation alert.
