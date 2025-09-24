@@ -62,47 +62,8 @@ struct WifiPasswordEntryView: View {
             }
             .background(theme.backgroundSecondary)
             .scrollDismissesKeyboard(.interactively)
-            
-            // Show Back and Connect buttons when in settings context
-            if store.isSettingsContext {
-                settingsFooterButtons
-                    .padding(.spacingSM)
-            }
         }
     }
-    
-    private var settingsFooterButtons: some View {
-        HStack {
-            ButtonView(
-                text: commonLang.back,
-                type: .inlineTextPrimary,
-                size: .small,
-                isDisabled: false,
-                action: {
-                    withAnimation {
-                        hideKeyboard()
-                        store.handleBackButtonClick()
-                    }
-                }
-            )
-            
-            Spacer()
-            
-            ButtonView(
-                text: lang.connectButtonTitle,
-                type: .filledPrimary,
-                size: .small,
-                isDisabled: !store.isFormValid,
-                action: {
-                    withAnimation {
-                        hideKeyboard()
-                        store.handleNextButtonClick()
-                    }
-                }
-            )
-        }
-    }
-    
 }
 
 #Preview{
