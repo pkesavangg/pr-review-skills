@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -23,9 +24,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
@@ -47,6 +51,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun GoalProgressMilestoneCard(
   progress: Progress,
   inEditMode: Boolean,
+  isDragging: Boolean = false,
   isVisible: Boolean = true,
   latestWeight: Double? = null,
   modifier: Modifier = Modifier,
@@ -70,6 +75,17 @@ fun GoalProgressMilestoneCard(
   )
   val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
   val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
+  val dragCardShadow = if (isDragging) {
+    Modifier.dropShadow(
+      shape = RoundedCornerShape(MeTheme.spacing.x6s),
+      shadow = Shadow(
+        radius = MeTheme.spacing.sm,
+        spread = 0.dp,
+        color = MeTheme.colorScheme.glow,
+        offset = DpOffset(x = 0.dp, 0.dp),
+      ),
+    )
+  } else Modifier
 
   BadgedBox(
     badge = {
@@ -96,7 +112,8 @@ fun GoalProgressMilestoneCard(
     modifier = modifier
       .graphicsLayer {
         rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
-      },
+      }
+      .then(dragCardShadow),
   ) {
     Card(
       modifier = Modifier
