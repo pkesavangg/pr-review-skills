@@ -155,7 +155,7 @@ struct GraphView: View {
             
             Spacer()
         }
-        .graphViewStyle(isAtLeftBoundary: true)
+        .graphViewStyle(canAddPadding: true)
         .padding(.horizontal)
         .background(theme.textInverse)
     }

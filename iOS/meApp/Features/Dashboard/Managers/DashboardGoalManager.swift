@@ -259,7 +259,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
         if isWeightlessMode {
             // Show +/- prefix for weightless mode
-            let prefix = weight >= 0 ? "+" : ""
+            let prefix = weight > 0 ? "+" : ""
             return String(format: "%@%.1f", prefix, weight)
         } else {
             // Show normal weight

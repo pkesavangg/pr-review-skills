@@ -204,11 +204,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 self.updateCachedChartData()
             }
         }
-        .onChange(of: viewModel.yAxisTicks) { _, _ in
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-            }
-        }
         // Conditional scroll position syncing
         .conditionalScrollSyncing(
             isScrollable: isScrollable,
@@ -216,7 +211,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             dashboardStore: dashboardStore,
             localSelectedXValue: $localSelectedXValue
         )
-        .graphViewStyle(isAtLeftBoundary: viewModel.isAtLeftBoundary)
+        .graphViewStyle(canAddPadding: !viewModel.hasXAxis)
     }
     
     // MARK: - Chart Content Builders
@@ -664,13 +659,6 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .modifier(DecisionWindowModifier(
-                    touchInteractionMode: touchInteractionMode,
-                    initialTouchPoint: initialTouchPoint,
-                    decisionTimer: decisionTimer,
-                    selectedXValue: localSelectedXValue,
-                    dashboardStore: dashboardStore
-                ))
                 .modifier(
                     ScrollDetectionModifier(
                         dashboardStore: dashboardStore,
