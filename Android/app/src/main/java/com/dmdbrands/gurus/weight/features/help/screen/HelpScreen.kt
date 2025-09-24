@@ -28,6 +28,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleList
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.VersionText
 import com.dmdbrands.gurus.weight.features.help.model.HelpIntent
 import com.dmdbrands.gurus.weight.features.help.strings.HelpScreenStrings
 import com.dmdbrands.gurus.weight.features.help.viewmodel.HelpViewModel
@@ -95,7 +96,9 @@ private fun HelpContent(
         ContactUsContent(handleIntent)
         Spacer(Modifier.padding(bottom = MeTheme.spacing.xl))
       },
-      // footer = { /* optional */ }
+      footer = {
+        AppVersionContent()
+      }
     )
   }
 }
@@ -170,6 +173,26 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
     AppText(
       text = HelpScreenStrings.UserManualSectionSubtitle,
       textType = TextType.Subtitle,
+    )
+  }
+}
+
+/**
+ * Footer content composable for the Help screen.
+ */
+@Composable
+private fun AppVersionContent() {
+  Column(
+    horizontalAlignment = Alignment.Start,
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding( vertical = MeTheme.spacing.xl),
+  ) {
+    VersionText(
+      modifier = Modifier.fillMaxWidth(),
+      textAlign = TextAlign.Center,
+      style = MeTheme.typography.subHeading2,
+      titlePrefix = "App"
     )
   }
 }
