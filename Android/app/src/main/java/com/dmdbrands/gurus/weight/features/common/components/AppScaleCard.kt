@@ -129,7 +129,7 @@ fun AppScaleCard(
       if (!isSavedScale) {
         AppIcon(
           id = connectionIcon,
-          contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
+          contentDescription = "Scale type icon",
           type = AppIconType.Primary,
           modifier = Modifier.size(32.dp),
           enabled = enabled,
@@ -144,7 +144,7 @@ fun AppScaleCard(
         type = AppIconType.Primary,
         modifier = Modifier.size(32.dp),
         enabled = enabled,
-        onClick = null,
+        onClick = { onClick(scale) },
       )
     }
   }

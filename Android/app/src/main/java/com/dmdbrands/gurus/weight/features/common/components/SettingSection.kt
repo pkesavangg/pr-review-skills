@@ -179,6 +179,7 @@ private fun SettingsItemRow(
                         AppIcon(
                             id = AppIcons.Filled.CaretDown,
                             contentDescription = "Dropdown",
+                            tintColor = MeTheme.colorScheme.iconSecondary,
                             enabled = item.enabled,
                             onClick = {item.onClick.invoke()},
                         )

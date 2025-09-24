@@ -102,6 +102,7 @@ fun AppUser(
                 contentDescription = "Select account",
                 type = AppIconType.Primary,
                 modifier = Modifier.size(24.dp),
+                onClick = if (account.isActiveAccount) null else onAccountSelect,
             )
         }
         if (account.isExpired) {
