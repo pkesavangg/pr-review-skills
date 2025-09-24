@@ -124,7 +124,7 @@ constructor(
 
       AppsyncScaleSetupStep.PERMISSIONS -> {
         val areRequiredPermissionsEnabled = AppPermissionsHelper
-          .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+          .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.AppSync)
         val currentState = state.value
         AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
         // If permissions are enabled and we're on PERMISSIONS step, auto-advance
@@ -304,7 +304,7 @@ constructor(
           when (currentState.currentStep) {
             AppsyncScaleSetupStep.PERMISSIONS -> {
               val areRequiredPermissionsEnabled = AppPermissionsHelper
-                .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+                .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.AppSync)
               AppLog.d(TAG, "Permissions step - required permissions enabled: $areRequiredPermissionsEnabled")
               handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(areRequiredPermissionsEnabled))
             }
