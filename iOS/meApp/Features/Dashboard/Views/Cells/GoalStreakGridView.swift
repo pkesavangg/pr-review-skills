@@ -153,7 +153,7 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         if case .goalCard = draggedWidget {
             // Special case: when goal card is dragged and ALL streak items AND goal card are present
             // and goal card is at the last index, adjust destination to be one position earlier
-            let allStreaksPresent = gridModel.mileStones.allSatisfy { widget in
+            let allWidgetsPresent = gridModel.mileStones.allSatisfy { widget in
                 switch widget {
                 case .goalCard: return true
                 case .streak(let streakItem): 
@@ -169,10 +169,15 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
             
             let goalCardAtLastIndex = sourceIndexPath.item == gridModel.mileStones.count - 1
             
+            // Constants for position adjustment logic
+            let goalCardPositionAdjustment = 1 // Move one position earlier when special conditions are met
+            
             // Only apply special case when ALL streak items AND goal card are present
             // and goal card is at the last index, and destination is one position before the goal card
-            if allStreaksPresent && goalCardPresent && goalCardAtLastIndex && destinationIndexPath.item == sourceIndexPath.item - 1 {
-                adjustedDestinationIndex = destinationIndexPath.item - 1
+            if allWidgetsPresent && goalCardPresent && goalCardAtLastIndex && destinationIndexPath.item == sourceIndexPath.item - 1 {
+                // Adjust destination to be one position earlier than the proposed destination
+                // This ensures proper grid layout when goal card is moved from last position
+                adjustedDestinationIndex = destinationIndexPath.item - goalCardPositionAdjustment
             } else {
                 adjustedDestinationIndex = destinationIndexPath.item
             }

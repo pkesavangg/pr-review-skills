@@ -51,10 +51,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let streakOrderChanged = newStreakGridOrder != coordinator.lastStreakGridOrder
 
         // Check if this is a reset operation (all items restored and order reset)
-        let _ = !newGoalCardRemoved && 
-                newGoalCardPosition == 0 && 
-                newStreakGridOrder.isEmpty &&
-                newRemovedStreaks.isEmpty
+        // Note: This check was previously stored in an unused variable, now removed for clarity
 
         if contentChanged || removalStateChanged || goalCardStateChanged || goalCardPositionChanged || streakOrderChanged {
             coordinator.gridModel = newModel
@@ -753,10 +750,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 
                 let goalCardAtLastIndex = sourceIndex == gridModel.mileStones.count - 1
                 
-                // Apply special case: if goal card is at last position and destination is 5, adjust to 4
-                if allStreaksPresent && goalCardPresent && goalCardAtLastIndex && destinationIndex == 5 {
-                    let adjustedDestination = 4
-                    gridModel.moveWidget(from: sourceIndex, to: adjustedDestination)
+                // Constants for goal card position adjustment
+                let goalCardDestinationPosition = 5 // Position where goal card should be adjusted from
+                let goalCardAdjustedPosition = 4    // Position where goal card should be moved to
+                
+                // Apply special case: if goal card is at last position and destination is at the specified position, adjust to the adjusted position
+                if allStreaksPresent && goalCardPresent && goalCardAtLastIndex && destinationIndex == goalCardDestinationPosition {
+                    gridModel.moveWidget(from: sourceIndex, to: goalCardAdjustedPosition)
                 } else {
                     gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
                 }
@@ -1041,7 +1041,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // If this is the first drop target, it's meaningful
             guard let lastIndexPath = lastDropTargetIndexPath,
-                  let _ = lastDropTargetItemType else {
+                  lastDropTargetItemType != nil else {
                 updateDropTargetTracking(newIndexPath: newIndexPath, newItemType: newItemType, timestamp: now)
                 return true
             }
@@ -1362,10 +1362,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
             
             
-            // Only apply special case when all streaks are present and destination is position 5
-            if isFromLastPosition && !hasRemovedStreaks && actualInsertionIndex == 5 {
-                // Adjust to position 4 instead of 5
-                let adjustedIndex = actualInsertionIndex - 1 // Move to position 4
+            // Constants for goal card position adjustment in drop operation
+            let goalCardDropDestinationPosition = 5 // Position where goal card should be adjusted from during drop
+            let goalCardDropAdjustment = 1          // Amount to adjust position by
+            
+            // Only apply special case when all streaks are present and destination is at the specified position
+            if isFromLastPosition && !hasRemovedStreaks && actualInsertionIndex == goalCardDropDestinationPosition {
+                // Adjust to one position earlier than the destination
+                let adjustedIndex = actualInsertionIndex - goalCardDropAdjustment
                 let clampedAdjustedIndex = max(0, adjustedIndex)
 
                 // Use the adjusted index for the move operation
