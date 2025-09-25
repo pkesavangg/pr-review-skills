@@ -29,6 +29,9 @@ final class DisplayMetricsViewModel: ObservableObject {
     @Published var isHeartRateOn: Bool = false
     @Published var isHeartRateEnabled: Bool = false
     
+    // Track if changes have been made
+    @Published var hasChanges: Bool = false
+    
     private let isWeighOnlyModeEnabledByOthers: Bool
     private let tag = "DisplayMetricsViewModel"
     
@@ -44,6 +47,9 @@ final class DisplayMetricsViewModel: ObservableObject {
         
         // Setup banner states based on scale preferences
         updateBannerStates()
+        
+        // Reset changes flag after initial setup
+        hasChanges = false
     }
     
     func loadDisplayMetricsData() async {
@@ -59,6 +65,9 @@ final class DisplayMetricsViewModel: ObservableObject {
         // Load display metrics and update banner states
         loadDisplayMetrics()
         updateBannerStates()
+        
+        // Reset changes flag after loading data
+        hasChanges = false
     }
     
     private func loadDisplayMetrics() {
@@ -159,12 +168,14 @@ final class DisplayMetricsViewModel: ObservableObject {
             // For reorder operations, just update the metrics directly without re-ordering
             metrics = newMetrics
             updateDisplayMetricsValue()
+            hasChanges = true
             return
         }
         
         // For toggle operations, just update the enabled state without changing order
         metrics = newMetrics
         updateDisplayMetricsValue()
+        hasChanges = true
     }
     
     func updateProgressMetrics(_ newMetrics: [ScaleMetricSetting]) {
@@ -179,12 +190,14 @@ final class DisplayMetricsViewModel: ObservableObject {
             // For reorder operations, just update the metrics directly without re-ordering
             progressMetrics = newMetrics
             updateDisplayMetricsValue()
+            hasChanges = true
             return
         }
         
         // For toggle operations, just update the enabled state without changing order
         progressMetrics = newMetrics
         updateDisplayMetricsValue()
+        hasChanges = true
     }
     
     func updateDisplayMetricsValue() {
@@ -199,12 +212,14 @@ final class DisplayMetricsViewModel: ObservableObject {
     func handleBodyMetricToggle(key: String, isEnabled: Bool) {
         metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
         updateDisplayMetricsValue()
+        hasChanges = true
     }
     
     /// Same as `handleBodyMetricToggle` but for progress metrics list.
     func handleProgressMetricToggle(key: String, isEnabled: Bool) {
         progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
         updateDisplayMetricsValue()
+        hasChanges = true
     }
 
     /// Core reordering routine used by both body and progress metric toggles.
@@ -295,6 +310,9 @@ final class DisplayMetricsViewModel: ObservableObject {
             
             notificationService.dismissLoader()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.displayMetricsSaved))
+            
+            // Reset changes flag after successful save
+            hasChanges = false
             
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save display metrics: \(error.localizedDescription)", data: error)
