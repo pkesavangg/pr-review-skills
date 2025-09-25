@@ -16,6 +16,11 @@ object RadioGroupModalStrings {
         const val Appearance = "Appearance"
     }
 
+    object Button {
+      const val Save = "Save"
+      const val Cancel = "Cancel"
+    }
+
     // Biological Sex Options
     object BiologicalSex {
         const val Male = "Male"

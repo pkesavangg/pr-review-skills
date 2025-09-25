@@ -10,7 +10,7 @@ object FeedStrings {
         const val TITLE = "Messages"
         const val SUB_TITLE = "Deals on Goods"
         const val NO_ENTRY_TITLE = "Dry on Deals...for Now"
-        const val NO_ENTRY_TEXT = "check back soon"
+        const val NO_ENTRY_TEXT = "Check back soon"
         const val NO_NETWORK_TITLE = "Looks like you're offline..."
         const val NO_NETWORK_TEXT = "Check back when connected"
         const val MESSAGE_SETTING = "Message Settings"
