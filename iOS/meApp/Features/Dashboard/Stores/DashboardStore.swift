@@ -363,6 +363,19 @@ class DashboardStore: ObservableObject {
         
         // When no selection, show average of visible region if available
         let opsToUse = visibleOperations
+        print("📊 Log purpose opsToUse: \(opsToUse.count) continuousOperations: \(continuousOperations.count) selectedPeriod: \(state.graph.selectedPeriod)")
+        // If no visible operations, but we have data and we're not in total view, 
+        // calculate interpolated average for the visible range
+        if opsToUse.isEmpty && !continuousOperations.isEmpty && state.graph.selectedPeriod != .total {
+            let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
+                from: continuousOperations,
+                period: state.graph.selectedPeriod,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+            return interpolatedAverage
+        }
         
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
@@ -419,9 +432,16 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty && state.graph.selectedXValue == nil && state.graph.selectedPoint == nil{
+        // Check if we have no visible operations but can calculate interpolated value
+        let hasNoVisibleOps = visibleOperations.isEmpty
+        let hasNoSelection = state.graph.selectedXValue == nil && state.graph.selectedPoint == nil
+        let canInterpolate = !continuousOperations.isEmpty && state.graph.selectedPeriod != .total
+        let hasInterpolatedWeight = displayWeight != nil
+        
+        if hasNoVisibleOps && hasNoSelection && (!canInterpolate || !hasInterpolatedWeight) {
             return "no entries"
         }
+        
         // If a point is selected, override period label granularity
         if state.graph.selectedXValue != nil {
             switch state.graph.selectedPeriod {

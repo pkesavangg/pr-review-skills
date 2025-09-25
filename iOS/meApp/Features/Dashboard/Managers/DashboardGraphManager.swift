@@ -1681,6 +1681,102 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
     
+    /// Generates sample dates for the visible range based on the time period
+    /// These correspond to the vertical lines that are selectable in the UI
+    func generateSampleDatesForVisibleRange(for period: TimePeriod) -> [Date] {
+        guard period != .total else { return [] }
+        
+        let leftEdge = state.xScrollPosition
+        let domainLength = visibleDomainLength(for: period)
+        let rightEdge = leftEdge.addingTimeInterval(domainLength)
+        
+        var sampleDates: [Date] = []
+        
+        switch period {
+        case .week:
+            // Daily samples - generate samples within the visible range directly
+            var currentDate = leftEdge
+            let oneDay: TimeInterval = 24 * 60 * 60 // 1 day in seconds
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                currentDate = currentDate.addingTimeInterval(oneDay)
+            }
+            
+        case .month:
+            // Weekly samples - generate samples within the visible range directly
+            // Instead of using month boundaries, generate weekly samples within the visible window
+            var currentDate = leftEdge
+            let oneWeek: TimeInterval = 7 * 24 * 60 * 60 // 1 week in seconds
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                currentDate = currentDate.addingTimeInterval(oneWeek)
+            }
+            
+        case .year:
+            // Monthly samples - generate samples within the visible range directly
+            var currentDate = leftEdge
+            let oneMonth: TimeInterval = 30 * 24 * 60 * 60 // Approximately 1 month in seconds
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                currentDate = currentDate.addingTimeInterval(oneMonth)
+            }
+            
+        case .total:
+            // Not applicable for total view
+            break
+        }
+        
+        return sampleDates
+    }
+    
+    /// Calculates the average of interpolated weights for the visible range when no entries are visible
+    /// This provides a meaningful weight display even when the visible window contains no actual data points
+    func calculateInterpolatedAverageForVisibleRange(
+        from allOperations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double? {        
+        // Only apply to non-total periods
+        guard period != .total, !allOperations.isEmpty else { 
+            return nil 
+        }
+        
+        let sampleDates = generateSampleDatesForVisibleRange(for: period)
+        guard !sampleDates.isEmpty else { 
+            return nil 
+        }
+        
+        var interpolatedWeights: [Double] = []
+        
+        for (index, sampleDate) in sampleDates.enumerated() {
+            if let interpolatedWeight = interpolatedDisplayWeight(
+                at: sampleDate,
+                from: allOperations,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertWeight: convertWeight
+            ) {
+                interpolatedWeights.append(interpolatedWeight)
+            }
+        }
+        
+        guard !interpolatedWeights.isEmpty else { 
+            return nil 
+        }
+        
+        let average = interpolatedWeights.reduce(0, +) / Double(interpolatedWeights.count)
+        
+        logger.log(level: .debug, tag: "DashboardGraphManager", 
+                   message: "Calculated interpolated average for visible range: \(average) from \(interpolatedWeights.count) sample points for period \(period)")
+        
+        return average
+    }
+    
     func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {
         let weightValues = operations.map { summary -> Double in
             if isWeightlessMode {
