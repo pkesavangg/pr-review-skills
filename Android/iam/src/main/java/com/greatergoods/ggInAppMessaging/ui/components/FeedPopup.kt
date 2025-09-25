@@ -88,6 +88,7 @@ fun FeedPopup(
           )
         } else {
           // Fallback background
+          //TODO:Image placeholder need to implement
           Box(
             modifier = Modifier
               .fillMaxWidth()
@@ -102,7 +103,7 @@ fun FeedPopup(
           modifier = Modifier
             .align(Alignment.TopEnd)
             .padding(24.dp, 24.dp, 24.dp, 0.dp)
-            .size(16.dp)
+            .size(16.dp) // Larger button size
             .background(
               color = iamColors.primaryBackground,
               shape = CircleShape,
@@ -112,7 +113,7 @@ fun FeedPopup(
             imageVector = Icons.Default.Close,
             contentDescription = "Close",
             tint = iamColors.primaryAction,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(16.dp),// Larger icon size
           )
         }
       }
@@ -151,7 +152,7 @@ fun FeedPopup(
           textAlign = TextAlign.Center,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.padding(top = 16.dp))
 
         // Action Buttons
         Column(

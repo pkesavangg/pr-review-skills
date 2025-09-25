@@ -11,10 +11,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
+import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
+import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
+import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedImage
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedProductVariations
 import com.greatergoods.ggInAppMessaging.ui.components.FeaturedProducts
@@ -58,7 +63,7 @@ fun IamFeedLandingScreen(
       .fillMaxSize()
       .verticalScroll(rememberScrollState()),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(32.dp),
+    verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
     // Part 1: Offer header part
     OfferHeader(
@@ -87,5 +92,80 @@ fun IamFeedLandingScreen(
       onIntent = dispatchIntent,
     )
   }
+}
+
+// ===== PREVIEW COMPOSABLE =====
+
+@Preview(showBackground = true)
+@Composable
+fun IamFeedLandingScreenPreview() {
+  ProvideIamTheme {
+    IamFeedLandingScreen(
+      feedItem = createMockFeedItemForLanding()
+    )
+  }
+}
+
+// ===== MOCK DATA =====
+
+/**
+ * Creates comprehensive mock FeedItem data for landing screen preview
+ */
+private fun createMockFeedItemForLanding(): FeedItem {
+  return FeedItem(
+    elementId = "landingPreview001",
+    titleText = "Take 20% OFF Vacuum Sealers",
+    messageTypeText = "LIGHTNING DEAL",
+    subtitleFeedText = "Supporting text that can be customized up to 60 characters.",
+    subtitleModalText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+    linkTarget = "https://shop.greatergoods.com/collections/vacuum-sealers",
+    feedType = FeedTypes.LINK,
+    linkText = "Shop Now",
+    feedPostId = "landingPost001",
+    accountId = "landingAccount",
+    titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+    landingPage = LandingPage(
+      feedLandingPageId = "landingPage001",
+      feedPostId = "landingPost001",
+      titleText = "Vacuum Sealers",
+      promoCode = "SAVE20NOW",
+      featuredImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+      supportingTitleText = "One Machine, a Million Uses",
+      supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+      supportingImage = listOf(
+        "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+        "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+        "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+      ),
+      featuredTitleText = "Three Colors Available",
+      themeColor = "blue",
+      featuredProduct = listOf(
+        FeaturedProduct(
+          variationId = 10001,
+          titleText = "Stone Blue",
+          feedLandingPageId = "landingPage001",
+          linkText = "Shop Blue",
+          linkTarget = "https://shop.greatergoods.com/collections/vacuum-sealers/products/stone-blue",
+          productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+        ),
+        FeaturedProduct(
+          variationId = 10002,
+          titleText = "Stainless Steel",
+          feedLandingPageId = "landingPage001",
+          linkText = "Shop Steel",
+          linkTarget = "https://shop.greatergoods.com/collections/vacuum-sealers/products/stainless-steel",
+          productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+        ),
+        FeaturedProduct(
+          variationId = 10003,
+          titleText = "Black",
+          feedLandingPageId = "landingPage001",
+          linkText = "Shop Black",
+          linkTarget = "https://shop.greatergoods.com/collections/vacuum-sealers/products/black",
+          productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+        )
+      )
+    )
+  )
 }
 

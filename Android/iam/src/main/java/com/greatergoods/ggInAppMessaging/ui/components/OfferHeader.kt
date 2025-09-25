@@ -21,13 +21,17 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
+import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
 import com.greatergoods.ggInAppMessaging.features.common.AnnotationPosition
 import com.greatergoods.ggInAppMessaging.features.common.ButtonType
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
+import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 import com.greatergoods.ggInAppMessaging.ui.screens.strings.FeedLandingScreenStrings
 import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
 
@@ -74,7 +78,6 @@ fun OfferHeader(
         onIntent = onIntent,
       )
     }
-
     // Shop now button and expiration
     ShopNowSection(
       feedItem = feedItem,
@@ -132,6 +135,7 @@ private fun ShopNowSection(
       type = ButtonType.PrimaryFilled,
       enabled = true,
       onClick = { onIntent(FeedLandingIntent.OnOfferHeaderShopNowClick) },
+      modifier = Modifier.padding(top = 8.dp)
     )
 
     // Expiration date
@@ -296,4 +300,98 @@ private fun PromoCodeContainer(
       )
     }
   }
+}
+
+// ===== PREVIEW COMPOSABLES =====
+
+@Preview(showBackground = true)
+@Composable
+fun OfferHeaderPreview() {
+  ProvideIamTheme {
+    OfferHeader(
+      feedItem = createMockFeedItem(),
+      onIntent = {}
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun OfferHeaderFromFooterPreview() {
+  ProvideIamTheme {
+    OfferHeader(
+      feedItem = createMockFeedItem(),
+      isFromFooter = true,
+      onIntent = {}
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PromoCodeSectionPreview() {
+  ProvideIamTheme {
+    PromoCodeSection(
+      feedItem = createMockFeedItem(),
+      onIntent = {}
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ShopNowSectionPreview() {
+  ProvideIamTheme {
+    ShopNowSection(
+      feedItem = createMockFeedItem(),
+      onIntent = {}
+    )
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PromoCodeContainerPreview() {
+  ProvideIamTheme {
+    PromoCodeContainer(
+      promoCode = "SAVE20NOW",
+      onCopyClick = {}
+    )
+  }
+}
+
+// ===== MOCK DATA =====
+
+/**
+ * Creates mock FeedItem data for previews
+ */
+private fun createMockFeedItem(): FeedItem {
+  return FeedItem(
+    elementId = "preview001",
+    titleText = "Take 20% OFF Vacuum Sealers",
+    messageTypeText = "LIGHTNING DEAL",
+    subtitleFeedText = "Supporting text that can be customized up to 60 characters.",
+    subtitleModalText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+    linkTarget = "https://shop.greatergoods.com/collections/vacuum-sealers",
+    feedType = FeedTypes.LINK,
+    linkText = "Shop Now",
+    feedPostId = "previewPost001",
+    accountId = "previewAccount",
+    titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+    landingPage = LandingPage(
+      feedLandingPageId = "previewLanding001",
+      feedPostId = "previewPost001",
+      titleText = "Vacuum Sealers",
+      promoCode = "SAVE20NOW",
+      featuredImage = null,
+      supportingTitleText = "One Machine, a Million Uses",
+      supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+      supportingImage = listOf(
+        "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+      ),
+      featuredTitleText = "Three Colors Available",
+      themeColor = "blue",
+      featuredProduct = emptyList()
+    )
+  )
 }

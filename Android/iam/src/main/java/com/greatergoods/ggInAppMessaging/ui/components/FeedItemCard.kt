@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +25,7 @@ import coil.compose.AsyncImage
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.LandingPage
+import com.greatergoods.ggInAppMessaging.features.common.ButtonSize
 import com.greatergoods.ggInAppMessaging.features.common.ButtonType
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
@@ -119,7 +119,7 @@ fun FeedItemCard(
             expiresAt = feedItem.expiresAt,
           )
         }
-        IamButton(label = feedItem.linkText, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))
+        IamButton(label = feedItem.linkText, size = ButtonSize.Small, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))
       }
     }
 
@@ -128,7 +128,7 @@ fun FeedItemCard(
       HorizontalDivider(
         modifier = Modifier.fillMaxWidth(),
         thickness = 0.5.dp,
-        color = Color(0xFF565F68),
+        color = IamTheme.colors.utility,
       )
     }
   }

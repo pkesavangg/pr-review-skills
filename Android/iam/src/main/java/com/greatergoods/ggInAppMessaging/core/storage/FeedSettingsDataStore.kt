@@ -1,6 +1,5 @@
 package com.greatergoods.ggInAppMessaging.core.storage
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
+import android.content.Context
 
 /**
  * Extension property to provide FeedSettings DataStore instance from Context.
@@ -49,17 +49,17 @@ class FeedSettingsDataStore @Inject constructor(
      * Returns default values (true) if settings haven't been initialized yet.
      */
     suspend fun getFeedSettings(): FeedSetting {
-        val proto = getData()
+        val data = getData()
         // If accountId is empty, it means settings haven't been initialized yet
-        return if (proto.accountId.isEmpty()) {
+        return if (data.accountId.isEmpty()) {
             FeedSetting(
                 showPopupMessage = true, // Default to true for first-time users
                 showNotificationBadge = true // Default to true for first-time users
             )
         } else {
             FeedSetting(
-                showPopupMessage = proto.showPopupMessage,
-                showNotificationBadge = proto.showNotificationBadge
+              showPopupMessage = data.showPopupMessage,
+              showNotificationBadge = data.showNotificationBadge
             )
         }
     }

@@ -96,6 +96,7 @@ private fun SupportingTextSection(
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier.padding(top = 16.dp)
   ) {
     // Supporting title
     feedItem.landingPage?.supportingTitleText?.let { title ->

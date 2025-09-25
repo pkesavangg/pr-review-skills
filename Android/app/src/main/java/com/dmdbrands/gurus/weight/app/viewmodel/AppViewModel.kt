@@ -139,6 +139,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
+      initialize()
       // Initialize IAM dialog events listener
       try {
         initIAMDialogListener()
@@ -154,7 +155,6 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
       }
-      initialize()
     }
   }
 
