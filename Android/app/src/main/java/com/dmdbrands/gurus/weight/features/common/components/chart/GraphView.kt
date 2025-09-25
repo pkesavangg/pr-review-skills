@@ -17,11 +17,13 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
+import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
-import android.icu.util.Calendar
+import java.util.Calendar
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -62,12 +64,30 @@ fun GraphView(
 
   val initialStartX = GraphUtil.getStartRange(segment, state.endTimeStamp)?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
-  val scrollState =
-    rememberVicoScrollState(scrollEnabled = segment != GraphSegment.TOTAL, initialScroll = initialScroll)
+  val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
+    { scrolledX, isDrag, isForward ->
+      if (isDrag) {
+        val snappedPosition = GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
+        snappedPosition
+      } else {
+        GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
+      }
+    }
+  }
+
+  val scrollState = rememberVicoScrollState(
+    scrollEnabled = segment != GraphSegment.TOTAL,
+    initialScroll = initialScroll,
+    snapBehaviorConfig = SnapBehaviorConfig(
+      snapToLabelFunction = snapToLabelFunction,
+      animation = SnapBehaviorConfig.SnapAnimation(
+        snapDurationMillis = 500,
+      ),
+    ),
+  )
 
   // Initialize graph when data changes
   LaunchedEffect(graphLines, secondaryGraphLines) {
@@ -94,7 +114,9 @@ fun GraphView(
   val defaultMarker = rememberDefaultMarker(segment) { fallbackValues ->
     val weightLabel =
       state.graphLines.first().points.firstOrNull { it.x.value.toDouble() == state.markerIndex?.toDouble() }?.y?.value?.toString()
-    onWeightLabelUpdate(weightLabel ?: fallbackValues.first().average().toString())
+    onWeightLabelUpdate(
+      weightLabel ?: if (fallbackValues.isNotEmpty()) fallbackValues.first().average().toString() else "",
+    )
     onRangeUpdate(null)
     onTargetsUpdate(listOfNotNull(state.markerIndex), emptyList())
   }

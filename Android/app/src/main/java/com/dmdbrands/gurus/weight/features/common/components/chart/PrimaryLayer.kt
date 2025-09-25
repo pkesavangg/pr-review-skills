@@ -6,8 +6,8 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineWithConnectionCondition
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.axis.Axis
@@ -15,11 +15,13 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import android.annotation.SuppressLint
 
 /**
  * Common composable for creating line layers with connection condition.
  * Used for both primary and secondary layers with configurable color and axis position.
  */
+@SuppressLint("RestrictedApi")
 @Composable
 internal fun rememberLineLayerWithConnection(
   segment: GraphSegment,
@@ -51,7 +53,7 @@ internal fun rememberLineLayerWithConnection(
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
       listOf(lineColor).map {
-        LineCartesianLayer.rememberLineWithConnectionCondition(
+        LineCartesianLayer.rememberLine(
           fill = LineCartesianLayer.LineFill.single(fill(it)),
           stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
           pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
@@ -64,9 +66,6 @@ internal fun rememberLineLayerWithConnection(
               ),
             ),
           ),
-          connectionCondition = { minXTarget, maxXTarget ->
-            connectionCondition(minXTarget.x.toLong(), maxXTarget?.x?.toLong())
-          },
         )
       },
     ),

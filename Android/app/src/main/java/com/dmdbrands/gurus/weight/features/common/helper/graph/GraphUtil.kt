@@ -123,7 +123,7 @@ object GraphUtil {
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.MONTH -> 5 * ONE_DAY_MILLIS
       GraphSegment.YEAR, GraphSegment.TOTAL -> 30 * ONE_DAY_MILLIS
     }.toDouble()
 
@@ -142,10 +142,10 @@ object GraphUtil {
   fun GraphSegment.intervalCount(): Int =
     when (this) {
       GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 5
+      GraphSegment.MONTH -> 6
       GraphSegment.YEAR -> 12
       GraphSegment.TOTAL -> 100
-    } + 1
+    }
   // endregion
 
   // region Formatting

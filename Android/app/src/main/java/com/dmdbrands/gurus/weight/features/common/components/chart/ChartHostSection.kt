@@ -19,11 +19,11 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
-import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
+import com.patrykandpatrick.vico.compose.cartesian.axis.scroll
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
@@ -93,6 +93,7 @@ internal fun ChartHostSection(
       startAxis =
         VerticalAxis.rememberStart(
           label = null,
+          size = BaseAxis.Size.scroll(30.dp, isLabelsScrollable = true),
           line = rememberAxisLineComponent(
             fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
             thickness = 1.dp,
@@ -121,7 +122,7 @@ internal fun ChartHostSection(
               { state.primaryYStep },
             )
           },
-          size = BaseAxis.Size.fixed(50.dp),
+          size = BaseAxis.Size.scroll(50.dp),
           line =
             rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
@@ -174,7 +175,12 @@ internal fun ChartHostSection(
           markerIndex = null
         } else {
           val targetMarkerIndex =
-            getTargetPoints(scrollState.getVisibleAxisLabels(), targets, click, segment)
+            getTargetPoints(
+              scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer),
+              targets,
+              click,
+              segment,
+            )
           if (targetMarkerIndex.isNotEmpty()) {
             markerIndex = targetMarkerIndex.first()
           }
