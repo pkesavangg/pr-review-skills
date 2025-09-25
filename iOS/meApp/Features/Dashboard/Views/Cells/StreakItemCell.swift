@@ -89,7 +89,8 @@ class StreakCardCell: UICollectionViewCell {
                 store.toggleStreakRemoval(item.label)
             },
             onDrop: { _, _ in false },
-            onDropTargetChanged: { _ in }
+            onDropTargetChanged: { _ in },
+            parentView: parentView
         )
         
         // Apply EditModeOverlay to the StreakCardView only when appropriate
@@ -202,7 +203,8 @@ class StreakCardCell: UICollectionViewCell {
                 isDropTarget: false,
                 onToggleRemoval: {},
                 onDrop: { _, _ in false },
-                onDropTargetChanged: { _ in }
+                onDropTargetChanged: { _ in },
+                parentView: parentView
             )
         )
         hostingController?.rootView = placeholderView

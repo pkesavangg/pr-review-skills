@@ -45,6 +45,20 @@ struct DashboardStrings {
     static let metAge = "met age"
     static let metAgeUnit = "yrs"
     
+    // R4ScaleSetup specific descriptive labels
+    static let bmiR4ScaleSetup = "body mass index"
+    static let bodyFatR4ScaleSetup = "body fat"
+    static let muscleR4ScaleSetup = "muscle mass"
+    static let waterR4ScaleSetup = "body water"
+    static let heartBpmR4ScaleSetup = "heart rate"
+    static let boneR4ScaleSetup = "bone mass"
+    static let visceralFatR4ScaleSetup = "visceral fat"
+    static let subFatR4ScaleSetup = "subcutaneous fat"
+    static let proteinR4ScaleSetup = "protein"
+    static let skelMuscleR4ScaleSetup = "skeletal muscles"
+    static let bmrKcalR4ScaleSetup = "basal metabolic rate"
+    static let metAgeR4ScaleSetup = "metabolic age"
+    
     // Streak/Loss labels
     static let currentStreak = "current streak"
     static let longestStreak = "longest streak"

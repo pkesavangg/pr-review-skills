@@ -32,7 +32,7 @@ struct DisplayMetricsScreen: View {
                         text: CommonStrings.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: false,
+                        isDisabled: !viewModel.hasChanges,
                         action: {
                             Task {
                                 await viewModel.saveDisplayMetrics()
