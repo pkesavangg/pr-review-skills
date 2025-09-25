@@ -15,6 +15,7 @@ struct WifiPasswordEntryView: View {
     @State private var focusedField: FocusField?
     let lang = WifiScreenStrings.self
     let commonLang = CommonStrings.self
+    let isScaleSetup: Bool
     var labels = InputFieldLabels.self
     
     
@@ -63,11 +64,14 @@ struct WifiPasswordEntryView: View {
             .background(theme.backgroundSecondary)
             .scrollDismissesKeyboard(.interactively)
             
-            // Show Back and Connect buttons when in settings context
-            if store.isSettingsContext {
+            // Show Back and Connect buttons only when reconfiguring WiFi from Settings screen
+            // Do not show during initial scale setup flow
+            if store.isSettingsContext  {
                 settingsFooterButtons
-                    .padding(.spacingSM)
+                    .padding(.vertical, .spacingSM)
             }
+            
+            
         }
     }
     
@@ -105,9 +109,12 @@ struct WifiPasswordEntryView: View {
     
 }
 
-#Preview{
+#Preview {
     let store = BtWifiScaleSetupStore()
-    store.configure(with: "0412")
-    return WifiPasswordEntryView(wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"))
-        .environmentObject(store)
+    store.configure(with: "0412", isWifiSetupOnly: true)
+    return WifiPasswordEntryView(
+        wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
+        isScaleSetup: true
+    )
+    .environmentObject(store)
 }

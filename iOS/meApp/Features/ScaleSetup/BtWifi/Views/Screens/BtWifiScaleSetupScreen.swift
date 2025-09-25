@@ -25,7 +25,7 @@ struct BtWifiScaleSetupScreen: View {
     let isReconnect: Bool // indicates if this is a reconnect flow
     let isDuplicated: Bool // indicates if this is handling a duplicate user error
     let commonLang = CommonStrings.self
-    
+    let isWifiSetupOnly: Bool
     private let scaleSetupLang = ScaleSetupStrings.self
     
     // Custom init so callers can omit optional params.
@@ -34,13 +34,16 @@ struct BtWifiScaleSetupScreen: View {
          discoveryEvent: DeviceDiscoveryEvent? = nil, 
          savedScale: Device? = nil,
          isReconnect: Bool = false,
-         isDuplicated: Bool = false) {
+         isDuplicated: Bool = false,
+         isWifiSetupOnly: Bool = false
+    ) {
         self.sku = sku
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
         self.savedScale = savedScale
         self.isReconnect = isReconnect
         self.isDuplicated = isDuplicated
+        self.isWifiSetupOnly = isWifiSetupOnly
     }
     
     private var stepViews: [AnyView] { setupStore.stepViews }
@@ -80,7 +83,7 @@ struct BtWifiScaleSetupScreen: View {
             // Footer Buttons - hide for specific steps if needed
             if setupStore.shouldShowFooter() {
                 footerButtons
-                    .padding(.spacingSM)
+                      .padding(.spacingSM)
             }
         }
         .environmentObject(setupStore)
@@ -96,7 +99,7 @@ struct BtWifiScaleSetupScreen: View {
                                  discoveryEvent: discoveryEvent,
                                  saveScale: savedScale,
                                  isReconnect: isReconnect,
-                                 isDuplicated: isDuplicated)
+                                 isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
             // Ensure Wi-Fi status is refreshed when view appears
             setupStore.refreshCurrentWifiStatus()
