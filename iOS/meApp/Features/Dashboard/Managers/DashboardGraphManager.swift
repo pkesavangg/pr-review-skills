@@ -1696,32 +1696,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week:
             // Daily samples - generate samples within the visible range directly
             var currentDate = leftEdge
-            let oneDay: TimeInterval = 24 * 60 * 60 // 1 day in seconds
             
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
-                currentDate = currentDate.addingTimeInterval(oneDay)
+                if let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) {
+                    currentDate = nextDay
+                } else {
+                    break // If date addition fails, exit loop
+                }
             }
             
         case .month:
             // Weekly samples - generate samples within the visible range directly
             // Instead of using month boundaries, generate weekly samples within the visible window
             var currentDate = leftEdge
-            let oneWeek: TimeInterval = 7 * 24 * 60 * 60 // 1 week in seconds
             
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
-                currentDate = currentDate.addingTimeInterval(oneWeek)
+                if let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) {
+                    currentDate = nextWeek
+                } else {
+                    break // If date addition fails, exit loop
+                }
             }
             
         case .year:
             // Monthly samples - generate samples within the visible range directly
             var currentDate = leftEdge
-            let oneMonth: TimeInterval = 30 * 24 * 60 * 60 // Approximately 1 month in seconds
             
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
-                currentDate = currentDate.addingTimeInterval(oneMonth)
+                if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
+                    currentDate = nextMonth
+                } else {
+                    break // If date addition fails, exit loop
+                }
             }
             
         case .total:
@@ -1753,7 +1762,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         var interpolatedWeights: [Double] = []
         
-        for (index, sampleDate) in sampleDates.enumerated() {
+        for sampleDate in sampleDates {
             if let interpolatedWeight = interpolatedDisplayWeight(
                 at: sampleDate,
                 from: allOperations,
