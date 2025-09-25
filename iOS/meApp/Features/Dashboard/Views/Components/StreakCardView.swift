@@ -17,6 +17,7 @@ struct StreakCardView: View {
     let onToggleRemoval: () -> Void
     let onDrop: (String, String) -> Bool
     let onDropTargetChanged: (Bool) -> Void
+    let parentView: DashboardMetricsParentView
     
     @Environment(\.appTheme) private var theme
     
@@ -28,10 +29,21 @@ struct StreakCardView: View {
         isDropTarget ? 2 : 0
     }
     
+    /// Returns true if this is a streak item (current streak or longest streak)
+    private var isStreakItem: Bool {
+        label == DashboardStrings.currentStreak || label == DashboardStrings.longestStreak
+    }
+    
+    /// Returns the minimum height based on parentView
+    private var cardMinHeight: CGFloat {
+        parentView == .R4ScaleSetup ? 74 : 70
+    }
+    
     var body: some View {
         NoteBox(alignCenter: true) {
             content()
         }
+        .frame(minHeight: cardMinHeight)
         .overlay(
             RoundedRectangle(cornerRadius: .radiusSM)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
@@ -50,43 +62,68 @@ struct StreakCardView: View {
                 .foregroundColor(isRemoved ? theme.statusIconSecondary : theme.statusStreak)
                 .padding(.trailing, 2)
             }
-            VStack(alignment: .center, spacing: 2) {
-                Text(value)
-                    .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
+            if parentView == .R4ScaleSetup && isStreakItem {
                 Text(label)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+            } else {
+                VStack(alignment: .center, spacing: 2) {
+                    Text(value)
+                        .fontOpenSans(.heading4)
+                        .fontWeight(.bold)
+                        .foregroundColor(theme.textHeading)
+                    Text(label)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                }
             }
         }
+        .padding(.vertical, (parentView == .R4ScaleSetup && isStreakItem) ? 10 : 0)
     }
 }
 
 #Preview {
     VStack(spacing: 16) {
+        // Regular dashboard view
         StreakCardView(
             value: "1 day",
-            label: "Current Streak",
+            label: DashboardStrings.currentStreak,
             icon: AppAssets.streak,
             isEditMode: true,
             isRemoved: false,
             isDropTarget: false,
             onToggleRemoval: {},
             onDrop: { _, _ in true },
-            onDropTargetChanged: { _ in }
+            onDropTargetChanged: { _ in },
+            parentView: .dashboard
         )
         
+        // R4ScaleSetup view with streak items (icon + label only)
         StreakCardView(
-            value: "10 day",
-            label: "Longest Streak",
-            icon: AppAssets.longestStreak,
+            value: "1 day",
+            label: DashboardStrings.currentStreak,
+            icon: AppAssets.streak,
+            isEditMode: true,
+            isRemoved: false,
+            isDropTarget: false,
+            onToggleRemoval: {},
+            onDrop: { _, _ in true },
+            onDropTargetChanged: { _ in },
+            parentView: .R4ScaleSetup
+        )
+        
+        // R4ScaleSetup view with non-streak items (icon + value + label)
+        StreakCardView(
+            value: "2.5",
+            label: "lbs/week",
+            icon: nil,
             isEditMode: true,
             isRemoved: false,
             isDropTarget: true,
             onToggleRemoval: {},
             onDrop: { _, _ in true },
-            onDropTargetChanged: { _ in }
+            onDropTargetChanged: { _ in },
+            parentView: .R4ScaleSetup
         )
     }
     .padding()
