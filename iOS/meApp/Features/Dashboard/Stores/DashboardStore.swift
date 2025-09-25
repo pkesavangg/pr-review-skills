@@ -363,6 +363,18 @@ class DashboardStore: ObservableObject {
         
         // When no selection, show average of visible region if available
         let opsToUse = visibleOperations
+        // If no visible operations, but we have data and we're not in total view, 
+        // calculate interpolated average for the visible range
+        if opsToUse.isEmpty && !continuousOperations.isEmpty && state.graph.selectedPeriod != .total {
+            let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
+                from: continuousOperations,
+                period: state.graph.selectedPeriod,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+            return interpolatedAverage
+        }
         
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
@@ -419,9 +431,16 @@ class DashboardStore: ObservableObject {
     }
     
     var weightDisplayLabel: String {
-        if visibleOperations.isEmpty && state.graph.selectedXValue == nil && state.graph.selectedPoint == nil{
+        // Check if we have no visible operations but can calculate interpolated value
+        let hasNoVisibleOps = visibleOperations.isEmpty
+        let hasNoSelection = state.graph.selectedXValue == nil && state.graph.selectedPoint == nil
+        let canInterpolate = !continuousOperations.isEmpty && state.graph.selectedPeriod != .total
+        let hasInterpolatedWeight = displayWeight != nil
+        
+        if hasNoVisibleOps && hasNoSelection && (!canInterpolate || !hasInterpolatedWeight) {
             return "no entries"
         }
+        
         // If a point is selected, override period label granularity
         if state.graph.selectedXValue != nil {
             switch state.graph.selectedPeriod {
@@ -577,7 +596,11 @@ class DashboardStore: ObservableObject {
                     state.data.latestWeightStored = weight
                 }
                 
-                try await metricsManager.updateMetrics(with: latestEntry)
+                // Instead of always updating with latest entry, preserve current selection state
+                // and update metrics appropriately for the current view
+                await MainActor.run {
+                    self.updateMetricsForCurrentView()
+                }
                 
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to load latest entry data: \(error)")
@@ -1759,13 +1782,8 @@ class DashboardStore: ObservableObject {
             // Clear selection through graph manager
             await graphManager.handleChartSelection(at: nil)
 
-            // For TOTAL period, show visible-window averages instead of latest entry
-            if self.state.graph.selectedPeriod == .total {
-                self.updateMetricsForCurrentView()
-            } else {
-                // Reset metrics to latest entry values for other periods
-                self.resetMetricsToLatestEntry()
-            }
+            // Show visible-window averages for all periods when selection is cleared
+            self.updateMetricsForCurrentView()
         }
     }
     
@@ -1879,11 +1897,15 @@ class DashboardStore: ObservableObject {
     
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
-    private func updateMetricsForCurrentView() {
+    func updateMetricsForCurrentView() {
         if let selectedPoint = state.graph.selectedPoint {
+            // Exact data point selected - show its values
             Task {
                 try? await self.metricsManager.updateMetrics(with: selectedPoint)
             }
+        } else if state.graph.selectedXValue != nil {
+            // Interpolated position selected (no exact data point) - show placeholders
+            metricsManager.setPlaceholdersForAllMetrics()
         } else {
             // No selection: compute visible-window averages for all metrics
             let ops = self.visibleOperations

@@ -999,12 +999,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // point remains visible after crossing the left boundary.
         if state.isScrolling && !lastCalculatedVisibleOps.isEmpty {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
-            let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
             let leftEdge = state.xScrollPosition
-            let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+            let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
             
             // Apply the same buffer for cache validation
-            let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+            let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
             let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
             let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
             
@@ -1032,11 +1031,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
                 let leftEdge = state.xScrollPosition
-                let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
-                let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+                let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
                 
                 // Apply the same buffer for cache validation
-                let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+                let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
                 let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
                 let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
                 
@@ -1056,13 +1054,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // STRICT window: [leftEdge, rightEdge]
         // Using strict bounds ensures symmetric inclusion/exclusion on both sides.
         let leftEdge = state.xScrollPosition
-        let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
-        let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+        let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
         
-        // Add a small buffer to handle timezone edge cases and ensure entries on boundary dates are included
+        // Add a minimal buffer to handle timezone edge cases and ensure entries on boundary dates are included
         // This is especially important for daily summaries where dates are normalized to start of day
-        let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer to handle timezone differences
+        let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer to handle timezone differences
         let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
         
@@ -1679,6 +1676,111 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let averageWeight = weights.reduce(0, +) / Double(weights.count)
             return averageWeight - anchorWeight
         }
+    }
+    
+    /// Generates sample dates for the visible range based on the time period
+    /// These correspond to the vertical lines that are selectable in the UI
+    func generateSampleDatesForVisibleRange(for period: TimePeriod) -> [Date] {
+        guard period != .total else { return [] }
+        
+        let leftEdge = state.xScrollPosition
+        let domainLength = visibleDomainLength(for: period)
+        let rightEdge = leftEdge.addingTimeInterval(domainLength)
+        
+        var sampleDates: [Date] = []
+        
+        switch period {
+        case .week:
+            // Daily samples - generate samples within the visible range directly
+            var currentDate = leftEdge
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                if let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) {
+                    currentDate = nextDay
+                } else {
+                    break // If date addition fails, exit loop
+                }
+            }
+            
+        case .month:
+            // Weekly samples - generate samples within the visible range directly
+            // Instead of using month boundaries, generate weekly samples within the visible window
+            var currentDate = leftEdge
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                if let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) {
+                    currentDate = nextWeek
+                } else {
+                    break // If date addition fails, exit loop
+                }
+            }
+            
+        case .year:
+            // Monthly samples - generate samples within the visible range directly
+            var currentDate = leftEdge
+            
+            while currentDate <= rightEdge {
+                sampleDates.append(currentDate)
+                if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
+                    currentDate = nextMonth
+                } else {
+                    break // If date addition fails, exit loop
+                }
+            }
+            
+        case .total:
+            // Not applicable for total view
+            break
+        }
+        
+        return sampleDates
+    }
+    
+    /// Calculates the average of interpolated weights for the visible range when no entries are visible
+    /// This provides a meaningful weight display even when the visible window contains no actual data points
+    func calculateInterpolatedAverageForVisibleRange(
+        from allOperations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double? {        
+        // Only apply to non-total periods
+        guard period != .total, !allOperations.isEmpty else { 
+            return nil 
+        }
+        
+        let sampleDates = generateSampleDatesForVisibleRange(for: period)
+        guard !sampleDates.isEmpty else { 
+            return nil 
+        }
+        
+        var interpolatedWeights: [Double] = []
+        
+        for sampleDate in sampleDates {
+            if let interpolatedWeight = interpolatedDisplayWeight(
+                at: sampleDate,
+                from: allOperations,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertWeight: convertWeight
+            ) {
+                interpolatedWeights.append(interpolatedWeight)
+            }
+        }
+        
+        guard !interpolatedWeights.isEmpty else { 
+            return nil 
+        }
+        
+        let average = interpolatedWeights.reduce(0, +) / Double(interpolatedWeights.count)
+        
+        logger.log(level: .debug, tag: "DashboardGraphManager", 
+                   message: "Calculated interpolated average for visible range: \(average) from \(interpolatedWeights.count) sample points for period \(period)")
+        
+        return average
     }
     
     func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {

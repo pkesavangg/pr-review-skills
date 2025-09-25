@@ -282,10 +282,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             chartHeight: chartFrame.height
         )
         
-        // Animate domain changes only
-        withAnimation(.easeInOut(duration: 0.25)) {
-            self.yAxisDomain = yAxisScale.domain
-        }
+        // Update domain without animation (animation handled by Chart view)
+        self.yAxisDomain = yAxisScale.domain
         // Do not animate tick updates
         withTransaction(Transaction(animation: nil)) {
             self.yAxisTicks = yAxisScale.ticks
@@ -534,10 +532,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
         // Read cached values from dashboard store
         if let cachedDomain = store.state.graph.cachedYAxisDomain {
-            // Animate domain transition when cache updates
-            withAnimation(.easeInOut(duration: 0.25)) {
-                self.yAxisDomain = cachedDomain
-            }
+            // Update domain without animation (animation handled by Chart view)
+            self.yAxisDomain = cachedDomain
         }
 
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
