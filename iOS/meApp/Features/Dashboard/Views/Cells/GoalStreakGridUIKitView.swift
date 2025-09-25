@@ -1357,58 +1357,65 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
 
         // Special validation for goal card dragged from last position
-        if case .goalCard = widget {
-            let isFromLastPosition = sourceIndex == gridModel.mileStones.count - 1
-            let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
-            
-            
-            // Constants for goal card position adjustment in drop operation
-            let goalCardDropDestinationPosition = 5 // Position where goal card should be adjusted from during drop
-            let goalCardDropAdjustment = 1          // Amount to adjust position by
-            
-            // Only apply special case when all streaks are present and destination is at the specified position
-            if isFromLastPosition && !hasRemovedStreaks && actualInsertionIndex == goalCardDropDestinationPosition {
-                // Adjust to one position earlier than the destination
-                let adjustedIndex = actualInsertionIndex - goalCardDropAdjustment
-                let clampedAdjustedIndex = max(0, adjustedIndex)
+            if case .goalCard = widget {
+                let isFromLastPosition = sourceIndex == gridModel.mileStones.count - 1
+                let isFromFourthPosition = sourceIndex == 4
+                let isFromSecondPosition = sourceIndex == 2
+                let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
 
-                // Use the adjusted index for the move operation
-                collectionView.performBatchUpdates({
-                    gridModel.moveWidget(from: sourceIndex, to: clampedAdjustedIndex)
-                    collectionView.moveItem(at: sourceIndexPath, to: IndexPath(item: clampedAdjustedIndex, section: 0))
-                }, completion: { _ in
-                    collectionView.collectionViewLayout.invalidateLayout()
-                        collectionView.layoutIfNeeded()
+                // Constants for goal card position adjustment in drop operation
+                let goalCardDropAdjustment = 1
 
-                        // Now disable animations for the final positioning to prevent jump
-                        CATransaction.begin()
-                        CATransaction.setDisableActions(true)
-                        CATransaction.setAnimationDuration(0)
-                        
-                        UIView.performWithoutAnimation {
-                            // Update all visible cells instantly without reconfiguration
-                            let visibleIndexPaths = collectionView.indexPathsForVisibleItems
-                            for indexPath in visibleIndexPaths {
-                                if let cell = collectionView.cellForItem(at: indexPath) {
-                                    cell.layoutIfNeeded()
+                // Only apply special case when all streaks are present
+                if !hasRemovedStreaks {
+                    var clampedAdjustedIndex: Int? = nil
+
+                    // Last position: drop at (count-2), move to (count-3)
+                    if isFromLastPosition && actualInsertionIndex == gridModel.mileStones.count - 2 {
+                        let adjustedIndex = actualInsertionIndex - goalCardDropAdjustment
+                        clampedAdjustedIndex = max(0, adjustedIndex)
+                    }
+                    // Fourth position: drop at 3, move to 2
+                    else if isFromFourthPosition && actualInsertionIndex == 3 {
+                        clampedAdjustedIndex = 2
+                    }
+                    // Second position: drop at 1, move to 0
+                    else if isFromSecondPosition && actualInsertionIndex == 1 {
+                        clampedAdjustedIndex = 0
+                    }
+
+                    if let adjusted = clampedAdjustedIndex, adjusted != actualInsertionIndex {
+                        collectionView.performBatchUpdates({
+                            gridModel.moveWidget(from: sourceIndex, to: adjusted)
+                            collectionView.moveItem(at: sourceIndexPath, to: IndexPath(item: adjusted, section: 0))
+                        }, completion: { _ in
+                            collectionView.collectionViewLayout.invalidateLayout()
+                            collectionView.layoutIfNeeded()
+
+                            CATransaction.begin()
+                            CATransaction.setDisableActions(true)
+                            CATransaction.setAnimationDuration(0)
+
+                            UIView.performWithoutAnimation {
+                                let visibleIndexPaths = collectionView.indexPathsForVisibleItems
+                                for indexPath in visibleIndexPaths {
+                                    if let cell = collectionView.cellForItem(at: indexPath) {
+                                        cell.layoutIfNeeded()
+                                    }
                                 }
                             }
-                        }
-                        
-                        CATransaction.commit()
-                        
-                        // Re-enable animations for future operations
-                        if let custom = collectionView as? CustomCollectionView {
-                            custom.suspendIntrinsicInvalidation = false
-                        }
-                        
-                        // Save the new order to DashboardStore UI state
-                        self.persistGridOrderToStore()
-                        
-                        // Provide haptic feedback for successful drop
-                        self.provideDropConfirmationHapticFeedback()
-                    })
-                    return
+
+                            CATransaction.commit()
+
+                            if let custom = collectionView as? CustomCollectionView {
+                                custom.suspendIntrinsicInvalidation = false
+                            }
+
+                            self.persistGridOrderToStore()
+                            self.provideDropConfirmationHapticFeedback()
+                        })
+                        return
+                    }
                 }
             }
 
