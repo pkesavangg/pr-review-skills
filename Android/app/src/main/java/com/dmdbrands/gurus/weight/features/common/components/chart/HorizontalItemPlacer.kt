@@ -5,7 +5,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import java.time.Instant
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
@@ -46,9 +46,10 @@ internal fun horizontalItemPlacer(
 }
 
 fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> {
-  // Convert timestamps (millis) to ZonedDateTime in UTC
-  val startZdt = Instant.ofEpochMilli(start.toLong()).atZone(ZoneOffset.UTC)
-  val endZdt = Instant.ofEpochMilli(endInclusive.toLong()).atZone(ZoneOffset.UTC)
+  // Convert timestamps (millis) to ZonedDateTime in local timezone
+  val localZone = ZoneId.systemDefault()
+  val startZdt = Instant.ofEpochMilli(start.toLong()).atZone(localZone)
+  val endZdt = Instant.ofEpochMilli(endInclusive.toLong()).atZone(localZone)
 
   val startYear = startZdt.year
   val endYear = endZdt.year
@@ -57,7 +58,7 @@ fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> 
 
   for (year in startYear..endYear) {
     for (month in 1..12) {
-      val zdt = ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+      val zdt = ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, localZone)
       val ts = zdt.toInstant().toEpochMilli().toDouble()
 
       // include only months between actual start and end timestamps
