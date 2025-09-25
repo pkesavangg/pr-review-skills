@@ -15,14 +15,16 @@ fun HistoryGraph(
   selectedStat: Stat? = null,
   onSelectSegment: (GraphSegment) -> Unit = {},
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
-  onPagerStateChange: (Int) -> Unit = {}
+  onPagerStateChange: (Int) -> Unit = {},
+  onScrollTargetChange: (Double?) -> Unit = {},
 ) {
   GraphPagerView(
     state = state,
     selectedStat = selectedStat,
     onSelected = onSelected,
     onPagerStateChange = onPagerStateChange,
-    onSegmentChange = onSelectSegment
+    onSegmentChange = onSelectSegment,
+    onScrollTargetChange = onScrollTargetChange,
   )
 }
 
@@ -32,7 +34,7 @@ private fun HistoryGraphPreview() {
   MeAppTheme {
     HistoryGraph(
       state = DashboardState(),
-      onSelected = {}
+      onSelected = {},
     )
   }
 }

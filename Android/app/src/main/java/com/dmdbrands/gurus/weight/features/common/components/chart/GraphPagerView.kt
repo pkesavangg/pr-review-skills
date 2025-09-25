@@ -55,12 +55,21 @@ fun GraphPagerView(
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
+  onScrollTargetChange: (Double?) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
     initialPage = GraphSegment.entries.indexOf(state.selectedSegment),
     pageCount = { GraphSegment.entries.size },
   )
+
+  var scrollTarget: Double? by remember {
+    mutableStateOf(null)
+  }
+
+  LaunchedEffect(state.selectedSegment) {
+    onScrollTargetChange(scrollTarget)
+  }
 
   var subText: String by remember { mutableStateOf("") }
   var canShowSubText by remember { mutableStateOf(false) }
@@ -158,6 +167,7 @@ fun GraphPagerView(
                   it
                 }
               },
+            scrollTarget = state.scrollTarget,
             secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
             graphLines = listOf(segmentGraphLines),
             segment = currentSegment,
@@ -179,6 +189,10 @@ fun GraphPagerView(
                   DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
                 }
                 onSelected(filteredEntries)
+                scrollTarget = if (targets.isNotEmpty())
+                  targets.last()
+                else
+                  null
               }
             },
             onWeightLabelUpdate = { label ->

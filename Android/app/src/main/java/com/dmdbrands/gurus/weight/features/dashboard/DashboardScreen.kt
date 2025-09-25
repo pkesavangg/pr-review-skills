@@ -1,9 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -46,7 +44,6 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
-import kotlin.system.exitProcess
 
 @Composable
 fun DashboardScreen() {
@@ -124,6 +121,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           },
           onPagerStateChange = { pagerState ->
             handleIntent(DashboardIntent.SetPagerState(pagerState))
+          },
+          onScrollTargetChange = {scrollTarget ->
+            handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
           }
         )
       }

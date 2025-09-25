@@ -23,12 +23,9 @@ import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
 
-val dateRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a")
-val monthYearFormatter = DateTimeFormatter.ofPattern("MMM yyyy 'at' h:mm a")
-val monthDayFormatter = DateTimeFormatter.ofPattern("MMM d 'at' h:mm a")
-val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a")
-val monthYearTimeFormatter = DateTimeFormatter.ofPattern("MMM yyyy 'at' h:mm a")
-val monthDayTimeFormatter = DateTimeFormatter.ofPattern("MMM d 'at' h:mm a")
+val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
+val monthYearTimeFormatter = DateTimeFormatter.ofPattern("MMM yyyy ")
+val monthDayTimeFormatter = DateTimeFormatter.ofPattern("MMM d ")
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -127,7 +124,8 @@ object GraphUtil {
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
       GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
-      GraphSegment.YEAR, GraphSegment.TOTAL -> 30 * ONE_DAY_MILLIS
+      GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
+      GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
 
   fun List<Double>.getMinPositiveDelta(): Double {
@@ -142,13 +140,13 @@ object GraphUtil {
   /**
    * Returns the number of intervals for the given [GraphSegment].
    */
-  fun GraphSegment.intervalCount(): Int =
+  fun GraphSegment.intervalCount(): Double =
     when (this) {
       GraphSegment.WEEK -> 7
       GraphSegment.MONTH -> 5
-      GraphSegment.YEAR -> 12
-      GraphSegment.TOTAL -> 0
-    }
+      GraphSegment.YEAR -> 11.75
+      GraphSegment.TOTAL -> 1000
+    }.toDouble() - 0.01
   // endregion
 
   // region Formatting
@@ -182,11 +180,11 @@ object GraphUtil {
 
     return when (segment) {
       GraphSegment.WEEK, GraphSegment.MONTH -> {
-        localDateTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a"))
+        localDateTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
       }
 
       GraphSegment.YEAR, GraphSegment.TOTAL -> {
-        localDateTime.format(DateTimeFormatter.ofPattern("MMM yyyy 'at' h:mm a"))
+        localDateTime.format(DateTimeFormatter.ofPattern("MMM yyyy"))
       }
     }
   }
@@ -301,11 +299,7 @@ object GraphUtil {
           }
 
           else -> {
-            "${startDateTime.format(monthDayTimeFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year} at ${
-              endDateTime.format(
-                DateTimeFormatter.ofPattern("h:mm a"),
-              )
-            }"
+            "${startDateTime.format(monthDayTimeFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
           }
         }
       }
@@ -372,6 +366,28 @@ object GraphUtil {
       cursor = cursor.plus(step)
     }
     return out
+  }
+
+  /**
+   * Alternative implementation that simply calculates months between years.
+   * More efficient for large year ranges.
+   *
+   * @param startTimeMillis Start timestamp in milliseconds
+   * @param endTimeMillis End timestamp in milliseconds
+   * @return Total number of months between the years of the timestamps
+   */
+  fun getTotalMonthsBetweenYears(startTimeMillis: Long, endTimeMillis: Long): Int {
+    if (startTimeMillis <= 0 || endTimeMillis <= 0 || startTimeMillis > endTimeMillis) {
+      return 0
+    }
+
+    val localZone = ZoneId.systemDefault()
+
+    val startYear = Instant.ofEpochMilli(startTimeMillis).atZone(localZone).year
+    val endYear = Instant.ofEpochMilli(endTimeMillis).atZone(localZone).year
+
+    // Calculate total months between years
+    return (endYear - startYear + 1) * 12
   }
 
   // endregion

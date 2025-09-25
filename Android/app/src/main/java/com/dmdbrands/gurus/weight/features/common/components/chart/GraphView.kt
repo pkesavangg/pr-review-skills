@@ -16,8 +16,8 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -47,6 +47,7 @@ fun GraphView(
   graphLines: List<GraphLine>,
   secondaryGraphLines: GraphLine? = null,
   segment: GraphSegment = GraphSegment.WEEK,
+  scrollTarget: Double? = null,
   placeHolder: String? = null,
   goal: Goal? = null,
   onRangeUpdate: (String?) -> Unit = {},
@@ -88,6 +89,13 @@ fun GraphView(
       ),
     ),
   )
+  LaunchedEffect(scrollTarget) {
+    if (scrollTarget != null) {
+      scrollState.animateScroll(
+        Scroll.Absolute.x(scrollTarget, 0.5f),
+      )
+    }
+  }
 
   // Initialize graph when data changes
   LaunchedEffect(graphLines, secondaryGraphLines) {

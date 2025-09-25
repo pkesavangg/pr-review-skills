@@ -35,6 +35,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
+import java.util.Calendar
 import kotlin.math.roundToInt
 import android.graphics.Typeface
 
@@ -153,7 +154,10 @@ internal fun ChartHostSection(
         } else {
           null
         },
-      visibleLabelsCount = segment.intervalCount(),
+      visibleLabelsCount = if (segment == GraphSegment.TOTAL) GraphUtil.getTotalMonthsBetweenYears(
+        xLabels.minOfOrNull { it.value.toLong() } ?: Calendar.getInstance().timeInMillis,
+        Calendar.getInstance().timeInMillis,
+      ).toDouble() else segment.intervalCount(),
       getXStep = {
         GraphUtil.calculateXStep(
           segment,
