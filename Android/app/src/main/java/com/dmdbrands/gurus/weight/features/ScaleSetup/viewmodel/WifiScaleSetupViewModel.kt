@@ -94,6 +94,8 @@ constructor(
       "change" -> WifiSetupType.CHANGE
       else -> WifiSetupType.FIRST
     }
+    // Set setup in progress when initialization starts
+    deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
@@ -366,6 +368,8 @@ constructor(
     isSetupFinished: Boolean,
     isConnected: Boolean,
   ) {
+    // Clear setup in progress state when exiting
+    deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
       navigateBack()
       return
@@ -1136,5 +1140,6 @@ constructor(
     isDestroyed = true
     isWifiSwitchingContext = false // Reset WiFi switching context flag
     wifiScaleService.stop()
+    deviceService.setSetupInProgress(false)
   }
 }

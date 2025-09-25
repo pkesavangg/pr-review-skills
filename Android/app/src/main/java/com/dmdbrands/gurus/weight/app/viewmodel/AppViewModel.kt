@@ -677,7 +677,9 @@ constructor(
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight
           }
-          val updatedProfile = ggBTUserProfile.copy(weight = currentWeight)
+          val updatedProfile = ggBTUserProfile.copy(weight = currentWeight, goalWeight = ggBTUserProfile.goalWeight?.div(
+            10
+          ))
           ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
           handleIntent(AppIntent.SetScanStatus(true))
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")

@@ -551,6 +551,16 @@ constructor(
     isWeightOnlyModeAlertShown.value = isAlertShown
   }
 
+  // Setup progress state management
+  private var _isSetupInProgress = false
+
+  override fun isSetupInProgress(): Boolean = _isSetupInProgress
+
+  override fun setSetupInProgress(inProgress: Boolean) {
+    _isSetupInProgress = inProgress
+    AppLog.d(tag, "Setup progress state updated: $inProgress")
+  }
+
   override suspend fun updateScalePreferencesByMac(
     macAddress: String,
     preferences: R4ScalePreferenceApiModel

@@ -169,4 +169,16 @@ interface IDeviceService {
   fun weightOnlyModeDismissAlert(onConfirm: () -> Unit)
 
   fun updateWeightOnlyModeAlertShown(isAlertShown: Boolean)
+
+  /**
+   * Get the current setup progress state.
+   * @return true if setup is in progress, false otherwise
+   */
+  fun isSetupInProgress(): Boolean
+
+  /**
+   * Set the setup progress state.
+   * @param inProgress true if setup is in progress, false if setup is complete or not started
+   */
+  fun setSetupInProgress(inProgress: Boolean)
 }

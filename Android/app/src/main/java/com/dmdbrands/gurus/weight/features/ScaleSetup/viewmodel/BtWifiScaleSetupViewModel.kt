@@ -144,6 +144,8 @@ constructor(
   }
 
   init {
+    // Set setup in progress when initialization starts
+    deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
@@ -613,6 +615,8 @@ constructor(
   private fun onExitSetup(
     isSetupFinished: Boolean,
   ) {
+    // Clear setup in progress state when exiting
+    deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
       onExit()
     } else {
@@ -1719,6 +1723,7 @@ constructor(
     super.onCleared()
     // Clean up all timeout jobs when ViewModel is destroyed
     clearAllTimeouts()
+      deviceService.setSetupInProgress(false)
     AppLog.d(TAG, "BtWifiScaleSetupViewModel cleared - all timeouts cancelled")
   }
 

@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
@@ -44,12 +45,23 @@ constructor(
   appNavigationService: IAppNavigationService,
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
+  private val deviceService: IDeviceService,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
 
   private val _goalStatusFlow = MutableStateFlow<Goal?>(null)
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
+  private var account: Account? = null
+  init {
+    CoroutineScope(Dispatchers.IO).launch {
+      accountRepository.getActiveAccount().collect {
+        if (it != null) {
+          account = it
+        }
+      }
+    }
+  }
 
   /**
    * Updates the goal for the active account.
@@ -77,6 +89,7 @@ constructor(
           metPreviousGoal = if (wasMet) true else null,
         )
 
+
       val updatedAccount =
         if (isNetworkAvailable()) {
           // Online: Update via API and mark as synced in DB
@@ -87,12 +100,7 @@ constructor(
           AppLog.d(TAG, "Network unavailable - storing goal for offline sync")
           goalRepository.updateGoalSettingOffline(goalData)
         }
-
-      // Update goal status flow
-      updatedAccount?.let { account ->
-        updateGoalStatusFromAccount(account)
-      }
-
+      goalAlertDataStore.setAlertShown(account?.id ?: "" , false)
       updatedAccount
     } catch (e: Exception) {
       AppLog.e(TAG, "Error updating goal", e)
@@ -157,9 +165,10 @@ constructor(
       val currentGoal = getCurrentGoal().first() ?: return
       val account = accountRepository.getActiveAccount().first() ?: return
       val hasShownAlert = goalAlertDataStore.hasShownAlert(account.id)
+      val isSetupInProgress = deviceService.isSetupInProgress()
 
-      // Match Angular's conditions (removed bluetooth check for now)
-      if (!isShowingAlert && !hasShownAlert) {
+      // Match Angular's conditions: don't show alerts during setup
+      if (!isShowingAlert && !hasShownAlert && !isSetupInProgress) {
         val shouldShowAlert = when (currentGoal.type.lowercase()) {
           "gain" -> currentWeight >= currentGoal.goalWeight
           "lose" -> currentWeight <= currentGoal.goalWeight
@@ -178,6 +187,8 @@ constructor(
             showGoalMetAlert()
           }
         }
+      } else if (isSetupInProgress) {
+        AppLog.d(TAG, "Skipping goal alert - setup in progress")
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error showing goal met message", e)
@@ -345,15 +356,6 @@ constructor(
       goal?.process(weightUnit, weightless)
     }
 
-  /**
-   * Updates the goal status flow based on account data.
-   * @param account The account to extract goal data from
-   */
-  private fun updateGoalStatusFromAccount(account: Account) {
-    // TODO: Extract goal data from account and update _goalStatusFlow
-    // This would need goal fields to be added to Account domain model
-    // or retrieve from goal repository
-  }
 
   /**
    * Shows goal met alert dialog.
@@ -369,6 +371,7 @@ constructor(
         cancelText = GoalStrings.MaintainButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
+
           isShowingAlert = false
           CoroutineScope(Dispatchers.IO).launch {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
@@ -378,9 +381,6 @@ constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
-            handleGoalMet(setNewGoal = false)
-          }
         },
       ),
     )

@@ -80,6 +80,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   private fun onInit() {
     AppLog.d(TAG, "Starting BLESetupViewmodel initialization")
+    // Set setup in progress when initialization starts
+    dependencies.deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
@@ -482,6 +484,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   private fun onExit(isSetupFinished: Boolean) {
     AppLog.d(TAG, "Exiting setup - isSetupFinished: $isSetupFinished")
+    // Clear setup in progress state when exiting
+    dependencies.deviceService.setSetupInProgress(false)
     viewModelScope.launch {
       try {
         if (isSetupFinished) {
@@ -516,11 +520,11 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
     AppLog.d(TAG, "Subscribing to permissions for protocol: $protocolType")
-    
+
     // For Bluetooth and LCBT scales, skip network connectivity check since they don't require WiFi
-    val isBluetoothScale = protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value || 
+    val isBluetoothScale = protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value ||
                           protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
-    
+
     return if (isBluetoothScale) {
       AppLog.d(TAG, "Bluetooth/LCBT scale detected, skipping network connectivity check")
       permissionService.permissionCallBackFlow.map { permissions ->
@@ -587,6 +591,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     bluetoothTimeoutJob?.cancel()
     deviceObservationJob?.cancel()
     entryObservationJob?.cancel()
+    deviceService.setSetupInProgress(false)
   }
 
   companion object {

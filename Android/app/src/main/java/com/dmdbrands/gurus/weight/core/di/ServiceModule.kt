@@ -360,7 +360,8 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       goalAlertDataStore: GoalAlertDataStore,
-      accountRepository: IAccountRepository
+      accountRepository: IAccountRepository,
+      deviceService: IDeviceService
     ): IGoalService =
       GoalService(
         goalRepository,
@@ -369,6 +370,7 @@ object ServiceModule {
         appNavigationService,
         goalAlertDataStore,
         accountRepository,
+        deviceService
       )
 
     @Provides
