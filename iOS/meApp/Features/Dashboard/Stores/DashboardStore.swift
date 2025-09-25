@@ -363,7 +363,6 @@ class DashboardStore: ObservableObject {
         
         // When no selection, show average of visible region if available
         let opsToUse = visibleOperations
-        print("📊 Log purpose opsToUse: \(opsToUse.count) continuousOperations: \(continuousOperations.count) selectedPeriod: \(state.graph.selectedPeriod)")
         // If no visible operations, but we have data and we're not in total view, 
         // calculate interpolated average for the visible range
         if opsToUse.isEmpty && !continuousOperations.isEmpty && state.graph.selectedPeriod != .total {
