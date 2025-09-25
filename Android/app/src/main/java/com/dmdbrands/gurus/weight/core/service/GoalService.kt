@@ -306,7 +306,7 @@ constructor(
       AppLog.i(TAG, "All conditions met - showing goal card popup for account ${account.id}")
       // Mark popup as shown first (like Angular implementation)
       if(
-        account.goalType == null
+        account.goalType == null && !deviceService.isSetupInProgress()
       ) {
         showSetGoalPopup()
         goalAlertDataStore.setGoalCardValue(account.id, "true")
