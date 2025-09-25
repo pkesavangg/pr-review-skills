@@ -150,7 +150,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Computed Properties
     /// Check if this is being used for settings WiFi configuration
     var isSettingsContext: Bool {
-        savedScale != nil
+        savedScale != nil && !isReconnect && !isDuplicated && isWifiSetupOnly
     }
     
     /// Check if the form is valid for WiFi password entry
@@ -257,7 +257,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 
             case .wifiPassword:
                 if let selectedNetwork = selectedWifiNetwork {
-                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork).environmentObject(self))
+                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork, isScaleSetup: true).environmentObject(self))
                 } else {
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
@@ -469,7 +469,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                    discoveryEvent: DeviceDiscoveryEvent? = nil, 
                    saveScale: Device? = nil,
                    isReconnect: Bool = false,
-                   isDuplicated: Bool = false) {
+                   isDuplicated: Bool = false,
+                   isWifiSetupOnly: Bool
+    ) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         

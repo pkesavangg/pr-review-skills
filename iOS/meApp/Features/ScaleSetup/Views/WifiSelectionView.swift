@@ -128,17 +128,10 @@ struct WifiSelectionView: View {
 
 #Preview {
     let store = BtWifiScaleSetupStore()
-    store.configure(with: "0412")
-    
-    return WifiSelectionView(
-        connectedWifiNetwork: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
-        wifiNetworks: [
-            WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
-            WifiDetails(macAddress: "11:22:33:44:55:66", ssid: "Office WiFi"),
-            WifiDetails(macAddress: "aa:bb:cc:dd:ee:00", ssid: "Guest Network")
-        ],
-        onRefresh: {},
-        onNetworkSelected: { _ in }
+    store.configure(with: "0412", isWifiSetupOnly: true)
+    return WifiPasswordEntryView(
+        wifiDetail: WifiDetails(macAddress: "aa:bb:cc:dd:ee:ff", ssid: "Home WiFi"),
+        isScaleSetup: true
     )
     .environmentObject(store)
 }
