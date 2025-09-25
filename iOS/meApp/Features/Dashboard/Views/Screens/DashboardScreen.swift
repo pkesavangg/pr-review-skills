@@ -122,6 +122,7 @@ store.restartWiggleAnimations()
             if newTab == .dash {
                 Task {
                     await store.loadDashboardConfigurationFromAPI()
+                    await store.updateMetricsForCurrentView()
                     await MainActor.run {
                         store.objectWillChange.send()
                     }

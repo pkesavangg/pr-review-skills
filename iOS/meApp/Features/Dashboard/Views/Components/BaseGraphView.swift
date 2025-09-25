@@ -120,11 +120,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         )
                 )
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                // Re-enable Chart-level animation after first frame to animate subsequent domain changes
-                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
-                // Animate when series data changes (even if Y-axis domain/ticks stay the same)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
-                // Animate when switching the selected metric (weight vs other metric)
+                // Animate chart content positioning when Y-axis domain changes
+                .animation(enableYAxisAnimation && !viewModel.isScrolling ? .easeInOut(duration: 0.15) : .none, value: viewModel.yAxisDomain)
+                // // Animate when series data changes (even if Y-axis domain/ticks stay the same)
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes

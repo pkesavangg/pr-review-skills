@@ -999,12 +999,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // point remains visible after crossing the left boundary.
         if state.isScrolling && !lastCalculatedVisibleOps.isEmpty {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
-            let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
             let leftEdge = state.xScrollPosition
-            let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+            let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
             
             // Apply the same buffer for cache validation
-            let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+            let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
             let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
             let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
             
@@ -1032,11 +1031,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
                 let leftEdge = state.xScrollPosition
-                let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
-                let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+                let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
                 
                 // Apply the same buffer for cache validation
-                let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer
+                let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
                 let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
                 let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
                 
@@ -1056,13 +1054,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // STRICT window: [leftEdge, rightEdge]
         // Using strict bounds ensures symmetric inclusion/exclusion on both sides.
         let leftEdge = state.xScrollPosition
-        let rightMultiplier: Double = (state.selectedPeriod == .total) ? 1.0 : 1.05
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
-        let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength * rightMultiplier)
+        let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
         
-        // Add a small buffer to handle timezone edge cases and ensure entries on boundary dates are included
+        // Add a minimal buffer to handle timezone edge cases and ensure entries on boundary dates are included
         // This is especially important for daily summaries where dates are normalized to start of day
-        let bufferTime: TimeInterval = 12 * 60 * 60 // 12 hours buffer to handle timezone differences
+        let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer to handle timezone differences
         let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
         

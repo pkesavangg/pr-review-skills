@@ -596,7 +596,11 @@ class DashboardStore: ObservableObject {
                     state.data.latestWeightStored = weight
                 }
                 
-                try await metricsManager.updateMetrics(with: latestEntry)
+                // Instead of always updating with latest entry, preserve current selection state
+                // and update metrics appropriately for the current view
+                await MainActor.run {
+                    self.updateMetricsForCurrentView()
+                }
                 
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to load latest entry data: \(error)")
@@ -1741,13 +1745,8 @@ class DashboardStore: ObservableObject {
             // Clear selection through graph manager
             await graphManager.handleChartSelection(at: nil)
 
-            // For TOTAL period, show visible-window averages instead of latest entry
-            if self.state.graph.selectedPeriod == .total {
-                self.updateMetricsForCurrentView()
-            } else {
-                // Reset metrics to latest entry values for other periods
-                self.resetMetricsToLatestEntry()
-            }
+            // Show visible-window averages for all periods when selection is cleared
+            self.updateMetricsForCurrentView()
         }
     }
     
@@ -1861,11 +1860,15 @@ class DashboardStore: ObservableObject {
     
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
-    private func updateMetricsForCurrentView() {
+    func updateMetricsForCurrentView() {
         if let selectedPoint = state.graph.selectedPoint {
+            // Exact data point selected - show its values
             Task {
                 try? await self.metricsManager.updateMetrics(with: selectedPoint)
             }
+        } else if state.graph.selectedXValue != nil {
+            // Interpolated position selected (no exact data point) - show placeholders
+            metricsManager.setPlaceholdersForAllMetrics()
         } else {
             // No selection: compute visible-window averages for all metrics
             let ops = self.visibleOperations
