@@ -159,6 +159,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             updateCachedChartData()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
+            
+            // Force chart to sync with the initial scroll position after configuration
+            if isScrollable {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Force the chart binding to update by triggering a small change and then setting the correct position
+                    let targetPosition = viewModel.scrollPosition
+                    // Temporarily set to a slightly different position to force binding update
+                    viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
+                    // Then immediately set to the correct position
+                    DispatchQueue.main.async {
+                        viewModel.scrollPosition = targetPosition
+                    }
+                }
+            }
         }
         .onDisappear {
             // Cancel any pending scroll updates to prevent memory leaks
@@ -204,11 +218,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 self.updateCachedChartData()
             }
         }
-        .onChange(of: viewModel.yAxisTicks) { _, _ in
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-            }
-        }
         // Conditional scroll position syncing
         .conditionalScrollSyncing(
             isScrollable: isScrollable,
@@ -216,7 +225,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             dashboardStore: dashboardStore,
             localSelectedXValue: $localSelectedXValue
         )
-        .graphViewStyle(isAtLeftBoundary: viewModel.isAtLeftBoundary)
+        .graphViewStyle(canAddPadding: !viewModel.hasXAxis)
     }
     
     // MARK: - Chart Content Builders
@@ -526,7 +535,9 @@ extension View {
                 .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
-                    get: { viewModel.scrollPosition },
+                    get: { 
+                        viewModel.scrollPosition
+                    },
                     set: { newPosition in
                         // Debounce scroll position updates to prevent multiple updates per frame
                         DispatchQueue.main.async {
@@ -664,13 +675,6 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .modifier(DecisionWindowModifier(
-                    touchInteractionMode: touchInteractionMode,
-                    initialTouchPoint: initialTouchPoint,
-                    decisionTimer: decisionTimer,
-                    selectedXValue: localSelectedXValue,
-                    dashboardStore: dashboardStore
-                ))
                 .modifier(
                     ScrollDetectionModifier(
                         dashboardStore: dashboardStore,

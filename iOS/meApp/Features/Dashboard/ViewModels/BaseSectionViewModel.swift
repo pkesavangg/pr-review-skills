@@ -512,6 +512,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.scrollPosition = position
     }
     
+    /// Forces scroll position update with binding refresh
+    func forceScrollPositionUpdate(to position: Date) {
+        // Force a small change to trigger binding update
+        let temp = position.addingTimeInterval(0.001)
+        self.scrollPosition = temp
+        DispatchQueue.main.async {
+            self.scrollPosition = position
+        }
+    }
+    
     /// Initialize chart
     func initializeChart() {
         dashboardStore?.initializeChart()
