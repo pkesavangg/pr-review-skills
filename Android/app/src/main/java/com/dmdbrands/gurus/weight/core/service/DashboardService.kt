@@ -9,8 +9,15 @@ import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.toStringKey
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,6 +32,11 @@ constructor(
   private val accountRepository: IAccountRepository
 ) : IDashboardService {
   private var accountId: String? = null
+  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+  private val _visibleKeys = MutableStateFlow<List<DashboardKey>>(listOf())
+  override val visibleKeys: StateFlow<List<DashboardKey>>
+    get() = _visibleKeys.asStateFlow()
 
   /**
    * Sets the current account ID to be used by default in other methods.
@@ -32,6 +44,11 @@ constructor(
   override suspend fun setAccountId(accountId: String) {
     this.accountId = accountId
     refreshDashboard(accountId)
+    repositoryScope.launch {
+      getVisibleKeys(accountId).collect {
+        _visibleKeys.value = it
+      }
+    }
   }
 
   override suspend fun refreshDashboard(accountId: String) {

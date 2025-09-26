@@ -34,6 +34,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var lastDataHash: Int = 0
     @State private var cachedPlottedPoints: [String: [PlottedGraphSeries]] = [:]
     
+    // MARK: - Cached Labels (Performance Optimization)
+    @State private var cachedYAxisLabels: [Double: String] = [:]
+    @State private var cachedXAxisLabels: [Date: String] = [:]
+    
     // MARK: - Configuration
     private let yAxisLabelWidth: CGFloat = 40
     private let goalChipTrailingPadding: CGFloat = 20
@@ -92,7 +96,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     localSelectedXValue: $localSelectedXValue,
                     touchInteractionMode: touchInteractionMode,
                     dashboardStore: dashboardStore,
-                    theme: theme
+                    theme: theme,
+                    getCachedXAxisLabel: getCachedXAxisLabel
                 )
                 .frame(height: 265)
                 .frame(maxWidth: .infinity, minHeight: 240)
@@ -155,6 +160,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             viewModel.updateCachedSeriesDataAsync()
             // Initialize local cache for chart rendering performance
             updateCachedChartData()
+            // Precompute all labels to avoid state mutation during rendering
+            precomputeLabels()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
             
@@ -191,6 +198,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Update local cache since display values changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
+                // Clear label caches since unit change affects formatting
+                self.invalidateLabelCaches()
+                // Precompute labels with new formatting
+                self.precomputeLabels()
             }
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
@@ -199,6 +210,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Update local cache since display values changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
+                // Clear label caches since weightless mode affects formatting
+                self.invalidateLabelCaches()
+                // Precompute labels with new formatting
+                self.precomputeLabels()
             }
         }
         .onChange(of: dashboardStore.state.ui.selectedMetricLabel) { _, _ in
@@ -207,6 +222,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Update local cache since series data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
+                // Clear label caches since metric change may affect Y-axis range/formatting
+                self.invalidateLabelCaches()
+                // Precompute labels with new Y-axis range
+                self.precomputeLabels()
             }
         }
         // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
@@ -214,6 +233,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         .onChange(of: viewModel.yAxisDomain) { _, _ in
             DispatchQueue.main.async {
                 self.updateCachedChartData()
+                // Clear Y-axis label cache since domain change affects tick values
+                self.cachedYAxisLabels.removeAll()
+                // Precompute Y-axis labels with new domain
+                self.precomputeLabels()
             }
         }
         // Conditional scroll position syncing
@@ -366,7 +389,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         AxisMarks(values: viewModel.yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
                 AxisValueLabel {
-                    Text(dashboardStore.formatYAxisTickLabel(doubleValue))
+                    Text(getCachedYAxisLabel(doubleValue))
                         .fontOpenSans(.subHeading2)
                         .multilineTextAlignment(.leading)
                         .fontWeight(.regular)
@@ -417,7 +440,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
-        Text(dashboardStore.formatYAxisTickLabel(value))
+        Text(getCachedYAxisLabel(value))
             .fontWeight(.bold)
             .fontOpenSans(.body3)
             .foregroundColor(theme.actionInverse)
@@ -492,6 +515,48 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         return lastDataHash
     }
     
+    // MARK: - Label Caching Helpers
+    
+    /// Returns cached Y-axis label (read-only during rendering)
+    private func getCachedYAxisLabel(_ value: Double) -> String {
+        return cachedYAxisLabels[value] ?? dashboardStore.formatYAxisTickLabel(value)
+    }
+    
+    /// Returns cached X-axis label (read-only during rendering)
+    private func getCachedXAxisLabel(_ date: Date) -> String? {
+        return cachedXAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date)
+    }
+    
+    /// Precomputes and caches all labels before rendering
+    private func precomputeLabels() {
+        // Cache Y-axis labels
+        for tick in viewModel.yAxisTicks {
+            if cachedYAxisLabels[tick] == nil {
+                cachedYAxisLabels[tick] = dashboardStore.formatYAxisTickLabel(tick)
+            }
+        }
+        
+        // Cache goal weight label if present
+        if viewModel.goalWeight > 0 && cachedYAxisLabels[viewModel.goalWeight] == nil {
+            cachedYAxisLabels[viewModel.goalWeight] = dashboardStore.formatYAxisTickLabel(viewModel.goalWeight)
+        }
+        
+        // Cache X-axis labels for scrollable views
+        if isScrollable {
+            for date in viewModel.xAxisValues {
+                if cachedXAxisLabels[date] == nil {
+                    cachedXAxisLabels[date] = viewModel.formatXAxisLabel(for: date)
+                }
+            }
+        }
+    }
+    
+    /// Clears label caches when formatting context changes
+    private func invalidateLabelCaches() {
+        cachedYAxisLabels.removeAll()
+        cachedXAxisLabels.removeAll()
+    }
+    
     // MARK: - Helpers
     @inline(__always)
     private func assignFrameIfChanged(_ newFrame: CGRect) {
@@ -526,7 +591,8 @@ extension View {
         localSelectedXValue: Binding<Date?>,
         touchInteractionMode: TouchInteractionMode,
         dashboardStore: DashboardStore,
-        theme: AppColors.Palette
+        theme: AppColors.Palette,
+        getCachedXAxisLabel: @escaping (Date) -> String?
     ) -> some View {
         if isScrollable {
             self
@@ -568,7 +634,7 @@ extension View {
                     AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
                             if let date = value.as(Date.self),
-                               let labelString = viewModel.formatXAxisLabel(for: date) {
+                               let labelString = getCachedXAxisLabel(date) {
                                 Text(labelString)
                                     .font(.caption)
                                     .foregroundColor(theme.textSubheading)

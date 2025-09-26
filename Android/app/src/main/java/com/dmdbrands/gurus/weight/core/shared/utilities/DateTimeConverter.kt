@@ -1,16 +1,13 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.Period
-import java.time.YearMonth
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 /**
  * Utility class for converting between ISO date-time strings and timestamps.
@@ -54,7 +51,7 @@ object DateTimeConverter {
         }
         // Try simple date format (assume start of day in system timezone)
         else -> {
-          val localDate = java.time.LocalDate.parse(isoString, DateTimeFormatter.ISO_DATE)
+          val localDate = LocalDate.parse(isoString, DateTimeFormatter.ISO_DATE)
           localDate.atStartOfDay(defaultZone)
         }
       }
@@ -131,38 +128,99 @@ object DateTimeConverter {
     }
   }
 
-  data class TimeRange(val start: Long, val end: Long)
-
-  private val END_OF_DAY_999: LocalTime = LocalTime.of(23, 59, 59, 999_000_000)
-
-  private fun toSystemDate(millis: Long): LocalDate =
-    Instant.ofEpochMilli(millis).atZone(defaultZone).toLocalDate()
-
-  private fun startOfDaySystem(d: LocalDate): Long =
-    d.atStartOfDay(defaultZone).toInstant().toEpochMilli()
-
-  private fun endOfDaySystem(d: LocalDate): Long =
-    d.atTime(END_OF_DAY_999).atZone(defaultZone).toInstant().toEpochMilli()
-
-  fun getWeekRange(referenceMillis: Long): TimeRange {
-    val d = toSystemDate(referenceMillis)
-    val startDate = d.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-    val endDate = d.with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
-    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
+  /**
+   * Gets the start of the week (Sunday) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return Start of week timestamp in milliseconds
+   */
+  fun getWeekStart(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
   }
 
-  fun getMonthRange(referenceMillis: Long): TimeRange {
-    val d = toSystemDate(referenceMillis)
-    val ym = YearMonth.from(d)
-    val startDate = ym.atDay(1)
-    val endDate = ym.atEndOfMonth()
-    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
+  /**
+   * Gets the end of the week (Saturday) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return End of week timestamp in milliseconds
+   */
+  fun getWeekEnd(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SATURDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 23)
+    calendar.set(Calendar.MINUTE, 59)
+    calendar.set(Calendar.SECOND, 59)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
   }
 
-  fun getYearRange(referenceMillis: Long): TimeRange {
-    val d = toSystemDate(referenceMillis)
-    val startDate = d.with(java.time.temporal.TemporalAdjusters.firstDayOfYear())
-    val endDate = d.with(java.time.temporal.TemporalAdjusters.lastDayOfYear())
-    return TimeRange(startOfDaySystem(startDate), endOfDaySystem(endDate))
+  /**
+   * Gets the start of the month (1st day) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return Start of month timestamp in milliseconds
+   */
+  fun getMonthStart(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_MONTH, 1)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
+  }
+
+  /**
+   * Gets the end of the month (last day) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return End of month timestamp in milliseconds
+   */
+  fun getMonthEnd(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+    calendar.set(Calendar.HOUR_OF_DAY, 23)
+    calendar.set(Calendar.MINUTE, 59)
+    calendar.set(Calendar.SECOND, 59)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
+  }
+
+  /**
+   * Gets the start of the year (January 1st) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return Start of year timestamp in milliseconds
+   */
+  fun getYearStart(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_YEAR, 1)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
+  }
+
+  /**
+   * Gets the end of the year (December 31st) for the given timestamp.
+   * @param referenceMillis Timestamp in milliseconds
+   * @return End of year timestamp in milliseconds
+   */
+  fun getYearEnd(referenceMillis: Long): Long {
+    val calendar = Calendar.getInstance()
+    calendar.timeInMillis = referenceMillis
+    calendar.set(Calendar.DAY_OF_YEAR, calendar.getActualMaximum(Calendar.DAY_OF_YEAR))
+    calendar.set(Calendar.HOUR_OF_DAY, 23)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
   }
 }

@@ -60,6 +60,7 @@ private fun EntryScreenContent(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
+      handleIntent(EntryIntent.UpdateOnRelaunch)
         initializeDeactivate {
             focusManager.clearFocus()
             keyboardController?.hide()

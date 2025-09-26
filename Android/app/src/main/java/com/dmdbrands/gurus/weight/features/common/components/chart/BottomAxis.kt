@@ -1,9 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -16,6 +17,7 @@ import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.common.Position
+import android.graphics.Typeface
 
 @Composable
 internal fun bottomAxis(
@@ -23,6 +25,9 @@ internal fun bottomAxis(
   separators: List<Double> = emptyList(),
   horizontalItemPlacer: HorizontalAxis.ItemPlacer = HorizontalAxis.ItemPlacer.aligned()
 ): Axis<Axis.Position.Horizontal.Bottom> {
+  val resources = LocalResources.current
+  val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
+
   return if (segment != GraphSegment.TOTAL)
     HorizontalAxis.rememberBottom(
       valueFormatter =
@@ -38,6 +43,7 @@ internal fun bottomAxis(
         thickness = 1.dp,
       ),
       label = rememberAxisLabelComponent(
+        typeface = openSans,
         color = MeTheme.colorScheme.textSubheading,
         textSize = 14.sp,
       ),
@@ -58,9 +64,9 @@ internal fun bottomAxis(
         CartesianValueFormatter { _, value, _ ->
           " "
         },
+      tickLength = 0.dp,
+      tick = null,
       horizontalLabelPosition = Position.Horizontal.End,
-      tick = rememberAxisGuidelineComponent(fill = fill(Color.Transparent)),
-      tickLength = 20.dp,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,

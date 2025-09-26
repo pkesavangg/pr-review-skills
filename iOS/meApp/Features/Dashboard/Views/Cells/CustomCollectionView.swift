@@ -114,51 +114,57 @@ public class CustomCollectionView: UICollectionView {
             // Use smooth animations during drag for beautiful cell movement
             super.performBatchUpdates(updates, completion: completion)
         } else {
-            // Use instant updates for other operations to prevent jumps
-            let animationsWereEnabled = UIView.areAnimationsEnabled
-            UIView.setAnimationsEnabled(false)
+            // Scope animation disabling to only this collection view
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
-            UIView.performWithoutAnimation {
-                super.performBatchUpdates(updates, completion: { finished in
-                    CATransaction.commit()
-                    DispatchQueue.main.async {
-                        UIView.setAnimationsEnabled(animationsWereEnabled)
-                    }
-                    completion?(finished)
-                })
-            }
+            
+            // Only disable animations on this specific layer, not globally
+            let originalActions = self.layer.actions
+            self.layer.actions = ["position": NSNull(), "bounds": NSNull(), "transform": NSNull()]
+            
+            super.performBatchUpdates(updates, completion: nil)
+            
+            // Restore this collection view's layer actions and commit transaction
+            self.layer.actions = originalActions
+            CATransaction.commit()
+            
+            // Call the original completion block if provided
+            completion?(true)
         }
     }
 
     override public func reloadData() {
-        let animationsWereEnabled = UIView.areAnimationsEnabled
-        UIView.setAnimationsEnabled(false)
+        // Scope animation disabling to only this collection view
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         CATransaction.setAnimationDuration(0)
-        UIView.performWithoutAnimation {
-            super.reloadData()
-        }
+        
+        // Only disable animations on this specific layer, not globally
+        let originalActions = self.layer.actions
+        self.layer.actions = ["position": NSNull(), "bounds": NSNull(), "transform": NSNull()]
+        
+        super.reloadData()
+        
+        // Restore this collection view's layer actions
+        self.layer.actions = originalActions
         CATransaction.commit()
-        DispatchQueue.main.async {
-            UIView.setAnimationsEnabled(animationsWereEnabled)
-        }
     }
 
     override public func reloadItems(at indexPaths: [IndexPath]) {
-        let animationsWereEnabled = UIView.areAnimationsEnabled
-        UIView.setAnimationsEnabled(false)
+        // Scope animation disabling to only this collection view
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         CATransaction.setAnimationDuration(0)
-        UIView.performWithoutAnimation {
-            super.reloadItems(at: indexPaths)
-        }
+        
+        // Only disable animations on this specific layer, not globally
+        let originalActions = self.layer.actions
+        self.layer.actions = ["position": NSNull(), "bounds": NSNull(), "transform": NSNull()]
+        
+        super.reloadItems(at: indexPaths)
+        
+        // Restore this collection view's layer actions
+        self.layer.actions = originalActions
         CATransaction.commit()
-        DispatchQueue.main.async {
-            UIView.setAnimationsEnabled(animationsWereEnabled)
-        }
     }
 }

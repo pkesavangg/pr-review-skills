@@ -17,4 +17,8 @@ object HelpScreenStrings {
     // FAQ placeholder content
     const val UserManualSectionTitle = "View Digital Manual"
     const val UserManualSectionSubtitle = "Check the back of your scale for a sticker with your four digit model number."
+
+    // Footer content
+    const val FooterTitle = "Need More Help?"
+    const val FooterSubtitle = "Visit our support center for additional resources and troubleshooting guides."
 }

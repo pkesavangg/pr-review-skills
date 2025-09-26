@@ -1,12 +1,12 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
@@ -14,22 +14,27 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.common.insets
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
+import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import android.graphics.Typeface
+import androidx.compose.ui.platform.LocalResources
 
 @Composable
 internal fun rememberDefaultMarker(
-  xLabels: List<Label>,
-  markerIndex: Int?,
-  segment: GraphSegment
+  segment: GraphSegment,
+  yLabelCallback: (List<List<Double>>) -> Unit = {}
 ): CartesianMarker {
+  val resources = LocalResources.current
+  val openSans: Typeface = resources.getFont(R.font.open_sans_regular)
+
   val label =
     rememberTextComponent(
+      typeface = openSans,
       color = MeTheme.colorScheme.textSubheading,
       textSize = 14.sp,
-      padding = insets(top = -6.dp),
     )
   val guideline = rememberAxisLineComponent(
     fill = fill(MeTheme.colorScheme.textBody),
@@ -39,7 +44,7 @@ internal fun rememberDefaultMarker(
   return rememberDefaultCartesianMarker(
     label = label,
     labelPosition = DefaultCartesianMarker.LabelPosition.Top,
-    valueFormatter = valueFormatter(xLabels, markerIndex, segment),
+    valueFormatter = valueFormatter(segment),
     indicator = { color ->
       ShapeComponent(
         fill = fill(color),
@@ -48,8 +53,11 @@ internal fun rememberDefaultMarker(
         strokeThicknessDp = 0f,
       )
     },
+    contentPadding = insets(vertical = 29.dp),
     guideline = guideline,
-    contentPadding = insets(vertical = 22.dp),
+    yLabelCallback = yLabelCallback,
+    interpolationType = InterpolationType.CUBIC,
+    curvature = 0.5f,
   )
 }
 
@@ -58,19 +66,15 @@ internal fun rememberDefaultMarker(
  */
 @Composable
 private fun valueFormatter(
-  xLabels: List<Label>,
-  markerIndex: Int?,
   segment: GraphSegment
 ): DefaultCartesianMarker.ValueFormatter =
-  remember(xLabels, markerIndex) {
-    object : DefaultCartesianMarker.ValueFormatter {
-      override fun format(
-        context: CartesianDrawingContext,
-        targets: List<CartesianMarker.Target>,
-      ) = GraphUtil.markerValueFormatter(
-        targets.first().x.toLong(),
-        segment,
-      )
-    }
+  object : DefaultCartesianMarker.ValueFormatter {
+    override fun format(
+      context: CartesianDrawingContext,
+      targets: List<CartesianMarker.Target>,
+    ) = GraphUtil.markerValueFormatter(
+      targets.first().x.toLong(),
+      segment,
+    ).lowercase()
   }
 

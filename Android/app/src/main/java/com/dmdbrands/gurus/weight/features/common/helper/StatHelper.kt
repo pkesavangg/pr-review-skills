@@ -133,16 +133,25 @@ object StatHelper {
     useShort: Boolean = false,
     filterNulls: Boolean = true
   ): List<Stat> {
-    val keysToUse = (visibleKeys
-      ?: MetricKey.entries).filter { it != MetricKey.UNRECOGNIZED && if (filterWeight) it != MetricKey.WEIGHT else true }
-    return keysToUse.map { key ->
-      if (item != null) {
-        getMetricValue(item, key, useShort)
-      } else {
-        DashboardKey.Metric(key).toStat(null, useShort)
+    // Pre-filter keys to avoid repeated filtering
+    val keysToUse = (visibleKeys ?: MetricKey.entries).filter { key ->
+      key != MetricKey.UNRECOGNIZED && (!filterWeight || key != MetricKey.WEIGHT)
+    }
+
+    // Use buildList for better performance with large datasets
+    return buildList {
+      for (key in keysToUse) {
+        val stat = if (item != null) {
+          getMetricValue(item, key, useShort)
+        } else {
+          DashboardKey.Metric(key).toStat(null, useShort)
+        }
+
+        // Only add if not filtering nulls or if value is not null
+        if (!filterNulls || stat.value != null) {
+          add(stat)
+        }
       }
-    }.let { metrics ->
-      if (filterNulls) metrics.filter { it.value != null } else metrics
     }
   }
 

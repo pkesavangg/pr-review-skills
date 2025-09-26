@@ -25,11 +25,13 @@ fun VersionText(
     textAlign: TextAlign = TextAlign.Center,
     color: Color = colorScheme.textSubheading,
     style: TextStyle = typography.body4,
+    titlePrefix: String? = null
 ) {
-    val versionText = rememberVersionText()
+  val versionText = rememberVersionText()
+  val title = if (!titlePrefix.isNullOrEmpty()) "$titlePrefix $versionText" else versionText
 
-    Text(
-        text = versionText,
+  Text(
+    text = title,
         style = style,
         color = color,
         textAlign = textAlign,

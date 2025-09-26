@@ -6,8 +6,8 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
-import com.greatergoods.meapp.features.common.helper.AxisMeta
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import kotlinx.coroutines.Job
 
 /**
@@ -46,36 +46,49 @@ import kotlinx.coroutines.Job
 data class GraphState(
   val graphLines: List<GraphLine> = emptyList(),
   val secondaryGraphLines: GraphLine? = null,
-  val primaryYAxis: AxisMeta? = null,
-  val secondaryYAxis: AxisMeta? = null,
+  val primaryYAxis: CartesianRangeValues? = null,
+  val secondaryYAxis: CartesianRangeValues? = null,
+  val primaryYStep: Double? = null,
   val goal: Goal? = null,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,
-  val markerIndex: Int? = null,
+  val markerIndex: Double? = null,
   val isUpdating: Boolean = false,
+  val isLoading: Boolean = false,
   val computationJob: Job? = null,
   val animationJob: Job? = null,
-  val startRange: Long? = null,
-  val endRange: Long? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
-  val xLabels: List<Label> = graphLines.flatMap { graphLine ->
-    graphLine.points.map { point ->
-      point.x
+
+  // Cached computed properties to avoid repeated calculations
+  val xLabels: List<Label> by lazy {
+    graphLines.flatMap { graphLine ->
+      graphLine.points.map { point -> point.x }
     }
   }
-  val yLabels: List<List<Label>> = graphLines.map { graphLine ->
-    graphLine.points.map {
-      it.y
+
+  val yLabels: List<List<Label>> by lazy {
+    graphLines.map { graphLine ->
+      graphLine.points.map { it.y }
     }
   }
-  val initialTimeStamp: Long? =
-    this.xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
-  val endTimeStamp: Long? =
-    this.xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
-  val selectedData =
-    if (markerIndex != null && markerIndex < xLabels.size) graphLines.map { it.points[markerIndex] } else emptyList()
+
+  val initialTimeStamp: Long? by lazy {
+    xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
+  }
+
+  val endTimeStamp: Long? by lazy {
+    xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
+  }
+
+  val selectedData by lazy {
+    if (markerIndex != null && markerIndex < xLabels.size) {
+      graphLines.mapNotNull { it.points.find { it.x.value.toDouble() == markerIndex } }
+    } else {
+      emptyList()
+    }
+  }
 
   fun getXStartRange(segment: GraphSegment): Long? {
     if (graphLines.isEmpty()) return null

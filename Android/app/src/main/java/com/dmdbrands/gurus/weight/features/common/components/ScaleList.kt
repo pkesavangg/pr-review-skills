@@ -113,6 +113,8 @@ fun ScaleList(
         onClick = onScaleSelected,
       )
     }
+
+    footer?.let { item(key="footer") { it() } }
   }
 }
 

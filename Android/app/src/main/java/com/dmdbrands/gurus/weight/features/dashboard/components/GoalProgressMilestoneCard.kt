@@ -6,14 +6,13 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -58,8 +57,8 @@ fun GoalProgressMilestoneCard(
   onBadgeClick: () -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
-  val badgeOffsetX = MeTheme.spacing.x4s
-  val badgeOffsetY = MeTheme.spacing.x4s
+  val badgeOffsetX = (-5).dp
+  val badgeOffsetY = 5.dp
   // Defensive: computations aren't used for UI anymore; GoalMilestoneDisplay owns logic.
   // Keep locals only if needed for future UI extensions.
 
@@ -73,8 +72,7 @@ fun GoalProgressMilestoneCard(
       repeatMode = RepeatMode.Reverse,
     ),
   )
-  val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
-  val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
+  val metricBadgeIcon = if (isVisible) AppIcons.Filled.MinusCircle else AppIcons.Filled.AddCircle
   val dragCardShadow = if (isDragging) {
     Modifier.dropShadow(
       shape = RoundedCornerShape(MeTheme.spacing.x6s),
@@ -92,18 +90,18 @@ fun GoalProgressMilestoneCard(
       if (inEditMode) {
         // Nudge the badge inwards so it visually centers on top-right like other cards
         Badge(
-          containerColor = MeTheme.colorScheme.inverseAction,
+          containerColor = Color.Transparent,
           contentColor = Color.Transparent,
           modifier = Modifier
+            .padding(0.dp)
             .offset(x = badgeOffsetX, y = badgeOffsetY)
-            .size(24.dp)
-            .clickable { onBadgeClick() }
-            .border(2.dp, iconTint, CircleShape),
+            .size(32.dp)
+            .clickable { onBadgeClick() },
         ) {
           Icon(
             painter = painterResource(id = metricBadgeIcon),
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
-            tint = iconTint,
+            tint = Color.Unspecified,
             modifier = Modifier.fillMaxSize(),
           )
         }
