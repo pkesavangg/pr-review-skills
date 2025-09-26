@@ -857,28 +857,34 @@ extension MetricGridUIKitView {
                 custom.isInDragOperation = false
             }
             
-            // Force instant layout update with zero animations
+            // Force instant layout update with scoped animation disabling
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             CATransaction.setAnimationDuration(0)
-            UIView.performWithoutAnimation {
-                collectionView.layoutIfNeeded()
-                // Force all visible cells to update their appearance instantly
-                collectionView.visibleCells.forEach { cell in
-                    cell.layer.removeAllAnimations()
-                    cell.contentView.layer.removeAllAnimations()
-                    // Ensure no transform animations
-                    cell.transform = .identity
-                    cell.contentView.transform = .identity
-                    
-                    // Restore overlay visibility if in edit mode
-                    if let metricCell = cell as? MetricCell {
-                        metricCell.setOverlaySuppressed(false)
-                        // Force clear all shadow effects to prevent shadow artifacts
-                        metricCell.clearAllShadowEffects()
-                    }
+            
+            // Only disable animations on this collection view, not globally
+            let originalActions = collectionView.layer.actions
+            collectionView.layer.actions = ["position": NSNull(), "bounds": NSNull(), "transform": NSNull()]
+            
+            collectionView.layoutIfNeeded()
+            // Force all visible cells to update their appearance instantly
+            collectionView.visibleCells.forEach { cell in
+                cell.layer.removeAllAnimations()
+                cell.contentView.layer.removeAllAnimations()
+                // Ensure no transform animations
+                cell.transform = .identity
+                cell.contentView.transform = .identity
+                
+                // Restore overlay visibility if in edit mode
+                if let metricCell = cell as? MetricCell {
+                    metricCell.setOverlaySuppressed(false)
+                    // Force clear all shadow effects to prevent shadow artifacts
+                    metricCell.clearAllShadowEffects()
                 }
             }
+            
+            // Restore collection view's layer actions
+            collectionView.layer.actions = originalActions
             CATransaction.commit()
 
             if store.state.ui.isEditMode {
