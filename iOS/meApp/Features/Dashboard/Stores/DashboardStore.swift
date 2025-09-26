@@ -937,9 +937,9 @@ class DashboardStore: ObservableObject {
         }
         
         // Special case: If goal card is at last position and we're in edit mode with removed streaks,
-        // and the position would cause it to disappear, move it to the next even index
+        // and the position would cause it to disappear, move it to a valid position
         if state.ui.isEditMode && hasRemovedStreaks && state.ui.goalCardPosition == maxPosition && maxPosition % 2 == 1 {
-            // Move to the next even index (e.g., from 5th to 4th)
+            // Move to a valid position (e.g., from 5th to 4th) - respect user's intent
             let adjustedPosition = maxPosition - 1
             state.ui.goalCardPosition = adjustedPosition
             logger.log(level: .debug, tag: "DashboardStore", message: "Edit mode: Goal card moved from \(maxPosition) to \(adjustedPosition) to ensure visibility")

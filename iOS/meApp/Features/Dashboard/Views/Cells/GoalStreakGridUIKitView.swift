@@ -243,11 +243,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     }
                 }
             } else {
-                // When all streaks are present in edit mode: Use original logic (goal card only at even indexes)
+                // When all streaks are present in edit mode: Apply even position restriction
                 let maxPosition = streakCount
                 let clampedGoalCardPos = min(goalCardPos, maxPosition)
                 
-                // Ensure goal card is only at even indexes when all streaks are present
+                // Apply even position restriction when all streaks are present
                 let adjustedGoalCardPos = (clampedGoalCardPos % 2 == 0) ? clampedGoalCardPos : clampedGoalCardPos - 1
                 let finalGoalCardPos = max(0, adjustedGoalCardPos)
                 
@@ -322,11 +322,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     }
                 }
             } else {
-                // When all streaks are present: Use original logic (goal card only at even indexes)
+                // When all streaks are present: Apply even position restriction
                 let maxPosition = streakCount
                 let clampedGoalCardPos = min(goalCardPos, maxPosition)
                 
-                // Ensure goal card is only at even indexes when all streaks are present
+                // Apply even position restriction when all streaks are present
                 let adjustedGoalCardPos = (clampedGoalCardPos % 2 == 0) ? clampedGoalCardPos : clampedGoalCardPos - 1
                 let finalGoalCardPos = max(0, adjustedGoalCardPos)
                 
@@ -477,11 +477,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // MARK: - Interactive Movement (Strictly Clamped)
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
-            guard let collectionView = gesture.view as? UICollectionView else { return }
-            guard store.state.ui.isEditMode else { return }
+            guard let collectionView = gesture.view as? UICollectionView else { 
+                print("🚫 LONG PRESS BLOCKED: Not a collection view")
+                return 
+            }
+            guard store.state.ui.isEditMode else { 
+                print("🚫 LONG PRESS BLOCKED: Not in edit mode")
+                return 
+            }
 
             switch gesture.state {
             case .began:
+                print("🎯 LONG PRESS BEGAN")
                 let location = gesture.location(in: collectionView)
                 if let indexPath = collectionView.indexPathForItem(at: location), indexPath.item < firstRemovedIndex {
                     configureBoundaryConstraints(for: collectionView)
@@ -552,6 +559,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
                 collectionView.updateInteractiveMovementTargetPosition(targetCenter)
             case .ended:
+                print("🎯 LONG PRESS ENDED")
                 collectionView.endInteractiveMovement()
                 // Recompute bounds after drop as height/order may have changed
                 configureBoundaryConstraints(for: collectionView)
@@ -725,42 +733,59 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
             // Update the underlying model to match the interactive movement
-            guard sourceIndexPath.item < firstRemovedIndex && destinationIndexPath.item < firstRemovedIndex else { return }
+            guard sourceIndexPath.item < firstRemovedIndex && destinationIndexPath.item < firstRemovedIndex else { 
+                print("🚫 MOVE BLOCKED: Source or destination beyond first removed index")
+                return 
+            }
             
             let sourceIndex = sourceIndexPath.item
             let destinationIndex = destinationIndexPath.item
+            
+            print("🎯 MOVE ITEM DEBUG:")
+            print("   Source Index: \(sourceIndex)")
+            print("   Destination Index: \(destinationIndex)")
+            print("   Total Items: \(gridModel.mileStones.count)")
+            
+            // Debug: Show what's at each position
+            for (index, widget) in gridModel.mileStones.enumerated() {
+                switch widget {
+                case .goalCard:
+                    print("   Position \(index): Goal Card")
+                case .streak(let item):
+                    print("   Position \(index): Streak - \(item.label)")
+                }
+            }
             
             // Get the widget being moved
             let movedWidget = gridModel.mileStones[sourceIndex]
             
             // Check for special case
             if case .goalCard = movedWidget {
-                let allStreaksPresent = gridModel.mileStones.allSatisfy { widget in
-                    switch widget {
-                    case .goalCard: return true
-                    case .streak(let streakItem): 
-                        return !store.isStreakRemoved(streakItem.label)
-                    }
-                }
+                print("   ✅ Goal card being moved")
                 
+                let allStreaksPresent = isAllStreaksPresent()
                 let goalCardPresent = gridModel.mileStones.contains { widget in
                     if case .goalCard = widget { return true }
                     return false
                 }
                 
-                let goalCardAtLastIndex = sourceIndex == gridModel.mileStones.count - 1
+                print("   All Streaks Present: \(allStreaksPresent)")
+                print("   Goal Card Present: \(goalCardPresent)")
                 
-                // Constants for goal card position adjustment
-                let goalCardDestinationPosition = 5 // Position where goal card should be adjusted from
-                let goalCardAdjustedPosition = 4    // Position where goal card should be moved to
-                
-                // Apply special case: if goal card is at last position and destination is at the specified position, adjust to the adjusted position
-                if allStreaksPresent && goalCardPresent && goalCardAtLastIndex && destinationIndex == goalCardDestinationPosition {
-                    gridModel.moveWidget(from: sourceIndex, to: goalCardAdjustedPosition)
+                if allStreaksPresent && goalCardPresent {
+                    // Restrict goal card to even positions when all streaks are present
+                    let adjustedDestination = (destinationIndex % 2 == 0)
+                        ? destinationIndex
+                        : max(0, destinationIndex - 1)
+                    print("   ✅ EVEN POSITION RESTRICTION: Moving from index \(sourceIndex) to index \(adjustedDestination)")
+                    gridModel.moveWidget(from: sourceIndex, to: adjustedDestination)
                 } else {
+                    // Flexible positioning when streaks are removed
+                    print("   ✅ FLEXIBLE POSITIONING: Allowing goal card at any position (streaks removed)")
                     gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
                 }
             } else {
+                print("   ❌ Not a goal card")
                 gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
             }
             
@@ -769,21 +794,29 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
             guard store.state.ui.isEditMode else { 
+                print("🚫 DRAG BLOCKED: Not in edit mode")
                 return [] 
             }
             
             // Only allow dragging of non-removed (active) items
             if isItemRemoved(at: indexPath.item) || indexPath.item >= firstRemovedIndex {
+                print("🚫 DRAG BLOCKED: Item is removed or beyond first removed index")
                 return [] // Return empty array to prevent drag of removed items
             }
             
             let widget = gridModel.mileStones[indexPath.item]
+            print("🎯 DRAG STARTED:")
+            print("   Index: \(indexPath.item)")
+            print("   Widget: \(widget)")
+            
             let itemProvider: NSItemProvider
             switch widget {
             case .goalCard:
                 itemProvider = NSItemProvider(object: "goalCard" as NSString)
+                print("   ✅ Goal card drag initiated")
             case .streak(let item):
                 itemProvider = NSItemProvider(object: item.id.uuidString as NSString)
+                print("   ✅ Streak item drag initiated")
             }
             let dragItem = UIDragItem(itemProvider: itemProvider)
             
@@ -974,17 +1007,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     return false
                 }
                 
-                if let goalIndex = goalCardIndex,
-                   goalIndex == gridModel.mileStones.count - 1 {
-                    // Goal card is at the last position, check if destination is odd
+                if let goalIndex = goalCardIndex {
                     let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
                     
-                    // Only apply even index restriction when all streaks are present
-                    if !hasRemovedStreaks && destinationIndexPath.item % 2 != 0 {
-                        // Instead of forbidding, we'll allow the drop but adjust the position
-                        // The actual position adjustment will happen in performDropWith
-                        return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
-                    }
+                    print("🎯 DROP SESSION DEBUG:")
+                    print("   Goal Card Index: \(goalIndex)")
+                    print("   Destination Index: \(destinationIndexPath.item)")
+                    print("   Has Removed Streaks: \(hasRemovedStreaks)")
+                    
+                    // Allow goal card to be dropped at any position - removed specific position restrictions
+                    
+                    // Allow goal card to be dropped at any position - removed all position restrictions
                 }
             }
             
@@ -1359,64 +1392,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Special validation for goal card dragged from last position
             if case .goalCard = widget {
                 let isFromLastPosition = sourceIndex == gridModel.mileStones.count - 1
-                let isFromFourthPosition = sourceIndex == 4
+                let isFromFourthPosition = sourceIndex == 3
                 let isFromSecondPosition = sourceIndex == 2
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
 
-                // Constants for goal card position adjustment in drop operation
-                let goalCardDropAdjustment = 1
-
-                // Only apply special case when all streaks are present
-                if !hasRemovedStreaks {
-                    var clampedAdjustedIndex: Int? = nil
-
-                    // Last position: drop at (count-2), move to (count-3)
-                    if isFromLastPosition && actualInsertionIndex == gridModel.mileStones.count - 2 {
-                        let adjustedIndex = actualInsertionIndex - goalCardDropAdjustment
-                        clampedAdjustedIndex = max(0, adjustedIndex)
-                    }
-                    // Fourth position: drop at 3, move to 2
-                    else if isFromFourthPosition && actualInsertionIndex == 3 {
-                        clampedAdjustedIndex = 2
-                    }
-                    // Second position: drop at 1, move to 0
-                    else if isFromSecondPosition && actualInsertionIndex == 1 {
-                        clampedAdjustedIndex = 0
-                    }
-
-                    if let adjusted = clampedAdjustedIndex, adjusted != actualInsertionIndex {
-                        collectionView.performBatchUpdates({
-                            gridModel.moveWidget(from: sourceIndex, to: adjusted)
-                            collectionView.moveItem(at: sourceIndexPath, to: IndexPath(item: adjusted, section: 0))
-                        }, completion: { _ in
-                            collectionView.collectionViewLayout.invalidateLayout()
-                            collectionView.layoutIfNeeded()
-
-                            CATransaction.begin()
-                            CATransaction.setDisableActions(true)
-                            CATransaction.setAnimationDuration(0)
-
-                            UIView.performWithoutAnimation {
-                                let visibleIndexPaths = collectionView.indexPathsForVisibleItems
-                                for indexPath in visibleIndexPaths {
-                                    if let cell = collectionView.cellForItem(at: indexPath) {
-                                        cell.layoutIfNeeded()
-                                    }
-                                }
-                            }
-
-                            CATransaction.commit()
-
-                            if let custom = collectionView as? CustomCollectionView {
-                                custom.suspendIntrinsicInvalidation = false
-                            }
-
-                            self.persistGridOrderToStore()
-                            self.provideDropConfirmationHapticFeedback()
-                        })
-                        return
-                    }
-                }
             }
 
             // Keep smooth animations during the drop operation for beautiful cell movement
@@ -1425,10 +1404,34 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 custom.suspendIntrinsicInvalidation = true 
             }
             
+            // Determine final destination index for goal card
+            let finalDestinationIndex: Int
+            if case .goalCard = widget {
+                let allStreaksPresent = isAllStreaksPresent()
+                let goalCardPresent = gridModel.mileStones.contains { widget in
+                    if case .goalCard = widget { return true }
+                    return false
+                }
+                
+                if allStreaksPresent && goalCardPresent {
+                    // Restrict goal card to even positions when all streaks are present
+                    finalDestinationIndex = (actualInsertionIndex % 2 == 0)
+                        ? actualInsertionIndex
+                        : max(0, actualInsertionIndex - 1)
+                    print("   ✅ EVEN POSITION RESTRICTION: Drop adjusted from \(actualInsertionIndex) to \(finalDestinationIndex)")
+                } else {
+                    // Flexible positioning when streaks are removed
+                    finalDestinationIndex = actualInsertionIndex
+                    print("   ✅ FLEXIBLE POSITIONING: Drop at user-chosen position \(actualInsertionIndex)")
+                }
+            } else {
+                finalDestinationIndex = actualInsertionIndex
+            }
+
             // Use smooth animations for the actual reordering
             collectionView.performBatchUpdates({
-                gridModel.moveWidget(from: sourceIndex, to: actualInsertionIndex)
-                collectionView.moveItem(at: sourceIndexPath, to: IndexPath(item: actualInsertionIndex, section: 0))
+                gridModel.moveWidget(from: sourceIndex, to: finalDestinationIndex)
+                collectionView.moveItem(at: sourceIndexPath, to: IndexPath(item: finalDestinationIndex, section: 0))
             }, completion: { _ in
                 collectionView.collectionViewLayout.invalidateLayout()
                 collectionView.layoutIfNeeded()
@@ -1879,15 +1882,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         /// Saves the current grid order to DashboardStore UI state
         private func persistGridOrderToStore() {
-            // Apply row-wise reordering before persisting
-            let spanCount = DevicePlatform.isTablet ? 4 : 2
-            var reorderedModel = gridModel
-            reorderedModel.reorderGrid(spanCount: spanCount)
-            
+            // Preserve user's exact positioning - no reordering
             var newStreakOrder: [MetricItem] = []
             var goalCardPosition: Int? = nil
 
-            for (index, widget) in reorderedModel.mileStones.enumerated() {
+            for (index, widget) in gridModel.mileStones.enumerated() {
                 switch widget {
                 case .goalCard:
                     goalCardPosition = index
@@ -1902,9 +1901,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Save goal card position
             store.state.ui.goalCardPosition = goalCardPosition ?? 0
             
-            // Update the local grid model with the reordered version
-            gridModel = reorderedModel
-            
             // Force UI update to reflect the changes
             store.objectWillChange.send()
         }
@@ -1914,6 +1910,20 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             lastDropTargetIndexPath = nil
             lastDropTargetItemType = nil
             lastDropTargetChangeTime = nil
+        }
+        
+        /// Helper function to check if all streaks are present (not removed)
+        private func isAllStreaksPresent() -> Bool {
+            // Count actual streak items (not removed)
+            let streakCount = gridModel.mileStones.compactMap { widget -> String? in
+                switch widget {
+                case .goalCard: return nil
+                case .streak(let streakItem):
+                    return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+                }
+            }.count
+            // All streaks present means we have exactly 6 streak items
+            return streakCount == 6
         }
         
     }
