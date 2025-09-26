@@ -28,7 +28,7 @@ fun VersionText(
     titlePrefix: String? = null
 ) {
   val versionText = rememberVersionText()
-  val title = if (titlePrefix.isNullOrEmpty()) "$titlePrefix $versionText" else versionText
+  val title = if (!titlePrefix.isNullOrEmpty()) "$titlePrefix $versionText" else versionText
 
   Text(
     text = title,

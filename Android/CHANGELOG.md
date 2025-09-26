@@ -6,10 +6,11 @@
 
 ### Changed
 
-- Refactored dashboard milestones reorder
--
+- Refactored dashboard milestones reorder.
+- Updated metric remove and add icon.
 - Handled long press event for drag and drop tiles in Dashboard.
 - In sign up, removed metric toggle from the goal slide and included it in the height slide.
+- Updated help page footer to display app version.
 
 ### Fixed
 
