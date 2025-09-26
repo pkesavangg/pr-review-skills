@@ -76,9 +76,13 @@ fun HistoryDetailScreenContent(
                 else -> {
                     HistoryDetailList(
                         historyDetails = state.historyItems,
+                        itemsOpened = state.itemsOpened,
+                        onItemsOpen = {
+                            handleIntent(HistoryDetailIntent.SetItemsOpened(it))
+                        },
                         onItemDelete = {
                             handleIntent(HistoryDetailIntent.DeleteEntry(it))
-                        },
+                        }
                     )
                 }
             }

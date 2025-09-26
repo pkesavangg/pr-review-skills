@@ -45,7 +45,6 @@ interface SwipeableListItemScope {
 private class SwipeableListItemScopeImpl<T>(val item: T, val index: Int) : SwipeableListItemScope {
     private var swipeableBuilder: (@Composable (Float) -> Unit)? = null
     private var staticBuilder: (@Composable () -> Unit)? = null
-    var initialized: Boolean by mutableStateOf(false)
 
     fun buildSwipeable(progress: Float): @Composable () -> Unit =
         swipeableBuilder?.let { { it(progress) } } ?: {
@@ -116,17 +115,11 @@ fun <T> AppSwipeableList(
         }
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
+            // Use remember to cache the scope but ensure content is refreshed
             val scope = remember(item) { SwipeableListItemScopeImpl(item, index) }
 
-            // Run composable scope initializer
-            if (!scope.initialized) {
-                scope.itemContent(item)
-                scope.initialized = true
-
-                if (!scope.hasContent()) {
-                    Log.w("AppSwipeableList", "⚠️ No Swipeable or Static scope defined for item at index $index")
-                }
-            }
+            // Always execute the item content to ensure state changes are captured
+            scope.itemContent(item)
 
             AppSwipeableListItem(
               actionContent = { trailingActions(index, item) },

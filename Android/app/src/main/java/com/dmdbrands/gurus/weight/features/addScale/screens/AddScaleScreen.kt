@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,6 +44,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -68,6 +70,12 @@ fun AddScaleScreenContent(
   val modelNumberControl = state.form.controls.modelNumber
   val modelNumberFocusRequester = remember { FocusRequester() }
   val interactionSource = remember { MutableInteractionSource() }
+
+  DisposableEffect(Unit) {
+    onDispose {
+      handleIntent(AddScaleIntent.ResetForm)
+    }
+  }
 
   AppScaffold(
     title = AddScaleScreenStrings.Header,

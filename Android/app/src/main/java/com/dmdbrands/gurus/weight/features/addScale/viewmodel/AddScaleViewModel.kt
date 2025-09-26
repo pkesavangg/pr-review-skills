@@ -61,6 +61,8 @@ constructor(
         checkAndNavigateToScaleSetup(intent.sku)
       }
 
+      is AddScaleIntent.ResetForm -> _state.value.form.resetForm()
+
       else -> {}
     }
   }
@@ -96,7 +98,10 @@ constructor(
     val setupType = scaleInfo?.setupType
     val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
 
-    AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, setup type: $setupType, already paired: $isScaleAlreadyPaired")
+    AppLog.d(
+      TAG,
+      "Scale info found: ${scaleInfo?.productName}, setup type: $setupType, already paired: $isScaleAlreadyPaired",
+    )
 
     if (setupType == ScaleSetupType.AppSync && isScaleAlreadyPaired) {
       AppLog.d(TAG, "Scale is already paired, showing confirmation dialog")
@@ -129,18 +134,22 @@ constructor(
           AppLog.d(TAG, "Navigating to AppSync scale setup")
           navigateTo(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
         }
+
         ScaleSetupType.Bluetooth -> {
           AppLog.d(TAG, "Navigating to Bluetooth scale setup")
-          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku,scaleInfo))
+          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku, scaleInfo))
         }
+
         ScaleSetupType.Lcbt -> {
           AppLog.d(TAG, "Navigating to Lcbt scale setup")
           navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
         }
+
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
           navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
         }
+
         ScaleSetupType.Wifi,
         ScaleSetupType.EspTouchWifi -> {
           AppLog.d(TAG, "Navigating to WiFi scale setup")
