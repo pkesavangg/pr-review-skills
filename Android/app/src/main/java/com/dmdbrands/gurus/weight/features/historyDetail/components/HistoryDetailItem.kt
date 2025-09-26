@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,10 +46,11 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun SwipeableListItemScope.HistoryDetailItem(
     item: ScaleEntry,
+    isExpanded: Boolean = false,
+    onItemOpen: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val bodyMetric = fromScaleEntry(item)
-    var isExpanded by remember { mutableStateOf(false) }
 
     Swipeable {
         HistoryDetailItemHeader(
@@ -57,7 +58,7 @@ fun SwipeableListItemScope.HistoryDetailItem(
             canExpand = getMetrics(bodyMetric).isNotEmpty(),
             isExpanded = isExpanded,
             onClick = {
-                isExpanded = !isExpanded
+                onItemOpen(item.entry.id)
             },
         )
     }
@@ -97,14 +98,10 @@ fun HistoryDetailItemHeader(
             Modifier
                 .fillMaxWidth()
                 .background(backgroundColor)
-                .padding(MeTheme.spacing.sm)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        if (canExpand) {
-                            onClick()
-                        }
-                    }
-                },
+                .clickable(enabled = canExpand) {
+                    onClick()
+                }
+              .padding(MeTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -158,7 +155,6 @@ fun HistoryDetailItemHeader(
             AppIcon(
                 id = AppIcons.Default.RightCaret,
                 contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
-                onClick = onClick,
                 modifier =
                     Modifier
                         .padding(start = MeTheme.spacing.sm)
@@ -177,9 +173,13 @@ private fun SwipeableListItemScope.HistoryDetailItemPreview() {
         AppScaffold("") {
             HistoryDetailItem(
                 item = sampleScaleEntry,
+                isExpanded = false,
+                onItemOpen = {},
             )
             HistoryDetailItem(
                 item = sampleScaleEntry,
+                isExpanded = true,
+                onItemOpen = {},
             )
         }
     }

@@ -1,6 +1,12 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
@@ -19,13 +25,23 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 /**
  * List of history detail items, using HistoryDetailItem for each row.
  * @param historyDetails List of history detail item models
+ * @param itemsOpened List of opened item IDs
+ * @param onItemsOpen Callback when items are opened/closed
  * @param onItemDelete Callback when an item's "Delete" is clicked
  */
 @Composable
 fun HistoryDetailList(
   historyDetails: List<ScaleEntry>,
+  itemsOpened: List<Long> = emptyList(),
+  onItemsOpen: (List<Long>) -> Unit,
   onItemDelete: (ScaleEntry) -> Unit,
 ) {
+  // Create a derived state to force recomposition when itemsOpened changes
+  val expandedItems by remember(itemsOpened) {
+    derivedStateOf { itemsOpened.toSet() }
+  }
+
+
   AppSwipeableList(
     items = historyDetails,
     iconWidth = 88.dp,
@@ -45,6 +61,15 @@ fun HistoryDetailList(
   ) { item ->
     HistoryDetailItem(
       item = item,
+      isExpanded = expandedItems.contains(item.entry.id),
+      onItemOpen = { itemId ->
+        val newItemsOpened = if (itemsOpened.contains(itemId)) {
+          itemsOpened.filter { it != itemId }
+        } else {
+          itemsOpened + itemId
+        }
+        onItemsOpen(newItemsOpened)
+      },
     )
   }
 }
@@ -134,6 +159,8 @@ fun HistoryDetailListPreview() {
       )
     HistoryDetailList(
       historyDetails = sampleItems,
+      itemsOpened = emptyList(),
+      onItemsOpen = {},
       onItemDelete = {},
     )
   }

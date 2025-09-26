@@ -50,6 +50,8 @@ sealed interface AddScaleIntent : IReducer.Intent {
 
   object Submit : AddScaleIntent
 
+  object ResetForm : AddScaleIntent
+
   data class SetSavedScales(
     val scales: List<Device>,
   ) : AddScaleIntent
@@ -78,5 +80,6 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
       is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
       is AddScaleIntent.OpenSelectedScaleSetup -> state.copy(selectedSku = intent.sku)
       is AddScaleIntent.OpenScaleSettings -> state.copy(scaleId = intent.scaleId)
+      else -> state
     }
 }
