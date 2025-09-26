@@ -76,6 +76,12 @@ struct MileStoneGridModel {
         guard let goalCardIndex = mileStones.firstIndex(where: { $0 == .goalCard }) else { return }
         if goalCardIndex == mileStones.count - 1 { return }
         
+        // When streaks are removed, respect user-defined positions and don't auto-reorder
+        // This allows the goal card to stay where the user placed it via drag and drop
+        if hasRemovedStreaks {
+            return // Skip automatic reordering when streaks are removed
+        }
+        
         // Count streak items before the goal card
         let streakCountBeforeGoal = (0..<goalCardIndex).reduce(0) { count, index in
             if case .streak = mileStones[index] { return count + 1 }

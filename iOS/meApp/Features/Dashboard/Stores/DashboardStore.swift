@@ -936,14 +936,9 @@ class DashboardStore: ObservableObject {
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
         }
         
-        // Special case: If goal card is at last position and we're in edit mode with removed streaks,
-        // and the position would cause it to disappear, move it to a valid position
-        if state.ui.isEditMode && hasRemovedStreaks && state.ui.goalCardPosition == maxPosition && maxPosition % 2 == 1 {
-            // Move to a valid position (e.g., from 5th to 4th) - respect user's intent
-            let adjustedPosition = maxPosition - 1
-            state.ui.goalCardPosition = adjustedPosition
-            logger.log(level: .debug, tag: "DashboardStore", message: "Edit mode: Goal card moved from \(maxPosition) to \(adjustedPosition) to ensure visibility")
-        }
+        // REMOVED: Special case that was incorrectly moving goal card from odd to even position
+        // When streaks are removed, goal card should stay in its current position (odd or even)
+        // The grid building logic will handle the actual layout properly
         
         logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
