@@ -37,11 +37,20 @@ fun ScaleMetricsSettingScreen(
   currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
+  includeHeartRate: Boolean = true,
 ) {
 
   // Separate state for each metric group
-  var bodyMetricsState by remember(currentMetrics) {
-    mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).first)
+  var bodyMetricsState by remember(currentMetrics, includeHeartRate) {
+    val (bodyMetrics, otherMetrics) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)
+    val updatedBodyMetrics = bodyMetrics.map { metric ->
+      if (metric.key == "heartRate") {
+        metric.copy(isIncluded = includeHeartRate)
+      } else {
+        metric
+      }
+    }
+    mutableStateOf(updatedBodyMetrics)
   }
 
   var otherMetricsState by remember(currentMetrics) {
@@ -156,6 +165,7 @@ fun DisplayMetricsScreenPreview() {
       onMetricsChanged = { enabledKeys ->
         println("Enabled metrics: $enabledKeys")
       },
+      includeHeartRate = false,
     )
   }
 }

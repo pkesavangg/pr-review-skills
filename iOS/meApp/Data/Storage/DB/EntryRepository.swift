@@ -4,7 +4,6 @@ import SwiftData
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
 /// Handles CRUD operations for Entry entities in a thread-safe manner.
 ///
-@MainActor
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties

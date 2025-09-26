@@ -280,6 +280,7 @@ object ServiceModule {
     fun provideOfflineHandlerService(
       accountRepository: IAccountRepository,
       bodyCompositionRepository: IBodyCompositionRepository,
+      deviceService: IDeviceService,
       notificationRepository: INotificationRepository,
       userSettingsRepository: IUserSettingsRepository,
       goalRepository: IGoalRepository,
@@ -290,6 +291,7 @@ object ServiceModule {
       OfflineHandlerService(
         accountRepository,
         bodyCompositionRepository,
+        deviceService,
         notificationRepository,
         userSettingsRepository,
         goalRepository,
@@ -358,7 +360,8 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       goalAlertDataStore: GoalAlertDataStore,
-      accountRepository: IAccountRepository
+      accountRepository: IAccountRepository,
+      deviceService: IDeviceService
     ): IGoalService =
       GoalService(
         goalRepository,
@@ -367,6 +370,7 @@ object ServiceModule {
         appNavigationService,
         goalAlertDataStore,
         accountRepository,
+        deviceService
       )
 
     @Provides

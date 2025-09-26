@@ -42,9 +42,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return dashboardStore?.visibleDomainLength(for: timePeriod) ?? (7 * 24 * 60 * 60)
     }
     
-    var maxGapForConnectedSegments: TimeInterval {
-        fatalError("Must be overridden by subclass")
-    }
     
     var pointSize: CGFloat {
         return 64 // Default point size
@@ -135,6 +132,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+    
+    // MARK: - Persistent Cache (survives view recreation)
+    private var cachedSeriesData: [GraphSeries] = []
+    private var cachedGroupedSeries: [String: [GraphSeries]] = [:]
+    private var lastCacheUpdateHash: Int = 0
 
     /// Visible series filtered by the current scroll position and visible domain
     var visibleChartSeriesData: [GraphSeries] {
@@ -219,6 +221,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         updateYAxisConfiguration()
         // Sync with any existing cached Y-axis values from the store
         syncYAxisFromStore()
+        // Initialize cache with current data (safe during configuration)
+        updateCachedSeriesData()
     }
     
     // MARK: - Chart State Management
@@ -278,10 +282,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             chartHeight: chartFrame.height
         )
         
-        // Animate domain changes only
-        withAnimation(.easeInOut(duration: 0.25)) {
-            self.yAxisDomain = yAxisScale.domain
-        }
+        // Update domain without animation (animation handled by Chart view)
+        self.yAxisDomain = yAxisScale.domain
         // Do not animate tick updates
         withTransaction(Transaction(animation: nil)) {
             self.yAxisTicks = yAxisScale.ticks
@@ -477,44 +479,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Chart Content Helpers
     
-    /// Returns connected segments for line drawing (prevents gaps in data)
-    func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        guard !dataPoints.isEmpty else { return [] }
-        
-        var segments: [[GraphSeries]] = []
-        var currentSegment: [GraphSeries] = []
-        
-        let sortedPoints = dataPoints.sorted { $0.date < $1.date }
-        let maxGap = maxGapForConnectedSegments
-        
-        for point in sortedPoints {
-            if currentSegment.isEmpty {
-                currentSegment.append(point)
-            } else {
-                let lastPoint = currentSegment.last!
-                let timeDifference = point.date.timeIntervalSince(lastPoint.date)
-                
-                if timeDifference <= maxGap {
-                    // Continue current segment
-                    currentSegment.append(point)
-                } else {
-                    // Start new segment due to gap
-                    if !currentSegment.isEmpty {
-                        segments.append(currentSegment)
-                    }
-                    currentSegment = [point]
-                }
-            }
-        }
-        
-        // Add the last segment
-        if !currentSegment.isEmpty {
-            segments.append(currentSegment)
-        }
-        
-        return segments
-    }
-    
     /// Determines if chart data should animate based on scrolling state
     var shouldAnimateChartData: Bool {
         return !isScrolling && !chartOperations.isEmpty
@@ -524,6 +488,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Called when data changes to update chart state
     func refreshData() {
+        // Invalidate cache since underlying data changed
+        invalidateCache()
         updateYAxisConfiguration()
         // Maintain selection if still valid
         if let selectedDate = selectedDate {
@@ -533,6 +499,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Called when settings change (unit, weightless mode, etc.)
     func handleSettingsChange() {
+        // Invalidate cache since display values may have changed
+        invalidateCache()
         updateYAxisConfiguration()
         clearSelection() // Clear selection as values may have changed
     }
@@ -540,6 +508,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Called when scroll position is updated programmatically
     func updateScrollPosition(to position: Date) {
         self.scrollPosition = position
+    }
+    
+    /// Forces scroll position update with binding refresh
+    func forceScrollPositionUpdate(to position: Date) {
+        // Force a small change to trigger binding update
+        let temp = position.addingTimeInterval(0.001)
+        self.scrollPosition = temp
+        DispatchQueue.main.async {
+            self.scrollPosition = position
+        }
     }
     
     /// Initialize chart
@@ -554,10 +532,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
         // Read cached values from dashboard store
         if let cachedDomain = store.state.graph.cachedYAxisDomain {
-            // Animate domain transition when cache updates
-            withAnimation(.easeInOut(duration: 0.25)) {
-                self.yAxisDomain = cachedDomain
-            }
+            // Update domain without animation (animation handled by Chart view)
+            self.yAxisDomain = cachedDomain
         }
 
         if let cachedTicks = store.state.graph.cachedYAxisTicks {
@@ -566,6 +542,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 self.yAxisTicks = cachedTicks
             }
         }
+
+        // Y-axis domain/ticks affect normalized metric series values.
+        // Invalidate and refresh cached series so plotted points match the new domain.
+        invalidateCache()
+        updateCachedSeriesData()
     }
 
     /// Determines if a date should show a solid vertical line (start of week/month/year)
@@ -592,5 +573,77 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         default:
             return false
         }
+    }
+    
+    // MARK: - Persistent Cache Management
+    
+    /// Updates cached series data only if the underlying data has changed
+    func updateCachedSeriesData() {
+        let newData = chartSeriesData
+        
+        // Create a simple hash to detect data changes
+        var hasher = Hasher()
+        hasher.combine(newData.count)
+        if !newData.isEmpty {
+            // Sample a few points to create a lightweight hash
+            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count/2, newData.count-1]
+            for i in indices {
+                let point = newData[i]
+                hasher.combine(point.date.timeIntervalSince1970.bitPattern)
+                hasher.combine(point.value.bitPattern)
+                hasher.combine(point.series)
+            }
+        }
+        let newHash = hasher.finalize()
+        
+        // Only update cache if data actually changed
+        if newHash != lastCacheUpdateHash || cachedSeriesData.isEmpty {
+            // Update cache synchronously since these are no longer @Published
+            cachedSeriesData = newData
+            
+            // Group series and pre-sort each series by date
+            let grouped = Dictionary(grouping: cachedSeriesData) { $0.series }
+            cachedGroupedSeries = grouped.mapValues { seriesPoints in
+                seriesPoints.sorted { $0.date < $1.date }
+            }
+            
+            lastCacheUpdateHash = newHash
+        }
+    }
+    
+    /// Async version for updating cache from view updates without publishing warnings
+    func updateCachedSeriesDataAsync() {
+        Task { @MainActor in
+            updateCachedSeriesData()
+        }
+    }
+    
+    /// Returns cached grouped series data, updating cache if needed
+    func getCachedGroupedSeries() -> [String: [GraphSeries]] {
+        if cachedGroupedSeries.isEmpty {
+            // Use direct data if cache is empty to avoid publishing issues
+            let newData = chartSeriesData
+            let grouped = Dictionary(grouping: newData) { $0.series }
+            return grouped.mapValues { seriesPoints in
+                seriesPoints.sorted { $0.date < $1.date }
+            }
+        }
+        return cachedGroupedSeries
+    }
+    
+    /// Invalidates the cache when underlying data changes
+    func invalidateCache() {
+        cachedSeriesData = []
+        cachedGroupedSeries = [:]
+        lastCacheUpdateHash = 0
+    }
+    
+    /// Returns cached series data, updating cache if needed
+    func getCachedSeriesData() -> [GraphSeries] {
+        if cachedSeriesData.isEmpty {
+            // Use direct data if cache is empty to avoid publishing issues
+            return chartSeriesData
+        }
+        return cachedSeriesData
     }
 }

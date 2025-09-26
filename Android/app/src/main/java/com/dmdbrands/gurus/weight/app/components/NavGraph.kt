@@ -100,10 +100,10 @@ fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
     BtWifiScaleSetupScreen(scaleInfo.sku, scaleInfo.initialStep, scaleInfo.broadcastId, scaleInfo.userList)
   }
   entry<AppRoute.ScaleSetup.BtScaleSetup> { scaleInfo ->
-    BtScaleSetupScreen(scaleInfo.sku)
+    BtScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo)
   }
   entry<AppRoute.ScaleSetup.LcbtScaleSetup> { scaleInfo ->
-    LcbtScaleSetupScreen(scaleInfo.sku, scaleInfo.broadcastId, scaleInfo.initialStep)
+    LcbtScaleSetupScreen(scaleInfo.sku,scaleInfo = scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep, )
   }
   entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
     WifiScaleSetupScreen(scaleInfo.sku, scaleInfo.wifiSetupType, scaleInfo.scaleInfo)

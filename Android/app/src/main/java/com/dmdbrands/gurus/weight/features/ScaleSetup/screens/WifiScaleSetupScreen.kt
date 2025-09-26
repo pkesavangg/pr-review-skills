@@ -144,7 +144,7 @@ fun WifiScaleSetupScreenContent(
       },
       middleContent = {
         // Show skip button only on permissions step and NOT in MAC setup mode
-        if (state.showSkipButton) {
+        if (!state.isGetMACSetup && state.currentStep == WifiScaleSetupStep.PERMISSIONS) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.SetupButtons.Skip,
@@ -186,6 +186,7 @@ fun WifiScaleSetupScreenContent(
               ScalePermissions(
                 sku = state.sku,
                 permissions = state.permissions,
+                wifiName = state.wifiStatus?.ssid,
                 onRequestPermission = { permissionType ->
                   onIntent(WifiScaleSetupIntent.RequestPermission(permissionType))
                 },

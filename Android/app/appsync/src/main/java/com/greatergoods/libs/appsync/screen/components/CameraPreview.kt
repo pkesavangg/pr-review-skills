@@ -22,6 +22,7 @@ import com.greatergoods.libs.appsync.model.AppSyncResult
 import com.greatergoods.libs.appsync.strings.AppSyncStrings
 import com.greatergoods.libs.appsync.utility.AppSyncFs003Interpreter
 import com.greatergoods.libs.appsync.utility.AppSyncLowLightDetector
+import com.greatergoods.libs.appsync.utility.YUV420888ToGrayscaleConverter
 import java.util.concurrent.ExecutorService
 import android.graphics.ImageFormat
 import android.util.Log
@@ -94,9 +95,10 @@ fun CameraPreview(
 
               // Set up camera preview use case
               val preview =
-                Preview.Builder().build().also {
-                  it.setSurfaceProvider(previewView.surfaceProvider)
-                }
+                Preview.Builder()
+                  .build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                  }
 
               // Set up image analysis use case for frame processing
               val imageAnalyzer =
@@ -144,16 +146,16 @@ fun CameraPreview(
  * Processes a camera frame using JNI/native detector for FS003 protocol detection.
  *
  * This function is called for each camera frame and performs the following operations:
- * 1. Extracts Y-plane (luminance) data from YUV_420_888 format images
- * 2. Detects low light conditions using the luminance data
+ * 1. Properly converts YUV_420_888 format images to grayscale ByteArray
+ * 2. Detects low light conditions using the converted luminance data
  * 3. Calls the native JNI detector to look for FS003 protocol patterns
  * 4. Interprets any detected data using the FS003 interpreter
  * 5. Delivers scan results or handles errors appropriately
  *
- * The function only processes YUV_420_888 format images as this is the standard
- * format for camera preview frames. It extracts the Y-plane (luminance) data
- * which contains the grayscale information needed for both low light detection
- * and FS003 pattern recognition.
+ * The function uses proper YUV_420_888 conversion that handles:
+ * - Non-contiguous buffers with different row strides and pixel strides
+ * - Device-specific implementations (especially Vivo devices)
+ * - Rotation and mirror adjustments for different orientations
  *
  * The native detector uses computer vision algorithms to identify the specific
  * patterns displayed on smart scale screens that encode the FS003 protocol data.
@@ -163,6 +165,7 @@ fun CameraPreview(
  * @param imageProxy The camera frame to process, containing image data and metadata
  * @param onScanResult Callback to deliver successful scan results
  * @param onLowLightDetected Callback to report low light condition changes
+ * @param targetRotation The target rotation for the image analysis
  */
 private fun processFrameWithJNI(
   imageProxy: ImageProxy,
@@ -172,34 +175,37 @@ private fun processFrameWithJNI(
   try {
     // Only process YUV_420_888 format images
     if (imageProxy.format == ImageFormat.YUV_420_888) {
-      // Extract Y-plane (luminance) data for processing
-      val yBuffer = imageProxy.planes[0].buffer
-      val width = imageProxy.width
-      val height = imageProxy.height
-      val ySize = yBuffer.remaining()
-      val yBytes = ByteArray(ySize)
-      yBuffer.get(yBytes)
+      // Convert YUV_420_888 to grayscale using proper stride handling
+      val conversionResult = YUV420888ToGrayscaleConverter.convertToGrayscale(imageProxy)
+      
+      if (conversionResult != null) {
+        val (grayscaleData, width) = conversionResult
+        val height = imageProxy.height
+        
+        // Check for low light conditions using the converted luminance data
+        val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, width, height)
+        onLowLightDetected(isLowLight)
 
-      // Check for low light conditions using the extracted luminance data
-      val isLowLight = AppSyncLowLightDetector.isLowLight(yBytes, width, height)
-      onLowLightDetected(isLowLight)
-
-      // Call native detector to look for FS003 protocol patterns
-      val bits = CameraHandlerCallback.nativeDetector(yBytes, width, height)
-      if (bits != null && bits.isNotEmpty()) {
-        // Interpret the detected bits using FS003 protocol
-        val result = AppSyncFs003Interpreter.interpret(bits)
-        if (result != null) {
-          // Deliver the successful scan result
-          onScanResult(result)
+        // Call native detector to look for FS003 protocol patterns
+        Log.d("AppSyncScan", "Calling native detector with data size: ${grayscaleData.size}, dimensions: ${width}x${height}")
+        val bits = CameraHandlerCallback.nativeDetector(grayscaleData, width, height)
+        if (bits != null && bits.isNotEmpty()) {
+          // Interpret the detected bits using FS003 protocol
+          val result = AppSyncFs003Interpreter.interpret(bits)
+          if (result != null) {
+            // Deliver the successful scan result
+            onScanResult(result)
+          } else {
+            // Interpreter failed to process the detected bits
+            Log.w("AppSyncScan", AppSyncStrings.InterpreterReturnedNull)
+          }
         } else {
-          // Interpreter failed to process the detected bits
-          Log.w("AppSyncScan", AppSyncStrings.InterpreterReturnedNull)
+          // Native detector did not find any valid patterns
+          // This is normal and expected for most frames
+          Log.w("AppSyncScan", AppSyncStrings.NativeDetectorReturnedNull)
         }
       } else {
-        // Native detector did not find any valid patterns
-        // This is normal and expected for most frames
-        Log.w("AppSyncScan", AppSyncStrings.NativeDetectorReturnedNull)
+        Log.w("AppSyncScan", "Failed to convert YUV_420_888 to grayscale")
       }
     }
   } catch (e: Exception) {

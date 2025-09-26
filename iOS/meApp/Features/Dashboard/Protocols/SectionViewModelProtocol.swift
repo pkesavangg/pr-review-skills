@@ -33,7 +33,6 @@ protocol SectionViewModelProtocol: ObservableObject {
     // MARK: - Period-specific properties
     var timePeriod: TimePeriod { get }
     var visibleDomainLength: TimeInterval { get }
-    var maxGapForConnectedSegments: TimeInterval { get }
     var pointSize: CGFloat { get }
     var hasXAxis: Bool { get }
     var dateRange: ClosedRange<Date> { get }
@@ -89,7 +88,6 @@ protocol SectionViewModelProtocol: ObservableObject {
     func formatXAxisLabel(for date: Date) -> String?
     
     // MARK: - Chart Content Helpers
-    func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]]
     func shouldShowSolidLine(for date: Date) -> Bool
     func formatSelectedXAxisLabel() -> String?
     
@@ -102,5 +100,12 @@ protocol SectionViewModelProtocol: ObservableObject {
     
     // MARK: - Animation Control
     var shouldAnimateChartData: Bool { get }
+    
+    // MARK: - Cache Management
+    func updateCachedSeriesData()
+    func updateCachedSeriesDataAsync()
+    func getCachedGroupedSeries() -> [String: [GraphSeries]]
+    func invalidateCache()
+    func getCachedSeriesData() -> [GraphSeries]
 }
 

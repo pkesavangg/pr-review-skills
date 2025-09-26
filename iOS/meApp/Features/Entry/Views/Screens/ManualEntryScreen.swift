@@ -273,6 +273,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = nil
                                         Task {
+                                            guard !entryStore.isSaving else { return }
                                             await entryStore.saveEntry()
                                             performTabSwitchAndHideKeyboard()
                                         }
@@ -288,7 +289,7 @@ struct ManualEntryScreen: View {
                         text: commonLang.save,
                         type: .filledPrimary,
                         size: .large,
-                        isDisabled: !entryStore.manualEntryForm.isValid,
+                        isDisabled: !entryStore.manualEntryForm.isValid || entryStore.isSaving
                     ) {
                         Task {
                             focusedField = nil
@@ -296,6 +297,7 @@ struct ManualEntryScreen: View {
                             performTabSwitchAndHideKeyboard()
                         }
                     }
+                    
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
@@ -330,9 +332,13 @@ struct ManualEntryScreen: View {
     }
     
     private func performTabSwitchAndHideKeyboard() {
-        tabViewModel.selectTab(.dash)
         hideKeyboard()
+        // Let the keyboard dismissal/animation settle before a big tab switch.
+        Task { @MainActor in
+            tabViewModel.selectTab(.dash)
+        }
     }
+    
 }
 
 #Preview {

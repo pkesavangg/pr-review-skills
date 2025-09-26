@@ -57,7 +57,7 @@ struct GraphView: View {
     var body: some View {
         VStack(alignment: .leading){
             // Preserve layout height: fade the label out instead of removing it to avoid jump
-            Text(dashboardStore.weightLabel)
+            Text(dashboardStore.weightLabel.lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 // Hide immediately when the callout is shown (driven by the same VM flag)
@@ -101,12 +101,25 @@ struct GraphView: View {
                 showingLatest: true
             )
             dashboardStore.graphManager.updateScrollPosition(to: optimal)
+            dashboardStore.updateSelectedPeriod(newValue)
+            
+            // Force the active view model to sync with the optimal position after a brief delay
+            // This ensures the chart binding gets the correct position
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                switch newValue {
+                case .week:
+                    weekSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                case .month:
+                    monthSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                case .year:
+                    yearSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                case .total:
+                    break // Total view is not scrollable
+                }
+            }
             
             // Recalculate and cache Y-axis based on the new visible region
             dashboardStore.updateYAxisCache()
-            
-            // Reset chart identity to fully rebuild the Chart without unwanted animations
-            chartIdentity = UUID()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
@@ -158,7 +171,7 @@ struct GraphView: View {
             
             Spacer()
         }
-        .graphViewStyle(isAtLeftBoundary: true)
+        .graphViewStyle(canAddPadding: true)
         .padding(.horizontal)
         .background(theme.textInverse)
     }

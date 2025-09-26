@@ -17,30 +17,19 @@ object GoalStrings {
 
   // Status Messages
   const val SaveErrorMessage = "Failed to save goal"
-  const val GoalMetTitle = "Congratulations!"
+  const val GoalMetTitle = "Congratulations!You've hit your goal weight!"
   const val GoalMetMessage =
-    "You've reached your goal! Would you like to set a new goal or maintain your current weight?"
+    "Would you like to set a new goal or maintain this goal weight?"
   const val MaintainButton = "Maintain"
 
   // Goal Leave Alert
   const val GoalLeaveTitle = "Goal Change"
-  const val GoalLeaveMessage = "Your weight has changed from your maintain goal. Would you like to update your goal?"
+  const val GoalLeaveMessage = "It looks like you’re moving away from your target weight. Do you want to set a new goal to get back on track?"
   const val YesButton = "Yes"
   const val NoButton = "No"
 
   // Loading Messages
   const val LoaderMessage = "Saving goal..."
-
-  // Validation Messages
-  const val CurrentWeightRequired = "Current weight is required"
-  const val GoalWeightRequired = "Goal weight is required"
-  const val InvalidWeightFormat = "Please enter a valid weight"
-  const val WeightOutOfRange = "Weight must be between 50-500 lbs or 20-200 kg"
-
-  // Help and Info
-  const val GoalInfoTitle = "About Goal Setting"
-  const val GoalInfoMessage =
-    "Setting a realistic goal helps track your progress. You can change your goal at any time."
 
   // Milestone Display
   const val GoalReached = "goal reached!"

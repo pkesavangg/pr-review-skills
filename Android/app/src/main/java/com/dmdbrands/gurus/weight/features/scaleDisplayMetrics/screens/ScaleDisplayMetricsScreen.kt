@@ -13,13 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
-import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.components.ScaleMetricsNotes
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens.ScaleMetricsSettingScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.components.ScaleMetricsNotes
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsIntent
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsState
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.strings.ScaleDisplayMetricsStrings
@@ -109,6 +109,7 @@ fun ScaleDisplayMetricsScreenContent(
             onMetricsChanged = { enabledMetrics ->
               handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
             },
+            includeHeartRate = scale.preferences?.shouldMeasurePulse == true
           )
         }
       }

@@ -62,8 +62,6 @@ struct HistoryEntryItem: View {
                     AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                         .padding(.leading, .spacingSM)
-                    // iOS 17 fix: Remove conflicting animations
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
             }
             .padding(.vertical, .spacingSM)

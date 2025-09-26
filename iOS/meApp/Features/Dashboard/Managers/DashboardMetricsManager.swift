@@ -105,17 +105,19 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 throw DashboardError.noActiveAccount
             }
           
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Loading metrics from API - Current state: \(state.metrics.count) metrics, active: \(state.activeMetricsCount)")
             
             // Fully rely on dashboardType parameter from active account
-            if let dashboardTypeString = account.dashboardSettings?.dashboardType,
-               let dashboardType = DashboardType(rawValue: dashboardTypeString) {
-                updateDashboardType(dashboardType)
-                logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Loaded dashboard type from API: \(dashboardType.rawValue)")
-            } else {
-                // If no dashboardType is set, use default dashboard12
-                updateDashboardType(.dashboard12)
+            let dashboardTypeString = account.dashboardSettings?.dashboardType
+            let dashboardType: DashboardType
+            switch dashboardTypeString {
+            case "dashboard4":
+                dashboardType = .dashboard4
+            case "dashboard12":
+                dashboardType = .dashboard12
+            default:
+                dashboardType = .dashboard12
             }
+            updateDashboardType(dashboardType)
             
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
@@ -139,7 +141,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         case .dashboard12:
             state.activeMetricsCount = 12
         }
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Updated dashboard type to \(dashboardType.rawValue) with activeMetricsCount: \(state.activeMetricsCount)")
     }
 
     // MARK: - Metric Management
@@ -153,7 +154,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         // Clear any removal state to ensure all metrics are visible
         state.removedMetrics.removeAll()
         
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Reset metrics to defaults by reloading from API and restoring all metrics")
     }
     
     /// Resets the active metrics count to show all metrics (useful for dashboard reset)
@@ -163,10 +163,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         if state.dashboardType == .dashboard12 {
             // For dashboard 12, show all 12 metrics
             state.activeMetricsCount = state.metrics.count
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Reset active metrics count for dashboard 12: all \(state.activeMetricsCount) metrics are now active")
         } else {
             // For dashboard 4, all stored metrics are already active
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Reset active metrics count called for dashboard 4 - all \(state.metrics.count) metrics are already active")
         }
     }
     
@@ -178,7 +176,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
             let removedLabels = Set(removedMetrics.map { $0.label })
             
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Dashboard 12: \(removedLabels.count) inactive metrics out of \(state.metrics.count) total")
             return removedLabels
         } else {
             return []
@@ -200,16 +197,13 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 // Adding the metric back - insert at the end of active metrics
                 state.metrics.insert(metric, at: state.activeMetricsCount)
                 state.activeMetricsCount += 1
-                logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Added metric back: \(metric.label), activeMetricsCount: \(state.activeMetricsCount)")
             } else {
                 // Removing the metric - move to end (inactive section)
                 state.metrics.append(metric)
                 state.activeMetricsCount -= 1
-                logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Removed metric: \(metric.label), activeMetricsCount: \(state.activeMetricsCount)")
             }
         } else {
             // For dashboard 4, all metrics are always active
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Toggle metric visibility called but not needed for dashboard 4 - all \(state.metrics.count) metrics are always active")
         }
     }
 
@@ -221,27 +215,33 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             // This prevents active and inactive metrics from getting mixed up
             let currentActiveCount = min(state.activeMetricsCount, state.metrics.count)
             state.activeMetricsCount = currentActiveCount
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Reordered metrics for dashboard 12, activeMetricsCount: \(state.activeMetricsCount)")
         } else {
             // For dashboard 4, activeMetricsCount remains the same since all metrics are active
-            logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Reordered metrics for dashboard 4, activeMetricsCount: \(state.activeMetricsCount)")
         }
     }
 
     // MARK: - Utility Methods
-    /// Sets placeholder values for all metrics (used when no exact data point is selected on the chart)
+    /// Sets placeholder values for all body metrics except weight (used when no exact data point is selected on the chart)
     func setPlaceholdersForAllMetrics() {
         let placeholder = DashboardStrings.placeholder
         state.metrics = state.metrics.enumerated().map { index, item in
-            MetricItem(
-                value: placeholder,
-                label: item.label,
-                unit: item.unit,
-                preLabel: item.preLabel,
-                icon: item.icon
-            )
+            // Only set placeholder for body metrics, not weight
+            let bodyMetric = getBodyMetric(for: item.label)
+            if bodyMetric == .weight {
+                // Keep weight value as is - don't set placeholder
+                return item
+            } else {
+                // Set placeholder for all body metrics
+                return MetricItem(
+                    value: placeholder,
+                    label: item.label,
+                    unit: item.unit,
+                    preLabel: item.preLabel,
+                    icon: item.icon
+                )
+            }
         }
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Set placeholders for all metrics due to non-point selection")
+        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Set placeholders for body metrics (excluding weight) due to non-exact point selection")
     }
     func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
@@ -251,7 +251,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         case DashboardStrings.water: return summary.water
         case DashboardStrings.heartBpm: return summary.pulse.map { Double($0) }
         case DashboardStrings.bone: return summary.boneMass
-        case DashboardStrings.visceralFat: return summary.visceralFatLevel
+        case DashboardStrings.visceralFat: return summary.visceralFatLevel.map { $0 / 10.0 }
         case DashboardStrings.subFat: return summary.subcutaneousFatPercent
         case DashboardStrings.protein: return summary.proteinPercent
         case DashboardStrings.skelMuscle: return summary.skeletalMusclePercent
@@ -299,7 +299,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// - Uses `DevicePlatform.isTablet` (UIDevice.current.model) to detect iPad.
     /// - iPad: always 4 columns.
     /// - iPhone: 2 columns for 4-metric, 3 columns for 12-metric.
-    func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
+   func getMetricGridColumnCount(for dashboardType: DashboardType) -> Int {
         if DevicePlatform.isTablet { return 4 }
         switch dashboardType {
         case .dashboard4: return 2
@@ -382,7 +382,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
 
         if let visceralFat = entry.scaleEntryMetric?.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat), shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(Double(visceralFat) / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         } else {
             let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
@@ -446,66 +446,104 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                             (selectedPoint.bmr == nil) ||
                             (selectedPoint.metabolicAge == nil)
 
-        let fallbackValues: FallbackValues?
-        if needsFallback {
-            if let cached = cachedFallbackValues {
-                fallbackValues = cached
-            } else {
-                fallbackValues = await getHistoricalFallbackValues()
-            }
-        } else {
-            fallbackValues = cachedFallbackValues
-        }
+        let fallbackValues: FallbackValues? = nil
+        
         if let bmi = selectedPoint.bmi {
             let formattedValue = BodyMetricsConvertor.convert(bmi, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.bmi)
             updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.bmi)
+            updateMetricValue(for: DashboardStrings.bmi, value: formattedValue)
         }
+        
         if let bodyFat = selectedPoint.bodyFat {
             let formattedValue = BodyMetricsConvertor.convert(bodyFat, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.bodyFat)
             updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.bodyFat)
+            updateMetricValue(for: DashboardStrings.bodyFat, value: formattedValue)
         }
+        
         if let muscleMass = selectedPoint.muscleMass {
             let formattedValue = BodyMetricsConvertor.convert(muscleMass, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.muscleMass)
             updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.muscleMass)
+            updateMetricValue(for: DashboardStrings.muscle, value: formattedValue)
         }
+        
         if let water = selectedPoint.water {
             let formattedValue = BodyMetricsConvertor.convert(water, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.water)
             updateMetricValue(for: DashboardStrings.water, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.water)
+            updateMetricValue(for: DashboardStrings.water, value: formattedValue)
         }
+        
         if let pulse = selectedPoint.pulse {
             let formattedValue = BodyMetricsConvertor.convert(Double(pulse), shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.pulse)
             updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.pulse)
+            updateMetricValue(for: DashboardStrings.heartBpm, value: formattedValue)
         }
+        
         if let boneMass = selectedPoint.boneMass {
             let formattedValue = BodyMetricsConvertor.convert(boneMass, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.boneMass)
             updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.boneMass)
+            updateMetricValue(for: DashboardStrings.bone, value: formattedValue)
         }
+        
         if let visceralFat = selectedPoint.visceralFatLevel {
-            let formattedValue = BodyMetricsConvertor.convert(visceralFat, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            let formattedValue = BodyMetricsConvertor.convert(visceralFat / 10.0, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
+            updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.visceralFat)
             updateMetricValue(for: DashboardStrings.visceralFat, value: formattedValue)
         }
+        
         if let subFat = selectedPoint.subcutaneousFatPercent {
             let formattedValue = BodyMetricsConvertor.convert(subFat, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.subFat)
             updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.subFat)
+            updateMetricValue(for: DashboardStrings.subFat, value: formattedValue)
         }
+        
         if let protein = selectedPoint.proteinPercent {
             let formattedValue = BodyMetricsConvertor.convert(protein, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.protein)
             updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.protein)
+            updateMetricValue(for: DashboardStrings.protein, value: formattedValue)
         }
+        
         if let skelMuscle = selectedPoint.skeletalMusclePercent {
             let formattedValue = BodyMetricsConvertor.convert(skelMuscle, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.skelMuscle)
             updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: true, wholeNumber: false, fallbackValue: fallbackValues?.skelMuscle)
+            updateMetricValue(for: DashboardStrings.skelMuscle, value: formattedValue)
         }
+        
         if let bmr = selectedPoint.bmr {
             let bmrValue = Double(bmr) / 10.0
             let formattedValue = BodyMetricsConvertor.convert(bmrValue, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.bmr)
             updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.bmr)
+            updateMetricValue(for: DashboardStrings.bmrKcal, value: formattedValue)
         }
+        
         if let metabolicAge = selectedPoint.metabolicAge {
             let formattedValue = BodyMetricsConvertor.convert(Double(metabolicAge), shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.metabolicAge)
             updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
+        } else {
+            let formattedValue = BodyMetricsConvertor.convert(nil, shouldCompose: false, wholeNumber: true, fallbackValue: fallbackValues?.metabolicAge)
+            updateMetricValue(for: DashboardStrings.metAge, value: formattedValue)
         }
-        logger.log(level: .info, tag: "DashboardMetricsManager", message: "Updated metrics with selected point data")
     }
 
     // MARK: - API Operations
@@ -543,7 +581,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
             
             _ = try await accountService.updateDashboardMetrics(metrics: apiMetrics)
-            logger.log(level: .info, tag: "DashboardMetricsManager", message: "Saved metrics to API: \(apiMetrics)")
         } catch {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to save metrics to API: \(error)")
             throw DashboardError.metricsSaveFailed(error)
@@ -715,7 +752,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         let entry = createEntryForMetricInfoSync(metricLabel: metricLabel)
         selectedEntry.wrappedValue = entry
         selectedMetric.wrappedValue = getBodyMetric(for: metricLabel)
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Handled metric long press for: \(metricLabel)")
     }
     
     func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async {
@@ -725,7 +761,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             selectedEntry.wrappedValue = entry
             selectedMetric.wrappedValue = getBodyMetric(for: label)
         }
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Handled selected metric info change for: \(label)")
     }
 
     // MARK: - Entry Selection Methods
@@ -749,7 +784,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         let entry = createEntryForMetricInfoSync(metricLabel: metricLabel)
         selectedEntry.wrappedValue = entry
         selectedMetric.wrappedValue = getBodyMetric(for: metricLabel)
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Handled metric long press with UI state for: \(metricLabel)")
     }
 
     // MARK: - Fallback Values
@@ -807,7 +841,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     water: water,
                     pulse: pulse,
                     boneMass: boneMass,
-                    visceralFat: visceralFat,
+                    visceralFat: visceralFat.map { $0 / 10.0 },
                     subFat: subFat,
                     protein: protein,
                     skelMuscle: skelMuscle,
@@ -836,8 +870,13 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     // MARK: - Visible Window Averages
     /// Updates dashboard metric tiles with averages computed from the currently visible operations.
     /// Falls back to latest historical values per metric when the visible window has no data for that metric.
+    /// Shows placeholders ("--") when no visible operations are available.
     func updateMetricsForVisibleAverage(visibleOperations: [BathScaleWeightSummary]) async {
-        guard !visibleOperations.isEmpty else { return }
+        guard !visibleOperations.isEmpty else { 
+            // No visible operations - show placeholders for all metrics
+            setPlaceholdersForAllMetrics()
+            return 
+        }
 
         clearFallbackCache()
         let fallbackValues = await getHistoricalFallbackValues()
@@ -850,7 +889,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             guard !values.isEmpty else { return nil }
             return values.reduce(0, +) / Double(values.count)
         }
-
         // Define all metrics and their conversion params in an array
         let metrics: [(label: String, shouldCompose: Bool, wholeNumber: Bool, fallbackValue: Double?)] = [
             (DashboardStrings.bmi,           true,  false, fallbackValues.bmi),
@@ -873,7 +911,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 avg,
                 shouldCompose: metric.shouldCompose,
                 wholeNumber: metric.wholeNumber,
-                fallbackValue: metric.fallbackValue
+                fallbackValue: nil
             )
             updateMetricValue(for: metric.label, value: formatted)
         }

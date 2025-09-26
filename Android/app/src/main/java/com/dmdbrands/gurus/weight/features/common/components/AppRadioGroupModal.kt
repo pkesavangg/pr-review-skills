@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -89,9 +90,9 @@ fun <T> AppRadioGroupModal(
         val radioGroupModifier =
             if (maxHeight != null) {
                 Modifier
-                    .fillMaxWidth()
-                    .height(maxHeight)
-                    .verticalScroll(rememberScrollState())
+                  .fillMaxWidth()
+                  .height(maxHeight)
+                  .verticalScroll(rememberScrollState())
             } else {
                 Modifier.fillMaxWidth()
             }
@@ -176,8 +177,8 @@ fun <T> showRadioGroupModal(
     onConfirm: (T?) -> Unit,
     onCancel: (() -> Unit)? = null,
     subtitle: String? = null,
-    confirmText: String = "OK",
-    cancelText: String = "Cancel",
+    confirmText: String = RadioGroupModalStrings.Button.Save,
+    cancelText: String = RadioGroupModalStrings.Button.Cancel,
 ) {
     val config =
         RadioGroupModalConfig(

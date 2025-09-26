@@ -12,6 +12,7 @@ data class HomeState(
   val showWeightOnlyModeBottomSheet: Boolean = false,
   val openWeightOnlyModePopup: Boolean = false,
   val isWeightOnlyModeDismissed: Boolean = false,
+  val isBodyMetricsEnabled: Boolean = false,
   val showUnreadFeedIndicator: Boolean = false
 ) : IReducer.State
 
@@ -54,6 +55,10 @@ sealed interface HomeIntent : IReducer.Intent {
   data class SetShowUnreadFeedIndicator(
     val show: Boolean
   ) : HomeIntent
+
+  data class SetBodyMetricsEnabled(
+    val isEnabled: Boolean
+  ): HomeIntent
 }
 
 /**
@@ -77,9 +82,9 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
 
       is HomeIntent.SetWeightOnlyModeDismissed ->
         state.copy(isWeightOnlyModeDismissed = intent.isDismissed)
-
       is HomeIntent.SetShowUnreadFeedIndicator ->
         state.copy(showUnreadFeedIndicator = intent.show)
+      is HomeIntent.SetBodyMetricsEnabled -> state.copy(isBodyMetricsEnabled = intent.isEnabled)
 
       else -> state.copy()
     }

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.enums
 
+import com.dmdbrands.gurus.weight.features.common.strings.ScaleSourceStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ScaleStrings
 import kotlinx.serialization.Serializable
 
@@ -44,6 +45,14 @@ enum class ScaleSetupType(
       Bluetooth, Lcbt -> ScaleStrings.Bluetooth
       AppSync -> ScaleStrings.AppSync
       null -> ScaleStrings.Bluetooth // Default fallback
+    }
+
+    fun toSource(value: String): String = when (fromString(value)) {
+      Wifi, EspTouchWifi -> ScaleSourceStrings.Wifi
+      BtWifiR4 -> ScaleSourceStrings.BluetoothWifi
+      Bluetooth, Lcbt -> ScaleSourceStrings.Bluetooth
+      AppSync -> ScaleSourceStrings.Appsync
+      null -> ScaleSourceStrings.Bluetooth // Default fallback
     }
   }
 }

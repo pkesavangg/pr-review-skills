@@ -62,7 +62,7 @@ import android.util.Log
     IntegrationsSettingsEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 24,
+  version = 25,
   exportSchema = false,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)

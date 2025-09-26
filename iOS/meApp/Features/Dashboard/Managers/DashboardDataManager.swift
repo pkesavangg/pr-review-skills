@@ -25,13 +25,16 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     // MARK: - Setup Bindings
     private func setupEntryServiceBindings() {
         // Directly bind to EntryService's published properties
+        // Ensure updates happen on main thread to avoid publishing from background threads
         entryService.$dailySummaries
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] dailySummaries in
                 self?.updateStateFromDailySummaries(dailySummaries)
             }
             .store(in: &cancellables)
 
         entryService.$monthlySummaries
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] monthlySummaries in
                 self?.updateStateFromMonthlySummaries(monthlySummaries)
             }

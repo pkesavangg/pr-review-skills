@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.PermissionItem as PermissionItemData
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -59,14 +60,15 @@ fun PermissionItem(
   }
 
   val isGranted = item.status == PermissionItemStatus.Granted
-  val disabled = isGranted
+  val isDisabled = item.isDisabled
   val statusText = if (isGranted) item.enabledDescription else item.disabledDescription
 
 
   Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(enabled = !disabled, onClick = onClick)
+      .alpha(if (isDisabled) 0.5f else 1.0f)
+      .clickable(enabled = isDisabled || !isGranted, onClick = onClick)
       .padding(MeTheme.spacing.sm),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
@@ -90,6 +92,7 @@ fun PermissionItem(
       AppIcon(
         id = AppIcons.Default.RightCaret,
         contentDescription = "Action",
+        onClick = onClick
       )
     }
   }

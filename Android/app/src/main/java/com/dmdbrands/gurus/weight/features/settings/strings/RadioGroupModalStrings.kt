@@ -16,6 +16,11 @@ object RadioGroupModalStrings {
         const val Appearance = "Appearance"
     }
 
+    object Button {
+      const val Save = "Save"
+      const val Cancel = "Cancel"
+    }
+
     // Biological Sex Options
     object BiologicalSex {
         const val Male = "Male"
@@ -36,9 +41,9 @@ object RadioGroupModalStrings {
 
     // Notification Options (following Angular pattern)
     object Notifications {
-        const val On = "Enable notifications"
-        const val WithWeight = "Enable notifications & include weight"
-        const val Off = "Disable notifications"
+      const val On = "Enable Notifications without Weight"
+      const val WithWeight = "Enable Notifications with Weight"
+      const val Off = "Disable notifications"
     }
 
     // Appearance Options

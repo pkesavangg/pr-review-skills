@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -54,7 +55,9 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -140,7 +143,6 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
       }
-
       initialize()
     }
   }
@@ -154,7 +156,6 @@ constructor(
           initEvents()
         } else {
           if (workInfos.all { it.state.isFinished }) {
-
             val account = accountService.getCurrentAccount()
             initLoadingData(account)
             initEvents()
@@ -190,11 +191,13 @@ constructor(
           ),
         )
       } else if (sku != null) {
+        val scaleInfo = SCALES.find { it.sku == sku }
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
             sku!!,
             discoveredBroadcastId,
             LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+            scaleInfo = scaleInfo,
           ),
         )
       }
@@ -349,6 +352,7 @@ constructor(
 
   private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
     try {
+      initialized = false
       val isLoginStatusChecked = checkLoginStatus()
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
@@ -358,15 +362,16 @@ constructor(
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
         feedService.fetchFeedItems()
-        // Check for IAM feed modal trigger after fetching feed items
-        feedService.checkAndTriggerFeedModal()
-        subscribePermissions()
-        subscribeDeviceCallback()
-        syncScales()
         if (isLoggedIn) {
           deviceInfoService.updateDeviceInfo()
         }
         navigationService.autoLogin()
+        // Check for IAM feed modal trigger after fetching feed items
+        entryService.initializeGoalCardMonitoring()
+        feedService.checkAndTriggerFeedModal()
+        subscribePermissions()
+        subscribeDeviceCallback()
+        syncScales()
       } else {
         routeToLandingOrApp()
       }
@@ -447,7 +452,8 @@ constructor(
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
-                bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+                val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+                isAllow
               } else {
                 true // Don't filter non-0412 scales
               }
@@ -476,7 +482,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -485,7 +490,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
-          deviceService.updateConnectedScales(data, false)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -494,7 +498,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
           checkCanShowWeightOnlyModeAlert()
         }
 
@@ -503,7 +506,6 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
           )
-          deviceService.updateConnectedScales(data, true)
         }
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
@@ -542,32 +544,37 @@ constructor(
         }
 
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
-          dialogQueueService.showDialog(
-            ReconnectScale.getDuplicateUserAlert(
-              onConfirm = {
-                viewModelScope.launch {
-                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
-                  if (device == null) {
-                    return@launch
+          try {
+            dialogQueueService.showDialog(
+              ReconnectScale.getDuplicateUserAlert(
+                onConfirm = {
+                  viewModelScope.launch {
+                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                    if (device == null) {
+                      return@launch
+                    }
+                    ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
+                    ggDeviceService.addCacheDevice(data.broadcastId, device)
+                    navigationService.navigateTo(
+                      AppRoute.ScaleSetup.BtWifiScaleSetup(
+                        data.getSKU(),
+                        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                        data.broadcastId,
+                      ),
+                    )
                   }
-                  ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                  ggDeviceService.addCacheDevice(data.broadcastId, device)
-                  navigationService.navigateTo(
-                    AppRoute.ScaleSetup.BtWifiScaleSetup(
-                      data.getSKU(),
-                      BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                      data.broadcastId,
-                    ),
-                  )
-                }
-              },
-              onCancel = {
-                if (data.broadcastId != null) {
-                  ggDeviceService.skipDevice(data.broadcastId!!)
-                }
-              },
-            ),
-          )
+                },
+                onCancel = {
+                  if (data.broadcastId != null) {
+                    ggDeviceService.skipDevice(data.broadcastId!!)
+                  }
+                },
+              ),
+            )
+          }
+          catch (e: Exception) {
+            AppLog.d(TAG, "Error during duplicate user alert $e")
+          }
         }
 
         else -> null
@@ -661,11 +668,22 @@ constructor(
 
   private fun startScan() {
     viewModelScope.launch {
-      val account = accountService.getCurrentAccount()
-      if (account != null) {
-        ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, account.toGGBTUserProfile())
-        handleIntent(AppIntent.SetScanStatus(true))
-        AppLog.i(TAG, "Scan started")
+       accountService.activeAccountFlow.map {
+         it?.toGGBTUserProfile()
+       }.distinctUntilChanged().collect { ggBTUserProfile ->
+        if (ggBTUserProfile != null) {
+          val latestWeightEntry = entryService.latestEntry.value
+          val currentWeight = when (latestWeightEntry) {
+            is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
+            else -> ggBTUserProfile.weight // Fallback to initial weight
+          }
+          val updatedProfile = ggBTUserProfile.copy(weight = currentWeight, goalWeight = ggBTUserProfile.goalWeight?.div(
+            10
+          ))
+          ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+          handleIntent(AppIntent.SetScanStatus(true))
+          AppLog.i(TAG, "Scan started with current weight: $currentWeight")
+        }
       }
     }
   }
@@ -705,7 +723,7 @@ constructor(
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()
-        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${weightOnlyScales.size}")
+        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${deviceService.isWeightOnlyModeAlertShown.value}")
         if (hasWeightOnlyModeScale && !deviceService.isWeightOnlyModeAlertShown.value) {
           WeightOnlyModeEventService.emit(WeightOnlyModeEventType.SHOW_ALERT)
           deviceService.updateWeightOnlyModeAlertShown(false)

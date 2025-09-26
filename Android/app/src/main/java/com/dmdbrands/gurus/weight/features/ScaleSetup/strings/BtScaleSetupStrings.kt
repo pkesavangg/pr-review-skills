@@ -49,4 +49,16 @@ object BtScaleSetupStrings {
     const val Title = "Your scale is paired and ready to go!"
     const val Subtitle = "Next time you weigh in, just open Weight Gurus and step on the scale."
   }
+
+  object ConfirmPairDialog {
+    const val Title = "Device already paired"
+    fun Message(sku: String) = "The device with sku: $sku is already paired. Do you want to pair it again?"
+    const val ConfirmButton = "PAIR"
+    const val CancelButton = "RETURN"
+  }
+
+
+  object Loader {
+    const val Exiting = "Exiting..."
+  }
 }

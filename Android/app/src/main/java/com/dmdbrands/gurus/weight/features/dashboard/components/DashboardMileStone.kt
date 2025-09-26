@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun DashboardMilestone(
   progress: Progress,
+  latestWeight: Double? = null,
   inEditMode: Boolean = false,
   isFromSetup: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
@@ -95,6 +96,7 @@ fun DashboardMilestone(
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       progress = progress,
+      latestWeight = latestWeight
     )
   }
 

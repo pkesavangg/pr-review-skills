@@ -68,9 +68,6 @@ struct GoalStepView: View {
                             focusedField = nil
                         }
                     )
-                    
-                    CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
-                                     text: labels.useMetric)
                 }
                 .padding(.top, .spacingMD)
             }

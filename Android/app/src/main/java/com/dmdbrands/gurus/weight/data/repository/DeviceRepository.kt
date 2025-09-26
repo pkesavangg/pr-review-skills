@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -54,11 +55,13 @@ constructor(
 
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
-    val existingDevice = deviceDao.getDeviceByMac(deviceDetails.device.mac ?: "", accountId)
-    if (existingDevice == null)
-      deviceDao.insertDevice(deviceDetails)
-    else
+    val existingDevices = deviceDao.getDevices(accountId).first()
+    val isDeviceExists = existingDevices.any() { it.scale?.id == device.id }
+    if (isDeviceExists) {
       deviceDao.updateDevice(deviceDetails)
+    } else {
+      deviceDao.insertDevice(deviceDetails)
+    }
   }
 
   override suspend fun deleteDeviceFromDb(deviceId: String) {
@@ -102,14 +105,12 @@ constructor(
     }
 
   override suspend fun updateDeviceNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ): Device {
-    deviceDao.updateNickname(deviceId, nickname)
-    val device = deviceDao.getDevice(deviceId)?.toDeviceDomainModel()
-    if (device != null)
-      deviceApi.editScale(deviceId, device.copy(nickname = nickname).toApiModel())
-    val deviceDetails = deviceDao.getDevice(deviceId)
+    deviceDao.updateNickname(device.id, nickname)
+    deviceApi.editScale(device.id, device.copy(nickname = nickname).toApiModel())
+    val deviceDetails = deviceDao.getDevice(device.id)
     return deviceDetails?.toDeviceDomainModel() ?: throw IllegalStateException("Device not found")
   }
 
@@ -121,6 +122,13 @@ constructor(
     isSynced: Boolean,
   ) {
     deviceDao.updateSyncStatus(deviceId, isSynced)
+  }
+
+  override suspend fun markDeviceDeleted(
+    deviceId: String,
+    isDeleted: Boolean,
+  ) {
+    deviceDao.updateDeletionStatus(deviceId, isDeleted)
   }
 
   // API operations
@@ -152,7 +160,8 @@ constructor(
     if (response.isSuccessful) {
       return true
     } else {
-      throw Exception("Failed to delete device from API: ${response.code()}")
+      val errorBody = response.errorBody()?.string()
+      throw Exception("Failed to delete device from API: ${response.code()}, Error: $errorBody")
     }
   }
 

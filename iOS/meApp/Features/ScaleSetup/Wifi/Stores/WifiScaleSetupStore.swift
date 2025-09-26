@@ -332,8 +332,8 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
-        case .errorDetail:
-            // After showing detailed troubleshooting information we exit the setup entirely.
+        case .errorDetail, .copyMacAddress:
+            // When the user taps "Finish" on the error detail screen/copy mac address screen, we exit the setup entirely.
             exitSetup()
             break
         case .stepOn:

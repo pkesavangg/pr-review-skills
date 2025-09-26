@@ -38,7 +38,7 @@ interface IDeviceRepository {
   fun getDeviceByPeripheralId(peripheralId: String): Flow<Device?>
 
   suspend fun updateDeviceNickname(
-    deviceId: String,
+    device: Device,
     nickname: String,
   ): Device
 
@@ -47,6 +47,11 @@ interface IDeviceRepository {
   suspend fun markDeviceSynced(
     deviceId: String,
     isSynced: Boolean,
+  )
+
+  suspend fun markDeviceDeleted(
+    deviceId: String,
+    isDeleted: Boolean,
   )
 
   // API operations

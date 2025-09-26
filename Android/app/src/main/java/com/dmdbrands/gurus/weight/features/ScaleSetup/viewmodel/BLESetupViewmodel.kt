@@ -29,6 +29,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -59,6 +60,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private val initialStep = setupInitData.initialStep
   private val sku = setupInitData.sku
   private val broadcastId = setupInitData.broadcastId
+  private val scaleInfo = setupInitData.scaleInfo
 
   protected val ggDeviceService get() = dependencies.ggDeviceService
   protected val connectivityObserver get() = dependencies.connectivityObserver
@@ -78,6 +80,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   private fun onInit() {
     AppLog.d(TAG, "Starting BLESetupViewmodel initialization")
+    // Set setup in progress when initialization starts
+    dependencies.deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
@@ -166,12 +170,13 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.d(TAG, "New device found with matching protocol: ${ggDeviceDetail.deviceName}")
           viewModelScope.launch {
             try {
-              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress)) {
+              if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) && ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value) {
                 AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
                 dialogQueueService.showDialog(
                   DialogModel.Alert(
                     title = "Known Scale Discovered",
                     message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
+                    dismissText = "Exit",
                     onDismiss = {
                       AppLog.d(TAG, "User dismissed known scale dialog")
                       onExitSetup(true)
@@ -269,6 +274,14 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.e(TAG, "Error observing entry scan responses", e)
         }
       }
+    }
+  }
+
+  protected fun stopPairingDevices(){
+    viewModelScope.launch {
+      AppLog.d(TAG, "Stopping pairing devices")
+      deviceObservationJob?.cancel()
+      ggDeviceService.scanForPairing()
     }
   }
 
@@ -471,6 +484,8 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
   private fun onExit(isSetupFinished: Boolean) {
     AppLog.d(TAG, "Exiting setup - isSetupFinished: $isSetupFinished")
+    // Clear setup in progress state when exiting
+    dependencies.deviceService.setSetupInProgress(false)
     viewModelScope.launch {
       try {
         if (isSetupFinished) {
@@ -504,32 +519,47 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   }
 
   protected fun subscribePermissions(): Flow<GGPermissionStatusMap> {
-    AppLog.d(TAG, "Subscribing to permissions")
-    return combine(
-      permissionService.permissionCallBackFlow,
-      connectivityObserver.observe(),
-    ) { permissions, networkState ->
-      val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-      val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
+    AppLog.d(TAG, "Subscribing to permissions for protocol: $protocolType")
 
-      AppLog.d(TAG, "Permission status - Network: $networkStatus, WiFi Switch: $wifiSwitchStatus")
+    // For Bluetooth and LCBT scales, skip network connectivity check since they don't require WiFi
+    val isBluetoothScale = protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value ||
+                          protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
 
-      // WiFi switch is enabled if either network is available OR WiFi switch is enabled
-      val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-        wifiSwitchStatus == GGPermissionState.ENABLED
-      ) {
-        GGPermissionState.ENABLED
-      } else {
-        GGPermissionState.DISABLED
+    return if (isBluetoothScale) {
+      AppLog.d(TAG, "Bluetooth/LCBT scale detected, skipping network connectivity check")
+      permissionService.permissionCallBackFlow.map { permissions ->
+        // Reset processing flag when permissions are updated
+        isProcessingPermissions = false
+        permissions
       }
+    } else {
+      AppLog.d(TAG, "WiFi-enabled scale detected, using combined permission and network flow")
+      combine(
+        permissionService.permissionCallBackFlow,
+        connectivityObserver.observe(),
+      ) { permissions, networkState ->
+        val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
+        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
 
-      AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+        AppLog.d(TAG, "Permission status - Network: $networkStatus, WiFi Switch: $wifiSwitchStatus")
 
-      // Reset processing flag when permissions are updated
-      isProcessingPermissions = false
+        // WiFi switch is enabled if either network is available OR WiFi switch is enabled
+        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+          wifiSwitchStatus == GGPermissionState.ENABLED
+        ) {
+          GGPermissionState.ENABLED
+        } else {
+          GGPermissionState.DISABLED
+        }
 
-      permissions.toMutableMap().apply {
-        put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+
+        // Reset processing flag when permissions are updated
+        isProcessingPermissions = false
+
+        permissions.toMutableMap().apply {
+          put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+        }
       }
     }
   }
@@ -540,6 +570,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku, initial step: $initialStep")
     handleIntent(ScaleSetupIntent.SetNewStep(initialStep))
+    handleIntent(ScaleSetupIntent.SetScaleInfo(scaleInfo))
     viewModelScope.launch {
       try {
         if (broadcastId != null) {
@@ -560,6 +591,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     bluetoothTimeoutJob?.cancel()
     deviceObservationJob?.cancel()
     entryObservationJob?.cancel()
+    deviceService.setSetupInProgress(false)
   }
 
   companion object {

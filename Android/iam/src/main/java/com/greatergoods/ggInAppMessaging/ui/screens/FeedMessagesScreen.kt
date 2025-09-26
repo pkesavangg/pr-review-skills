@@ -21,7 +21,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -145,7 +144,7 @@ fun SectionHeader(
         AppIcon(
             id = AppIcons.Logo,
             contentDescription = "Deals Logo",
-            tintColor = Color.Unspecified,
+            tintColor = IamTheme.colors.textHeading,
             type = AppIconType.Tertiary,
             onClick = { /* action */ },
             modifier = Modifier.size(24.dp),
@@ -263,7 +262,7 @@ private fun EmptyStateContent() {
 
             // Secondary Message
             Text(
-                text = "check back soon",
+                text = "Check back soon",
                 style = MaterialTheme.typography.bodyLarge,
                 color = IamTheme.colors.textBody,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,

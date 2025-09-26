@@ -80,7 +80,7 @@ struct HistoryMonthListScreen: View {
             historyStore.resetSelectedMonth()
         })
         .refreshable {
-            await historyStore.loadEntries(for: month)
+            await historyStore.refreshAllEntries()
         }
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)

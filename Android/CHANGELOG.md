@@ -1,3 +1,29 @@
+## 5.0.0 - 09/26/2025
+
+### Added
+
+-
+
+### Changed
+
+- Refactored dashboard milestones reorder
+-
+- Handled long press event for drag and drop tiles in Dashboard.
+- In sign up, removed metric toggle from the goal slide and included it in the height slide.
+
+### Fixed
+
+- Resolved the issue of appsync entries not syncing on vivo devices.
+- Resolved the issue of dashboard metrics label not displaying on 0412 customization.
+- Resolved inconsistencies in appsync camera preview layout.
+- Resolved flicker issue on milestones drag and drop
+- Resolved the issue of the WiFi switch permission missing on wifi scale setup.
+- Resolved the issue of popups appearing on loading screen before navigating to dashboard
+- Resolved the issue of connect scale button not working on dashboard and history page when empty.
+- Resolved the issue of permissions displayed as disabled when network is off during setup.
+- Fixed offline device deletion sync issue.
+- Fixed item click inconsistencies.
+
 ## 5.0.0 - 09/12/2025
 
 ### Added

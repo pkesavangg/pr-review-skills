@@ -86,11 +86,13 @@ fun ScaleMetricItem(
       }
 
       Row(
+        modifier = Modifier
+          .then(if (!metric.isIncluded) Modifier.padding(vertical =  spacing.md) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.sm),
       ) {
         // Drag handle
-        if(metric.isEnabled) {
+        if(metric.isEnabled && metric.isIncluded) {
           AppIcon(
             id = AppIcons.Default.DragHandler,
             contentDescription = "Drag handle",
@@ -100,10 +102,12 @@ fun ScaleMetricItem(
         }
 
         // Toggle switch
-        AppToggle(
-          checked = metric.isEnabled,
-          onCheckedChange = onToggle,
-        )
+        if(metric.isIncluded) {
+          AppToggle(
+            checked = metric.isEnabled,
+            onCheckedChange = onToggle
+          )
+        }
       }
     }
     HorizontalDivider(
@@ -127,7 +131,7 @@ private fun DisplayMetricItemPreview() {
       Spacer(Modifier.height(spacing.md))
       // Dragging metric
       ScaleMetricItem(
-        metric = scaleMetrics.first(),
+        metric = scaleMetrics.first().copy(isIncluded = false),
         isDragging = true,
         onToggle = {},
       )

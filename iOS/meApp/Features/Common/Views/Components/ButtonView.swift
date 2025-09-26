@@ -24,7 +24,9 @@ struct ButtonView: View {
                 .fontOpenSans(size == .large ? .button1 : .button2)
                 .fontWeight(.bold)
                 .modifier(CustomButtonStyle(type: type, buttonSize: size))
-                .frame(minWidth: 96, alignment: alignment)
+                .if(!type.isInlineText) { view in
+                    view.frame(minWidth: 96, alignment: alignment)
+                }
                 .multilineTextAlignment(.leading)
         }
         .disabled(isDisabled)

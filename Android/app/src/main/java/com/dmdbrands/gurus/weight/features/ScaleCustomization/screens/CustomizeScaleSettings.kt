@@ -24,7 +24,6 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens.ScaleMetr
 import com.dmdbrands.gurus.weight.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.strings.ScaleFormStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.CustomizeSettings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsCard
 import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsList
@@ -56,11 +55,18 @@ fun CustomizeScaleSettings(
   subtitle: String,
   state: BtWifiScaleSetupState,
   userList: List<GGBTUser> = emptyList(),
+  discoveredScale: com.dmdbrands.gurus.weight.domain.model.storage.Device? = null,
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size.toInt() })
-  var scaleMetrics by remember { mutableStateOf(ScaleMetricsHelper.getAllMetrics()) }
+
+  // Initialize scale metrics with discovered scale's display metrics if available
+  var scaleMetrics by remember(discoveredScale) {
+    mutableStateOf(
+      discoveredScale?.preferences?.displayMetrics ?: ScaleMetricsHelper.getAllMetrics()
+    )
+  }
 
   var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
 
@@ -70,8 +76,11 @@ fun CustomizeScaleSettings(
 
   var dashboardMetricKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
   var dashboardMilestoneKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
-  val defaultPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
-  var updatedPreference by remember { mutableStateOf(defaultPreference) }
+
+  // Use discovered scale preferences if available, otherwise fall back to default
+  val initialPreference =  ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
+  var updatedPreference by remember { mutableStateOf(initialPreference) }
+
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
@@ -115,18 +124,20 @@ fun CustomizeScaleSettings(
                   else -> null
                 }
 
+                onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
+
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = combinedKeys,
-                    preferences = updatedPreference,
+                    preferences = updatedPreference.copy(
+                      id = state.scaleId
+                    ),
                   ),
                 )
-                onIntent(
-                  BtWifiScaleSetupIntent.Next,
-                )
+
               } else {
                 onIntent(
-                  BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON),
+                  BtWifiScaleSetupIntent.Next,
                 )
               }
             },
@@ -303,6 +314,7 @@ fun CustomizeScaleSettingsPreview() {
         title = "Customize your Settings",
         subtitle = "You can update settings at any time.",
         state = BtWifiScaleSetupState(),
+        discoveredScale = null,
       ) {}
     }
   }

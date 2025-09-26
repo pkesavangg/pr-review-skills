@@ -23,6 +23,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,10 +31,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
@@ -100,7 +106,7 @@ internal fun StatCard(
         .fillMaxSize()
         .padding(vertical = MeTheme.spacing.sm)
         .then(
-          if (isFromSetup) Modifier.height(55.dp) else Modifier,
+          if (isFromSetup) Modifier.height(65.dp) else Modifier,
         ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
@@ -116,15 +122,16 @@ internal fun StatCard(
       Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = contentHorizonalAlignment,
+        modifier = Modifier.fillMaxSize(),
       ) {
         if (stat.icon != null && hideMetricData) {
           AppIcon(
             id = stat.icon,
             contentDescription = stat.label,
             modifier = Modifier.size(24.dp),
-            tintColor = MeTheme.colorScheme.iconPrimary,
+            tintColor = MeTheme.colorScheme.secondaryAction,
           )
-          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+          Spacer(modifier = Modifier.size(MeTheme.spacing.x2s))
         }
         if (shouldShowMetricData) {
           Text(
@@ -138,12 +145,15 @@ internal fun StatCard(
           style = MeTheme.typography.subHeading2,
           textAlign = TextAlign.Center,
           color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
+          maxLines = 2,
+          minLines = 1,
         )
       }
     }
   }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimatedStatCard(
   stat: Stat,
@@ -168,7 +178,18 @@ fun AnimatedStatCard(
     ),
   )
   val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
-  val metricBadgeIcon = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus
+  val dragCardShadow = if (isDragging) {
+    Modifier.dropShadow(
+      shape = RoundedCornerShape(MeTheme.spacing.x6s),
+      shadow = Shadow(
+        radius = MeTheme.spacing.sm,
+        spread = 0.dp,
+        color = MeTheme.colorScheme.glow,
+        offset = DpOffset(x = 0.dp, 0.dp),
+      ),
+    )
+  } else Modifier
+
   BadgedBox(
     badge = {
       if (inEditMode && !isDragging) {
@@ -182,10 +203,10 @@ fun AnimatedStatCard(
             .border(2.dp, iconTint, CircleShape),
         ) {
           Icon(
-            painter = painterResource(id = metricBadgeIcon),
+            painter = painterResource(id = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus),
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
             tint = iconTint,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
           )
         }
       }
@@ -193,8 +214,8 @@ fun AnimatedStatCard(
     modifier = Modifier
       .graphicsLayer {
         rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
-      },
-
+      }
+      .then(dragCardShadow),
     ) {
     StatCard(
       stat = stat,
@@ -231,4 +252,3 @@ private fun formatStatValue(value: Any?): String {
     else -> value.toString()
   }
 }
-

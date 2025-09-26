@@ -65,14 +65,13 @@ fun GoalMilestoneDisplay(
     type = goalType.value,
   ).process(targetUnit, null)
   val weightlessWeight = account.weightlessWeight
-
   // Calculate goal percentage using the same logic as GoalViewModel and GoalService
   val goalPercent =
     calculateGoalPercentage(
       goalType = goalType,
       initialWeight = goal.initialWeight,
       goalWeight = goal.goalWeight,
-      latestWeight = currentWeight,
+      latestWeight = currentWeight * 10,
     )
   val displayProgressPercentage = GoalDisplayHelper.computeDisplayProgressPercentage(goalType, goalPercent)
 
@@ -127,13 +126,13 @@ private fun calculateGoalPercentage(
   if (latestWeight <= 0.0) return null // No valid weight data
   when (goalType) {
     GoalType.LOSE -> {
-      progressPercentage = ((latestWeight - goalWeight) / (initialWeight - goalWeight) * 100)
-      percent = 100 - floor(progressPercentage).toInt()
+      progressPercentage = ((latestWeight - goalWeight) / (initialWeight - goalWeight))
+      percent = 100 - floor(progressPercentage * 100).toInt()
     }
 
     GoalType.GAIN -> {
-      progressPercentage = ((latestWeight - initialWeight) / (goalWeight - initialWeight) * 100)
-      percent = floor(progressPercentage).toInt()
+      progressPercentage = ((latestWeight - initialWeight) / (goalWeight - initialWeight))
+      percent = floor(progressPercentage * 100).toInt()
     }
 
     else -> return null // Maintain goals don't have percentage
@@ -149,25 +148,41 @@ private fun MaintainGoalDisplay(
   account: Account,
   currentWeight: Double,
   goalWeight: Double,
+  isFromMilestone: Boolean = false,
   weightlessWeight: Float?,
 ) {
   val isWeightlessOn = account.isWeightlessOn ?: false
   val weightUnit = account.weightUnit
-
   val displayCurrentWeight =
-    if (isWeightlessOn && weightlessWeight != null) {
-      AccountHelper.processStoredWeightToDisplay((currentWeight * 10) - weightlessWeight, weightUnit)
-    } else {
       AccountHelper.processStoredWeightToDisplay((currentWeight * 10), weightUnit)
-    }
   val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, weightUnit)
   val distanceText =
     GoalDisplayHelper.computeToGoal(
       displayGoalWeight,
-      displayCurrentWeight,
+      if(isFromMilestone) currentWeight else displayCurrentWeight,
       weightless,
     )
+    fun displayWeight(weight: Double): String {
+      val processedWeight = if (isWeightlessOn && weightlessWeight != null) {
+        (weight) - weightlessWeight
+      } else {
+        weight
+      }
+      val displayWeight = AccountHelper.processStoredWeightToDisplay(processedWeight, weightUnit)
+      return if (isWeightlessOn && weightlessWeight != null) {
+        // Only show symbols in weightless mode
+        when {
+          displayWeight > 0 -> "+${displayWeight}"
+          displayWeight < 0 -> "$displayWeight" // Already includes minus sign
+          else -> "$displayWeight"
+        }
+      } else {
+        // No symbols when not in weightless mode
+        "$displayWeight"
+      }
+    }
+
   AppStyledCard(
     modifier =
       Modifier
@@ -184,7 +199,7 @@ private fun MaintainGoalDisplay(
         text = distanceText,
       )
       AppText(
-        text = "  ${weightUnit.label} ${GoalStrings.To} $displayGoalWeight ${GoalStrings.GoalWeight}",
+        text = "  ${weightUnit.label} ${GoalStrings.To} ${displayWeight(goalWeight)} ${GoalStrings.GoalWeight}",
         textType = TextType.ListSubtitle,
         modifier = Modifier.padding(bottom = spacing.xs),
       )
@@ -207,12 +222,30 @@ private fun LoseGainGoalDisplay(
   val weightUnit = account.weightUnit.label
   val isWeightlessOn = account.isWeightlessOn ?: false
   val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
-  val displayStartingWeight = AccountHelper.processStoredWeightToDisplay(account.initialWeight, account.weightUnit)
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, account.weightUnit)
   val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay(currentWeight * 10, account.weightUnit)
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
   if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
   var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
+   fun displayWeight(weight: Double): String {
+     val processedWeight = if (isWeightlessOn && weightlessWeight != null) {
+       weight - weightlessWeight
+     } else {
+       weight
+     }
+     val displayWeight = AccountHelper.processStoredWeightToDisplay(processedWeight, account.weightUnit)
+     return if (isWeightlessOn && weightlessWeight != null) {
+       // Only show symbols in weightless mode
+       when {
+         displayWeight > 0 -> "+${displayWeight}"
+         displayWeight < 0 -> "$displayWeight" // Already includes minus sign
+         else -> "$displayWeight"
+       }
+     } else {
+       // No symbols when not in weightless mode
+       "$displayWeight"
+     }
+   }
   AppStyledCard(
     modifier =
       Modifier
@@ -262,9 +295,8 @@ private fun LoseGainGoalDisplay(
           // .padding(top = spacing.x3s),
         )
       }
-    }
-
-    // Progress Slider using AppLinearProgressIndicator
+      }
+      // Progress Slider using AppLinearProgressIndicator
     AppLinearProgressIndicator(
       progress = (progressPercentage / 100.0).toFloat().coerceIn(0f, 1f),
       type = AppLinearProgressType.Success,
@@ -280,17 +312,17 @@ private fun LoseGainGoalDisplay(
         .padding(horizontal = spacing.sm),
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-      AppText(
-        text = displayStartingWeight.toString(),
-        textType = TextType.ListSubtitle,
-        color = colorScheme.textHeading,
-      )
+        AppText(
+          text = displayWeight(account.initialWeight),
+          textType = TextType.ListSubtitle,
+          color = colorScheme.textHeading,
+        )
 
-      AppText(
-        text = displayGoalWeight.toString(),
-        textType = TextType.ListSubtitle,
-        color = colorScheme.textHeading,
-      )
+        AppText(
+          text = displayWeight(goalWeight),
+          textType = TextType.ListSubtitle,
+          color = colorScheme.textHeading,
+        )
     }
   }
 }

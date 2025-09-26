@@ -62,7 +62,7 @@ fun AppsyncButton(
         shape = RoundedCornerShape(4.dp),
         modifier =
             Modifier
-                .width(32.dp) // Fixed width for consistent touch target
+              .width(32.dp) // Fixed width for consistent touch target
                 .height(32.dp) // Fixed height for consistent touch target
                 .semantics { contentDescription },
         // Accessibility support
@@ -70,7 +70,7 @@ fun AppsyncButton(
         Icon(
             painter = painterResource(src),
             contentDescription = contentDescription,
-            modifier = Modifier.width(12.dp), // Fixed icon size for consistency
+            modifier = Modifier.width(16.dp), // Fixed icon size for consistency
         )
     }
 }

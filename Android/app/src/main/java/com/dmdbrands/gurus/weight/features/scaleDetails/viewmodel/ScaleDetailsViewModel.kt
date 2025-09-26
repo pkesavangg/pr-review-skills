@@ -3,9 +3,12 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -36,6 +39,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -47,6 +51,7 @@ import kotlinx.coroutines.launch
 class ScaleDetailsViewModel
 @AssistedInject
 constructor(
+  private var accountService: AccountService,
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
   private val permissionService: GGPermissionService,
@@ -60,8 +65,15 @@ constructor(
     fun create(scaleId: String): ScaleDetailsViewModel
   }
 
+  private var activeAccount: Account? = null
+
   init {
+    observeAccountChanges()
     provideInitialState()
+    setScaleDetails()
+    observePermissions()
+    configureR4ScaleDetails()
+    observeScaleConnectionChanges()
   }
 
   override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState(
@@ -128,11 +140,12 @@ constructor(
     }
   }
 
-  init {
-    setScaleDetails()
-    observePermissions()
-    configureR4ScaleDetails()
-    observeScaleConnectionChanges()
+  private fun observeAccountChanges(){
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect {
+        activeAccount = it
+      }
+    }
   }
 
   private fun configureR4ScaleDetails() {
@@ -180,10 +193,9 @@ constructor(
         if (currentScale != null) {
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
-            currentScale.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-            scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
-
             handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+            val scaleName = scale.nickname
+            handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
             getDeviceInfo()
           }
         }
@@ -193,13 +205,18 @@ constructor(
 
   private fun setScaleDetails() {
     viewModelScope.launch {
+
+      // Then observe for changes
       deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
+          AppLog.d(TAG, "Updating scale info for: ${scaleDevice.nickname}")
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
           handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
+        } ?: run {
+          AppLog.w(TAG, "No device found for scaleId: $scaleId")
         }
       }
     }
@@ -236,46 +253,56 @@ constructor(
   }
 
   private fun deleteScaleAlert() {
-    viewModelScope.launch {
-      dialogQueueService.showDialog(
-        DialogModel.Confirm(
-          message = ScaleDetailsStrings.DeleteScaleConfirmation,
-          confirmText = ScaleDetailsStrings.Delete,
-          cancelText = ScaleDetailsStrings.Cancel,
-          onConfirm = {
-            val scale = state.value.scale!!
-            dialogQueueService.dismissCurrent()
-            dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
-            viewModelScope.launch {
-              deviceService.deleteScale(scale.id)
-              if (scale.deviceType == ScaleSetupType.BtWifiR4.value) {
-                ggDeviceService.disconnectDevice(scale.toGGBTDevice())
-              }
-              ggDeviceService.deleteAccount(scale.toGGBTDevice(), true) {
-                if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-                  dialogQueueService.showToast(
-                    Toast(
-                      message = ScaleDetailsStrings.DeleteSuccessMessage,
-                    ),
-                  )
-                } else {
-                  dialogQueueService.showToast(
-                    Toast(
-                      message = ScaleDetailsStrings.DeleteErrorMessage,
-                    ),
-                  )
+    try {
+      viewModelScope.launch {
+        dialogQueueService.showDialog(
+          DialogModel.Confirm(
+            message = ScaleDetailsStrings.DeleteScaleConfirmation,
+            confirmText = ScaleDetailsStrings.Delete,
+            cancelText = ScaleDetailsStrings.Cancel,
+            onConfirm = {
+              viewModelScope.launch {
+                val scale = state.value.scale!!
+                dialogQueueService.dismissCurrent()
+                dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
+                if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
+                  ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
+                    if (it == GGUserActionResponseType.DELETE_COMPLETED) {
+                      ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
+                      dialogQueueService.showToast(
+                        Toast(
+                          message = ScaleDetailsStrings.DeleteSuccessMessage,
+                        ),
+                      )
+                    } else {
+                      dialogQueueService.dismissLoader()
+                      dialogQueueService.showToast(
+                        Toast(
+                          message = ScaleDetailsStrings.DeleteErrorMessage,
+                        ),
+                      )
+                    }
+                  }
                 }
+                deviceService.deleteScale(scale.id)
+                dialogQueueService.dismissLoader()
+                navigateBack()
               }
-              dialogQueueService.dismissLoader()
-              navigateBack()
-            }
-          },
-          onDismiss = {
-            dialogQueueService.dismissCurrent()
-          },
-        ),
-      )
+            },
+            onDismiss = {
+              dialogQueueService.dismissCurrent()
+            },
+
+          ),
+
+        )
+      }
     }
+    catch (e: Exception){
+      dialogQueueService.dismissLoader()
+      AppLog.d(TAG,"Error while deleting an scale")
+    }
+
   }
 
   private fun openScaleUsers() {
@@ -290,14 +317,15 @@ constructor(
   }
 
   /**
-   * Opens the Forgot Password modal.
+   * Opens the Scale Name modal.
    */
   private fun openScaleNameModal() {
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.ScaleName,
         params = mapOf(
-          "scaleId" to scaleId,
+          "scaleId" to (state.value.scale?.id ?: scaleId),
+          "accountId" to (activeAccount?.id ?: ""),
         ),
       ),
     )
@@ -317,8 +345,8 @@ constructor(
     )
     viewModelScope.launch {
       try {
-        deviceService.updateScaleNickname(state.value.scale!!.id, scaleName)
-        AppLog.i("SaveScaleName", "Updated scale name: $scaleName")
+        deviceService.updateScaleNickname(state.value.scale!!, scaleName)
+        AppLog.i("SaveScaleName", "Updated scale name: ${state.value.scale}")
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()
         // Note: Form will be repopulated with updated nickname when dialog reopens

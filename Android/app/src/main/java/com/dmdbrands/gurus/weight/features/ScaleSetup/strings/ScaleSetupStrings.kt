@@ -54,10 +54,10 @@ object ScaleSetupStrings {
     fun Subtitle(setupType: ScaleSetupType) = when (setupType) {
       ScaleSetupType.AppSync -> "Weight Gurus needs Camera permission to Scan your scale."
       ScaleSetupType.Wifi,
-      ScaleSetupType.EspTouchWifi -> "Weight Gurus needs Location permissions to connect with your scale."
+      ScaleSetupType.EspTouchWifi -> "Weight Gurus needs Location permissions to connect to your scale."
 
       ScaleSetupType.BtWifiR4,
-      ScaleSetupType.Bluetooth -> "Weight Gurus requires Bluetooth and Location permissions to connect with your scale."
+      ScaleSetupType.Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your scale."
 
       ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
     }

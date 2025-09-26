@@ -130,8 +130,10 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
 
       if(state.dayWiseEntries.isEmpty() && !state.isLoading) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
-        EmptyMetric()
-      } else if (!state.isLoading) {
+        EmptyMetric(onConnectScaleClick = {
+          handleIntent(DashboardIntent.OnConnectScale)
+        })
+      } else {
         DashboardMetrics(
           metricData = metricData,
           inEditMode = inEditMode,
@@ -150,6 +152,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         )
         DashboardMilestone(
           progress = state.progress,
+          latestWeight = state.latestWeight,
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->

@@ -19,29 +19,9 @@ object ConversionTools {
   private const val CM_TO_INCH_FACTOR = 0.254
   private const val INCHES_PER_FOOT = 12
   private const val STORED_HEIGHT_TO_INCHES_FACTOR = 10.0
-  private const val BMI_CALCULATION_FACTOR = 100000.0
+  private const val BMI_CALCULATION_FACTOR = 100000
   private const val BLUETOOTH_CONVERSION_FACTOR = 1.1023
 
-  /**
-   * Converts stored height to formatted string representation.
-   * @param height Height in stored format (tenths of inches)
-   * @param forceMetric Force metric display regardless of user preference
-   * @param isMetric User preference for metric units
-   * @return Formatted height string (e.g., "5' 10\"" or "178 cm")
-   */
-  fun convertToFormattedHeight(
-    height: Int,
-    forceMetric: Boolean = false,
-    isMetric: Boolean = false
-  ): String {
-    return if (isMetric || forceMetric) {
-      val cm = convertStoredHeightToCm(height)
-      "$cm cm"
-    } else {
-      val feetInches = convertStoredHeightToFeet(height)
-      "${feetInches.first}' ${feetInches.second}\""
-    }
-  }
 
   // ========== Weight Conversions ==========
 
@@ -152,7 +132,7 @@ object ConversionTools {
    * @return Height in centimeters
    */
   fun convertStoredHeightToCm(stored: Int): Int {
-    return round(stored * CM_TO_INCH_FACTOR).toInt()
+      return round(stored * CM_TO_INCH_FACTOR).toInt()
   }
 
   /**

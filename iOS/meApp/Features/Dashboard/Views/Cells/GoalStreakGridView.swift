@@ -145,9 +145,52 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
               let item = coordinator.items.first,
               let sourceIndexPath = item.sourceIndexPath else { return }
 
-        gridModel.moveWidget(from: sourceIndexPath.item, to: destinationIndexPath.item)
+        // Get the dragged widget
+        let draggedWidget = gridModel.mileStones[sourceIndexPath.item]
+        
+        // Calculate the adjusted destination index
+        let adjustedDestinationIndex: Int
+        if case .goalCard = draggedWidget {
+            // Special case: when goal card is dragged and ALL streak items AND goal card are present
+            // and goal card is at the last index, adjust destination to be one position earlier
+            let allWidgetsPresent = gridModel.mileStones.allSatisfy { widget in
+                switch widget {
+                case .goalCard: return true
+                case .streak(let streakItem): 
+                    // Check if streak is removed by comparing with active streak count
+                    return !store.isStreakRemoved(streakItem.label)
+                }
+            }
+            
+            let goalCardPresent = gridModel.mileStones.contains { widget in
+                if case .goalCard = widget { return true }
+                return false
+            }
+            
+            let goalCardAtLastIndex = sourceIndexPath.item == gridModel.mileStones.count - 1
+            
+            // Constants for position adjustment logic
+            let goalCardPositionAdjustment = 1 // Move one position earlier when special conditions are met
+            
+            // Only apply special case when ALL streak items AND goal card are present
+            // and goal card is at the last index, and destination is one position before the goal card
+            if allWidgetsPresent && goalCardPresent && goalCardAtLastIndex && destinationIndexPath.item == sourceIndexPath.item - 1 {
+                // Adjust destination to be one position earlier than the proposed destination
+                // This ensures proper grid layout when goal card is moved from last position
+                adjustedDestinationIndex = destinationIndexPath.item - goalCardPositionAdjustment
+            } else {
+                adjustedDestinationIndex = destinationIndexPath.item
+            }
+        } else {
+            adjustedDestinationIndex = destinationIndexPath.item
+        }
+
+        gridModel.moveWidget(from: sourceIndexPath.item, to: adjustedDestinationIndex)
+        
+        let adjustedDestinationIndexPath = IndexPath(item: adjustedDestinationIndex, section: destinationIndexPath.section)
+        
         collectionView.performBatchUpdates({
-            collectionView.moveItem(at: sourceIndexPath, to: destinationIndexPath)
+            collectionView.moveItem(at: sourceIndexPath, to: adjustedDestinationIndexPath)
         }, completion: nil)
 
         // Save the new order to DashboardStore UI state

@@ -150,7 +150,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Computed Properties
     /// Check if this is being used for settings WiFi configuration
     var isSettingsContext: Bool {
-        savedScale != nil
+        savedScale != nil && !isReconnect && !isDuplicated && isWifiSetupOnly
     }
     
     /// Check if the form is valid for WiFi password entry
@@ -257,7 +257,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 
             case .wifiPassword:
                 if let selectedNetwork = selectedWifiNetwork {
-                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork).environmentObject(self))
+                    return AnyView(WifiPasswordEntryView(wifiDetail: selectedNetwork, isScaleSetup: true).environmentObject(self))
                 } else {
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
@@ -469,7 +469,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                    discoveryEvent: DeviceDiscoveryEvent? = nil, 
                    saveScale: Device? = nil,
                    isReconnect: Bool = false,
-                   isDuplicated: Bool = false) {
+                   isDuplicated: Bool = false,
+                   isWifiSetupOnly: Bool
+    ) {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         
@@ -486,6 +488,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
             self.bluetoothService.isSetupInProgress = true
+            
+            // Get current Wi-Fi status immediately for Wi-Fi setup only mode
+            if isWifiSetupOnly {
+                getCurrentWifiStatus()
+            }
         } else {
             self.isWifiSetupOnly = false
         }
@@ -1381,6 +1388,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure
         }
+    }
+    
+    /// Gets the current Wi-Fi status immediately without waiting for scale communication
+    private func getCurrentWifiStatus() {
+        Task { @MainActor in
+            let wifiStatus = await wifiScaleService.getConnectedWifiInfo()
+            
+            // Update connected Wi-Fi network if we have a valid SSID
+            if let ssid = wifiStatus.ssid, !ssid.isEmpty, wifiStatus.status == .connected {
+                self.connectedWifiNetwork = WifiDetails(macAddress: wifiStatus.bssid ?? "", ssid: ssid, rssi: 0)
+            }
+        }
+    }
+    
+    /// Public method to refresh current Wi-Fi status - can be called from views
+    func refreshCurrentWifiStatus() {
+        getCurrentWifiStatus()
     }
     
     /// Fetches WiFi networks from the scale and handles error cases

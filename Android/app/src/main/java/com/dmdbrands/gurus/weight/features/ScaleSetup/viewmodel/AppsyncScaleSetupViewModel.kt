@@ -86,6 +86,8 @@ constructor(
 
   init {
     AppLog.d(TAG, "AppsyncScaleSetupViewModel initialized for SKU: $sku")
+    // Set setup in progress when initialization starts
+    deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeSetup()
@@ -124,7 +126,7 @@ constructor(
 
       AppsyncScaleSetupStep.PERMISSIONS -> {
         val areRequiredPermissionsEnabled = AppPermissionsHelper
-          .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+          .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.AppSync)
         val currentState = state.value
         AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
         // If permissions are enabled and we're on PERMISSIONS step, auto-advance
@@ -158,6 +160,8 @@ constructor(
     isSetupFinished: Boolean,
   ) {
     AppLog.d(TAG, "Exit setup requested - isSetupFinished: $isSetupFinished, isLastStep: ${state.value.isLastStep}")
+    // Clear setup in progress state when exiting
+    deviceService.setSetupInProgress(false)
     if (isSetupFinished || state.value.isLastStep) {
       AppLog.d(TAG, "Setup is finished, checking and saving scale")
       checkAndSaveScale()
@@ -304,7 +308,7 @@ constructor(
           when (currentState.currentStep) {
             AppsyncScaleSetupStep.PERMISSIONS -> {
               val areRequiredPermissionsEnabled = AppPermissionsHelper
-                .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+                .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.AppSync)
               AppLog.d(TAG, "Permissions step - required permissions enabled: $areRequiredPermissionsEnabled")
               handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(areRequiredPermissionsEnabled))
             }
@@ -319,6 +323,11 @@ constructor(
         AppLog.e(TAG, "Error observing setup", e)
       }
     }
+  }
+
+  override fun onCleared() {
+    super.onCleared()
+    deviceService.setSetupInProgress(false)
   }
 
   companion object {

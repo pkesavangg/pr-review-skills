@@ -177,13 +177,15 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class BtScaleSetup(
       val sku: String,
+      val scaleInfo: ScaleInfo? = null
     ) : ScaleSetup()
 
     @Serializable
     data class LcbtScaleSetup(
       val sku: String,
       val broadcastId: String? = null,
-      val initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO
+      val initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO,
+      val scaleInfo: ScaleInfo? = null
     ) : ScaleSetup()
 
     @Serializable

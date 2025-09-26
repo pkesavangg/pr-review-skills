@@ -5,12 +5,14 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -60,9 +62,10 @@ fun AppIconButton(
     val iconColor = AppIconButtonDefaults.contentColor(type, enabled)
     IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
         Icon(
-            painter = painterResource(id),
-            contentDescription = contentDescription,
-            tint = iconColor,
+          painter = painterResource(id),
+          contentDescription = contentDescription,
+          tint = iconColor,
+          modifier = Modifier.size(24.dp),
         )
     }
 }

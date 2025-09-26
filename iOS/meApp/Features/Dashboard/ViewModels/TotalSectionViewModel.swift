@@ -12,7 +12,20 @@ import Charts
 /// ViewModel specifically for the Total time period chart view
 /// Handles all total-specific chart logic, state management, and data processing
 @MainActor
-final class TotalSectionViewModel: BaseSectionViewModel {
+final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
+    
+    static func == (lhs: TotalSectionViewModel, rhs: TotalSectionViewModel) -> Bool {
+        // Compare essential properties that affect rendering
+        lhs.timePeriod == rhs.timePeriod &&
+        lhs.selectedDate == rhs.selectedDate &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.scrollPosition == rhs.scrollPosition &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.yAxisDomain == rhs.yAxisDomain &&
+        lhs.yAxisTicks == rhs.yAxisTicks &&
+        lhs.chartFrame == rhs.chartFrame &&
+        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
+    }
     
     // MARK: - Constants
     
@@ -29,11 +42,6 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         return .total
     }
     
-    /// Connect across any gap in Total view
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        return sorted.isEmpty ? [] : [sorted]
-    }
     
     override var hasXAxis: Bool {
         return false // Total period has no X-axis
@@ -223,6 +231,7 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     func getPointSizeForTotal() -> CGFloat {
         return pointSize // Use the base point size
     }
+    
     
     // MARK: - No-op methods for total view (no scrolling)
     override func handleScrollPositionChange(_ newPosition: Date?) {

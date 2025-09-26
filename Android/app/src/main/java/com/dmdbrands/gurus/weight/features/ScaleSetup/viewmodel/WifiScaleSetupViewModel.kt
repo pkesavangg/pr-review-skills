@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.core.service.WifiSetupInfo
 import com.dmdbrands.gurus.weight.core.service.WifiSetupType
 import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -93,6 +94,8 @@ constructor(
       "change" -> WifiSetupType.CHANGE
       else -> WifiSetupType.FIRST
     }
+    // Set setup in progress when initialization starts
+    deviceService.setSetupInProgress(true)
     loadScaleInfo()
     observePermissions()
     observeStepChanges()
@@ -133,7 +136,6 @@ constructor(
       is WifiScaleSetupIntent.OpenHelp -> openHelpModal()
       is WifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
       is WifiScaleSetupIntent.GoToWifiSettings -> goToWifiSettings()
-      is WifiScaleSetupIntent.CheckScaleWifiConnection -> checkScaleWifiConnection()
       is WifiScaleSetupIntent.OnGetScaleMacAddress -> onGetScaleMacAddress()
       else -> {}
     }
@@ -152,7 +154,10 @@ constructor(
     viewModelScope.launch {
       subscribePermissions(true).collect { permissions ->
         handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
-        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
+        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
+
+        // Refresh WiFi information when permissions change to ensure WiFi name is current
+        updateNetworkStatus()
       }
     }
   }
@@ -184,7 +189,7 @@ constructor(
 
             WifiScaleSetupStep.PERMISSIONS -> {
               val areRequiredPermissionsEnabled = AppPermissionsHelper
-                .areRequiredPermissionsEnabled(state.value.permissions, sku = sku)
+                .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Wifi)
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
               updateNetworkStatus()
             }
@@ -363,6 +368,8 @@ constructor(
     isSetupFinished: Boolean,
     isConnected: Boolean,
   ) {
+    // Clear setup in progress state when exiting
+    deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
       navigateBack()
       return
@@ -409,8 +416,14 @@ constructor(
    * Requests a specific permission using the PermissionService.
    */
   private fun requestPermission(permissionType: String) {
-    if (permissionType == GGPermissionType.WIFI_SWITCH) {
-      permissionService.requestPermission(permissionType)
+    if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
+      // Check if location permissions are granted before allowing WiFi switch request
+      val hasLocationPermissions = isAllLocationPermissionGranted()
+      if (!hasLocationPermissions) {
+        AppLog.w(TAG, "Location permissions not granted")
+        return
+      }
+      permissionService.requestPermission(GGPermissionType.WIFI_SWITCH)
       return
     }
     viewModelScope.launch {
@@ -757,19 +770,6 @@ constructor(
     AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
   }
 
-  /**
-   * Gets the current location permission status.
-   */
-  private fun getLocationPermissionStatus(): String {
-    return try {
-      val permissions = permissionService.permissionCallBackFlow.value
-      permissions[GGPermissionType.LOCATION_SWITCH]
-        ?: GGPermissionState.NOT_DETERMINED
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error getting location permission status", e.toString())
-      GGPermissionState.NOT_DETERMINED
-    }
-  }
 
   /**
    * Checks if all location permissions are granted.
@@ -797,20 +797,6 @@ constructor(
   }
 
   /**
-   * Handles error code selection.
-   * Equivalent to TypeScript handleErrorCodeSelected()
-   */
-  // Need to show slide for error code
-  fun handleErrorCodeSelected(code: String) {
-    AppLog.d(TAG, "handleErrorCodeSelected called with code: $code")
-    handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(code))
-
-    if (code == "other") {
-      onNext()
-    }
-  }
-
-  /**
    * Simplified next() method - special navigation logic is now in the reducer
    */
   private fun onNext() {
@@ -822,10 +808,17 @@ constructor(
       return
     }
 
+
     AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
 
     // Handle actions that need to happen before/during navigation
     when (currentState.currentStep) {
+      WifiScaleSetupStep.SCALE_INFO -> {
+        state.value.copy(
+          isGetMACSetup = false,
+          shouldGetMacAddress = false
+        )
+      }
       WifiScaleSetupStep.PERMISSIONS -> {
         if (!checkScaleToken()) {
           return
@@ -906,7 +899,12 @@ constructor(
       AppLog.d(TAG, "Ignoring back click - navigation in progress")
       return
     }
-
+   if(state.value.currentStep == WifiScaleSetupStep.PERMISSIONS && state.value.isGetMACSetup){
+      state.value.copy(
+        isGetMACSetup = false,
+        shouldGetMacAddress = false
+      )
+   }
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
@@ -1061,60 +1059,6 @@ constructor(
     handleIntent(WifiScaleSetupIntent.SetConnectedToScaleWifi(isConnected))
   }
 
-  /**
-   * Monitors WiFi connection to detect when user connects to scale's WiFi.
-   * This should be called periodically or when WiFi state changes.
-   */
-  fun checkScaleWifiConnection() {
-    val currentState = state.value
-
-    // Check if we have location permissions (needed for WiFi SSID)
-    val hasLocationPermission = currentState.permissions[GGPermissionType.LOCATION] == GGPermissionState.ENABLED ||
-      currentState.permissions[GGPermissionType.LOCATION_SWITCH] == GGPermissionState.ENABLED
-
-    AppLog.d(TAG, "Checking scale WiFi connection - has location permission: $hasLocationPermission")
-
-    // Get the current connected SSID using WifiScaleService
-    val currentSsid = if (hasLocationPermission) {
-      wifiScaleService.getConnectedSsid()
-    } else {
-      AppLog.w(TAG, "No location permission - cannot get WiFi SSID")
-      ""
-    }
-
-    // Check if the current SSID matches the scale's WiFi network
-    val scaleWifiSsid = currentState.scaleWifiSsid
-    val isConnected = currentSsid == scaleWifiSsid
-
-    AppLog.d(
-      TAG,
-      "Checking scale WiFi connection - current SSID: '$currentSsid', scale SSID: '$scaleWifiSsid', is connected: $isConnected, current state: ${currentState.isConnectedToScaleWifi}",
-    )
-
-    if (currentState.isConnectedToScaleWifi != isConnected) {
-      AppLog.d(TAG, "WiFi connection status changed from ${currentState.isConnectedToScaleWifi} to $isConnected")
-      updateScaleWifiConnectionStatus(isConnected)
-    } else {
-      AppLog.d(TAG, "WiFi connection status unchanged: $isConnected")
-    }
-  }
-
-  /**
-   * Handles setup errors.
-   * Equivalent to TypeScript handleSetupError()
-   */
-  private fun handleSetupError() {
-    AppLog.d(TAG, "handleSetupError called")
-    handleIntent(WifiScaleSetupIntent.SetShowError(true))
-    handleIntent(WifiScaleSetupIntent.SetSetupResult(null))
-
-    if (state.value.showApMode) {
-      handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
-      handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.ERROR_GUIDE))
-    } else {
-      onNext()
-    }
-  }
 
   /**
    * Shows permission revoked alert.
@@ -1196,5 +1140,6 @@ constructor(
     isDestroyed = true
     isWifiSwitchingContext = false // Reset WiFi switching context flag
     wifiScaleService.stop()
+    deviceService.setSetupInProgress(false)
   }
 }

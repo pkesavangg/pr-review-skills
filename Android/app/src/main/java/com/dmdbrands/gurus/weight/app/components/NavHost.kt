@@ -44,7 +44,11 @@ fun NavHost(
         rememberSavedStateNavEntryDecorator(),
         rememberViewModelStoreNavEntryDecorator(),
       ),
-    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App),
+    backStack = topLevelBackStack.getStackForTopLevel(AppRoute.App).ifEmpty {
+      listOf(
+        AppRoute.Init.Loading,
+      )
+    },
     onBack = {
       coroutineScope.launch {
         topLevelBackStack.removeLast(AppRoute.App)

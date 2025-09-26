@@ -19,6 +19,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -99,6 +101,8 @@ object EntryHelper {
   }
 
   fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
+  fun Float.toDouble1dp(rounding: RoundingMode = RoundingMode.HALF_UP): Double =
+    if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
 
   fun ScaleEntry.getDate(): String {
     val instant = Instant.parse(entry.entryTimestamp)
@@ -250,8 +254,8 @@ object EntryHelper {
       bodyFat = bodyFat.toDouble(),
       muscleMass = muscleMass.toDouble(),
       water = water.toDouble(),
-      bmi = bmi.toDouble(),
-      source = getScaleSetupType(protocolType).value,
+      bmi = bmi.toDouble1dp(),
+      source = getScaleSetupType(protocolType),
     )
 
     val metricEntity = BodyScaleEntryMetricEntity(
@@ -278,10 +282,9 @@ object EntryHelper {
     )
   }
 
-  fun getScaleSetupType(protocolType: String): ScaleSetupType = when (protocolType) {
-    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.BtWifiR4
-    else -> ScaleSetupType.Bluetooth
-
+  fun getScaleSetupType(protocolType: String): String = when (protocolType) {
+    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.toSource(ScaleSetupType.BtWifiR4.value)
+    else -> ScaleSetupType.toSource(ScaleSetupType.Bluetooth.value)
   }
 
   /**
@@ -329,7 +332,7 @@ object EntryHelper {
       muscleMass = muscle?.toDouble(),
       water = water?.toDouble(),
       bmi = calculatedBmi,
-      source = "Appsync scale",
+      source = "appsync scale",
     )
 
     val scaleEntryWithMetrics = ScaleEntryWithMetrics(
@@ -371,7 +374,7 @@ object EntryHelper {
       boneMass = null, // AppSync doesn't provide bone mass
       water = processedWater,
       bmi = null, // BMI calculated separately
-      source = "Appsync scale",
+      source = "appsync scale",
       unit = if (mode?.lowercase() == "kg") "kg" else "lb",
       impedance = null, // AppSync doesn't provide impedance
       pulse = null, // AppSync doesn't provide pulse

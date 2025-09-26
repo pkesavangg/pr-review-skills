@@ -48,7 +48,7 @@ fun ScaleInfo(
     AppText(
       text = ScaleSetupStrings.ScaleInfo.Subtitle(setupType = setupType),
       textType = TextType.Body,
-      textAlign = TextAlign.Center,
+      textAlign = TextAlign.Left,
     )
     if (buttonText != null && onButtonClick != null) {
       Spacer(modifier = Modifier.height(spacing.lg))

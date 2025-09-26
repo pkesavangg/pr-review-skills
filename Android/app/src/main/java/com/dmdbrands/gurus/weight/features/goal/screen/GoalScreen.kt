@@ -86,7 +86,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
     ) {
       val canDisplayMilestone =
         state.account?.goalType != null && state.account.goalWeight != null && state.account.goalWeight > 0
-      val canShowTitle = state.account?.goalWeight != null
+      val canShowTitle = state.account?.goalType != null
       // Milestone Display Section - showing current goal progress
       if (canDisplayMilestone) {
         GoalMilestoneDisplay(
@@ -112,7 +112,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         },
         // For Goal screen, show current weight field and enable unless MAINTAIN
         showCurrentWeightForMaintain = false,
-        showMetricToggle = false,
+        isMetric = state.account?.isMetricUnit() ?: false,
         initialWeightUnit = state.account?.let { account ->
           if (account.isMetricUnit()) WeightUnit.KG else WeightUnit.LB
         },

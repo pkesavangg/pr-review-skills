@@ -38,5 +38,14 @@ public enum ButtonType: CaseIterable {
         case .inlineTextTertiary: return "Inline Text Tertiary"
         }
     }
+    
+    var isInlineText: Bool {
+        switch self {
+        case .inlineTextPrimary, .inlineTextSecondary, .inlineTextTertiary:
+            return true
+        default:
+            return false
+        }
+    }
 }
 

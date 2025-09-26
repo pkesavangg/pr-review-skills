@@ -83,11 +83,12 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
-    AppLog.d(TAG, "Setup finished, saving LCBT scale")
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     try {
       if (discoveredScale != null) {
-        AppLog.d(TAG, "Saving discovered LCBT scale: ${discoveredScale!!.id}")
+        discoveredScale = discoveredScale!!.copy(
+          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale"
+        )
         deviceService.saveScale(discoveredScale!!)
         AppLog.i(TAG, "Successfully saved LCBT scale")
       } else {
@@ -210,6 +211,9 @@ constructor(
 
   private fun connectToBluetooth() {
     // Always set loading state to ensure UI updates
+    if (setupInit.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH){
+      ggDeviceService.scanForPairing()
+    }
     AppLog.d(TAG, "Starting Bluetooth connection process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
@@ -221,16 +225,15 @@ constructor(
     viewModelScope.launch {
       try {
         AppLog.d(TAG, "Updating device connection status")
+        delay(3000)
         deviceService.onDeviceUpdate(
           discoveredScale?.device!!,
           connectionStatus = BLEStatus.CONNECTED,
         )
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
-        delay(3000)
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         AppLog.d(TAG, "Waiting 2 seconds before proceeding")
-        delay(2000)
         onNext()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during bluetooth connection", e)
@@ -245,7 +248,8 @@ constructor(
     viewModelScope.launch {
       try {
         subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
-          val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, sku)
+          val areRequiredPermissionsEnabled =
+            AppPermissionsHelper.areRequiredPermissionsEnabled(newPermissions, setupType = ScaleSetupType.Lcbt)
           AppLog.d(TAG, "Required permissions enabled: $areRequiredPermissionsEnabled")
           handleIntent(ScaleSetupIntent.SetPermissions(newPermissions))
           if (isPermissionGranted != areRequiredPermissionsEnabled) {

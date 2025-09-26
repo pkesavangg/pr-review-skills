@@ -12,18 +12,26 @@ import Charts
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class WeekSectionViewModel: BaseSectionViewModel {
+final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
+    
+    static func == (lhs: WeekSectionViewModel, rhs: WeekSectionViewModel) -> Bool {
+        // Compare essential properties that affect rendering
+        lhs.timePeriod == rhs.timePeriod &&
+        lhs.selectedDate == rhs.selectedDate &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.scrollPosition == rhs.scrollPosition &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.yAxisDomain == rhs.yAxisDomain &&
+        lhs.yAxisTicks == rhs.yAxisTicks &&
+        lhs.chartFrame == rhs.chartFrame &&
+        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
+    }
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .week
     }
     
-    /// Connect across any gap in week view
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        return sorted.isEmpty ? [] : [sorted]
-    }
 
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
@@ -81,4 +89,5 @@ final class WeekSectionViewModel: BaseSectionViewModel {
         }
         // Do not compute selectedPoint here; DashboardStore will update metrics using nearest point
     }
+
 }

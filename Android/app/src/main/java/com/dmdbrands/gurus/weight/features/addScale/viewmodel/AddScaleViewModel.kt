@@ -80,7 +80,7 @@ constructor(
     val modelNumberForm = state.value.form
     val isValid = modelNumberForm.validate()
     AppLog.d(TAG, "Form validation result: $isValid")
-    
+
     if (isValid) {
       val modelNumber = state.value.form.controls.modelNumber.value
       AppLog.d(TAG, "Model number submitted: $modelNumber")
@@ -95,15 +95,15 @@ constructor(
     val scaleInfo = SCALES.find { it.sku == sku }
     val setupType = scaleInfo?.setupType
     val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
-    
+
     AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, setup type: $setupType, already paired: $isScaleAlreadyPaired")
-    
+
     if (setupType == ScaleSetupType.AppSync && isScaleAlreadyPaired) {
       AppLog.d(TAG, "Scale is already paired, showing confirmation dialog")
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = PairedScaleExistsAlert.Title,
-          message = PairedScaleExistsAlert.Message(scaleInfo.productName),
+          message = PairedScaleExistsAlert.Message(scaleInfo.sku),
           confirmText = PairedScaleExistsAlert.Pair,
           cancelText = PairedScaleExistsAlert.Cancel,
           onConfirm = {
@@ -131,11 +131,11 @@ constructor(
         }
         ScaleSetupType.Bluetooth -> {
           AppLog.d(TAG, "Navigating to Bluetooth scale setup")
-          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku))
+          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku,scaleInfo))
         }
         ScaleSetupType.Lcbt -> {
           AppLog.d(TAG, "Navigating to Lcbt scale setup")
-          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku))
+          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
         }
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")

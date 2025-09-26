@@ -18,7 +18,7 @@ import androidx.room.PrimaryKey
 data class GoalSettingsEntity(
     @PrimaryKey
     val accountId: String,
-    val goalType: String,
+    val goalType: String?,
     val weight: Float,
     val goalWeight: String,
     val goalPercent: Float,

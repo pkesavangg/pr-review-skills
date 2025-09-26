@@ -12,18 +12,26 @@ import Charts
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class MonthSectionViewModel: BaseSectionViewModel {
+final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
+    
+    static func == (lhs: MonthSectionViewModel, rhs: MonthSectionViewModel) -> Bool {
+        // Compare essential properties that affect rendering
+        lhs.timePeriod == rhs.timePeriod &&
+        lhs.selectedDate == rhs.selectedDate &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.scrollPosition == rhs.scrollPosition &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.yAxisDomain == rhs.yAxisDomain &&
+        lhs.yAxisTicks == rhs.yAxisTicks &&
+        lhs.chartFrame == rhs.chartFrame &&
+        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
+    }
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .month
     }
     
-    /// Connect across any gap in Month view
-    override func getConnectedSegments(from dataPoints: [GraphSeries]) -> [[GraphSeries]] {
-        let sorted = dataPoints.sorted { $0.date < $1.date }
-        return sorted.isEmpty ? [] : [sorted]
-    }
 
     /// Month selection rules:
     /// - Determine the current X-axis section [startTick, endTick) using month ticks (1, 8, 15, 22, 29).
@@ -121,4 +129,5 @@ final class MonthSectionViewModel: BaseSectionViewModel {
         }
         // Do not compute selectedPoint here; DashboardStore updates metrics using nearest point
     }
+    
 }

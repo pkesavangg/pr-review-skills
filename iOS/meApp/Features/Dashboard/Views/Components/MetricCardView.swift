@@ -73,6 +73,46 @@ struct MetricCardView: View {
         isDropTarget ? 2 : 0
     }
     
+    /// Returns the appropriate label based on parentView context
+    private var displayLabel: String {
+        if parentView == .R4ScaleSetup {
+            return getR4ScaleSetupLabel(for: label)
+        }
+        return label
+    }
+    
+    /// Maps standard metric labels to R4ScaleSetup descriptive labels
+    private func getR4ScaleSetupLabel(for originalLabel: String) -> String {
+        switch originalLabel {
+        case DashboardStrings.bmi:
+            return DashboardStrings.bmiR4ScaleSetup
+        case DashboardStrings.bodyFat:
+            return DashboardStrings.bodyFatR4ScaleSetup
+        case DashboardStrings.muscle:
+            return DashboardStrings.muscleR4ScaleSetup
+        case DashboardStrings.water:
+            return DashboardStrings.waterR4ScaleSetup
+        case DashboardStrings.heartBpm:
+            return DashboardStrings.heartBpmR4ScaleSetup
+        case DashboardStrings.bone:
+            return DashboardStrings.boneR4ScaleSetup
+        case DashboardStrings.visceralFat:
+            return DashboardStrings.visceralFatR4ScaleSetup
+        case DashboardStrings.subFat:
+            return DashboardStrings.subFatR4ScaleSetup
+        case DashboardStrings.protein:
+            return DashboardStrings.proteinR4ScaleSetup
+        case DashboardStrings.skelMuscle:
+            return DashboardStrings.skelMuscleR4ScaleSetup
+        case DashboardStrings.bmrKcal:
+            return DashboardStrings.bmrKcalR4ScaleSetup
+        case DashboardStrings.metAge:
+            return DashboardStrings.metAgeR4ScaleSetup
+        default:
+            return originalLabel
+        }
+    }
+    
     var body: some View {
         content()
             .frame(maxWidth: .infinity, minHeight: Self.defaultCardMinHeight)
@@ -104,15 +144,17 @@ struct MetricCardView: View {
                 }
             }
             
-            Text(label)
+            Text(displayLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(subheadingColor)
+                .multilineTextAlignment(parentView == .R4ScaleSetup ? .center : .leading)
         }
     }
 }
 
 #Preview {
     VStack(spacing: 16) {
+        // Regular dashboard view
         MetricCardView(
             value: "24.5",
             label: "bmi",
@@ -129,9 +171,28 @@ struct MetricCardView: View {
             verticalPadding: MetricCardView.twelveCardVerticalPadding,
             parentView: .dashboard
         )
+        
+        // R4ScaleSetup view with descriptive labels (center-aligned)
+        MetricCardView(
+            value: "24.5",
+            label: DashboardStrings.bmi,
+            icon: AppAssets.bmiIcon,
+            dashboardType: .dashboard12,
+            isEditMode: false,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.twelveCardVerticalPadding,
+            parentView: .R4ScaleSetup
+        )
+        
         MetricCardView(
             value: "18.3",
-            label: "body fat",
+            label: DashboardStrings.bodyFat,
             icon: AppAssets.bodyFatIcon,
             dashboardType: .dashboard4,
             isEditMode: false,
@@ -143,7 +204,25 @@ struct MetricCardView: View {
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
             verticalPadding: MetricCardView.fourCardVerticalPadding,
-            parentView: .dashboard
+            parentView: .R4ScaleSetup
+        )
+        
+        // R4ScaleSetup view with longer labels that might wrap
+        MetricCardView(
+            value: "1,800",
+            label: DashboardStrings.bmrKcal,
+            icon: AppAssets.bmrIcon,
+            dashboardType: .dashboard12,
+            isEditMode: false,
+            isRemoved: false,
+            isSelected: false,
+            onToggleRemoval: {},
+            onTap: {},
+            isDropTarget: false,
+            onDrop: { _, _ in false },
+            onDropTargetChanged: { _ in },
+            verticalPadding: MetricCardView.twelveCardVerticalPadding,
+            parentView: .R4ScaleSetup
         )
         
         // Edit mode with wiggle animation (matching movingGridsLearning exactly)
