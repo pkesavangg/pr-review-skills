@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -35,10 +33,8 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -194,18 +190,18 @@ fun AnimatedStatCard(
     badge = {
       if (inEditMode && !isDragging) {
         Badge(
-          containerColor = MeTheme.colorScheme.inverseAction,
+          containerColor = Color.Transparent,
           contentColor = Color.Transparent,
           modifier = Modifier
-            .offset(0.dp, 4.dp)
-            .size(24.dp)
-            .clickable { onBadgeClick() }
-            .border(2.dp, iconTint, CircleShape),
+            .padding(0.dp)
+            .offset((-6).dp, (6).dp)
+            .size(32.dp)
+            .clickable { onBadgeClick() },
         ) {
           Icon(
-            painter = painterResource(id = if (isVisible) AppIcons.Default.Minus else AppIcons.Default.Plus),
+            painter = painterResource(id = if (isVisible) AppIcons.Filled.MinusCircle else AppIcons.Filled.AddCircle),
             contentDescription = if (isVisible) DashboardString.RemoveMetricDescription else DashboardString.AddMetricDescription,
-            tint = iconTint,
+            tint = Color.Unspecified,
             modifier = Modifier.fillMaxSize(),
           )
         }
