@@ -123,12 +123,14 @@ public class CustomCollectionView: UICollectionView {
             let originalActions = self.layer.actions
             self.layer.actions = ["position": NSNull(), "bounds": NSNull(), "transform": NSNull()]
             
-            super.performBatchUpdates(updates, completion: { finished in
-                // Restore this collection view's layer actions
-                self.layer.actions = originalActions
-                CATransaction.commit()
-                completion?(finished)
-            })
+            super.performBatchUpdates(updates, completion: nil)
+            
+            // Restore this collection view's layer actions and commit transaction
+            self.layer.actions = originalActions
+            CATransaction.commit()
+            
+            // Call the original completion block if provided
+            completion?(true)
         }
     }
 
