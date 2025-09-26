@@ -163,7 +163,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         let t = date.timeIntervalSinceReferenceDate
         
-        // 2) Clamp outside range (shape-preserving splines usually clamp)
+        // 2) For dates outside the data range, return the edge values (clamping behavior)
+        // This allows interpolation to work at the boundaries while the calling method
+        // can decide whether to use these edge values or filter them out
         if t <= xs[0] { return ys[0] }
         if t >= xs[n - 1] { return ys[n - 1] }
         
@@ -1740,6 +1742,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     
     /// Calculates the average of interpolated weights for the visible range when no entries are visible
     /// This provides a meaningful weight display even when the visible window contains no actual data points
+    /// Only interpolates within the actual data boundaries, returns nil if visible range is outside graph line
     func calculateInterpolatedAverageForVisibleRange(
         from allOperations: [BathScaleWeightSummary],
         period: TimePeriod,
@@ -1752,14 +1755,38 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return nil 
         }
         
+        // Determine the actual data boundaries (start and end of graph line)
+        let sortedOperations = allOperations.sorted { $0.date < $1.date }
+        guard let firstDataPoint = sortedOperations.first?.date,
+              let lastDataPoint = sortedOperations.last?.date else {
+            return nil
+        }
+        
         let sampleDates = generateSampleDatesForVisibleRange(for: period)
         guard !sampleDates.isEmpty else { 
             return nil 
         }
         
+        // Filter sample dates to only include those within the actual data boundaries
+        // This prevents interpolation outside the graph line range
+        // Add a small buffer (1 hour) to account for timezone differences and boundary precision
+        let bufferTime: TimeInterval = 60 * 60 // 1 hour buffer
+        let effectiveStartBoundary = firstDataPoint.addingTimeInterval(-bufferTime)
+        let effectiveEndBoundary = lastDataPoint.addingTimeInterval(bufferTime)
+        
+        let validSampleDates = sampleDates.filter { sampleDate in
+            sampleDate >= effectiveStartBoundary && sampleDate <= effectiveEndBoundary
+        }
+        
+        // If no sample dates fall within the data boundaries, return nil
+        // This means the visible range is completely outside the graph line
+        guard !validSampleDates.isEmpty else {
+            return nil
+        }
+        
         var interpolatedWeights: [Double] = []
         
-        for sampleDate in sampleDates {
+        for sampleDate in validSampleDates {
             if let interpolatedWeight = interpolatedDisplayWeight(
                 at: sampleDate,
                 from: allOperations,
@@ -1777,8 +1804,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         let average = interpolatedWeights.reduce(0, +) / Double(interpolatedWeights.count)
         
-        logger.log(level: .debug, tag: "DashboardGraphManager", 
-                   message: "Calculated interpolated average for visible range: \(average) from \(interpolatedWeights.count) sample points for period \(period)")
         
         return average
     }
