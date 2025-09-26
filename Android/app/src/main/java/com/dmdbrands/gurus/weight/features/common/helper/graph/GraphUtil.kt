@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.Month
 import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -24,8 +25,9 @@ import java.util.Locale
 import kotlin.reflect.KProperty1
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
-val monthYearTimeFormatter = DateTimeFormatter.ofPattern("MMM yyyy ")
-val monthDayTimeFormatter = DateTimeFormatter.ofPattern("MMM d ")
+val yearFormatter = DateTimeFormatter.ofPattern("yyyy")
+val monthYearFormatter = DateTimeFormatter.ofPattern("MMM yyyy ")
+val monthDayFormatter = DateTimeFormatter.ofPattern("MMM d ")
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -128,15 +130,6 @@ object GraphUtil {
       GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
 
-  fun List<Double>.getMinPositiveDelta(): Double {
-    if (size < 2) return 1.0
-    val sorted = sorted()
-    return sorted
-      .zipWithNext { a, b -> b - a }
-      .filter { it > 0 }
-      .minOrNull() ?: 1.0
-  }
-
   /**
    * Returns the number of intervals for the given [GraphSegment].
    */
@@ -146,7 +139,7 @@ object GraphUtil {
       GraphSegment.MONTH -> 5
       GraphSegment.YEAR -> 11.75
       GraphSegment.TOTAL -> 1000
-    }.toDouble() - 0.01
+    }.toDouble() - 0.001
   // endregion
 
   // region Formatting
@@ -284,22 +277,50 @@ object GraphUtil {
     val endDate = endDateTime.toLocalDate()
 
     return when (segment) {
-      GraphSegment.YEAR, GraphSegment.TOTAL -> {
-        "${startDateTime.format(monthYearTimeFormatter)} – ${endDateTime.format(monthYearTimeFormatter)}"
+      GraphSegment.YEAR -> {
+        if (startDate.month == Month.JANUARY) {
+          "${startDateTime.format(yearFormatter)}"
+        } else {
+          "${startDateTime.format(monthYearFormatter)} – ${endDateTime.format(monthYearFormatter)}"
+        }
       }
 
-      GraphSegment.MONTH, GraphSegment.WEEK -> {
+      GraphSegment.TOTAL -> {
+        "${startDateTime.format(monthYearFormatter)} – ${endDateTime.format(monthYearFormatter)}"
+      }
+
+      GraphSegment.MONTH -> {
+        if (startDate.dayOfMonth == 1) {
+          "${startDateTime.format(monthYearFormatter)}"
+        } else {
+          when {
+            startDate.year != endDate.year -> {
+              "${startDateTime.format(dateTimeRangeFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
+            }
+
+            startDate.month != endDate.month -> {
+              "${startDateTime.format(monthDayFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
+            }
+
+            else -> {
+              "${startDateTime.format(monthDayFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
+            }
+          }
+        }
+      }
+
+      GraphSegment.WEEK -> {
         when {
           startDate.year != endDate.year -> {
             "${startDateTime.format(dateTimeRangeFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
           }
 
           startDate.month != endDate.month -> {
-            "${startDateTime.format(monthDayTimeFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
+            "${startDateTime.format(monthDayFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
           }
 
           else -> {
-            "${startDateTime.format(monthDayTimeFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
+            "${startDateTime.format(monthDayFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
           }
         }
       }
