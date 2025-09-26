@@ -91,6 +91,25 @@ constructor(
         saveEntry()
       }
 
+      is EntryIntent.UpdateOnRelaunch -> {
+        viewModelScope.launch {
+          val entryForm =
+            EntryForm.create(
+              includeR4ScaleMetrics = true,
+              weightUnit = state.value.weightMode,
+              height = accountService.activeAccountFlow.first()?.height,
+            )
+          handleIntent(
+            EntryIntent.UpdateForm(
+              form =
+                MultiFormGroup.create(
+                  forms = entryForm,
+                ),
+            ),
+          )
+        }
+      }
+
       else -> null
     }
   }
@@ -111,7 +130,6 @@ constructor(
                     isResumed = true
                     onConfirm()
                     deactivate()
-                    _state.value.form.resetForm()
                     cont.resume(true)
                   }
                 },
@@ -156,7 +174,7 @@ constructor(
             message = "entry saved successfully!",
           ),
         )
-        _state.value.form.resetForm()
+        deactivate()
         navigationService.navigateBack(AppRoute.Home)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving entry: ${e.message}", e)

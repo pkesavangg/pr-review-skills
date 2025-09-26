@@ -62,7 +62,7 @@ fun EmptyGraph(segment: GraphSegment) {
     getXStep = {
       GraphUtil.calculateXStep(
         segment,
-      )
+      ) ?: it.getXDeltaGcd()
     },
   )
   CartesianChartHost(

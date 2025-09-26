@@ -4,11 +4,15 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Service interface for dashboard visible metrics and milestones management.
  */
 interface IDashboardService {
+
+  val visibleKeys: StateFlow<List<DashboardKey>>
+
   /**
    * Sets the current account ID to be used by default in other methods.
    * @param accountId The account ID to set as default.

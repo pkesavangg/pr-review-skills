@@ -15,18 +15,19 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.Month
 import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
-import kotlin.math.ceil
 import kotlin.reflect.KProperty1
 
-val dateRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
-val monthYearFormatter = DateTimeFormatter.ofPattern("MMM yyyy")
-val monthDayFormatter = DateTimeFormatter.ofPattern("MMM d")
+val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
+val yearFormatter = DateTimeFormatter.ofPattern("yyyy")
+val monthYearFormatter = DateTimeFormatter.ofPattern("MMM yyyy ")
+val monthDayFormatter = DateTimeFormatter.ofPattern("MMM d ")
 
 /**
  * Utility object for graph-related data transformation and formatting.
@@ -115,20 +116,6 @@ object GraphUtil {
     MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
   )
 
-  // endregion
-
-  // region Calculation
-  fun calculateTotalIntervalCount(
-    startTime: Long?,
-    endTime: Long?,
-    segment: GraphSegment
-  ): Int {
-    if (startTime == null || endTime == null) return 0
-    val step = calculateXStep(segment)
-    val duration = endTime - startTime
-    return ceil(duration.toDouble() / step).toInt()
-  }
-
   /**
    * Calculates the X-axis step size for the given [GraphSegment].
    * @return The step size in milliseconds.
@@ -139,27 +126,20 @@ object GraphUtil {
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
       GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
-      GraphSegment.YEAR, GraphSegment.TOTAL -> 30 * ONE_DAY_MILLIS
+      GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
+      GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
-
-  fun List<Double>.getMinPositiveDelta(): Double {
-    if (size < 2) return 1.0
-    val sorted = sorted()
-    return sorted
-      .zipWithNext { a, b -> b - a }
-      .filter { it > 0 }
-      .minOrNull() ?: 1.0
-  }
 
   /**
    * Returns the number of intervals for the given [GraphSegment].
    */
-  fun GraphSegment.intervalCount(): Int =
+  fun GraphSegment.intervalCount(): Double =
     when (this) {
       GraphSegment.WEEK -> 7
       GraphSegment.MONTH -> 5
-      GraphSegment.YEAR, GraphSegment.TOTAL -> 12
-    } + 1
+      GraphSegment.YEAR -> 11.75
+      GraphSegment.TOTAL -> 1000
+    }.toDouble() - 0.001
   // endregion
 
   // region Formatting
@@ -187,14 +167,19 @@ object GraphUtil {
     timestamp: Long,
     segment: GraphSegment,
   ): String {
-    val formatter =
-      when (segment) {
-        GraphSegment.WEEK, GraphSegment.MONTH -> dateRangeFormatter
-        GraphSegment.YEAR, GraphSegment.TOTAL -> monthYearFormatter
+    // Use local timezone (system default) instead of UTC
+    val localZone = ZoneId.systemDefault()
+    val localDateTime = Instant.ofEpochMilli(timestamp).atZone(localZone)
+
+    return when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> {
+        localDateTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
       }
-    val zone = ZoneId.systemDefault()
-    val startDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
-    return startDate.format(formatter)
+
+      GraphSegment.YEAR, GraphSegment.TOTAL -> {
+        localDateTime.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+      }
+    }
   }
 
   fun filterXValuesInRange(
@@ -207,6 +192,14 @@ object GraphUtil {
         points = line.points.filter { it.x.value.toLong() in min..max },
       )
     }
+
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
+    return graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }?.y?.value?.toLong()
+  }
+
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
+    return graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }?.y?.value?.toLong()
+  }
 
   fun averageYValuesInRange(
     graphLines: List<GraphLine>,
@@ -269,8 +262,8 @@ object GraphUtil {
   fun List<Double>.averageOrNull(): Double? = if (isNotEmpty()) average().rounded() else null
 
   /**
-   * Formats a date range for the given [GraphSegment].
-   * @return A formatted string representing the date range.
+   * Formats a date range for the given [GraphSegment] including time information.
+   * @return A formatted string representing the date and time range.
    */
   fun formatDateRange(
     startTimestamp: Long,
@@ -278,44 +271,87 @@ object GraphUtil {
     segment: GraphSegment,
   ): String {
     val zone = ZoneId.systemDefault()
-    val startDate = Instant.ofEpochMilli(startTimestamp).atZone(zone).toLocalDate()
-    val endDate = Instant.ofEpochMilli(endTimestamp).atZone(zone).toLocalDate()
+    val startDateTime = Instant.ofEpochMilli(startTimestamp).atZone(zone)
+    val endDateTime = Instant.ofEpochMilli(endTimestamp).atZone(zone)
+    val startDate = startDateTime.toLocalDate()
+    val endDate = endDateTime.toLocalDate()
+
     return when (segment) {
-      GraphSegment.YEAR, GraphSegment.TOTAL -> {
-        "${startDate.format(monthYearFormatter)} – ${endDate.format(monthYearFormatter)}"
+      GraphSegment.YEAR -> {
+        if (startDate.month == Month.JANUARY) {
+          "${startDateTime.format(yearFormatter)}"
+        } else {
+          "${startDateTime.format(monthYearFormatter)} – ${endDateTime.format(monthYearFormatter)}"
+        }
       }
 
-      GraphSegment.MONTH, GraphSegment.WEEK -> {
+      GraphSegment.TOTAL -> {
+        "${startDateTime.format(monthYearFormatter)} – ${endDateTime.format(monthYearFormatter)}"
+      }
+
+      GraphSegment.MONTH -> {
+        if (startDate.dayOfMonth == 1) {
+          "${startDateTime.format(monthYearFormatter)}"
+        } else {
+          when {
+            startDate.year != endDate.year -> {
+              "${startDateTime.format(dateTimeRangeFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
+            }
+
+            startDate.month != endDate.month -> {
+              "${startDateTime.format(monthDayFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
+            }
+
+            else -> {
+              "${startDateTime.format(monthDayFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
+            }
+          }
+        }
+      }
+
+      GraphSegment.WEEK -> {
         when {
           startDate.year != endDate.year -> {
-            "${startDate.format(dateRangeFormatter)} – ${endDate.format(dateRangeFormatter)}"
+            "${startDateTime.format(dateTimeRangeFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
           }
 
           startDate.month != endDate.month -> {
-            "${startDate.format(monthDayFormatter)} – ${endDate.format(dateRangeFormatter)}"
+            "${startDateTime.format(monthDayFormatter)} – ${endDateTime.format(dateTimeRangeFormatter)}"
           }
 
           else -> {
-            "${startDate.format(monthDayFormatter)} – ${endDate.dayOfMonth}, ${startDate.year}"
+            "${startDateTime.format(monthDayFormatter)} – ${endDateTime.dayOfMonth}, ${startDate.year}"
           }
         }
       }
     }
   }
 
+  /**
+   * Gets the start timestamp for the given graph segment.
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Start timestamp for the segment, or null if timeStamp is null
+   */
   fun getStartRange(segment: GraphSegment, timeStamp: Long?): Long? = timeStamp?.let {
     when (segment) {
-      GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).start
-      GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).start
-      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).start
+      GraphSegment.WEEK -> DateTimeConverter.getWeekStart(timeStamp)
+      GraphSegment.MONTH -> DateTimeConverter.getMonthStart(timeStamp)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearStart(timeStamp)
     }
   }
 
+  /**
+   * Gets the end timestamp for the given graph segment.
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return End timestamp for the segment, or null if timeStamp is null
+   */
   fun getEndRange(segment: GraphSegment, timeStamp: Long?): Long? = timeStamp?.let {
     when (segment) {
-      GraphSegment.WEEK -> DateTimeConverter.getWeekRange(timeStamp).end
-      GraphSegment.MONTH -> DateTimeConverter.getMonthRange(timeStamp).end
-      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearRange(timeStamp).end
+      GraphSegment.WEEK -> DateTimeConverter.getWeekEnd(timeStamp)
+      GraphSegment.MONTH -> DateTimeConverter.getMonthEnd(timeStamp)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearEnd(timeStamp)
     }
   }
 
@@ -351,6 +387,28 @@ object GraphUtil {
       cursor = cursor.plus(step)
     }
     return out
+  }
+
+  /**
+   * Alternative implementation that simply calculates months between years.
+   * More efficient for large year ranges.
+   *
+   * @param startTimeMillis Start timestamp in milliseconds
+   * @param endTimeMillis End timestamp in milliseconds
+   * @return Total number of months between the years of the timestamps
+   */
+  fun getTotalMonthsBetweenYears(startTimeMillis: Long, endTimeMillis: Long): Int {
+    if (startTimeMillis <= 0 || endTimeMillis <= 0 || startTimeMillis > endTimeMillis) {
+      return 0
+    }
+
+    val localZone = ZoneId.systemDefault()
+
+    val startYear = Instant.ofEpochMilli(startTimeMillis).atZone(localZone).year
+    val endYear = Instant.ofEpochMilli(endTimeMillis).atZone(localZone).year
+
+    // Calculate total months between years
+    return (endYear - startYear + 1) * 12
   }
 
   // endregion

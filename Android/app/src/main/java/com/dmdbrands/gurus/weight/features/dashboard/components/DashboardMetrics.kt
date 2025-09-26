@@ -57,27 +57,43 @@ fun DashboardMetrics(
 ) {
   var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
-  val latestSummary = averageSummary(metricData)
-  val dashboardMetric = latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
-  val metricKeys = localVisibleKeys.mapNotNull { key ->
-    when (key) {
-      is DashboardKey.Metric -> key.key
-      is DashboardKey.Milestone -> null
+  // Cache expensive calculations to avoid repeated processing
+  val latestSummary = remember(metricData) { averageSummary(metricData) }
+  val dashboardMetric = remember(latestSummary) {
+    latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
+  }
+
+  val metricKeys = remember(localVisibleKeys) {
+    localVisibleKeys.mapNotNull { key ->
+      when (key) {
+        is DashboardKey.Metric -> key.key
+        is DashboardKey.Milestone -> null
+      }
     }
   }
-  val visibleMetrics = StatHelper.getMetrics(
-    dashboardMetric,
-    visibleKeys = metricKeys,
-    useShort = !isFromSetup,
-    filterNulls = false,
-  )
-  val allMetrics = StatHelper.getMetrics(
-    dashboardMetric,
-    visibleKeys = null,
-    useShort = !isFromSetup,
-    filterNulls = false,
-  )
-  val hiddenMetrics = allMetrics.filter { it !in visibleMetrics }
+
+  // Cache metrics calculations with proper keys to avoid recomputation
+  val visibleMetrics = remember(dashboardMetric, metricKeys, isFromSetup) {
+    StatHelper.getMetrics(
+      dashboardMetric,
+      visibleKeys = metricKeys,
+      useShort = !isFromSetup,
+      filterNulls = false,
+    )
+  }
+
+  val allMetrics = remember(dashboardMetric, isFromSetup) {
+    StatHelper.getMetrics(
+      dashboardMetric,
+      visibleKeys = null,
+      useShort = !isFromSetup,
+      filterNulls = false,
+    )
+  }
+
+  val hiddenMetrics = remember(visibleMetrics, allMetrics) {
+    allMetrics.filter { it !in visibleMetrics }
+  }
 
   val onMetricMoved = { fromVisible: Boolean, toVisible: Boolean, metric: Stat ->
     val metricKey = metric.key
