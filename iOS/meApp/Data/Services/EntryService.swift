@@ -390,6 +390,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
+        guard !isSyncing else {
+            return
+        }
+        
         isSyncing = true
         defer { 
             isSyncing = false
@@ -490,7 +494,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             } else if !potentialDuplicates.isEmpty {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 let duplicateEntry = potentialDuplicates.first!
-                let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                updated.id = duplicateEntry.id
                 try? await localRepo.updateEntry(updated)
             } else {
                 // No local entry - only create if final operation is create

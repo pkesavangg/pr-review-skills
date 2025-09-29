@@ -161,6 +161,8 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
+    // MARK: - Internal helpers -------------------------------------------
+    
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
         monthsLoadTask = Task { [weak self] in
