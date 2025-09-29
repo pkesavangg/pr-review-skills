@@ -213,8 +213,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // No streaks, just add goal card
                 widgets.append(.goalCard)
             } else if hasRemovedStreaks {
-                // When streaks are removed in edit mode: Respect user's exact positioning
-                // Build the grid based on the saved order from the store
                 var goalCardAdded = false
                 let maxPosition = streakCount
                 
@@ -307,9 +305,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // When all streaks are present: Apply even position restriction
                 let maxPosition = streakCount
                 let clampedGoalCardPos = min(goalCardPos, maxPosition)
-                
-                // REMOVED: Even position restriction - allow goal card to be positioned anywhere
-                // The grid building logic will handle the actual layout properly
                 let finalGoalCardPos = max(0, clampedGoalCardPos)
                 
                 

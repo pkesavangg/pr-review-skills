@@ -936,10 +936,6 @@ class DashboardStore: ObservableObject {
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
         }
         
-        // REMOVED: Special case that was incorrectly moving goal card from odd to even position
-        // When streaks are removed, goal card should stay in its current position (odd or even)
-        // The grid building logic will handle the actual layout properly
-        
         logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
     
