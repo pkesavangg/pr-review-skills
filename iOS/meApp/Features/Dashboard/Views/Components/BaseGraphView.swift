@@ -148,8 +148,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
-                // Goal chip overlay
-                if viewModel.goalWeight > 0 {
+                // Goal chip overlay (show only if rounded value is non-zero)
+                if viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) != 0 {
                     goalChipCallout()
                 }
             }
@@ -440,7 +440,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
-        Text(getCachedYAxisLabel(value))
+        // Round value for display, then format for weightless sign semantics
+        let rounded = viewModel.dashboardStore?.roundedGoalWeight(value) ?? value.rounded(.toNearestOrAwayFromZero)
+        let label: String = {
+            if let store = viewModel.dashboardStore {
+                return store.formatWeightDisplayText(rounded)
+            } else {
+                return getCachedYAxisLabel(rounded)
+            }
+        }()
+        Text(label)
             .fontWeight(.bold)
             .fontOpenSans(.body3)
             .foregroundColor(theme.actionInverse)

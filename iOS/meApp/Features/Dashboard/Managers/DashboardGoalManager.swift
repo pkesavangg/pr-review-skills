@@ -257,13 +257,21 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
+        // Drop trailing .0 for integers; keep one decimal otherwise
+        let isInteger = abs(weight - weight.rounded()) < 1e-9
         if isWeightlessMode {
-            // Show +/- prefix for weightless mode
-            let prefix = weight > 0 ? "+" : ""
-            return String(format: "%@%.1f", prefix, weight)
+            let prefix = weight > 0 ? "+" : "" // minus handled by formatting
+            if isInteger {
+                return "\(prefix)\(Int(weight.rounded()))"
+            } else {
+                return String(format: "%@%.1f", prefix, weight)
+            }
         } else {
-            // Show normal weight
-            return String(format: "%.1f", weight)
+            if isInteger {
+                return "\(Int(weight.rounded()))"
+            } else {
+                return String(format: "%.1f", weight)
+            }
         }
     }
 

@@ -369,7 +369,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip position (with X-axis adjustment)
     func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
-        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? 0
+        // Use rounded goal weight in display space for positioning, matching label rounding.
+        // In weightless mode this is the rounded goal delta (goal - anchor).
+        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? self.goalWeight
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -378,8 +380,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return (yPosition: chartFrame.height / 2, placement: .middle)
         }
         
-        // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height - (18)
+        // Account for X-axis height only when this period has an X-axis
+        // (week/month/year). Total view has no X-axis, so no subtraction.
+        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
         
         // If goal weight is outside domain, show at edges
         if goalWeight > domain.upperBound {

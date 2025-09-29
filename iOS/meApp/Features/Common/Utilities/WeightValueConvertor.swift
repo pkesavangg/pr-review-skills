@@ -34,10 +34,20 @@ struct WeightValueConvertor {
 
     /// Helper to format weight with optional plus symbol
     private static func formatWithSymbol(_ value: Double, showSymbol: Bool) -> String {
+        // Drop trailing .0 for integers; keep one decimal otherwise
+        let isInteger = abs(value - value.rounded()) < 1e-9
         if showSymbol && value > 0 {
-            return "+\(String(format: "%.1f", value))"
+            if isInteger {
+                return "+\(Int(value.rounded()))"
+            } else {
+                return "+" + String(format: "%.1f", value)
+            }
         } else {
-            return String(format: "%.1f", value)
+            if isInteger {
+                return "\(Int(value.rounded()))"
+            } else {
+                return String(format: "%.1f", value)
+            }
         }
     }
 }
