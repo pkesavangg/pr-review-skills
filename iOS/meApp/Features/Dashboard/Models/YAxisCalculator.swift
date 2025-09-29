@@ -338,7 +338,7 @@ struct YAxisCalculator {
     /// Pick a "nice" step size that is >= threshold using the same nice numbers logic.
     private static func pickNiceStep(atLeast threshold: Double) -> Double {
         // Determine magnitude (power of 10)
-        let magnitude = pow(10.0, floor(log10(max(threshold, 1e-9))))
+        let magnitude = pow(10.0, floor(log10(max(threshold, AppConstants.Precision.doubleEqualityEpsilon))))
         let normalized = threshold / magnitude
 
         // Same nice set as ImprovedNiceScaleCalculator

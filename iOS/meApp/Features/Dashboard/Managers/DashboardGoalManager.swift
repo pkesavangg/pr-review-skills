@@ -258,7 +258,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
         // Drop trailing .0 for integers; keep one decimal otherwise
-        let isInteger = abs(weight - weight.rounded()) < 1e-9
+        let isInteger = abs(weight - weight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
         if isWeightlessMode {
             let prefix = weight > 0 ? "+" : "" // minus handled by formatting
             if isInteger {
