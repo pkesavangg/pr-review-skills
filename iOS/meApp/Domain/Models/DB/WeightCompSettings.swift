@@ -16,7 +16,7 @@ import SwiftData
 final class WeightCompSettings {
     @Attribute(.unique) var id: String
     var accountId: String
-    var height: String?
+    var height: String?Task 181: Fatal error: Never access a full future backing data - PersistentIdentifier(id: SwiftData.PersistentIdentifier.ID(backing: SwiftData.PersistentIdentifier.PersistentIdentifierBacking.managedObjectID(0xa64ae59331c1ec5e <x-coredata://BF0B61D9-CC32-4B45-A876-01D1E2739C86/WeightCompSettings/p1>))) with nil
     var activityLevel: ActivityLevel?
     var weightUnit: WeightUnit?
     var isSynced: Bool?

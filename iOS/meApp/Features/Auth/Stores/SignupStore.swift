@@ -19,6 +19,7 @@ final class SignupStore: ObservableObject {
     @Injector var logger: LoggerService
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
+    var commonLang = CommonStrings.self
     
     @Published var currentStepIndex: Int = SignupStep.name.index {
         didSet {
@@ -298,15 +299,16 @@ final class SignupStore: ObservableObject {
         let toastTitle: String = toastLang.errorCreatingAccount
 
         switch error {
+        case HTTPError.apiError(let message, let code):
+            if message == commonLang.emailAlreadyInUse {
+                toastMessage = toastLang.emailInUse
+            }
         case HTTPError.badRequest:
             toastMessage = toastLang.emailInUse
-
         case HTTPError.noInternet:
             break // No message needed, handled by NetworkMonitor
-
         case HTTPError.serverError:
             toastMessage = toastLang.serverError
-
         default:
             toastMessage = toastLang.somethingWentWrong
         }

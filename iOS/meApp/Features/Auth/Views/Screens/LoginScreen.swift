@@ -135,7 +135,10 @@ struct LoginScreen: View {
                                         type: .textPrimary,
                                         size: .small,
                                         isDisabled: false,
-                                        action: { store.showPasswordResetPrompt() }
+                                        action: {
+                                            focusedField = nil
+                                            store.showPasswordResetPrompt()
+                                        }
                                     )
                                 }
                             }
