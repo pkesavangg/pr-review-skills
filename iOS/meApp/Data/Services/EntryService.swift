@@ -11,7 +11,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let localKVRepo: EntryRepositoryLocal = EntryRepositoryLocal()
     private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
     private let migrationService = SQLiteMigrationService()
-    static let shared = EntryService(accountService: AccountService.shared)
+    @MainActor static let shared = EntryService(accountService: AccountService.shared)
     // MARK: - Publishers ------------------------------------------------
     
     /// Emits each time a new entry is locally stored (create).
@@ -57,10 +57,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         entry.isSynced = false
         entry.operationType = OperationType.create.rawValue
         entry.attempts = 0
+        
         try await localRepo.saveEntry(entry)
         try await handleEntryAdded(entry)
-        // Broadcast change
         
+        // Broadcast change
         await syncUnsyncedEntries()
         await checkGoalAlerts()
     }
@@ -71,6 +72,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             try await localRepo.saveEntry(entry)
             try await handleEntryAdded(entry)
         }
+        
         await syncUnsyncedEntries()
     }
     
@@ -78,8 +80,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let deletedEntry = entry
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
-        try await localRepo.updateEntry(deletedEntry)
         
+        try await localRepo.updateEntry(deletedEntry)
         try await handleEntryDeleted(deletedEntry)
         await syncUnsyncedEntries()
     }
@@ -291,8 +293,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Sync Logic
     /// Sync all unsynced entries with the remote backend. Call this on app start or after network recovery.
     public func syncAllEntriesWithRemote() async {
+        guard !isSyncing else {
+            return
+        }
+        
         isSyncing = true
-        defer { isSyncing = false }
+        defer { 
+            isSyncing = false
+        }
         
         let accountId: String
         do {
@@ -308,9 +316,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             
             // 2. Fetch latest from remote and merge, using last sync timestamp
             let lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
-            print("Last sync timestamp: \(String(describing: lastSyncTimestamp))", "Last sync timestamp")
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
-            print("Fetched remote operations: \(remoteOps.operations.count) operations", "Remote operations count Last sync timestamp")
             await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             
             // 5. Update sync timestamp and local state
@@ -330,15 +336,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private func pushUnsyncedEntriesToRemote(accountId: String) async {
         // 1. Get all unsynced entries (both new and delete operations)
         let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
+        
         var successfulOps: [Entry] = []
         var failedOps: [Entry] = []
+        
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
                 do {
                     let dto = operation.toOperationDTO()
                     try await remoteRepo.syncOperation(operation: dto)
+                    
                     successfulOps.append(operation)
+                    
                     if operation.operationType == "create" {
                         operation.isSynced = true
                         try await localRepo.updateEntry(operation)
@@ -358,6 +368,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     // If sync fails, mark synced as false and update local state
                     operation.isSynced = false
                     operation.attempts = operation.attempts + 1
+                    
                     //if attempts is more than 8, mark as failed and update local state
                     if operation.attempts > 8 {
                         operation.isSynced = true
@@ -380,7 +391,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
         isSyncing = true
-        defer { isSyncing = false }
+        defer { 
+            isSyncing = false
+        }
         
         let accountId: String
         do {
@@ -412,7 +425,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
         }
-        print("Grouped operations by timestamp: \(groupedOps.keys.count) unique timestamps Last sync timestamp", groupedOps.count)
         for (timestamp, ops) in groupedOps {
             guard !timestamp.isEmpty else { continue }
             
@@ -425,10 +437,40 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard let finalOp = sortedOps.last else { continue }
             
             // Check if local entry exists with this timestamp
-            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: timestamp)
+            // Normalize timestamp format - remove .000Z if present to match local format
+            let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
+            
+            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: normalizedTimestamp)
             let localEntry = localEntries?.first
             
-            if let localEntry = localEntry {
+            // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
+            let potentialDuplicates = localEntries?.filter { entry in
+                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
+                }
+                return false
+            } ?? []
+            
+            // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
+            // This handles the case where the entry was just synced but not yet visible in the timestamp query
+            var allEntriesForUser: [Entry] = []
+            if localEntries?.isEmpty == true && finalOp.weight != nil {
+                do {
+                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+                } catch {
+                    allEntriesForUser = []
+                }
+            }
+            
+            // Determine the entry to work with - either from timestamp search or weight-based search
+            let entryToProcess = localEntry ?? (allEntriesForUser.filter { entry in
+                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
+                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
+                }
+                return false
+            }.first)
+            
+            if let localEntry = entryToProcess {
                 // Local entry exists - compare server timestamps
                 let localServerTS = localEntry.serverTimestamp ?? ""
                 let remoteServerTS = finalOp.serverTimestamp ?? ""
@@ -445,6 +487,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         try? await localRepo.updateEntry(updated)
                     }
                 }
+            } else if !potentialDuplicates.isEmpty {
+                // Found potential duplicate by weight - update the existing one instead of creating new
+                let duplicateEntry = potentialDuplicates.first!
+                let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                try? await localRepo.updateEntry(updated)
             } else {
                 // No local entry - only create if final operation is create
                 if finalOp.operationType == OperationType.create.rawValue {
@@ -702,6 +749,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         if let monthlySummary = monthlySummary {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
+        
         entrySaved.send(entry)
         
         // Trigger integration sync for the new entry (e.g., HealthKit)
