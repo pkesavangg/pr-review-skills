@@ -53,6 +53,7 @@ fun AppIcon(
     onClick: (() -> Unit)? = {},
 ) {
     val modifier =
+      if (onClick != null)
         modifier
             .clickable(
                 indication = null,
@@ -60,8 +61,9 @@ fun AppIcon(
                     remember {
                         MutableInteractionSource()
                     },
-                enabled = enabled,
-            ) { onClick?.invoke() }
+                enabled = enabled ,
+            ) { onClick.invoke() }
+  else modifier
     val tintColor = tintColor ?: AppIconDefaults.tintColor(type, enabled)
     Icon(
         painter = painterResource(id = id),

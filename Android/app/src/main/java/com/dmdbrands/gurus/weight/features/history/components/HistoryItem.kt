@@ -106,9 +106,9 @@ fun HistoryItem(
         }
         // Chevron (right arrow, rotated 180deg)
         AppIcon(
-            id = AppIcons.Default.RightCaret,
-            contentDescription = HistoryItemStrings.GoToMonthView,
-            onClick = onClick
+          id = AppIcons.Default.RightCaret,
+          contentDescription = HistoryItemStrings.GoToMonthView,
+          onClick = null
         )
     }
 }

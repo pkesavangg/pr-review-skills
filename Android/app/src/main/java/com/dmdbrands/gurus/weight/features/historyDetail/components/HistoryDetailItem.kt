@@ -42,6 +42,7 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTim
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import android.R.attr.contentDescription
 
 @Composable
 fun SwipeableListItemScope.HistoryDetailItem(
@@ -154,6 +155,7 @@ fun HistoryDetailItemHeader(
         if (canExpand) {
             AppIcon(
                 id = AppIcons.Default.RightCaret,
+                onClick = null,
                 contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
                 modifier =
                     Modifier
