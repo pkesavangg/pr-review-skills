@@ -118,6 +118,11 @@ struct ManualEntryScreen: View {
                                 ) {
                                     focusedField = .bodyFat
                                 }
+                                .onChange(of: focusedField) { _, newValue in
+                                    if newValue == .bmi {
+                                        entryStore.disableBmiAutoCalculation()
+                                    }
+                                }
                                 
                                 // Body Fat field
                                 MetricInputField(
