@@ -240,6 +240,7 @@ final class EntryStore: ObservableObject {
         if let bmiStr = metrics.bmi {
             manualEntryForm.bmi.value = bmiStr
             manualEntryForm.bmi.validate()
+            self.isBmiAutoCalculationEnabled = false
         }
 
         assignPercent(metrics.bodyFat, to: manualEntryForm.bodyFat)
@@ -279,7 +280,13 @@ final class EntryStore: ObservableObject {
 
     private func calculateBMI() {
         guard isBmiAutoCalculationEnabled else { return }
-        guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else { return }
+        guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
+            manualEntryForm.bmi.value = ""
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+            return
+        }
 
         let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
         let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
@@ -289,7 +296,7 @@ final class EntryStore: ObservableObject {
             case .kg:
                 return weightDouble
             case .lb:
-                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble)))
+                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble))) 
             }
         }()
 
@@ -302,7 +309,9 @@ final class EntryStore: ObservableObject {
         manualEntryForm.bmi.validate()
         
         // Force UI update to ensure MetricInputField reflects the new BMI value immediately
-        objectWillChange.send()
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
     }
 
     private func updateWeightValidators() {
