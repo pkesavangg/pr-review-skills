@@ -996,10 +996,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 
                 if let goalIndex = goalCardIndex {
                     let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
-                    
-                    // Allow goal card to be dropped at any position - removed specific position restrictions
-                    
-                    // Allow goal card to be dropped at any position - removed all position restrictions
                 }
             }
             
