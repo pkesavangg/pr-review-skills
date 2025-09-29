@@ -184,6 +184,9 @@ class GraphViewModel @AssistedInject constructor(
     isWeightlessMode: Boolean = false,
   ): CartesianRangeValues {
     // Get the end and start timestamp
+    val graphLines = graphLines.copy(
+      points = graphLines.points.sortedBy { it.x.value.toLong() },
+    )
     val initialTimestamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
     val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
     val endX = max ?: _state.value.maxTarget ?: endTimeStamp ?: Calendar.getInstance().timeInMillis
@@ -200,9 +203,9 @@ class GraphViewModel @AssistedInject constructor(
     )
 
     val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, startX)?.toDouble()) +
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, startX, isSecondary)?.toDouble()) +
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, endX)?.toDouble())
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, endX, isSecondary)?.toDouble())
 
     if (paddedValues.isNotEmpty()) {
       val graphMeta = generateNiceScale(

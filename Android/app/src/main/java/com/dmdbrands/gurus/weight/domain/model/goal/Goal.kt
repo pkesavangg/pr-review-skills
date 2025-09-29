@@ -24,18 +24,23 @@ data class Goal(
     val baseGoalWeight = goalWeight / 10.0
     val baseInitialWeight = initialWeight / 10.0
 
+    val weightlessValue = if (weightLess != null && weightLess.isWeightlessOn) {
+      weightLess.weightlessWeight.toDouble()
+    } else {
+      0.0
+    }
     // Convert to target unit if needed (stored weight is always in LB)
     val convertedGoalWeight = if (unit == WeightUnit.KG) {
       baseGoalWeight / 2.20462
     } else {
       baseGoalWeight
-    }
+    }.minus(weightlessValue)
 
     val convertedInitialWeight = if (unit == WeightUnit.KG) {
       baseInitialWeight / 2.20462
     } else {
       baseInitialWeight
-    }
+    }.minus(weightlessValue)
 
     // Round to one decimal place
     val roundedGoalWeight = round(convertedGoalWeight * 10)

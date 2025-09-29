@@ -23,6 +23,7 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
+import android.util.Log
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
 val yearFormatter = DateTimeFormatter.ofPattern("yyyy")
@@ -83,7 +84,8 @@ object GraphUtil {
       name = metricKey.name,
       points = this.mapNotNull { summary ->
         val value = (prop.get(summary) as? Number)?.toFloat()
-        value?.let {
+        if (value == null || value == 0f) return@mapNotNull null
+        value.let {
           GraphPoint(
             x = Label(
               value = DateTimeConverter.isoToTimestamp(summary.entryTimestamp),
@@ -193,12 +195,24 @@ object GraphUtil {
       )
     }
 
-  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
-    return graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }?.y?.value?.toLong()
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+    val immediatePoint = graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }
+    if (isSecondary)
+      Log.i(
+        "CHECKING IMMEDIATE",
+        "timeStamp: $timeStamp , graphLines: ${graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }?.y?.value?.toLong()}",
+      )
+    return immediatePoint?.y?.value?.toLong()
   }
 
-  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Long? {
-    return graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }?.y?.value?.toLong()
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+    val previousPoint = graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }
+    if (isSecondary)
+      Log.i(
+        "CHECKING PREVIOUS",
+        "timeStamp: $timeStamp , graphLines: ${graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }?.y?.value?.toLong()}",
+      )
+    return previousPoint?.y?.value?.toLong()
   }
 
   fun averageYValuesInRange(
