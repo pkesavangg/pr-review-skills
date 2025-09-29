@@ -63,6 +63,9 @@ struct WeightTrendView: View {
                     }
                     // Fallback to average weight
                     let averageWeight = dashboardStore.getCurrentAverageWeight()
+                    if abs(averageWeight) < AppConstants.Precision.doubleEqualityEpsilon {
+                        return "0.0"
+                    }
                     return dashboardStore.formatWeightDisplayText(averageWeight)
                 }(),
                 unitText: dashboardStore.unitText
