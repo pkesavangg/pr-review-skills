@@ -95,7 +95,6 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
-    private var currentAccountId: String? = null
 
     // Delay constants for Health Connect permission check
     private const val INITIAL_DELAY = 1L // 1 second
@@ -111,8 +110,6 @@ constructor(
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
-  private var unreadFeedCount = 0
-  private var showUnreadFeedIndication = false
 
   init {
     viewModelScope.launch {
