@@ -228,4 +228,18 @@ interface IAccountRepository {
    * @param accountInfo The account info from server containing latest settings
    */
   suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo)
+
+  /**
+   * Gets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to check.
+   * @return True if the notification alert has been shown for this account, false otherwise.
+   */
+  suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean
+
+  /**
+   * Sets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to update.
+   * @param hasShown Whether the notification alert has been shown.
+   */
+  suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean)
 }

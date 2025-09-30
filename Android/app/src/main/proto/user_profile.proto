@@ -20,6 +20,7 @@ message UserAccount {
     string access_token = 4;
     string expires_at = 5;
     ThemeMode theme_mode = 6;
+    bool notification_alert_shown = 7;
 }
 
 // User preferences message

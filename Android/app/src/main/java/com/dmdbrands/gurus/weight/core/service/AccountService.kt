@@ -440,6 +440,7 @@ constructor(
       AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
+      accountRepository.setNotificationAlertShownForAccount(accountId,false)
       AppLog.d(TAG, "Logout successful")
       appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
       result
@@ -456,7 +457,19 @@ constructor(
   override suspend fun logoutAll(): Boolean =
     try {
       AppLog.d(TAG, "logoutAll() called")
+      // Get all logged-in accounts before logging out to reset their notification alert settings
+      val loggedInAccounts = getLoggedInAccounts()
       val result = accountRepository.logoutAllAccounts()
+
+      // Reset notification alert settings for all accounts
+      loggedInAccounts.forEach { account ->
+        try {
+          accountRepository.setNotificationAlertShownForAccount(account.id, false)
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Failed to reset notification alert setting for account: ${account.id}", e)
+        }
+      }
+
       AppLog.d(TAG, "All accounts logged out successfully")
       appNavigationService.emitAuthEvent(AuthState.LoggedOut(true))
       result
@@ -583,6 +596,38 @@ constructor(
       }
     } catch (e: Exception) {
       throw e
+    }
+  }
+
+  /**
+   * Gets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to check.
+   * @return True if the notification alert has been shown for this account, false otherwise.
+   */
+  override suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean {
+    AppLog.d(TAG, "hasShownNotificationAlertForAccount() called for accountId: $accountId")
+    return try {
+      val result = accountRepository.hasShownNotificationAlertForAccount(accountId)
+      AppLog.d(TAG, "Notification alert shown status for account $accountId: $result")
+      result
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to get notification alert status for account: $accountId", e)
+      false
+    }
+  }
+
+  /**
+   * Sets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to update.
+   * @param hasShown Whether the notification alert has been shown.
+   */
+  override suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean) {
+    AppLog.d(TAG, "setNotificationAlertShownForAccount() called for accountId: $accountId, hasShown: $hasShown")
+    try {
+      accountRepository.setNotificationAlertShownForAccount(accountId, hasShown)
+      AppLog.d(TAG, "Successfully set notification alert status for account: $accountId")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to set notification alert status for account: $accountId", e)
     }
   }
 

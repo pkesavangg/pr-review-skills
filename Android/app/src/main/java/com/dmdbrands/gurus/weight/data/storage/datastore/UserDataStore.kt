@@ -397,6 +397,34 @@ class UserDataStore @Inject constructor(
       .build()
     updateData { updated }
   }
+
+  /**
+   * Gets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to check.
+   * @return True if the notification alert has been shown for this account, false otherwise.
+   */
+  suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =
+    getData().accountsMap[accountId]?.notificationAlertShown ?: false
+
+  /**
+   * Sets whether the notification alert has been shown for the specified account.
+   * @param accountId The account ID to update.
+   * @param hasShown Whether the notification alert has been shown.
+   */
+  suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean) {
+    val current = getData()
+    val account = current.accountsMap[accountId]
+    if (account != null) {
+      val updatedAccount = account.toBuilder()
+        .setNotificationAlertShown(hasShown)
+        .build()
+
+      val updated = current.toBuilder()
+        .putAccounts(accountId, updatedAccount)
+        .build()
+      updateData { updated }
+    }
+  }
 }
 
 /**

@@ -700,4 +700,11 @@ constructor(
       throw e
     }
   }
+
+  override suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =
+    userDataStore.hasShownNotificationAlertForAccount(accountId)
+
+  override suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean) {
+    userDataStore.setNotificationAlertShownForAccount(accountId, hasShown)
+  }
 }

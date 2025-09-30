@@ -101,6 +101,16 @@ constructor(
     private const val DELAYED_ALERT = 3000L // 3 seconds
   }
 
+  init {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect {
+        if(it != null){
+          currentAccountId = it.id
+        }
+      }
+    }
+  }
+
   override fun provideInitialState(): AppState = AppState()
   private var canShowPopUp = true
   private var sku: String? = null
@@ -389,12 +399,12 @@ constructor(
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.any { savedScale ->
                 val scaleInfo = SCALES.find { it.sku == savedScale.sku }
-                scaleInfo?.setupType == ScaleSetupType.BtWifiR4
+                scaleInfo?.setupType == ScaleSetupType.BtWifiR4 || scaleInfo?.setupType == ScaleSetupType.Lcbt || scaleInfo?.setupType == ScaleSetupType.EspTouchWifi || scaleInfo?.setupType == ScaleSetupType.Wifi
               } && pairedScales.isNotEmpty()
               val canRequestNotifPermission = AppPermissionsHelper
                 .canRequestNotificationPermission(ggPermissionService.permissionCallBackFlow.value)
               if (canRequestNotifPermission && hasBtWifiScales) {
-                requestPermissions(GGPermissionType.NOTIFICATION)
+                checkAndRequestNotificationPermission()
               }
               if (hasBtWifiScales) {
                 requestPermissions(GGPermissionType.ALL)
@@ -626,6 +636,31 @@ constructor(
       deviceService.onDeviceUpdate(
         deviceDetail, connectionStatus,
       )
+    }
+  }
+
+  /**
+   * Checks if notification alert has been shown for current account and requests permission if needed.
+   * Similar to Angular notification permission logic.
+   */
+  private fun checkAndRequestNotificationPermission() {
+    viewModelScope.launch {
+      try {
+        val notificationAlertShown = if (currentAccountId != null) {
+          accountService.hasShownNotificationAlertForAccount(currentAccountId!!)
+        } else {
+          false
+        }
+        if (!notificationAlertShown && currentAccountId != null) {
+          accountService.setNotificationAlertShownForAccount(currentAccountId!!, true)
+          AppLog.d(TAG, "Stored notification alert setting for account: $currentAccountId")
+          requestPermissions(GGPermissionType.NOTIFICATION)
+        } else {
+          AppLog.d(TAG, "Notification alert already shown for account: $currentAccountId, skipping permission request")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check/request notification permission", e.toString())
+      }
     }
   }
 
