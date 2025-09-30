@@ -71,6 +71,8 @@ struct MyAccountsScreen: View {
                     .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
                 }
             }
+            .listRowBackground(theme.backgroundPrimary)
+            .listRowSeparatorTint(theme.statusUtilityPrimary)
         }
     }
     
