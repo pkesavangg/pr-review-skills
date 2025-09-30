@@ -104,6 +104,7 @@ constructor(
     setTokensForAccount(
       Token(
         accountId = accountId,
+        isActive = true,
         accessToken = response.accessToken,
         refreshToken = response.refreshToken,
         expiresAt = response.expiresAt,

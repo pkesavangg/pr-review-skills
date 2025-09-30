@@ -126,6 +126,7 @@ constructor(
       // Load all tokens into TokenManager's in-memory map
       try {
         tokenManager.loadAllTokens()
+        tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)

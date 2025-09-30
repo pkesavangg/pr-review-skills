@@ -234,7 +234,7 @@ constructor(
           when (e.code()) {
             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.ChangePasswordError.ErrorUpdatingPassword
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
         showErrorToast(null, msg)
@@ -274,7 +274,7 @@ constructor(
           val header = ToastStrings.Error.UpdateProfileError.Header
           val msg = when (e.code()) {
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           showErrorToast(header, msg)

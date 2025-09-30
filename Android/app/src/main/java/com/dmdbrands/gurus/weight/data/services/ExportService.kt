@@ -145,7 +145,7 @@ constructor(
                 ToastStrings.Error.LoginError.MessageServError
 
               HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                ToastStrings.Error.LoginError.MessageNotAuth
+                ToastStrings.Error.ExportCsv.Message
 
               else ->
                 ToastStrings.Error.LoginError.MessageGeneric

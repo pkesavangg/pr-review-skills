@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.core.network.interceptors
 
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.config.NetworkConfig
-import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import kotlinx.coroutines.Dispatchers
@@ -30,12 +29,9 @@ class AuthTokenInterceptor @Inject constructor(
       return chain.proceed(request)
     }
 
-    // Check for account ID header to determine which token to use
-    val accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
-    AppLog.d(TAG, "Processing request for account: $accountId")
-
     // Get the appropriate access token
     val accessToken = runBlocking(Dispatchers.IO) {
+      val accountId = tokenManager.getCurrentAccountID()
       if (accountId != null) {
         tokenManager.getAccessToken(accountId)
       } else {
@@ -47,7 +43,6 @@ class AuthTokenInterceptor @Inject constructor(
       .addHeader(AppConfig.AUTHORIZATION_HEADER, "Bearer $accessToken")
       .build()
 
-    AppLog.d(TAG, "Added Authorization header for account: $accountId")
     return chain.proceed(newRequest)
   }
 }

@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.core.network.utility.LegacyNetworkConnectivity
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -137,9 +138,11 @@ object NetworkModule {
     @Singleton
     fun provideTokenAuthenticator(
         tokenManager: ITokenManager,
-        refreshTokenAPI: RefreshTokenAPI
+        refreshTokenAPI: RefreshTokenAPI,
+        userDataStore: UserDataStore,
+        navigationService: IAppNavigationService
     ): TokenAuthenticator {
-        return TokenAuthenticator(tokenManager, refreshTokenAPI)
+        return TokenAuthenticator(tokenManager, refreshTokenAPI, userDataStore, navigationService)
     }
 
     @Provides

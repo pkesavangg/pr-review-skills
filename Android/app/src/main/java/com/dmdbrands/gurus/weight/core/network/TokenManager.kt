@@ -17,7 +17,7 @@ interface ITokenManager {
     val tokenRefreshed: StateFlow<Boolean>
     val logoutUser: StateFlow<Boolean>
     val isOtherUserTokenRefreshed: Boolean
-
+    val accountTokens: Map<String, Token>
     suspend fun setTokens(token: Token)
 
     fun setOtherUserToken(token: Token?)
@@ -45,6 +45,9 @@ interface ITokenManager {
     fun getAccountIdForToken(token: String): String?
 
     suspend fun loadAllTokens()
+
+  suspend fun getCurrentAccountID(): String?
+  suspend fun getCurrentAcccountExpiresAt(): String?
 }
 
 @Singleton
@@ -73,7 +76,7 @@ constructor(
         private set
 
     // In-memory map for multi-account token management
-    private val accountTokens = mutableMapOf<String, Token>()
+     override val accountTokens = mutableMapOf<String, Token>()
 
     override suspend fun setTokens(token: Token) {
         AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
@@ -182,4 +185,13 @@ constructor(
                 )
         }
     }
+
+  override suspend fun getCurrentAccountID(): String? {
+    return userDataStore.currentAccountIdFlow.first()
+  }
+
+  override suspend fun getCurrentAcccountExpiresAt(): String? {
+    return userDataStore.getCurrentAccountExpiresAt()
+  }
+
 }

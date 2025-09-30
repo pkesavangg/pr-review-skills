@@ -46,21 +46,29 @@ object ToastStrings {
       const val Header = "Profile Update Error"
       const val MessageGeneric = "Something went wrong. Please try again. " +
         "If the problem continues, contact customer service."
-      const val MessageNotAuth = "Your session has expired. Please log in again."
+      const val MessageNotAuth = ""
       const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
       const val MessageServError =
         "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
           "Try again later, but if the problem continues, contact customer service."
+      const val errorUpdatingProfile ="Error saving profile!Please try again."
+      const val ErrorUpdatingEmail ="Error updating profile.Email address is already in use"
+
     }
 
     object ChangePasswordError {
       const val Header = "Password Change Error"
       const val Message = "Error updating password. Please try again. " +
         "If the problem continues, contact customer service."
+      const val ErrorUpdatingPassword = "Error updating password.Restart the app and try again."
     }
 
     object NetworkError {
       const val Message = "Unable to find a network connection at this time. Please try again later."
+    }
+
+    object ExportCsv {
+      const val Message = "Error sending .CSV file. Please try again."
     }
   }
 }

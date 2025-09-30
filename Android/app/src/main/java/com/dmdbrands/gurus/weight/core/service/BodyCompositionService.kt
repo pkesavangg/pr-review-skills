@@ -1,19 +1,14 @@
 package com.dmdbrands.gurus.weight.core.service
 
-import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
-import com.dmdbrands.gurus.weight.domain.enums.AccountSettingsAction
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
-import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
-import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
-import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -85,50 +80,5 @@ constructor(
         ToastStrings.Success.UpdateProfileSuccess.Message,
       )
     }
-  }
-
-  /**
-   * Shows success toast for export operation.
-   */
-  private fun successToast() {
-    dialogQueueService.showToast(
-      Toast(
-        message = ExportStrings.SuccessMessage,
-      ),
-    )
-  }
-
-  fun showErrorToast(
-    action: AccountSettingsAction,
-    error: HttpException?,
-  ) {
-    val (title, message) =
-      when (action) {
-        AccountSettingsAction.EXPORT_CSV -> {
-          val header = ""
-          val message =
-            when (error?.code()) {
-              HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION ->
-                ToastStrings.Error.LoginError.MessageNoConn
-
-              HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR ->
-                ToastStrings.Error.LoginError.MessageServError
-
-              HttpErrorConfig.ResponseCode.UNAUTHORIZED ->
-                ToastStrings.Error.LoginError.MessageNotAuth
-
-              else ->
-                ToastStrings.Error.LoginError.MessageGeneric
-            }
-          header to message
-        }
-      }
-    val errorToast =
-      Toast(
-        title = title,
-        message = message,
-        action = null,
-      )
-    dialogQueueService.showToast(errorToast)
   }
 }

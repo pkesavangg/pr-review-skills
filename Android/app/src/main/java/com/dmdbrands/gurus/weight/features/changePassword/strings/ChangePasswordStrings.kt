@@ -9,7 +9,7 @@ object ChangePasswordStrings {
     const val NewPasswordLabel = "new password"
     const val ConfirmPasswordLabel = "confirm new password"
     const val ForgotPasswordLabel = "forgot password?"
-    const val LoaderMessage = "Changing password..."
+    const val LoaderMessage = "Sending.."
     const val SuccessMessage = "Password changed successfully"
     const val ErrorMessage = "Failed to change password"
 

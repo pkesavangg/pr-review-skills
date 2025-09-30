@@ -45,8 +45,11 @@ class UserDataStore @Inject constructor(
   /**
    * Emits a Flow of the current active account ID, or null if none is active.
    */
-  val currentAccountIdFlow: Flow<String?> = dataFlow.map {
-    it.accountsMap.entries.firstOrNull { entry -> entry.value.isActive }?.key
+  val currentAccountIdFlow: Flow<String?> = dataFlow.map { userPreferences ->
+    val entries = userPreferences.accountsMap.entries
+    val activeEntry = entries.firstOrNull { entry -> entry.value.isActive }
+    val currentId = activeEntry?.key
+    currentId
   }
 
   /**
@@ -55,7 +58,6 @@ class UserDataStore @Inject constructor(
   val currentAccountFlow: Flow<UserAccount?> = dataFlow.map {
     it.accountsMap.values.firstOrNull { account -> account.isActive }
   }
-
   /**
    * Gets the theme mode for the currently active account, or SYSTEM if none is active.
    */
@@ -335,6 +337,12 @@ class UserDataStore @Inject constructor(
    */
   suspend fun getAccount(accountId: String): UserAccount? =
     getData().accountsMap[accountId]
+  /**
+   * Gets the expiresAt value for the current active account.
+   * @return The expiresAt timestamp, or null if no account is active.
+   */
+  suspend fun getCurrentAccountExpiresAt(): String? =
+    getData().accountsMap.values.firstOrNull { it.isActive }?.expiresAt
 
   /**
    * Removes an account from the DataStore.
