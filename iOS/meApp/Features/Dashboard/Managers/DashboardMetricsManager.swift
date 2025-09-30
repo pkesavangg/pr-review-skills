@@ -95,7 +95,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         newMetrics.append(contentsOf: remaining)
 
         state.metrics = newMetrics
-        state.activeMetricsCount = newMetrics.count
+        
+        // Ensure activeMetricsCount doesn't exceed metrics count
+        let maxMetricsCount = newMetrics.count
+        switch state.dashboardType {
+        case .dashboard4:
+            state.activeMetricsCount = min(4, maxMetricsCount)
+        case .dashboard12:
+            state.activeMetricsCount = min(12, maxMetricsCount)
+        }
     }
 
     // MARK: - API Integration
@@ -135,11 +143,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     // MARK: - Dashboard Type Management
     func updateDashboardType(_ dashboardType: DashboardType) {
         state.dashboardType = dashboardType
+        
+        // Ensure activeMetricsCount doesn't exceed current metrics count
+        let maxMetricsCount = state.metrics.count
+        
         switch dashboardType {
         case .dashboard4:
-            state.activeMetricsCount = 4
+            state.activeMetricsCount = min(4, maxMetricsCount)
         case .dashboard12:
-            state.activeMetricsCount = 12
+            state.activeMetricsCount = min(12, maxMetricsCount)
         }
     }
 
@@ -743,7 +755,9 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
         state.metrics = activeMetrics + inactiveMetrics
 
-        state.activeMetricsCount = activeMetrics.count
+        // Ensure activeMetricsCount doesn't exceed metrics count
+        let maxMetricsCount = state.metrics.count
+        state.activeMetricsCount = min(activeMetrics.count, maxMetricsCount)
 
     }
 

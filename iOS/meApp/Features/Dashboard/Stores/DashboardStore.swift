@@ -668,8 +668,11 @@ class DashboardStore: ObservableObject {
         // Clear existing removal state
         state.ui.removedMetrics.removeAll()
         
+        // Ensure activeCount doesn't exceed currentMetrics.count to prevent range crash
+        let safeActiveCount = min(activeCount, currentMetrics.count)
+        
         // Mark metrics beyond the active count as removed
-        for i in activeCount..<currentMetrics.count {
+        for i in safeActiveCount..<currentMetrics.count {
             state.ui.removedMetrics.insert(currentMetrics[i].label)
         }
     }
@@ -683,8 +686,11 @@ class DashboardStore: ObservableObject {
         // Clear existing removal state
         state.ui.removedStreaks.removeAll()
         
+        // Ensure activeCount doesn't exceed currentStreakItems.count to prevent range crash
+        let safeActiveCount = min(activeCount, currentStreakItems.count)
+        
         // Mark streak items beyond the active count as removed
-        for i in activeCount..<currentStreakItems.count {
+        for i in safeActiveCount..<currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
     }
