@@ -302,6 +302,8 @@ final class SignupStore: ObservableObject {
         case HTTPError.apiError(let message, let code):
             if message == commonLang.emailAlreadyInUse {
                 toastMessage = toastLang.emailInUse
+            } else {
+                toastMessage = toastLang.somethingWentWrong
             }
         case HTTPError.badRequest:
             toastMessage = toastLang.emailInUse
