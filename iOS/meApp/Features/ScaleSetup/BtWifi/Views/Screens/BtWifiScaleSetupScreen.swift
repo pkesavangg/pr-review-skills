@@ -51,18 +51,23 @@ struct BtWifiScaleSetupScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView(
-                title: scaleSetupLang.setupHeader(sku),
+                title: isWifiSetupOnly ? BtWifiScaleSetupStrings.WifiScreenStrings.title : scaleSetupLang.setupHeader(sku),
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
-                        .foregroundColor(theme.statusIconPrimary)
+                    AppIconView(
+                        icon: isWifiSetupOnly ? AppAssets.chevronLeft : AppAssets.xmarkSmall,
+                        size: IconSize(width: 24, height: 24)
+                    )
+                    .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
-                    Button {
+                    !isWifiSetupOnly
+                    ? AnyView(Button {
                         setupStore.showHelpModal()
                     } label: {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
-                    }
+                    })
+                    : AnyView(EmptyView())
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
