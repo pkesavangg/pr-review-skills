@@ -17,19 +17,21 @@ struct InlineButtonText: View {
     var body: some View {
         let attributed = createAttributedString()
         Text(attributed)
-            .fontOpenSans(.body2)
-            .foregroundColor(theme.textBody)
-            .onTapGesture {
-                action()
-            }
+            .onTapGesture { action() }
     }
     
     private func createAttributedString() -> AttributedString {
         var attributed = AttributedString(prefix + linkText + suffix)
+        
+        // Set base style for the whole string
+        attributed.font = .custom("OpenSans-Regular", size: CustomTextStyle.body2.size)
+        attributed.foregroundColor = theme.textBody
+        
+        // Style only the linkText part
         if let range = attributed.range(of: linkText) {
             attributed[range].foregroundColor = theme.actionPrimary
             attributed[range].underlineStyle = .single
-            attributed[range].font = .custom("OpenSans-Regular", size: CustomTextStyle.body2.size)
+            attributed[range].font = .system(size: CustomTextStyle.body2.size, weight: .bold)
         }
         return attributed
     }
