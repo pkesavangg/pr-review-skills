@@ -397,17 +397,22 @@ constructor(
           } else {
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
-              val hasBtWifiScales = pairedScales.any { savedScale ->
+              val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
                 val scaleInfo = SCALES.find { it.sku == savedScale.sku }
-                scaleInfo?.setupType == ScaleSetupType.BtWifiR4 || scaleInfo?.setupType == ScaleSetupType.Lcbt || scaleInfo?.setupType == ScaleSetupType.EspTouchWifi || scaleInfo?.setupType == ScaleSetupType.Wifi
-              } && pairedScales.isNotEmpty()
+                scaleInfo?.setupType in listOf(
+                  ScaleSetupType.BtWifiR4,
+                  ScaleSetupType.Lcbt,
+                  ScaleSetupType.EspTouchWifi,
+                  ScaleSetupType.Wifi
+                )
+              }
               val canRequestNotifPermission = AppPermissionsHelper
                 .canRequestNotificationPermission(ggPermissionService.permissionCallBackFlow.value)
               if (canRequestNotifPermission && hasBtWifiScales) {
                 checkAndRequestNotificationPermission()
               }
-              if (hasBtWifiScales) {
-                requestPermissions(GGPermissionType.ALL)
+              if(pairedScales.isNotEmpty()){
+              requestPermissions(GGPermissionType.ALL)
               }
               initialized = true
             }
