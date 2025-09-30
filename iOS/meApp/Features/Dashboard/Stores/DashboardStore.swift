@@ -390,6 +390,12 @@ class DashboardStore: ObservableObject {
     }
     
     var weightLabel: String {
+        // Empty-state label override: when there are no account entries, show
+        // current period labels derived from today's date.
+        if !state.data.hasAnyEntries {
+            return emptyStatePeriodLabel(for: state.graph.selectedPeriod)
+        }
+
         if let label = selectionLabel() {
             return label
         }
@@ -404,6 +410,40 @@ class DashboardStore: ObservableObject {
             return labelForMonthGridlines()
         default:
             return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
+        }
+    }
+
+    // MARK: - Empty-state period labels
+    private func emptyStatePeriodLabel(for period: TimePeriod, today: Date = Date()) -> String {
+        let cal = Calendar.current
+        switch period {
+        case .week:
+            // Find the most recent Sunday (start of week), then end at Saturday
+            let startOfDay = cal.startOfDay(for: today)
+            let sundayStart = cal.nextDate(after: startOfDay,
+                                           matching: DateComponents(weekday: 1),
+                                           matchingPolicy: .nextTime,
+                                           direction: .backward) ?? startOfDay
+            guard let weekEnd = cal.date(byAdding: .day, value: 6, to: sundayStart) else {
+                return DateTimeTools.formatter("MMM d, yyyy").string(from: today)
+            }
+            let sameYear = cal.isDate(sundayStart, equalTo: weekEnd, toGranularity: .year)
+            if sameYear {
+                let s = DateTimeTools.formatter("MMM d").string(from: sundayStart)
+                let e = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
+                return "\(s) - \(e)"
+            } else {
+                let s = DateTimeTools.formatter("MMM d, yyyy").string(from: sundayStart)
+                let e = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
+                return "\(s) - \(e)"
+            }
+        case .month:
+            return DateTimeTools.formatter("MMM, yyyy").string(from: today)
+        case .year:
+            return DateTimeTools.formatter("yyyy").string(from: today)
+        case .total:
+            // Show current year for total in empty-state per spec
+            return DateTimeTools.formatter("yyyy").string(from: today)
         }
     }
     

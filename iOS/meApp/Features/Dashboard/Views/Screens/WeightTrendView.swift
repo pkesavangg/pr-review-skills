@@ -59,12 +59,15 @@ struct WeightTrendView: View {
                 weightText: {
                     // Prefer current selection (exact point or interpolated crosshair) when available
                     if let displayWeight = dashboardStore.displayWeight {
+                        if abs(displayWeight) < AppConstants.Precision.doubleEqualityEpsilon {
+                            return "000.0"
+                        }
                         return dashboardStore.formatWeightDisplayText(displayWeight)
                     }
                     // Fallback to average weight
                     let averageWeight = dashboardStore.getCurrentAverageWeight()
                     if abs(averageWeight) < AppConstants.Precision.doubleEqualityEpsilon {
-                        return "0.0"
+                        return "000.0"
                     }
                     return dashboardStore.formatWeightDisplayText(averageWeight)
                 }(),

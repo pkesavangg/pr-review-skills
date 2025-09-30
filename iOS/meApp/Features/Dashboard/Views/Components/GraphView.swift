@@ -65,12 +65,9 @@ struct GraphView: View {
                 .animation(.none, value: isShowingSelectionCallout)
                 .padding(.leading, .spacingSM)
                 .padding(.vertical, .spacingXS)
-            if hasEntries {
                 chartView
                     .id(chartIdentity)
-            } else {
-                emptyStateView
-            }
+            
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // Clear crosshair and selection when time period changes

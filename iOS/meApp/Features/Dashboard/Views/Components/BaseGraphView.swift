@@ -315,7 +315,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             
             let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
             let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
-            
+
             RuleMark(x: .value("YBaselineLeading", leadingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
@@ -395,6 +395,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
                         .frame(width: yAxisLabelWidth, alignment: .center)
+                        .opacity(((viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight) != 0) ? 1 : 0)
                 }
             }
         }
@@ -605,6 +606,10 @@ extension View {
         if isScrollable {
             self
                 .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
+                // When there are no operations (empty-state), explicitly pin the
+                // X-axis domain to the current period tick range so labels render
+                // left-to-right (sun → mon → … → sat for week).
+                .conditionalEmptyDomain(viewModel: viewModel)
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { 
@@ -661,6 +666,12 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
                         // Only handle selection if not in scroll mode and not actively scrolling
                         if touchInteractionMode != .scrolling && !viewModel.isScrolling {
                             // Only update selection if we have a valid value
@@ -705,6 +716,12 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
                         localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
                         
@@ -721,6 +738,22 @@ extension View {
                         }
                     }
                 ))
+        }
+    }
+
+    /// Applies a fixed X-axis domain using the period tick range when there are no operations.
+    /// This ensures labels render left-to-right (e.g., Sun → Sat) with no plotted data.
+    @ViewBuilder
+    func conditionalEmptyDomain<ViewModel: SectionViewModelProtocol>(viewModel: ViewModel) -> some View {
+        if viewModel.hasXAxis && viewModel.chartOperations.isEmpty {
+            let ticks = viewModel.xAxisValues.sorted()
+            if let first = ticks.first, let last = ticks.last, first < last {
+                self.chartXScale(domain: first...last)
+            } else {
+                self
+            }
+        } else {
+            self
         }
     }
     
