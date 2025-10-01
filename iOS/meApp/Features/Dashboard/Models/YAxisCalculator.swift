@@ -18,6 +18,7 @@ struct YAxisCalculator {
     private static let FALLBACK_MIN: Double = 0
     private static let FALLBACK_MAX: Double = 100
     private static let FALLBACK_STEP: Double = 25
+    private static let GOAL_TICK_OFFSETS: [Double] = [-2, -1, 0, 1, 2]
 
     /// Calculate Y-axis scale for chart display
     /// - Parameters:
@@ -300,7 +301,7 @@ struct YAxisCalculator {
 
         // Center around nearest multiple of step
         let nearest = round(goalWeight / step) * step
-        let ticks: [Double] = [ -2, -1, 0, 1, 2 ].map { nearest + (Double($0) * step) }
+        let ticks: [Double] = GOAL_TICK_OFFSETS.map { nearest + (Double($0) * step) }
         let domainMin = ticks.first ?? max(0, nearest - 2 * step)
         let domainMax = ticks.last ?? nearest + 2 * step
         return YAxisScale(
