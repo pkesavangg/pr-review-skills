@@ -2,26 +2,20 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -59,7 +53,7 @@ fun GraphPagerView(
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
-    initialPage = GraphSegment.entries.indexOf(state.selectedSegment),
+    initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
     pageCount = { GraphSegment.entries.size },
   )
 
@@ -101,7 +95,7 @@ fun GraphPagerView(
       userScrollEnabled = false,
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
-      val currentSegment = GraphSegment.entries[page]
+      val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
       // Cache data processing to avoid repeated calculations
       val segmentEntries = remember(state, currentSegment) {
         getEntriesForSegment(state, currentSegment)
@@ -110,49 +104,18 @@ fun GraphPagerView(
         getWeightGraphPointsForSegment(state, currentSegment)
       }
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        factory.create(GraphSegment.entries[page])
+        factory.create(currentSegment)
       }
+      val graphState by viewmodel.state.collectAsState()
 
       Column {
         // Header section for current segment
-        Column(
-          modifier = Modifier.padding(
-            horizontal = MeTheme.spacing.sm,
-            vertical = MeTheme.spacing.x3s,
-          ),
-        ) {
-          Text(
-            text = "${currentSegment.name.lowercase()} average",
-            style = MeTheme.typography.subHeading1,
-            color = MeTheme.colorScheme.textSubheading,
-          )
-
-          Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-              text = labelData.ifBlank { "000.0" },
-              style = MeTheme.typography.heading2,
-              color = MeTheme.colorScheme.textBody,
-            )
-
-            val weightUnit = getWeightUnitForSegment(state, currentSegment)
-            if (labelData.isNotBlank() && weightUnit != null) {
-              Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                text = weightUnit.name.lowercase(),
-                style = MeTheme.typography.subHeading2,
-                color = MeTheme.colorScheme.textSubheading,
-                modifier = Modifier.offset(y = (-10).dp),
-              )
-            }
-          }
-
-          Text(
-            text = subText.lowercase(),
-            style = MeTheme.typography.subHeading2,
-            color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
-          )
-        }
-
+        ChartHeader(
+          state = graphState,
+          segment = currentSegment,
+          weightData = labelData,
+          rangeData = subText,
+        )
         // Graph view
         GraphView(
           modifier = Modifier
@@ -162,6 +125,7 @@ fun GraphPagerView(
           graphLines = listOf(segmentGraphLines),
           segment = currentSegment,
           goal = state.goal,
+          state = graphState,
           onRangeUpdate = {
             if (currentSegment == state.selectedSegment) {
               if (it != null) {
@@ -241,17 +205,6 @@ private fun getWeightGraphPointsForSegment(
     if (isSorted) entries else entries.sortedBy { it.entryTimestamp }
   }
   return sortedEntries.toWeightGraphPoints()
-}
-
-/**
- * Gets the weight unit for the current segment.
- */
-private fun getWeightUnitForSegment(
-  state: DashboardState,
-  segment: GraphSegment
-): com.dmdbrands.gurus.weight.domain.model.common.WeightUnit? {
-  val entries = getEntriesForSegment(state, segment)
-  return if (entries.isNotEmpty()) entries.random().unit else null
 }
 
 @PreviewTheme

@@ -4,14 +4,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
@@ -44,6 +43,7 @@ import java.util.Calendar
 @Composable
 fun GraphView(
   modifier: Modifier = Modifier,
+  state: GraphState,
   graphLines: List<GraphLine>,
   secondaryGraphLines: GraphLine? = null,
   segment: GraphSegment = GraphSegment.WEEK,
@@ -56,8 +56,16 @@ fun GraphView(
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
-  val state by viewModel.state.collectAsState()
-
+  // Initialize graph when data changes
+  LaunchedEffect(graphLines, secondaryGraphLines) {
+    viewModel.handleIntent(
+      GraphIntent.InitializeGraph(
+        graphLines = graphLines,
+        secondaryGraphLines = secondaryGraphLines,
+        goal = goal,
+      ),
+    )
+  }
   // Store callbacks in ViewModel
   LaunchedEffect(Unit) {
     viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate, onWeightLabelUpdate)
@@ -96,17 +104,6 @@ fun GraphView(
   //     )
   //   }
   // }
-
-  // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines) {
-    viewModel.handleIntent(
-      GraphIntent.InitializeGraph(
-        graphLines = graphLines,
-        secondaryGraphLines = secondaryGraphLines,
-        goal = goal,
-      ),
-    )
-  }
 
   // Chart layers and components
   val primaryLayer = primaryLayer(

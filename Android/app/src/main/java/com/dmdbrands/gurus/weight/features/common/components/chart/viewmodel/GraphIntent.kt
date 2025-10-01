@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
@@ -18,6 +19,8 @@ sealed interface GraphIntent : IReducer.Intent {
   ) : GraphIntent
 
   data class UpdatePrimaryYStep(val step: Double) : GraphIntent
+
+  data class UpdateWeightUnit(val weightUnit: WeightUnit) : GraphIntent
 
   data class UpdateIsEmptyGraph(val isEmptyGraph: Boolean) : GraphIntent
 

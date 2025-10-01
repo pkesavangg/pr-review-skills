@@ -19,7 +19,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -59,6 +61,17 @@ class GraphViewModel @AssistedInject constructor(
     // Cancel any running jobs
     currentModelProducerJob?.cancel()
     scrollDebounceJob?.cancel()
+  }
+
+  init {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect { weightUnit ->
+        if (weightUnit != null)
+          handleIntent(
+            GraphIntent.UpdateWeightUnit(weightUnit),
+          )
+      }
+    }
   }
 
   override fun handleIntent(intent: GraphIntent) {
