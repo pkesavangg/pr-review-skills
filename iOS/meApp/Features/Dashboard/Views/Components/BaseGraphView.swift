@@ -45,6 +45,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         viewModel.hasXAxis
     }
     
+    // MARK: - Visibility Helpers
+    private var shouldShowYAxisLabels: Bool {
+        let goal = viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight
+        return goal != 0
+    }
+    
     // MARK: - Equatable Implementation
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Only compare essential properties that should trigger re-renders
@@ -395,7 +401,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
                         .frame(width: yAxisLabelWidth, alignment: .center)
-                        .opacity(((viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight) != 0) ? 1 : 0)
+                        .opacity(shouldShowYAxisLabels ? 1 : 0)
                 }
             }
         }

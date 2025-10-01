@@ -51,6 +51,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return timePeriod != .total // Total period has no X-axis
     }
 
+    // MARK: - Layout Constants
+    private enum Layout {
+        static let xAxisReservedHeight: CGFloat = 18
+    }
+
+    private var xAxisReservedHeight: CGFloat { hasXAxis ? Layout.xAxisReservedHeight : 0 }
+
     // MARK: - Stroke & Point Sizing (moved from view)
     
     /// Line width used by charts for this period (3 for week/month/year, 2 for total)
@@ -388,7 +395,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Account for X-axis height only when this period has an X-axis
         // (week/month/year). Total view has no X-axis, so no subtraction.
-        let availableChartHeight = chartFrame.height - 18
+        let availableChartHeight = chartFrame.height - xAxisReservedHeight
         
         // If goal weight is outside domain, show at edges
         if goalWeight > domain.upperBound {
@@ -448,8 +455,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
         
-        // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
+        // Account for X-axis height if this period has X-axis
+        let availableChartHeight = chartFrame.height - xAxisReservedHeight
         
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {
