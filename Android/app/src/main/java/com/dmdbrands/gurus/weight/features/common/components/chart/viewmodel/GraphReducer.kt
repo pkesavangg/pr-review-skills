@@ -28,6 +28,8 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateComputationJob -> state.copy(computationJob = intent.job)
 
+    is GraphIntent.UpdateIsEmptyGraph -> state.copy(isEmptyGraph = intent.isEmptyGraph)
+
     is GraphIntent.ResetGraph -> state.copy(
       minTarget = null,
       maxTarget = null,

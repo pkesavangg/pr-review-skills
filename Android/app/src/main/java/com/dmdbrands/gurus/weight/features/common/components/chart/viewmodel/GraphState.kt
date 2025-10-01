@@ -50,6 +50,7 @@ data class GraphState(
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
   val goal: Goal? = null,
+  val isEmptyGraph : Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,

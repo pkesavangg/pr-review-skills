@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.conver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,7 +87,7 @@ constructor(
   private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
   override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
 
-  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Combined flow for account properties - initialized with defaults
   private val weightSettingsFlow = combine(
@@ -212,12 +213,11 @@ constructor(
    */
   override suspend fun updateAccountId(accountId: String?) {
     if (accountId == null) {
-      clearAllData()
       return
     }
-
+    // Cancel all ongoing coroutines when switching accounts
+    clearAllData()
     this.accountId = accountId
-
     // Update account-related flows
     try {
       this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
@@ -268,6 +268,7 @@ constructor(
    * Clears all entry data when account is null or user logs out.
    */
   fun clearAllData() {
+    repositoryScope.cancel()
     _latestEntry.value = null
     _last7Days.value = emptyList()
     _last30Days.value = emptyList()
@@ -280,6 +281,7 @@ constructor(
     _lastUpdated.value = null
     accountId = null
     initialWeight = null
+    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   }
 
   /**
@@ -554,7 +556,9 @@ constructor(
   private suspend fun updateDaywiseBodyScaleAveragesWithJoin() {
     try {
       getDaywiseBodyScaleAveragesWithJoin()
-        .collect { _daywiseBodyScaleAverages.value = it }
+        .collect {
+          _daywiseBodyScaleAverages.value = it
+        }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
     }

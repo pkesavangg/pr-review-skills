@@ -95,114 +95,103 @@ fun GraphPagerView(
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
-    // Horizontal pager with graph views and headers
-    if (state.dayWiseEntries.isEmpty()) {
-      EmptyGraph(state.selectedSegment)
-    } else {
-      HorizontalPager(
-        state = pagerState,
-        userScrollEnabled = false,
-        modifier = Modifier.fillMaxWidth(),
-      ) { page ->
-        val currentSegment = GraphSegment.entries[page]
-        // Cache data processing to avoid repeated calculations
-        val segmentEntries = remember(state, currentSegment) {
-          getEntriesForSegment(state, currentSegment)
-        }
-        val segmentGraphLines = remember(state, currentSegment) {
-          getWeightGraphPointsForSegment(state, currentSegment)
-        }
-        val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-          factory.create(GraphSegment.entries[page])
-        }
 
-        Column {
-          // Header section for current segment
-          Column(
-            modifier = Modifier.padding(
-              horizontal = MeTheme.spacing.sm,
-              vertical = MeTheme.spacing.x3s,
-            ),
-          ) {
+    HorizontalPager(
+      state = pagerState,
+      userScrollEnabled = false,
+      modifier = Modifier.fillMaxWidth(),
+    ) { page ->
+      val currentSegment = GraphSegment.entries[page]
+      // Cache data processing to avoid repeated calculations
+      val segmentEntries = remember(state, currentSegment) {
+        getEntriesForSegment(state, currentSegment)
+      }
+      val segmentGraphLines = remember(state, currentSegment) {
+        getWeightGraphPointsForSegment(state, currentSegment)
+      }
+      val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
+        factory.create(GraphSegment.entries[page])
+      }
+
+      Column {
+        // Header section for current segment
+        Column(
+          modifier = Modifier.padding(
+            horizontal = MeTheme.spacing.sm,
+            vertical = MeTheme.spacing.x3s,
+          ),
+        ) {
+          Text(
+            text = "${currentSegment.name.lowercase()} average",
+            style = MeTheme.typography.subHeading1,
+            color = MeTheme.colorScheme.textSubheading,
+          )
+
+          Row(verticalAlignment = Alignment.Bottom) {
             Text(
-              text = "${currentSegment.name.lowercase()} average",
-              style = MeTheme.typography.subHeading1,
-              color = MeTheme.colorScheme.textSubheading,
+              text = labelData.ifBlank { "000.0" },
+              style = MeTheme.typography.heading2,
+              color = MeTheme.colorScheme.textBody,
             )
 
-            Row(verticalAlignment = Alignment.Bottom) {
+            val weightUnit = getWeightUnitForSegment(state, currentSegment)
+            if (labelData.isNotBlank() && weightUnit != null) {
+              Spacer(modifier = Modifier.width(4.dp))
               Text(
-                text = labelData.ifBlank { "000.0" },
-                style = MeTheme.typography.heading2,
-                color = MeTheme.colorScheme.textBody,
+                text = weightUnit.name.lowercase(),
+                style = MeTheme.typography.subHeading2,
+                color = MeTheme.colorScheme.textSubheading,
+                modifier = Modifier.offset(y = (-10).dp),
               )
-
-              val weightUnit = getWeightUnitForSegment(state, currentSegment)
-              if (labelData.isNotBlank() && weightUnit != null) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                  text = weightUnit.name.lowercase(),
-                  style = MeTheme.typography.subHeading2,
-                  color = MeTheme.colorScheme.textSubheading,
-                  modifier = Modifier.offset(y = (-10).dp),
-                )
-              }
             }
-
-            Text(
-              text = subText.lowercase(),
-              style = MeTheme.typography.subHeading2,
-              color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
-            )
           }
 
-          // Graph view
-          GraphView(
-            modifier = Modifier
-              .fillMaxWidth()
-              .let {
-                if (currentSegment == GraphSegment.TOTAL) {
-                  it.padding(start = 8.dp)
-                } else {
-                  it
-                }
-              },
-            scrollTarget = state.scrollTarget,
-            secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-            graphLines = listOf(segmentGraphLines),
-            segment = currentSegment,
-            goal = state.goal,
-            onRangeUpdate = {
-              if (currentSegment == state.selectedSegment) {
-                if (it != null) {
-                  canShowSubText = true
-                  subText = it
-                } else {
-                  canShowSubText = false
-                }
-              }
-            },
-            onTargetsUpdate = { targets, fallbackValue ->
-              if (currentSegment == state.selectedSegment) {
-                val timeStamps = targets.map { it.toLong() }
-                val filteredEntries = segmentEntries.filter {
-                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-                }
-                onSelected(filteredEntries)
-                scrollTarget = if (targets.isNotEmpty())
-                  targets.last()
-                else
-                  null
-              }
-            },
-            onWeightLabelUpdate = { label ->
-              if (currentSegment == state.selectedSegment) {
-                labelData = label
-              }
-            },
-            viewModel = viewmodel,
+          Text(
+            text = subText.lowercase(),
+            style = MeTheme.typography.subHeading2,
+            color = if (canShowSubText) MeTheme.colorScheme.textSubheading else Color.Transparent,
           )
         }
+
+        // Graph view
+        GraphView(
+          modifier = Modifier
+            .fillMaxWidth(),
+          scrollTarget = state.scrollTarget,
+          secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
+          graphLines = listOf(segmentGraphLines),
+          segment = currentSegment,
+          goal = state.goal,
+          onRangeUpdate = {
+            if (currentSegment == state.selectedSegment) {
+              if (it != null) {
+                canShowSubText = true
+                subText = it
+              } else {
+                canShowSubText = false
+              }
+            }
+          },
+          onTargetsUpdate = { targets, fallbackValue ->
+            if (currentSegment == state.selectedSegment) {
+              val timeStamps = targets.map { it.toLong() }
+              val filteredEntries = segmentEntries.filter {
+                DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+              }
+              onSelected(filteredEntries)
+              scrollTarget = if (targets.isNotEmpty())
+                targets.last()
+              else
+                null
+            }
+          },
+          onWeightLabelUpdate = { label ->
+            if (currentSegment == state.selectedSegment) {
+              labelData = label
+            }
+          },
+          viewModel = viewmodel,
+        )
       }
     }
 

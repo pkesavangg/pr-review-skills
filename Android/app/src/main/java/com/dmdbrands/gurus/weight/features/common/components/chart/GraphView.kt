@@ -80,7 +80,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL,
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isEmptyGraph,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
@@ -89,13 +89,13 @@ fun GraphView(
       ),
     ),
   )
-  LaunchedEffect(scrollTarget) {
-    if (scrollTarget != null) {
-      scrollState.animateScroll(
-        Scroll.Absolute.x(scrollTarget, 0.5f),
-      )
-    }
-  }
+  // LaunchedEffect(scrollTarget) {
+  //   if (scrollTarget != null) {
+  //     scrollState.animateScroll(
+  //       Scroll.Absolute.x(scrollTarget, 0.5f),
+  //     )
+  //   }
+  // }
 
   // Initialize graph when data changes
   LaunchedEffect(graphLines, secondaryGraphLines) {

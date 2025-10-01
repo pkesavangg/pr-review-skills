@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,8 +65,15 @@ internal fun bottomAxis(
         CartesianValueFormatter { _, value, _ ->
           " "
         },
-      tickLength = 0.dp,
-      tick = null,
+      label = rememberAxisLabelComponent(
+        typeface = openSans,
+        color = Color.Transparent,
+        textSize = 14.sp,
+      ),
+      tickLength = 20.dp,
+      tick = rememberAxisGuidelineComponent(
+        fill = fill(Color.Transparent),
+      ),
       horizontalLabelPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(
         fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),

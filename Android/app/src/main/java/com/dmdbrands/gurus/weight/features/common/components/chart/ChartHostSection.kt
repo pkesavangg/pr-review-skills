@@ -94,7 +94,7 @@ internal fun ChartHostSection(
       startAxis =
         VerticalAxis.rememberStart(
           label = null,
-          size = BaseAxis.Size.scroll(30.dp, isLabelsScrollable = true),
+          size = BaseAxis.Size.scroll(8.dp, isLabelsScrollable = true),
           line = rememberAxisLineComponent(
             fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
             thickness = 1.dp,
@@ -116,7 +116,8 @@ internal fun ChartHostSection(
         VerticalAxis.rememberEnd(
           valueFormatter =
             CartesianValueFormatter { _, value, _ ->
-              value.roundToInt().toString()
+              if (state.isEmptyGraph) " " else
+                value.roundToInt().toString()
             },
           itemPlacer = remember(state.primaryYStep) {
             VerticalAxis.ItemPlacer.step(
@@ -130,7 +131,7 @@ internal fun ChartHostSection(
               thickness = 1.dp,
             ),
           markerDecoration = goalMarker,
-          guideline =
+          guideline = if (state.isEmptyGraph) null else
             rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
               thickness = 0.5.dp,

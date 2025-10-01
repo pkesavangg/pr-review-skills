@@ -93,7 +93,51 @@ class GraphViewModel @AssistedInject constructor(
     val goal = intent.goal
 
     // Setup chart model producer
-    setupChartModelProducer(graphLines, secondaryGraphLines, goal)
+    if (graphLines.points.isNotEmpty())
+      setupChartModelProducer(graphLines, secondaryGraphLines, goal)
+    else
+      setupEmptyModelProducer()
+  }
+
+  /**
+   * Sets up an empty chart model producer when no data is available.
+  Sets up an empty chart model producer when no data is available.
+   */
+  private fun setupEmptyModelProducer() {
+    val currentState = state.value
+    // Cancel any existing model producer job
+    currentModelProducerJob?.cancel()
+
+    // Set empty model producer
+    currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
+      try {
+        // Check if job is still active before running transaction
+        if (isActive) {
+          handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+
+          currentState.modelProducer.runTransaction {
+            lineSeries {
+              series(
+                listOf(0.0), listOf(0.0),
+                ranges = CartesianRangeValues(
+                  minY = 2.0,
+                  maxY = 3.0,
+                  minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                  maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                ),
+              )
+            }
+          }
+        }
+      } catch (e: Exception) {
+        // Log error but don't crash the UI
+        android.util.Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
+        // Clear loading state on error
+        withContext(Dispatchers.Main) {
+          super.handleIntent(GraphIntent.UpdateIsLoading(false))
+        }
+      }
+    }
   }
 
   /**
@@ -114,6 +158,7 @@ class GraphViewModel @AssistedInject constructor(
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
+        handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
@@ -137,9 +182,9 @@ class GraphViewModel @AssistedInject constructor(
         // Check if job is still active before running transaction
         if (isActive) {
           // Switch to main thread for UI updates
-          withContext(Dispatchers.Main) {
-            currentState.modelProducer.runTransaction {
-              lineSeries {
+          currentState.modelProducer.runTransaction {
+            lineSeries {
+              if (primaryYData.isNotEmpty())
                 primaryYData.forEach { y ->
                   series(
                     x = primaryXData,
@@ -147,21 +192,22 @@ class GraphViewModel @AssistedInject constructor(
                     ranges = primaryYAxisRange,
                   )
                 }
-              }
+              else
+                series(0)
+            }
 
-              if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
-                lineSeries {
-                  series(
-                    x = secondaryXData!!,
-                    y = secondaryYData!!,
-                    ranges = secondaryYAxisRange!!,
-                  )
-                }
+            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty() && primaryYData.isNotEmpty()) {
+              lineSeries {
+                series(
+                  x = secondaryXData!!,
+                  y = secondaryYData!!,
+                  ranges = secondaryYAxisRange!!,
+                )
               }
             }
-            // Clear loading state after successful update
-            super.handleIntent(GraphIntent.UpdateIsLoading(false))
           }
+          // Clear loading state after successful update
+          super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
         // Log error but don't crash the UI

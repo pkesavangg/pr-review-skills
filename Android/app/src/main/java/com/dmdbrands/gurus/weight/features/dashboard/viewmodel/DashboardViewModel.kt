@@ -21,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -47,7 +48,7 @@ constructor(
       loadEntries()
       subscribeProgress()
       subscribeGoals()
-       subscribeLatestWeight()
+      subscribeLatestWeight()
     }
   }
 
@@ -83,10 +84,9 @@ constructor(
     }
   }
 
-  private fun subscribeLatestWeight(){
+  private fun subscribeLatestWeight() {
     viewModelScope.launch {
-      entryService.latestEntry.collect {
-          latestEntry ->
+      entryService.latestEntry.collect { latestEntry ->
         val latestWeight =
           when (latestEntry) {
             is ScaleEntry -> latestEntry.scale.scaleEntry.weight
@@ -231,5 +231,10 @@ constructor(
     viewModelScope.launch {
       navigationService.navigateTo(route)
     }
+  }
+
+  override fun onCleared() {
+    Log.i("Testing", "cleared dashboard")
+    super.onCleared()
   }
 }
