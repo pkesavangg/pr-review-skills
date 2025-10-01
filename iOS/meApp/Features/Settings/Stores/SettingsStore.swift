@@ -335,7 +335,12 @@ class SettingsStore: ObservableObject {
     }
     
     var weightlessText: String {
-        (activeAccount?.weightlessSettings?.isWeightlessOn ?? false) ? "\(commonLang.on) - \(weightlessForm.weight.value) \(activeAccount?.weightSettings?.weightUnit?.rawValue ?? WeightUnit.lb.rawValue)" : commonLang.off
+        let isOn = activeAccount?.weightlessSettings?.isWeightlessOn ?? false
+        guard isOn else { return commonLang.off }
+        let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
+        let value = Double(weightlessForm.weight.value) ?? 0
+        let unitLabel = WeightValueConvertor.unitForDisplay(value: value, unit: unit)
+        return "\(commonLang.on) - \(weightlessForm.weight.value) \(unitLabel)"
     }
     
     var notificationsOnText: String {

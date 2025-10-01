@@ -13,8 +13,11 @@ struct GoalProgressView: View {
 
     // MARK: - Constants
     private let lang = DashboardStrings.self
-    // Use plural "lbs" for display when unit is imperial
-    private var displayUnit: String { viewModel.unit == "lb" ? "lbs" : viewModel.unit }
+    // Dynamic unit label (lb/lbs or kg) based on a given display value
+    private var weightUnit: WeightUnit { viewModel.unit == "kg" ? .kg : .lb }
+    private func unitFor(value: Double) -> String {
+        WeightValueConvertor.unitForDisplay(value: value, unit: weightUnit)
+    }
     // Goal completion flag
     private var isGoalReached: Bool { viewModel.progress >= 1 }
 
@@ -53,7 +56,7 @@ struct GoalProgressView: View {
     private var maintainGoalView: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             deltaText
-            Text("\(displayUnit) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
+            Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
         }
@@ -67,7 +70,7 @@ struct GoalProgressView: View {
                 Text("0")
                     .fontOpenSans(.heading3)
                     .foregroundColor(theme.textHeading)
-                Text("\(displayUnit) to goal")
+                Text("\(unitFor(value: 0)) to goal")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                 Spacer()
@@ -76,7 +79,7 @@ struct GoalProgressView: View {
                     .foregroundColor(theme.textSubheading)
             } else {
                 deltaText
-                Text(lang.loseGoalWeightLabel(displayUnit))
+                Text(lang.loseGoalWeightLabel(unitFor(value: abs(viewModel.delta))))
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             }
@@ -108,14 +111,14 @@ struct GoalProgressView: View {
     private func formatWeight(_ weight: Double) -> String {
         // In weightless mode, prepend '+' for positive offsets so user can see direction.
         if viewModel.weightlessOn && weight > 0 {
-            return String(format: "+%.1f %@", weight, displayUnit)
+            return String(format: "+%.1f %@", weight, unitFor(value: weight))
         } else {
-            return String(format: "%.1f %@", weight, displayUnit)
+            return String(format: "%.1f %@", weight, unitFor(value: weight))
         }
     }
 
     private func formatGoalWeight(_ weight: Double) -> String {
-        String(format: "%.1f%@", weight, displayUnit)
+        String(format: "%.1f %@", weight, unitFor(value: weight))
     }
 }
 

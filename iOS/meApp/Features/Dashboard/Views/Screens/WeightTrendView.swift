@@ -71,7 +71,7 @@ struct WeightTrendView: View {
                     }
                     return dashboardStore.formatWeightDisplayText(averageWeight)
                 }(),
-                unitText: dashboardStore.unitText
+                unitText: dashboardStore.displayUnitText
             )
         }
     }

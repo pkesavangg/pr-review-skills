@@ -27,13 +27,17 @@ struct MonthSummaryItem: View {
     private var avgWeightText: String {
         guard let w = month.weight else { return "--" }
         let weight = WeightValueConvertor.formatWeight(w, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
-        return String(format: "%@ %@", weight, weightUnit.rawValue)
+        let displayValue = ConversionTools.convertStoredToDisplay(Int(w), isMetric: weightUnit == .kg)
+        let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
+        return String(format: "%@ %@", weight, unitLabel)
     }
 
     private var changeText: String {
         guard let cStr = month.change, let c = Double(cStr) else { return "--" }
         let change = WeightValueConvertor.formatWeight(c, showSymbol: true, weightUnit: weightUnit)
-        return String(format: "%@ %@", change, weightUnit.rawValue)
+        let displayValue = ConversionTools.convertStoredToDisplay(Int(c), isMetric: weightUnit == .kg)
+        let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
+        return String(format: "%@ %@", change, unitLabel)
     }
 
     var body: some View {
