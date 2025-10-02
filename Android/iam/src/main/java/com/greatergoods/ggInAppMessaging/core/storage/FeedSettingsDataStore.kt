@@ -35,92 +35,117 @@ class FeedSettingsDataStore @Inject constructor(
     private val tag = "FeedSettingsDataStore"
 
     /**
-     * Emits a Flow of the current feed settings.
+     * Emits a Flow of feed settings for all accounts.
      */
-    val feedSettingsFlow: Flow<FeedSetting> = dataFlow.map { proto ->
-        FeedSetting(
-            showPopupMessage = proto.showPopupMessage,
-            showNotificationBadge = proto.showNotificationBadge
-        )
+    val feedSettingsFlow: Flow<Map<String, FeedSetting>> = dataFlow.map { proto ->
+        proto.accountSettingsMap.mapValues { (_, accountSettings) ->
+            FeedSetting(
+                showPopupMessage = accountSettings.showPopupMessage,
+                showNotificationBadge = accountSettings.showNotificationBadge
+            )
+        }
     }
 
     /**
-     * Gets the current feed settings.
+     * Gets the feed settings for a specific account.
      * Returns default values (true) if settings haven't been initialized yet.
+     * @param accountId The account ID to get settings for.
      */
-    suspend fun getFeedSettings(): FeedSetting {
+    suspend fun getFeedSettings(accountId: String): FeedSetting {
         val data = getData()
-        // If accountId is empty, it means settings haven't been initialized yet
-        return if (data.accountId.isEmpty()) {
+        val accountSettings = data.accountSettingsMap[accountId]
+
+        return if (accountSettings == null) {
             FeedSetting(
                 showPopupMessage = true, // Default to true for first-time users
                 showNotificationBadge = true // Default to true for first-time users
             )
         } else {
             FeedSetting(
-              showPopupMessage = data.showPopupMessage,
-              showNotificationBadge = data.showNotificationBadge
+                showPopupMessage = accountSettings.showPopupMessage,
+                showNotificationBadge = accountSettings.showNotificationBadge
             )
         }
     }
 
     /**
-     * Updates the feed settings.
+     * Updates the feed settings for a specific account.
      * @param feedSetting The new feed settings to store.
      * @param accountId The account ID for which these settings apply.
      */
-    suspend fun updateFeedSettings(feedSetting: FeedSetting, accountId: String = "") {
+    suspend fun updateFeedSettings(feedSetting: FeedSetting, accountId: String) {
         try {
             IAMLogger.d(tag, "Updating feed settings for account: $accountId")
-            val updated = getData().toBuilder()
+            val current = getData()
+            val accountSettings = com.greatergoods.ggInAppMessaging.proto.AccountFeedSettings.newBuilder()
                 .setShowPopupMessage(feedSetting.showPopupMessage)
                 .setShowNotificationBadge(feedSetting.showNotificationBadge)
                 .setAccountId(accountId)
                 .setLastUpdated(System.currentTimeMillis().toString())
                 .build()
 
+            val updated = current.toBuilder()
+                .putAccountSettings(accountId, accountSettings)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
+
             updateData { updated }
-            IAMLogger.d(tag, "Successfully updated feed settings")
+            IAMLogger.d(tag, "Successfully updated feed settings for account: $accountId")
         } catch (e: Exception) {
-            IAMLogger.e(tag, "Failed to update feed settings", e.toString())
+            IAMLogger.e(tag, "Failed to update feed settings for account: $accountId", e.toString())
             throw e
         }
     }
 
     /**
-     * Updates only the pop-up message setting.
+     * Updates only the pop-up message setting for a specific account.
      * @param showPopupMessage Whether to show pop-up messages.
      * @param accountId The account ID for which this setting applies.
      */
-    suspend fun updatePopupMessageSetting(showPopupMessage: Boolean, accountId: String = "") {
+    suspend fun updatePopupMessageSetting(showPopupMessage: Boolean, accountId: String) {
         try {
             IAMLogger.d(
                 tag,
                 "Updating popup message setting: $showPopupMessage for account: $accountId"
             )
             val current = getData()
+            val existingSettings = current.accountSettingsMap[accountId]
+
+            val accountSettings = if (existingSettings != null) {
+                existingSettings.toBuilder()
+                    .setShowPopupMessage(showPopupMessage)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            } else {
+                com.greatergoods.ggInAppMessaging.proto.AccountFeedSettings.newBuilder()
+                    .setShowPopupMessage(showPopupMessage)
+                    .setShowNotificationBadge(true) // Default value
+                    .setAccountId(accountId)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            }
+
             val updated = current.toBuilder()
-                .setShowPopupMessage(showPopupMessage)
-                .setAccountId(accountId)
+                .putAccountSettings(accountId, accountSettings)
                 .setLastUpdated(System.currentTimeMillis().toString())
                 .build()
 
             updateData { updated }
-            IAMLogger.d(tag, "Successfully updated popup message setting")
+            IAMLogger.d(tag, "Successfully updated popup message setting for account: $accountId")
         } catch (e: Exception) {
-            IAMLogger.e(tag, "Failed to update popup message setting", e.toString())
+            IAMLogger.e(tag, "Failed to update popup message setting for account: $accountId", e.toString())
             throw e
         }
     }
 
     /**
-     * Updates only the notification badge setting.
+     * Updates only the notification badge setting for a specific account.
      * @param showNotificationBadge Whether to show notification badges.
      * @param accountId The account ID for which this setting applies.
      */
     suspend fun updateNotificationBadgeSetting(
         showNotificationBadge: Boolean,
-        accountId: String = ""
+        accountId: String
     ) {
         try {
             IAMLogger.d(
@@ -128,80 +153,118 @@ class FeedSettingsDataStore @Inject constructor(
                 "Updating notification badge setting: $showNotificationBadge for account: $accountId"
             )
             val current = getData()
+            val existingSettings = current.accountSettingsMap[accountId]
+
+            val accountSettings = if (existingSettings != null) {
+                existingSettings.toBuilder()
+                    .setShowNotificationBadge(showNotificationBadge)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            } else {
+                com.greatergoods.ggInAppMessaging.proto.AccountFeedSettings.newBuilder()
+                    .setShowPopupMessage(true) // Default value
+                    .setShowNotificationBadge(showNotificationBadge)
+                    .setAccountId(accountId)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            }
+
             val updated = current.toBuilder()
-                .setShowNotificationBadge(showNotificationBadge)
-                .setAccountId(accountId)
+                .putAccountSettings(accountId, accountSettings)
                 .setLastUpdated(System.currentTimeMillis().toString())
                 .build()
 
             updateData { updated }
-            IAMLogger.d(tag, "Successfully updated notification badge setting")
+            IAMLogger.d(tag, "Successfully updated notification badge setting for account: $accountId")
         } catch (e: Exception) {
-            IAMLogger.e(tag, "Failed to update notification badge setting", e.toString())
+            IAMLogger.e(tag, "Failed to update notification badge setting for account: $accountId", e.toString())
             throw e
         }
     }
 
     /**
-     * Gets the pop-up message setting.
+     * Gets the pop-up message setting for a specific account.
      * Returns true as default if settings haven't been initialized yet.
+     * @param accountId The account ID to get the setting for.
      */
-    suspend fun getPopupMessageSetting(): Boolean {
+    suspend fun getPopupMessageSetting(accountId: String): Boolean {
         val data = getData()
-        // If accountId is empty, it means settings haven't been initialized yet
-        return if (data.accountId.isEmpty()) {
+        val accountSettings = data.accountSettingsMap[accountId]
+
+        return if (accountSettings == null) {
             true // Default to true for first-time users
         } else {
-            data.showPopupMessage
+            accountSettings.showPopupMessage
         }
     }
 
     /**
-     * Gets the notification badge setting.
+     * Gets the notification badge setting for a specific account.
      * Returns true as default if settings haven't been initialized yet.
+     * @param accountId The account ID to get the setting for.
      */
-    suspend fun getNotificationBadgeSetting(): Boolean {
+    suspend fun getNotificationBadgeSetting(accountId: String): Boolean {
         val data = getData()
-        // If accountId is empty, it means settings haven't been initialized yet
-        return if (data.accountId.isEmpty()) {
+        val accountSettings = data.accountSettingsMap[accountId]
+
+        return if (accountSettings == null) {
             true // Default to true for first-time users
         } else {
-            data.showNotificationBadge
+            accountSettings.showNotificationBadge
         }
     }
 
     /**
-     * Gets the last time a feed modal was triggered.
+     * Gets the last time a feed modal was triggered for a specific account.
      * Returns null if no feed modal has been triggered yet.
+     * @param accountId The account ID to get the timestamp for.
      */
-    suspend fun getFeedLastTriggeredAt(): Long? {
+    suspend fun getFeedLastTriggeredAt(accountId: String): Long? {
         val data = getData()
-        return if (data.feedLastTriggeredAt == 0L || data.feedLastTriggeredAt != null) {
+        val accountSettings = data.accountSettingsMap[accountId]
+
+        return if (accountSettings == null || accountSettings.feedLastTriggeredAt == 0L) {
             null
         } else {
-            data.feedLastTriggeredAt
+            accountSettings.feedLastTriggeredAt
         }
     }
 
     /**
-     * Stores the last time a feed modal was triggered.
+     * Stores the last time a feed modal was triggered for a specific account.
      * @param timestamp The timestamp when the feed modal was last triggered.
      * @param accountId The account ID for which this applies.
      */
-    suspend fun storeFeedLastTriggeredAt(timestamp: Long, accountId: String = "") {
+    suspend fun storeFeedLastTriggeredAt(timestamp: Long, accountId: String) {
         try {
             IAMLogger.d(tag, "Storing feed last triggered at: $timestamp for account: $accountId")
             val current = getData()
+            val existingSettings = current.accountSettingsMap[accountId]
+
+            val accountSettings = if (existingSettings != null) {
+                existingSettings.toBuilder()
+                    .setFeedLastTriggeredAt(timestamp)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            } else {
+                com.greatergoods.ggInAppMessaging.proto.AccountFeedSettings.newBuilder()
+                    .setShowPopupMessage(true) // Default value
+                    .setShowNotificationBadge(true) // Default value
+                    .setAccountId(accountId)
+                    .setFeedLastTriggeredAt(timestamp)
+                    .setLastUpdated(System.currentTimeMillis().toString())
+                    .build()
+            }
+
             val updated = current.toBuilder()
-                .setFeedLastTriggeredAt(timestamp)
-                .setAccountId(accountId)
+                .putAccountSettings(accountId, accountSettings)
                 .setLastUpdated(System.currentTimeMillis().toString())
                 .build()
 
             updateData { updated }
-            IAMLogger.d(tag, "Successfully stored feed last triggered at")
+            IAMLogger.d(tag, "Successfully stored feed last triggered at for account: $accountId")
         } catch (e: Exception) {
-            IAMLogger.e(tag, "Failed to store feed last triggered at", e.toString())
+            IAMLogger.e(tag, "Failed to store feed last triggered at for account: $accountId", e.toString())
             throw e
         }
     }
@@ -209,15 +272,55 @@ class FeedSettingsDataStore @Inject constructor(
     override fun getDefaultInstance(): FeedSettings = FeedSettings.getDefaultInstance()
 
     /**
+     * Clears feed settings for a specific account.
+     * @param accountId The account ID to clear settings for.
+     */
+    suspend fun clearAccountSettings(accountId: String) {
+        try {
+            IAMLogger.i(tag, "Clearing feed settings for account: $accountId")
+            val current = getData()
+            val updated = current.toBuilder()
+                .removeAccountSettings(accountId)
+                .setLastUpdated(System.currentTimeMillis().toString())
+                .build()
+
+            updateData { updated }
+            IAMLogger.i(tag, "Successfully cleared feed settings for account: $accountId")
+        } catch (e: Exception) {
+            IAMLogger.e(tag, "Failed to clear feed settings for account: $accountId", e.toString())
+            throw e
+        }
+    }
+
+    /**
+     * Gets all account IDs that have feed settings.
+     * @return List of account IDs with settings.
+     */
+    suspend fun getAccountIds(): List<String> {
+        val data = getData()
+        return data.accountSettingsMap.keys.toList()
+    }
+
+    /**
+     * Checks if settings exist for a specific account.
+     * @param accountId The account ID to check.
+     * @return True if settings exist for the account.
+     */
+    suspend fun hasAccountSettings(accountId: String): Boolean {
+        val data = getData()
+        return data.accountSettingsMap.containsKey(accountId)
+    }
+
+    /**
      * Clears all feed settings data.
      */
     override suspend fun clearData() {
         try {
-            IAMLogger.i(tag, "Clearing feed settings data")
+            IAMLogger.i(tag, "Clearing all feed settings data")
             super.clearData()
-            IAMLogger.i(tag, "Successfully cleared feed settings data")
+            IAMLogger.i(tag, "Successfully cleared all feed settings data")
         } catch (e: Exception) {
-            IAMLogger.e(tag, "Failed to clear feed settings data", e.toString())
+            IAMLogger.e(tag, "Failed to clear all feed settings data", e.toString())
             throw e
         }
     }

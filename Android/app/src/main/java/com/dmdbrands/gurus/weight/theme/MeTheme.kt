@@ -187,6 +187,14 @@ private fun iamColorsFromColorScheme(colorScheme: ColorScheme): IamColors {
     // Brand
     meAppPrimary = colorScheme.meAppPrimary,
     wgPrimary = colorScheme.wgPrimary,
+
+    //iam
+    marketingPrimary = colorScheme.marketingPrimary,
+    marketingPrimaryAction = colorScheme.marketingPrimaryAction,
+    marketingSecondary = colorScheme.marketingSecondary,
+    marketingSecondaryAction = colorScheme.marketingSecondaryAction,
+    marketingTertiary = colorScheme.marketingTertiary,
+    marketingTertiaryAction = colorScheme.marketingTertiaryAction,
   )
 }
 

@@ -3,8 +3,6 @@ package com.greatergoods.ggInAppMessaging.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,8 +58,7 @@ fun IamFeedLandingScreen(
 
   Column(
     modifier = Modifier
-      .fillMaxSize()
-      .verticalScroll(rememberScrollState()),
+      .fillMaxSize(),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {

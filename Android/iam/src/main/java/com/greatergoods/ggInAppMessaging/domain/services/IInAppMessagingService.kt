@@ -15,9 +15,9 @@ interface IInAppMessagingService {
     fun setAccountId(accountId: String)
 
     /**
-     * Get feed settings flow for reactive updates
+     * Get feed settings flow for reactive updates (all accounts)
      */
-    val feedSettingsFlow: Flow<FeedSetting>
+    val feedSettingsFlow: Flow<Map<String, FeedSetting>>
 
     /**
      * Get feed items flow for reactive updates

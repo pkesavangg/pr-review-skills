@@ -52,4 +52,17 @@ object ColorPalette {
 
   val Yellow100 = Color(0xFFFDD663)
   val Yellow200 = Color(0xFFEDB53A)
+
+  val Red150 = Color(0x33B8584E) // primary
+  val Red200 = Color(0x33D9675C) // 33 for input bg //ff for action bg
+  val Red700 = Color(0xFFB8584E) // primaryAction
+  val Red750 = Color(0xFFD9675C)
+  val blue150 = Color(0x334E738A) // secondary
+  val blue250 = Color(0x33839DAD)
+  val blue700 = Color(0xFF4E738A) // secondary action
+  val blue750 = Color(0xFF839DAD)
+  val green150 = Color(0x336E796B) // tertiary
+  val green250 = Color(0x339DAD99)
+  val green900 = Color(0xFF6E796B) // tertiary action
+  val green950 = Color(0xFF9DAD99)
 }

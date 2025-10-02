@@ -66,6 +66,14 @@ internal object LightColorToken {
   val overlay = ColorPalette.Neutral500 // 50% of #2C2827
   val toastBackground = ColorPalette.Blue100 // #E3F2FD
 
+  //iam
+  val marketingPrimary = ColorPalette.Red150
+  val marketingPrimaryAction = ColorPalette.Red700
+  val marketingSecondary = ColorPalette.blue150
+  val marketingSecondaryAction = ColorPalette.blue700
+  val marketingTertiary = ColorPalette.green150
+  val marketingTertiaryAction = ColorPalette.green900
+
   // Brand
   val meAppPrimary = ColorPalette.Teal100 // #65CEC8
   val wgPrimary = ColorPalette.Teal100 // #1565C0
@@ -126,6 +134,14 @@ internal object DarkColorToken {
   // Support
   val overlay = ColorPalette.Neutral650 // 50% of #E0E1E1
   val toastBackground = ColorPalette.Blue1000 // #1A3959
+
+  //iam
+  val marketingPrimary = ColorPalette.Red200
+  val marketingPrimaryAction = ColorPalette.Red750
+  val marketingSecondary = ColorPalette.blue250
+  val marketingSecondaryAction = ColorPalette.blue750
+  val marketingTertiary = ColorPalette.green250
+  val marketingTertiaryAction = ColorPalette.green950
 
   // Brand
   val meAppPrimary = ColorPalette.Teal200 // #00B3A6

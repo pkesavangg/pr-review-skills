@@ -18,8 +18,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +34,7 @@ import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
+import kotlinx.coroutines.launch
 
 /**
  * Reusable composable for featured product variations (Third part)
@@ -62,7 +65,7 @@ fun FeaturedProductVariations(
         },
       ),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(24.dp),
+    // verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
     // Supporting title and description
     SupportingTextSection(feedItem = feedItem)
@@ -96,7 +99,7 @@ private fun SupportingTextSection(
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(8.dp),
-    modifier = Modifier.padding(top = 16.dp)
+    modifier = Modifier.padding(top = 16.dp, bottom = 24.dp)
   ) {
     // Supporting title
     feedItem.landingPage?.supportingTitleText?.let { title ->
@@ -145,7 +148,7 @@ private fun SingleSupportingImage(
 
 /**
  * Horizontal carousel for multiple supporting images with magnified current image
- * Uses HorizontalPager with snapping for one-image-at-a-time behavior
+ * Uses ring buffer technique for seamless infinite scrolling without glitches
  */
 @Composable
 private fun SupportingImageCarousel(
@@ -153,31 +156,40 @@ private fun SupportingImageCarousel(
   title: String,
   onImageClick: (String) -> Unit = {}
 ) {
-  // Create infinite list by duplicating images
-  val infiniteImages = remember(images) {
+  val ringCopies = 200 // Number of times to repeat the images (like Swift implementation)
+  val ringCount = images.size * ringCopies
+  val ringStart = ringCount / 2 // Start in the middle of the ring
+  val threshold = 50 // Threshold for re-centering
+  val coroutineScope = rememberCoroutineScope()
+
+  // Create ring buffer with repeated images
+  val ringImages = remember(images) {
     if (images.size <= 1) images else {
-      listOf(images.last()) + images + listOf(images.first())
+      (0 until ringCount).map { i ->
+        images[i % images.size]
+      }
     }
   }
 
   val pagerState = rememberPagerState(
-    initialPage = if (images.size <= 1) 0 else 1, // Start at the first real image
-    pageCount = { infiniteImages.size },
+    initialPage = if (images.size <= 1) 0 else ringStart,
+    pageCount = { ringImages.size },
   )
 
-  // Handle infinite scroll
-  androidx.compose.runtime.LaunchedEffect(pagerState.currentPage) {
+  // Ring buffer re-centering logic (prevents glitches)
+  LaunchedEffect(pagerState.currentPage) {
     if (images.size > 1) {
-      when (pagerState.currentPage) {
-        0 -> {
-          // Jump to last real image without animation to avoid visual glitch
-          pagerState.scrollToPage(images.size)
-        }
+      val currentPage = pagerState.currentPage
 
-        infiniteImages.size - 1 -> {
-          // Jump to first real image without animation to avoid visual glitch
-          pagerState.scrollToPage(1)
-        }
+      // Check if we're too close to the beginning or end
+      if (currentPage < threshold || currentPage > ringCount - threshold) {
+        // Calculate the real index we should be showing
+        val realIndex = currentPage % images.size
+        // Jump back to the middle with the same real image
+        val newPage = ringStart + realIndex
+
+        // Disable animations for seamless jump
+        pagerState.scrollToPage(newPage)
       }
     }
   }
@@ -193,24 +205,11 @@ private fun SupportingImageCarousel(
       contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 32.dp),
       beyondViewportPageCount = 2, // Pre-render 2 pages before and after visible pages
     ) { page ->
-      val imageUrl = infiniteImages[page]
-      val realPageIndex = if (images.size <= 1) page else {
-        when (page) {
-          0 -> images.size - 1 // Last image
-          infiniteImages.size - 1 -> 0 // First image
-          else -> page - 1 // Real images
-        }
-      }
+      val imageUrl = ringImages[page]
 
-      // Calculate current real page for magnification detection
-      val currentRealPage = if (images.size <= 1) pagerState.currentPage else {
-        when (pagerState.currentPage) {
-          0 -> images.size - 1
-          infiniteImages.size - 1 -> 0
-          else -> pagerState.currentPage - 1
-        }
-      }
-
+      // Calculate real page index for magnification detection
+      val realPageIndex = if (images.size <= 1) page else page % images.size
+      val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
       val isCurrentImage = realPageIndex == currentRealPage
 
       // Animated scale for current image magnification
@@ -237,20 +236,15 @@ private fun SupportingImageCarousel(
       }
     }
 
-    // Pagination dots - active dot follows current page
+    // Pagination dots - active dot follows current real page
     Row(
       horizontalArrangement = Arrangement.spacedBy(8.dp),
       verticalAlignment = Alignment.CenterVertically,
       modifier = Modifier.padding(top = 16.dp)
     ) {
       repeat(images.size) { index ->
-        val currentRealPage = if (images.size <= 1) pagerState.currentPage else {
-          when (pagerState.currentPage) {
-            0 -> images.size - 1
-            infiniteImages.size - 1 -> 0
-            else -> pagerState.currentPage - 1
-          }
-        }
+        // Calculate current real page index from ring buffer
+        val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
         val isActive = index == currentRealPage
 
         Box(
@@ -259,7 +253,16 @@ private fun SupportingImageCarousel(
             .clip(CircleShape)
             .background(
               if (isActive) IamTheme.colors.subSecondaryBackground else IamTheme.colors.tertiaryBackground,
-            ),
+            )
+            .clickable {
+              // Jump to the corresponding image near the middle of the ring
+              if (images.size > 1) {
+                val targetPage = ringStart + index
+                coroutineScope.launch {
+                  pagerState.scrollToPage(targetPage)
+                }
+              }
+            },
         )
       }
     }

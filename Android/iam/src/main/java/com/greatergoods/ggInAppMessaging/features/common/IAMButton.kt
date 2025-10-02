@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.collectLatest
 enum class ButtonType {
   PrimaryFilled,
   SecondaryFilled,
+  TertiaryFilled,
   PrimaryOutlined,
   SecondaryOutlined,
   TextPrimary,
@@ -81,6 +82,8 @@ object IamButtonDefaults {
       ButtonType.SecondaryOutlined ->
         if (enabled) IamTheme.colors.primaryAction else IamTheme.colors.primaryActionDisabled
 
+      ButtonType.TertiaryFilled ->
+        if (enabled) IamTheme.colors.secondaryAction else IamTheme.colors.secondaryAction
       else -> Color.Transparent
     }
 
@@ -101,6 +104,8 @@ object IamButtonDefaults {
 
       ButtonType.TextTertiary, ButtonType.InlineTextTertiary ->
         if (enabled) IamTheme.colors.tertiaryAction else IamTheme.colors.tertiaryActionDisabled
+      ButtonType.TertiaryFilled ->
+        if (enabled) IamTheme.colors.inverseAction else IamTheme.colors.inverseActionDisabled
 
       ButtonType.ErrorText ->
         if (enabled) IamTheme.colors.errorAction else IamTheme.colors.errorActionDisabled
@@ -180,6 +185,7 @@ object IamButtonDefaults {
       ButtonType.ErrorText -> IamTheme.colors.errorAction
       ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined -> if (enabled) IamTheme.colors.inverseAction else IamTheme.colors.inverseActionDisabled
       ButtonType.SecondaryFilled, ButtonType.PrimaryOutlined -> if (enabled) IamTheme.colors.primaryAction else IamTheme.colors.primaryActionDisabled
+      ButtonType.TertiaryFilled -> if (enabled) IamTheme.colors.inverseAction else IamTheme.colors.inverseAction
     }
 
   // Button height by size

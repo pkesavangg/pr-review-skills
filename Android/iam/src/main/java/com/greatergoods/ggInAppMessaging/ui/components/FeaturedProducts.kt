@@ -1,28 +1,21 @@
 package com.greatergoods.ggInAppMessaging.ui.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
@@ -92,7 +85,7 @@ private fun ProductsHorizontalScrollContainer(
 ) {
   LazyRow(
     horizontalArrangement = Arrangement.spacedBy(40.dp),
-    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+    // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
   ) {
     itemsIndexed(products) { index, product ->
       ProductCard(
@@ -126,11 +119,11 @@ private fun ProductCard(
       modifier = Modifier
         .size(200.dp)
         .clip(RoundedCornerShape(8.dp))
-        .border(
-          width = 5.dp,
-          color = Color.White, // White border for dark mode compatibility
-          shape = RoundedCornerShape(8.dp),
-        ),
+        // .border(
+        //   width = 1.dp,
+        //   color = Color.Transparent, // White border for dark mode compatibility
+        //   shape = RoundedCornerShape(8.dp),
+        // ),
     ) {
       AsyncImage(
         model = product.productImage,
@@ -153,164 +146,10 @@ private fun ProductCard(
 
       IamButton(
         label = FeedLandingScreenStrings.Shop.uppercase(),
-        type = ButtonType.PrimaryFilled,
+        type = ButtonType.TertiaryFilled,
         onClick = { onIntent(FeedLandingIntent.OnFeaturedProductClick(productIndex)) },
       )
     }
   }
 }
 
-/**
- * Offer header container for when no featured products are available
- * Reuses the same content as the header offer container
- */
-@Composable
-private fun OfferHeaderContainer(
-  feedItem: FeedItem,
-  isFromFooter: Boolean = false,
-  onPromoCodeClick: (String) -> Unit = {},
-  onShopNowClick: (String?) -> Unit = {}
-) {
-  Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(24.dp),
-  ) {
-    // Main offer title
-    Text(
-      text = feedItem.titleText,
-      fontSize = 24.sp,
-      fontWeight = FontWeight.Bold,
-      textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-      color = Color(0xFF2C2827),
-    )
-    if (!isFromFooter) {
-      // Promo code section (if available)
-      feedItem.landingPage?.promoCode?.let { promoCode ->
-        PromoCodeSection(
-          feedItem = feedItem,
-          onPromoCodeClick = onPromoCodeClick,
-        )
-      }
-    }
-
-    // Shop now button and expiration
-    ShopNowSection(
-      feedItem = feedItem,
-      onShopNowClick = onShopNowClick,
-    )
-  }
-}
-
-/**
- * Promo code section with copy functionality
- */
-@Composable
-private fun PromoCodeSection(
-  feedItem: FeedItem,
-  onPromoCodeClick: (String) -> Unit
-) {
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-  ) {
-    // Promo code instruction text
-    Text(
-      text = FeedLandingScreenStrings.UsePromoCodeAtCheckout,
-      fontSize = 16.sp,
-      textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-      color = Color(0xFF424242),
-    )
-
-    // Promo code container
-    feedItem.landingPage?.promoCode?.let { promoCode ->
-      PromoCodeContainer(
-        promoCode = promoCode,
-        onCopyClick = { onPromoCodeClick(promoCode) },
-      )
-    }
-  }
-}
-
-/**
- * Shop now button and expiration date section
- */
-@Composable
-private fun ShopNowSection(
-  feedItem: FeedItem,
-  onShopNowClick: (String?) -> Unit
-) {
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-  ) {
-    // Shop now button
-    Button(
-      onClick = { onShopNowClick(feedItem.linkTarget) },
-      modifier = Modifier
-        .width(200.dp)
-        .height(40.dp),
-    ) {
-      Text(
-        text = FeedLandingScreenStrings.ShopNow.uppercase(),
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
-      )
-    }
-
-    // Expiration date
-    Text(
-      text = FeedLandingScreenStrings.OfferValidThrough,
-      fontSize = 14.sp,
-      textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-      color = Color(0xFF7B726E),
-    )
-  }
-}
-
-/**
- * Promo code container with copy button
- */
-@Composable
-private fun PromoCodeContainer(
-  promoCode: String,
-  onCopyClick: () -> Unit
-) {
-  androidx.compose.foundation.layout.Row(
-    modifier = Modifier
-      .width(300.dp)
-      .height(47.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    // Promo code text area
-    Box(
-      modifier = Modifier
-        .weight(1f)
-        .height(47.dp)
-        .padding(horizontal = 16.dp),
-      contentAlignment = Alignment.Center,
-    ) {
-      Text(
-        text = promoCode,
-        fontSize = 20.sp,
-        color = Color(0xFF2C2827),
-      )
-    }
-
-    // Copy button
-    Button(
-      onClick = onCopyClick,
-      modifier = Modifier
-        .width(100.dp)
-        .height(47.dp),
-    ) {
-      Text(
-        text = FeedLandingScreenStrings.Copy.uppercase(),
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
-      )
-    }
-  }
-}

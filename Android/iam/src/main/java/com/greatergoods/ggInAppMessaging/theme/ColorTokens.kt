@@ -60,4 +60,13 @@ data class ColorTokens(
   // Brand
   val meAppPrimary: Color,
   val brandWgPrimary: Color,
+
+  //iam
+  val marketingPrimary: Color,
+  val marketingPrimaryAction : Color,
+  val marketingSecondary : Color,
+  val marketingSecondaryAction: Color,
+  val marketingTertiary : Color,
+  val marketingTertiaryAction : Color,
+
 )

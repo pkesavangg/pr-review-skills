@@ -60,6 +60,13 @@ data class ColorScheme(
   // Brand
   val meAppPrimary: Color,
   val wgPrimary: Color,
+  //iam
+  val marketingPrimary: Color,
+  val marketingPrimaryAction: Color,
+  val marketingSecondary: Color,
+  val marketingSecondaryAction: Color,
+  val marketingTertiary: Color,
+  val marketingTertiaryAction: Color,
 ) {
   /**
    * Holds all semantic color roles for the app's theme.

@@ -10,17 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
@@ -59,8 +55,7 @@ fun FeedItemCard(
     Row(
       modifier = Modifier
         .fillMaxWidth(),
-      // .padding(horizontal = 16.dp, vertical = 0.dp),
-      horizontalArrangement = Arrangement.spacedBy(24.dp),
+      // horizontalArrangement = Arrangement.spacedBy(24.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       // Image container (160dp width, 230dp height)
@@ -82,7 +77,7 @@ fun FeedItemCard(
       // Text container
       Column(
         modifier = Modifier
-          .fillMaxWidth(),
+          .fillMaxWidth().padding(start = 24.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp),
       ) {
         // Message container
@@ -90,23 +85,16 @@ fun FeedItemCard(
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           // Message type text (LIGHTENING DEAL)
-          Text(
-            text = feedItem.messageTypeText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
-            color = IamTheme.colors.textSubheading,
+          IAMText(
+            text = feedItem.messageTypeText.lowercase(),
+            textType = TextType.SubHeading,
             modifier = Modifier.fillMaxWidth(),
           )
 
           // Headline text
-          Text(
+          IAMText(
             text = feedItem.titleText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = IamTheme.colors.textHeading,
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            textType = TextType.ListTitle1,
           )
 
           // Subtitle text (Ends in X hours) with rich text formatting
@@ -114,7 +102,6 @@ fun FeedItemCard(
             text = feedItem.subtitleFeedText,
             textType = TextType.Body,
             color = IamTheme.colors.textBody,
-            modifier = Modifier.fillMaxWidth(),
             enableRichText = true,
             expiresAt = feedItem.expiresAt,
           )

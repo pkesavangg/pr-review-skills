@@ -46,9 +46,9 @@ class GGInAppMessagingService @Inject constructor(
   val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
 
   /**
-   * Get feed settings flow for reactive updates
+   * Get feed settings flow for reactive updates (all accounts)
    */
-  override val feedSettingsFlow: Flow<FeedSetting> = feedStorageService.feedSettingsFlow
+  override val feedSettingsFlow: Flow<Map<String, FeedSetting>> = feedStorageService.feedSettingsFlow
 
   /**
    * Set account ID for user-specific settings
@@ -102,7 +102,7 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Store feed notification settings
+   * Store feed notification settings for current account
    */
   override suspend fun storeFeedNotificationSetting(feedSetting: FeedSetting) {
     try {
@@ -113,18 +113,18 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Get stored feed notification settings
+   * Get stored feed notification settings for current account
    */
   override suspend fun getStoredFeedNotificationSetting(): FeedSetting? {
     return try {
-      feedStorageService.getFeedSettings()
+      feedStorageService.getFeedSettings(accountId)
     } catch (e: Exception) {
       null
     }
   }
 
   /**
-   * Update pop-up message setting
+   * Update pop-up message setting for current account
    */
   override suspend fun updatePopupMessageSetting(showPopupMessage: Boolean) {
     try {
@@ -135,7 +135,7 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Update notification badge setting
+   * Update notification badge setting for current account
    */
   override suspend fun updateNotificationBadgeSetting(showNotificationBadge: Boolean) {
     try {
@@ -146,22 +146,22 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Get pop-up message setting
+   * Get pop-up message setting for current account
    */
   override suspend fun getPopupMessageSetting(): Boolean {
     return try {
-      feedStorageService.getPopupMessageSetting()
+      feedStorageService.getPopupMessageSetting(accountId)
     } catch (e: Exception) {
       true // Default to true
     }
   }
 
   /**
-   * Get notification badge setting
+   * Get notification badge setting for current account
    */
   override suspend fun getNotificationBadgeSetting(): Boolean {
     return try {
-      feedStorageService.getNotificationBadgeSetting()
+      feedStorageService.getNotificationBadgeSetting(accountId)
     } catch (e: Exception) {
       true // Default to true
     }
@@ -262,19 +262,19 @@ class GGInAppMessagingService @Inject constructor(
   }
 
   /**
-   * Get feed last triggered at timestamp
+   * Get feed last triggered at timestamp for current account
    * Reads from FeedSettingsDataStore
    */
   private suspend fun getFeedLastTriggeredAt(): Long? {
     return try {
-      feedStorageService.getFeedLastTriggeredAt()
+      feedStorageService.getFeedLastTriggeredAt(accountId)
     } catch (e: Exception) {
       null
     }
   }
 
   /**
-   * Store feed last triggered at timestamp
+   * Store feed last triggered at timestamp for current account
    * Writes to FeedSettingsDataStore
    */
   private suspend fun storeFeedLastTriggeredAt(timestamp: Long) {

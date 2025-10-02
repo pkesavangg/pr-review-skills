@@ -24,7 +24,8 @@ interface IFeedAPI {
    * Fetches all feed items from the backend. (GET /feed/iam)
    * @return List of feed items
    */
-  @GET(FEED + IAM)
+  // @GET(FEED + IAM) TODO:AFTER DEPLOYING THE LANDING SCREEN CHANGES NEED TO DEPLOY
+  @GET(FEED)
   suspend fun fetchFeedItems(
     @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String,
   ): List<FeedItem>

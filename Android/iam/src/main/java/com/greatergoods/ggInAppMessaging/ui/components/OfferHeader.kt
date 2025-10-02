@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
@@ -32,6 +34,7 @@ import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
+import com.greatergoods.ggInAppMessaging.theme.ThemeColorParser
 import com.greatergoods.ggInAppMessaging.ui.screens.strings.FeedLandingScreenStrings
 import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
 
@@ -52,24 +55,15 @@ fun OfferHeader(
       .fillMaxWidth()
       .padding(horizontal = 16.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(24.dp),
+    // verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
     // Main offer title
     IAMText(
       text = feedItem.titleText,
       textType = TextType.Title,
+      textAlign = TextAlign.Center
     )
-
-    // Subtitle with rich text formatting
-    feedItem.subtitleModalText?.let { subtitle ->
-      IAMText(
-        text = subtitle,
-        textType = TextType.SubHeading,
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        enableRichText = true,
-        expiresAt = feedItem.expiresAt,
-      )
-    }
+    Spacer(modifier = Modifier.height(24.dp))
 
     if (!isFromFooter) {
       // Promo code section
@@ -77,6 +71,12 @@ fun OfferHeader(
         feedItem = feedItem,
         onIntent = onIntent,
       )
+    }
+    if(!isFromFooter){
+    Spacer(modifier = Modifier.height(32.dp))
+    }
+    else {
+      Spacer(modifier = Modifier.height( 24.dp))
     }
     // Shop now button and expiration
     ShopNowSection(
@@ -94,6 +94,8 @@ private fun PromoCodeSection(
   feedItem: FeedItem,
   onIntent: (FeedLandingIntent) -> Unit
 ) {
+  val marketingColors = ThemeColorParser.parseMarketingColors(feedItem.landingPage?.themeColor)
+
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -105,12 +107,14 @@ private fun PromoCodeSection(
       annotatedText = FeedLandingScreenStrings.PromoCode,
       annotationPosition = AnnotationPosition.Middle,
       spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
+      // color = marketingColors.primary
     )
 
     // Promo code container
     feedItem.landingPage?.promoCode?.let { promoCode ->
       PromoCodeContainer(
         promoCode = promoCode,
+        marketingColors = marketingColors,
         onCopyClick = { onIntent(FeedLandingIntent.OnPromoCodeCopyClick) },
       )
     }
@@ -128,14 +132,14 @@ private fun ShopNowSection(
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(16.dp),
+    modifier = Modifier.padding(top = 8.dp)
   ) {
     // Shop now button
     IamButton(
       label = FeedLandingScreenStrings.ShopNow,
-      type = ButtonType.PrimaryFilled,
+      type = ButtonType.TertiaryFilled,
       enabled = true,
       onClick = { onIntent(FeedLandingIntent.OnOfferHeaderShopNowClick) },
-      modifier = Modifier.padding(top = 8.dp)
     )
 
     // Expiration date
@@ -151,8 +155,9 @@ private fun ShopNowSection(
  * Designed to match the screenshot with dotted borders and filled background colors
  */
 @Composable
-private fun PromoCodeContainer(
+ fun PromoCodeContainer(
   promoCode: String,
+  marketingColors: ThemeColorParser.MarketingColors,
   onCopyClick: () -> Unit
 ) {
   Box(
@@ -166,13 +171,13 @@ private fun PromoCodeContainer(
         .height(56.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      // Promo code text area with light pink background
+      // Promo code text area with dynamic marketing primary background
       Box(
         modifier = Modifier
           .weight(1f)
           .height(56.dp)
           .background(
-            color = Color(0xFFF5F5F5), // Light pink/beige background
+            color = marketingColors.primary, // Dynamic marketing primary background
             shape = RoundedCornerShape(
               topStart = 8.dp,
               bottomStart = 8.dp,
@@ -186,16 +191,17 @@ private fun PromoCodeContainer(
         IAMText(
           text = promoCode,
           textType = TextType.Body,
+          // color = marketingColors.primaryAction, // Dynamic marketing primary action color for text
         )
       }
 
-      // Copy button with filled background and rounded right corners
+      // Copy button with dynamic marketing primary action background
       Box(
         modifier = Modifier
           .width(80.dp)
           .height(56.dp)
           .background(
-            color = Color(0xFF8B4513), // Reddish-brown background
+            color = marketingColors.primaryAction, // Dynamic marketing primary action background
             shape = RoundedCornerShape(
               topStart = 0.dp,
               bottomStart = 0.dp,
@@ -211,6 +217,7 @@ private fun PromoCodeContainer(
           text = "COPY",
           textType = TextType.Body,
           canApplyUppercaseStyle = true,
+          color = Color.White, // White text on colored background
         )
       }
     }
@@ -292,7 +299,7 @@ private fun PromoCodeContainer(
 
       drawPath(
         path = dottedPath,
-        color = Color(0xFF8B4513),
+        color = marketingColors.primaryAction, // Dynamic marketing primary action color for border
         style = Stroke(
           width = strokeWidth,
           pathEffect = dottedPathEffect,
@@ -355,6 +362,7 @@ fun PromoCodeContainerPreview() {
   ProvideIamTheme {
     PromoCodeContainer(
       promoCode = "SAVE20NOW",
+      marketingColors = ThemeColorParser.parseMarketingColors("red" ),
       onCopyClick = {}
     )
   }

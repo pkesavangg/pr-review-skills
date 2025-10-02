@@ -28,6 +28,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.features.common.AppIcon
 import com.greatergoods.ggInAppMessaging.features.common.AppIconType
+import com.greatergoods.ggInAppMessaging.features.common.IAMText
+import com.greatergoods.ggInAppMessaging.features.common.TextType
 import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import com.greatergoods.ggInAppMessaging.ui.components.FeedItemCard
@@ -139,7 +141,6 @@ fun SectionHeader(
           .fillMaxWidth()
           .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-
         ) {
         AppIcon(
             id = AppIcons.Logo,
@@ -150,19 +151,17 @@ fun SectionHeader(
             modifier = Modifier.size(24.dp),
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = IamTheme.colors.textHeading,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f),
+        IAMText(
+          textType = TextType.Title,
+          text = title,
         )
+      Spacer(modifier = Modifier.weight(1f)) // Pushes the next item to the end
         AppIcon(
             id = AppIcons.Settings, // Using system settings icon
             contentDescription = "Settings",
             type = AppIconType.Primary, // Will automatically use colors.brandWgPrimary
             onClick = onSettingsClick,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(24.dp).align(Alignment.CenterVertically),
         )
     }
 }

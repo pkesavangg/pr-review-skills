@@ -65,6 +65,14 @@ data class IamColors(
   // Brand
   val meAppPrimary: Color,
   val wgPrimary: Color,
+
+  //iam
+  val marketingPrimary: Color,
+  val marketingPrimaryAction : Color,
+  val marketingSecondary : Color,
+  val marketingSecondaryAction: Color,
+  val marketingTertiary : Color,
+  val marketingTertiaryAction : Color,
 )
 
 // Default colors for IAM previews when app doesn't provide values
@@ -124,6 +132,14 @@ private val DefaultIamColors = IamColors(
   // Brand
   meAppPrimary = Color(0xFF65CEC8),
   wgPrimary = Color(0xFF1565C0),
+
+  //iam
+  marketingPrimary = Color(0xFF1565C0),
+  marketingPrimaryAction = Color(0xFF1565C0),
+  marketingSecondary = Color(0xFF2C2827),
+  marketingSecondaryAction = Color(0xFF2C2827),
+  marketingTertiary = Color(0xFF7B726E),
+  marketingTertiaryAction = Color(0xFF7B726E)
 )
 
 // LocalComposition for IAM colors - app provides colors through this

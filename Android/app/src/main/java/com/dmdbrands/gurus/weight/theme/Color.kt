@@ -76,6 +76,14 @@ val LightColorScheme =
     // Brand
     meAppPrimary = LightColorToken.meAppPrimary,
     wgPrimary = LightColorToken.wgPrimary,
+
+    //iam
+    marketingPrimary = LightColorToken.marketingPrimary,
+    marketingPrimaryAction = LightColorToken.marketingPrimaryAction,
+    marketingSecondary = LightColorToken.marketingSecondary,
+    marketingSecondaryAction = LightColorToken.marketingSecondaryAction,
+    marketingTertiary = LightColorToken.marketingTertiary,
+    marketingTertiaryAction = LightColorToken.marketingTertiaryAction,
   )
 
 /**
@@ -134,6 +142,14 @@ val DarkColorScheme =
     // Brand
     meAppPrimary = DarkColorToken.meAppPrimary,
     wgPrimary = DarkColorToken.wgPrimary,
+    //iam
+    marketingPrimary = DarkColorToken.marketingPrimary,
+    marketingPrimaryAction = DarkColorToken.marketingPrimaryAction,
+    marketingSecondary = DarkColorToken.marketingSecondary,
+    marketingSecondaryAction = DarkColorToken.marketingSecondaryAction,
+    marketingTertiary = DarkColorToken.marketingTertiary,
+    marketingTertiaryAction = DarkColorToken.marketingTertiaryAction,
+
   )
 
 /**

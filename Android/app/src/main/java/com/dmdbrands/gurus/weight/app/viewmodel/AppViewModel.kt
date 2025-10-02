@@ -140,21 +140,26 @@ constructor(
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
       initialize()
-      // Initialize IAM dialog events listener
-      try {
-        initIAMDialogListener()
-        AppLog.d(TAG, "IAM dialog events listener initialized")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to initialize IAM dialog events listener", e.toString())
-      }
+    }
+  }
 
-      // Initialize feed notification listener
-      try {
-        updateUnreadFeedCount()
-        AppLog.d(TAG, "Feed notification listener initialized")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
-      }
+  private fun initialiseIAMDialogListener(){
+    // Initialize IAM dialog events listener
+    try {
+      initIAMDialogListener()
+      AppLog.d(TAG, "IAM dialog events listener initialized")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to initialize IAM dialog events listener", e.toString())
+    }
+  }
+
+  private suspend fun updateUnRead(){
+    // Initialize feed notification listener
+    try {
+      updateUnreadFeedCount()
+      AppLog.d(TAG, "Feed notification listener initialized")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to initialize feed notification listener", e.toString())
     }
   }
 
@@ -370,6 +375,8 @@ constructor(
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
         feedService.fetchFeedItems()
+        initialiseIAMDialogListener()
+        updateUnRead()
         if (isLoggedIn) {
           deviceInfoService.updateDeviceInfo()
         }

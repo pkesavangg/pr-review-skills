@@ -71,7 +71,6 @@ class FeedService @Inject constructor(
     // Initialize feed settings in a coroutine
     serviceScope.launch {
       val initialFeedSettings = getFeedSettings()
-
     }
 
     // Listen for feed notification changes from the GG IAM service
@@ -106,7 +105,7 @@ class FeedService @Inject constructor(
       val items = feedRepository.fetchFeedItems()
       // TODO: Need to uncomment the setfeeditems
       //      ggIAMService.setFeedItems(items)
-      setMockFeedItems()
+      // setMockFeedItems()
       _feedsChanged.emit(items)
       updateNotificationBadge()
       AppLog.i(TAG, "Successfully fetched feed items")
@@ -400,7 +399,7 @@ class FeedService @Inject constructor(
           ),
           FeedItem(
             elementId = "mockFromFeedService002",
-            titleText = "Another Test Item",
+            titleText = "For a Limited Time: Get 50% OFF our Coffee Grinder",
             titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
             messageTypeText = "LIGHTENING DEAL",
             subtitleFeedText = "Ends in 48 hours",
@@ -419,6 +418,10 @@ class FeedService @Inject constructor(
               supportingTitleText = "One Machine, a Million Uses",
               supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
               supportingImage = listOf(
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
                 "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
                 "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
               ),
