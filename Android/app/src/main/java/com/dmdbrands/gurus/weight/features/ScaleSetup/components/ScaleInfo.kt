@@ -1,10 +1,13 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,9 +36,10 @@ fun ScaleInfo(
 ) {
   Column(
     modifier = Modifier
-      .fillMaxSize()
-      .padding(top = spacing.x3l, start = spacing.sm, end = spacing.sm),
+      .fillMaxSize().verticalScroll(rememberScrollState())
+      .padding(horizontal = spacing.sm, vertical = spacing.md),
     horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center
   ) {
     val scaleName = SCALES.find { it -> it.sku == sku }?.productName
     AppScaleImage(sku = sku, scaleImageSize = ScaleImageSize.Large)

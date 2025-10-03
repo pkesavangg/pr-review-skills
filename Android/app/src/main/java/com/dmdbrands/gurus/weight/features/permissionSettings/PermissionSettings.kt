@@ -18,8 +18,6 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 
 /**
  * Reusable composable for displaying permission groups with items that can be clicked to request permissions.
@@ -39,7 +37,6 @@ fun PermissionSettings(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
     ) {
         permissionGroups.forEach { group ->
             // Group header (section title)

@@ -102,14 +102,14 @@ fun ScaleSetupLoader(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState()),
+      .verticalScroll(rememberScrollState()).padding(horizontal = spacing.sm, vertical = spacing.sm),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
     // Main content centered vertically
     Column(
-      horizontalAlignment = Alignment.CenterHorizontally,
       modifier = Modifier.fillMaxWidth(),
+      horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
       // Title and subtitle section

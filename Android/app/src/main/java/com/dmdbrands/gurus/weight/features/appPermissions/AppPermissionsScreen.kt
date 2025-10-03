@@ -1,20 +1,13 @@
 package com.dmdbrands.gurus.weight.features.appPermissions
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
@@ -24,10 +17,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.viewmodel.AppPermissio
 import com.dmdbrands.gurus.weight.features.appPermissions.viewmodel.AppPermissionsViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
-import com.dmdbrands.gurus.weight.features.common.components.AppText
-import com.dmdbrands.gurus.weight.features.common.components.PermissionItem
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.permissionSettings.PermissionSettings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -69,7 +59,7 @@ fun AppPermissionsContent(
     title = AppPermissionsScreenStrings.Title,
   ) {
     PermissionSettings(
-      modifier = Modifier.padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+      modifier = Modifier.verticalScroll(rememberScrollState()).padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
       permissionGroups = permissionGroups,
       onRequestPermission = { permissionType ->
         handleIntent(AppPermissionsIntent.RequestPermission(permissionType))

@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
@@ -29,8 +31,8 @@ fun ScalePermissions(
     val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions, null, wifiName)
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .padding(vertical = spacing.sm, horizontal = spacing.md),
+          .fillMaxSize().verticalScroll(rememberScrollState())
+          .padding( horizontal = spacing.sm, vertical = spacing.md),
     ) {
         AppText(
             text = ScaleSetupStrings.ScalePermissions.Title,

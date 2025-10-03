@@ -44,7 +44,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import android.util.Log
 
 /**
  * A reusable form component for scale setup screens that supports input fields,
@@ -120,8 +119,8 @@ fun <T> SetupForm(
         // Only apply vertical scroll if enabled
         if (enableScroll) {
           Modifier
-            .padding(horizontal = spacing.sm, vertical = spacing.md)
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = spacing.sm, vertical = spacing.md)
         } else {
           Modifier
             .fillMaxSize()

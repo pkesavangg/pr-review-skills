@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,7 +34,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -142,7 +140,7 @@ fun BtScaleSetupScreenContent(
                 selectButtonItems = userButtons,
                 isSelectable = true,
                 sku = sku,
-                modifier = Modifier.padding(vertical = spacing.sm, horizontal = spacing.md),
+                modifier = Modifier,
                 onItemSelected = { value ->
                   onIntent(BtScaleSetupIntent.SetUser(value.toInt()))
                 },

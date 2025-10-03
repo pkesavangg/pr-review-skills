@@ -46,8 +46,8 @@ fun SetupContent(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .padding(vertical = spacing.md, horizontal = spacing.sm)
-      .verticalScroll(rememberScrollState()),
+      .verticalScroll(rememberScrollState())
+      .padding(vertical = spacing.md, horizontal = spacing.sm),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {

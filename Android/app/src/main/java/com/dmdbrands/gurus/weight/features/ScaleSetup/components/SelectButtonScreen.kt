@@ -45,22 +45,22 @@ fun  SelectButton(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .padding(vertical = spacing.md)
-      .verticalScroll(rememberScrollState()),
+      .verticalScroll(rememberScrollState())
+      .padding(vertical = spacing.md),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
       AppText(
         text = title,
         textType = TextType.Title,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm),
       )
       subtitle?.let {
         AppText(
           text = subtitle,
           textType = TextType.Body,
           canApplyUppercaseStyle = true,
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm),
         )
       }
     }
