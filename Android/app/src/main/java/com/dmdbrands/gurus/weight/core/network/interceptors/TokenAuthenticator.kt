@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.network.interceptors
 
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.config.NetworkConfig
+import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -36,15 +37,9 @@ class TokenAuthenticator @Inject constructor(
         private const val MAX_REFRESH_ATTEMPTS = 3 // Same as Angular: max 3 attempts
     }
 
-    private var accountId: String? = null
     private var isRefreshingToken = false
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
 
-    init {
-        runBlocking {
-            accountId = tokenManager.getCurrentAccountID()
-        }
-    }
 
     override fun authenticate(route: Route?, response: Response): Request? {
         val request = response.request
@@ -52,12 +47,14 @@ class TokenAuthenticator @Inject constructor(
             AppLog.v(TAG, "Skipping token refresh for public endpoint or repeated attempt")
             return null
         }
-
+      val accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
+      AppLog.v(TAG, "Attempting token refresh for account: $accountId")
         // Skip refresh for login endpoint (same as Angular)
         if (request.url.encodedPath.contains("/account/login")) {
             AppLog.v(TAG, "Skipping token refresh for login endpoint")
             return null
         }
+
 
         // Try to refresh the token (same as Angular tokenRefresh)
         return runBlocking {
