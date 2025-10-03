@@ -374,15 +374,16 @@ constructor(
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)
-        feedService.fetchFeedItems()
-        initialiseIAMDialogListener()
-        updateUnRead()
         if (isLoggedIn) {
           deviceInfoService.updateDeviceInfo()
         }
         navigationService.autoLogin()
         // Check for IAM feed modal trigger after fetching feed items
         entryService.initializeGoalCardMonitoring()
+        feedService.fetchFeedItems()
+        initialiseIAMDialogListener()
+        updateUnRead()
+        feedService.checkAndTriggerFeedModal()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()

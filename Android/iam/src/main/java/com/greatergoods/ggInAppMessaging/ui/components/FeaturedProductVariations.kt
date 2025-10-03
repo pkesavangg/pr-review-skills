@@ -30,9 +30,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.res.painterResource
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.TextType
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import kotlinx.coroutines.launch
 
@@ -142,6 +146,8 @@ private fun SingleSupportingImage(
       contentDescription = title,
       modifier = Modifier.fillMaxWidth(),
       contentScale = ContentScale.Crop,
+      placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+      error = painterResource(id = AppIcons.Iam.placeholderImage),
     )
   }
 }
@@ -232,6 +238,8 @@ private fun SupportingImageCarousel(
           contentDescription = title,
           modifier = Modifier.fillMaxWidth(),
           contentScale = ContentScale.Crop,
+          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+          error = painterResource(id = AppIcons.Iam.placeholderImage),
         )
       }
     }

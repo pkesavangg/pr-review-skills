@@ -4,33 +4,33 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.greatergoods.ggInAppMessaging.features.common.AppIcon
 import com.greatergoods.ggInAppMessaging.features.common.ButtonType
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 import com.greatergoods.ggInAppMessaging.ui.strings.FeedPopupStrings
@@ -75,7 +75,7 @@ fun FeedPopup(
           .fillMaxWidth()
           .height(220.dp),
       ) {
-        // Product Image
+        // Product Image with placeholder
         if (imageUrl != null) {
           AsyncImage(
             model = imageUrl,
@@ -85,37 +85,41 @@ fun FeedPopup(
               .height(220.dp)
               .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
             contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+            error = painterResource(id = AppIcons.Iam.placeholderImage),
           )
         } else {
-          // Fallback background
-          //TODO:Image placeholder need to implement
+          // Fallback background with placeholder
           Box(
             modifier = Modifier
               .fillMaxWidth()
               .height(220.dp)
               .background(iamColors.utility),
-          )
+            contentAlignment = Alignment.Center
+          ) {
+            AsyncImage(
+              model = AppIcons.Iam.placeholderImage,
+              contentDescription = "Placeholder",
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+              contentScale = ContentScale.Crop,
+            )
+          }
         }
-
-        // Close Button
-        IconButton(
-          onClick = onCloseClick,
-          modifier = Modifier
-            .align(Alignment.TopEnd)
-            .padding(24.dp, 24.dp, 24.dp, 0.dp)
-            .size(16.dp) // Larger button size
-            .background(
-              color = iamColors.primaryBackground,
-              shape = CircleShape,
-            ),
-        ) {
-          Icon(
-            imageVector = Icons.Default.Close,
-            contentDescription = "Close",
-            tint = iamColors.primaryAction,
-            modifier = Modifier.size(16.dp),// Larger icon size
-          )
-        }
+Row(
+  horizontalArrangement = Arrangement.End,
+  modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 16.dp)
+){
+  AppIcon(
+    id = AppIcons.Iam.RoundedClose,
+    contentDescription = "close",
+    modifier = Modifier.size(24.dp),
+    tintColor = Color.Unspecified,
+    onClick = onCloseClick
+  )
+}
       }
 
       // Content Section

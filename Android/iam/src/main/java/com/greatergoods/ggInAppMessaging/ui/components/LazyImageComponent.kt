@@ -18,11 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 
 /**
  * Lazy image component with loading states and fallbacks
@@ -86,6 +87,8 @@ fun LazyImageComponent(
           contentDescription = contentDescription,
           contentScale = contentScale,
           modifier = Modifier.fillMaxSize(),
+          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+          error = painterResource(id = AppIcons.Iam.placeholderImage),
         )
       }
 
@@ -99,6 +102,8 @@ fun LazyImageComponent(
           contentDescription = "Placeholder image",
           contentScale = contentScale,
           modifier = Modifier.fillMaxSize(),
+          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+          error = painterResource(id = AppIcons.Iam.placeholderImage),
         )
       }
 
@@ -163,37 +168,39 @@ private fun LoadingIndicator(
   }
 }
 
-@Composable
-fun AsyncImageWithFallback(
-  model: Any?,
-  contentDescription: String?,
-  modifier: Modifier = Modifier,
-  contentScale: ContentScale = ContentScale.Crop,
-  onSuccess: (() -> Unit)? = null,
-  onError: (() -> Unit)? = null
-) {
-  AsyncImage(
-    model = model,
-    contentDescription = contentDescription,
-    modifier = modifier,
-    contentScale = contentScale,
-    onState = { state ->
-      when (state) {
-        is AsyncImagePainter.State.Success -> {
-          onSuccess?.invoke()
-        }
-
-        is AsyncImagePainter.State.Error -> {
-          onError?.invoke()
-        }
-
-        else -> {
-          // Loading state
-        }
-      }
-    },
-  )
-}
+// @Composable
+// fun AsyncImageWithFallback(
+//   model: Any?,
+//   contentDescription: String?,
+//   modifier: Modifier = Modifier,
+//   contentScale: ContentScale = ContentScale.Crop,
+//   onSuccess: (() -> Unit)? = null,
+//   onError: (() -> Unit)? = null
+// ) {
+//   AsyncImage(
+//     model = model,
+//     contentDescription = contentDescription,
+//     modifier = modifier,
+//     contentScale = contentScale,
+//     placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+//     error = painterResource(id = AppIcons.Iam.placeholderImage),
+//     onState = { state ->
+//       when (state) {
+//         is AsyncImagePainter.State.Success -> {
+//           onSuccess?.invoke()
+//         }
+//
+//         is AsyncImagePainter.State.Error -> {
+//           onError?.invoke()
+//         }
+//
+//         else -> {
+//           // Loading state
+//         }
+//       }
+//     },
+//   )
+// }
 
 @Preview(showBackground = true)
 @Composable

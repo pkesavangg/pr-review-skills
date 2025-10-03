@@ -9,7 +9,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.res.painterResource
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 
 /**
  * Reusable composable for the featured image section
@@ -31,6 +35,8 @@ fun FeaturedImage(
       contentDescription = feedItem.titleText,
       modifier = Modifier.fillMaxWidth(),
       contentScale = ContentScale.Crop,
+      placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+      error = painterResource(id = AppIcons.Iam.placeholderImage),
     )
   }
 }

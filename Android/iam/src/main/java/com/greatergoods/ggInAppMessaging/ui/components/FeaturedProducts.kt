@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
@@ -23,6 +24,7 @@ import com.greatergoods.ggInAppMessaging.features.common.ButtonType
 import com.greatergoods.ggInAppMessaging.features.common.IAMText
 import com.greatergoods.ggInAppMessaging.features.common.IamButton
 import com.greatergoods.ggInAppMessaging.features.common.TextType
+import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 import com.greatergoods.ggInAppMessaging.ui.screens.strings.FeedLandingScreenStrings
 import com.greatergoods.ggInAppMessaging.ui.viewmodel.FeedLandingIntent
 
@@ -130,6 +132,8 @@ private fun ProductCard(
         contentDescription = product.titleText,
         modifier = Modifier.fillMaxWidth(),
         contentScale = ContentScale.Crop,
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
       )
     }
 

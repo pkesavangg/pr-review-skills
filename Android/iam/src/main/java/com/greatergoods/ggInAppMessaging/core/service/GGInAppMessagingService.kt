@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Main GG In-App Messaging service
@@ -230,9 +229,6 @@ class GGInAppMessagingService @Inject constructor(
    */
   private suspend fun handleFeedModal(feedItem: FeedItem, currentTime: Long): Boolean {
     return try {
-      // TODO: Implement preloadImage logic if needed
-      // For now, we'll skip image preloading as requested
-
       // Always show the modal, regardless of whether the image preloads or not
       showFeedModalPopup(feedItem, currentTime)
       true
