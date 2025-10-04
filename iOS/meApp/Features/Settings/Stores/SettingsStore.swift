@@ -167,7 +167,7 @@ class SettingsStore: ObservableObject {
             title: logoutAlert.title,
             message: logoutAlert.message,
             buttons: [
-                AlertButtonModel(title: logoutAlert.logoutButton, type: .primary) { _ in
+                AlertButtonModel(title: logoutAlert.logoutButton, type: .danger) { _ in
                     self.logoutAllAccounts()
                 },
                 AlertButtonModel(title: logoutAlert.cancelButton, type: .secondary) { _ in
@@ -184,7 +184,7 @@ class SettingsStore: ObservableObject {
             title: deleteAccountAlert.title,
             message: deleteAccountAlert.message,
             buttons: [
-                AlertButtonModel(title: deleteAccountAlert.deleteButton, type: .primary) { _ in
+                AlertButtonModel(title: deleteAccountAlert.deleteButton, type: .danger) { _ in
                     self.deleteAccount()
                 },
                 AlertButtonModel(title: deleteAccountAlert.cancelButton, type: .secondary) { _ in

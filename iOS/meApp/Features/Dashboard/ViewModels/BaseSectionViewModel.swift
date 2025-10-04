@@ -56,7 +56,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         static let xAxisReservedHeight: CGFloat = 18
     }
 
-    private var xAxisReservedHeight: CGFloat { hasXAxis ? Layout.xAxisReservedHeight : 0 }
+    private var xAxisReservedHeight: CGFloat { Layout.xAxisReservedHeight }
 
     // MARK: - Stroke & Point Sizing (moved from view)
     
