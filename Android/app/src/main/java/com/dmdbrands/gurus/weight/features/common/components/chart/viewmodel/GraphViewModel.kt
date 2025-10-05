@@ -109,14 +109,14 @@ class GraphViewModel @AssistedInject constructor(
     if (graphLines.points.isNotEmpty())
       setupChartModelProducer(graphLines, secondaryGraphLines, goal)
     else
-      setupEmptyModelProducer()
+      setupEmptyModelProducer(goal)
   }
 
   /**
    * Sets up an empty chart model producer when no data is available.
   Sets up an empty chart model producer when no data is available.
    */
-  private fun setupEmptyModelProducer() {
+  private fun setupEmptyModelProducer(goal: Goal?) {
     val currentState = state.value
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
@@ -126,15 +126,26 @@ class GraphViewModel @AssistedInject constructor(
       try {
         // Check if job is still active before running transaction
         if (isActive) {
-          handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+          val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
+          handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+          val graphMeta = if (goal != null) generateNiceScale(
+            goal.goalWeight.div(10.0) - 10.0,
+            goal.goalWeight.div(10.0) + 10.0,
+            goal.goalWeight.div(10.0),
+            isWeightLessMode = isWeightlessMode,
+          ) else null
+
+          if (graphMeta != null) {
+            handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
+          }
           currentState.modelProducer.runTransaction {
             lineSeries {
               series(
                 listOf(0.0), listOf(0.0),
                 ranges = CartesianRangeValues(
-                  minY = 2.0,
-                  maxY = 3.0,
+                  minY = graphMeta?.min ?: 2.0,
+                  maxY = graphMeta?.max ?: 3.0,
                   minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
                   maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
                 ),

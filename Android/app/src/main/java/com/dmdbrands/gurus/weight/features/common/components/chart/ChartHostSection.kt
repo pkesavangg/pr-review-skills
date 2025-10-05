@@ -116,7 +116,7 @@ internal fun ChartHostSection(
         VerticalAxis.rememberEnd(
           valueFormatter =
             CartesianValueFormatter { _, value, _ ->
-              if (state.isEmptyGraph) " " else
+              if (state.isEmptyGraph && goalMarker == null) " " else
                 value.roundToInt().toString()
             },
           itemPlacer = remember(state.primaryYStep) {
@@ -131,7 +131,7 @@ internal fun ChartHostSection(
               thickness = 1.dp,
             ),
           markerDecoration = goalMarker,
-          guideline = if (state.isEmptyGraph) null else
+          guideline = if (state.isEmptyGraph && goalMarker == null) null else
             rememberAxisLineComponent(
               fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
               thickness = 0.5.dp,

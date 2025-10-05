@@ -57,7 +57,7 @@ fun GraphView(
 ) {
 
   // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines) {
+  LaunchedEffect(graphLines, secondaryGraphLines, goal) {
     viewModel.handleIntent(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
