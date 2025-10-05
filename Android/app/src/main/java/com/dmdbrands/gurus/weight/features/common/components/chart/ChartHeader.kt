@@ -23,12 +23,14 @@ fun ChartHeader(
   weightData: String,
   rangeData: String
 ) {
-  val headerText = if (state.markerIndex != null)
-    when (segment) {
-      GraphSegment.WEEK, GraphSegment.MONTH -> "day"
-      else -> "month"
-    }
-  else segment.name.lowercase()
+  val headerText =
+    if (state.markerIndex != null) {
+      when (segment) {
+        GraphSegment.WEEK, GraphSegment.MONTH -> "day"
+        else -> "month"
+      }
+    } else
+      segment.name.lowercase()
   Column(
     modifier = Modifier.padding(
       horizontal = MeTheme.spacing.sm,
@@ -36,7 +38,7 @@ fun ChartHeader(
     ),
   ) {
     Text(
-      text = "$headerText average",
+      text = if (state.isEmptyGraph) "no entries" else "$headerText average",
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )

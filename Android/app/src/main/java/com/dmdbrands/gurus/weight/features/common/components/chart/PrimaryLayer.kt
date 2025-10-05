@@ -1,6 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -16,6 +20,9 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import android.annotation.SuppressLint
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Common composable for creating line layers with connection condition.
@@ -33,6 +40,10 @@ internal fun rememberLineLayerWithConnection(
   val minYTarget = yRangeValues?.minY
   val maxYTarget = yRangeValues?.maxY
 
+  // Track current values for animation duration calculation
+  val currentMinY = remember { mutableStateOf(minYTarget?.toFloat() ?: 0f) }
+  val currentMaxY = remember { mutableStateOf(maxYTarget?.toFloat() ?: 0f) }
+
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
       false
@@ -48,6 +59,35 @@ internal fun rememberLineLayerWithConnection(
       disconnectionCriteria
     }
   }
+
+  // Calculate shared duration based on the larger difference between min and max
+  val minDifference = if (minYTarget != null) abs(minYTarget - currentMinY.value) else 0.0
+  val maxDifference = if (maxYTarget != null) abs(maxYTarget - currentMaxY.value) else 0.0
+  val maxDifferenceValue = max(minDifference, maxDifference)
+
+  val sharedDuration = when {
+    maxDifferenceValue < 19 -> 300 // Short duration for small differences
+    maxDifferenceValue < 20 -> 500 // Medium duration for medium differences
+    else -> 700 // Long duration for large differences (>= 20)
+  }
+
+  val animatedMinY = if (minYTarget != null) {
+    animateFloatAsState(
+      targetValue = minYTarget.toFloat(),
+      animationSpec = tween(durationMillis = sharedDuration),
+    ).also {
+      currentMinY.value = it.value
+    }
+  } else null
+
+  val animatedMaxY = if (maxYTarget != null) {
+    animateFloatAsState(
+      targetValue = maxYTarget.toFloat(),
+      animationSpec = tween(durationMillis = sharedDuration),
+    ).also {
+      currentMaxY.value = it.value
+    }
+  } else null
 
 
   return rememberLineCartesianLayer(
@@ -71,8 +111,8 @@ internal fun rememberLineLayerWithConnection(
     ),
     verticalAxisPosition = verticalAxisPosition,
     rangeProvider = CartesianLayerRangeProvider.fixed(
-      maxY = maxYTarget?.toDouble(),
-      minY = minYTarget?.toDouble(),
+      maxY = animatedMaxY?.value?.toDouble(),
+      minY = animatedMinY?.value?.toDouble(),
     ),
   )
 }

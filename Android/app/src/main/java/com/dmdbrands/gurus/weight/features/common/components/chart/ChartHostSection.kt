@@ -198,6 +198,7 @@ internal fun ChartHostSection(
     modelProducer = modelProducer,
     modifier = modifier,
     scrollState = scrollState,
+    animateIn = false,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     consumeMoveEvents = true,
     onScrollStopped = { range ->

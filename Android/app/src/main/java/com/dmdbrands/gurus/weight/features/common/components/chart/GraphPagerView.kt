@@ -1,5 +1,15 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -116,46 +126,88 @@ fun GraphPagerView(
           weightData = labelData,
           rangeData = subText,
         )
-        // Graph view
-        GraphView(
-          modifier = Modifier
-            .fillMaxWidth(),
-          scrollTarget = state.scrollTarget,
-          secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-          graphLines = listOf(segmentGraphLines),
-          segment = currentSegment,
-          goal = state.goal,
-          state = graphState,
-          onRangeUpdate = {
-            if (currentSegment == state.selectedSegment) {
-              if (it != null) {
-                canShowSubText = true
-                subText = it
-              } else {
-                canShowSubText = false
+        // Graph view with crossfade animation
+        AnimatedContent(
+          targetState = currentSegment,
+          transitionSpec = {
+            (fadeIn(
+              animationSpec = tween(
+                durationMillis = 500,
+                easing = FastOutSlowInEasing,
+              ),
+            ) + scaleIn(
+              initialScale = 0.95f,
+              animationSpec = tween(
+                durationMillis = 500,
+                easing = FastOutSlowInEasing,
+              ),
+            ) + slideInHorizontally(
+              initialOffsetX = { it / 8 },
+              animationSpec = tween(
+                durationMillis = 500,
+                easing = FastOutSlowInEasing,
+              ),
+            )) togetherWith (fadeOut(
+              animationSpec = tween(
+                durationMillis = 350,
+                easing = FastOutSlowInEasing,
+              ),
+            ) + scaleOut(
+              targetScale = 1.05f,
+              animationSpec = tween(
+                durationMillis = 350,
+                easing = FastOutSlowInEasing,
+              ),
+            ) + slideOutHorizontally(
+              targetOffsetX = { -it / 8 },
+              animationSpec = tween(
+                durationMillis = 350,
+                easing = FastOutSlowInEasing,
+              ),
+            ))
+          },
+          label = "GraphViewCrossfade",
+        ) { targetSegment ->
+          GraphView(
+            modifier = Modifier
+              .fillMaxWidth(),
+            scrollTarget = state.scrollTarget,
+            secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
+            graphLines = listOf(segmentGraphLines),
+            segment = targetSegment,
+            goal = state.goal,
+            state = graphState,
+            onRangeUpdate = {
+              if (targetSegment == state.selectedSegment) {
+                if (it != null) {
+                  canShowSubText = true
+                  subText = it
+                } else {
+                  canShowSubText = false
+                }
               }
-            }
-          },
-          onTargetsUpdate = { targets, fallbackValue ->
-            if (currentSegment == state.selectedSegment) {
-              val timeStamps = targets.map { it.toLong() }
-              val filteredEntries = segmentEntries.filter {
-                DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+            },
+            onTargetsUpdate = { targets, fallbackValue ->
+              if (targetSegment == state.selectedSegment) {
+                val timeStamps = targets.map { it.toLong() }
+                val filteredEntries = segmentEntries.filter {
+                  DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+                }
+                onSelected(filteredEntries)
+                scrollTarget = if (targets.isNotEmpty())
+                  targets.last()
+                else
+                  null
               }
-              onSelected(filteredEntries)
-              scrollTarget = if (targets.isNotEmpty())
-                targets.last()
-              else
-                null
-            }
-          },
-          onWeightLabelUpdate = { label ->
-            if (currentSegment == state.selectedSegment) {
-              labelData = label
-            }
-          },
-          viewModel = viewmodel,
-        )
+            },
+            onWeightLabelUpdate = { label ->
+              if (targetSegment == state.selectedSegment) {
+                labelData = label
+              }
+            },
+            viewModel = viewmodel,
+          )
+        }
       }
     }
 
