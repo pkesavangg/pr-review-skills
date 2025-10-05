@@ -96,7 +96,6 @@ constructor(
       } else {
         emptyList() // No validation for hidden field in maintain mode
       }
-
     val newState =
       GoalState(
         form =
@@ -109,12 +108,12 @@ constructor(
                 ),
               startingWeight =
                 FormControl.create(
-                  initialValue = goal.initialWeight.toInt().toString(),
+                  initialValue = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString(),
                   validators = currentWeightValidators,
                 ),
               goalWeight =
                 FormControl.create(
-                  initialValue = goal.goalWeight.toInt().toString(),
+                  initialValue = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString(),
                   validators =
                     listOf(
                       FormValidations.required(),

@@ -15,6 +15,23 @@ data class GoalFormControls(
   val startingWeight: FormControl<String>,
   val goalWeight: FormControl<String>,
 ) {
+  /**
+   * Returns true if the form is valid based on the current goal type.
+   * For MAINTAIN mode, only goalType and goalWeight are validated.
+   * For LOSE_GAIN mode, all fields are validated.
+   */
+  fun isValidForGoalType(): Boolean {
+    val isMaintainMode = goalType.value == GoalType.MAINTAIN.value
+
+    return goalType.isValueValid() &&
+           goalWeight.isValueValid() &&
+           if (isMaintainMode) {
+             true // startingWeight is not validated in maintain mode
+           } else {
+             startingWeight.isValueValid()
+           }
+  }
+
   companion object {
     fun create(goalType: GoalType = GoalType.LOSE_GAIN) =
       GoalFormControls(
@@ -25,7 +42,7 @@ data class GoalFormControls(
           ),
         startingWeight =
           FormControl.create(
-            initialValue = "0.0",
+            initialValue = "",
             validators = if (goalType == GoalType.LOSE_GAIN) {
               listOf(FormValidations.required(), FormValidations.weightValidator())
             } else {
@@ -34,7 +51,7 @@ data class GoalFormControls(
           ),
         goalWeight =
           FormControl.create(
-            initialValue = "0",
+            initialValue = "",
             validators = listOf(
               FormValidations.required(),
               FormValidations.weightValidator(),
@@ -138,6 +155,16 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         val controls = state.form.controls
         // Mark goalType as changed (dirty) and set new value
         controls.goalType.onValueChange(intent.goalType.value)
+
+        // Update startingWeight validators based on new goal type
+        if (intent.goalType == GoalType.MAINTAIN) {
+          // Remove required validator for maintain mode
+          controls.startingWeight.removeValidator("required")
+        } else {
+          // Add required validator for lose/gain mode
+          controls.startingWeight.addValidator(FormValidations.required())
+        }
+
         state.copy() // same form reference; UI observes updated controls
       }
 

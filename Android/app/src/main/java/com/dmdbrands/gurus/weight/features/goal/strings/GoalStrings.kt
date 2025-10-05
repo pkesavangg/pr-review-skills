@@ -29,7 +29,7 @@ object GoalStrings {
   const val NoButton = "No"
 
   // Loading Messages
-  const val LoaderMessage = "Saving goal..."
+  const val LoaderMessage = "Saving..."
 
   // Milestone Display
   const val GoalReached = "goal reached!"
@@ -40,7 +40,7 @@ object GoalStrings {
 
   // Toast Messages
   const val SuccessTitle = "Success!"
-  const val SuccessMessage = "Goal Updated."
+  const val SuccessMessage = "Goal Saved."
 
   // Unsaved Changes Dialog
   const val UnsavedChangesTitle = "Confirm"

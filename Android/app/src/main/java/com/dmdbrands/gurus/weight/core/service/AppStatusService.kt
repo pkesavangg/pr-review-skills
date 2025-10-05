@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import java.text.SimpleDateFormat
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -35,7 +36,7 @@ object AppStatusService {
     return formatter.format(Date())
   }
 
-  fun getUserTimezone(): String = TimeZone.getDefault().displayName
+  fun getUserTimezone(): String = ZoneId.systemDefault().id
 
   fun getUserTimezoneOffset(): String {
     val offsetMillis = TimeZone.getDefault().rawOffset

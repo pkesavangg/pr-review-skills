@@ -23,7 +23,9 @@ import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationString
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -147,17 +149,17 @@ class IntegrationViewModel @Inject constructor(
   private fun subscribeBrowserState() {
     viewModelScope.launch {
       try {
-        customTabManager.subscribeChromeState().collect { state ->
+        customTabManager.subscribeChromeState().map { it  }.distinctUntilChanged().collect { state ->
           when (state) {
             ChromeTabState.TabHidden -> {
               AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed")
-              if (!isTabHidden) {
                 isTabHidden = true
                 checkOAuthFlowCompletion()
-              }
+                AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed hello")
             }
 
             ChromeTabState.TabShown -> {
+              isTabHidden = false
               AppLog.d(TAG, "Custom tab shown")
             }
 
@@ -377,9 +379,10 @@ class IntegrationViewModel @Inject constructor(
       )
       return
     }
+    dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       AppLog.d(TAG, "Checking OAuth flow completion for provider: $currentProvider")
-      runCatching {
+      try {
         val (isConnected, _) = integrationService.getIntegrationStatus(currentProvider)
         if (isConnected) {
           // OAuth was successful
@@ -392,8 +395,11 @@ class IntegrationViewModel @Inject constructor(
           AppLog.w(TAG, "OAuth flow completed but integration not connected for $currentProvider")
           showErrorAlert()
         }
-      }.onFailure { e ->
+      }catch (e: Exception) {
         AppLog.e(TAG, "Failed to check OAuth flow completion for $currentProvider", e)
+      }
+      finally {
+          dialogQueueService.dismissLoader()
       }
     }
   }

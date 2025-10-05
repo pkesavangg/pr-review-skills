@@ -68,14 +68,13 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         GoalStrings.SaveGoalButton,
         type = ButtonType.InlineTextPrimary,
         size = ButtonSize.Small,
-        enabled = state.form.isDirty,
+        enabled = state.form.isDirty && state.form.controls.isValidForGoalType(),
       ) {
         keyboardController?.hide()
         handleIntent.invoke(GoalIntent.Submit)
       }
     },
-    containerColor = colorScheme.secondaryBackground,
-    appBarColor = colorScheme.secondaryBackground,
+
   ) { scaffoldModifier ->
     Column(
       modifier = Modifier

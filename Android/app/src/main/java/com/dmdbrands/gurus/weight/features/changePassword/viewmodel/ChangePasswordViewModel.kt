@@ -87,13 +87,6 @@ constructor(
      */
     private fun onSuccess() {
         viewModelScope.launch {
-            dialogQueueService.showToast(
-                Toast(
-                    title = "Success!",
-                    message = ChangePasswordStrings.SuccessMessage,
-                    action = null,
-                ),
-            )
             navigationService.navigateBack(null)
             AppLog.i("ChangePasswordViewModel", "Password changed successfully")
         }

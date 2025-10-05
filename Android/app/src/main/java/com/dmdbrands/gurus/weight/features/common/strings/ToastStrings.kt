@@ -17,7 +17,7 @@ object ToastStrings {
 
     object ChangePasswordSuccess {
       const val Header = "Success!"
-      const val Message = "Password updated."
+      const val Message = "Password Updated."
     }
 
     object AccountSwitchSuccess {
@@ -43,8 +43,11 @@ object ToastStrings {
     }
 
     object UpdateProfileError {
-      const val Header = "Profile Update Error"
-      const val MessageGeneric = "Something went wrong. Please try again. " +
+      const val Header = "Error updating profile"
+      const val updatePasswordHeader = "Error updating password."
+      const val updatePasswordFailedMessage = "Restart the app and try again."
+      const val HeaderGeneric = "Error saving profile!"
+      const val MessageGeneric = "Please try again. " +
         "If the problem continues, contact customer service."
       const val MessageNotAuth = ""
       const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."

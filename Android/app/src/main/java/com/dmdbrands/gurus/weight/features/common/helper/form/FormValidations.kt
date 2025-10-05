@@ -33,8 +33,8 @@ object ValidationMessages {
   const val PASSWORD_MISMATCH = "both passwords must match"
   const val NO_WHITESPACE = "must not leave blank"
   const val INVALID_WEIGHT = "invalid weight"
-  const val KG_RANGE = "weight must be between 0kg and 450 kg"
-  const val LB_RANGE = "weight must be between 0lbs and 999 lbs"
+  const val KG_RANGE = "weight must be between 0 kg and 450 kg"
+  const val LB_RANGE = "weight must be between 0 lbs and 999 lbs"
 }
 
 object FormValidations {

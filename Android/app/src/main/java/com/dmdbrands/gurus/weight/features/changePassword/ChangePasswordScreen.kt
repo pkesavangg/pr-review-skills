@@ -43,7 +43,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -88,8 +87,6 @@ private fun ChangePasswordContent(
                 handleIntent.invoke(ChangePasswordIntent.Submit)
             }
         },
-        containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground,
     ) { scaffoldModifier ->
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

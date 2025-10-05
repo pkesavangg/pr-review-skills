@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -46,7 +45,6 @@ import com.dmdbrands.gurus.weight.features.weightless.strings.WeightlessStrings
 import com.dmdbrands.gurus.weight.features.weightless.viewmodel.WeightlessViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -95,9 +93,6 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
         handleIntent.invoke(WeightlessIntent.Submit)
       }
     },
-    containerColor = colorScheme.secondaryBackground,
-    appBarColor = colorScheme.secondaryBackground,
-    borderColor = Color.Transparent,
   ) { scaffoldModifier ->
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,

@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.helper.DateFormatHelper
@@ -155,6 +157,12 @@ private fun SettingsItemRow(
                         else -> null
                     }
                 if (value != null) {
+                    val windowSize = LocalWindowInfo.current.containerSize
+                    val isTablet = with(LocalDensity.current) {
+                        windowSize.width.toDp() > 600.dp
+                    }
+                    val maxWidth = if (isTablet) 350.dp else 160.dp
+
                     Text(
                         text = value,
                         style = MeTheme.typography.body2,
@@ -162,7 +170,7 @@ private fun SettingsItemRow(
                         textAlign = TextAlign.End,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 160.dp),
+                        modifier = Modifier.widthIn(max = maxWidth),
                     )
                 }
                 when (item.type) {

@@ -222,10 +222,7 @@ constructor(
       }
       accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
       AppLog.d(TAG, "Password changed successfully")
-      showSuccessToast(
-        ToastStrings.Success.ChangePasswordSuccess.Header,
-        ToastStrings.Success.ChangePasswordSuccess.Message,
-      )
+      dialogQueueService.showToast(Toast(ToastStrings.Success.ChangePasswordSuccess.Message))
       true
     } catch (e: Exception) {
       AppLog.e(TAG, "Password change failed", e)
@@ -234,10 +231,10 @@ constructor(
           when (e.code()) {
             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.ChangePasswordError.ErrorUpdatingPassword
-            else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
+            else -> ToastStrings.Error.UpdateProfileError.updatePasswordFailedMessage
           }
-        showErrorToast(null, msg)
+        showErrorToast(ToastStrings.Error.UpdateProfileError.updatePasswordHeader, msg)
       }
       false
     }
@@ -271,11 +268,14 @@ constructor(
 
         else -> {
           // For other errors, show error toast
-          val header = ToastStrings.Error.UpdateProfileError.Header
           val msg = when (e.code()) {
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
+          }
+          val header = when(e.code()){
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED, HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+            else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
           }
           showErrorToast(header, msg)
           AppLog.e(TAG, "Profile update failed", e)

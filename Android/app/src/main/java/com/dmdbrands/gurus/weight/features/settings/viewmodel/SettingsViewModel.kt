@@ -27,6 +27,7 @@ import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
@@ -347,7 +348,7 @@ constructor(
     }
 
     // Show loading dialog
-    dialogQueueService.showLoader("Updating biological sex...")
+    dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       try {
         val updatedCurrentProfile =
@@ -866,12 +867,13 @@ constructor(
    * Relies on activeAccountFlow to automatically update the UI state.
    */
   private fun onNotificationUpdate(notificationOption: String) {
-    dialogQueueService.showLoader("Updating notification settings...")
+    dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       try {
         val notificationSettings = getNotificationSettingsFromOption(notificationOption)
         val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
         if (updatedAccount != null) {
+          dialogQueueService.showToast(Toast("Success!Notification settings updated"))
           AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
           // The activeAccountFlow will automatically emit the updated account and update the UI
         } else {

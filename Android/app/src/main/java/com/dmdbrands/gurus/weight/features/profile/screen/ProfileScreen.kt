@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -91,8 +92,6 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
             }
         },
         borderColor = colorScheme.utility,
-        containerColor = colorScheme.secondaryBackground,
-        appBarColor = colorScheme.secondaryBackground,
         modifier = Modifier
     ) { scaffoldModifier ->
             AppStyledCard {
@@ -159,6 +158,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     DateTimeInput(
                         formControl = state.form.controls.birthday,
                         mode = DateTimeInputMode.Date,
+                        maxValue = DateTimeValue.Date(DateTimeUtil.getMinBirthdayOffsetForDatePicker()),
                         modifier = Modifier.focusRequester(birthdayFocusRequester),
                     )
                 }

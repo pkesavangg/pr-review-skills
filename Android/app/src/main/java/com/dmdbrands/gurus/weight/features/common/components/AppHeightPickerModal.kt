@@ -68,7 +68,7 @@ sealed class HeightInput {
         // Convert stored height to cm
         val CM_TO_INCH_FACTOR = 0.254
         val heightInCm = kotlin.math.round(storedHeight * CM_TO_INCH_FACTOR).toInt()
-        Cm(heightInCm.coerceIn(150, 200)) // Ensure within valid range
+        Cm(heightInCm.coerceIn(100, 200)) // Ensure within valid range
       } else {
         // Convert stored height to feet/inches
         val STORED_HEIGHT_TO_INCHES_FACTOR = 10
@@ -77,7 +77,7 @@ sealed class HeightInput {
         val feet = totalInches / INCHES_PER_FOOT
         val inches = totalInches % INCHES_PER_FOOT
         FtIn(
-          feet = feet.coerceIn(4, 7), // Ensure within valid range
+          feet = feet.coerceIn(2, 7), // Ensure within valid range
           inches = inches.coerceIn(0, 11),
         )
       }
@@ -95,7 +95,7 @@ sealed class HeightInput {
         // Convert stored height to cm
         val CM_TO_INCH_FACTOR = 0.254
         val heightInCm = kotlin.math.round(height * CM_TO_INCH_FACTOR).toInt()
-        heightInCm.coerceIn(150, 200).toString() + " cm"
+        heightInCm.coerceIn(100, 200).toString() + " cm"
       } else {
         // Convert stored height to feet/inches
         val STORED_HEIGHT_TO_INCHES_FACTOR = 10
@@ -116,13 +116,13 @@ object AppPickerDefaults {
   /**
    * List of height values in centimeters (150 to 200 cm).
    */
-  val cmHeights: List<HeightInput.Cm> = (150..200).map { HeightInput.Cm(it) }.toList()
+  val cmHeights: List<HeightInput.Cm> = (100..200).map { HeightInput.Cm(it) }.toList()
 
   /**
    * List of height values in feet/inches (4'0" to 7'0").
    * Each entry is a Pair of feet to inches (0-11).
    */
-  val feetHeights: List<Int> = (4..7).toList()
+  val feetHeights: List<Int> = (2..7).toList()
   val inchHeights: List<Int> = (0..11).toList()
 }
 

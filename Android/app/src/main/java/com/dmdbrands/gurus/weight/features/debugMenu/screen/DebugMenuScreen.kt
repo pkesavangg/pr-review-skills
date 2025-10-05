@@ -62,13 +62,14 @@ fun DebugMenuScreen() {
   BackHandler {
     viewModel.handleIntent(DebugMenuIntent.OnBack)
   }
-
-  CompositionLocalProvider(LocalCardAlignment provides cardAlignment) {
+  val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
+  CompositionLocalProvider(LocalCardAlignment provides cardAlignment){
     DebugMenuContent(
       state = state,
       handleIntent = viewModel::handleIntent,
     )
   }
+
 }
 
 @Composable
@@ -83,8 +84,6 @@ private fun DebugMenuContent(
         handleIntent(DebugMenuIntent.OnBack)
       }
     },
-    containerColor = colorScheme.secondaryBackground,
-    appBarColor = colorScheme.secondaryBackground,
   ) { scaffoldModifier ->
     Column(
       modifier = Modifier
@@ -156,7 +155,7 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
       ),
       SettingsItem(
         title = DebugMenuStrings.AppInfo.Api,
-        type = SettingsItemType.TextOnly(state.apiUrl.removePrefix("https://").take(9)),
+        type = SettingsItemType.TextOnly(state.apiUrl.removePrefix("https:/").take(9)),
         onClick = {},
       ),
       SettingsItem(
@@ -168,7 +167,7 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
         title = DebugMenuStrings.AppInfo.Timezone,
         type = SettingsItemType.TextOnly(
           if (state.timezone.isNotEmpty()) {
-            "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes} ${state.timezone}"
+            " ${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes} ${state.timezone}"
           } else {
             "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes}"
           }
@@ -258,8 +257,8 @@ private fun DebugMenuScreenPreview() {
       isAndroid = true,
       apiUrl = "https://api.weightgurus.com/v3/",
       currentDateTime = "Dec 15, 2024 at 2:30 PM",
-      timezone = "Eastern Standard Time",
-      timezoneOffset = "-300",
+      timezone = "Asia/Calcutta",
+      timezoneOffset = "330",
       hasScales = true,
       isSendScaleLogEnabled = true,
     )
