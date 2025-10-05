@@ -92,7 +92,7 @@ internal fun ChartHostSection(
           ),
           interpolationType = InterpolationType.CUBIC,
         )
-        .joinToString(" / ") { values ->
+        .first().let { values ->
           values.map { it.toDouble() }.average()
             .let { String.format(Locale.US, "%.1f", it) } // locale-safe, 2 decimal places
         }

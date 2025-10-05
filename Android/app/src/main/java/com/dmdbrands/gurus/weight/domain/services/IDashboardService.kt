@@ -19,7 +19,7 @@ interface IDashboardService {
    */
   suspend fun setAccountId(accountId: String)
 
-  suspend fun refreshDashboard(accountId: String)
+  suspend fun refreshDashboard(accountId: String? = null)
 
   /**
    * Gets a Flow of visible metric keys for the given account.

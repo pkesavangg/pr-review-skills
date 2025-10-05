@@ -60,8 +60,9 @@ constructor(
     repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   }
 
-  override suspend fun refreshDashboard(accountId: String) {
+  override suspend fun refreshDashboard(accountId: String?) {
     try {
+      val accountId = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       val account = accountRepository.getAccountFromAPI(accountId)
       val metricKeys = account.dashboardMetrics.mapNotNull { it.toMetricKey() }
       dashboardRepository.updateVisibleMetricKeys(accountId, metricKeys)

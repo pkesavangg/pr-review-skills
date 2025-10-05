@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
@@ -21,7 +22,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -35,6 +35,7 @@ class DashboardViewModel
 constructor(
   private val entryService: IEntryService,
   private val goalService: IGoalService,
+  private val accountService: IAccountService,
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
   private val healthConnectService: IHealthConnectService
@@ -47,7 +48,6 @@ constructor(
       subscribeMetrics()
       loadEntries()
       subscribeProgress()
-      subscribeGoals()
       subscribeLatestWeight()
     }
   }
@@ -70,10 +70,21 @@ constructor(
       is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      is DashboardIntent.Refresh -> refresh()
 
       else -> null
     }
     super.handleIntent(intent)
+  }
+
+  private fun refresh() {
+    viewModelScope.launch {
+      handleIntent(DashboardIntent.UpdateIsRefreshing(true))
+      entryService.syncOperations()
+      dashboardService.refreshDashboard()
+      accountService.refreshAccount()
+      handleIntent(DashboardIntent.UpdateIsRefreshing(false))
+    }
   }
 
   private fun subscribeProgress() {
@@ -93,14 +104,6 @@ constructor(
             else -> null
           }
         handleIntent(DashboardIntent.SetLatestWeight(latestWeight))
-      }
-    }
-  }
-
-  private fun subscribeGoals() {
-    viewModelScope.launch {
-      goalService.getCurrentGoal().collect {
-        handleIntent(DashboardIntent.SetGoal(it))
       }
     }
   }
@@ -231,10 +234,5 @@ constructor(
     viewModelScope.launch {
       navigationService.navigateTo(route)
     }
-  }
-
-  override fun onCleared() {
-    Log.i("Testing", "cleared dashboard")
-    super.onCleared()
   }
 }

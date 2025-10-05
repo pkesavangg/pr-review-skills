@@ -42,7 +42,7 @@ fun rememberGoalMarker(goal: Goal? = null): VerticalAxis.MarkerDecoration? {
         ),
     )
 
-  return remember {
+  return remember(goal){
     VerticalAxis.MarkerDecoration(
       y = { goal.goalWeight.div(10) },
       markerComponent = labelComponent,

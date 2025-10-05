@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -49,7 +48,6 @@ fun GraphView(
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
   placeHolder: String? = null,
-  goal: Goal? = null,
   onRangeUpdate: (String?) -> Unit = {},
   onTargetsUpdate: (targets: List<Double>, fallbackValue: List<Double>) -> Unit = { _, _ -> },
   onWeightLabelUpdate: (String) -> Unit = {},
@@ -57,12 +55,11 @@ fun GraphView(
 ) {
 
   // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines, goal) {
+  LaunchedEffect(graphLines, secondaryGraphLines) {
     viewModel.handleIntent(
       GraphIntent.InitializeGraph(
         graphLines = graphLines,
         secondaryGraphLines = secondaryGraphLines,
-        goal = goal,
       ),
     )
   }
@@ -125,7 +122,7 @@ fun GraphView(
     onRangeUpdate(null)
     onTargetsUpdate(listOfNotNull(state.markerIndex), emptyList())
   }
-  val goalMarker = rememberGoalMarker(goal = goal)
+  val goalMarker = rememberGoalMarker(goal = state.goal)
 
   val horizontalItemPlacer = horizontalItemPlacer(
     segment = segment,

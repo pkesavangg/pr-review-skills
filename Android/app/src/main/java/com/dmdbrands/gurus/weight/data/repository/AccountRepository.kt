@@ -275,7 +275,7 @@ constructor(
    * Gets the stored active account from the database as a Flow.
    */
   override fun getActiveAccount(): Flow<Account?> =
-    accountDao.getActiveAccount().map {
+    accountDao.getActiveAccount().distinctUntilChanged().map {
       it?.toDomainAccount()
     }
 

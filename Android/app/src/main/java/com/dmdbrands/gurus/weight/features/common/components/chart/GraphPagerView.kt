@@ -125,7 +125,6 @@ fun GraphPagerView(
           secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
           graphLines = listOf(segmentGraphLines),
           segment = currentSegment,
-          goal = state.goal,
           state = graphState,
           onRangeUpdate = {
             if (currentSegment == state.selectedSegment) {

@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
-import kotlinx.coroutines.Job
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
@@ -59,8 +58,6 @@ data class GraphState(
   val markerIndex: Double? = null,
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
-  val computationJob: Job? = null,
-  val animationJob: Job? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
 

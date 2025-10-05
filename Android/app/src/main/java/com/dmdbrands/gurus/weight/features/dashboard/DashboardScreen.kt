@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -45,6 +47,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen() {
   val viewmodel: DashboardViewModel = hiltViewModel()
@@ -54,6 +57,7 @@ fun DashboardScreen() {
 
   val scope = rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
+  var isRefreshing by remember { mutableStateOf(false) }
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
       if (event == Lifecycle.Event.ON_RESUME) {
@@ -79,7 +83,11 @@ fun DashboardScreen() {
       ),
     )
   }
-  DashboardScreenContent(state, viewmodel::handleIntent)
+  PullToRefreshBox(isRefreshing = state.isRefreshing , onRefresh = {
+    viewmodel.handleIntent(DashboardIntent.Refresh)
+  }) {
+    DashboardScreenContent(state, viewmodel::handleIntent)
+  }
 }
 
 @Composable
