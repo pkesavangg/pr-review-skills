@@ -5,7 +5,6 @@ import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -50,7 +49,6 @@ class GraphViewModel @AssistedInject constructor(
 
   private var onTargetUpdate: (List<Double>, List<Double>) -> Unit = { _, _ -> }
   private var onRangeUpdate: (String?) -> Unit = { }
-  private var onWeightLabelUpdate: (String) -> Unit = { }
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
 
@@ -327,7 +325,6 @@ class GraphViewModel @AssistedInject constructor(
 
         if (isActive) {
           // Pre-calculate all data on background thread
-          val weightLabel = calculateWeightLabel(currentState.graphLines, min, max)
           val graphLines = filterXValuesInRange(currentState.graphLines, min, max)
           val currentRangeTimeStamps = graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
           val primaryYAxis = calculateYAxisRange(
@@ -351,7 +348,6 @@ class GraphViewModel @AssistedInject constructor(
 
           // Update UI on main thread
           withContext(Dispatchers.Main) {
-            onWeightLabelUpdate(weightLabel)
             onTargetUpdate(currentRangeTimeStamps, emptyList())
             super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
             if (secondaryYAxis != null) {
@@ -370,38 +366,13 @@ class GraphViewModel @AssistedInject constructor(
   }
 
   /**
-   * Calculates weight label for the given range.
-   * Optimized to run on background thread.
-   */
-  private fun calculateWeightLabel(graphLines: List<GraphLine>, min: Long, max: Long): String {
-    val subset = averageYValuesInRange(graphLines, min, max)
-    return subset.values
-      .filterNotNull()
-      .joinToString(" / ") { it.label }
-  }
-
-  private fun updateWeightLabel(min: Long, max: Long) {
-    val subset = averageYValuesInRange(
-      _state.value.graphLines,
-      min,
-      max,
-    )
-    val joinedLabel = subset.values
-      .filterNotNull()
-      .joinToString(" / ") { it.label }
-    onWeightLabelUpdate(joinedLabel)
-  }
-
-  /**
    * Sets the callback functions for the graph.
    */
   fun setCallbacks(
     onTargetUpdate: (List<Double>, List<Double>) -> Unit,
     onRangeUpdate: (String?) -> Unit,
-    onWeightLabelUpdate: (String) -> Unit,
   ) {
     this.onTargetUpdate = onTargetUpdate
     this.onRangeUpdate = onRangeUpdate
-    this.onWeightLabelUpdate = onWeightLabelUpdate
   }
 }

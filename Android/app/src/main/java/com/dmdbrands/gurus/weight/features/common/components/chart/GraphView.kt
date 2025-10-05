@@ -68,7 +68,7 @@ fun GraphView(
   }
   // Store callbacks in ViewModel
   LaunchedEffect(Unit) {
-    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate, onWeightLabelUpdate)
+    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate)
   }
 
   val initialStartX = GraphUtil.getStartRange(segment, state.endTimeStamp)?.toDouble()
@@ -156,8 +156,7 @@ fun GraphView(
     modelProducer = state.modelProducer,
     scrollState = scrollState,
     handleIntent = viewModel::handleIntent,
+    onWeightLabelChange = onWeightLabelUpdate,
     horizontalItemPlacer = horizontalItemPlacer,
   )
 }
-
-
