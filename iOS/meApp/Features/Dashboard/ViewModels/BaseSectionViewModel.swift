@@ -51,6 +51,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return timePeriod != .total // Total period has no X-axis
     }
 
+    // MARK: - Layout Constants
+    private enum Layout {
+        static let xAxisReservedHeight: CGFloat = 18
+    }
+
+    private var xAxisReservedHeight: CGFloat { Layout.xAxisReservedHeight }
+
     // MARK: - Stroke & Point Sizing (moved from view)
     
     /// Line width used by charts for this period (3 for week/month/year, 2 for total)
@@ -170,16 +177,22 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// X-axis values with buffer
     var xAxisValues: [Date] {
-        guard let store = dashboardStore else { return [] }
-        // Use the live scroll position from this view model so axis ticks (including
-        // trailing phantom ticks) reflect the current gesture immediately and avoid
-        // the "jump" when scroll ends.
-        let liveScrollPosition = self.scrollPosition
-        return store.graphManager.generateVisibleXAxisValues(
-            for: timePeriod,
-            from: store.continuousOperations,
-            scrollPosition: liveScrollPosition
-        )
+        // If we have the store, try generating ticks from graphManager first
+        if let store = dashboardStore {
+            // Use the live scroll position from this view model so axis ticks (including
+            // trailing phantom ticks) reflect the current gesture immediately and avoid
+            // the "jump" when scroll ends.
+            let liveScrollPosition = self.scrollPosition
+            let ticks = store.graphManager.generateVisibleXAxisValues(
+                for: timePeriod,
+                from: store.continuousOperations,
+                scrollPosition: liveScrollPosition
+            )
+            // If manager returned ticks, use them; otherwise fall back to calendar-based ticks
+            if !ticks.isEmpty { return ticks.sorted() }
+        }
+        // Fallback: generate calendar-based ticks so X-axis labels show even with no data
+        return fallbackXAxisValues().sorted()
     }
     
     /// Determines if the chart is scrolled to the leftmost boundary
@@ -382,7 +395,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // Account for X-axis height only when this period has an X-axis
         // (week/month/year). Total view has no X-axis, so no subtraction.
-        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
+        let availableChartHeight = chartFrame.height - xAxisReservedHeight
         
         // If goal weight is outside domain, show at edges
         if goalWeight > domain.upperBound {
@@ -442,8 +455,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return CGPoint(x: xPosition, y: chartFrame.height / 2)
         }
         
-        // Account for X-axis height if this period has X-axis (18px adjustment)
-        let availableChartHeight = chartFrame.height - (hasXAxis ? 18 : 0)
+        // Account for X-axis height if this period has X-axis
+        let availableChartHeight = chartFrame.height - xAxisReservedHeight
         
         let yRatio = (value - yAxisDomain.lowerBound) / domainRange
         guard yRatio.isFinite else {
@@ -469,6 +482,32 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
     func formatXAxisLabel(for date: Date) -> String? {
+        // If there are no operations, use deterministic labels matching product spec
+        if chartOperations.isEmpty {
+            let calendar = Calendar(identifier: .gregorian)
+            switch timePeriod {
+            case .week:
+                // 3-letter weekday starting from Sunday, lowercased (sun, mon, ... sat)
+                let fmt = DateFormatter()
+                fmt.locale = Locale(identifier: "en_US_POSIX")
+                fmt.calendar = calendar
+                fmt.dateFormat = "EEE"
+                return fmt.string(from: date).lowercased()
+            case .month:
+                // Show day-of-month numerals: 1, 8, 15, 22, 29
+                let day = calendar.component(.day, from: date)
+                return String(day)
+            case .year:
+                // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
+                let fmt = DateFormatter()
+                fmt.locale = Locale(identifier: "en_US_POSIX")
+                fmt.calendar = calendar
+                fmt.dateFormat = "MMM"
+                return String(fmt.string(from: date).prefix(1)).lowercased()
+            default:
+                break
+            }
+        }
         return dashboardStore?.xLabelString(for: date, period: timePeriod)?.lowercased()
     }
     
@@ -650,5 +689,76 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return chartSeriesData
         }
         return cachedSeriesData
+    }
+
+    // MARK: - Fallback X-Axis Ticks (for empty data)
+    /// Generates calendar-based X-axis ticks for current period when there are no entries.
+    /// Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    private func fallbackXAxisValues() -> [Date] {
+        guard hasXAxis else { return [] }
+        let calendar = Calendar.current
+        let position = scrollPosition
+        // Helper to set midday for better alignment with scroll behavior (hour: 12)
+        func midday(_ date: Date) -> Date {
+            return calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        }
+        switch timePeriod {
+        case .week:
+            // Always start from the most recent Sunday at 00:00 local time
+            let startOfDay = calendar.startOfDay(for: position)
+            let sundayStart = calendar.nextDate(after: startOfDay,
+                                                matching: DateComponents(weekday: 1),
+                                                matchingPolicy: .nextTime,
+                                                direction: .backward)
+                ?? startOfDay
+            var ticks: [Date] = []
+            for offset in 0...7 { // include phantom tick at +7 days
+                if let day = calendar.date(byAdding: .day, value: offset, to: sundayStart) {
+                    ticks.append(midday(day))
+                }
+            }
+            return ticks
+        case .month:
+            // Day-of-month ticks: 1, 8, 15, 22, 29 (only those present in month)
+            guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
+            let validDays = [1, 8, 15, 22, 29]
+            var ticks: [Date] = []
+            let compsYM = calendar.dateComponents([.year, .month], from: monthInterval.start)
+            for d in validDays {
+                var c = compsYM
+                c.day = d
+                if let date = calendar.date(from: c), monthInterval.contains(date) {
+                    ticks.append(midday(date))
+                }
+            }
+            return ticks
+        case .year:
+            // Start at Jan 1 of current year
+            var comps = calendar.dateComponents([.year], from: position)
+            comps.month = 1
+            comps.day = 1
+            guard let yearStart = calendar.date(from: comps) else { return [] }
+            var ticks: [Date] = []
+            // 13 ticks: each month start plus phantom at next year's Jan 1
+            for m in 0...12 {
+                if let monthStart = calendar.date(byAdding: DateComponents(month: m), to: yearStart) {
+                    let monthComps = calendar.dateComponents([.year, .month], from: monthStart)
+                    let firstOfMonth = calendar.date(from: monthComps) ?? monthStart
+                    ticks.append(midday(firstOfMonth))
+                }
+            }
+            return ticks
+        case .total:
+            return []
+        }
+    }
+
+    /// Returns a fixed X-axis domain for empty-state rendering so labels appear left-to-right.
+    func fallbackXAxisDomain() -> ClosedRange<Date>? {
+        var ticks = fallbackXAxisValues()
+        guard !ticks.isEmpty else { return nil }
+        ticks.sort() // ensure chronological order
+        guard let first: Date = ticks.first, let last = ticks.last, first < last else { return nil }
+        return first...last
     }
 }

@@ -50,6 +50,14 @@ struct MetricDetailView: View {
         }
     }
 
+    // Dynamic unit for weight (lb/lbs or kg) based on the displayed magnitude
+    private var weightUnitLabel: String {
+        guard metric == .weight else { return "" }
+        let stored = Int(rawValue ?? 0)
+        let display = ConversionTools.convertStoredToDisplay(stored, isMetric: weightUnit == .kg)
+        return WeightValueConvertor.unitForDisplay(value: display, unit: weightUnit)
+    }
+
     private var measurementDescription: String {
         guard rawValue != nil else { return MetricStrings.noMeasurementAvailable }
         let date = DateTimeTools.getMonthDayYear(entry.entryTimestamp)
@@ -77,7 +85,7 @@ struct MetricDetailView: View {
                       .fontOpenSans(.heading2)
                       .foregroundColor(theme.textHeading)
                     if metric == .weight {
-                      Text(weightUnit.rawValue)
+                      Text(weightUnitLabel)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .padding(.leading, .spacingXS/2)

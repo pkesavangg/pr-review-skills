@@ -51,29 +51,27 @@ struct MyAccountsScreen: View {
     // MARK: Account List
     @ViewBuilder
     private var accountList: some View {
-        if accountsStore.userItems.count > 1 {
-            Section {
-                ForEach(accountsStore.userItems) { account in
-                    UserListItemView(
-                        user: account,
-                        openItemID: $openItemID,
-                        onTap: { id, isExpired in
-                            if isExpired {
-                                accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
-                            } else {
-                                accountsStore.switchActiveAccount(to: id)
-                            }
-                        },
-                        onDelete: { _ in
-                            accountsStore.userRemoveHandler(user: account)
+        Section {
+            ForEach(accountsStore.userItems) { account in
+                UserListItemView(
+                    user: account,
+                    openItemID: $openItemID,
+                    onTap: { id, isExpired in
+                        if isExpired {
+                            accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
+                        } else {
+                            accountsStore.switchActiveAccount(to: id)
                         }
-                    )
-                    .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
-                }
+                    },
+                    onDelete: { _ in
+                        accountsStore.userRemoveHandler(user: account)
+                    }
+                )
+                .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
             }
-            .listRowBackground(theme.backgroundPrimary)
-            .listRowSeparatorTint(theme.statusUtilityPrimary)
         }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
     
     // MARK: Buttons

@@ -197,7 +197,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         // Filter out deleted devices for the UI
         let activeDevices = localDevices.filter { device in
-            device.isDeleted != true
+            device.isSoftDeleted != true
         }
         
         return activeDevices
@@ -521,7 +521,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         if let providedScales = scales {
             deviceList = providedScales
         } else {
-            deviceList = try await localRepository.listScales().filter { $0.isDeleted != true }
+            deviceList = try await localRepository.listScales().filter { $0.isSoftDeleted != true }
         }
         
         // Fetch a map of currently connected devices keyed by broadcastIdString
@@ -571,7 +571,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         do {
             let accountId = try await getAccountId()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
-            let activeScales = allScales.filter { $0.isDeleted != true }
+            let activeScales = allScales.filter { $0.isSoftDeleted != true }
             logger.log(level: .debug, tag: tag, message: "Refreshing scales: found \(allScales.count) total, \(activeScales.count) active for account \(accountId)")
             
             // Log each scale for debugging
@@ -627,7 +627,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let unsyncedDevices = try await localRepository.getUnsyncedDevices()
             for device in unsyncedDevices {
                 // Skip devices already marked for deletion
-                if device.isDeleted == true { continue }
+                if device.isSoftDeleted == true { continue }
                 
                 let dto = device.toDTO()
                 

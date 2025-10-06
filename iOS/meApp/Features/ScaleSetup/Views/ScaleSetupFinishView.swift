@@ -21,7 +21,10 @@ struct ScaleSetupFinishView: View {
                         Text(title)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
-
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
                         Text(description)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
