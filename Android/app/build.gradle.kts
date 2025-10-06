@@ -18,7 +18,7 @@ plugins {
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
-
+  ndkVersion = "28.2.13676358"
   defaultConfig {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
@@ -27,6 +27,17 @@ android {
     versionName = "5.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    // 16KB page alignment for Android 15 compliance
+    ndk {
+      abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+    }
+    
+    // Enable 16KB page alignment for Android 15 compliance
+    externalNativeBuild {
+      cmake {
+        arguments += listOf("-DANDROID_PAGE_SIZE_AGNOSTIC=ON")
+      }
+    }
   }
 
   buildTypes {
@@ -38,6 +49,15 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
       )
+    }
+  }
+  packaging {
+    resources {
+      excludes += listOf("META-INF/NOTICE", "META-INF/LICENSE", "META-INF/*.kotlin_module")
+    }
+    // 16KB page alignment for Android 15 compliance
+    jniLibs {
+      useLegacyPackaging = false
     }
   }
   compileOptions {
