@@ -80,6 +80,8 @@ struct HistoryMonthListScreen: View {
             historyStore.resetSelectedMonth()
         })
         .refreshable {
+            // Only allow refresh when no swipe actions are open
+            guard openItemID == nil else { return }
             await historyStore.refreshAllEntries()
         }
         .sheet(item: $selectedEntry) { entry in

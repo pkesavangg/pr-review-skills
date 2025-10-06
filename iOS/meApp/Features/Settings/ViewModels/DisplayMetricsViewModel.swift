@@ -154,6 +154,29 @@ final class DisplayMetricsViewModel: ObservableObject {
         isWeightOnlyModeOn = !shouldMeasureImpedance
         isHeartRateOn = shouldMeasurePulse
         isHeartRateEnabled = shouldMeasurePulse
+        
+        // Ensure heart rate metric is disabled when heart rate banner is shown
+        if showHeartRateBanner {
+            disableHeartRateMetric()
+        }
+    }
+    
+    /// Disables the heart rate metric in the metrics list when heart rate is off
+    private func disableHeartRateMetric() {
+        let heartRateKey = "heartRate"
+        
+        // Disable and reorder heart rate in body metrics
+        if let heartRateIndex = metrics.firstIndex(where: { $0.key == heartRateKey }) {
+            metrics = reorderMetricsOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
+        }
+        
+        // Disable and reorder heart rate in progress metrics (if it exists there)
+        if let heartRateIndex = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
+            progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
+        }
+        
+        // Update display metrics value to reflect the change
+        updateDisplayMetricsValue()
     }
     
     func updateMetrics(_ newMetrics: [ScaleMetricSetting]) {
@@ -210,6 +233,12 @@ final class DisplayMetricsViewModel: ObservableObject {
     /// Reorders body metrics when a toggle changes, preserving the order of already-disabled items
     /// and appending the newly disabled item to the very end of the disabled group (or enabled group when turning on).
     func handleBodyMetricToggle(key: String, isEnabled: Bool) {
+        // Prevent enabling heart rate when heart rate banner is shown (heart rate is off)
+        if key == "heartRate" && isEnabled && showHeartRateBanner {
+            logger.log(level: .info, tag: tag, message: "Heart rate cannot be enabled while heart rate banner is shown")
+            return
+        }
+        
         metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
         updateDisplayMetricsValue()
         hasChanges = true
@@ -217,6 +246,12 @@ final class DisplayMetricsViewModel: ObservableObject {
     
     /// Same as `handleBodyMetricToggle` but for progress metrics list.
     func handleProgressMetricToggle(key: String, isEnabled: Bool) {
+        // Prevent enabling heart rate when heart rate banner is shown (heart rate is off)
+        if key == "heartRate" && isEnabled && showHeartRateBanner {
+            logger.log(level: .info, tag: tag, message: "Heart rate cannot be enabled while heart rate banner is shown")
+            return
+        }
+        
         progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
         updateDisplayMetricsValue()
         hasChanges = true

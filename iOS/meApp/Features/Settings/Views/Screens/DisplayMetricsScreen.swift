@@ -175,12 +175,18 @@ struct DisplayMetricsScreen: View {
         
         return NoteBox {
             HStack(spacing: .spacingSM) {
-                StatusRowView(
-                    iconName: AppAssets.heartIcon,
-                    label: commonLang.heartRateLabel,
-                    statusText: viewModel.isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased(),
-                    foregroundColor: iconAndLabelColor
-                )
+                HStack(spacing: .spacingXS) {
+                    AppIconView(icon: AppAssets.heartIcon, size: IconSize(width: 20, height: 20))
+                        .foregroundColor(iconAndLabelColor)
+                    
+                    Text(commonLang.heartRateLabel)
+                        .fontOpenSans(.body3)
+                        .foregroundColor(theme.textBody)
+                    
+                    Text(viewModel.isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased())
+                        .fontOpenSans(.body3)
+                        .foregroundColor(theme.textBody)
+                }
                 Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
                     router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
