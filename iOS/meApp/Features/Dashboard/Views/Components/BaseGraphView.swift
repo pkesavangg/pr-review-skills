@@ -47,8 +47,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     
     // MARK: - Visibility Helpers
     private var shouldShowYAxisLabels: Bool {
-        let goal = viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight
-        return goal != 0
+        // Show labels if there are entries regardless of goal presence
+        if !viewModel.chartOperations.isEmpty { return true }
+        // No entries: hide labels only when goal is not set
+        let goal = viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight)
+        return goal != nil
     }
     
     // MARK: - Equatable Implementation
@@ -153,8 +156,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
-                // Goal chip overlay (show only if rounded value is non-zero)
-                if viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) != 0 {
+                // Goal chip overlay: show when weightless is ON or rounded goal is non-zero
+                if dashboardStore.isWeightlessModeEnabled || (viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? 0) != 0 {
                     goalChipCallout()
                 }
             }
