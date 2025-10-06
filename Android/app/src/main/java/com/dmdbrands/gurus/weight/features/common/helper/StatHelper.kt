@@ -67,21 +67,22 @@ object StatHelper {
 
   fun getMetricValue(item: DashboardMetric, key: MetricKey, useShort: Boolean = false): Stat {
     val value = when (key) {
-      MetricKey.WEIGHT -> item.weight
-      MetricKey.BMI -> item.bmi
-      MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.rounded()
-      MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.rounded()
-      MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.rounded()
+      MetricKey.WEIGHT -> item.weight?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BMI -> item.bmi?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.HEART_RATE -> item.heartRate
-      MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.rounded()
+      MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.VISCERAL_FAT -> item.visceralFatLevel?.roundToInt()
-      MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.rounded()
-      MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.rounded()
-      MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.rounded()
+      MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.BMR -> item.bmr?.toInt()
       MetricKey.METABOLIC_AGE -> item.metabolicAge?.toInt()
       else -> null
     }
+
     return DashboardKey.Metric(key).toStat(value, useShort, item.unit)
   }
 
