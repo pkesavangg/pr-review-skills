@@ -177,6 +177,7 @@ fun <T> AppInput(
     showTrailingIconAlways: Boolean = false,
     maxLength: Int? = null,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    maxLength: Int? = null,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: (() -> Unit)? = null,
@@ -209,6 +210,7 @@ fun <T> AppInput(
             showTrailingIconAlways = showTrailingIconAlways,
             onTrailingAction = onTrailingAction,
             trailingIconId = trailingIconId,
+            maxLength = maxLength,
             onImeAction = onImeAction,
             nextFocusRequester = nextFocusRequester,
         )
@@ -234,6 +236,7 @@ fun <T> InputFieldBase(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    maxLength: Int? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -283,9 +286,11 @@ fun <T> InputFieldBase(
                     formControl?.onValueChange(convertedValue)
                 }
             }
+          }
+            }
         }
         // If maxLength is exceeded, do nothing (don't emit value change)
-    }
+
 
     fun clearValueAndNotify() {
         val newValue = ""

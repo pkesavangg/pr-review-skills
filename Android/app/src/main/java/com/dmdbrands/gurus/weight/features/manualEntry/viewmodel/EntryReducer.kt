@@ -136,7 +136,7 @@ data class EntryForm(
               "",
               listOf(
                 FormValidations.bodyCompValidator(
-                  AppValidatorConfig.BodyComp.MIN, AppValidatorConfig.BodyComp.MAX, false,
+                  AppValidatorConfig.HeartRate.MIN, AppValidatorConfig.HeartRate.MAX, false,
                 ),
               ),
             ),
@@ -192,6 +192,7 @@ data class EntryState(
 sealed interface EntryIntent : IReducer.Intent {
   data object UpdateOnRelaunch : EntryIntent
   data object Save : EntryIntent
+  data object EarlyExit : EntryIntent
   data class UpdateForm(
     val form: MultiFormGroup<EntryForm>,
   ) : EntryIntent

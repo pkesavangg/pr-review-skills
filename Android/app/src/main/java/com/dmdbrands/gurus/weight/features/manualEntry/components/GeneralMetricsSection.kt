@@ -47,6 +47,7 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyFatFocusRequester,
+            maxLength = 3,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -58,6 +59,7 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = muscleMassFocusRequester,
+            maxLength = 3,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -69,6 +71,7 @@ fun GeneralMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyWaterFocusRequester,
+            maxLength = 3,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -81,6 +84,7 @@ fun GeneralMetricsSection(
             imeAction = if (isLastSection) ImeAction.Done else ImeAction.Next,
             nextFocusRequester = if (!isLastSection) nextFocusRequester else null,
             onImeAction = if (isLastSection) onImeAction else null,
+            maxLength = 3,
             modifier =
                 Modifier
                     .fillMaxWidth()

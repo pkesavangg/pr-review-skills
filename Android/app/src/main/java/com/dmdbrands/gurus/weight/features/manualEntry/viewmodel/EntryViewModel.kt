@@ -125,6 +125,10 @@ constructor(
         }
       }
 
+      is EntryIntent.EarlyExit -> {
+        earlyExitToHome()
+      }
+
       else -> null
     }
   }
@@ -164,10 +168,60 @@ constructor(
     }
   }
 
+  fun Exit(){
+    viewModelScope.launch {
+      navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+        if (state.value.form.isDirty || state.value.form.isTouched) {
+          return@registerOnDeactivate suspendCancellableCoroutine { cont ->
+            var isResumed = false
+
+            dialogQueueService.enqueue(
+              DialogModel.Confirm(
+                title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                message = AppPopupStrings.UnsavedChanges.Message,
+                onConfirm = {
+                  if (!isResumed) {
+                    isResumed = true
+                    deactivate()
+                    cont.resume(true)
+                  }
+                },
+                onCancel = {
+                  if (!isResumed) {
+                    isResumed = true
+                    cont.resume(false)
+                  }
+                },
+              ),
+            )
+          }
+        } else {
+          return@registerOnDeactivate true
+        }
+      }
+    }
+  }
+
   fun deactivate() {
     viewModelScope.launch {
       navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
     }
+  }
+
+  /**
+   * Handles early exit with unsaved changes confirmation dialog.
+   * Similar to initDeactivate but for manual back button handling.
+   */
+  fun earlyExit() {
+    Exit()
+  }
+
+  /**
+   * Convenience method for early exit that navigates back to home.
+   * Use this for simple back button handling.
+   */
+  fun earlyExitToHome() {
+    earlyExit()
   }
 
   private fun saveEntry() {

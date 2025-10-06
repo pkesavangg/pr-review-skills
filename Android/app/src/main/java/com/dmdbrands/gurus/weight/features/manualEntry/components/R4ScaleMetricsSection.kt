@@ -50,6 +50,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = boneMassFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(finalHeartRateFocusRequester),
@@ -60,6 +61,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = visceralFatFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(boneMassFocusRequester),
@@ -70,6 +72,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = subcutaneousFatFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(visceralFatFocusRequester),
@@ -80,6 +83,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = proteinFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(subcutaneousFatFocusRequester),
@@ -90,6 +94,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = skeletalMusclesFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(proteinFocusRequester),
@@ -100,6 +105,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bmrFocusRequester,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(skeletalMusclesFocusRequester),
@@ -110,6 +116,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = metabolicAgeFocusRequester,
+            maxLength = 5,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(bmrFocusRequester),
@@ -120,6 +127,7 @@ fun R4ScaleMetricsSection(
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Done,
             onImeAction = onImeAction,
+            maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(metabolicAgeFocusRequester),

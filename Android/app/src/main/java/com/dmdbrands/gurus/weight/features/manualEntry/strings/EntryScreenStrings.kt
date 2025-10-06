@@ -8,7 +8,7 @@ object EntryScreenStrings {
     const val Title = "Manual Entry"
 
     /** Label for the value input field. */
-    const val WEIGHT_LABEL = "weight "
+    const val WEIGHT_LABEL = "weight"
 
     /** Label for the height input field. */
     const val HeightLabel = "Height"

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.manualEntry
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -24,6 +26,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -41,6 +46,7 @@ import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryState
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @Composable
@@ -65,6 +71,11 @@ private fun EntryScreenContent(
       keyboardController?.hide()
     }
   }
+
+  BackHandler {
+    scope.launch {
+      navStackController.removeLast(AppRoute.Home)
+    }}
   val entryForm = state.form.forms
   val scrollState = rememberScrollState()
   val calendar = Calendar.getInstance()
@@ -99,6 +110,7 @@ private fun EntryScreenContent(
           focusManager.clearFocus()
           keyboardController?.hide()
         },
+         maxLength = 4,
         modifier =
           Modifier
             .fillMaxWidth()

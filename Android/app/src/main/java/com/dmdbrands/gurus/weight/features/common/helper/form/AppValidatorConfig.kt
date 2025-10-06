@@ -50,6 +50,16 @@ class AppValidatorConfig {
         const val MAX = 99
     }
 
+  object HeartRate {
+    const val MIN = 0
+    const val MAX = 200
+  }
+
+  object VisceralFat {
+    const val MIN = 0
+    const val MAX = 60
+  }
+
     object WeightKg {
         const val MIN = 0
         const val MAX = 450
