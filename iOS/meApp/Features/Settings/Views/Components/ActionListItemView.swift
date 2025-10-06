@@ -47,13 +47,12 @@ struct ActionListItemView: View {
                     // Chevron based on type
                     chevronView()
                 }
-                // Force layout refresh whenever the badge visibility changes to
-                // avoid retaining previous leading spacing after the dot hides.
-                .id(config.showDot)
                 Spacer()
             }
             .frame(height: rowHeight)
         }
+        // Force a full row refresh when the dot visibility changes.
+        .id(config.showDot)
         .disabled(config.isDisabled || (config.toggleBinding != nil && config.onTap == nil))
         .opacity(config.isDisabled ? 0.5 : 1.0)
     }
