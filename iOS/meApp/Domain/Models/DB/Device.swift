@@ -39,7 +39,7 @@ final class Device {
     var sku: String? // SKU identifier
     var mac: String? // MAC address
     var password: Int64? // Device password
-    @Attribute(originalName: "isDeleted") var isSoftDeleted: Bool? // Soft-delete flag (renamed from isDeleted to avoid CoreData reserved name)
+    @Attribute(originalName: "isDeleted") var isSoftDeleted: Bool? // Soft-delete flag (renamed from isDeleted to avoid SwiftData reserved name)
     var deviceName: String? // Device name
     var deviceType: String? // Device type (e.g., 'scale', 'bgm')
     var broadcastId: Int64? // Broadcast ID

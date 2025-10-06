@@ -744,7 +744,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
 
             // Handle Integration Settings
-            if let _ = localAccount.integrationSettings,
+            if localAccount.integrationSettings != nil,
                !isSynced {
                 // • Apple Health (HealthKit)
                 if offlineIsHealthKitOn == true {
