@@ -768,8 +768,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Log error but don't fail the entry creation process
             await logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
         }
-        
-        await logger.log(level: .info, tag: tag, message: "Entry addition handled successfully")
     }
     
     /// Handles entry update by treating as delete + add
@@ -779,8 +777,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // For updates, we can treat as delete + add for simplicity
         try await handleEntryDeleted(entry)
         try await handleEntryAdded(entry)
-        
-        await logger.log(level: .info, tag: tag, message: "Entry update handled successfully")
     }
     
     /// Handles entry deletion by updating affected day and month summaries
@@ -822,8 +818,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Log error but don't fail the entry deletion process
             await logger.log(level: .error, tag: tag, message: "Failed to delete entry from integrations: \(error.localizedDescription)")
         }
-        
-        await logger.log(level: .info, tag: tag, message: "Entry deletion handled successfully")
     }
     
     // MARK: - Private Helper Methods

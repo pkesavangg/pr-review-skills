@@ -213,7 +213,6 @@ final class HistoryStore: ObservableObject {
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
             
             self.entries = sorted
-            self.isEmptyState = sorted.isEmpty
         } catch {
             self.entries = []
         }
