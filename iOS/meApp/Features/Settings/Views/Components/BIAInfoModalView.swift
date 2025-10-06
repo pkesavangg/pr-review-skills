@@ -18,7 +18,7 @@ struct BIAInfoModalView: View {
                 
                 HStack{
                     Spacer()
-                    Image(AppAssets.xmark)
+                    Image(AppAssets.xmarkSmall)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
@@ -48,7 +48,6 @@ struct BIAInfoModalView: View {
             .padding(.spacingMD)
             .background(theme.backgroundSecondary)
             .cornerRadius(.radiusXL)
-            .frame(width: geometry.size.width * 0.85)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
         .background(.clear)
