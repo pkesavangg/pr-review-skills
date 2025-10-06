@@ -658,6 +658,23 @@ class DashboardStore: ObservableObject {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
         }
     }
+
+    // MARK: - View Helpers moved from DashboardScreen
+    func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
+        await loadDashboardConfigurationFromAPI()
+        if updateMetrics {
+            self.updateMetricsForCurrentView()
+        }
+        await MainActor.run {
+            self.objectWillChange.send()
+            if fullRefresh { self.refreshDashboardState() }
+        }
+    }
+
+    func refreshAll() async {
+        await syncEntries()
+        onAppearActions()
+    }
     
     /// Syncs the removal state from the metrics manager to the UI state
     func syncRemovalStateFromMetricsManager() {
@@ -668,8 +685,11 @@ class DashboardStore: ObservableObject {
         // Clear existing removal state
         state.ui.removedMetrics.removeAll()
         
+        // Ensure activeCount doesn't exceed currentMetrics.count to prevent range crash
+        let safeActiveCount = min(activeCount, currentMetrics.count)
+        
         // Mark metrics beyond the active count as removed
-        for i in activeCount..<currentMetrics.count {
+        for i in safeActiveCount..<currentMetrics.count {
             state.ui.removedMetrics.insert(currentMetrics[i].label)
         }
     }
@@ -683,8 +703,11 @@ class DashboardStore: ObservableObject {
         // Clear existing removal state
         state.ui.removedStreaks.removeAll()
         
+        // Ensure activeCount doesn't exceed currentStreakItems.count to prevent range crash
+        let safeActiveCount = min(activeCount, currentStreakItems.count)
+        
         // Mark streak items beyond the active count as removed
-        for i in activeCount..<currentStreakItems.count {
+        for i in safeActiveCount..<currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
     }
@@ -692,60 +715,24 @@ class DashboardStore: ObservableObject {
     // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
     internal func onEntryAdded(_ entry: Entry) {
-        // EntryService already handles incremental summary updates via handleEntryAdded
-        // Ensure all UI updates happen on main thread
-        DispatchQueue.main.async {
-            // Update dashboard-specific data and clear caches
-            self.loadLatestEntryData()
-            self.loadGoalCardData()
-            
-            // Clear cached chart series data and visible operations to force recalculation
-            self.cachedChartSeriesData = nil
-            self.cachedVisibleOperations = []
-            self.lastVisibleOperationsCacheTime = Date.distantPast
-            
-            // Force UI update
-            self.objectWillChange.send()
-            
-            // Update Y-axis after a brief delay to allow data propagation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.updateYAxisCache()
-            }
-        }
+        handleEntryLifecycleChange()
     }
     
     internal func onEntryUpdated(_ entry: Entry) {
-        // EntryService already handles incremental summary updates via handleEntryUpdated
-        // Ensure all UI updates happen on main thread
-        DispatchQueue.main.async {
-            // Update dashboard-specific data and clear caches
-            self.loadLatestEntryData()
-            self.loadGoalCardData()
-            
-            // Clear cached chart series data and visible operations to force recalculation
-            self.cachedChartSeriesData = nil
-            self.cachedVisibleOperations = []
-            self.lastVisibleOperationsCacheTime = Date.distantPast
-            
-            // Force UI update
-            self.objectWillChange.send()
-            
-            // Update Y-axis after a brief delay to allow data propagation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.updateYAxisCache()
-            }
-        }
+        handleEntryLifecycleChange()
     }
     
     internal func onEntryDeleted(_ entry: Entry) {
-        // EntryService already handles incremental summary updates via handleEntryDeleted
-        // Ensure all UI updates happen on main thread
+        handleEntryLifecycleChange()
+    }
+
+    private func handleEntryLifecycleChange() {
+        // EntryService handles incremental summaries; update dashboard state/UI consistently
         DispatchQueue.main.async {
-            // Update dashboard-specific data and clear caches
             self.loadLatestEntryData()
             self.loadGoalCardData()
             
-            // Clear cached chart series data and visible operations to force recalculation
+            // Clear caches to force recalculation
             self.cachedChartSeriesData = nil
             self.cachedVisibleOperations = []
             self.lastVisibleOperationsCacheTime = Date.distantPast
@@ -919,7 +906,6 @@ class DashboardStore: ObservableObject {
     /// Ensures goal card position is valid when streaks are removed
     func validateGoalCardPosition() {
         let maxPosition = streakItemsToShow.count
-        let columns = DevicePlatform.isTablet ? 4 : 2
         let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
         
         // More flexible validation: allow goal card to be positioned anywhere
@@ -1060,97 +1046,29 @@ class DashboardStore: ObservableObject {
                 try await metricsManager.saveMetricsToAPI()
                 
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.selectedMetricLabel = nil
-                        // Clear edit snapshot so next edit session starts fresh
-                        self.hasEditSnapshot = false
-                    }
-                }
+                commonPostSaveUIReset()
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.selectedMetricLabel = nil
-                        // Clear edit snapshot so next edit session starts fresh even on error
-                        self.hasEditSnapshot = false
-                    }
-                }
+                commonPostSaveUIReset()
+            }
+        }
+    }
+
+    private func commonPostSaveUIReset() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.state.ui.isLoading = false
+                self.state.ui.loaderOverride = nil
+                self.state.ui.isEditMode = false
+                self.state.ui.resetDragState()
+                self.state.ui.selectedMetricLabel = nil
+                self.hasEditSnapshot = false
             }
         }
     }
     
     func resetDashboard() {
-        state.ui.isLoading = true
-        state.ui.loaderOverride = LoaderModel(text: lang.saving)
-        
-        state.ui.selectedMetricLabel = nil
-        state.ui.isEditMode = false
-        state.ui.resetDragState()
-        
-        // Reset the saved order to restore default order
-        resetGridOrder()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-                
-                // Delegate reset operations to managers
-                Task {
-                    try? await self.metricsManager.resetMetricsToDefaults()
-                    try? await self.streakManager.resetStreakData()
-                    
-                    // Reset metrics to their original body metrics order
-                    self.metricsManager.resetOrderToDefault()
-                    
-                    // After resetting metrics to defaults, update them with latest data
-                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
-                        try? await self.metricsManager.updateMetrics(with: latestEntry)
-                    }
-                    
-                    // Save the reset configuration to API
-                    try? await self.metricsManager.saveMetricsToAPI()
-                }
-                
-                self.state.ui.isGoalCardRemoved = false
-                
-                Task {
-                    do {
-                        try await self.streakManager.refreshStreakData()
-                        try await self.metricsManager.saveMetricsToAPI()
-                        
-                        // Sync the removal state from both managers after reset
-                        await MainActor.run {
-                            self.syncRemovalStateFromMetricsManager()
-                            self.syncRemovalStateFromStreakManager()
-                        }
-                    } catch {
-                        self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
-                    }
-                }
-                
-                self.state.ui.selectedMetricLabel = nil
-                self.state.graph.clearSelection()
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.resetGridLayout()
-                // Reset snapshot after a full dashboard reset
-                self.hasEditSnapshot = false
-                
-                // Force UI update to reflect the reset state
-                self.objectWillChange.send()
-            }
-        }
+        performDashboardResetFlow()
     }
     
     /// Resets the saved grid order to restore default order
@@ -1162,6 +1080,10 @@ class DashboardStore: ObservableObject {
     
     /// Enhanced reset that properly restores removed items and reverses reordering
     func resetDashboardEnhanced() {
+        performDashboardResetFlow()
+    }
+
+    private func performDashboardResetFlow() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
         
@@ -1577,19 +1499,154 @@ class DashboardStore: ObservableObject {
     
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
-        // Use the latest entry from data manager if available
-        if let latestEntry = dataManager.getLatestEntrySync() {
-            return latestEntry
-        } else {
-            // Fallback to creating a new entry with latest weight
-            let latestWeight = dataManager.state.latestWeightStored
-            return metricsManager.createEntryForMetricInfoSync(metricLabel: metricLabel, weight: latestWeight)
+        // Build an entry that mirrors the current dashboard context
+        // If a chart point is selected, use that point's values
+        // Otherwise, use averages of the currently visible operations
+        let entry = Entry(
+            id: UUID(),
+            entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
+            accountId: "dashboard",
+            operationType: OperationType.create.rawValue,
+            deviceType: "scale",
+            isSynced: true
+        )
+
+        if let point = state.graph.selectedPoint {
+            // Helpers to convert Double? to Int? with 0 -> nil
+            func intOrNil(_ x: Double?) -> Int? {
+                guard let x = x else { return nil }
+                let v = Int(x.rounded())
+                return v == 0 ? nil : v
+            }
+            func scaled10OrNil(_ x: Double?) -> Int? {
+                guard let x = x else { return nil }
+                let v = Int((x * 10.0).rounded())
+                return v == 0 ? nil : v
+            }
+
+            let storedWeight: Int? = {
+                let v = Int(point.weight.rounded())
+                return v == 0 ? nil : v
+            }()
+
+            entry.scaleEntry = BathScaleEntry(
+                weight: storedWeight,
+                bodyFat: intOrNil(point.bodyFat),
+                muscleMass: intOrNil(point.muscleMass),
+                water: intOrNil(point.water),
+                bmi: intOrNil(point.bmi),
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: scaled10OrNil(point.bmr),
+                metabolicAge: intOrNil(point.metabolicAge),
+                proteinPercent: intOrNil(point.proteinPercent),
+                pulse: intOrNil(point.pulse),
+                skeletalMusclePercent: intOrNil(point.skeletalMusclePercent),
+                subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
+                visceralFatLevel: scaled10OrNil(point.visceralFatLevel),
+                boneMass: intOrNil(point.boneMass),
+                impedance: nil,
+                unit: nil
+            )
+            return entry
         }
+
+        // No selection: compute visible-window averages to mirror tiles and weight label
+        let ops = getVisibleOperations()
+        if ops.isEmpty {
+            // Leave metrics nil so UI shows placeholders
+            entry.scaleEntry = BathScaleEntry(
+                weight: dataManager.state.latestWeightStored,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: nil,
+                metabolicAge: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                skeletalMusclePercent: nil,
+                subcutaneousFatPercent: nil,
+                visceralFatLevel: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: nil
+            )
+            return entry
+        }
+
+        // Average helpers
+        func avg(_ values: [Double?]) -> Double? {
+            let xs = values.compactMap { $0 }
+            guard !xs.isEmpty else { return nil }
+            return xs.reduce(0, +) / Double(xs.count)
+        }
+
+        // Helpers for averages: Double? -> Int? with 0 -> nil
+        func intOrNil(_ x: Double?) -> Int? {
+            guard let x = x else { return nil }
+            let v = Int(x.rounded())
+            return v == 0 ? nil : v
+        }
+        func scaled10OrNil(_ x: Double?) -> Int? {
+            guard let x = x else { return nil }
+            let v = Int((x * 10.0).rounded())
+            return v == 0 ? nil : v
+        }
+
+        // Weight average in stored units
+        let avgStoredWeightOpt: Int? = {
+            let ws = ops.map { Double($0.weight) }
+            guard let mean = avg(ws) else { return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored }
+            let v = Int(mean.rounded())
+            return v == 0 ? nil : v
+        }()
+
+        // Build scaleEntry from averages (convert display doubles to stored Ints where appropriate)
+        let avgBodyFat = avg(ops.map { $0.bodyFat }).map { Int($0.rounded()) }
+        let avgMuscle = avg(ops.map { $0.muscleMass }).map { Int($0.rounded()) }
+        let avgWater = avg(ops.map { $0.water }).map { Int($0.rounded()) }
+        let avgBmi = avg(ops.map { $0.bmi }).map { Int($0.rounded()) }
+        entry.scaleEntry = BathScaleEntry(
+            weight: avgStoredWeightOpt,
+            bodyFat: intOrNil(avgBodyFat.map { Double($0) }),
+            muscleMass: intOrNil(avgMuscle.map { Double($0) }),
+            water: intOrNil(avgWater.map { Double($0) }),
+            bmi: intOrNil(avgBmi.map { Double($0) }),
+            source: "dashboard"
+        )
+
+        // Metric entry: visceralFat and bmr are stored scaled by 10
+        let avgBmr = scaled10OrNil(avg(ops.map { $0.bmr }))
+        let avgMetAge = intOrNil(avg(ops.map { $0.metabolicAge }))
+        let avgProtein = intOrNil(avg(ops.map { $0.proteinPercent }))
+        let avgPulse = intOrNil(avg(ops.map { $0.pulse }))
+        let avgSkel = intOrNil(avg(ops.map { $0.skeletalMusclePercent }))
+        let avgSubFat = intOrNil(avg(ops.map { $0.subcutaneousFatPercent }))
+        let avgVisceral = scaled10OrNil(avg(ops.map { $0.visceralFatLevel }))
+        let avgBone = intOrNil(avg(ops.map { $0.boneMass }))
+
+        entry.scaleEntryMetric = BathScaleMetric(
+            bmr: avgBmr,
+            metabolicAge: avgMetAge,
+            proteinPercent: avgProtein,
+            pulse: avgPulse,
+            skeletalMusclePercent: avgSkel,
+            subcutaneousFatPercent: avgSubFat,
+            visceralFatLevel: avgVisceral,
+            boneMass: avgBone,
+            impedance: nil,
+            unit: nil
+        )
+        return entry
     }
     
-    // Async version for when we need the latest data
-    func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
-        return await metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
+    func createEntryForMetricInfoAsync(metricLabel: String? = nil) async -> Entry {
+        await metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
     }
     
     func getBodyMetric(for metricLabel: String) -> BodyMetric {

@@ -161,7 +161,6 @@ final class HistoryStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    
     // MARK: - Internal helpers -------------------------------------------
     
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
@@ -195,9 +194,8 @@ final class HistoryStore: ObservableObject {
 
         do {
             let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
-            // Log original count for debugging
             logger.log(level: .debug, tag: tag, message: "Fetched \(fetched.count) entries for month \(selectedMonth.id)")
-            
+
             // UI-level deduplication:
             // Fixes duplicate history entries from wifi scales by grouping on entryTimestamp and keeping the latest by serverTimestamp.
             let deduplicated = Dictionary(

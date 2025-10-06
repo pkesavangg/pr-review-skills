@@ -64,12 +64,12 @@ struct SwipeableModifier: ViewModifier {
     var openItemID: Binding<UUID?>?
 
     // MARK: - Configuration
-    private let swipeMinimumDistance: CGFloat = 15
+    private let swipeMinimumDistance: CGFloat = 20 // Increased to avoid conflicts with scrolling
     private let expandThreshold: CGFloat = 50
     private let rubberBandPower: CGFloat = 0.7
     private let animationDuration: CGFloat = 0.3
     private let velocityThreshold: CGFloat = 200
-    private let maxSwipeAngle: CGFloat = 45 // Maximum angle for horizontal swipe recognition
+    private let maxSwipeAngle: CGFloat = 30 // Reduced angle for stricter horizontal detection
 
     // MARK: - State
     @State private var currentOffset: CGFloat = 0
@@ -141,7 +141,7 @@ struct SwipeableModifier: ViewModifier {
                 .animation(.interactiveSpring(response: animationDuration, dampingFraction: 0.8), value: totalOffset)
         }
         .clipped()
-        .simultaneousGesture(
+        .gesture(
             dragGesture,
             including: swipeButtons.isEmpty ? .subviews : .all
         )
@@ -192,8 +192,15 @@ struct SwipeableModifier: ViewModifier {
         guard isHorizontalSwipe else { return }
 
         // Additional check: ensure horizontal movement is dominant
-        if abs(deltaY) > abs(deltaX) {
+        // Use a stricter threshold to be more selective about horizontal vs vertical detection
+        let horizontalThreshold: CGFloat = 2.0 // Increased from 1.5 to 2.0 for stricter detection
+        if abs(deltaY) > abs(deltaX) * horizontalThreshold {
             // Vertical movement is dominant, don't process
+            return
+        }
+        
+        // Additional check: require minimum horizontal movement before processing
+        if abs(deltaX) < swipeMinimumDistance {
             return
         }
 
