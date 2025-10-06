@@ -29,23 +29,23 @@ protocol DashboardGoalManaging {
 
 /// Protocol defining graph management operations
 protocol DashboardGraphManaging {
-  func updateScrollPosition(to date: Date)
-  func handleScrollPositionChange(_ newPosition: Date?)
-  func handleChartSelection(at selectedDate: Date?) async
-  @available(iOS 18.0, *)
-  func handleScrollPhaseChange(_ phase: ScrollPhase) async
-func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) async -> [GraphSeries]
-  func updateSelectedPeriod(_ period: TimePeriod)
-  func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async -> YAxisScale
-func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) async
-func getVisibleOperations(from operations: [BathScaleWeightSummary]) async -> [BathScaleWeightSummary]
-  func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) async
+    func updateScrollPosition(to date: Date)
+    func handleScrollPositionChange(_ newPosition: Date?)
+    func handleChartSelection(at selectedDate: Date?) async
+    @available(iOS 18.0, *)
+    func handleScrollPhaseChange(_ phase: ScrollPhase) async
+    func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries]
+    func updateSelectedPeriod(_ period: TimePeriod)
+    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale
+    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat)
+    func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary]
+    func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary])
 
-  func handleScrollStart()
-  func handleScrollEnd() async
-  func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date]
-  func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool) -> Date
-  func forceVisibleOperationsRecalculation()
+    func handleScrollStart()
+    func handleScrollEnd() async
+    func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date]
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool) -> Date
+    func forceVisibleOperationsRecalculation()
 }
 
 
@@ -59,11 +59,11 @@ protocol DashboardMetricsManaging {
     func resetMetricsToDefaults() async throws
     func toggleMetricVisibility(at index: Int) async throws
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws
-    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) async -> Double?
+    func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double?
     func getMetricsToShow(isEditMode: Bool, dashboardType: DashboardType, removedMetrics: Set<String>) -> [MetricItem]
     func getRemovedMetricLabels() -> Set<String>
     func createEntryForMetricInfo(metricLabel: String?) async -> Entry
-    func getBodyMetric(for metricLabel: String) async -> BodyMetric
+    func getBodyMetric(for metricLabel: String) -> BodyMetric
     func handleMetricLongPress(for metricLabel: String, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>)
     func handleSelectedMetricInfoChange(_ newValue: String?, selectedEntry: Binding<Entry?>, selectedMetric: Binding<BodyMetric?>) async
 }
