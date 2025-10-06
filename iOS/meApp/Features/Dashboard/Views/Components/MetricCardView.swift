@@ -81,33 +81,32 @@ struct MetricCardView: View {
         return label
     }
     
-    /// Maps standard metric labels to R4ScaleSetup descriptive labels
     private func getR4ScaleSetupLabel(for originalLabel: String) -> String {
         switch originalLabel {
         case DashboardStrings.bmi:
-            return DashboardStrings.bmiR4ScaleSetup
+            return DashboardStrings.bmi
         case DashboardStrings.bodyFat:
-            return DashboardStrings.bodyFatR4ScaleSetup
+            return DashboardStrings.bodyFatBase
         case DashboardStrings.muscle:
-            return DashboardStrings.muscleR4ScaleSetup
+            return DashboardStrings.muscleBase
         case DashboardStrings.water:
-            return DashboardStrings.waterR4ScaleSetup
+            return DashboardStrings.waterBase
         case DashboardStrings.heartBpm:
-            return DashboardStrings.heartBpmR4ScaleSetup
+            return DashboardStrings.heartBase
         case DashboardStrings.bone:
-            return DashboardStrings.boneR4ScaleSetup
+            return DashboardStrings.boneBase
         case DashboardStrings.visceralFat:
-            return DashboardStrings.visceralFatR4ScaleSetup
+            return DashboardStrings.visceralFat
         case DashboardStrings.subFat:
-            return DashboardStrings.subFatR4ScaleSetup
+            return DashboardStrings.subFatBase
         case DashboardStrings.protein:
-            return DashboardStrings.proteinR4ScaleSetup
+            return DashboardStrings.proteinBase
         case DashboardStrings.skelMuscle:
-            return DashboardStrings.skelMuscleR4ScaleSetup
+            return DashboardStrings.skelMuscle
         case DashboardStrings.bmrKcal:
-            return DashboardStrings.bmrKcalR4ScaleSetup
+            return DashboardStrings.bmrBase
         case DashboardStrings.metAge:
-            return DashboardStrings.metAgeR4ScaleSetup
+            return DashboardStrings.metAgeBase
         default:
             return originalLabel
         }
@@ -171,8 +170,7 @@ struct MetricCardView: View {
             verticalPadding: MetricCardView.twelveCardVerticalPadding,
             parentView: .dashboard
         )
-        
-        // R4ScaleSetup view with descriptive labels (center-aligned)
+
         MetricCardView(
             value: "24.5",
             label: DashboardStrings.bmi,
@@ -207,7 +205,6 @@ struct MetricCardView: View {
             parentView: .R4ScaleSetup
         )
         
-        // R4ScaleSetup view with longer labels that might wrap
         MetricCardView(
             value: "1,800",
             label: DashboardStrings.bmrKcal,
