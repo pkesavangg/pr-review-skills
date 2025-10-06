@@ -116,12 +116,31 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     func checkAndTriggerFeedModal() {
         let result = ggIAMService.checkFeedModalTrigger()
         if let feedItem = result {
-            notificationService.showModal(ModalData(
+            Task {
+                await showFeedModalWithPreloadedImage(feedItem: feedItem)
+            }
+        }
+    }
+    
+    /// Preloads the feed item image before showing the modal
+    private func showFeedModalWithPreloadedImage(feedItem: FeedItem) async {
+        // Preload the image first
+        let imageURL = URL(string: feedItem.titleImage)
+        let imageLoaded = await ImagePreloader.preloadImage(from: imageURL)
+        
+        // Show modal on main thread regardless of image load success
+        // (If image fails to load, the modal will show with placeholder)
+        await MainActor.run {
+            self.notificationService.showModal(ModalData(
                 presentedView: AnyView(IAMFeedModalView(feedItem: feedItem, onClose: {
                     self.notificationService.dismissModal()
                 })),
                 backdropDismiss: false
             ))
+        }
+        
+        if !imageLoaded {
+            logger.log(level: .error, tag: tag, message: "Failed to preload feed modal image", data: ["imageURL": feedItem.titleImage])
         }
     }
     
