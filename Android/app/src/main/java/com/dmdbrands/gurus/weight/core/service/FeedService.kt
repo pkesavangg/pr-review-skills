@@ -104,7 +104,7 @@ class FeedService @Inject constructor(
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
       val items = feedRepository.fetchFeedItems()
       // TODO: Need to uncomment the setfeeditems
-      //      ggIAMService.setFeedItems(items)
+      ggIAMService.setFeedItems(items)
       // setMockFeedItems()
       _feedsChanged.emit(items)
       updateNotificationBadge()
