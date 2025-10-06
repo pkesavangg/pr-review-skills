@@ -57,7 +57,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         managedDevice.nickname = device.nickname
         managedDevice.deviceName = device.deviceName
         managedDevice.deviceType = device.deviceType
-        managedDevice.isDeleted = device.isDeleted
+        managedDevice.isSoftDeleted = device.isSoftDeleted
         managedDevice.isConnected = device.isConnected
         managedDevice.isWifiConfigured = device.isWifiConfigured
         managedDevice.mac = device.mac
@@ -99,7 +99,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         managedDevice.nickname = updatedDevice.nickname
         managedDevice.deviceName = updatedDevice.deviceName
         managedDevice.deviceType = updatedDevice.deviceType
-        managedDevice.isDeleted = updatedDevice.isDeleted
+        managedDevice.isSoftDeleted = updatedDevice.isSoftDeleted
         managedDevice.isConnected = updatedDevice.isConnected
         managedDevice.isWifiConfigured = updatedDevice.isWifiConfigured
         managedDevice.mac = updatedDevice.mac
@@ -321,7 +321,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
             throw NSError(domain: "ScaleService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Device not found"])
         }
 
-        device.isDeleted = true
+        device.isSoftDeleted = true
         device.isSynced = false
         try context.save()
     }
@@ -330,7 +330,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// - Returns: An array of devices marked as deleted and unsynced.
     func getDevicesMarkedForDeletion() async throws -> [Device] {
         let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.isDeleted ?? false == true && ($0.isSynced ?? false) == false
+            $0.isSoftDeleted ?? false == true && ($0.isSynced ?? false) == false
         })
         return try context.fetch(descriptor)
     }

@@ -12,6 +12,12 @@ struct AppConstants {
         static let appReviewTriggerTimeout = 2 * 1_000_000_000 // 2 seconds delay for app review triggers in nanoseconds
     }
     
+    /// Numeric precision/tolerance constants
+    struct Precision {
+        /// Tolerance for floating-point equality and integer checks
+        static let doubleEqualityEpsilon: Double = 1e-9
+    }
+    
     struct Account {
         /// Maximum number of accounts that can be stored locally
         static let maxAccounts = 10

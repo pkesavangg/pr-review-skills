@@ -1,6 +1,25 @@
 import Foundation
 
 struct WeightValueConvertor {
+    /// Returns the correct unit abbreviation for a displayed weight value.
+    /// - Parameters:
+    ///   - value: Display value in the provided unit (already converted for display, not stored tenths).
+    ///   - unit: Target unit for display.
+    /// - Returns: "kg" for metric; for imperial returns "lb" or "lbs" using these rules:
+    ///            0.0 → "lbs", 0.35 → "lb", 1 → "lb", 2.3 → "lbs"
+    static func unitForDisplay(value: Double, unit: WeightUnit) -> String {
+        if unit == .kg { return "kg" }
+        let epsilon = AppConstants.Precision.doubleEqualityEpsilon
+        let magnitude = abs(value)
+        if magnitude < epsilon { return "lbs" }
+        let isInteger = abs(magnitude - magnitude.rounded()) < epsilon
+        let displayedMagnitude: Double = isInteger
+            ? magnitude.rounded()
+            : (magnitude * 10).rounded() / 10
+        if displayedMagnitude < 1.0 - epsilon { return "lb" }
+        if abs(displayedMagnitude - 1.0) <= epsilon { return "lb" }
+        return "lbs"
+    }
     /// Converts and formats a weight value, optionally applying weightless mode and showing plus symbol
     /// - Parameters:
     ///   - value: The weight value to convert
@@ -34,10 +53,20 @@ struct WeightValueConvertor {
 
     /// Helper to format weight with optional plus symbol
     private static func formatWithSymbol(_ value: Double, showSymbol: Bool) -> String {
+        // Drop trailing .0 for integers; keep one decimal otherwise
+        let isInteger = abs(value - value.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
         if showSymbol && value > 0 {
-            return "+\(String(format: "%.1f", value))"
+            if isInteger {
+                return "+\(Int(value.rounded()))"
+            } else {
+                return "+" + String(format: "%.1f", value)
+            }
         } else {
-            return String(format: "%.1f", value)
+            if isInteger {
+                return "\(Int(value.rounded()))"
+            } else {
+                return String(format: "%.1f", value)
+            }
         }
     }
 }

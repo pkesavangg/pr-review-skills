@@ -189,9 +189,6 @@ final class HistoryStore: ObservableObject {
         let selectedMonth = month ?? self.selectedMonth
         guard let selectedMonth else { return }
 
-        if showLoader { notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
-        defer { if showLoader { notificationService.dismissLoader() } }
-
         do {
             let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
             logger.log(level: .debug, tag: tag, message: "Fetched \(fetched.count) entries for month \(selectedMonth.id)")

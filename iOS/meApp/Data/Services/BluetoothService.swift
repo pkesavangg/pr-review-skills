@@ -151,7 +151,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .sink { [weak self] account in
                 Task {
                     await self?.handleAccountUpdate(account)
-                    let _ = await self?.updateUserProfileForR4Scales()
+                    if account != nil {
+                        let _ = await self?.updateUserProfileForR4Scales()
+                    }
                 }
             }
             .store(in: &cancellables)
