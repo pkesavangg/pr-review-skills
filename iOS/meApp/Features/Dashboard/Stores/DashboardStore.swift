@@ -251,6 +251,22 @@ class DashboardStore: ObservableObject {
                allStreaksRemoved
     }
     
+    /// Checks if a goal is set for the active account
+    /// Returns true if goalSettings exists and has valid goal type, initial weight, and goal weight
+    var hasGoalSet: Bool {
+        guard let account = accountService.activeAccount,
+              let goalSettings = account.goalSettings else {
+            return false
+        }
+        
+        // Check if all required goal fields are set
+        return goalSettings.goalType != nil &&
+               goalSettings.initialWeight != nil &&
+               goalSettings.goalWeight != nil &&
+               goalSettings.initialWeight! > 0 &&
+               goalSettings.goalWeight! > 0
+    }
+    
     var shouldShowStreakGrid: Bool {
         // Only show streak grid if there are visible (non-removed) streaks
         let visibleStreaks = streakItemsToShow.filter { !state.ui.removedStreaks.contains($0.label) }

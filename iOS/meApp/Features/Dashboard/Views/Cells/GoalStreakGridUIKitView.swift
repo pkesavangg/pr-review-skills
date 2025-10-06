@@ -203,7 +203,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
     if isEditMode {
-        if !isGoalCardRemoved {
+        if !isGoalCardRemoved && store.hasGoalSet {
             let streakCount = nonRemovedStreaks.count
             let columns = DevicePlatform.isTablet ? 4 : 2
             let hasRemovedStreaks = !removedStreaks.isEmpty
@@ -266,12 +266,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             widgets.append(.streak(streak))
         }
 
-        if isGoalCardRemoved {
+        if isGoalCardRemoved && store.hasGoalSet {
             widgets.append(.goalCard)
         }
     } else {
 
-        if !isGoalCardRemoved {
+        if !isGoalCardRemoved && store.hasGoalSet {
             let streakCount = nonRemovedStreaks.count
             let columns = DevicePlatform.isTablet ? 4 : 2
             let hasRemovedStreaks = !removedStreaks.isEmpty
