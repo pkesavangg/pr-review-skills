@@ -39,7 +39,7 @@ final class Device {
     var sku: String? // SKU identifier
     var mac: String? // MAC address
     var password: Int64? // Device password
-    var isDeleted: Bool? // If the device is deleted
+    @Attribute(originalName: "isDeleted") var isSoftDeleted: Bool? // Soft-delete flag (renamed from isDeleted to avoid SwiftData reserved name)
     var deviceName: String? // Device name
     var deviceType: String? // Device type (e.g., 'scale', 'bgm')
     var broadcastId: Int64? // Broadcast ID
@@ -69,7 +69,7 @@ final class Device {
          sku: String? = nil,
          mac: String? = nil,
          password: Int64? = nil,
-         isDeleted: Bool? = nil,
+         isSoftDeleted: Bool? = nil,
          deviceName: String? = nil,
          deviceType: String? = nil,
          broadcastId: Int64? = nil,
@@ -95,7 +95,7 @@ final class Device {
         self.sku = sku
         self.mac = mac
         self.password = password
-        self.isDeleted = isDeleted
+        self.isSoftDeleted = isSoftDeleted
         self.deviceName = deviceName
         self.deviceType = deviceType
         self.broadcastId = broadcastId
@@ -166,7 +166,7 @@ final class Device {
             sku: dto.sku,
             mac: dto.mac,
             password: dto.password.map { Int64($0) },
-            isDeleted: dto.isDeleted,
+            isSoftDeleted: dto.isDeleted,
             deviceName: dto.name,
             deviceType: "scale",
             broadcastId: dto.broadcastId.map { Int64($0) },
@@ -216,7 +216,7 @@ final class Device {
             createdAt: self.createdAt,
             id: self.id,
             isConnected: self.isConnected,
-            isDeleted: self.isDeleted,
+            isDeleted: self.isSoftDeleted,
             isTemporary: nil,
             isWeighOnlyModeEnabledByOthers: self.isWeighOnlyModeEnabledByOthers,
             isWifiConfigured: self.isWifiConfigured,

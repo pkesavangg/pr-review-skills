@@ -276,7 +276,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let upper = viewModel.yAxisDomain.upperBound
         let epsilon: Double = 1e-6
         let domainRange = upper - lower
-        let xAxisHeight: CGFloat = viewModel.hasXAxis ? 18 : 0
+        let xAxisHeight: CGFloat = 18
         let availableHeight = max(1, viewModel.chartFrame.height - xAxisHeight)
         let onePointValue = domainRange / Double(availableHeight)
         // Only nudge the bottom-most tick when lower domain is negative.
