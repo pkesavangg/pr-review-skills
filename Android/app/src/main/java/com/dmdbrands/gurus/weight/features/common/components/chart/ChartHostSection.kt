@@ -85,17 +85,28 @@ internal fun ChartHostSection(
     scope.launch {
       val validWeightLabel = calculateWeightLabel(state.graphLines, minTarget, maxTarget)
 
-      val weightLabel = validWeightLabel ?: scrollState
-        .getInterpolatedYValues(
-          xValues = scrollState.getVisibleAxisLabels(
-            itemPlacer = horizontalItemPlacer,
-          ),
+      val weightLabel: String = validWeightLabel ?: run {
+        // Get visible X-axis labels using the provided item placer
+        val visibleXLabels = scrollState.getVisibleAxisLabels(
+          itemPlacer = horizontalItemPlacer,
+        )
+
+        // Interpolate Y-values for the visible X-axis range using cubic interpolation
+        val interpolatedYValues = scrollState.getInterpolatedYValues(
+          xValues = visibleXLabels,
           interpolationType = InterpolationType.CUBIC,
         )
-        .first().let { values ->
-          values.map { it.toDouble() }.average()
-            .let { String.format(Locale.US, "%.1f", it) } // locale-safe, 2 decimal places
-        }
+
+        // Take the first set of interpolated values (if available)
+        val firstYValues = interpolatedYValues.firstOrNull()
+
+        // Compute the formatted average weight value or return a blank string
+        firstYValues?.toList()
+          ?.map { it.toDouble() }
+          ?.average()
+          ?.let { String.format(Locale.US, "%.1f", it) }
+          ?: " "
+      }
 
       onWeightLabelChange(weightLabel)
     }
@@ -147,8 +158,8 @@ internal fun ChartHostSection(
           markerDecoration = goalMarker,
           guideline = if (state.isEmptyGraph && goalMarker == null) null else
             rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-              thickness = 0.5.dp,
+              fill = fill(MeTheme.colorScheme.iconSecondary.copy(0.5f)),
+              thickness = 1.dp,
             ),
           label =
             rememberTextComponent(

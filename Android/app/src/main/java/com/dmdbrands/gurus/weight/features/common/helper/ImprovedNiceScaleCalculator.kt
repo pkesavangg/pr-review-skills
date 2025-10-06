@@ -18,7 +18,7 @@ object ImprovedNiceScaleCalculator {
     maxValue: Double,
     goalWeight: Double,
     isWeightLessMode: Boolean = false,
-    targetTickCount: Int = 5
+    targetTickCount: Int = 4
   ): AxisMeta {
     val actualMin = kotlin.math.floor(minValue)
     val actualMax = kotlin.math.ceil(maxValue)
