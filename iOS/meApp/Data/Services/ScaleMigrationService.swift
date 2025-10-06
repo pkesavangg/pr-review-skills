@@ -144,7 +144,7 @@ final class ScaleMigrationService {
             sku: ionicScale.sku,
             mac: ionicScale.mac,
             password: ionicScale.password.map { Int64($0) },
-            isDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
+            isSoftDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
             deviceName: ionicScale.name,
             deviceType: "scale",
             broadcastId: ionicScale.broadcastId.map { Int64($0) },

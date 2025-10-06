@@ -523,6 +523,20 @@ class DashboardStore: ObservableObject {
         return goalManager.getUnitText()
     }
     
+    /// Returns the dynamic unit label for the primary weight display.
+    /// - Notes:
+    ///   - For kg: always "kg".
+    ///   - For lb: singular/plural depends on displayed magnitude (after rounding like the weight text):
+    ///       - 0          -> "lbs"
+    ///       - (0, 1)     -> "lb"
+    ///       - 1          -> "lb"
+    ///       - (> 1)      -> "lbs"
+    var displayUnitText: String {
+        let unit: WeightUnit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        let displayValue = displayWeight ?? getCurrentAverageWeight()
+        return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
+    }
+    
     /// Returns true if there are entries but none in the current time period
     var hasEntriesButNoneInCurrentPeriod: Bool {
         return goalManager.hasEntriesButNoneInCurrentPeriod(continuousOperations: continuousOperations, visibleOperations: visibleOperations)

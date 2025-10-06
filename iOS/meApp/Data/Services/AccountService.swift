@@ -618,22 +618,53 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 // Keep the published `activeAccount` in sync with the freshly-fetched model
         self.activeAccount = localAccount
         let isSynced = localAccount.isSynced ?? true
-
+        // Take an immutable snapshot of offline values BEFORE any network calls can mutate `localAccount`
+        // Profile-related
+        let offlineFirstName = localAccount.firstName
+        let offlineLastName = localAccount.lastName
+        let offlineEmail = localAccount.email
+        let offlineGender = localAccount.gender
+        let offlineZipcode = localAccount.zipcode
+        let offlineDob = localAccount.dob
+        // BodyComp-related
+        let offlineWeightUnit = localAccount.weightSettings?.weightUnit
+        let offlineHeightDouble = Double(localAccount.weightSettings?.height ?? "0")
+        let offlineActivityLevel = localAccount.weightSettings?.activityLevel
+        // Notification-related
+        let offlineShouldSendEntry = localAccount.notificationSettings?.shouldSendEntryNotifications
+        let offlineShouldSendWeightIn = localAccount.notificationSettings?.shouldSendWeightInEntryNotifications
+        // Dashboard-related
+        let offlineDashboardTypeRaw = localAccount.dashboardSettings?.dashboardType
+        let offlineDashboardMetricsCsv = localAccount.dashboardSettings?.dashboardMetrics
+        // Streak-related
+        let offlineIsStreakOn = localAccount.streaksSettings?.isStreakOn
+        let offlineStreakTimestamp = localAccount.streaksSettings?.streakTimestamp
+        // Weightless-related
+        let offlineIsWeightlessOn = localAccount.weightlessSettings?.isWeightlessOn
+        let offlineWeightlessTimestamp = localAccount.weightlessSettings?.weightlessTimestamp
+        let offlineWeightlessWeight = localAccount.weightlessSettings?.weightlessWeight
+        // Goal-related
+        let offlineGoalType = localAccount.goalSettings?.goalType
+        let offlineInitialWeight = localAccount.goalSettings?.initialWeight
+        let offlineGoalWeight = localAccount.goalSettings?.goalWeight
+        let offlineGoalIsSynced = localAccount.goalSettings?.isSynced
+        // Integrations-related
+        let offlineIsHealthKitOn = localAccount.integrationSettings?.isHealthKitOn
         // Use the original localAccount for relationship access to avoid SwiftData backing data issues
         do {
             // Handle Profile updates
-            if let firstName = localAccount.firstName,
-               let gender = localAccount.gender,
-               let zipcode = localAccount.zipcode,
-               let dob = localAccount.dob,
-               let weightUnit = localAccount.weightSettings?.weightUnit,
-               let height = Double(localAccount.weightSettings?.height ?? "0"),
-               let activityLevel = localAccount.weightSettings?.activityLevel,
+            if let firstName = offlineFirstName,
+               let gender = offlineGender,
+               let zipcode = offlineZipcode,
+               let dob = offlineDob,
+               let weightUnit = offlineWeightUnit,
+               let height = offlineHeightDouble,
+               let activityLevel = offlineActivityLevel,
                !isSynced {
                 let profile = Profile(
                     firstName: firstName,
-                    lastName: localAccount.lastName ?? "",
-                    email: localAccount.email,
+                    lastName: offlineLastName ?? "",
+                    email: offlineEmail,
                     gender: gender,
                     zipcode: zipcode,
                     dob: dob,
@@ -643,10 +674,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await updateProfile(profile)
             }
+
             // Handle Body Composition updates
-            if let weightUnit = localAccount.weightSettings?.weightUnit,
-               let height = Double(localAccount.weightSettings?.height ?? "0"),
-               let activityLevel = localAccount.weightSettings?.activityLevel,
+            if let weightUnit = offlineWeightUnit,
+               let height = offlineHeightDouble,
+               let activityLevel = offlineActivityLevel,
                !isSynced {
                 let bodyComp = BodyComp(
                     weightUnit: weightUnit,
@@ -655,9 +687,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await updateBodyComp(bodyComp)
             }
+            
             // Handle Notification Settings
-            if let shouldSendEntry = localAccount.notificationSettings?.shouldSendEntryNotifications,
-               let shouldSendWeightIn = localAccount.notificationSettings?.shouldSendWeightInEntryNotifications,
+            if let shouldSendEntry = offlineShouldSendEntry,
+               let shouldSendWeightIn = offlineShouldSendWeightIn,
                !isSynced {
                 let notifications = Notifications(
                     shouldSendEntryNotifications: shouldSendEntry,
@@ -666,39 +699,40 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateNotifications(notifications: notifications)
             }
 
+            
             // Handle Dashboard Type
-            if let dashboardType = localAccount.dashboardSettings?.dashboardType,
+            if let dashboardType = offlineDashboardTypeRaw,
                !isSynced {
                 try await updateDashboardType(type: DashboardType(rawValue: dashboardType) ?? .dashboard4)
             }
 
             // Handle Dashboard Metrics
-            if let metricsString = localAccount.dashboardSettings?.dashboardMetrics,
+            if let metricsString = offlineDashboardMetricsCsv,
                !isSynced {
                 let metrics = metricsString.split(separator: ",").map(String.init)
                 try await updateDashboardMetrics(metrics: metrics)
             }
 
             // Handle Streak Status
-            if let isStreakOn = localAccount.streaksSettings?.isStreakOn,
-               let streakTimestamp = localAccount.streaksSettings?.streakTimestamp,
+            if let isStreakOn = offlineIsStreakOn,
+               let streakTimestamp = offlineStreakTimestamp,
                !isSynced {
                 try await updateStreak(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp)
             }
 
             // Handle Weightless Mode
-            if let isWeightlessOn = localAccount.weightlessSettings?.isWeightlessOn,
-               let weightlessTimestamp = localAccount.weightlessSettings?.weightlessTimestamp,
-               let weightlessWeight = localAccount.weightlessSettings?.weightlessWeight,
+            if let isWeightlessOn = offlineIsWeightlessOn,
+               let weightlessTimestamp = offlineWeightlessTimestamp,
+               let weightlessWeight = offlineWeightlessWeight,
                !isSynced {
                 try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
             }
 
             // Handle Goal Settings
-            if let goalType = localAccount.goalSettings?.goalType,
-               let initialWeight = localAccount.goalSettings?.initialWeight,
-               let goalWeight = localAccount.goalSettings?.goalWeight,
-               localAccount.goalSettings?.isSynced == false {
+            if let goalType = offlineGoalType,
+               let initialWeight = offlineInitialWeight,
+               let goalWeight = offlineGoalWeight,
+               offlineGoalIsSynced == false {
                 let goal = Goal(
                     type: goalType,
                     goalWeight: Int(goalWeight),
@@ -710,10 +744,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
 
             // Handle Integration Settings
-            if let integrationSettings = localAccount.integrationSettings,
+            if localAccount.integrationSettings != nil,
                !isSynced {
                 // • Apple Health (HealthKit)
-                if integrationSettings.isHealthKitOn {
+                if offlineIsHealthKitOn == true {
                     // Fire-and-forget; the helper already updates the local store & published state.
                     _ = try await updateIntegrations(
                         integrationType: .healthKit
@@ -925,6 +959,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func updatePublishedState(forceRefresh: Bool = false) async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
+        
         
         if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive

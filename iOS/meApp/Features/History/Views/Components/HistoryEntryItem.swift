@@ -52,7 +52,10 @@ struct HistoryEntryItem: View {
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
                     
-                    Text(weightUnit.rawValue)
+                    Text(WeightValueConvertor.unitForDisplay(
+                        value: ConversionTools.convertStoredToDisplay(Int(entry.scaleEntry?.weight ?? 0), isMetric: weightUnit == .kg),
+                        unit: weightUnit
+                    ))
                         .fontOpenSans(.body2)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
