@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -282,6 +284,17 @@ constructor(
           throw e
         }
       }
+    }
+  }
+
+  override suspend fun updateDashboardType(type: DashboardType) {
+    AppLog.d(TAG, "Update Dashboard Type")
+    try {
+      val accountId = activeAccountFlow.first()!!.id
+      accountRepository.updateDashboardType(type.value)
+      accountRepository.updateLocalDashboardType(accountId, "", dashboardType = DashboardType.DASHBOARD_12_METRICS)
+    } catch (e: Exception) {
+      AppLog.d(TAG, "Error updating Dashboard Type", e.toString())
     }
   }
 

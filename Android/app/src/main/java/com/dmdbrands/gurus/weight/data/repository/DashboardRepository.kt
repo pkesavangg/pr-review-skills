@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
@@ -31,8 +32,8 @@ class DashboardRepository @Inject constructor(
     /**
      * Updates the visible metric keys for the given account.
      */
-    override suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey>) =
-        dashboardKeysDatastore.updateVisibleMetricKeys(accountId, keys)
+    override suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey>, dashboardType: DashboardType) =
+        dashboardKeysDatastore.updateVisibleMetricKeys(accountId, keys, dashboardType)
 
     /**
      * Updates the visible milestone keys for the given account.
@@ -49,8 +50,8 @@ class DashboardRepository @Inject constructor(
     /**
      * Resets the visible metric keys for the given account to the default list.
      */
-    override suspend fun resetVisibleMetricKeys(accountId: String) =
-        dashboardKeysDatastore.resetVisibleMetricKeys(accountId)
+    override suspend fun resetVisibleMetricKeys(accountId: String, dashboardType: DashboardType) =
+        dashboardKeysDatastore.resetVisibleMetricKeys(accountId, dashboardType)
 
     /**
      * Resets the visible milestone keys for the given account to the default list.
@@ -61,6 +62,6 @@ class DashboardRepository @Inject constructor(
     /**
      * Resets both visible metric and milestone keys for the given account to the default lists.
      */
-    override suspend fun resetVisibleKeys(accountId: String) =
-        dashboardKeysDatastore.resetVisibleKeys(accountId)
+    override suspend fun resetVisibleKeys(accountId: String, dashboardType: DashboardType) =
+        dashboardKeysDatastore.resetVisibleKeys(accountId, dashboardType)
 }

@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -35,6 +37,7 @@ constructor(
   private val entryService: IEntryService,
   private val accountService: IAccountService,
   private val appSyncService: IAppSyncService,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
@@ -80,6 +83,18 @@ constructor(
         if (scaleEntry != null) {
           loadAppSyncData(scaleEntry)
         }
+      }
+    }
+
+    // Handle hasBluetoothWifiScale flow to update dashboard type
+    viewModelScope.launch {
+      deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
+        val dashboardType = if (hasBluetoothWifiScale) {
+          DashboardType.DASHBOARD_12_METRICS
+        } else {
+          DashboardType.DASHBOARD_4_METRICS
+        }
+        handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
       }
     }
   }

@@ -5,6 +5,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -22,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -38,7 +40,8 @@ constructor(
   private val accountService: IAccountService,
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
-  private val healthConnectService: IHealthConnectService
+  private val healthConnectService: IHealthConnectService,
+  private val accountService: IAccountService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -46,6 +49,7 @@ constructor(
     viewModelScope.launch {
       handleIntent(DashboardIntent.LoadEntries)
       subscribeMetrics()
+      subscribeDashboardType()
       loadEntries()
       subscribeProgress()
       subscribeLatestWeight()
@@ -117,6 +121,19 @@ constructor(
     }
   }
 
+  private fun subscribeDashboardType() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect { account ->
+        if (account != null) {
+          Log.d("dashboardtype", "${account.dashboardType}")
+          val dashboardType = if (account.dashboardType == DashboardType.DASHBOARD_12_METRICS.value)
+            DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
+          handleIntent(DashboardIntent.SetDashboardType(dashboardType))
+        }
+      }
+    }
+  }
+
   private fun resetDashboard(onConfirm: () -> Unit) {
     val string = DashboardString.ResetDialog
     dialogQueueService.showDialog(
@@ -128,7 +145,8 @@ constructor(
         onConfirm = {
           viewModelScope.launch {
             onConfirm()
-            dashboardService.resetVisibleKeys()
+            val currentDashboardType = state.value.dashboardType
+            dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
           }
         },
       ),

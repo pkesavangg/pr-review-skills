@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
@@ -140,7 +141,14 @@ data class EntryForm(
               ),
             ),
             boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            visceralFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+            visceralFat = FormControl.create(
+                "",
+                listOf(
+                    FormValidations.bodyCompValidator(
+                        AppValidatorConfig.VisceralAge.MIN, AppValidatorConfig.VisceralAge.MAX, false,
+                    ),
+                ),
+            ),
             subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
             protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
             skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
@@ -175,6 +183,7 @@ data class EntryState(
   val form: MultiFormGroup<EntryForm>,
   val weightMode: WeightUnit = WeightUnit.LB,
   val isLoading: Boolean = false,
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
 /**
@@ -188,6 +197,7 @@ sealed interface EntryIntent : IReducer.Intent {
   ) : EntryIntent
 
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
+    data class UpdateDashboardType(val dashboardType: DashboardType) : EntryIntent
 
   data class LoadAppSyncData(
     val scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry,
@@ -216,7 +226,13 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
         )
       }
 
-      is EntryIntent.LoadAppSyncData -> {
+        is EntryIntent.UpdateDashboardType -> {
+            state.copy(
+                dashboardType = intent.dashboardType,
+            )
+        }
+
+        is EntryIntent.LoadAppSyncData -> {
         // Create new form with AppSync data, following Profile pattern exactly
         val scaleEntry = intent.scaleEntry
         val currentForm = state.form.forms

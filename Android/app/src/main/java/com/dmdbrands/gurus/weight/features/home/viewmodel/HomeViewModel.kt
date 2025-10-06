@@ -94,7 +94,7 @@ constructor(
   }
 
   fun enableSessionImpedence(device: Device) {
-    CoroutineScope(Dispatchers.Main).launch {
+    CoroutineScope(Dispatchers.IO).launch {
       ggDeviceService.updateSettings(
         device.toGGBTDevice(),
         GGBTSetting(

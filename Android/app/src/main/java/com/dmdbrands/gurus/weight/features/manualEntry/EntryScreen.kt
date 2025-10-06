@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -82,14 +81,14 @@ private fun EntryScreenContent(
         Column(
             modifier =
                 Modifier
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = MeTheme.spacing.sm)
-                    .padding(top = MeTheme.spacing.md)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() },
-                    ),
+                  .verticalScroll(scrollState)
+                  .padding(horizontal = MeTheme.spacing.sm)
+                  .padding(top = MeTheme.spacing.md)
+                  .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { focusManager.clearFocus() },
+                  ),
             verticalArrangement = Arrangement.Top,
         ) {
             AppInput(
@@ -103,8 +102,8 @@ private fun EntryScreenContent(
                 },
                 modifier =
                     Modifier
-                        .fillMaxWidth()
-                        .focusRequester(weightFocusRequester),
+                      .fillMaxWidth()
+                      .focusRequester(weightFocusRequester),
             )
             DateTimeInput(
                 formControl = entryForm.weightDateTime.controls.dateTime,
@@ -123,7 +122,7 @@ private fun EntryScreenContent(
                     focusManager.clearFocus()
                     keyboardController?.hide()
                 },
-                dashboardType = DashboardType.DASHBOARD_12_METRICS,
+                dashboardType = state.dashboardType,
             )
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(

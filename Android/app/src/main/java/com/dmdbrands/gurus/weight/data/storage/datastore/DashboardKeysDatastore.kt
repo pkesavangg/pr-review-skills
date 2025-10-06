@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.data.storage.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
 import com.dmdbrands.gurus.weight.proto.VisibleKeys
@@ -67,12 +68,13 @@ class DashboardKeysDatastore(
    *
    * @param accountId The account ID.
    * @param keys The list of MetricKey to set.
+   * @param dashboardType The dashboard type to determine default keys.
    */
-  suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey> = listOf()) {
+  suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey> = listOf(), dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS) {
     updateData { current ->
       val accountExists = hasVisibleKeys(accountId)
       val toSet = when {
-        !accountExists && keys.isEmpty() -> defaultMetricKeys()
+        !accountExists && keys.isEmpty() -> defaultMetricKeys(dashboardType)
         else -> keys
       }
       val currentVisibleKeys = current.accountMetricMap[accountId] ?: VisibleKeys.getDefaultInstance()
@@ -87,13 +89,13 @@ class DashboardKeysDatastore(
     }
   }
 
-  suspend fun initializeDashboardKeys(accountId: String) {
+  suspend fun initializeDashboardKeys(accountId: String, dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS) {
     updateData { current ->
       // If the account already has visible keys, do nothing
       if (hasVisibleKeys(accountId)) return@updateData current
 
       // Otherwise, initialize both metric and milestone keys
-      val defaultMetrics = defaultMetricKeys()
+      val defaultMetrics = defaultMetricKeys(dashboardType)
       val defaultMilestones = defaultMilestoneKeys()
 
       val newVisibleKeys = VisibleKeys.newBuilder()
@@ -137,10 +139,20 @@ class DashboardKeysDatastore(
   }
 
   /**
-   * Returns the default list of visible metric keys (all metric keys).
+   * Returns the default list of visible metric keys based on dashboard type.
+   * @param dashboardType The dashboard type to determine which metrics to include.
    */
-  private fun defaultMetricKeys(): List<MetricKey> =
-    MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED && it != MetricKey.WEIGHT }
+  private fun defaultMetricKeys(dashboardType: DashboardType): List<MetricKey> = when (dashboardType) {
+    DashboardType.DASHBOARD_4_METRICS -> listOf(
+      MetricKey.BMI,
+      MetricKey.BODY_FAT,
+      MetricKey.MUSCLE_MASS,
+      MetricKey.BODY_WATER
+    )
+    DashboardType.DASHBOARD_12_METRICS -> MetricKey.entries.filter { 
+      it != MetricKey.UNRECOGNIZED && it != MetricKey.WEIGHT 
+    }
+  }
 
   /**
    * Returns the default list of visible milestone keys (all milestone keys).
@@ -169,9 +181,10 @@ class DashboardKeysDatastore(
   /**
    * Resets the visible metric keys for the given account to the default list.
    * @param accountId The account ID.
+   * @param dashboardType The dashboard type to determine default keys.
    */
-  suspend fun resetVisibleMetricKeys(accountId: String) {
-    updateVisibleMetricKeys(accountId, defaultMetricKeys())
+  suspend fun resetVisibleMetricKeys(accountId: String, dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS) {
+    updateVisibleMetricKeys(accountId, defaultMetricKeys(dashboardType), dashboardType)
   }
 
   /**
@@ -185,11 +198,12 @@ class DashboardKeysDatastore(
   /**
    * Resets both visible metric and milestone keys for the given account to the default lists.
    * @param accountId The account ID.
+   * @param dashboardType The dashboard type to determine default metric keys.
    */
-  suspend fun resetVisibleKeys(accountId: String) {
+  suspend fun resetVisibleKeys(accountId: String, dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS) {
     updateData { current ->
       val updatedVisibleKeys = VisibleKeys.newBuilder()
-        .addAllVisibleMetricKeys(defaultMetricKeys())
+        .addAllVisibleMetricKeys(defaultMetricKeys(dashboardType))
         .addAllVisibleMilestoneKeys(defaultMilestoneKeys())
         .build()
 

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
@@ -16,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
  * @property dayWiseEntries List of day-wise body scale summaries.
  * @property monthWiseEntries List of month-wise body scale summaries.
  * @property pagerState Current pager state for horizontal graph navigation.
+ * @property dashboardType Current dashboard type (4 or 12 metrics).
  */
 data class DashboardState(
   val isLoading: Boolean = false,
@@ -30,6 +32,7 @@ data class DashboardState(
   val pagerState: Int = 0,
   val scrollTarget: Double? = null,
   val isRefreshing: Boolean = false
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
 /**
@@ -52,6 +55,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
   data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
+  data class SetDashboardType(val dashboardType: DashboardType) : DashboardIntent
   object OnConnectScale: DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
 }
@@ -71,6 +75,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
+    is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
     is DashboardIntent.LoadEntries -> state.copy(isLoading = true)
     is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
     else -> state

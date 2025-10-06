@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -822,6 +823,7 @@ constructor(
       BtWifiSetupStep.CONNECTING_WIFI -> {
         wifiConnectionTimeoutJob?.cancel()
         wifiConnectionTimeoutJob = null
+        handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
         gatherNetworks()
       }
 
@@ -977,6 +979,7 @@ constructor(
                   ),
                 )
                 discoveredScale = deviceService.saveScale(discoveredScale!!)
+                accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
                 handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
                 onNext()
               }
@@ -1031,35 +1034,6 @@ constructor(
       }
     }
   }
-
-  private suspend fun saveScale() {
-    val current = discoveredScale ?: return
-    val scaleID = System.currentTimeMillis().toString()
-    // If your Preferences has `scaleId` (like your TS), update that:
-    val updatedPrefs = current.preferences?.copy(
-      id = scaleID,                      // use `id = scaleID` if your model uses `id`
-    )
-    val updatedDevice = current.copy(
-      id = scaleID,
-      preferences = updatedPrefs
-    )
-    discoveredScale = updatedDevice
-    val accountId = accountService.activeAccountFlow.first()?.id
-    if (accountId != null) {
-      val savedDevice = deviceRepository.saveDeviceToApi(discoveredScale!!, accountId)
-      // Update discoveredScale with the API response (which contains the correct ID)
-      discoveredScale = savedDevice
-      // Update the scale ID in the state
-      handleIntent(BtWifiScaleSetupIntent.SetScaleId(savedDevice.id))
-      deviceService.saveScale(discoveredScale!!)
-      // Update the preferences with the correct scale ID from API
-      if (savedDevice.preferences != null) {
-        val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
-        discoveredScale = savedDevice.copy(preferences = updatedPreferences)
-      }
-    }
-  }
-
 
   /**
    * Checks for duplicate users and creates a list of users to be deleted.

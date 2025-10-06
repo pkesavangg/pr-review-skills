@@ -10,12 +10,14 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -26,6 +28,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.auth.PasswordResetRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsRequest
+import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -117,6 +120,14 @@ constructor(
     userAPI.updateDashboardMetrics(
       request = DashboardMetricsRequest(
         dashboardMetrics = dashboardKeys,
+      ),
+    )
+  }
+
+  override suspend fun updateDashboardType(dashboardType: String) {
+    userAPI.updateDashboardType(
+      request = DashboardTypeRequest(
+        dashboardType = dashboardType,
       ),
     )
   }
@@ -270,6 +281,16 @@ constructor(
 
     // Update account entity in database
     accountDao.updateAccount(updatedAccountEntity)
+  }
+
+  override suspend fun updateLocalDashboardType(accountId: String, dashboardMetrics: String, dashboardType: DashboardType){
+    val settings = DashboardSettingsEntity(
+      dashboardType = dashboardType.value,
+      isSynced = true,
+      accountId = accountId,
+      dashboardMetrics = ""
+    )
+      accountDao.insertDashboardSettings(settings)
   }
 
   /**

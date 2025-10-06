@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -64,8 +65,10 @@ constructor(
     try {
       val accountId = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       val account = accountRepository.getAccountFromAPI(accountId)
+      val dashboardType = DashboardType.entries.find { it.value == account.dashboardType } 
+        ?: DashboardType.DASHBOARD_4_METRICS
       val metricKeys = account.dashboardMetrics.mapNotNull { it.toMetricKey() }
-      dashboardRepository.updateVisibleMetricKeys(accountId, metricKeys)
+      dashboardRepository.updateVisibleMetricKeys(accountId, metricKeys, dashboardType)
     } catch (e: Exception) {
       AppLog.e("DashboardService", "Failed to refresh dashboard", e.toString())
     }
@@ -110,9 +113,11 @@ constructor(
   override suspend fun updateVisibleMetricKeys(
     accountId: String?,
     keys: List<MetricKey>,
+    dashboardType: DashboardType,
   ) = dashboardRepository.updateVisibleMetricKeys(
     accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
     keys,
+    dashboardType,
   )
 
   /**
@@ -154,9 +159,10 @@ constructor(
    * Resets the visible metric keys for the given account to the default list.
    * If accountId is null, uses the stored accountId.
    */
-  override suspend fun resetVisibleMetricKeys(accountId: String?) =
+  override suspend fun resetVisibleMetricKeys(accountId: String?, dashboardType: DashboardType) =
     dashboardRepository.resetVisibleMetricKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      dashboardType,
     )
 
   /**
@@ -172,8 +178,9 @@ constructor(
    * Resets both visible metric and milestone keys for the given account to the default lists.
    * If accountId is null, uses the stored accountId.
    */
-  override suspend fun resetVisibleKeys(accountId: String?) =
+  override suspend fun resetVisibleKeys(accountId: String?, dashboardType: DashboardType) =
     dashboardRepository.resetVisibleKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
+      dashboardType,
     )
 }

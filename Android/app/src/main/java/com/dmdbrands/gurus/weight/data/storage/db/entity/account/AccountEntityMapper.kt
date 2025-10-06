@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.storage.db.entity.account
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account as DomainAccount
 
@@ -59,7 +60,8 @@ object AccountEntityMapper {
             weightlessWeight = accountWithRelations.weightlessSettings?.weightlessWeight,
             isStreakOn = accountWithRelations.streaksSettings?.isStreakOn ?: false,
             streakTimestamp = accountWithRelations.streaksSettings?.streakTimestamp,
-            dashboardType = accountWithRelations.dashboardSettings?.dashboardType,
+            dashboardType = accountWithRelations.dashboardSettings?.dashboardType
+              ?: DashboardType.DASHBOARD_4_METRICS.value,
             dashboardMetrics =
                 accountWithRelations.dashboardSettings
                     ?.dashboardMetrics

@@ -67,7 +67,7 @@ fun R4ScaleMetricsSection(
         AppInput(
             formControl = controls.visceralFat,
             label = EntryScreenStrings.VISCERAL_FAT_LABEL,
-            type = AppInputType.BODY_COMP,
+            type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = subcutaneousFatFocusRequester,
             modifier = Modifier

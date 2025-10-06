@@ -147,6 +147,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMetrics,
           selectedStat = selectedStat,
+          dashboardType = state.dashboardType,
           onMetricClick = { stat ->
             handleIntent(DashboardIntent.SetSelectedStat(stat))
           },

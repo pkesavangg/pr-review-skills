@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToKg
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
@@ -36,7 +37,7 @@ data class Account(
   val weightlessWeight: Float? = null, // nullable
   val isStreakOn: Boolean? = false,
   val streakTimestamp: String? = null, // nullable
-  val dashboardType: String? = "Dashboard_4_metrics",
+  val dashboardType: String? = DashboardType.DASHBOARD_4_METRICS.value,
   val dashboardMetrics: List<String>? = emptyList(),
   // Notification settings
   val shouldSendEntryNotifications: Boolean? = false,

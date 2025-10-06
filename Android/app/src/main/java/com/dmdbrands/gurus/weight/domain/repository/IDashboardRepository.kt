@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.proto.MilestoneKey
 import kotlinx.coroutines.flow.Flow
@@ -26,8 +27,9 @@ interface IDashboardRepository {
      * Updates the visible metric keys for the given account.
      * @param accountId The account ID.
      * @param keys The list of MetricKey to set.
+     * @param dashboardType The dashboard type to determine default keys.
      */
-    suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey> = listOf())
+    suspend fun updateVisibleMetricKeys(accountId: String, keys: List<MetricKey> = listOf(), dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS)
 
     /**
      * Updates the visible milestone keys for the given account.
@@ -46,8 +48,9 @@ interface IDashboardRepository {
     /**
      * Resets the visible metric keys for the given account to the default list.
      * @param accountId The account ID.
+     * @param dashboardType The dashboard type to determine default keys.
      */
-    suspend fun resetVisibleMetricKeys(accountId: String)
+    suspend fun resetVisibleMetricKeys(accountId: String, dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS)
 
     /**
      * Resets the visible milestone keys for the given account to the default list.
@@ -58,6 +61,7 @@ interface IDashboardRepository {
     /**
      * Resets both visible metric and milestone keys for the given account to the default lists.
      * @param accountId The account ID.
+     * @param dashboardType The dashboard type to determine default metric keys.
      */
-    suspend fun resetVisibleKeys(accountId: String)
+    suspend fun resetVisibleKeys(accountId: String, dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS)
 }
