@@ -110,7 +110,7 @@ object SegmentButtonDefaults {
    * Horizontal spacing between segment buttons in LazyRow.
    */
   val segmentSpacing: Dp
-    @Composable get() = MeTheme.spacing.sm
+    @Composable get() = MeTheme.spacing.xs
 
   /**
    * Returns the horizontal padding for the given segment button size.
@@ -118,7 +118,7 @@ object SegmentButtonDefaults {
   @Composable
   fun horizontalPadding(size: SegmentButtonSize): Dp =
     when (size) {
-      SegmentButtonSize.Small -> MeTheme.spacing.xs
+      SegmentButtonSize.Small -> MeTheme.spacing.sm
       SegmentButtonSize.Medium -> MeTheme.spacing.sm
       SegmentButtonSize.Large -> MeTheme.spacing.sm
     }
@@ -190,25 +190,29 @@ fun <T> SegmentButtonGroup(
       coroutineScope.launch {
         val selectedIndex = data.indexOf(selectedData)
         if (selectedIndex >= 0) {
-          // Center the selected item in the viewport
+          // Calculate the center position directly
           val layoutInfo = listState.layoutInfo
           val viewportWidth = layoutInfo.viewportSize.width
 
-          // Get the selected item's current position
+          // Get the selected item's position
           val selectedItem = layoutInfo.visibleItemsInfo.find { it.index == selectedIndex }
 
           if (selectedItem != null) {
             val itemWidth = selectedItem.size
             val itemOffset = selectedItem.offset
 
-            // Calculate how much we need to scroll to center the item
+            // Calculate center offset
             val centerOffset = (viewportWidth - itemWidth) / 2
             val scrollOffset = itemOffset - centerOffset
 
+            // Smooth scroll directly to center
             listState.animateScrollBy(scrollOffset.toFloat())
           } else {
-            // If item is not visible, scroll to it first
-            listState.animateScrollToItem(selectedIndex)
+            // If item is not visible, scroll to it with center offset
+            listState.animateScrollToItem(
+              index = selectedIndex,
+              scrollOffset = -viewportWidth / 2
+            )
           }
         }
       }
@@ -275,7 +279,6 @@ private fun <T> SegmentButtonItem(
   onSelected: (T) -> Unit,
 ) {
   val colors = SegmentButtonDefaults.colors()
-  updateTransition(isSelected, label = "selected state")
 
   Box(
     modifier = Modifier
@@ -314,10 +317,11 @@ private fun <T> SegmentButtonItem(
 
     // Text content above the animated background
     Row(
-      modifier = Modifier.padding(
-        horizontal = horizontalPadding,
-        vertical = 8.dp,
-      ),
+      modifier = Modifier
+        .padding(
+          horizontal = horizontalPadding,
+          vertical = 8.dp,
+        ),
     ) {
       Text(
         text = key.get(item).uppercase(Locale.getDefault()),
