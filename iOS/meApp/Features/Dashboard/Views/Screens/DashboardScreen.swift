@@ -20,6 +20,7 @@ struct DashboardScreen: View {
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
+    @State private var metricInfoEntry: Entry? = nil
     
     var body: some View {
         VStack(spacing: 0) {
@@ -33,8 +34,7 @@ struct DashboardScreen: View {
               dashboardScroll()
         }
         .refreshable {
-            await store.syncEntries()
-            store.onAppearActions()
+            await store.refreshAll()
         }
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
@@ -45,7 +45,7 @@ struct DashboardScreen: View {
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
             ScaleMetricsView(
-                entry: store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
+                entry: metricInfoEntry ?? store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
                 selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
             )
         }
@@ -53,6 +53,17 @@ struct DashboardScreen: View {
             if let newValue = selectedMetricInfo {
                 await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
                 selectedMetricInfo = nil
+            }
+        }
+        .task(id: openMetricInfoWithoutSelection) {
+            if let wrapper = openMetricInfoWithoutSelection {
+                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
+            }
+        }
+        // Keep the metric info entry in sync with metric tile values while the sheet is open
+        .task(id: store.state.metrics.metrics) {
+            if let wrapper = openMetricInfoWithoutSelection {
+                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         .task(id: store.state.ui.selectedMetricLabel) {
@@ -76,31 +87,13 @@ struct DashboardScreen: View {
 store.restartWiggleAnimations()
                 }
             }
-            Task {
-                await store.loadDashboardConfigurationFromAPI()
-                await MainActor.run {
-                    store.objectWillChange.send()
-                }
-            }
+            Task { await store.reloadDashboardConfiguration() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
-            Task {
-                await store.loadDashboardConfigurationFromAPI()
-                // Force UI update to reflect the changes
-                await MainActor.run {
-                    store.objectWillChange.send()
-                    // Force a complete refresh of the dashboard state
-                    store.refreshDashboardState()
-                }
-            }
+            Task { await store.reloadDashboardConfiguration(fullRefresh: true) }
         }
         .task {
-            Task {
-                await store.loadDashboardConfigurationFromAPI()
-                await MainActor.run {
-                    store.objectWillChange.send()
-                }
-            }
+            Task { await store.reloadDashboardConfiguration() }
         }
         .onReceive(
             Publishers.MergeMany([
@@ -120,13 +113,7 @@ store.restartWiggleAnimations()
                 store.cancelEdit()
             }
             if newTab == .dash {
-                Task {
-                    await store.loadDashboardConfigurationFromAPI()
-                    await store.updateMetricsForCurrentView()
-                    await MainActor.run {
-                        store.objectWillChange.send()
-                    }
-                }
+                Task { await store.reloadDashboardConfiguration(updateMetrics: true) }
                 
                 DispatchQueue.main.async { 
                     store.resetGridLayout()

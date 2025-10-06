@@ -13,7 +13,7 @@ struct WifiPasswordEntryView: View {
     @EnvironmentObject var store: BtWifiScaleSetupStore
     let wifiDetail: WifiDetails
     @State private var focusedField: FocusField?
-    let lang = WifiScreenStrings.self
+    let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     let commonLang = CommonStrings.self
     let isScaleSetup: Bool
     var labels = InputFieldLabels.self

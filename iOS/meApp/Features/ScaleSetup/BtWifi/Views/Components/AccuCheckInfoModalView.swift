@@ -17,7 +17,7 @@ struct AccuCheckInfoModalView: View {
             HStack {
                 Spacer()
                 Button(action: onClose) {
-                    AppIconView(icon: appAssets.xmark, size: IconSize(width: 22, height: 20))
+                    AppIconView(icon: appAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }
