@@ -236,17 +236,28 @@ struct PermissionListView: View {
                 ForEach(Array(rows.enumerated()), id: \.0) { index, row in
                     // Destructure the row tuple for better readability
                     let (label, isEnabled, permissionType) = row
-                    
+                    // Disable the location access and Wi‑Fi rows when Location Services switch is OFF
+                    let isRowDisabled = (
+                        category == .location &&
+                        !viewModel.locationServicesEnabled &&
+                        (permissionType == .location || permissionType == .wifiSwitch)
+                    )
+
                     ActionListItemView(config: ActionListItemConfig(
                         title: label,
-                        chevronType: isEnabled ? .none : .right,
-                        leadingIcon: statusIcon(for: isEnabled, required: isRequired(category)),
+                        chevronType: isRowDisabled ? .none : (isEnabled ? .none : .right),
+                        leadingIcon: statusIcon(
+                            for: isRowDisabled ? false : isEnabled,
+                            required: isRowDisabled ? false : isRequired(category)
+                        ),
                         onTap: {
-                            if !isEnabled {
+                            if !isEnabled && !isRowDisabled {
                                 viewModel.handlePermission(permissionType)
                             }
                         }
                     ))
+                    .allowsHitTesting(!isRowDisabled)
+                    .opacity(isRowDisabled ? 0.5 : 1)
                     .padding(.horizontal)
                     
                     if index < rows.count - 1 {

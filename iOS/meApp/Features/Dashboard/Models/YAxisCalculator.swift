@@ -18,6 +18,7 @@ struct YAxisCalculator {
     private static let FALLBACK_MIN: Double = 0
     private static let FALLBACK_MAX: Double = 100
     private static let FALLBACK_STEP: Double = 25
+    private static let GOAL_TICK_OFFSETS: [Double] = [-2, -1, 0, 1, 2]
 
     /// Calculate Y-axis scale for chart display
     /// - Parameters:
@@ -39,15 +40,17 @@ struct YAxisCalculator {
         lastScale: YAxisScale? = nil
     ) -> YAxisScale {
         guard !operations.isEmpty else {
-            // No data — use last scale if available, otherwise use a goal-agnostic default fallback
-            if let lastScale = lastScale {
-                // Allow negative ticks only in weightless mode
+            // EMPTY-STATE BEHAVIOR
+            // If a goal is set, show goal-centric ticks; else fallback to last or default scale (ticks still present)
+            if goalWeight > 0 {
+                return buildGoalCentricFallback(goalWeight: goalWeight)
+            }
+            if let last = lastScale {
                 return isWeightlessMode
-                ? lastScale
-                : sanitizeToNonNegativeUniformTicks(scale: lastScale, desiredTickCount: max(2, lastScale.ticks.count))
+                ? last
+                : sanitizeToNonNegativeUniformTicks(scale: last, desiredTickCount: max(2, last.ticks.count))
             } else {
                 let fallback = createFallbackScale(goalWeight: goalWeight)
-                // Fallback is already non-negative; keep consistent behavior
                 return isWeightlessMode
                 ? fallback
                 : sanitizeToNonNegativeUniformTicks(scale: fallback, desiredTickCount: max(2, fallback.ticks.count))
@@ -282,11 +285,33 @@ struct YAxisCalculator {
                 min: FALLBACK_MIN,
                 max: FALLBACK_MAX,
                 step: FALLBACK_STEP,
-                ticks: ticks,
+                ticks: goalWeight > 0 ? buildGoalCentricFallback(goalWeight: goalWeight).ticks : ticks,
                 domain: domainMin...domainMax,
                 average: (FALLBACK_MIN + FALLBACK_MAX) / 2
             )
         }
+    }
+
+    /// Builds a symmetric goal-centric fallback scale with 4–6 ticks centered on goal.
+    /// Examples for goal 178 with 5-unit step: 165, 170, 175, 180, 185, 190 (depending on range).
+    static func buildGoalCentricFallback(goalWeight: Double) -> YAxisScale {
+        // Pick a nice step based on goal magnitude (prefer 5 for lbs, 2 for tight ranges)
+        let stepCandidates: [Double] = [2, 5, 10]
+        let step = stepCandidates.first(where: { goalWeight / $0 > 20 }) ?? 5
+
+        // Center around nearest multiple of step
+        let nearest = round(goalWeight / step) * step
+        let ticks: [Double] = GOAL_TICK_OFFSETS.map { nearest + (Double($0) * step) }
+        let domainMin = ticks.first ?? max(0, nearest - 2 * step)
+        let domainMax = ticks.last ?? nearest + 2 * step
+        return YAxisScale(
+            min: domainMin,
+            max: domainMax,
+            step: step,
+            ticks: ticks,
+            domain: domainMin...domainMax,
+            average: goalWeight
+        )
     }
 
     /// Build a non-negative, uniform Y-axis from 0 with exactly `desiredTickCount` ticks.

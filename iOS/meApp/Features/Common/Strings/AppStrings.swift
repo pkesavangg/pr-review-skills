@@ -57,6 +57,7 @@ struct CommonStrings {
     static let support = "Support"
     static let connect = "Connect"
     static let dismiss = "Dismiss"
+    static let emailAlreadyInUse = "Email already in use"
 }
 
 /// Constants for entry strings used in the app
