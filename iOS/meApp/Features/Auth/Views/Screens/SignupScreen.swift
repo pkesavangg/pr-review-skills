@@ -93,7 +93,7 @@ struct SignupScreen: View {
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
-                       type: .inlineTextPrimary,
+                       type: .textPrimary,
                        size: .small,
                        isDisabled: signupStore.currentStep == SignupStep.name,
                        action: {

@@ -157,7 +157,13 @@ store.restartWiggleAnimations()
                         .padding(.top, store.allContentRemoved || !store.state.data.hasAnyEntries ? .spacingLG : .spacingSM)
                 }
                 if !store.state.data.hasAnyEntries {
-                    noEntrySection()
+                    VStack {
+                        Spacer(minLength: 0)
+                        noEntrySection()
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: UIScreen.main.bounds.height - 650)
                 }
             }
         }

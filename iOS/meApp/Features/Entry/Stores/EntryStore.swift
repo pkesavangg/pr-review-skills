@@ -28,6 +28,9 @@ final class EntryStore: ObservableObject {
     /// Prevent overlapping saves / double taps
     @Published private(set) var isSaving = false
 
+    /// Controls whether BMI should be auto-calculated from weight/height
+    @Published var isBmiAutoCalculationEnabled = true
+
     private let maxBmiValue: Double = 99.0
     private var cancellables = Set<AnyCancellable>()
     private var isAdjustingTime = false
@@ -65,6 +68,16 @@ final class EntryStore: ObservableObject {
 
     func getError<T>(for control: FormControl<T>) -> String? {
         manualEntryForm.getError(for: control, weightUnit: weightUnit)
+    }
+
+    /// Disable automatic BMI calculation (e.g., when user focuses the BMI field)
+    func disableBmiAutoCalculation() {
+        isBmiAutoCalculationEnabled = false
+    }
+
+    /// Re-enable automatic BMI calculation
+    func enableBmiAutoCalculation() {
+        isBmiAutoCalculationEnabled = true
     }
 
     /// Save entry with gating, no artificial sleeps, and minimal main-thread churn.
@@ -227,6 +240,7 @@ final class EntryStore: ObservableObject {
         if let bmiStr = metrics.bmi {
             manualEntryForm.bmi.value = bmiStr
             manualEntryForm.bmi.validate()
+            self.isBmiAutoCalculationEnabled = false
         }
 
         assignPercent(metrics.bodyFat, to: manualEntryForm.bodyFat)
@@ -238,6 +252,7 @@ final class EntryStore: ObservableObject {
 
     private func initializeObservers() {
         accountService.$activeAccount
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] data in
                 guard let self = self else { return }
                 if let unit = data?.weightSettings?.weightUnit {
@@ -253,38 +268,49 @@ final class EntryStore: ObservableObject {
 
     private func setupBmiObservers() {
         manualEntryForm.weight.$value
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.calculateBMI() }
             .store(in: &cancellables)
 
         $weightUnit
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.calculateBMI() }
             .store(in: &cancellables)
     }
 
     private func calculateBMI() {
+        guard isBmiAutoCalculationEnabled else { return }
+        guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
+            manualEntryForm.bmi.value = ""
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+            return
+        }
+
+        let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
+        let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
+
+        let storedWeight: Double = {
+            switch weightUnit {
+            case .kg:
+                return weightDouble
+            case .lb:
+                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble))) 
+            }
+        }()
+
+        let bmiTimesTen = ConversionTools.calculateBMI(weight: storedWeight, height: storedHeight)
+        var bmi = Double(bmiTimesTen) / 10.0
+        bmi = Double(String(format: "%.1f", bmi)) ?? bmi
+
+        manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > maxBmiValue ? String(99.9) : String(bmi)
+        if bmi < maxBmiValue { manualEntryForm.bmi.markAsPristine() }
+        manualEntryForm.bmi.validate()
+        
+        // Force UI update to ensure MetricInputField reflects the new BMI value immediately
         DispatchQueue.main.async {
-            guard self.manualEntryForm.bmi.isPristine else { return }
-            guard let weightDouble = Double(self.manualEntryForm.weight.value), weightDouble > 0 else { return }
-
-            let heightString = self.accountService.activeAccount?.weightSettings?.height ?? "0"
-            let storedHeight = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
-
-            let storedWeight: Double = {
-                switch self.weightUnit {
-                case .kg:
-                    return weightDouble
-                case .lb:
-                    return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble)))
-                }
-            }()
-
-            let bmiTimesTen = ConversionTools.calculateBMI(weight: storedWeight, height: storedHeight)
-            var bmi = Double(bmiTimesTen) / 10.0
-            bmi = Double(String(format: "%.1f", bmi)) ?? bmi
-
-            self.manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > self.maxBmiValue ? String(99.9) : String(bmi)
-            if bmi < self.maxBmiValue { self.manualEntryForm.bmi.markAsPristine() }
-            self.manualEntryForm.bmi.validate()
+            self.objectWillChange.send()
         }
     }
 
@@ -302,6 +328,7 @@ final class EntryStore: ObservableObject {
     func resetForm() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        isBmiAutoCalculationEnabled = true
         manualEntryForm = ManualEntryForm()
         manualEntryForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }

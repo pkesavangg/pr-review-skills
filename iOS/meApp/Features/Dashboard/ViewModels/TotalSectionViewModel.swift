@@ -62,8 +62,11 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     override var dateRange: ClosedRange<Date> {
         let operations = chartOperations
         guard !operations.isEmpty else {
-            let now = Date()
-            return now...now
+            // Empty-state: provide a non-zero domain so leading/trailing baselines render
+            // Center around current scroll position to keep UX consistent with other sections
+            let center = scrollPosition
+            let halfWindow: TimeInterval = 24 * 60 * 60 // 1 day
+            return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
         }
 
         let dates = operations.map { $0.date }

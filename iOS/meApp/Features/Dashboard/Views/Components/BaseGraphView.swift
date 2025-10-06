@@ -45,6 +45,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         viewModel.hasXAxis
     }
     
+    // MARK: - Visibility Helpers
+    private var shouldShowYAxisLabels: Bool {
+        let goal = viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight
+        return goal != 0
+    }
+    
     // MARK: - Equatable Implementation
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Only compare essential properties that should trigger re-renders
@@ -125,9 +131,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         )
                 )
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                // Animate chart content positioning when Y-axis domain changes
-                .animation(enableYAxisAnimation && !viewModel.isScrolling ? .easeInOut(duration: 0.15) : .none, value: viewModel.yAxisDomain)
-                // // Animate when series data changes (even if Y-axis domain/ticks stay the same)
+                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
                 .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
@@ -148,8 +153,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
-                // Goal chip overlay
-                if viewModel.goalWeight > 0 {
+                // Goal chip overlay (show only if rounded value is non-zero)
+                if viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) != 0 {
                     goalChipCallout()
                 }
             }
@@ -271,7 +276,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let upper = viewModel.yAxisDomain.upperBound
         let epsilon: Double = 1e-6
         let domainRange = upper - lower
-        let xAxisHeight: CGFloat = viewModel.hasXAxis ? 18 : 0
+        let xAxisHeight: CGFloat = 18
         let availableHeight = max(1, viewModel.chartFrame.height - xAxisHeight)
         let onePointValue = domainRange / Double(availableHeight)
         // Only nudge the bottom-most tick when lower domain is negative.
@@ -316,7 +321,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             
             let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
             let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
-            
+
             RuleMark(x: .value("YBaselineLeading", leadingX))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
@@ -396,6 +401,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         .monospacedDigit()
                         .foregroundColor(theme.textSubheading)
                         .frame(width: yAxisLabelWidth, alignment: .center)
+                        .opacity(shouldShowYAxisLabels ? 1 : 0)
                 }
             }
         }
@@ -440,7 +446,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
-        Text(getCachedYAxisLabel(value))
+        // Round value for display, then format for weightless sign semantics
+        let rounded = viewModel.dashboardStore?.roundedGoalWeight(value) ?? value.rounded(.toNearestOrAwayFromZero)
+        let label: String = {
+            if let store = viewModel.dashboardStore {
+                return store.formatWeightDisplayText(rounded)
+            } else {
+                return getCachedYAxisLabel(rounded)
+            }
+        }()
+        Text(label)
             .fontWeight(.bold)
             .fontOpenSans(.body3)
             .foregroundColor(theme.actionInverse)
@@ -597,6 +612,10 @@ extension View {
         if isScrollable {
             self
                 .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
+                // When there are no operations (empty-state), explicitly pin the
+                // X-axis domain to the current period tick range so labels render
+                // left-to-right (sun → mon → … → sat for week).
+                .conditionalEmptyDomain(viewModel: viewModel)
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: { 
@@ -653,6 +672,12 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
                         // Only handle selection if not in scroll mode and not actively scrolling
                         if touchInteractionMode != .scrolling && !viewModel.isScrolling {
                             // Only update selection if we have a valid value
@@ -697,6 +722,12 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
                         localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
                         
@@ -713,6 +744,22 @@ extension View {
                         }
                     }
                 ))
+        }
+    }
+
+    /// Applies a fixed X-axis domain using the period tick range when there are no operations.
+    /// This ensures labels render left-to-right (e.g., Sun → Sat) with no plotted data.
+    @ViewBuilder
+    func conditionalEmptyDomain<ViewModel: SectionViewModelProtocol>(viewModel: ViewModel) -> some View {
+        if viewModel.hasXAxis && viewModel.chartOperations.isEmpty {
+            let ticks = viewModel.xAxisValues.sorted()
+            if let first = ticks.first, let last = ticks.last, first < last {
+                self.chartXScale(domain: first...last)
+            } else {
+                self
+            }
+        } else {
+            self
         }
     }
     

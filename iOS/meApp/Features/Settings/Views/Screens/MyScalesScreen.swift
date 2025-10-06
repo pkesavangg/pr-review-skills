@@ -237,6 +237,7 @@ struct MyScalesScreen: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
