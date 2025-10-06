@@ -1,5 +1,8 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -112,6 +115,12 @@ internal fun ChartHostSection(
     }
   }
 
+  val animatedStep = if (state.primaryYStep != null) animateIntAsState(
+    targetValue = state.primaryYStep.roundToInt(),
+    animationSpec = tween(durationMillis = 250, delayMillis = 0, easing = EaseInOut),
+    label = "animatedStep",
+  ) else null
+
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,
@@ -144,9 +153,9 @@ internal fun ChartHostSection(
               if (state.isEmptyGraph && goalMarker == null) " " else
                 value.roundToInt().toString()
             },
-          itemPlacer = remember(state.primaryYStep) {
+          itemPlacer = remember(animatedStep?.value) {
             VerticalAxis.ItemPlacer.step(
-              { state.primaryYStep },
+              { animatedStep?.value?.toDouble() },
             )
           },
           size = BaseAxis.Size.scroll(50.dp),
@@ -229,7 +238,7 @@ internal fun ChartHostSection(
     modelProducer = modelProducer,
     modifier = modifier.padding(start = 2.dp),
     scrollState = scrollState,
-    animateIn = false,
+    animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     consumeMoveEvents = true,
     onScrollStopped = { range ->

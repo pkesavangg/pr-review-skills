@@ -106,11 +106,13 @@ fun GraphView(
   val primaryLayer = primaryLayer(
     segment = segment,
     yRangeValues = state.primaryYAxis,
+    handleIntent = viewModel::handleIntent,
   )
 
   val secondaryLayer = secondaryLayer(
     segment = segment,
     yRangeValues = state.secondaryYAxis,
+    handleIntent = viewModel::handleIntent,
   )
 
   val defaultMarker = rememberDefaultMarker(segment) { fallbackValues ->

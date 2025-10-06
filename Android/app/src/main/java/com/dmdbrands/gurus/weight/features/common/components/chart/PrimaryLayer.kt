@@ -3,10 +3,12 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
@@ -19,10 +21,9 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
-import android.annotation.SuppressLint
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
+import android.annotation.SuppressLint
 
 /**
  * Common composable for creating line layers with connection condition.
@@ -35,6 +36,7 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   yRangeValues: CartesianRangeValues?,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
 
   val minYTarget = yRangeValues?.minY
@@ -63,15 +65,15 @@ internal fun rememberLineLayerWithConnection(
   // Calculate shared duration based on the larger difference between min and max
   val minDifference = if (minYTarget != null) abs(minYTarget - currentMinY.value) else 0.0
   val maxDifference = if (maxYTarget != null) abs(maxYTarget - currentMaxY.value) else 0.0
-  val maxDifferenceValue = max(minDifference, maxDifference)
+  max(minDifference, maxDifference)
 
-  val sharedDuration = when {
-    maxDifferenceValue < 19 -> 300 // Short duration for small differences
-    maxDifferenceValue < 20 -> 500 // Medium duration for medium differences
-    else -> 700 // Long duration for large differences (>= 20)
+  val sharedDuration = 100
+
+  LaunchedEffect(maxYTarget) {
+    handleIntent(GraphIntent.UpdateIsUpdating(true))
   }
 
-  val animatedMinY = if (minYTarget != null) {
+  if (minYTarget != null) {
     animateFloatAsState(
       targetValue = minYTarget.toFloat(),
       animationSpec = tween(durationMillis = sharedDuration),
@@ -80,7 +82,7 @@ internal fun rememberLineLayerWithConnection(
     }
   } else null
 
-  val animatedMaxY = if (maxYTarget != null) {
+  if (maxYTarget != null) {
     animateFloatAsState(
       targetValue = maxYTarget.toFloat(),
       animationSpec = tween(durationMillis = sharedDuration),
@@ -111,8 +113,8 @@ internal fun rememberLineLayerWithConnection(
     ),
     verticalAxisPosition = verticalAxisPosition,
     rangeProvider = CartesianLayerRangeProvider.fixed(
-      maxY = animatedMaxY?.value?.toDouble(),
-      minY = animatedMinY?.value?.toDouble(),
+      maxY = maxYTarget?.toDouble(),
+      minY = minYTarget?.toDouble(),
     ),
   )
 }
@@ -123,13 +125,15 @@ internal fun rememberLineLayerWithConnection(
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
-  yRangeValues: CartesianRangeValues? = null
+  yRangeValues: CartesianRangeValues? = null,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.primaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     yRangeValues = yRangeValues,
+    handleIntent = handleIntent,
   )
 }
 
@@ -139,12 +143,14 @@ internal fun primaryLayer(
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
-  yRangeValues: CartesianRangeValues? = null
+  yRangeValues: CartesianRangeValues? = null,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.secondaryAction,
     verticalAxisPosition = Axis.Position.Vertical.Start,
     yRangeValues = yRangeValues,
+    handleIntent = handleIntent,
   )
 }
