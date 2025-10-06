@@ -650,7 +650,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         let offlineGoalIsSynced = localAccount.goalSettings?.isSynced
         // Integrations-related
         let offlineIsHealthKitOn = localAccount.integrationSettings?.isHealthKitOn
-        print("syncUnsyncedAccounts isSynced: \(isSynced)")
         // Use the original localAccount for relationship access to avoid SwiftData backing data issues
         do {
             // Handle Profile updates
