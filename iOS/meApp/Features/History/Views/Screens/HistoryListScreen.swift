@@ -71,33 +71,35 @@ struct HistoryListScreen: View {
 
     @ViewBuilder
     private var content: some View {
-       if store.isEmptyState {
-            NoEntryView(
-              onButtonTap: {
-                  tabViewModel.pendingSettingsNavigation = .addEditScales
-                  tabViewModel.selectedTab = .settings
-              }
-            )
-        } else {
-          ScrollView {
-            LazyVStack(spacing: 0) {
-
-                ForEach(store.months, id: \.id) { month in
-                    MonthSummaryItem(month: month)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            store.setSelectedMonth(selectedMonth: month)
-                            router.navigate(to: .historyMonthList(month: month))
+        ScrollView(showsIndicators: !store.isEmptyState) {
+            if store.isEmptyState {
+                ZStack {
+                    Spacer().containerRelativeFrame([.horizontal, .vertical])
+                    VStack {
+                        NoEntryView {
+                            tabViewModel.pendingSettingsNavigation = .addEditScales
+                            tabViewModel.selectedTab = .settings
                         }
-                        .background(theme.backgroundSecondary)
+                    }
+                }
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(store.months, id: \.id) { month in
+                        MonthSummaryItem(month: month)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                store.setSelectedMonth(selectedMonth: month)
+                                router.navigate(to: .historyMonthList(month: month))
+                            }
+                            .background(theme.backgroundSecondary)
+                    }
                 }
             }
-          }
-          .refreshable {
-              Task {
-                  await store.refreshAllEntries()
-              }
-          }
+        }
+        .refreshable {
+            Task {
+                await store.refreshAllEntries()
+            }
         }
     }
 }

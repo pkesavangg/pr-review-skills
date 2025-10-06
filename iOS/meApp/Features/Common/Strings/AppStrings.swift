@@ -57,6 +57,7 @@ struct CommonStrings {
     static let support = "Support"
     static let connect = "Connect"
     static let dismiss = "Dismiss"
+    static let emailAlreadyInUse = "Email already in use"
 }
 
 /// Constants for entry strings used in the app
@@ -804,7 +805,7 @@ struct AppAssets {
 
     // MARK: - Scale images
     // MARK: - AppSync series
-    static let scale0341 = "0341"
+    static let scale0341 = "0341_png" // TODO: Need to use svg
     static let scale0342 = "0342"
     static let scale0343 = "0343"
     static let scale0345 = "0345"

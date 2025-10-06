@@ -45,6 +45,7 @@ struct NoEntryView: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
             }
 

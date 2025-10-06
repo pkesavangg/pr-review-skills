@@ -275,6 +275,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
             }))
+            .id(settingsStore.canShowFeedNotificationBadge) // Force row re-identity when the badge toggles
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
                 router.navigate(to: .appPermissions)
