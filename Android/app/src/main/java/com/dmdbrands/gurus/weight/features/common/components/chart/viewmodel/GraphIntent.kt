@@ -1,10 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
-import kotlinx.coroutines.Job
 
 /**
  * Intent for graph actions, defining all possible user interactions and state updates.
@@ -14,10 +14,15 @@ sealed interface GraphIntent : IReducer.Intent {
   data class InitializeGraph(
     val graphLines: List<GraphLine>,
     val secondaryGraphLines: GraphLine? = null,
-    val goal: Goal? = null,
   ) : GraphIntent
 
+  data class UpdateGoal(val goal: Goal?) : GraphIntent
+
   data class UpdatePrimaryYStep(val step: Double) : GraphIntent
+
+  data class UpdateWeightUnit(val weightUnit: WeightUnit) : GraphIntent
+
+  data class UpdateIsEmptyGraph(val isEmptyGraph: Boolean) : GraphIntent
 
   /** Update primary Y-axis */
   data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
@@ -33,9 +38,6 @@ sealed interface GraphIntent : IReducer.Intent {
 
   /** Update loading state */
   data class UpdateIsLoading(val isLoading: Boolean) : GraphIntent
-
-  /** Update computation job */
-  data class UpdateComputationJob(val job: Job?) : GraphIntent
 
   /** Reset graph state */
   object ResetGraph : GraphIntent

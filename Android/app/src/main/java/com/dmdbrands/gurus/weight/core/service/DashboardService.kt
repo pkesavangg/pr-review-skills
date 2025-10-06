@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.proto.MilestoneKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +33,7 @@ constructor(
   private val accountRepository: IAccountRepository
 ) : IDashboardService {
   private var accountId: String? = null
-  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   private val _visibleKeys = MutableStateFlow<List<DashboardKey>>(listOf())
   override val visibleKeys: StateFlow<List<DashboardKey>>
@@ -42,6 +43,7 @@ constructor(
    * Sets the current account ID to be used by default in other methods.
    */
   override suspend fun setAccountId(accountId: String) {
+    clearAllData()
     this.accountId = accountId
     refreshDashboard(accountId)
     repositoryScope.launch {
@@ -51,8 +53,16 @@ constructor(
     }
   }
 
-  override suspend fun refreshDashboard(accountId: String) {
+  private fun clearAllData() {
+    repositoryScope.cancel()
+    accountId = null
+    _visibleKeys.value = emptyList()
+    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  }
+
+  override suspend fun refreshDashboard(accountId: String?) {
     try {
+      val accountId = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       val account = accountRepository.getAccountFromAPI(accountId)
       val metricKeys = account.dashboardMetrics.mapNotNull { it.toMetricKey() }
       dashboardRepository.updateVisibleMetricKeys(accountId, metricKeys)

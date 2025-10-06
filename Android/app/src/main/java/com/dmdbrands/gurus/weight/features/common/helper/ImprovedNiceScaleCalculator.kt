@@ -6,6 +6,7 @@ data class AxisMeta(
   val min: Double,
   val max: Double,
   val step: Double,
+  val count: Int,
 )
 
 object ImprovedNiceScaleCalculator {
@@ -69,7 +70,10 @@ object ImprovedNiceScaleCalculator {
     val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
     val finalMax = niceMax
 
-    return AxisMeta(finalMin, finalMax, step)
+    // Generate ticks and ensure count doesn't exceed target tick count
+    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
+
+    return AxisMeta(finalMin, finalMax, step, ticks.size)
   }
 
   private fun handleMediumRange(
@@ -109,7 +113,10 @@ object ImprovedNiceScaleCalculator {
     val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
     val finalMax = niceMax
 
-    return AxisMeta(finalMin, finalMax, step)
+    // Generate ticks and ensure count doesn't exceed target tick count
+    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
+
+    return AxisMeta(finalMin, finalMax, step, ticks.size)
   }
 
   private fun handleNormalRange(
@@ -150,7 +157,25 @@ object ImprovedNiceScaleCalculator {
     val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
     val finalMax = niceMax
 
-    return AxisMeta(finalMin, finalMax, step)
+    // Generate ticks and ensure count doesn't exceed target tick count
+    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
+
+    return AxisMeta(finalMin, finalMax, step, ticks.size)
+  }
+
+  /**
+   * Generate ticks between min and max with the given step, ensuring count doesn't exceed target tick count.
+   */
+  private fun generateTicks(min: Double, max: Double, step: Double, targetTickCount: Int): List<Double> {
+    val ticks = mutableListOf<Double>()
+    var current = min
+
+    while (current <= max && ticks.size < targetTickCount) {
+      ticks.add(current)
+      current += step
+    }
+
+    return ticks.distinct().sorted()
   }
 
   /**

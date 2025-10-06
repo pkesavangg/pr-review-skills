@@ -27,9 +27,9 @@ data class DashboardState(
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
   val metricData: List<PeriodBodyScaleSummary> = emptyList(),
-  val goal: Goal? = null,
   val pagerState: Int = 0,
-  val scrollTarget: Double? = null
+  val scrollTarget: Double? = null,
+  val isRefreshing: Boolean = false
 ) : IReducer.State
 
 /**
@@ -37,6 +37,7 @@ data class DashboardState(
  */
 sealed interface DashboardIntent : IReducer.Intent {
   object LoadEntries : DashboardIntent
+  data object Refresh : DashboardIntent
   data class ResetDashboard(val onConfirm: () -> Unit) : DashboardIntent
   data class SetDayWiseEntries(val entries: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
@@ -48,9 +49,9 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
   data class SetMetricData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
-  data class SetGoal(val goal: Goal?) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
+  data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
   object OnConnectScale: DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
 }
@@ -68,7 +69,6 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetMetricData -> state.copy(metricData = intent.data)
-    is DashboardIntent.SetGoal -> state.copy(goal = intent.goal)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
     is DashboardIntent.LoadEntries -> state.copy(isLoading = true)

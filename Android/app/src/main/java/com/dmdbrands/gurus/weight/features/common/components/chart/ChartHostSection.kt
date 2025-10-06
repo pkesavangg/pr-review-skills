@@ -1,10 +1,12 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.TwoWayConverter
-import androidx.compose.animation.core.animateValueAsState
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
@@ -14,7 +16,9 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageYValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
+import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -28,6 +32,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.fill
+import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.axis.BaseAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
@@ -35,7 +40,9 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
+import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 import kotlin.math.roundToInt
 import android.graphics.Typeface
 
@@ -53,9 +60,11 @@ internal fun ChartHostSection(
   scrollState: VicoScrollState,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   handleIntent: (GraphIntent) -> Unit,
+  onWeightLabelChange: (String) -> Unit,
   goalMarker: VerticalAxis.MarkerDecoration? = null,
 ) {
   val timeStamps = xLabels.map { it.value.toLong() }.sorted()
+  val scope = rememberCoroutineScope()
   val separators = GraphUtil.periodStarts(
     segment = segment,
     startMillis = if (timeStamps.isNotEmpty()) timeStamps.first() else null,
@@ -67,25 +76,50 @@ internal fun ChartHostSection(
     if (state.secondaryGraphLines != null) add(secondaryLayer)
   }
 
-  val doubleVectorConverter = TwoWayConverter<Double, AnimationVector1D>(
-    convertToVector = { AnimationVector1D(it.toFloat()) },
-    convertFromVector = { it.value.toDouble() },
-  )
-
-  val animatedMarkerIndex = if (segment == GraphSegment.TOTAL && markerIndex != null && markerIndex != 0.0) {
-    animateValueAsState<Double, AnimationVector1D>(
-      targetValue = markerIndex,
-      typeConverter = doubleVectorConverter,
-      animationSpec = androidx.compose.animation.core.SpringSpec(),
-      visibilityThreshold = null,
-      label = "markerIndexAnimation",
-      finishedListener = null,
-    ).value
-  } else {
-    markerIndex ?: 0.0
-  }
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
+
+  fun updateWeightLabel(
+    min: Long? = null,
+    max: Long? = null,
+  ) {
+    val minTarget = min ?: state.minTarget ?: 0L
+    val maxTarget = max ?: state.maxTarget ?: 0L
+    scope.launch {
+      val validWeightLabel = calculateWeightLabel(state.graphLines, minTarget, maxTarget)
+
+      val weightLabel: String = validWeightLabel ?: run {
+        // Get visible X-axis labels using the provided item placer
+        val visibleXLabels = scrollState.getVisibleAxisLabels(
+          itemPlacer = horizontalItemPlacer,
+        )
+
+        // Interpolate Y-values for the visible X-axis range using cubic interpolation
+        val interpolatedYValues = scrollState.getInterpolatedYValues(
+          xValues = visibleXLabels,
+          interpolationType = InterpolationType.CUBIC,
+        )
+
+        // Take the first set of interpolated values (if available)
+        val firstYValues = interpolatedYValues.firstOrNull()
+
+        // Compute the formatted average weight value or return a blank string
+        firstYValues?.toList()
+          ?.map { it.toDouble() }
+          ?.average()
+          ?.let { String.format(Locale.US, "%.1f", it) }
+          ?: " "
+      }
+
+      onWeightLabelChange(weightLabel)
+    }
+  }
+
+  val animatedStep = if (state.primaryYStep != null) animateIntAsState(
+    targetValue = state.primaryYStep.roundToInt(),
+    animationSpec = tween(durationMillis = 250, delayMillis = 0, easing = EaseInOut),
+    label = "animatedStep",
+  ) else null
 
   val primaryChart =
     rememberCartesianChart(
@@ -94,7 +128,7 @@ internal fun ChartHostSection(
       startAxis =
         VerticalAxis.rememberStart(
           label = null,
-          size = BaseAxis.Size.scroll(30.dp, isLabelsScrollable = true),
+          size = BaseAxis.Size.scroll(8.dp, isLabelsScrollable = true),
           line = rememberAxisLineComponent(
             fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
             thickness = 1.dp,
@@ -116,11 +150,12 @@ internal fun ChartHostSection(
         VerticalAxis.rememberEnd(
           valueFormatter =
             CartesianValueFormatter { _, value, _ ->
-              value.roundToInt().toString()
+              if (state.isEmptyGraph && goalMarker == null) " " else
+                value.roundToInt().toString()
             },
-          itemPlacer = remember(state.primaryYStep) {
+          itemPlacer = remember(animatedStep?.value) {
             VerticalAxis.ItemPlacer.step(
-              { state.primaryYStep },
+              { animatedStep?.value?.toDouble() },
             )
           },
           size = BaseAxis.Size.scroll(50.dp),
@@ -130,10 +165,10 @@ internal fun ChartHostSection(
               thickness = 1.dp,
             ),
           markerDecoration = goalMarker,
-          guideline =
+          guideline = if (state.isEmptyGraph && goalMarker == null) null else
             rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
-              thickness = 0.5.dp,
+              fill = fill(MeTheme.colorScheme.iconSecondary.copy(0.5f)),
+              thickness = 1.dp,
             ),
           label =
             rememberTextComponent(
@@ -147,9 +182,9 @@ internal fun ChartHostSection(
       marker = emptyMarker(),
       persistentMarkers =
 
-        if (animatedMarkerIndex != 0.0) {
+        if (markerIndex != null) {
           {
-            defaultMarker at animatedMarkerIndex
+            defaultMarker at markerIndex
           }
         } else {
           null
@@ -176,17 +211,23 @@ internal fun ChartHostSection(
         }
 
         if (click == null || outOfBoundaryCondition) {
-          markerIndex = null
+          if (state.markerIndex != null || segment == GraphSegment.TOTAL || outOfBoundaryCondition) {
+            markerIndex = null
+            updateWeightLabel()
+          }
         } else {
+          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
           val targetMarkerIndex =
             getTargetPoints(
-              scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer),
+              visibleLabels,
               targets,
               click,
               segment,
             )
           if (targetMarkerIndex.isNotEmpty()) {
             markerIndex = targetMarkerIndex.first()
+          } else {
+            updateWeightLabel()
           }
         }
         handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
@@ -195,14 +236,16 @@ internal fun ChartHostSection(
   CartesianChartHost(
     chart = primaryChart,
     modelProducer = modelProducer,
-    modifier = modifier,
+    modifier = modifier.padding(start = 2.dp),
     scrollState = scrollState,
+    animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     consumeMoveEvents = true,
     onScrollStopped = { range ->
       if (range != null) {
         val min = range.visibleXRange.start
         val max = range.visibleXRange.endInclusive
+        updateWeightLabel(min.toLong(), max.toLong())
         handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
       }
     },
@@ -210,7 +253,6 @@ internal fun ChartHostSection(
 }
 
 fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
-  if (points.isEmpty()) return emptyList()
 
   // For TOTAL segment, find nearest targets from click without considering visible labels
   if (segment == GraphSegment.TOTAL) {
@@ -265,4 +307,22 @@ fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double,
       listOfNotNull(nearestTarget)
     }
   }
+}
+
+/**
+ * Calculates weight label for the given range.
+ * Optimized to run on background thread.
+ */
+private fun calculateWeightLabel(
+  graphLines: List<GraphLine>,
+  min: Long,
+  max: Long
+): String? {
+  val subset = averageYValuesInRange(graphLines, min, max)
+
+  return subset.values
+    .filterNotNull()                               // drop null Label entries
+    .mapNotNull { it.label?.takeIf { it.isNotBlank() } } // drop null or blank labels
+    .joinToString(" / ")
+    .ifEmpty { null }                              // return null if no labels
 }

@@ -1,8 +1,14 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
@@ -15,6 +21,8 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import kotlin.math.abs
+import kotlin.math.max
 import android.annotation.SuppressLint
 
 /**
@@ -28,10 +36,15 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   yRangeValues: CartesianRangeValues?,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
 
   val minYTarget = yRangeValues?.minY
   val maxYTarget = yRangeValues?.maxY
+
+  // Track current values for animation duration calculation
+  val currentMinY = remember { mutableStateOf(minYTarget?.toFloat() ?: 0f) }
+  val currentMaxY = remember { mutableStateOf(maxYTarget?.toFloat() ?: 0f) }
 
   val connectionCondition: (Long, Long?) -> Boolean = { minXTarget, maxXTarget ->
     if (maxXTarget == null) {
@@ -48,6 +61,35 @@ internal fun rememberLineLayerWithConnection(
       disconnectionCriteria
     }
   }
+
+  // Calculate shared duration based on the larger difference between min and max
+  val minDifference = if (minYTarget != null) abs(minYTarget - currentMinY.value) else 0.0
+  val maxDifference = if (maxYTarget != null) abs(maxYTarget - currentMaxY.value) else 0.0
+  max(minDifference, maxDifference)
+
+  val sharedDuration = 100
+
+  LaunchedEffect(maxYTarget) {
+    handleIntent(GraphIntent.UpdateIsUpdating(true))
+  }
+
+  if (minYTarget != null) {
+    animateFloatAsState(
+      targetValue = minYTarget.toFloat(),
+      animationSpec = tween(durationMillis = sharedDuration),
+    ).also {
+      currentMinY.value = it.value
+    }
+  } else null
+
+  if (maxYTarget != null) {
+    animateFloatAsState(
+      targetValue = maxYTarget.toFloat(),
+      animationSpec = tween(durationMillis = sharedDuration),
+    ).also {
+      currentMaxY.value = it.value
+    }
+  } else null
 
 
   return rememberLineCartesianLayer(
@@ -83,13 +125,15 @@ internal fun rememberLineLayerWithConnection(
 @Composable
 internal fun primaryLayer(
   segment: GraphSegment,
-  yRangeValues: CartesianRangeValues? = null
+  yRangeValues: CartesianRangeValues? = null,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.primaryAction,
     verticalAxisPosition = Axis.Position.Vertical.End,
     yRangeValues = yRangeValues,
+    handleIntent = handleIntent,
   )
 }
 
@@ -99,12 +143,14 @@ internal fun primaryLayer(
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
-  yRangeValues: CartesianRangeValues? = null
+  yRangeValues: CartesianRangeValues? = null,
+  handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.secondaryAction,
     verticalAxisPosition = Axis.Position.Vertical.Start,
     yRangeValues = yRangeValues,
+    handleIntent = handleIntent,
   )
 }

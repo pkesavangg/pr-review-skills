@@ -146,6 +146,8 @@ sealed class DateTimeValue {
         Calendar
           .getInstance()
           .apply {
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
           }.timeInMillis
@@ -154,6 +156,9 @@ sealed class DateTimeValue {
         Calendar
           .getInstance()
           .apply {
+            timeInMillis = millis
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
           }.timeInMillis
@@ -343,15 +348,9 @@ fun DateTimeInput(
   var isDateDialogOpen by remember { mutableStateOf(false) }
   var isTimeDialogOpen by remember { mutableStateOf(false) }
   // Determine the current value from form control or stateless value
-  val currentValue = remember(formControl?.value) { formControl?.value ?: value }
+  val currentValue = formControl?.value ?: value
   // Local state for the input value
-  var localState by remember(currentValue) {
-    mutableStateOf(
-      currentValue ?: DateTimeInputDefaults.defaultValueForMode(
-        mode,
-      ),
-    )
-  }
+  var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
   // Keep localState in sync with external valuex
   if (currentValue != null && currentValue != localState) {
     localState = currentValue

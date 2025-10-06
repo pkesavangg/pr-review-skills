@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -8,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
-import kotlinx.coroutines.Job
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
@@ -44,20 +44,20 @@ import kotlinx.coroutines.Job
  * @property secondaryGraphLines Secondary graph lines data.
  */
 data class GraphState(
+  val weightUnit: WeightUnit = WeightUnit.KG,
   val graphLines: List<GraphLine> = emptyList(),
   val secondaryGraphLines: GraphLine? = null,
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
   val goal: Goal? = null,
+  val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,
   val markerIndex: Double? = null,
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
-  val computationJob: Job? = null,
-  val animationJob: Job? = null,
 ) : IReducer.State {
   val graphKey: Int = graphLines.hashCode()
 

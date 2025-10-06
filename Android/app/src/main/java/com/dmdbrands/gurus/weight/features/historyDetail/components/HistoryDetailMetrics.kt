@@ -76,6 +76,7 @@ internal fun MetricItem(
         AppIcon(
           id = stat.icon,
           contentDescription = stat.label,
+          onClick = null,
         )
       }
     }

@@ -11,8 +11,11 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       state.copy(
         graphLines = intent.graphLines,
         secondaryGraphLines = intent.secondaryGraphLines,
-        goal = intent.goal,
       )
+
+    is GraphIntent.UpdateGoal -> state.copy(
+      goal = intent.goal,
+    )
 
     is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)
 
@@ -26,7 +29,11 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateIsLoading -> state.copy(isLoading = intent.isLoading)
 
-    is GraphIntent.UpdateComputationJob -> state.copy(computationJob = intent.job)
+    is GraphIntent.UpdateIsEmptyGraph -> state.copy(isEmptyGraph = intent.isEmptyGraph)
+
+    is GraphIntent.UpdateWeightUnit -> state.copy(
+      weightUnit = intent.weightUnit,
+    )
 
     is GraphIntent.ResetGraph -> state.copy(
       minTarget = null,

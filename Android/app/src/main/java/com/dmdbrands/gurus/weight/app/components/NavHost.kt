@@ -1,11 +1,16 @@
 package com.dmdbrands.gurus.weight.app.components
 
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -20,7 +25,6 @@ import com.dmdbrands.gurus.weight.core.navigation.NavigationObserver
 import com.dmdbrands.gurus.weight.features.home.HomeScreen
 import com.dmdbrands.gurus.weight.features.loading.LoadingScreen
 import com.example.nav3integration.TopLevelBackStack
-import kotlinx.coroutines.launch
 
 /**
  * Main navigation composable for the app, handling top-level navigation and back stack management.
@@ -31,7 +35,6 @@ fun NavHost(
   topLevelBackStack: TopLevelBackStack<NavKey>,
   appViewModel: AppViewModel,
 ) {
-  val coroutineScope = rememberCoroutineScope()
   NavigationObserver(
     appViewModel.navigationService.navigationIntent,
     topLevelBackStack,
@@ -50,9 +53,7 @@ fun NavHost(
       )
     },
     onBack = {
-      coroutineScope.launch {
-        topLevelBackStack.removeLast(AppRoute.App)
-      }
+      topLevelBackStack.removeLastSync(AppRoute.App)
     },
     entryProvider =
       entryProvider {
@@ -87,7 +88,6 @@ fun NavHost(
 
 @Composable
 fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
-  val coroutineScope = rememberCoroutineScope()
   NavDisplay(
     entryDecorators =
       listOf(
@@ -97,9 +97,7 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
       ),
     backStack = topLevelBackStack.getStackForTopLevel(AppRoute.Home),
     onBack = {
-      coroutineScope.launch {
-        topLevelBackStack.removeLast(AppRoute.Home)
-      }
+      topLevelBackStack.removeLastSync(AppRoute.Home)
     },
     entryProvider =
       entryProvider {
@@ -107,19 +105,22 @@ fun HomeNavHost(topLevelBackStack: TopLevelBackStack<NavKey>) {
         topLevelEntries()
       },
     transitionSpec = {
-      // Slide in from right when navigating forward
-      slideInHorizontally(initialOffsetX = { it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { -it })
+      ContentTransform(
+        fadeIn(animationSpec = tween(0)),
+        fadeOut(animationSpec = tween(0)),
+      )
     },
     popTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      ContentTransform(
+        fadeIn(animationSpec = tween(0)),
+        fadeOut(animationSpec = tween(0)),
+      )
     },
     predictivePopTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      ContentTransform(
+        fadeIn(animationSpec = tween(0)),
+        fadeOut(animationSpec = tween(0)),
+      )
     },
   )
 }

@@ -84,9 +84,9 @@ constructor(
         val updatedDevice = device.copy(
           connectionStatus = connectionStatus,
           device = device.device?.copy(
-            isWifiConfigured = deviceDetail.isWifiConfigured
+            isWifiConfigured = deviceDetail.isWifiConfigured,
           ),
-          isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null)
+          isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
         )
 
         currentDevices[deviceIndex] = updatedDevice
@@ -128,7 +128,7 @@ constructor(
           device.copy(
             connectionStatus = connectionStatus,
             device = device.device?.copy(
-              isWifiConfigured = device.device.isWifiConfigured
+              isWifiConfigured = device.device.isWifiConfigured,
             ),
           )
         }
@@ -160,8 +160,6 @@ constructor(
   override suspend fun setAccountId(accountId: String) {
     AppLog.d(tag, "Setting account ID: $accountId")
     currentAccountId = accountId
-    // Cancel any existing collector job
-    deviceCollectionJob?.cancel()
     syncDevices()
     fetchScales(accountId)
     // Sync devices from API and local DB
@@ -325,20 +323,19 @@ constructor(
     )
     var updatedDevice = current.copy(
       id = scaleID,
-      preferences = updatedPrefs
+      preferences = updatedPrefs,
     )
 
-   return try{
+    return try {
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
-     if (savedDevice.preferences != null) {
-       val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
-       updatedDevice = savedDevice.copy(preferences = updatedPreferences)
-     }
+      if (savedDevice.preferences != null) {
+        val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
+        updatedDevice = savedDevice.copy(preferences = updatedPreferences)
+      }
       syncDevices(savedDevice)
       AppLog.d(tag, "saveScale (via syncDevices): ${updatedDevice.id}")
       savedDevice
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       AppLog.d(tag, "saveScale (via syncDevices): $e")
       syncDevices(updatedDevice)
       null
@@ -451,8 +448,6 @@ constructor(
    * @return List of devices that are not yet synced with the server
    */
   override suspend fun getUnsyncedScales(): List<Device> = _pairedScales.value.filter { !it.hasServerID }
-
-
 
   /**
    * Check if a scale exists by MAC address.

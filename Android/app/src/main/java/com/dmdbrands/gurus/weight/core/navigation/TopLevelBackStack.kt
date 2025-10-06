@@ -129,16 +129,19 @@ class TopLevelBackStack<T : NavKey>(
     val stack = stacks.getOrPut(topLevelKey) { mutableStateListOf() }
     val currentRoute = stack.lastOrNull()
     if (currentRoute != null && !canDeactivate(currentRoute)) return
-    routes.forEachIndexed { index, route ->
+
+    // Clear existing routes first to avoid white flash
+    stack.clear()
+
+    // Add new routes immediately
+    routes.forEach { route ->
       if (requiresLogin(route)) {
         onLoginSuccessRoute = Pair(topLevelKey, route)
-        stack.add(index, loginKey)
+        stack.add(loginKey)
       } else {
-        stack.add(index, route)
+        stack.add(route)
       }
     }
-    delay(100)
-    stack.removeAll { it !in routes }
   }
 
   /**
@@ -151,6 +154,22 @@ class TopLevelBackStack<T : NavKey>(
     val stack = stacks[topLevelKey] ?: return
     val currentRoute = stack.lastOrNull() ?: return
     if (!canDeactivate(currentRoute)) return
+    if (stack.isNotEmpty() && stack.size > 1) {
+      stack.removeLastOrNull()
+      if (stack.isEmpty()) {
+        stacks.remove(topLevelKey)
+      }
+    }
+  }
+
+  /**
+   * Synchronous version of removeLast for immediate execution.
+   * @param topLevel The top-level key.
+   */
+  fun removeLastSync(topLevel: T? = null) {
+    val topLevelKey = topLevel ?: startKey.first
+    val stacks = _topLevelStacks.value
+    val stack = stacks[topLevelKey] ?: return
     if (stack.isNotEmpty() && stack.size > 1) {
       stack.removeLastOrNull()
       if (stack.isEmpty()) {
