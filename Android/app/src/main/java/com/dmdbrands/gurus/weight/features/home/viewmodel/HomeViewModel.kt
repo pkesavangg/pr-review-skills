@@ -2,10 +2,11 @@ package com.dmdbrands.gurus.weight.features.home.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
+import com.dmdbrands.gurus.weight.core.shared.utilities.AppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -38,7 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
+import android.app.Activity
 
 @HiltViewModel
 class HomeViewModel
@@ -48,11 +49,11 @@ constructor(
   private val ggDeviceService: GGDeviceService,
   private val ggPermissionService: GGPermissionService,
   private val dialogUtility: IDialogUtility,
-  private val entryService: com.dmdbrands.gurus.weight.domain.services.IEntryService,
   private val appSyncService: IAppSyncService,
   private val accountService: IAccountService,
   private val feedService: IFeedService,
-  dialogQueueService: IDialogQueueService
+  private val accountFlagService: AccountFlagService,
+  private val appReviewManager: AppReviewManager,
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   private val TAG = "HomeViewModel"
   override fun provideInitialState(): HomeState = HomeState()
@@ -64,6 +65,13 @@ constructor(
     subscribeToWeightOnlyModeEvents()
     subscribeToWeightOnlyModeAlertDismissed()
     observeFeedIndicator()
+    viewModelScope.launch {
+      val isModalTriggered = feedService.checkAndTriggerFeedModal()
+      if(!isModalTriggered){
+      checkAccountFlags("login")
+      }
+    }
+
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -78,6 +86,8 @@ constructor(
       is HomeIntent.OnWeightOnlyModeEnable -> onWeightOnlyModeEnable()
 
       is HomeIntent.OnWeightOnlyModeAlertDismiss -> onWeightOnlyModeAlertDismiss()
+
+      is HomeIntent.LaunchAppReview -> launchAppReview(intent.activity)
 
       else -> {}
     }
@@ -302,6 +312,23 @@ constructor(
   }
 
   /**
+   * Launches the app review flow.
+   */
+  private fun launchAppReview(activity: Activity) {
+    viewModelScope.launch {
+      try {
+        AppLog.i(TAG, "Launching app review flow from HomeScreen")
+        appReviewManager.launchInAppReview(activity)
+        AppLog.i(TAG, "App review flow launched successfully")
+        // Reset the flag after launching
+        handleIntent(HomeIntent.SetShouldAskForReview(false))
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error launching app review flow", e)
+      }
+    }
+  }
+
+  /**
    * Observes feed changes and updates the unread feed indicator.
    */
   private fun observeFeedIndicator() {
@@ -332,6 +359,32 @@ constructor(
       AppLog.d("HomeViewModel", "Updated unread feed count: $count, show indicator: $shouldShow")
     } catch (e: Exception) {
       AppLog.e("HomeViewModel", "Failed to update unread feed indicator", e.toString())
+    }
+  }
+
+  // * Checks for account flags and triggers appropriate actions.
+  // * @param trigger The trigger type (e.g., "login", "entry")
+  // */
+  private fun checkAccountFlags(trigger: String) {
+    viewModelScope.launch {
+      try {
+        // First get the account flag
+        val accountFlag = accountFlagService.getAccountFlag()
+        if (accountFlag != null) {
+          AppLog.d(TAG, "Found account flag: ${accountFlag.type} for trigger: $trigger")
+          // Check if the flag should be triggered
+          val flagTriggered = accountFlagService.checkAccountFlag(trigger)
+          if (flagTriggered) {
+            AppLog.d(TAG, "Account flag triggered for: $trigger")
+            // Set the review flag to true when account flag is triggered
+            handleIntent(HomeIntent.SetShouldAskForReview(true))
+          }
+        } else {
+          AppLog.d(TAG, "No account flags found for trigger: $trigger")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check account flags for trigger: $trigger", e.toString())
+      }
     }
   }
 }

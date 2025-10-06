@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.greatergoods.libs.appsync.startAppSyncScan
 import kotlinx.coroutines.launch
+import android.app.Activity
 
 /**
  * Home screen displaying current user data, logout option, and switch account section.
@@ -57,6 +59,13 @@ fun HomeScreenContent(
   val context = LocalContext.current
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
+
+  // Observe shouldAskForReview state and launch review when true
+  LaunchedEffect(state.shouldAskForReview) {
+    if (state.shouldAskForReview) {
+      handleIntent(HomeIntent.LaunchAppReview(context as Activity))
+    }
+  }
 
   Scaffold(
     bottomBar = {

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.debugMenu.model
 
+import android.app.Activity
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 
 /**
@@ -13,4 +14,5 @@ sealed class DebugMenuIntent : IReducer.Intent {
     data class ClearAllData(val onDismiss: () -> Unit) : DebugMenuIntent()
     data object SendScaleLogs : DebugMenuIntent()
     data object ShowAppReview: DebugMenuIntent()
+    data class ShowAppReviewWithActivity(val activity: Activity) : DebugMenuIntent()
 }

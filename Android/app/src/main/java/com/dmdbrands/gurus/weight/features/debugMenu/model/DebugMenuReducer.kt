@@ -40,5 +40,9 @@ class DebugMenuReducer : IReducer<DebugMenuState, DebugMenuIntent> {
           is DebugMenuIntent.ShowAppReview -> {
             state.copy(isLoading = true)
           }
+
+          is DebugMenuIntent.ShowAppReviewWithActivity -> {
+            state.copy(isLoading = true)
+          }
         }
 }

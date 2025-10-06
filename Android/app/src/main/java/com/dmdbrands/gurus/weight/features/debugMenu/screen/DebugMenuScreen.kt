@@ -11,20 +11,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
+import com.dmdbrands.gurus.weight.features.common.components.CardAlignmentType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SettingsSection
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.model.SettingColorType
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
@@ -35,6 +42,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import android.app.Activity
 
 /**
  * Debug menu screen composable. Displays debug information and troubleshooting options.
@@ -44,15 +52,23 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 fun DebugMenuScreen() {
   val viewModel: DebugMenuViewModel = hiltViewModel()
   val state by viewModel.state.collectAsState()
+  val windowSize = LocalWindowInfo.current.containerSize
+  val isTablet =
+    with(LocalDensity.current) {
+      windowSize.width.toDp() > 600.dp
+    }
+  val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
 
   BackHandler {
     viewModel.handleIntent(DebugMenuIntent.OnBack)
   }
 
-  DebugMenuContent(
-    state = state,
-    handleIntent = viewModel::handleIntent,
-  )
+  CompositionLocalProvider(LocalCardAlignment provides cardAlignment) {
+    DebugMenuContent(
+      state = state,
+      handleIntent = viewModel::handleIntent,
+    )
+  }
 }
 
 @Composable
@@ -150,7 +166,13 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
       ),
       SettingsItem(
         title = DebugMenuStrings.AppInfo.Timezone,
-        type = SettingsItemType.TextOnly("${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes}"),
+        type = SettingsItemType.TextOnly(
+          if (state.timezone.isNotEmpty()) {
+            "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes} ${state.timezone}"
+          } else {
+            "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes}"
+          }
+        ),
         onClick = {},
       ),
     ),
@@ -161,6 +183,7 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
 private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
   val activity = LocalActivity.current
   val scope = rememberCoroutineScope()
+  val context = LocalContext.current
   SettingsSection(
     title = DebugMenuStrings.SectionHeaders.AppTroubleshooting,
     items = listOf(
@@ -196,7 +219,9 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
       SettingsItem(
         title = DebugMenuStrings.Actions.ShowAppRate,
         type = SettingsItemType.None,
-        onClick = { handleIntent(DebugMenuIntent.ShowAppReview) },
+        onClick = {
+          handleIntent(DebugMenuIntent.ShowAppReviewWithActivity(context as Activity))
+        },
       ),
     ),
   )

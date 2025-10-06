@@ -3,9 +3,9 @@ package com.dmdbrands.gurus.weight.features.debugMenu.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
+import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
-import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -17,9 +17,12 @@ import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuReducer
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuState
 import com.dmdbrands.gurus.weight.features.debugMenu.strings.DebugMenuStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.app.Activity
+import android.content.Context
 
 /**
  * ViewModel for the Debug Menu screen.
@@ -32,7 +35,8 @@ class DebugMenuViewModel @Inject constructor(
     private val entryService: IEntryService,
     private val exportService: IExportService,
     private val logManager: LogManager,
-    private val accountFlagService: IAccountFlagService,
+    private val appReviewManager: IAppReviewManager,
+    @ApplicationContext private val context: Context,
 
 ) : BaseIntentViewModel<DebugMenuState, DebugMenuIntent>(
     reducer = DebugMenuReducer(),
@@ -62,13 +66,27 @@ class DebugMenuViewModel @Inject constructor(
             is DebugMenuIntent.ResyncEntries -> onResyncEntries()
             is DebugMenuIntent.ClearAllData -> onClearAllData(intent.onDismiss)
             is DebugMenuIntent.SendScaleLogs -> onSendScaleLogs()
-          is DebugMenuIntent.ShowAppReview -> showAppReviewPrompt()
+            is DebugMenuIntent.ShowAppReview -> showAppReviewPrompt(null)
+            is DebugMenuIntent.ShowAppReviewWithActivity -> showAppReviewPrompt(intent.activity)
         }
     }
 
-  private fun showAppReviewPrompt(){
+  private fun showAppReviewPrompt(activity: Activity?){
     viewModelScope.launch {
-      accountFlagService.launchAppReview()
+      try {
+        AppLog.i(tag, "Launching app review flow")
+        // Use the launchInAppReview method which takes a Context
+        activity?.let {
+          appReviewManager.launchInAppReview(it)
+          AppLog.i(tag, "App review flow launched successfully")
+        } ?: run {
+          AppLog.w(tag, "Activity is null, cannot launch app review")
+          showErrorAlert()
+        }
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error launching app review flow ${e}", e)
+        showErrorAlert()
+      }
     }
   }
 

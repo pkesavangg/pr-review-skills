@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.model.AccountFlag
-import com.dmdbrands.gurus.weight.domain.model.AppReview
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Service interface for account flag operations.
@@ -22,20 +20,6 @@ interface IAccountFlagService {
      * @return true if a flag was found and processed, false otherwise
      */
     suspend fun checkAccountFlag(trigger: String): Boolean
-
-    /**
-     * Sets an app review request.
-     * @param appReview The app review data to process
-     */
-    fun setAppReview(appReview: AppReview)
-
-    suspend fun launchAppReview()
-
-    /**
-     * Gets the current app review flow.
-     * @return Flow of app review data
-     */
-    val appReviewFlow: Flow<AppReview>
 
     /**
      * Deletes an account flag by ID.

@@ -77,7 +77,6 @@ class MainActivity : AppCompatActivity() {
     healthConnectService.initializeHealthConnect(this)
     gGBLEService.createInstance(this)
     wifiScaleService.initialise(this)
-    appReviewManager.initialise(this)
 
     setContent {
       MeApp()

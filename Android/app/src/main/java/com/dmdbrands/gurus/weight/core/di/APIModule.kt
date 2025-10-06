@@ -133,7 +133,7 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideFeedAPI(httpClient: HttpClient): IFeedAPI = httpClient.createService(IFeedAPI::class.java)
-     * Provides the IAccountFlagAPI implementation using Retrofit.
+    /** Provides the IAccountFlagAPI implementation using Retrofit.
      * Used for account flag operations and app review flows.
      */
     @Provides

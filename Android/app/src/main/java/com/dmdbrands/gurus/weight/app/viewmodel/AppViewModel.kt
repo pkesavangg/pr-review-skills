@@ -173,9 +173,6 @@ constructor(
 
       is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
 
-      is AppIntent.OnWeightOnlyModeEnable -> onWeightOnlyModeEnable()
-
-      is AppIntent.OnWeightOnlyModeAlertDismiss -> onWeightOnlyModeAlertDismiss()
 
       else -> {}
     }
@@ -233,8 +230,6 @@ constructor(
             // handle login event
             stopScan()
             initLoadingData(authState.account, true)
-            // Check for account flags after login
-            checkAccountFlags("login")
           }
 
           is AuthState.LoggedOut -> {
@@ -372,7 +367,6 @@ constructor(
         navigationService.autoLogin()
         // Check for IAM feed modal trigger after fetching feed items
         entryService.initializeGoalCardMonitoring()
-        feedService.checkAndTriggerFeedModal()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
@@ -743,65 +737,6 @@ constructor(
   }
 
   /**
-   * Handles enabling weight-only mode for connected scales.
-   * Similar to updateWeightOnlyMode() in Angular BluetoothService.
-   */
-  private fun onWeightOnlyModeEnable() {
-    viewModelScope.launch {
-      try {
-        AppLog.d(TAG, "Enabling weight-only mode for connected scales")
-
-        val pairedScales = deviceService.pairedScales.first()
-        val scalesToUpdate = pairedScales.filter { device ->
-          device.connectionStatus == BLEStatus.CONNECTED &&
-            device.isWeighOnlyModeEnabledByOthers
-        }
-
-        if (scalesToUpdate.isNotEmpty()) {
-          // Show loading toast
-          dialogQueueService.showToast(
-            Toast(message = "Updating scale settings..."),
-          )
-
-          for (scale in scalesToUpdate) {
-            // Update scale settings to enable body metrics
-            try {
-              // This would call the scale service to update settings
-              // ggDeviceService.updateSetting(...) - implementation depends on your scale service
-              AppLog.d(TAG, "Updated settings for scale: ${scale.device?.deviceName}")
-            } catch (e: Exception) {
-              AppLog.e(TAG, "Failed to update scale settings", e.toString())
-            }
-          }
-
-          // Show success toast
-          dialogQueueService.showToast(
-            Toast(message = "Body metrics enabled successfully!"),
-          )
-        }
-
-        // Dismiss the alert
-        onWeightOnlyModeAlertDismiss()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to enable weight-only mode", e.toString())
-        dialogQueueService.showToast(
-          Toast(message = "Failed to update scale settings"),
-        )
-      }
-    }
-  }
-
-  /**
-   * Handles dismissing the weight-only mode alert.
-   */
-  private fun onWeightOnlyModeAlertDismiss() {
-    viewModelScope.launch {
-      WeightOnlyModeEventService.emit(WeightOnlyModeEventType.HIDE_ALERT)
-      AppLog.d(TAG, "Weight-only mode alert dismissed")
-    }
-  }
-
-  /**
    * Updates the unread feed count and indicator visibility
    */
   private suspend fun updateUnreadFeedCount() {
@@ -832,9 +767,9 @@ constructor(
       }
     }
   }
-   * Checks for account flags and triggers appropriate actions.
-   * @param trigger The trigger type (e.g., "login", "entry")
-   */
+   // * Checks for account flags and triggers appropriate actions.
+   // * @param trigger The trigger type (e.g., "login", "entry")
+   // */
   private fun checkAccountFlags(trigger: String) {
     viewModelScope.launch {
       try {
@@ -843,10 +778,7 @@ constructor(
         if (accountFlag != null) {
           AppLog.d(TAG, "Found account flag: ${accountFlag.type} for trigger: $trigger")
           // Check if the flag should be triggered
-          val flagTriggered = accountFlagService.checkAccountFlag(trigger)
-          if (flagTriggered) {
-            AppLog.d(TAG, "Account flag triggered for: $trigger")
-          }
+          accountFlagService.checkAccountFlag(trigger)
         } else {
           AppLog.d(TAG, "No account flags found for trigger: $trigger")
         }
@@ -868,16 +800,4 @@ constructor(
       else -> {}
     }
   }
-   * Sets an app review request.
-   * @param appReview The app review data to process
-   */
-  fun setAppReview(appReview: com.dmdbrands.gurus.weight.domain.model.AppReview) {
-    accountFlagService.setAppReview(appReview)
-  }
-
-  /**
-   * Gets the app review flow for observing review requests.
-   * @return Flow of app review data
-   */
-  fun getAppReviewFlow() = accountFlagService.appReviewFlow
 }

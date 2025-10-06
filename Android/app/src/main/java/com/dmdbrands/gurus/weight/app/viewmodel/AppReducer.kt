@@ -26,8 +26,6 @@ sealed interface AppIntent : IReducer.Intent {
   data class SetScaleDiscovered(val isScaleDiscovered: Boolean) : AppIntent
   data class SetSku(val sku: String) : AppIntent
   data class SetScanStatus(val hasScanStarted: Boolean) : AppIntent
-  data object OnWeightOnlyModeEnable : AppIntent
-  data object OnWeightOnlyModeAlertDismiss : AppIntent
 
   data object OnPopUpConnect : AppIntent
   data object OnPopUpDismiss : AppIntent

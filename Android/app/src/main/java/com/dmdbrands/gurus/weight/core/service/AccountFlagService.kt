@@ -3,13 +3,9 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.AccountFlag
-import com.dmdbrands.gurus.weight.domain.model.AppReview
 import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -32,10 +28,6 @@ class AccountFlagService
 
     // Current account flag
     private var firstFlag: AccountFlag? = null
-
-    // App review flow
-    private val _appReviewFlow = MutableSharedFlow<AppReview>()
-    override val appReviewFlow: Flow<AppReview> = _appReviewFlow.asSharedFlow()
 
     /**
      * Gets the first account flag for the current user.
@@ -88,18 +80,11 @@ class AccountFlagService
             val wasDeleted = deleteFlag(flagId)
             if (wasDeleted) {
               // Trigger app review flow using AppReviewManager
-              val shouldPrompt = appReviewManager.shouldPromptForReview()
-              if (shouldPrompt) {
-                launchAppReviewFlow()
-                // Note: Activity will need to be provided by the caller
-                // For now, we'll just log that the review should be triggered
-                AppLog.d("AccountFlagService", "App review flow prepared, waiting for activity")
-              }
-              AppLog.d("AccountFlagService", "Triggered app rate review")
+              //review shown using this variable from homescreen
+              AppLog.d("AccountFlagService", "Trigger app rate review")
               return true
             }
           }
-
           else -> {
             AppLog.w("AccountFlagService", "Unknown flag type: $flagType")
           }
@@ -110,32 +95,6 @@ class AccountFlagService
         false
       }
     }
-
-
-    /**
-     * Sets an app review request.
-     * @param appReview The app review data to process
-     */
-    override fun setAppReview(appReview: AppReview) {
-        AppLog.d("AccountFlagService", "Setting app review: ${appReview.screen}")
-        _appReviewFlow.tryEmit(appReview)
-    }
-
-  override suspend fun launchAppReview() {
-    try {
-      val shouldPrompt = appReviewManager.shouldPromptForReview()
-      if (shouldPrompt) {
-        launchAppReviewFlow()
-        // Note: Activity will need to be provided by the caller
-        // For now, we'll just log that the review should be triggered
-        AppLog.d("AccountFlagService", "App review flow prepared, waiting for activity from debug menu")
-      }
-    }
-    catch (e: Exception){
-      AppLog.e("AccountFlagService", "Failed to launch app review flow", e.toString())
-    }
-
-  }
 
   /**
      * Deletes an account flag by ID.
@@ -156,18 +115,5 @@ class AccountFlagService
             AppLog.e("AccountFlagService", "Exception while deleting flag: $flagId", e.toString())
             firstFlag = null
             false
-        }
-
-    /**
-     * Launches the app review flow for the given activity.
-     * This method should be called when an activity is available to show the review.
-     * @return true if the review flow was launched successfully, false otherwise
-     */
-    suspend fun launchAppReviewFlow(): Boolean =
-        try {
-            appReviewManager.launchReviewFlow()
-        } catch (e: Exception) {
-            AppLog.e("AccountFlagService", "Failed to launch app review flow", e.toString())
-            throw e
         }
 }
