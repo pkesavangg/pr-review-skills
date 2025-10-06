@@ -57,7 +57,6 @@ fun DebugMenuScreen() {
     with(LocalDensity.current) {
       windowSize.width.toDp() > 600.dp
     }
-  val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
 
   BackHandler {
     viewModel.handleIntent(DebugMenuIntent.OnBack)

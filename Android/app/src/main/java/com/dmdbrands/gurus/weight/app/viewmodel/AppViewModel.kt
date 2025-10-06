@@ -99,6 +99,7 @@ constructor(
     // Delay constants for Health Connect permission check
     private const val INITIAL_DELAY = 1L // 1 second
     private const val DELAYED_ALERT = 3000L // 3 seconds
+    private var currentAccountId: String? = null
   }
 
   init {
