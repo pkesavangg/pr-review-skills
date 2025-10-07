@@ -31,7 +31,7 @@ struct DashboardStrings {
     static let proteinBase = "protein"
     static let skelMuscle = "skel muscle"
     static let bmrBase = "bmr"
-    static let metAgeBase = "meta age" // R4 uses "meta age"; dashboard uses "met age"
+    static let metAge = "meta age" 
     
     // Units
     static let percentageUnitSymbol = "%"
@@ -47,7 +47,6 @@ struct DashboardStrings {
     static let subFat = "\(subFatBase) \(percentageUnitSymbol)"
     static let protein = "\(proteinBase) \(percentageUnitSymbol)"
     static let bmrKcal = "\(bmrBase) \(kcalUnitSymbol)"
-    static let metAge = "met age"
     static let metAgeUnit = "yrs"
     
     // Streak/Loss labels
