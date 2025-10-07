@@ -41,6 +41,7 @@ struct FlatButtonStyle: ViewModifier {
     
     func body(content: Content) -> some View {
         content
+            .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
             .foregroundColor(foregroundColor)
             .background(backgroundColor)
             .cornerRadius(.radiusPill)

@@ -57,26 +57,12 @@ struct LandingScreen: View {
                                     .contentShape(Rectangle())
                             })
                             
-                            Button(action: {
+                            ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
-                                    router.navigate(to: .login(nil))
+                                    router.navigate(to: .signup)
                                 }
-                            }, label:{
-                                Text(lang.signUp.uppercased())
-                                    .fontWeight(.bold)
-                                    .fontOpenSans(.button1)
-                                    .frame(minWidth: 96)
-                                    .padding(.vertical, .spacingXS)
-                                    .padding(.horizontal, .spacingLG)
-                                    .foregroundColor(theme.textInverse)
-                                    .background(theme.actionPrimary)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: .radiusPill)
-                                            .stroke(theme.textInverse, lineWidth: 4)
-                                    )
-                                    .cornerRadius(.radiusPill)
-                                    .contentShape(Rectangle())
-                            })
+                            }
+                            .frame(width: 96)                            
                         }
                         .padding(.bottom, .spacing6XL)
                         

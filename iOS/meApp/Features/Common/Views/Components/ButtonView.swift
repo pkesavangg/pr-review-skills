@@ -23,11 +23,10 @@ struct ButtonView: View {
             Text(text.uppercased())
                 .fontWeight(.bold)
                 .fontOpenSans(size == .large ? .button1 : .button2)
-                .frame(minWidth: size == .small ? 75 : 160, minHeight: size == .small ? 30 : 40)
-                .modifier(CustomButtonStyle(type: type, buttonSize: size))
                 .if(!type.isInlineText) { view in
-                    view.frame(minWidth: 96, alignment: alignment)
+                    view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
+                .modifier(CustomButtonStyle(type: type, buttonSize: size))
                 .multilineTextAlignment(.leading)
         }
         .disabled(isDisabled)
