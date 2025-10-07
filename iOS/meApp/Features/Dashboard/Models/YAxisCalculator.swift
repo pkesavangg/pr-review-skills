@@ -32,7 +32,7 @@ struct YAxisCalculator {
     /// - Returns: YAxisScale with calculated domain and ticks
     static func calculateYAxis(
         operations: [BathScaleWeightSummary],
-        goalWeight: Double,
+        goalWeight: Double?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
         convertStoredWeightToDisplay: (Int) -> Double,
@@ -41,8 +41,8 @@ struct YAxisCalculator {
     ) -> YAxisScale {
         guard !operations.isEmpty else {
             // EMPTY-STATE BEHAVIOR
-            // If a goal is set, show goal-centric ticks; else fallback to last or default scale (ticks still present)
-            if goalWeight > 0 {
+            // If a goal is set (non-nil and non-zero), show goal-centric ticks; else fallback to last or default scale (ticks still present)
+            if let goalWeight = goalWeight {
                 return buildGoalCentricFallback(goalWeight: goalWeight)
             }
             if let last = lastScale {
@@ -61,7 +61,7 @@ struct YAxisCalculator {
         if operations.count <= 2 {
             let small = handleSmallDataset(
                 operations: operations,
-                goalWeight: goalWeight,
+                goalWeight: goalWeight ?? 0,
                 isWeightlessMode: isWeightlessMode,
                 anchorWeight: anchorWeight,
                 convertStoredWeightToDisplay: convertStoredWeightToDisplay,
@@ -97,7 +97,7 @@ struct YAxisCalculator {
         let scale = ImprovedNiceScaleCalculator.generateNiceScale(
             minValue: minValue,
             maxValue: maxValue,
-            goalWeight: goalWeight,
+            goalWeight: goalWeight ?? 0,
             targetTickCount: 4 // Reduced tick count for cleaner graphs
         )
         
@@ -268,7 +268,7 @@ struct YAxisCalculator {
     }
 
     /// Create fallback scale when no data is available
-    private static func createFallbackScale(goalWeight: Double, lastScale: YAxisScale? = nil) -> YAxisScale {
+    private static func createFallbackScale(goalWeight: Double?, lastScale: YAxisScale? = nil) -> YAxisScale {
         if let last = lastScale {
             return last
         } else {
@@ -285,7 +285,7 @@ struct YAxisCalculator {
                 min: FALLBACK_MIN,
                 max: FALLBACK_MAX,
                 step: FALLBACK_STEP,
-                ticks: goalWeight > 0 ? buildGoalCentricFallback(goalWeight: goalWeight).ticks : ticks,
+                ticks: (goalWeight != nil && goalWeight! > 0) ? buildGoalCentricFallback(goalWeight: goalWeight!).ticks : ticks,
                 domain: domainMin...domainMax,
                 average: (FALLBACK_MIN + FALLBACK_MAX) / 2
             )

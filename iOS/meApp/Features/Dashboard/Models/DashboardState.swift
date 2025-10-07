@@ -135,6 +135,7 @@ struct GoalState {
     var goalUnit: WeightUnit = .lb
     var goalDelta: Double = 0.0
     var goalProgress: CGFloat = 0.0
+    var hasGoalSet: Bool = false // Track if goal was actually set (not null from API)
 }
 
 // MARK: - Data State

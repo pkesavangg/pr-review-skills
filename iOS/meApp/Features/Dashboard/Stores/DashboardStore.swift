@@ -331,7 +331,7 @@ class DashboardStore: ObservableObject {
     }
     
     // Delegate goal operations to GoalManager
-    var goalWeightForDisplay: Double {
+    var goalWeightForDisplay: Double? {
         return goalManager.getGoalWeightForDisplay(
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight

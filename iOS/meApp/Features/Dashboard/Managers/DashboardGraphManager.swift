@@ -888,7 +888,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
     
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
+    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
         let yAxisScale = YAxisCalculator.calculateYAxis(
             operations: operations,
             goalWeight: goalWeight,
@@ -902,7 +902,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return yAxisScale
     }
     
-    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
+    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
         let yAxisScale = getYAxisScale(
             from: operations,
             goalWeight: goalWeight,
