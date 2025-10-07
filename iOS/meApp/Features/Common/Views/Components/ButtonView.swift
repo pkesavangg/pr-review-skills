@@ -21,8 +21,9 @@ struct ButtonView: View {
     var body: some View {
         Button(action: action) {
             Text(text.uppercased())
-                .fontOpenSans(size == .large ? .button1 : .button2)
                 .fontWeight(.bold)
+                .fontOpenSans(size == .large ? .button1 : .button2)
+                .frame(minWidth: size == .small ? 75 : 160, minHeight: size == .small ? 30 : 40)
                 .modifier(CustomButtonStyle(type: type, buttonSize: size))
                 .if(!type.isInlineText) { view in
                     view.frame(minWidth: 96, alignment: alignment)
