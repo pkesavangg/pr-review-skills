@@ -40,7 +40,7 @@ internal fun bottomAxis(
         },
       itemPlacer = horizontalItemPlacer,
       guideline = rememberAxisGuidelineComponent(
-        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+        fill = fill(MeTheme.colorScheme.utility),
         thickness = 1.dp,
       ),
       label = rememberAxisLabelComponent(

@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
@@ -20,7 +20,6 @@ import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import android.graphics.Typeface
-import androidx.compose.ui.platform.LocalResources
 
 @Composable
 internal fun rememberDefaultMarker(
@@ -40,6 +39,8 @@ internal fun rememberDefaultMarker(
     fill = fill(MeTheme.colorScheme.textBody),
     thickness = 1.dp,
   )
+  val pointSize = if (segment == GraphSegment.TOTAL) 14f else 16f
+
 
   return rememberDefaultCartesianMarker(
     label = label,
@@ -53,6 +54,7 @@ internal fun rememberDefaultMarker(
         strokeThicknessDp = 0f,
       )
     },
+    indicatorSize = pointSize.dp,
     contentPadding = insets(vertical = 29.dp),
     guideline = guideline,
     yLabelCallback = yLabelCallback,

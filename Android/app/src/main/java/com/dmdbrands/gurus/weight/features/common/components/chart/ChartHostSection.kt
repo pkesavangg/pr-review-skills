@@ -166,7 +166,7 @@ internal fun ChartHostSection(
           markerDecoration = goalMarker,
           guideline = if (state.isEmptyGraph && goalMarker == null) null else
             rememberAxisLineComponent(
-              fill = fill(MeTheme.colorScheme.iconSecondary.copy(0.5f)),
+              fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
               thickness = 1.dp,
             ),
           label =
