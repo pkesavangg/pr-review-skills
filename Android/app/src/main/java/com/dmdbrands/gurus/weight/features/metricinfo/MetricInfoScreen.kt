@@ -1,15 +1,23 @@
 package com.dmdbrands.gurus.weight.features.metricinfo
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
@@ -20,6 +28,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.metricinfo.components.MetricInfoInfoSection
@@ -47,6 +56,10 @@ data class MetricInfoKey(
 enum class MetricInfoSource {
   DAY,
   MONTH,
+}
+
+fun getFilteredMetricKeys(): List<MetricKey> {
+  return MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED }
 }
 
 fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
@@ -81,6 +94,8 @@ fun MetricInfoScreen(
   } else {
     MetricInfoScreenContent(
       stat = state.stat!!,
+      info = info,
+      selectedIndex = state.selectedMetricIndex,
       date = getFormattedDate(
         DateTimeConverter.isoToTimestamp(info.entryTimeStamp), source,
       ),
@@ -92,31 +107,54 @@ fun MetricInfoScreen(
 /**
  * Content composable for the Metric Info screen. Displays metric details, info, and resources.
  *
- * @param selectedSegment The currently selected metric segment.
- * @param metricValue The value of the selected metric.
- * @param metricUnit The unit of the selected metric.
- * @param metricKeys The list of available metric keys.
- * @param onSelectSegment Callback when a segment is selected.
+ * @param stat The currently selected metric stat.
+ * @param info The dashboard metric data.
+ * @param selectedIndex The currently selected metric index.
+ * @param date The formatted date string.
+ * @param handleIntent Callback for handling intents.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MetricInfoScreenContent(
   stat: Stat,
+  info: DashboardMetric,
+  selectedIndex: Int,
   date: String,
   handleIntent: (MetricInfoIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
   val backStack = LocalNavBackStack.current
-  val verticalScrollState = rememberScrollState()
-  val metricKeys = MetricKey.entries
-    .filter { it != MetricKey.UNRECOGNIZED }
-    .map {
-      MetricInfoKey(
-        key = it,
-        label = it.name.replace("_", " "),
-      )
-    }
 
-  val selectedMetricInfoKey = metricKeys.first { it.key == (stat.key as DashboardKey.Metric).key }
+  val filteredMetricKeys = getFilteredMetricKeys()
+  val metricKeys = filteredMetricKeys.map {
+    MetricInfoKey(
+      key = it,
+      label = it.name.replace("_", " "),
+    )
+  }
+
+  val pagerState = rememberPagerState(
+    initialPage = selectedIndex,
+    pageCount = { metricKeys.size },
+  )
+
+  val selectedMetricInfoKey = metricKeys.firstOrNull {
+    it.key == (stat.key as DashboardKey.Metric).key
+  } ?: metricKeys.firstOrNull()
+
+  // Sync pager state with selected index
+  LaunchedEffect(selectedIndex) {
+    if (selectedIndex != pagerState.currentPage && selectedIndex in metricKeys.indices) {
+      pagerState.scrollToPage(selectedIndex)
+    }
+  }
+
+  // Handle pager page changes
+  LaunchedEffect(pagerState.currentPage) {
+    if (pagerState.currentPage != selectedIndex) {
+      handleIntent(MetricInfoIntent.SetSelectedIndex(pagerState.currentPage))
+    }
+  }
 
   AppScaffold(
     title = MetricInfoStrings.AppBarTitle,
@@ -131,27 +169,47 @@ fun MetricInfoScreenContent(
     },
   ) { modifier ->
     Column(
-      modifier = modifier.padding(top = spacing.md).verticalScroll(verticalScrollState),
+      modifier = modifier.padding(top = spacing.md),
     ) {
-      SegmentButtonGroup(
-        data = metricKeys,
-        contentPadding = PaddingValues(horizontal = MeTheme.spacing.sm),
-        selectedData = selectedMetricInfoKey,
-        key = MetricInfoKey::label,
-        size = SegmentButtonSize.Small,
-        type = SegmentButtonType.Scrollable,
-        onSelected = {
-          handleIntent(MetricInfoIntent.SelectSegment(it.key))
-        },
-      )
-      Column(
-        modifier = modifier
-          .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xl),
-      ) {
-        MetricInfoValueSection(value = stat.getDisplayValue(), unit = stat.unit, date = date)
-        MetricInfoInfoSection(metricKey = selectedMetricInfoKey.key)
-        MetricInfoResourcesSection(metricKey = selectedMetricInfoKey.key, handleIntent = handleIntent)
+      if (metricKeys.isNotEmpty() && selectedMetricInfoKey != null) {
+        SegmentButtonGroup(
+          data = metricKeys,
+          contentPadding = PaddingValues(horizontal = spacing.sm),
+          selectedData = selectedMetricInfoKey,
+          key = MetricInfoKey::label,
+          size = SegmentButtonSize.Small,
+          type = SegmentButtonType.Scrollable,
+          onSelected = {
+            handleIntent(MetricInfoIntent.SelectSegment(it.key))
+          },
+        )
+      }
+
+      HorizontalPager(
+        state = pagerState,
+        modifier = modifier.fillMaxSize(),
+      ) { page ->
+        val currentMetricKey = metricKeys[page].key
+        val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
+        val pageScrollState = rememberScrollState()
+
+        Column(
+          modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(pageScrollState)
+            .padding(horizontal = spacing.sm, vertical = spacing.md),
+          verticalArrangement = Arrangement.Top,
+        ) {
+          MetricInfoValueSection(value = currentStat.getDisplayValue(), unit = currentStat.unit, date = date)
+
+          Spacer(modifier = Modifier.height(spacing.xl))
+
+          MetricInfoInfoSection(metricKey = currentMetricKey)
+
+          Spacer(modifier = Modifier.height(spacing.xl))
+
+          MetricInfoResourcesSection(metricKey = currentMetricKey, handleIntent = handleIntent)
+        }
       }
     }
   }
@@ -169,6 +227,23 @@ fun PreviewMetricInfoScreenLight() {
         icon = null,
         key = DashboardKey.Metric(MetricKey.HEART_RATE),
       ),
+      info = DashboardMetric(
+        weight = 150.0,
+        bmi = null,
+        bodyFat = null,
+        muscleMass = null,
+        bodyWater = null,
+        heartRate = 18,
+        boneMass = null,
+        visceralFatLevel = null,
+        subcutaneousFatPercent = null,
+        proteinPercent = null,
+        skeletalMusclePercent = null,
+        bmr = null,
+        metabolicAge = null,
+        unit = com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB,
+      ),
+      selectedIndex = 0,
       date = "Today",
       handleIntent = {},
     )

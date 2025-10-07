@@ -1,11 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -293,30 +287,14 @@ private fun <T> SegmentButtonItem(
       },
     contentAlignment = Alignment.Center,
   ) {
-    // Animated background with smooth slide transition
-    val transition = updateTransition(isSelected, label = "selected state")
 
-    transition.AnimatedContent(
-      transitionSpec = {
-        ContentTransform(
-          targetContentEnter = slideInHorizontally(
-            animationSpec = tween(300),
-          ),
-          initialContentExit = slideOutHorizontally(
-            animationSpec = tween(200),
-            targetOffsetX = { fullWidth -> fullWidth },
-          ),
-        )
-      },
-    ) { targetState ->
-      if (targetState) {
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(colors.activeContainerColor),
-        )
-      }
+    if (isSelected) {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .clip(RoundedCornerShape(cornerRadius))
+          .background(colors.activeContainerColor),
+      )
     }
 
     // Text content above the animated background

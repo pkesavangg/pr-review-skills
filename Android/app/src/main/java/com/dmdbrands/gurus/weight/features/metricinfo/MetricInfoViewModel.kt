@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.metricinfo
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.metricinfo.getFilteredMetricKeys
 import com.dmdbrands.gurus.weight.proto.MetricKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -36,6 +37,21 @@ class MetricInfoViewModel @AssistedInject constructor(
       is MetricInfoIntent.SelectSegment -> {
         val stat = StatHelper.getMetricValue(info, intent.key)
         handleIntent(MetricInfoIntent.SetStat(stat))
+        // Update selected index based on the key
+        val metricKeys = getFilteredMetricKeys()
+        val index = metricKeys.indexOfFirst { it == intent.key }
+        if (index >= 0) {
+          handleIntent(MetricInfoIntent.SetSelectedIndex(index))
+        }
+      }
+
+      is MetricInfoIntent.SetSelectedIndex -> {
+        val metricKeys = getFilteredMetricKeys()
+        if (intent.index in metricKeys.indices) {
+          val selectedKey = metricKeys[intent.index]
+          val selectedStat = StatHelper.getMetricValue(info, selectedKey)
+          handleIntent(MetricInfoIntent.SetStat(selectedStat))
+        }
       }
 
       is MetricInfoIntent.OpenResource -> {
