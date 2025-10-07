@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.ui.Alignment
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -20,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.getSourceFromSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -38,7 +39,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardControl
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMetrics
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMilestone
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
-import com.dmdbrands.gurus.weight.features.dashboard.components.HistoryGraph
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
@@ -57,7 +57,6 @@ fun DashboardScreen() {
 
   val scope = rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
-  var isRefreshing by remember { mutableStateOf(false) }
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
       if (event == Lifecycle.Event.ON_RESUME) {
@@ -83,9 +82,12 @@ fun DashboardScreen() {
       ),
     )
   }
-  PullToRefreshBox(isRefreshing = state.isRefreshing , onRefresh = {
-    viewmodel.handleIntent(DashboardIntent.Refresh)
-  }) {
+  PullToRefreshBox(
+    isRefreshing = state.isRefreshing,
+    onRefresh = {
+      viewmodel.handleIntent(DashboardIntent.Refresh)
+    },
+  ) {
     DashboardScreenContent(state, viewmodel::handleIntent)
   }
 }
@@ -114,14 +116,14 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         // You can add a proper loading indicator here
         androidx.compose.material3.CircularProgressIndicator(
-          modifier = Modifier.align(Alignment.CenterHorizontally)
+          modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
       } else {
-        HistoryGraph(
+        GraphPagerView(
           state = state,
           selectedStat = selectedStat,
-          onSelectSegment = {
+          onSegmentChange = {
             handleIntent(DashboardIntent.SetSelectedSegment(it))
           },
           onSelected = {
@@ -130,17 +132,19 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           onPagerStateChange = { pagerState ->
             handleIntent(DashboardIntent.SetPagerState(pagerState))
           },
-          onScrollTargetChange = {scrollTarget ->
+          onScrollTargetChange = { scrollTarget ->
             handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
-          }
+          },
         )
       }
 
-      if(state.dayWiseEntries.isEmpty() && !state.isLoading) {
+      if (state.dayWiseEntries.isEmpty() && !state.isLoading) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
-        EmptyMetric(onConnectScaleClick = {
-          handleIntent(DashboardIntent.OnConnectScale)
-        })
+        EmptyMetric(
+          onConnectScaleClick = {
+            handleIntent(DashboardIntent.OnConnectScale)
+          },
+        )
       } else {
         DashboardMetrics(
           metricData = metricData,

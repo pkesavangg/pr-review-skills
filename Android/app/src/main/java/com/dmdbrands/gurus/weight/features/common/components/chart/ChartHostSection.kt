@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -205,7 +204,7 @@ internal fun ChartHostSection(
         val min = xLabels.minOfOrNull { it.value.toDouble() }
 
         val outOfBoundaryCondition = if (click != null && max != null && min != null) {
-          click < min || click > max
+          click !in min..max
         } else {
           false // or handle differently if null means "out of bounds"
         }
@@ -236,7 +235,7 @@ internal fun ChartHostSection(
   CartesianChartHost(
     chart = primaryChart,
     modelProducer = modelProducer,
-    modifier = modifier.padding(start = 2.dp),
+    modifier = modifier,
     scrollState = scrollState,
     animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
