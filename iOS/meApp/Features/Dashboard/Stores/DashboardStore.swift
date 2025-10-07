@@ -1204,8 +1204,6 @@ class DashboardStore: ObservableObject {
                 self.state.graph.clearSelection()
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
-                self.resetGridLayout()
-                // Reset snapshot after a full dashboard reset
                 self.hasEditSnapshot = false
                 
                 // Force UI update to reflect the reset state
