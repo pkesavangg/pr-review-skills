@@ -158,9 +158,11 @@ struct SwipeableModifier: ViewModifier {
             }
         }
         .onChange(of: openItemID?.wrappedValue) { _, newValue in
-            // Close this item if another item is opened
-            if let newValue, newValue != itemID, swipeState != .closed {
-                closeSwipe()
+            // Close this item if another item is opened OR if explicitly set to nil
+            if swipeState != .closed {
+                if newValue == nil || (newValue != nil && newValue != itemID) {
+                    closeSwipe()
+                }
             }
         }
         .onChange(of: swipeButtons.count) { _, _ in

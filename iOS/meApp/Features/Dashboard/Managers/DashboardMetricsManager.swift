@@ -818,7 +818,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Falls back to latest historical values per metric when the visible window has no data for that metric.
     /// Shows placeholders ("--") when no visible operations are available.
     func updateMetricsForVisibleAverage(visibleOperations: [BathScaleWeightSummary]) async {
-        guard !visibleOperations.isEmpty else { 
+        guard !visibleOperations.isEmpty else {
             // No visible operations - show placeholders for all metrics
             setPlaceholdersForAllMetrics()
             return 
@@ -857,7 +857,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 avg,
                 shouldCompose: metric.shouldCompose,
                 wholeNumber: metric.wholeNumber,
-                fallbackValue: avg == nil ? fallbackValue(for: metric.label, from: fallbackValues) : nil
+                fallbackValue: nil
             )
             updateMetricValue(for: metric.label, value: formatted)
         }

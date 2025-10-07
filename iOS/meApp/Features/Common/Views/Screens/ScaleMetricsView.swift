@@ -51,7 +51,8 @@ struct ScaleMetricsView: View {
                 title: MetricStrings.bodyMetrics,
                 leadingContent: { Image(AppAssets.xmark) },
                 onLeadingTap: { dismiss() },
-                canShowBorder: false
+                canShowBorder: true,
+                canShowPresentationIndicator: true
             )
             .background(theme.backgroundSecondary)
 
