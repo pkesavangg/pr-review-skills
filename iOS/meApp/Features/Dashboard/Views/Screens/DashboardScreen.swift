@@ -136,7 +136,7 @@ store.restartWiggleAnimations()
                             store.cancelEdit()
                         }
                     }
-                if !store.allContentRemoved && store.state.data.hasAnyEntries {
+                if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
                     DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
                 if store.state.data.hasAnyEntries {

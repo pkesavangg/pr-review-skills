@@ -9,7 +9,7 @@ import SwiftUI
 
 struct DashboardMetricsSection: View {
     @Environment(\.appTheme) private var theme
-    let store: DashboardStore
+    @ObservedObject var store: DashboardStore
     let parentView: DashboardMetricsParentView
     @Binding var openMetricInfoWithoutSelection: MetricInfoWrapper?
     
@@ -73,7 +73,7 @@ struct DashboardMetricsSection: View {
     
     private func dividerSection() -> some View {
         Group {
-            if !store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty) {
+            if store.state.ui.isEditMode || (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
                 Divider()
                     .foregroundColor(theme.statusUtilityPrimary)
                     .padding(.horizontal, .spacingLG)
