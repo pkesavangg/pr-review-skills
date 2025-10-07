@@ -158,6 +158,7 @@ constructor(
         ),
         account = accountRepository.getActiveAccount().first(),
       ),
+      unit = weightSettings.weightUnit ?: WeightUnit.LB,
     )
   }
 
@@ -574,6 +575,7 @@ constructor(
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
     initialWeight: Double?,
+    unit: WeightUnit,
     goal: Goal?
   ): Progress {
     if (accountId == null) {
@@ -677,6 +679,7 @@ constructor(
         month = month,
         year = year,
         total = total,
+        unit = unit,
         initWeek = initWeek,
         initMonth = initMonth,
         initYear = initYear,

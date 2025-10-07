@@ -113,8 +113,9 @@ object StatHelper {
     } else {
       meta.unitProvider(useShort)
     }
+    val labelProviderCondition = if (this is DashboardKey.Milestone) unit == WeightUnit.LB else useShort
     return Stat(
-      label = meta.labelProvider(useShort),
+      label = meta.labelProvider(labelProviderCondition),
       value = valueStr,
       unit = calculatedUnit,
       icon = if (!useShort) meta.icon else null,
@@ -164,13 +165,14 @@ object StatHelper {
     visibleKeys: List<MilestoneKey>? = null,
     useShort: Boolean = false,
     filterNulls: Boolean = true,
+    unit: WeightUnit = WeightUnit.LB
   ): List<Stat> {
     val keysToUse = (visibleKeys ?: MilestoneKey.entries)
       .filter { it != MilestoneKey.UNRECOGNIZED }
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
-      DashboardKey.Milestone(key).toStat(value, useShort)
+      DashboardKey.Milestone(key).toStat(value, useShort, unit)
     }
 
     return if (filterNulls) stats.filter { it.value != null } else stats
@@ -321,19 +323,19 @@ internal object StatMeta {
       icon = AppIcons.Milestone.Streak,
     ),
     MilestoneKey.PER_WEEK to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerWeek },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerWeek else DashboardString.MileStone.KgsPerWeek },
     ),
     MilestoneKey.PER_MONTH to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerMonth },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerMonth else DashboardString.MileStone.KgsPerMonth },
     ),
     MilestoneKey.PER_YEAR to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerYear },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerYear else DashboardString.MileStone.KgsPerYear },
     ),
     MilestoneKey.TOTAL_CHANGE to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsTotal },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsTotal else DashboardString.MileStone.KgsTotal },
     ),
     MilestoneKey.TO_GOAL to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsToGoal },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsToGoal else DashboardString.MileStone.KgsToGoal },
       unit = "lbs",
     ),
   )
