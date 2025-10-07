@@ -285,7 +285,7 @@ struct YAxisCalculator {
                 min: FALLBACK_MIN,
                 max: FALLBACK_MAX,
                 step: FALLBACK_STEP,
-                ticks: (goalWeight != nil && goalWeight! > 0) ? buildGoalCentricFallback(goalWeight: goalWeight!).ticks : ticks,
+                ticks: (goalWeight != nil && (goalWeight ?? 0) > 0) ? buildGoalCentricFallback(goalWeight: goalWeight!).ticks : ticks,
                 domain: domainMin...domainMax,
                 average: (FALLBACK_MIN + FALLBACK_MAX) / 2
             )
