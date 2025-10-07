@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -211,7 +212,7 @@ fun <T> SegmentButtonGroup(
             // If item is not visible, scroll to it with center offset
             listState.animateScrollToItem(
               index = selectedIndex,
-              scrollOffset = -viewportWidth / 2
+              scrollOffset = -viewportWidth / 2,
             )
           }
         }
@@ -284,7 +285,10 @@ private fun <T> SegmentButtonItem(
     modifier = Modifier
       .height(intrinsicSize = IntrinsicSize.Max)
       .width(intrinsicSize = IntrinsicSize.Max)
-      .clickable {
+      .clickable(
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+      ) {
         onSelected(item)
       },
     contentAlignment = Alignment.Center,

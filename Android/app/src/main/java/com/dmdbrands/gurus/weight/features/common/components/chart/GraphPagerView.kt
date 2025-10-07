@@ -66,6 +66,7 @@ fun GraphPagerView(
   }
 
   var subText: String by remember { mutableStateOf("") }
+  var canShowSubText by remember { mutableStateOf(false) }
   var labelData by remember { mutableStateOf("") }
 
   LaunchedEffect(state.selectedSegment) {
@@ -84,13 +85,7 @@ fun GraphPagerView(
   val validMetricKey = if (selectedStat?.key is DashboardKey.Metric) {
     selectedStat.key.key
   } else null
-  // Cache data processing to avoid repeated calculations
-  val segmentEntries = remember(state.selectedSegment) {
-    getEntriesForSegment(state)
-  }
-  val segmentGraphLines = remember(state.selectedSegment) {
-    getWeightGraphPointsForSegment(state)
-  }
+
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
@@ -100,9 +95,16 @@ fun GraphPagerView(
       userScrollEnabled = false,
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
-
+      val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
+      // Cache data processing to avoid repeated calculations
+      val segmentEntries = remember(state, currentSegment) {
+        getEntriesForSegment(state, currentSegment)
+      }
+      val segmentGraphLines = remember(state, currentSegment) {
+        getWeightGraphPointsForSegment(state, currentSegment)
+      }
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        factory.create(segment = state.selectedSegment)
+        factory.create(currentSegment)
       }
       val graphState by viewmodel.state.collectAsState()
 
@@ -110,7 +112,7 @@ fun GraphPagerView(
         // Header section for current segment
         ChartHeader(
           state = graphState,
-          segment = state.selectedSegment,
+          segment = currentSegment,
           weightData = labelData,
           rangeData = subText,
         )
@@ -122,26 +124,35 @@ fun GraphPagerView(
           scrollTarget = state.scrollTarget,
           secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
           graphLines = listOf(segmentGraphLines),
-          segment = state.selectedSegment,
+          segment = currentSegment,
           state = graphState,
           onRangeUpdate = {
-            if (it != null) {
-              subText = it
+            if (currentSegment == state.selectedSegment) {
+              if (it != null) {
+                canShowSubText = true
+                subText = it
+              } else {
+                canShowSubText = false
+              }
             }
           },
           onTargetsUpdate = { targets, fallbackValue ->
-            val timeStamps = targets.map { it.toLong() }
-            val filteredEntries = segmentEntries.filter {
-              DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+            if (currentSegment == state.selectedSegment) {
+              val timeStamps = targets.map { it.toLong() }
+              val filteredEntries = segmentEntries.filter {
+                DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
+              }
+              onSelected(filteredEntries)
+              scrollTarget = if (targets.isNotEmpty())
+                targets.last()
+              else
+                null
             }
-            onSelected(filteredEntries)
-            scrollTarget = if (targets.isNotEmpty())
-              targets.last()
-            else
-              null
           },
           onWeightLabelUpdate = { label ->
-            labelData = label
+            if (currentSegment == state.selectedSegment) {
+              labelData = label
+            }
           },
           viewModel = viewmodel,
         )
@@ -168,8 +179,9 @@ fun GraphPagerView(
  */
 private fun getEntriesForSegment(
   state: DashboardState,
+  segment: GraphSegment
 ): List<PeriodBodyScaleSummary> {
-  return when (state.selectedSegment) {
+  return when (segment) {
     GraphSegment.YEAR, GraphSegment.TOTAL -> state.monthWiseEntries
     GraphSegment.MONTH, GraphSegment.WEEK -> state.dayWiseEntries
   }
@@ -181,8 +193,9 @@ private fun getEntriesForSegment(
  */
 private fun getWeightGraphPointsForSegment(
   state: DashboardState,
+  segment: GraphSegment
 ): GraphLine {
-  val entries = getEntriesForSegment(state)
+  val entries = getEntriesForSegment(state, segment)
   // Sort only if entries are not already sorted
   val sortedEntries = if (entries.size <= 1) {
     entries
