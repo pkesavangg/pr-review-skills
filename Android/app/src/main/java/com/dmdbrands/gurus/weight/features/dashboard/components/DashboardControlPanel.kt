@@ -27,7 +27,7 @@ fun DashboardControlPanel(
     modifier = Modifier
       .fillMaxWidth(),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
   ) {
     if (!inEditMode) {
       AppButton(label = string.EditDashboard, type = ButtonType.PrimaryOutlined, size = ButtonSize.Large) {
