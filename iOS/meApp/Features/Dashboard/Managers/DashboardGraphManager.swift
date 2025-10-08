@@ -38,6 +38,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
     
+    // MARK: - Constants
+    
+    /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
+    /// Value of 0.6 places the point at 60% height, slightly above center for optimal visibility
+    /// without touching top or bottom boundaries
+    private static let singleMetricPointYAxisPosition: Double = 0.6
+    
     init(initialState: GraphState = GraphState()) {
         self.state = initialState
     }
@@ -746,10 +753,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // FIX: For single metric points, place them in the middle of the Y-axis domain
             // instead of normalizing against static range (which can place them at boundaries)
             if isSingleMetricPoint {
-                // Place single metric point at 60% of the Y-axis range (slightly above middle)
+                // Place single metric point at a fixed position in the Y-axis range
                 // This ensures it's visible and not touching top/bottom boundaries
                 let yAxisSpan = weightMax - weightMin
-                let positionInRange = weightMin + (yAxisSpan * 0.6)
+                let positionInRange = weightMin + (yAxisSpan * Self.singleMetricPointYAxisPosition)
                 normalizedSeries.append(GraphSeries(
                     date: summary.date,
                     value: positionInRange,
