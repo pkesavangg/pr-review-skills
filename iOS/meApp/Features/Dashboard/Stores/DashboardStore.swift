@@ -331,7 +331,7 @@ class DashboardStore: ObservableObject {
     }
     
     // Delegate goal operations to GoalManager
-    var goalWeightForDisplay: Double {
+    var goalWeightForDisplay: Double? {
         return goalManager.getGoalWeightForDisplay(
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight
@@ -791,11 +791,11 @@ class DashboardStore: ObservableObject {
             self.cachedVisibleOperations = []
             self.lastVisibleOperationsCacheTime = Date.distantPast
             
-            // Force UI update
-            self.objectWillChange.send()
+            // Force full recomputation of visible operations, Y-axis, and weight display
+            self.forceCompleteRecalculationAfterScrollPosition()
             
-            // Update Y-axis after a brief delay to allow data propagation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Also schedule a follow-up domain recalc after brief propagation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 self.updateYAxisCache()
             }
         }
@@ -1319,10 +1319,10 @@ class DashboardStore: ObservableObject {
     
     // Method to update Y-axis cache (called after domain recalculation)
     @MainActor
-    func updateYAxisCache() {
-        // NEVER update Y-axis domain during active scrolling - this is the root cause of axis jumping
-        guard !state.graph.isScrolling else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll to prevent jumping")
+    func updateYAxisCache(force: Bool = false) {
+        // Avoid domain updates during active scrolling unless explicitly forced
+        if state.graph.isScrolling && !force {
+            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll (not forced)")
             return
         }
         
@@ -1368,7 +1368,10 @@ class DashboardStore: ObservableObject {
         // Invalidate chart series cache so metric normalization recomputes using the new Y-axis domain
         cachedChartSeriesData = nil
         
-        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated after scroll end")
+        // Force a UI refresh so Charts read the updated cached domain/ticks immediately
+        objectWillChange.send()
+        
+        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated (force=\(force))")
     }
     
     

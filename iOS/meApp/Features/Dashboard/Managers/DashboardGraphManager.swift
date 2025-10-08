@@ -734,82 +734,51 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         var normalizedSeries: [GraphSeries] = []
         
-        // Generate normalized metric series for all operations (to show continuous line)
-        // This creates points even for operations without metric values using interpolation
+        // Generate normalized metric series ONLY for operations that actually have metric values
+        // This avoids showing a point on dates where the metric is missing (nil)
         for summary in allOperations {
-            var finalValue: Double = (weightMin + weightMax) / 2
-            
-            if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
-                // Operation has metric value - use it directly
-                let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
-                
-                // Directly normalize metric to dynamic y-axis domain for dynamic scaling
-                let metricRange = effectiveMetricMax - effectiveMetricMin
-                guard metricRange > 0 else {
-                    // If no metric variation, use middle of y-axis domain
-                    finalValue = (weightMin + weightMax) / 2
-                    normalizedSeries.append(GraphSeries(
-                        date: summary.date,
-                        value: finalValue,
-                        series: selectedMetric
-                    ))
-                    continue
-                }
-                
-                // Directly map metric value to y-axis domain range
-                let yAxisSpan = weightMax - weightMin
-                let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                yAxisSpan / metricRange
-                
-                // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
-                let epsilon = yAxisSpan * 0.1 // 0.1% of y-axis span
-                let safeMin = weightMin + epsilon
-                let safeMax = weightMax - epsilon
-                
-                // Clamp to safe bounds to ensure metrics stay well within visible range
-                let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
-                
-                // Additional safety check for NaN/infinite values
-                guard clampedFinalValue.isFinite else {
-                    finalValue = (weightMin + weightMax) / 2
-                    normalizedSeries.append(GraphSeries(
-                        date: summary.date,
-                        value: finalValue,
-                        series: selectedMetric
-                    ))
-                    continue
-                }
-                
-                // Final validation: ensure the value is definitely within safe bounds
-                guard clampedFinalValue >= safeMin && clampedFinalValue <= safeMax else {
-                    logger.log(level: .info, tag: "DashboardGraphManager",
-                               message: "Metric value \(clampedFinalValue) still out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
-                    finalValue = (safeMin + safeMax) / 2
-                    normalizedSeries.append(GraphSeries(
-                        date: summary.date,
-                        value: finalValue,
-                        series: selectedMetric
-                    ))
-                    continue
-                }
-                
-                finalValue = clampedFinalValue
-            } else {
-                // Operation doesn't have metric value - interpolate from surrounding values
-                finalValue = interpolateMetricValue(
-                    for: summary.date,
-                    from: allOperations,
-                    selectedMetric: selectedMetric,
-                    effectiveMetricMin: effectiveMetricMin,
-                    effectiveMetricMax: effectiveMetricMax,
-                    weightMin: weightMin,
-                    weightMax: weightMax
-                )
+            guard let metricValue = getMetricValue(for: selectedMetric, from: summary) else {
+                // Skip creating a point for missing metric values
+                continue
             }
-            
+
+            // Use the actual metric value and map it into the dynamic y-axis domain
+            let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
+
+            let metricRange = effectiveMetricMax - effectiveMetricMin
+            guard metricRange > 0 else {
+                // If no metric variation, use middle of y-axis domain
+                let mid = (weightMin + weightMax) / 2
+                normalizedSeries.append(GraphSeries(
+                    date: summary.date,
+                    value: mid,
+                    series: selectedMetric
+                ))
+                continue
+            }
+
+            let yAxisSpan = weightMax - weightMin
+            let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRange
+
+            // Keep slightly inside bounds (prevents edge bleeding)
+            let epsilon = yAxisSpan * 0.001 // 0.1% of y-axis span
+            let safeMin = weightMin + epsilon
+            let safeMax = weightMax - epsilon
+            let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
+
+            guard clampedFinalValue.isFinite else {
+                let mid = (weightMin + weightMax) / 2
+                normalizedSeries.append(GraphSeries(
+                    date: summary.date,
+                    value: mid,
+                    series: selectedMetric
+                ))
+                continue
+            }
+
             normalizedSeries.append(GraphSeries(
                 date: summary.date,
-                value: finalValue,
+                value: clampedFinalValue,
                 series: selectedMetric
             ))
         }
@@ -919,7 +888,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
     }
     
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
+    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
         let yAxisScale = YAxisCalculator.calculateYAxis(
             operations: operations,
             goalWeight: goalWeight,
@@ -933,7 +902,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return yAxisScale
     }
     
-    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
+    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
         let yAxisScale = getYAxisScale(
             from: operations,
             goalWeight: goalWeight,
