@@ -68,6 +68,7 @@ fun CustomizeScaleSettings(
     )
   }
 
+
   var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
 
   val customizeSettings = remember(visitedSteps) {
@@ -229,12 +230,13 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
+        val metrics = discoveredScale?.preferences?.displayMetrics ?: ScaleMetricsHelper.getAllMetrics()
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
         ) {
           ScaleMetricsSettingScreen(
-            currentMetrics = scaleMetrics,
+            currentMetrics = metrics,
             onMetricsChanged = { metrics ->
               // UPDATING DISPLAY METRICS ALONE
               updatedPreference = updatedPreference.copy(displayMetrics = metrics)

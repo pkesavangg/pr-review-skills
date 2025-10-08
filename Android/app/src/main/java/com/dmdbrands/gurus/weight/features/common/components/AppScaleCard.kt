@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
@@ -87,6 +88,7 @@ fun AppScaleCard(
         AppText(
           text = scale.productName.lowercase(),
           textType = TextType.ListSubtitle,
+          textOverflow = TextOverflow.Ellipsis
         )
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
