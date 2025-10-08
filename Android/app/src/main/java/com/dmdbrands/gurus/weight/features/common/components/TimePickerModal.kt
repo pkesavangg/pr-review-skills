@@ -12,14 +12,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Dialog
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,83 +74,86 @@ fun TimePickerDialog(
   minTime: DateTimeValue.Time? = null,
   maxTime: DateTimeValue.Time? = null,
 ) {
-  var shouldApplyConstraints by remember { mutableStateOf(false) }
   var constraintTriggered by remember { mutableStateOf(false) }
+  val timerColors = DateTimeInputDefaults.getTimePickerColor()
+  var effectiveMaxTime: DateTimeValue.Time by remember {
+    mutableStateOf(
+      DateTimeValue.Time(
+        maxTime?.hour ?: Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+        maxTime?.minute ?: Calendar.getInstance().get(Calendar.MINUTE),
+      ),
+    )
+  }
 
-  // Apply constraints when user releases drag or tap
-  fun applyTimeConstraints() {
+  fun changeMaxTime() {
     val calendar = Calendar.getInstance()
     val nowHour = calendar.get(Calendar.HOUR_OF_DAY)
     val nowMinute = calendar.get(Calendar.MINUTE)
-    val effectiveMaxTime = maxTime ?: DateTimeValue.Time(nowHour, nowMinute)
+    effectiveMaxTime = DateTimeValue.Time(nowHour, nowMinute)
+  }
 
-    var selectedHour = timePickerState.hour
-    var selectedMinute = timePickerState.minute
+  // Apply constraints when user releases drag or tap
+  fun applyTimeConstraints() {
+    changeMaxTime()
 
-    // Apply max time constraints
-    if (timePickerState.hour > effectiveMaxTime.hour) {
-      selectedHour = effectiveMaxTime.hour
+    val selectedHour = timePickerState.hour
+    val selectedMinute = timePickerState.minute
+
+    if (selectedHour > effectiveMaxTime.hour || selectedMinute > effectiveMaxTime.minute) {
       constraintTriggered = true
-    } else if (timePickerState.hour >= effectiveMaxTime.hour && timePickerState.minute > effectiveMaxTime.minute) {
-      selectedHour = effectiveMaxTime.hour
-      selectedMinute = effectiveMaxTime.minute
-      constraintTriggered = true
+      return
     }
-
-    // Apply min time constraints
     if (minTime != null) {
-      if (selectedHour < minTime.hour) {
-        selectedHour = minTime.hour
-        selectedMinute = minTime.minute
-      } else if (selectedHour == minTime.hour && selectedMinute < minTime.minute) {
-        selectedMinute = minTime.minute
+      if (selectedHour < minTime.hour || selectedMinute < minTime.minute) {
+        constraintTriggered = true
+        return
       }
     }
+    constraintTriggered = false
   }
 
   // Watch for the trigger variable and apply constraints with delay
-  LaunchedEffect(shouldApplyConstraints) {
-    if (shouldApplyConstraints) {
-      applyTimeConstraints()
-      shouldApplyConstraints = false // Reset the trigger
-    }
+  LaunchedEffect(Unit) {
+    snapshotFlow { timePickerState.hour to timePickerState.minute }
+      .debounce(300)
+      .collect {
+        applyTimeConstraints()
+      }
   }
-
 
   Dialog(onDismissRequest = onDismiss) {
     BaseModal(
       primaryAction =
         ActionButton(
           text = "OK", // TODO: Use string resource
+          enabled = !constraintTriggered,
           action = {
             onConfirm()
           },
         ),
       secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }), // TODO: Use string resource
     ) {
-      val timerColors = DateTimeInputDefaults.getTimePickerColor()
       Text(
-        "Select time",
-        style = MeTheme.typography.heading5,
+        if (constraintTriggered) "Time should be less than ${getTimeString(effectiveMaxTime)}" else "Select time",
+        style = MeTheme.typography.heading6,
         modifier = Modifier.padding(bottom = MeTheme.spacing.md),
-        color = MeTheme.colorScheme.textHeading,
+        color = if (constraintTriggered) MeTheme.colorScheme.textError else MeTheme.colorScheme.textHeading,
       )
       TimePicker(
         state = timePickerState,
         colors = timerColors,
-        modifier = Modifier.pointerInput(Unit) {
-          awaitPointerEventScope {
-            while (true) {
-              val event = awaitPointerEvent()
-              if (event.type == PointerEventType.Release) {
-                shouldApplyConstraints = true
-              }
-            }
-          }
-        },
       )
     }
   }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+fun getTimeString(dateTimeValue: DateTimeValue.Time): String {
+  val hour = dateTimeValue.hour - 12
+  val amPmString = if (dateTimeValue.hour > 12) "pm" else "am"
+  val minuteString = if (dateTimeValue.minute < 10) "0${dateTimeValue.minute}" else "${dateTimeValue.minute}"
+  val hourString = if (hour < 10) "0$hour" else "$hour"
+  return "$hourString:$minuteString $amPmString"
 }
 
 @PreviewTheme
