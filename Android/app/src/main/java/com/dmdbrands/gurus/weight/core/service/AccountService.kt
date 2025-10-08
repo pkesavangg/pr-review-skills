@@ -362,7 +362,7 @@ constructor(
       val anyExpired = loggedInAccounts.any { it.isExpired }
       if (anyExpired) {
         AppLog.d(TAG, "At least one logged-in account is expired in local DB. Returning false.")
-        return false
+        return true
       }
       AppLog.d(TAG, "All logged-in accounts are valid in local DB. Returning true.")
       // Emit true to trigger integration checks

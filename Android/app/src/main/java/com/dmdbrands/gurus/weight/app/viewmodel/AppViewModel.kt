@@ -90,7 +90,7 @@ constructor(
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
-  private val accountFlagService: IAccountFlagService
+  private val accountFlagService: IAccountFlagService,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -338,7 +338,7 @@ constructor(
       // Then check other logged-in accounts
       val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
 
-      AppLog.d(TAG, "Checked login status for all accounts")
+      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
       AppLog.e(TAG, "Error checking login status", e)

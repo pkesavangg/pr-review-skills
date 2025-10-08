@@ -423,23 +423,35 @@ constructor(
     accountId: String,
     accountInfo: AccountInfo,
   ) {
-    // Use updateAccount with only the profile fields from API response
-    val partialUpdate =
-      PartialAccount(
-        firstName = accountInfo.firstName,
-        lastName = accountInfo.lastName,
-        email = accountInfo.email,
-        dob = accountInfo.dob,
-        gender = accountInfo.gender,
-        zipcode = accountInfo.zipcode,
-      )
-    updateAccount(accountId, partialUpdate)
-    AppLog.d(TAG, "Updated account $accountId with API response data")
+    try{
+      // Use updateAccount with only the profile fields from API response
+      val partialUpdate =
+        PartialAccount(
+          firstName = accountInfo.firstName,
+          lastName = accountInfo.lastName,
+          email = accountInfo.email,
+          dob = accountInfo.dob,
+          gender = accountInfo.gender,
+          zipcode = accountInfo.zipcode,
+        )
+      updateAccount(accountId, partialUpdate)
+      AppLog.d(TAG, "Updated account $accountId with API response data")
+    }
+    catch (e: Exception){
+      AppLog.e(TAG, "Failed to update account $accountId with API response data", e)
+    }
+
   }
 
   override suspend fun markAccountExpired(accountId: String) {
-    accountDao.markAccountExpired(accountId)
-    AppLog.d(TAG, "Marked account $accountId as expired")
+    try{
+      accountDao.markAccountExpired(accountId)
+      AppLog.d(TAG, "Marked account $accountId as expired")
+    }
+    catch (e: Exception){
+      AppLog.e(TAG, "Failed to mark account $accountId as expired", e)
+    }
+
   }
 
   /**
@@ -560,7 +572,12 @@ constructor(
    * Removes the account with the given ID from the database.
    */
   override suspend fun removeAccount(accountId: String) {
-    userDataStore.clearAccountTokens(accountId)
+    try {
+      userDataStore.clearAccountTokens(accountId)
+    }
+    catch (e: Exception){
+      AppLog.d(TAG,"Failed to clear account tokens")
+    }
   }
 
   /**

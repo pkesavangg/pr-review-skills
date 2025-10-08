@@ -36,12 +36,15 @@ class AuthTokenInterceptor @Inject constructor(
 
     // Get the appropriate access token
     val accessToken = runBlocking(Dispatchers.IO) {
+
       if (accountId != null) {
-        tokenManager.getAccessToken(accountId)
+        return@runBlocking tokenManager.getAccessToken(accountId)
       } else {
-        tokenManager.getAccessToken()
+        return@runBlocking tokenManager.getAccessToken()
       }
     }
+
+    AppLog.d(TAG, "access token: $accessToken")
     // Build a new request with the Authorization header
     val newRequest = request.newBuilder()
       .addHeader(AppConfig.AUTHORIZATION_HEADER, "Bearer $accessToken")
