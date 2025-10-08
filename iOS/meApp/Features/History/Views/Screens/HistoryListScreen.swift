@@ -26,19 +26,15 @@ struct HistoryListScreen: View {
                   title: HistoryListStrings.title,
                   trailingContent: {
                       AnyView(
-                          Group {
-                              if !store.isEmptyState {
-                                  Button {
-                                      store.handleExport()
-                                  } label: {
-                                      AppIconView(icon: AppAssets.export)
-                                          .foregroundColor(theme.statusIconPrimary)
-                                          .frame(width: 24, height: 24)
-                                  }
-                              } else {
-                                  EmptyView()
-                              }
+                          Button {
+                            store.handleExport()
+                          } label: {
+                            AppIconView(icon: AppAssets.export)
+                                .foregroundColor(theme.statusIconPrimary)
+                                .frame(width: 24, height: 24)
+                                .opacity(store.isEmptyState ? 0.5 : 1.0)
                           }
+                          .disabled(store.isEmptyState)
                       )
                   },
                   canShowBorder: true

@@ -160,9 +160,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
     }
     
-    /// Goal weight for display
-    var goalWeight: Double {
-        return dashboardStore?.goalWeightForDisplay ?? 0
+    /// Goal weight for display (nil if no goal is set)
+    var goalWeight: Double? {
+        return dashboardStore?.goalWeightForDisplay
     }
     
     /// Current display weight
@@ -382,9 +382,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip position (with X-axis adjustment)
     func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
+        // Return default position if no goal is set
+        guard let goalWeightValue = self.goalWeight else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
         // Use rounded goal weight in display space for positioning, matching label rounding.
         // In weightless mode this is the rounded goal delta (goal - anchor).
-        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? self.goalWeight
+        let goalWeight = self.dashboardStore?.roundedGoalWeight(goalWeightValue) ?? goalWeightValue
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -420,9 +424,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip X offset based on text width
     func getGoalChipXOffset() -> CGFloat {
-        guard let store = dashboardStore else { return 28 }
+        guard let store = dashboardStore, let goalWeightValue = goalWeight else { return 28 }
         
-        let formattedText = store.formatYAxisTickLabel(goalWeight)
+        let formattedText = store.formatYAxisTickLabel(goalWeightValue)
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {

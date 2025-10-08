@@ -60,6 +60,7 @@ struct SignupScreen: View {
                     signupStore.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
                 onTrailingTap: {},
+                canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
                 shouldShowBackground: false
             )

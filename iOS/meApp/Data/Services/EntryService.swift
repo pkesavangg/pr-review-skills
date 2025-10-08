@@ -490,7 +490,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
                         try? await localRepo.updateEntry(updated)
                         // Notify downstream listeners/UI about the updated/added entry so lists refresh
-                        try? await handleEntryAdded(updated)
                     }
                 }
             } else if !potentialDuplicates.isEmpty {
@@ -506,11 +505,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
                     // Notify downstream listeners/UI about the new entry so lists refresh
-                    try? await handleEntryAdded(newEntry)
                 }
                 // If final operation is delete and no local entry exists, nothing to do
                 // (entry was already deleted or never existed locally)
             }
+        }
+        
+        do {
+            let latestEntry = try await getLatestEntry()
+            if let entry = latestEntry {
+                entrySaved.send(entry)
+                try await self.handleEntryAdded(entry)
+            }
+        } catch {
+            await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
         }
     }
     

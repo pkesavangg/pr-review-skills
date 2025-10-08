@@ -20,7 +20,7 @@ struct HistoryMonthListScreen: View {
     @State private var entryToDelete: Entry? = nil
     @State private var openItemID: UUID? = nil
     @State private var isOnboardingComplete: Bool = false
-
+    
     let month: HistoryMonth
     
     // Computed Properties
@@ -68,13 +68,12 @@ struct HistoryMonthListScreen: View {
                     isOnboardingComplete = true
                 }
             }
-         })
+        })
         .onChange(of: historyStore.entries) { _, entries in
             if entries.isEmpty {
                 dismiss()
             }
         }
-
         .onDisappear(perform: {
             historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
             historyStore.resetSelectedMonth()
@@ -115,6 +114,16 @@ struct HistoryMonthListScreen: View {
                 }
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { _ in
+                    if openItemID != nil {
+                        withAnimation {
+                            openItemID = nil
+                        }
+                    }
+                }
+        )
     }
 }
 

@@ -40,7 +40,7 @@ struct HistoryEntryItem: View {
                         .fontOpenSans(.heading5)
                         .foregroundColor( isExpanded ? theme.textInverse : theme.textHeading)
                     
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
+                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased())
                         .fontOpenSans(.body3)
                         .foregroundColor( isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -79,7 +79,7 @@ struct HistoryEntryItem: View {
                         action: { onDelete() },
                         label: {
                             AnyView(
-                                Text(CommonStrings.delete)
+                                Text(CommonStrings.delete.uppercased())
                                     .fontOpenSans(.button1)
                                     .fontWeight(.bold)
                                     .foregroundColor(theme.textInverse)
