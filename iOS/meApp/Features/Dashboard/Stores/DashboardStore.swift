@@ -1534,8 +1534,13 @@ class DashboardStore: ObservableObject {
     }
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        let rounded = roundedGoalWeight(weight)
-        return String(format: "%.0f", rounded)
+        let value = roundedGoalWeight(weight)
+        // Thousand separators; keep decimals only when value has fractional part
+        let nf = NumberFormatter()
+        nf.numberStyle = .decimal
+        nf.maximumFractionDigits = value == floor(value) ? 0 : 2
+        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
+        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
     
     func formatChartDate(_ date: Date) -> String {
