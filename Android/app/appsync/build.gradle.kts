@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.extensions)
+    // Compose BOM
+    implementation(platform(libs.androidx.compose.bom))
     // Compose interop
     implementation(libs.ui)
     implementation(libs.androidx.material3)

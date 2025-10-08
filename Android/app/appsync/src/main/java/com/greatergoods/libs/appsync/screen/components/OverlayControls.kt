@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -51,136 +50,139 @@ import com.greatergoods.libs.appsync.strings.AppSyncStrings
  *                      button is hidden
  * @param onClose Callback invoked when the close button is pressed
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OverlayControls(
-    zoomLevel: Float,
-    showLowLightWarning: Boolean = false,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit,
-    onManualEntry: (() -> Unit)? = null,
-    onClose: () -> Unit,
+  zoomLevel: Float,
+  showLowLightWarning: Boolean = false,
+  onZoomIn: () -> Unit,
+  onZoomOut: () -> Unit,
+  onManualEntry: (() -> Unit)? = null,
+  onClose: () -> Unit,
 ) {
-    // Calculate enabled states for zoom buttons based on current zoom level
-    val canZoomIn = zoomLevel < AppSyncConstants.MAX_ZOOM
-    val canZoomOut = zoomLevel > AppSyncConstants.MIN_ZOOM
+  // Calculate enabled states for zoom buttons based on current zoom level
+  val canZoomIn = zoomLevel < AppSyncConstants.MAX_ZOOM
+  val canZoomOut = zoomLevel > AppSyncConstants.MIN_ZOOM
 
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(
-                    top = 24.dp,
-                    start = 54.dp,
-                    end = 24.dp,
-                ),
+  Box(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .padding(
+          top = 24.dp,
+          start = 54.dp,
+          end = 24.dp,
+        ),
+  ) {
+    // Top bar with logo and close button
+    Row(
+      modifier = Modifier
+        .align(Alignment.TopStart)
+        .fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Top bar with logo and close button
-        Row(
-            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // AppSync logo on the left
-            Image(
-                painterResource(R.drawable.logo),
-                contentDescription = "Appsync Logo",
-                contentScale = ContentScale.FillWidth,
-                modifier = Modifier.width(100.dp),
-            )
+      // AppSync logo on the left
+      Image(
+        painterResource(R.drawable.logo),
+        contentDescription = "Appsync Logo",
+        contentScale = ContentScale.FillWidth,
+        modifier = Modifier.width(100.dp),
+      )
 
-            // Close button on the right
-            AppsyncButton(
-                onClick = onClose,
-                src = R.drawable.ic_close,
-                contentDescription = AppSyncStrings.CloseScan,
-            )
-        }
-
-        // Right side zoom controls
-        Column(
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // Zoom in button
-            AppsyncButton(
-                onClick = onZoomIn,
-                src = R.drawable.ic_plus,
-                contentDescription = AppSyncStrings.ZoomIn,
-                enabled = canZoomIn,
-            )
-
-            // Zoom indicator image
-            Image(
-                painterResource(R.drawable.zoom),
-                contentDescription = "Zoom",
-                modifier = Modifier.width(40.dp),
-                contentScale = ContentScale.FillWidth,
-            )
-
-            // Zoom out button
-            AppsyncButton(
-                onClick = onZoomOut,
-                src = R.drawable.ic_minus,
-                contentDescription = AppSyncStrings.ZoomOut,
-                enabled = canZoomOut,
-            )
-        }
-
-        // Low light warning indicator (left side)
-        if (showLowLightWarning) {
-            Column(
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                // Warning icon
-                Image(
-                    painter = painterResource(R.drawable.warning),
-                    contentDescription = AppSyncStrings.LowLightWarning,
-                    modifier = Modifier.size(50.dp),
-                )
-
-                // Optional warning text (commented out)
-                // Text(
-                //     text = AppSyncStrings.LowLightMessage,
-                //     color = Color.White,
-                //     style = MaterialTheme.typography.bodyMedium,
-                //     modifier = Modifier.padding(top = 8.dp),
-                // )
-            }
-        }
-
-        // Bottom manual entry button (optional)
-        Row(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            // Only show manual entry button if callback is provided
-            if (onManualEntry != null) {
-                Button(
-                    onClick = onManualEntry,
-                    modifier = Modifier,
-                    shape = RoundedCornerShape(4.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Gray,
-                        ),
-                ) {
-                    Text(AppSyncStrings.ManualEntry.uppercase())
-                }
-            }
-        }
+      // Close button on the right
+      AppsyncButton(
+        onClick = onClose,
+        src = R.drawable.ic_close,
+        contentDescription = AppSyncStrings.CloseScan,
+      )
     }
+
+    // Right side zoom controls
+    Column(
+      modifier = Modifier
+        .align(Alignment.CenterEnd)
+        .padding(end = 32.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      // Zoom in button
+      AppsyncButton(
+        onClick = onZoomIn,
+        src = R.drawable.ic_plus,
+        contentDescription = AppSyncStrings.ZoomIn,
+        enabled = canZoomIn,
+      )
+
+      // Zoom indicator image
+      Image(
+        painterResource(R.drawable.zoom),
+        contentDescription = "Zoom",
+        modifier = Modifier.width(40.dp),
+        contentScale = ContentScale.FillWidth,
+      )
+
+      // Zoom out button
+      AppsyncButton(
+        onClick = onZoomOut,
+        src = R.drawable.ic_minus,
+        contentDescription = AppSyncStrings.ZoomOut,
+        enabled = canZoomOut,
+      )
+    }
+
+    // Low light warning indicator (left side)
+    if (showLowLightWarning) {
+      Column(
+        modifier =
+          Modifier
+            .align(Alignment.CenterStart)
+            .padding(start = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+      ) {
+        // Warning icon
+        Image(
+          painter = painterResource(R.drawable.warning),
+          contentDescription = AppSyncStrings.LowLightWarning,
+          modifier = Modifier.size(50.dp),
+        )
+
+        // Optional warning text (commented out)
+        // Text(
+        //     text = AppSyncStrings.LowLightMessage,
+        //     color = Color.White,
+        //     style = MaterialTheme.typography.bodyMedium,
+        //     modifier = Modifier.padding(top = 8.dp),
+        // )
+      }
+    }
+
+    // Bottom manual entry button (optional)
+    Row(
+      modifier =
+        Modifier
+          .align(Alignment.BottomEnd)
+          .padding(vertical = 16.dp),
+      horizontalArrangement = Arrangement.End,
+    ) {
+      // Only show manual entry button if callback is provided
+      if (onManualEntry != null) {
+        Button(
+          onClick = onManualEntry,
+          modifier = Modifier,
+          shape = RoundedCornerShape(4.dp),
+          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+          colors =
+            ButtonDefaults.buttonColors(
+              containerColor = Color.White,
+              contentColor = Color.Gray,
+            ),
+        ) {
+          Text(AppSyncStrings.ManualEntry.uppercase())
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -192,14 +194,14 @@ fun OverlayControls(
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsPreview() {
-    OverlayControls(
-        zoomLevel = 1.0f,
-        showLowLightWarning = true,
-        onZoomIn = { /* Preview only */ },
-        onZoomOut = { /* Preview only */ },
-        onManualEntry = { /* Preview only */ },
-        onClose = { /* Preview only */ },
-    )
+  OverlayControls(
+    zoomLevel = 1.0f,
+    showLowLightWarning = true,
+    onZoomIn = { /* Preview only */ },
+    onZoomOut = { /* Preview only */ },
+    onManualEntry = { /* Preview only */ },
+    onClose = { /* Preview only */ },
+  )
 }
 
 /**
@@ -211,14 +213,14 @@ fun OverlayControlsPreview() {
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsMaxZoomPreview() {
-    OverlayControls(
-        zoomLevel = 5.0f,
-        showLowLightWarning = true,
-        onZoomIn = { /* Preview only */ },
-        onZoomOut = { /* Preview only */ },
-        onManualEntry = { /* Preview only */ },
-        onClose = { /* Preview only */ },
-    )
+  OverlayControls(
+    zoomLevel = 5.0f,
+    showLowLightWarning = true,
+    onZoomIn = { /* Preview only */ },
+    onZoomOut = { /* Preview only */ },
+    onManualEntry = { /* Preview only */ },
+    onClose = { /* Preview only */ },
+  )
 }
 
 /**
@@ -230,14 +232,14 @@ fun OverlayControlsMaxZoomPreview() {
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsMinZoomPreview() {
-    OverlayControls(
-        zoomLevel = 1.0f,
-        showLowLightWarning = true,
-        onZoomIn = { /* Preview only */ },
-        onZoomOut = { /* Preview only */ },
-        onManualEntry = { /* Preview only */ },
-        onClose = { /* Preview only */ },
-    )
+  OverlayControls(
+    zoomLevel = 1.0f,
+    showLowLightWarning = true,
+    onZoomIn = { /* Preview only */ },
+    onZoomOut = { /* Preview only */ },
+    onManualEntry = { /* Preview only */ },
+    onClose = { /* Preview only */ },
+  )
 }
 
 /**
@@ -249,12 +251,12 @@ fun OverlayControlsMinZoomPreview() {
 @Preview(showSystemUi = true, showBackground = true)
 @Composable
 fun OverlayControlsLowLightPreview() {
-    OverlayControls(
-        zoomLevel = 1.0f,
-        showLowLightWarning = true,
-        onZoomIn = { /* Preview only */ },
-        onZoomOut = { /* Preview only */ },
-        onManualEntry = { /* Preview only */ },
-        onClose = { /* Preview only */ },
-    )
+  OverlayControls(
+    zoomLevel = 1.0f,
+    showLowLightWarning = true,
+    onZoomIn = { /* Preview only */ },
+    onZoomOut = { /* Preview only */ },
+    onManualEntry = { /* Preview only */ },
+    onClose = { /* Preview only */ },
+  )
 }
