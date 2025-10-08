@@ -23,7 +23,7 @@ protocol DashboardGoalManaging {
     func updateGoalProgress(currentWeight: Int) async throws
     func calculateWeightlessGoal(anchorWeight: Double) async throws
     func refreshGoalDataForUnitChange() async throws
-    func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double
+    func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double?
     func formatGoalProgress() -> String
 }
 
@@ -36,8 +36,8 @@ protocol DashboardGraphManaging {
     func handleScrollPhaseChange(_ phase: ScrollPhase) async
     func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries]
     func updateSelectedPeriod(_ period: TimePeriod)
-    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale
-    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat)
+    func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale
+    func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat)
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary]
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary])
 
