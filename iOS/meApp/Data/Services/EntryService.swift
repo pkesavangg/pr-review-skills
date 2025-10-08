@@ -513,9 +513,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         
         do {
             let latestEntry = try await getLatestEntry()
-            if let latestEntry = latestEntry {
-                entrySaved.send(latestEntry)
-                try await self.handleEntryAdded(latestEntry)
+            if let entry = latestEntry {
+                entrySaved.send(entry)
+                try await self.handleEntryAdded(entry)
             }
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
