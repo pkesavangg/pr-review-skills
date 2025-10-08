@@ -77,6 +77,9 @@ class IntegrationStore: ObservableObject {
     }
 
     /// Applies the `Account` state to local observable properties that drive the UI.
+    /// Updates the following observable properties:
+    ///   - `accountID`: Set to `account.accountId` if `account` is not nil, otherwise set to an empty string.
+    ///   - `integrations`: Set to reflect the integration settings in `account` if present; if `account` is nil, both integrations are set to `isSelected: false`.
     /// - Parameter account: The latest account value (optional when stream emits nil).
     private func applyAccountState(_ account: Account?) {
         let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
