@@ -87,7 +87,6 @@ struct DashboardScreen: View {
 store.restartWiggleAnimations()
                 }
             }
-            Task { await store.reloadDashboardConfiguration() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
             Task { await store.reloadDashboardConfiguration(fullRefresh: true) }
