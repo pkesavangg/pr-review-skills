@@ -584,6 +584,9 @@ constructor(
         // Show confirmation dialog for WiFi skip
         showWifiSkipConfirmation()
       }
+      BtWifiSetupStep.GATHERING_NETWORK -> {
+        handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
+      }
       else -> {
         // For other steps, treat skip as next
         onNext()
@@ -604,7 +607,7 @@ constructor(
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
-          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          // ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
         },
         onCancel = {
@@ -762,14 +765,6 @@ constructor(
       )
       handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
     }
-  }
-
-
-  /**
-   * Sets step on failed error state
-   */
-  private fun setStepOnFailed() {
-    setMeasurementFailed()
   }
 
   /**
