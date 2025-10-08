@@ -38,6 +38,9 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             state.goalType = goalSettings.goalType ?? .gain
             state.goalUnit = account.weightSettings?.weightUnit ?? .lb
 
+            // Track if goal is actually set (not null from API)
+            state.hasGoalSet = goalSettings.goalWeight != nil
+            
             // Convert weights to display units
             let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
             let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
@@ -170,7 +173,10 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     // MARK: - Goal Display Methods
-    func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double {
+    func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double? {
+        // Return nil if no goal is set (API returned null)
+        guard state.hasGoalSet else { return nil }
+        
         if isWeightlessMode {
             guard let anchorWeight = anchorWeight else { return state.goalWeight }
             return state.goalWeight - anchorWeight
