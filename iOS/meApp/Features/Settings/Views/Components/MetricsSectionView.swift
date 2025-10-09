@@ -43,7 +43,7 @@ struct MetricsSectionView: View {
                     text: metric.name,
                     icon: showIcon ? metric.imagePath : nil,
                     isDisabled: !metric.isEnabled,
-                    disableToggle: (metric.key == "heartRate" && !metric.isEnabled)
+                    disableToggle: (metric.key == ScaleMetrics.heartRateKey && !metric.isEnabled)
                 )
                 .id(metric.key)
                 .onChange(of: metric.isEnabled) { _, newValue in
@@ -63,7 +63,10 @@ struct MetricsSectionView: View {
                 onMove(indices, newOffset)
                 onValueChanged()
             }
-            .animation(.default, value: metrics.wrappedValue.map { $0.key + ($0.isEnabled ? "1" : "0") }.joined())
+            // Animate when any metric's enabled flag changes without expensive String building every update
+            .animation(.default, value: metrics.wrappedValue.reduce(into: 0) { partialResult, m in
+                partialResult ^= m.key.hashValue ^ (m.isEnabled ? 1 : 0)
+            })
         }
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
