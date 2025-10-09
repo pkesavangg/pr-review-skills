@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationLayout
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -38,6 +40,8 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMetrics
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardMilestone
@@ -59,24 +63,41 @@ fun CustomizeScaleSettings(
   onIntent: (BtWifiScaleSetupIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
-  val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size.toInt() })
+  val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size })
 
   // Initialize scale metrics with discovered scale's display metrics if available
-  var scaleMetrics by remember(discoveredScale) {
-    mutableStateOf(
-      discoveredScale?.preferences?.displayMetrics ?: ScaleMetricsHelper.getAllMetrics()
-    )
-  }
-
-
+  var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
+  var isAllBodyMetrics by remember { mutableStateOf(state.isAllBodyMetrics) }
+  var isHeartRateOn by remember { mutableStateOf(state.isHeartRateOn) }
+  var scaleUsername by remember { mutableStateOf(state.usernameForm.username.value) }
   var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
-
+  val hasSavedSettings = remember { mutableStateOf(false) }
   val customizeSettings = remember(visitedSteps) {
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
 
-  var dashboardMetricKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
-  var dashboardMilestoneKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+  var dashboardMetricKeys: List<DashboardKey.Metric> by remember {
+    mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Metric>())
+  }
+  var dashboardMilestoneKeys: List<DashboardKey.Milestone> by remember {
+    mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>())
+  }
+  var combinedDashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+
+  // Local state for username form
+  var localUsername by remember { mutableStateOf(state.usernameForm.username.value) }
+  val keyboardController = LocalSoftwareKeyboardController.current
+  val focusManager = LocalFocusManager.current
+
+  // Create a local form control for username
+  val localUsernameFormControl = remember {
+    FormControl.create(
+      initialValue = state.usernameForm.username.value,
+      validators = listOf(
+        FormValidations.required(),
+      ),
+    )
+  }
 
   // Use discovered scale preferences if available, otherwise fall back to default
   val initialPreference =  ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
@@ -101,6 +122,26 @@ fun CustomizeScaleSettings(
           enabled = pagerState.currentPage != CustomizeSettings.NONE.ordinal,
           onClick = {
             scope.launch {
+              when (pagerState.currentPage) {
+                CustomizeSettings.SCALE_USERNAME.ordinal -> {
+                  // Reset both local state and form control to last saved state
+                  localUsername = state.usernameForm.username.value
+                  localUsernameFormControl.setValue(state.usernameForm.username.value)
+                  focusManager.clearFocus()
+                  keyboardController?.hide()
+                }
+
+                CustomizeSettings.SCALE_MODE.ordinal -> {
+                  // Reset scale mode to last saved state
+                  isAllBodyMetrics = state.isAllBodyMetrics
+                  isHeartRateOn = state.isHeartRateOn
+                }
+
+                CustomizeSettings.SCALE_METRICS.ordinal -> {
+                  // Reset scale metrics to last saved state
+                  scaleMetrics = state.scaleMetrics
+                }
+              }
               pagerState.scrollToPage(0)
             }
           },
@@ -113,29 +154,18 @@ fun CustomizeScaleSettings(
             type = ButtonType.PrimaryFilled,
             label = ScaleSetupStrings.nextButton,
             size = ButtonSize.Small,
-            enabled = !(pagerState.currentPage == CustomizeSettings.SCALE_USERNAME.ordinal && state.usernameForm.username.isValueValid()),
+            enabled = !(pagerState.currentPage == CustomizeSettings.SCALE_USERNAME.ordinal && !localUsernameFormControl.isValueValid()),
             onClick = {
-              if (visitedSteps.isNotEmpty()) {
-                val combinedKeys: List<DashboardKey>? = when {
-                  dashboardMetricKeys != null || dashboardMilestoneKeys != null -> buildList {
-                    dashboardMetricKeys?.let { addAll(it) }
-                    dashboardMilestoneKeys?.let { addAll(it) }
-                  }
-
-                  else -> null
-                }
-
+              if (visitedSteps.isNotEmpty() && hasSavedSettings.value) {
                 onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
-
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
-                    dashboardKeys = combinedKeys,
+                    dashboardKeys = combinedDashboardKeys,
                     preferences = updatedPreference.copy(
                       id = state.scaleId
                     ),
                   ),
                 )
-
               } else {
                 onIntent(
                   BtWifiScaleSetupIntent.Next,
@@ -149,7 +179,41 @@ fun CustomizeScaleSettings(
             label = ScaleSetupStrings.saveButton,
             size = ButtonSize.Small,
             onClick = {
+              hasSavedSettings.value = true
               scope.launch {
+
+                when (pagerState.currentPage) {
+                  CustomizeSettings.SCALE_METRICS.ordinal -> {
+                    onIntent(BtWifiScaleSetupIntent.SetScaleMetrics(scaleMetrics = scaleMetrics))
+                  }
+
+                  CustomizeSettings.DASHBOARD_METRICS.ordinal -> {
+                    combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys)
+                    combinedDashboardKeys?.let {
+                      onIntent(BtWifiScaleSetupIntent.SetDashboardKeys(combinedDashboardKeys!!))
+                    }
+                  }
+
+                  CustomizeSettings.SCALE_MODE.ordinal -> {
+                    updatedPreference = updatedPreference
+                      .copy(shouldMeasureImpedance = isAllBodyMetrics, shouldMeasurePulse = isHeartRateOn)
+                    onIntent(
+                      BtWifiScaleSetupIntent.SetScaleModePreference(
+                        isAllBodyMetrics = isAllBodyMetrics,
+                        isHeartRateOn = isHeartRateOn,
+                      ),
+                    )
+                  }
+
+                  CustomizeSettings.SCALE_USERNAME.ordinal -> {
+                    // Save username to reducer state
+                    onIntent(BtWifiScaleSetupIntent.UpdateUsernameForm(localUsernameFormControl.value))
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                  }
+
+                  else -> {}
+                }
                 pagerState.scrollToPage(0)
               }
             },
@@ -178,13 +242,14 @@ fun CustomizeScaleSettings(
           title = CustomizeSettingsStrings.DashboardMetrics.Title,
           subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
         ) {
+          val keys = (combinedDashboardKeys ?: (dashboardMetricKeys + dashboardMilestoneKeys)).distinct()
           DashboardMetrics(
             metricData = emptyList(),
-            visibleKeys = state.dashboardKeys,
+            visibleKeys = keys,
             inEditMode = true,
             isFromSetup = true,
             onMetricsChanged = {
-              dashboardMetricKeys = it
+              dashboardMetricKeys = it.filterIsInstance<DashboardKey.Metric>()
             },
           )
           HorizontalDivider(
@@ -194,10 +259,10 @@ fun CustomizeScaleSettings(
           DashboardMilestone(
             progress = state.goalProgress,
             inEditMode = true,
-            visibleKeys = state.dashboardKeys,
+            visibleKeys = keys,
             isFromSetup = true,
             onMilestonesChanged = {
-              dashboardMilestoneKeys = it
+              dashboardMilestoneKeys = it.filterIsInstance<DashboardKey.Milestone>()
             },
           )
         }
@@ -205,21 +270,20 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_MODE -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_MODE)
+
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleMode.Title,
         ) {
           ScaleModeSettingsScreen(
-            isAllBodyMetrics = state.isAllBodyMetrics,
-            isHeartRateOn = state.isHeartRateOn,
+            isAllBodyMetrics = isAllBodyMetrics,
+            isHeartRateOn = isHeartRateOn,
             onModeSelected = { newAllBodyMetrics ->
-              // Update scale mode preference in state and updatedPreference
-              onIntent(BtWifiScaleSetupIntent.SetAllBodyMetrics(newAllBodyMetrics))
-              updatedPreference = updatedPreference.copy(shouldMeasureImpedance = newAllBodyMetrics)
+              // Only update local state, don't update reducer state until save
+              isAllBodyMetrics = newAllBodyMetrics
             },
             onHeartRateToggle = { newHeartRateState ->
-              // Update heart rate preference in state and updatedPreference
-              onIntent(BtWifiScaleSetupIntent.SetHeartRateMode(newHeartRateState))
-              updatedPreference = updatedPreference.copy(shouldMeasurePulse = newHeartRateState)
+              // Only update local state, don't update reducer state until save
+              isHeartRateOn = newHeartRateState
             },
             onBioimpedanceClick = {
               // Handle bioimpedance modal - can be implemented if needed
@@ -230,15 +294,15 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-        val metrics = discoveredScale?.preferences?.displayMetrics ?: ScaleMetricsHelper.getAllMetrics()
+
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
         ) {
           ScaleMetricsSettingScreen(
-            currentMetrics = metrics,
+            currentMetrics = scaleMetrics,
             onMetricsChanged = { metrics ->
-              // UPDATING DISPLAY METRICS ALONE
+              // Only update local state, don't update reducer state until save
               updatedPreference = updatedPreference.copy(displayMetrics = metrics)
               scaleMetrics = metrics
             },
@@ -250,7 +314,7 @@ fun CustomizeScaleSettings(
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_USERNAME)
         CustomizationLayout {
           SetupForm(
-            formControl = state.usernameForm.username,
+            formControl = localUsernameFormControl,
             title = ScaleFormStrings.UserNameTitle,
             subtitle = ScaleFormStrings.UserNameSubtitle,
             label = ScaleFormStrings.UserNameLabel,
@@ -258,6 +322,21 @@ fun CustomizeScaleSettings(
             supportingImage = AppIcons.Setup.UserNameScale,
             enableScroll = false,
             userList = userList,
+            onImeAction = {
+              focusManager.clearFocus()
+              keyboardController?.hide()
+              scope.launch {
+                updatedPreference = updatedPreference
+                  .copy(shouldMeasureImpedance = isAllBodyMetrics, shouldMeasurePulse = isHeartRateOn)
+                onIntent(
+                  BtWifiScaleSetupIntent.SetScaleModePreference(
+                    isAllBodyMetrics = isAllBodyMetrics,
+                    isHeartRateOn = isHeartRateOn,
+                  ),
+                )
+                pagerState.scrollToPage(0)
+              }
+            },
           )
         }
       }
