@@ -31,7 +31,6 @@ struct GoalProgressView: View {
                     goalView
                 }
             }
-            .padding(.leading, .spacingSM)
         }
         .frame(height: 120)
         .background(theme.backgroundPrimary)

@@ -45,7 +45,7 @@ struct SignupStrings {
     struct PasswordStep {
         static let title = "Create a password."
         static let subtitle = "Your password must be at least six characters."
-        static let termsAndPrivacyText = "By clicking \"COMPLETE\", you are agreeing to our"
+        static let termsAndPrivacyText = "By completing, you are agreeing to our"
         static let termsOfService = "Terms of Service"
         static let privacyPolicy = "Privacy Policy"
         static let andText = "&"
