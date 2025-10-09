@@ -21,12 +21,12 @@ struct ButtonView: View {
     var body: some View {
         Button(action: action) {
             Text(text.uppercased())
-                .fontOpenSans(size == .large ? .button1 : .button2)
                 .fontWeight(.bold)
-                .modifier(CustomButtonStyle(type: type, buttonSize: size))
+                .fontOpenSans(size == .large ? .button1 : .button2)
                 .if(!type.isInlineText) { view in
-                    view.frame(minWidth: 96, alignment: alignment)
+                    view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
+                .modifier(CustomButtonStyle(type: type, buttonSize: size))
                 .multilineTextAlignment(.leading)
         }
         .disabled(isDisabled)

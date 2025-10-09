@@ -14,7 +14,7 @@ import Combine
 class ScaleNameForm: ObservableForm {
     // MARK: - Controls
     /// Text field for the scale name
-    var scaleName = FormControl("", validators: [.required, .noWhiteSpace])
+    var scaleName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
     
     // MARK: - Binding helpers
     /// Update the scale name value and trigger validation
@@ -50,6 +50,9 @@ class ScaleNameForm: ObservableForm {
         guard scaleName.isDirty else { return nil }
         if scaleName.errors[.required] { return FormErrorMessages.required }
         if scaleName.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if scaleName.errors[.maxLength], let max = scaleName.errors.value(for: .maxLength) as? Int {
+            return FormErrorMessages.maxLength(max)
+        }
         return nil
     }
 }

@@ -22,18 +22,15 @@ struct BorderedButtonStyle: ViewModifier {
     var buttonSize: ButtonSize
     func body(content: Content) -> some View{
         content
-            .fontWeight(.bold)
-            .padding(.vertical, buttonSize == .small ? .spacingXS/2 : .spacingXS)
-            .padding(.horizontal, buttonSize == .small ? .spacingMD : .spacing2XL)
+            .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
             .foregroundColor(borderColor)
             .background(backgroundColor)
             .overlay(
                 RoundedRectangle(cornerRadius: .radiusPill)
-                    .stroke(borderColor, lineWidth: 2)
+                    .stroke(borderColor, lineWidth: 4)
             )
             .cornerRadius(.radiusPill)
             .contentShape(Rectangle())
-            .frame(minWidth: buttonSize == .small ? 75 : 160, minHeight: buttonSize == .small ? 30 : 40)
     }
 }
 
@@ -44,13 +41,11 @@ struct FlatButtonStyle: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .padding(.vertical, buttonSize == .small ? .spacingXS/2 : .spacingXS)
-            .padding(.horizontal, buttonSize == .small ? .spacingMD : .spacing2XL)
+            .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
             .foregroundColor(foregroundColor)
             .background(backgroundColor)
             .cornerRadius(.radiusPill)
             .contentShape(Rectangle())
-            .frame(minWidth: buttonSize == .small ? 75 : 160, minHeight: buttonSize == .small ? 30 : 40)
          
     }
 }

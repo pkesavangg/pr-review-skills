@@ -106,7 +106,7 @@ struct MetricCardView: View {
         case DashboardStrings.bmrKcal:
             return DashboardStrings.bmrBase
         case DashboardStrings.metAge:
-            return DashboardStrings.metAgeBase
+            return DashboardStrings.metAge
         default:
             return originalLabel
         }

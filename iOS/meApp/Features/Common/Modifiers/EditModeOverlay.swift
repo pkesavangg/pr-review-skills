@@ -17,6 +17,7 @@ struct EditModeOverlay: ViewModifier {
     let isDropTarget: Bool
     let rowIndex: Int // Add row index for alternating wiggle timing
     let disableWiggle: Bool // New parameter to disable internal wiggle animation
+    let iconOffset: CGSize 
     
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
@@ -57,7 +58,7 @@ struct EditModeOverlay: ViewModifier {
                 
                 ThemedImage(name: iconName, isSingleMode: true)
                     .frame(width: 28, height: 28)
-                    .offset(x: 5, y: -5)
+                    .offset(x: iconOffset.width, y: iconOffset.height)
                     .wiggling(shouldWiggle, rowIndex: rowIndex)
                     .opacity(iconOpacity)
                     .animation(.easeInOut(duration: 0.2), value: iconOpacity)

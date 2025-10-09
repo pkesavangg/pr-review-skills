@@ -230,7 +230,6 @@ struct MyScalesScreen: View {
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
                                 }
                             )
-                            .padding(.horizontal, .spacingSM)
                             
                             Divider()
                         }
