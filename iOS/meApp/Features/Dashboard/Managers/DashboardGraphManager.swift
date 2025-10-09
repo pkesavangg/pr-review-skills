@@ -38,6 +38,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
     
+    // MARK: - Constants
+    
+    /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
+    /// Value of 0.6 places the point at 60% height, slightly above center for optimal visibility
+    /// without touching top or bottom boundaries
+    private static let singleMetricPointYAxisPosition: Double = 0.6
+    
     init(initialState: GraphState = GraphState()) {
         self.state = initialState
     }
@@ -714,8 +721,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let metricRange = metricMax - metricMin
         let effectiveMetricMin: Double
         let effectiveMetricMax: Double
+        let isSingleMetricPoint = metricRange < 0.01 // Almost no variation (single point or minimal variation)
         
-        if metricRange < 0.01 { // Almost no variation
+        if isSingleMetricPoint {
             // Use fallback static ranges for single data points or minimal variation
             let (staticMin, staticMax) = getStaticMetricRange(for: selectedMetric)
             effectiveMetricMin = min(metricMin, staticMin)
@@ -742,11 +750,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 continue
             }
 
+            // FIX: For single metric points, place them in the middle of the Y-axis domain
+            // instead of normalizing against static range (which can place them at boundaries)
+            if isSingleMetricPoint {
+                // Place single metric point at a fixed position in the Y-axis range
+                // This ensures it's visible and not touching top/bottom boundaries
+                let yAxisSpan = weightMax - weightMin
+                let positionInRange = weightMin + (yAxisSpan * Self.singleMetricPointYAxisPosition)
+                normalizedSeries.append(GraphSeries(
+                    date: summary.date,
+                    value: positionInRange,
+                    series: selectedMetric
+                ))
+                continue
+            }
+
             // Use the actual metric value and map it into the dynamic y-axis domain
             let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
 
-            let metricRange = effectiveMetricMax - effectiveMetricMin
-            guard metricRange > 0 else {
+            let metricRangeSpan = effectiveMetricMax - effectiveMetricMin
+            guard metricRangeSpan > 0 else {
                 // If no metric variation, use middle of y-axis domain
                 let mid = (weightMin + weightMax) / 2
                 normalizedSeries.append(GraphSeries(
@@ -758,7 +781,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
 
             let yAxisSpan = weightMax - weightMin
-            let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRange
+            let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRangeSpan
 
             // Keep slightly inside bounds (prevents edge bleeding)
             let epsilon = yAxisSpan * 0.001 // 0.1% of y-axis span
