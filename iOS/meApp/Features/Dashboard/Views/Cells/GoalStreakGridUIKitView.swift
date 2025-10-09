@@ -22,6 +22,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
+        // Reentrancy guard to avoid SwiftUI AttributeGraph update cycles and console spam
+        if coordinator.isUpdating { return }
 
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
@@ -54,6 +56,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Note: This check was previously stored in an unused variable, now removed for clarity
 
         if contentChanged || removalStateChanged || goalCardStateChanged || goalCardPositionChanged || streakOrderChanged {
+            coordinator.isUpdating = true
             coordinator.gridModel = newModel
             collectionView.collectionViewLayout.invalidateLayout()
             UIView.performWithoutAnimation {
@@ -70,12 +73,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 if let customCollectionView = collectionView as? CustomCollectionView {
                     customCollectionView.invalidateIntrinsicContentSize()
                 }
+                coordinator.isUpdating = false
             }
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
-                // Force reload when edit mode changes to ensure all cells are properly configured
+                coordinator.isUpdating = true
                 collectionView.reloadData()
+                DispatchQueue.main.async { coordinator.isUpdating = false }
             }
         }
 
@@ -342,6 +347,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     // MARK: - Coordinator
     
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UICollectionViewDragDelegate, UICollectionViewDropDelegate {
+        // Reentrancy guard for updateUIView to avoid AttributeGraph cycles
+        var isUpdating: Bool = false
         var lastIsEditMode: Bool = false
         var lastRemovedStreaks: Set<String> = []
         var lastGoalCardRemoved: Bool = false

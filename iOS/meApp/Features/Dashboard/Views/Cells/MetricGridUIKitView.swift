@@ -986,6 +986,14 @@ extension MetricGridUIKitView {
                     if let custom = collectionView as? CustomCollectionView {
                         custom.isInDragOperation = false
                     }
+                    // Robust cleanup: ensure ALL visible cells clear drag/shadow state post-drop
+                    for cell in collectionView.visibleCells {
+                        if let metricCell = cell as? MetricCell {
+                            metricCell.updateDragState(false)
+                            metricCell.clearAllShadowEffects()
+                            metricCell.updateBoundaryState(false)
+                        }
+                    }
                 }
                 if let indexPath = currentDraggingIndexPath,
                    let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
@@ -1012,6 +1020,14 @@ extension MetricGridUIKitView {
                 originalLayerActions = nil
                 if let custom = collectionView as? CustomCollectionView {
                     custom.isInDragOperation = false
+                }
+                // Robust cleanup on cancel as well
+                for cell in collectionView.visibleCells {
+                    if let metricCell = cell as? MetricCell {
+                        metricCell.updateDragState(false)
+                        metricCell.clearAllShadowEffects()
+                        metricCell.updateBoundaryState(false)
+                    }
                 }
             }
         }

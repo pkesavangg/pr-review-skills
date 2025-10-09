@@ -1624,6 +1624,56 @@ class DashboardStore: ObservableObject {
             return entry
         }
 
+        // Interpolated selection: show interpolated weight for the selectedXValue and placeholders for body metrics
+        if let selectedDate = state.graph.selectedXValue {
+            // Compute interpolated display weight in current UI context
+            let interpolated = graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+            // Map display weight to stored (handle weightless by adding anchor back)
+            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+            let displayAbsolute: Double? = {
+                if let w = interpolated {
+                    if isWeightlessModeEnabled, let anchor = weightlessAnchorWeight {
+                        return w + anchor
+                    } else {
+                        return w
+                    }
+                }
+                return nil
+            }()
+            let storedWeight: Int? = {
+                guard let displayAbs = displayAbsolute else { return nil }
+                return ConversionTools.convertDisplayToStored(displayAbs, isMetric: unit == .kg)
+            }()
+
+            entry.scaleEntry = BathScaleEntry(
+                weight: storedWeight,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: nil,
+                metabolicAge: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                skeletalMusclePercent: nil,
+                subcutaneousFatPercent: nil,
+                visceralFatLevel: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: nil
+            )
+            return entry
+        }
+
         // No selection: compute visible-window averages to mirror tiles and weight label
         let ops = getVisibleOperations()
         if ops.isEmpty {
