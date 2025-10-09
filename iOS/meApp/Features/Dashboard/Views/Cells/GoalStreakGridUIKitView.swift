@@ -68,19 +68,19 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             coordinator.lastStreakGridOrder = newStreakGridOrder
             
             // Force collection view to recalculate its intrinsic content size
-            DispatchQueue.main.async {
-                collectionView.layoutIfNeeded()
-                if let customCollectionView = collectionView as? CustomCollectionView {
-                    customCollectionView.invalidateIntrinsicContentSize()
-                }
-                coordinator.isUpdating = false
+            collectionView.layoutIfNeeded()
+            if let customCollectionView = collectionView as? CustomCollectionView {
+                customCollectionView.invalidateIntrinsicContentSize()
             }
+            coordinator.isUpdating = false
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
                 coordinator.isUpdating = true
-                collectionView.reloadData()
-                DispatchQueue.main.async { coordinator.isUpdating = false }
+                UIView.performWithoutAnimation {
+                    collectionView.reloadData()
+                }
+                coordinator.isUpdating = false
             }
         }
 

@@ -1574,6 +1574,7 @@ class DashboardStore: ObservableObject {
         // Build an entry that mirrors the current dashboard context
         // If a chart point is selected, use that point's values
         // Otherwise, use averages of the currently visible operations
+        // Initialize with a timestamp that we'll override below based on selection/context
         let entry = Entry(
             id: UUID(),
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
@@ -1600,6 +1601,9 @@ class DashboardStore: ObservableObject {
                 let v = Int(point.weight.rounded())
                 return v == 0 ? nil : v
             }()
+
+            // Use the actual point's timestamp
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: point.date)
 
             entry.scaleEntry = BathScaleEntry(
                 weight: storedWeight,
@@ -1650,6 +1654,9 @@ class DashboardStore: ObservableObject {
                 guard let displayAbs = displayAbsolute else { return nil }
                 return ConversionTools.convertDisplayToStored(displayAbs, isMetric: unit == .kg)
             }()
+
+            // Timestamp is the crosshair date selected by the user
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: selectedDate)
 
             entry.scaleEntry = BathScaleEntry(
                 weight: storedWeight,
