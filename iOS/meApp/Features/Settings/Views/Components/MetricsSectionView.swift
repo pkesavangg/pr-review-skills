@@ -20,19 +20,23 @@ struct MetricsSectionView: View {
     
     // Optional parameters for customization
     let showIcon: Bool
+    /// Optional predicate to decide if a particular metric's toggle should be disabled
+    let shouldDisableToggle: ((ScaleMetricSetting) -> Bool)?
     
     init(
         metrics: Binding<[ScaleMetricSetting]>,
         onValueChanged: @escaping () -> Void,
         onMove: @escaping (IndexSet, Int) -> Void,
         showIcon: Bool = true,
-        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil
+        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil,
+        shouldDisableToggle: ((ScaleMetricSetting) -> Bool)? = nil
     ) {
         self.metrics = metrics
         self.onValueChanged = onValueChanged
         self.onMove = onMove
         self.showIcon = showIcon
         self.onToggle = onToggle
+        self.shouldDisableToggle = shouldDisableToggle
     }
     
     var body: some View {
@@ -43,7 +47,7 @@ struct MetricsSectionView: View {
                     text: metric.name,
                     icon: showIcon ? metric.imagePath : nil,
                     isDisabled: !metric.isEnabled,
-                    disableToggle: (metric.key == ScaleMetrics.heartRateKey && !metric.isEnabled)
+                    disableToggle: shouldDisableToggle?(metric) ?? false
                 )
                 .id(metric.key)
                 .onChange(of: metric.isEnabled) { _, newValue in
@@ -63,10 +67,7 @@ struct MetricsSectionView: View {
                 onMove(indices, newOffset)
                 onValueChanged()
             }
-            // Animate when any metric's enabled flag changes without expensive String building every update
-            .animation(.default, value: metrics.wrappedValue.reduce(into: 0) { partialResult, m in
-                partialResult ^= m.key.hashValue ^ (m.isEnabled ? 1 : 0)
-            })
+            .animation(.default, value: metrics.wrappedValue.map { $0.key + ($0.isEnabled ? "1" : "0") }.joined())
         }
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())

@@ -68,6 +68,10 @@ struct DisplayMetricsScreen: View {
                     showIcon: true,
                     onToggle: { item, isOn in
                         viewModel.handleBodyMetricToggle(key: item.key, isEnabled: isOn)
+                    },
+                    shouldDisableToggle: { metric in
+                        // Disable only when heart rate is currently off and banner indicates it cannot be enabled
+                        return metric.key == "heartRate" && !metric.isEnabled && viewModel.showHeartRateBanner
                     }
                 )
                 
@@ -87,6 +91,9 @@ struct DisplayMetricsScreen: View {
                     showIcon: false,
                     onToggle: { item, isOn in
                         viewModel.handleProgressMetricToggle(key: item.key, isEnabled: isOn)
+                    },
+                    shouldDisableToggle: { metric in
+                        return metric.key == "heartRate" && !metric.isEnabled && viewModel.showHeartRateBanner
                     }
                 )
             }
