@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
@@ -14,6 +15,9 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 /**
@@ -83,6 +87,48 @@ data class GraphState(
       ).toDouble()
     } else
       segment.intervalCount()
+  }
+
+  fun createFallBackData(
+    segment: GraphSegment,
+    timeStamps: List<Long>? = null,
+    fallbackValues: List<List<Double>>? = null
+  ): List<PeriodBodyScaleSummary> {
+    if (timeStamps == null && this.markerIndex == null) return emptyList()
+    val filteringTimeStamp = timeStamps ?: listOf(this.markerIndex?.toLong())
+    return filteringTimeStamp.mapIndexedNotNull { index, it ->
+      if (it == null) return@mapIndexedNotNull null
+      PeriodBodyScaleSummary(
+        period = timestampToPeriodString(it, segment),
+        entryTimestamp = DateTimeConverter.timestampToIso(it),
+        weight = fallbackValues?.first()[index] ?: 0.0,
+        unit = weightUnit,
+      )
+    }
+  }
+
+  /**
+   * Converts a timestamp to a period string based on the graph segment.
+   *
+   * @param timestamp The timestamp in milliseconds to convert.
+   * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
+   * @return Formatted period string: "YYYY-MM-DD" for WEEK/MONTH segments, "YYYY-MM" for YEAR/TOTAL segments.
+   */
+  private fun timestampToPeriodString(timestamp: Long, segment: GraphSegment): String {
+    val localZone = ZoneId.systemDefault()
+    val localDateTime = Instant.ofEpochMilli(timestamp).atZone(localZone)
+
+    return when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> {
+        // Format as "YYYY-MM-DD" for day-level precision
+        localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+      }
+
+      GraphSegment.YEAR, GraphSegment.TOTAL -> {
+        // Format as "YYYY-MM" for month-level precision
+        localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"))
+      }
+    }
   }
 }
 

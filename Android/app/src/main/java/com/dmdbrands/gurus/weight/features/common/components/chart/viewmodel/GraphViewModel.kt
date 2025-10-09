@@ -71,7 +71,7 @@ class GraphViewModel @AssistedInject constructor(
     entryService.monthlyBodyScaleAverages
   }
 
-  private var onTargetUpdate: (List<Double>, List<Double>) -> Unit = { _, _ -> }
+  private var onTargetUpdate: (List<PeriodBodyScaleSummary>) -> Unit = { }
   private var onRangeUpdate: (String?) -> Unit = { }
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
@@ -318,15 +318,18 @@ class GraphViewModel @AssistedInject constructor(
    * Optimized with debouncing and background processing.
    */
   private fun handleScroll(min: Long, max: Long) {
-    val currentState = state.value
 
-    // Cancel any existing debounce job
-    scrollDebounceJob?.cancel()
+    val currentState = _state.value
+    val filteredData = currentState.data.filter {
+      it.getTimeStamp() in min..max
+    }
+    onTargetUpdate(filteredData)
 
     // Immediate UI update for range display (no debounce for this)
     val formattedRange = GraphUtil.formatDateRange(min, max, segment)
     onRangeUpdate(formattedRange)
-
+    // Cancel any existing debounce job
+    scrollDebounceJob?.cancel()
     // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -356,6 +359,7 @@ class GraphViewModel @AssistedInject constructor(
             )
           } else null
 
+          // Update UI on main thread
           super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
           if (secondaryYAxis != null) {
             super.handleIntent(GraphIntent.UpdateSecondaryYAxis(yRangeValues = secondaryYAxis))
@@ -371,8 +375,10 @@ class GraphViewModel @AssistedInject constructor(
    * Sets the callback functions for the graph.
    */
   fun setCallbacks(
+    onTargetUpdate: (List<PeriodBodyScaleSummary>) -> Unit,
     onRangeUpdate: (String?) -> Unit,
   ) {
+    this.onTargetUpdate = onTargetUpdate
     this.onRangeUpdate = onRangeUpdate
   }
 

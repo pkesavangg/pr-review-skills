@@ -22,7 +22,8 @@ fun rememberGraphChart(
   defaultMarker: CartesianMarker,
   goalMarker: VerticalAxis.MarkerDecoration? = null,
   segment: GraphSegment,
-  onChartClick: ((List<Double>, Double?, HorizontalAxis.ItemPlacer) -> Unit)? = null,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
 ): CartesianChart {
   val markerIndex = state.markerIndex
@@ -35,12 +36,6 @@ fun rememberGraphChart(
 
   timeStamps.max()
   timeStamps.min()
-
-  val horizontalItemPlacer =
-    horizontalItemPlacer(
-      segment = segment,
-    )
-
   val primaryLayer = primaryLayer(
     segment = segment,
     yRangeValues = state.primaryYAxis,
@@ -59,7 +54,7 @@ fun rememberGraphChart(
       secondaryLayer,
       startAxis = startAxis(),
       topAxis = topAxis(),
-      endAxis = endAxis(isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
+      endAxis = endAxis(yStep = state.primaryYStep, isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
       bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
       marker = emptyMarker(),
       persistentMarkers = if (markerIndex != null) {
@@ -69,9 +64,7 @@ fun rememberGraphChart(
       },
       visibleLabelsCount = state.getIntervalCount(segment = segment),
       getXStep = { GraphUtil.calculateXStep(segment) },
-      onChartClick = { targets, click ->
-        onChartClick?.invoke(targets, click, horizontalItemPlacer)
-      },
+      onChartClick = onChartClick,
     )
   return primaryChart
 }

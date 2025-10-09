@@ -28,21 +28,16 @@ import android.graphics.Typeface
 internal fun rememberDefaultMarker(
   state: GraphState,
   segment: GraphSegment,
-  onWeightLabelUpdate: (String) -> Unit,
   onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit
 ): CartesianMarker {
 
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
-    val requiredData = state.data.filter {
+    val data = state.data.filter {
       DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == state.markerIndex?.toDouble()
     }
-
-    val weightLabel = requiredData.firstOrNull()?.weight?.toString()
-
-    onWeightLabelUpdate(
-      weightLabel ?: if (fallbackValues.isNotEmpty()) fallbackValues.first().average().toString() else "",
-    )
-
+    val requiredData = data.ifEmpty {
+      state.createFallBackData(segment = segment, fallbackValues = fallbackValues)
+    }
     onTargetsUpdate(requiredData)
   }
 

@@ -21,6 +21,7 @@ import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import java.util.Calendar
@@ -51,7 +52,6 @@ fun GraphView(
   placeHolder: String? = null,
   onRangeUpdate: (String?) -> Unit = {},
   onTargetsUpdate: (data: List<PeriodBodyScaleSummary>) -> Unit = {},
-  onWeightLabelUpdate: (String) -> Unit = {},
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
@@ -66,7 +66,7 @@ fun GraphView(
 
   // Store callbacks in ViewModel
   LaunchedEffect(Unit) {
-    viewModel.setCallbacks(onRangeUpdate)
+    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate)
   }
 
   val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
@@ -95,42 +95,41 @@ fun GraphView(
       ),
     ),
   )
-  LaunchedEffect(scrollTarget) {
-    if (scrollTarget != null) {
-      val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
-      if (destinationTarget != null)
-        scrollState.animateScroll(
-          Scroll.Absolute.x(destinationTarget.toDouble()),
-        )
-    }
-  }
+  // LaunchedEffect(scrollTarget) {
+  //   if (scrollTarget != null) {
+  //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
+  //     if (destinationTarget != null)
+  //       scrollState.animateScroll(
+  //         Scroll.Absolute.x(destinationTarget.toDouble()),
+  //       )
+  //   }
+  // }
 
   val defaultMarker = rememberDefaultMarker(
     state = state,
     segment = segment,
-    onWeightLabelUpdate = onWeightLabelUpdate,
     onTargetsUpdate = onTargetsUpdate,
   )
   val goalMarker = rememberGoalMarker(goal = state.goal)
+  val horizontalItemPlacer =
+    horizontalItemPlacer(
+      segment = segment,
+    )
 
   val chart = rememberGraphChart(
     state = state,
     defaultMarker = defaultMarker,
     goalMarker = goalMarker,
     segment = segment,
+    horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
-    onChartClick = { targets, click, horizontalItemPlacer ->
+    onChartClick = { targets, click ->
+      if (click == null) return@rememberGraphChart
       var markerIndex: Double? = null
-      val outOfBoundaryCondition = if (click != null) {
-        click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
-      } else {
-        false // or handle differently if null means "out of bounds"
-      }
+      val outOfBoundaryCondition = click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
 
-      if (click == null || outOfBoundaryCondition) {
-        if (state.markerIndex != null || segment == GraphSegment.TOTAL || outOfBoundaryCondition) {
-          markerIndex = null
-        }
+      if (outOfBoundaryCondition) {
+        markerIndex = null
       } else {
         val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
         val targetMarkerIndex =
@@ -161,6 +160,20 @@ fun GraphView(
         val min = range.visibleXRange.start
         val max = range.visibleXRange.endInclusive
         viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
+        val filteredData = state.data.filter { it.getTimeStamp().toDouble() in min..max }
+        if (filteredData.isEmpty()) {
+          val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer)
+          val fallbackValues = scrollState.getInterpolatedYValues(
+            xValues = visibleLabels,
+            interpolationType = InterpolationType.CUBIC,
+          )
+          val fallbackData = state.createFallBackData(
+            segment = segment,
+            timeStamps = visibleLabels.map { it.toLong() },
+            fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+          )
+          onTargetsUpdate(fallbackData)
+        }
       }
     },
   )

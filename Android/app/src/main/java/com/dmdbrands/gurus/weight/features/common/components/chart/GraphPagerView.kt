@@ -116,13 +116,11 @@ fun GraphPagerView(
             }
           },
           onTargetsUpdate = {
+            labelData = String.format("%.2f", it.map { it.weight }.average())
             scrollTarget =
               if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
                 .toDouble() else null
             onSelected(it)
-          },
-          onWeightLabelUpdate = { label ->
-            labelData = label
           },
           viewModel = viewmodel,
         )
