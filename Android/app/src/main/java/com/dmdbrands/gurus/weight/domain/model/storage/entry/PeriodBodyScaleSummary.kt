@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.domain.model.storage.entry
 
 import androidx.room.Ignore
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
@@ -41,5 +42,9 @@ data class PeriodBodyScaleSummary(
     )
     result.prefix = if (weightLess?.isWeightlessOn == true && finalWeight > 0) "+" else ""
     return result
+  }
+
+  fun getTimeStamp(): Long {
+    return DateTimeConverter.isoToTimestamp(entryTimestamp)
   }
 }

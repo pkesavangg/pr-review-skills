@@ -3,18 +3,18 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 
 /**
  * Intent for graph actions, defining all possible user interactions and state updates.
  */
 sealed interface GraphIntent : IReducer.Intent {
-  /** Initialize the graph with new data */
-  data class InitializeGraph(
-    val graphLines: List<GraphLine>,
-    val secondaryGraphLines: GraphLine? = null,
-  ) : GraphIntent
+
+  data class UpdateData(val data: List<PeriodBodyScaleSummary>) : GraphIntent
+
+  data class UpdateSecondaryStat(val stat: Stat?) : GraphIntent
 
   data class UpdateGoal(val goal: Goal?) : GraphIntent
 

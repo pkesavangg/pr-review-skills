@@ -23,11 +23,8 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -60,16 +57,11 @@ fun GraphPagerView(
   var scrollTarget: Double? by remember {
     mutableStateOf(null)
   }
-
-  LaunchedEffect(state.selectedSegment) {
-    onScrollTargetChange(scrollTarget)
-  }
-
   var subText: String by remember { mutableStateOf("") }
-  var canShowSubText by remember { mutableStateOf(false) }
   var labelData by remember { mutableStateOf("") }
 
   LaunchedEffect(state.selectedSegment) {
+    onScrollTargetChange(scrollTarget)
     val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
     if (targetPage != pagerState.currentPage) {
       // Update page directly
@@ -82,7 +74,7 @@ fun GraphPagerView(
     onPagerStateChange(pagerState.currentPage)
   }
 
-  val validMetricKey = if (selectedStat?.key is DashboardKey.Metric) {
+  if (selectedStat?.key is DashboardKey.Metric) {
     selectedStat.key.key
   } else null
 
@@ -96,13 +88,6 @@ fun GraphPagerView(
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
-      // Cache data processing to avoid repeated calculations
-      val segmentEntries = remember(state, currentSegment) {
-        getEntriesForSegment(state, currentSegment)
-      }
-      val segmentGraphLines = remember(state, currentSegment) {
-        getWeightGraphPointsForSegment(state, currentSegment)
-      }
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
         factory.create(currentSegment)
       }
@@ -122,37 +107,22 @@ fun GraphPagerView(
           modifier = Modifier
             .fillMaxWidth(),
           scrollTarget = state.scrollTarget,
-          secondaryGraphLines = validMetricKey?.let { segmentEntries.toGraphPoints(validMetricKey) },
-          graphLines = listOf(segmentGraphLines),
+          secondaryStat = state.selectedStat,
           segment = currentSegment,
           state = graphState,
           onRangeUpdate = {
-            if (currentSegment == state.selectedSegment) {
-              if (it != null) {
-                canShowSubText = true
-                subText = it
-              } else {
-                canShowSubText = false
-              }
+            if (it != null) {
+              subText = it
             }
           },
-          onTargetsUpdate = { targets, fallbackValue ->
-            if (currentSegment == state.selectedSegment) {
-              val timeStamps = targets.map { it.toLong() }
-              val filteredEntries = segmentEntries.filter {
-                DateTimeConverter.isoToTimestamp(it.entryTimestamp) in timeStamps
-              }
-              onSelected(filteredEntries)
-              scrollTarget = if (targets.isNotEmpty())
-                targets.last()
-              else
-                null
-            }
+          onTargetsUpdate = {
+            scrollTarget =
+              if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
+                .toDouble() else null
+            onSelected(it)
           },
           onWeightLabelUpdate = { label ->
-            if (currentSegment == state.selectedSegment) {
-              labelData = label
-            }
+            labelData = label
           },
           viewModel = viewmodel,
         )
@@ -172,39 +142,6 @@ fun GraphPagerView(
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
   }
-}
-
-/**
- * Gets the appropriate entries for the given segment.
- */
-private fun getEntriesForSegment(
-  state: DashboardState,
-  segment: GraphSegment
-): List<PeriodBodyScaleSummary> {
-  return when (segment) {
-    GraphSegment.YEAR, GraphSegment.TOTAL -> state.monthWiseEntries
-    GraphSegment.MONTH, GraphSegment.WEEK -> state.dayWiseEntries
-  }
-}
-
-/**
- * Gets the weight graph points for the given segment.
- * Optimized to avoid repeated sorting and processing.
- */
-private fun getWeightGraphPointsForSegment(
-  state: DashboardState,
-  segment: GraphSegment
-): GraphLine {
-  val entries = getEntriesForSegment(state, segment)
-  // Sort only if entries are not already sorted
-  val sortedEntries = if (entries.size <= 1) {
-    entries
-  } else {
-    // Check if already sorted to avoid unnecessary sorting
-    val isSorted = entries.zipWithNext().all { (a, b) -> a.entryTimestamp <= b.entryTimestamp }
-    if (isSorted) entries else entries.sortedBy { it.entryTimestamp }
-  }
-  return sortedEntries.toWeightGraphPoints()
 }
 
 @PreviewTheme

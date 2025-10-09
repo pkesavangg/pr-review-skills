@@ -19,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -107,38 +106,29 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
 
   val selectedSegment = state.selectedSegment
   val selectedStat = state.selectedStat
-  val metricData = state.metricData
 
   AppScaffold(title = null) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
-      // Show loading state while data is being processed
-      if (state.isLoading) {
-        Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
-        // You can add a proper loading indicator here
-        androidx.compose.material3.CircularProgressIndicator(
-          modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-      } else {
-        GraphPagerView(
-          state = state,
-          selectedStat = selectedStat,
-          onSegmentChange = {
-            handleIntent(DashboardIntent.SetSelectedSegment(it))
-          },
-          onSelected = {
-            handleIntent(DashboardIntent.SetMetricData(it))
-          },
-          onPagerStateChange = { pagerState ->
-            handleIntent(DashboardIntent.SetPagerState(pagerState))
-          },
-          onScrollTargetChange = { scrollTarget ->
-            handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
-          },
-        )
-      }
 
-      if (state.dayWiseEntries.isEmpty() && !state.isLoading) {
+      GraphPagerView(
+        state = state,
+        selectedStat = selectedStat,
+        onSegmentChange = {
+          handleIntent(DashboardIntent.SetSelectedSegment(it))
+        },
+        onSelected = {
+          handleIntent(DashboardIntent.SetData(it))
+        },
+        onPagerStateChange = { pagerState ->
+          handleIntent(DashboardIntent.SetPagerState(pagerState))
+        },
+        onScrollTargetChange = { scrollTarget ->
+          handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
+        },
+      )
+
+
+      if (state.latestWeight == null) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         EmptyMetric(
           onConnectScaleClick = {
@@ -147,7 +137,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         )
       } else {
         DashboardMetrics(
-          metricData = metricData,
+          metricData = state.data,
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMetrics,
           selectedStat = selectedStat,
@@ -188,7 +178,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
               // Save dashboard metrics and milestones when exiting edit mode
               val allVisibleKeys =
                 currentVisibleMetrics + currentVisibleMilestones
-              handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys))
+              handleIntent(DashboardIntent.SetVisibleKeys(allVisibleKeys))
             }
             inEditMode = editMode
           },
@@ -201,7 +191,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             scope.launch {
               navBackStack.addRoute(
                 route = AppRoute.Dashboard.MetricInfo(
-                  info = fromPeriodSummary(metricData.first()),
+                  info = fromPeriodSummary(state.data.first()),
                   key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
                   source = getSourceFromSegment(
                     selectedSegment,

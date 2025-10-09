@@ -5,6 +5,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -23,9 +26,26 @@ import android.graphics.Typeface
 
 @Composable
 internal fun rememberDefaultMarker(
+  state: GraphState,
   segment: GraphSegment,
-  yLabelCallback: (List<List<Double>>) -> Unit = {}
+  onWeightLabelUpdate: (String) -> Unit,
+  onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit
 ): CartesianMarker {
+
+  fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
+    val requiredData = state.data.filter {
+      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == state.markerIndex?.toDouble()
+    }
+
+    val weightLabel = requiredData.firstOrNull()?.weight?.toString()
+
+    onWeightLabelUpdate(
+      weightLabel ?: if (fallbackValues.isNotEmpty()) fallbackValues.first().average().toString() else "",
+    )
+
+    onTargetsUpdate(requiredData)
+  }
+
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_regular)
 
@@ -57,7 +77,7 @@ internal fun rememberDefaultMarker(
     indicatorSize = pointSize.dp,
     contentPadding = insets(vertical = 29.dp),
     guideline = guideline,
-    yLabelCallback = yLabelCallback,
+    yLabelCallback = yLabelCallback(),
     interpolationType = InterpolationType.CUBIC,
     curvature = 0.5f,
   )
