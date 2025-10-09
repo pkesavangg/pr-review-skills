@@ -85,8 +85,17 @@ class TokenAuthenticator @Inject constructor(
                 if (refreshResult == null) {
                     AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
                     val isCurrentAccount = isCurrentAccount(accountId)
-                    logoutUser(accountId, isCurrentAccount)
-                    return@runBlocking null
+
+                    if (isCurrentAccount) {
+                        // For current account, logout and return null to fail the request
+                        logoutUser(accountId, isCurrentAccount)
+                        return@runBlocking null
+                    } else {
+                        // For non-active accounts, just log and let the API call proceed with original request
+                        AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
+                        // Don't return null - let the original request continue and fail naturally
+                        return@runBlocking response.request
+                    }
                 }
 
                 // Build new request with fresh access token (retry the original request)
@@ -99,8 +108,17 @@ class TokenAuthenticator @Inject constructor(
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
                 val isCurrentAccount = isCurrentAccount(accountId)
-                logoutUser(accountId, isCurrentAccount)
-                return@runBlocking null
+
+                if (isCurrentAccount) {
+                    // For current account, logout and return null to fail the request
+                    logoutUser(accountId, isCurrentAccount)
+                    return@runBlocking null
+                } else {
+                    // For non-active accounts, just log and let the API call proceed with original request
+                    AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
+                    // Don't return null - let the original request continue and fail naturally
+                    return@runBlocking response.request
+                }
             }
         }
     }
@@ -132,29 +150,20 @@ class TokenAuthenticator @Inject constructor(
 
     /**
      * Logout user when token refresh fails (same as Angular)
-     * Only navigate to landing screen if the current/active account is being logged out
+     * Only called for current/active accounts
      */
     private suspend fun logoutUser(accountId: String?, isCurrentAccount: Boolean) {
-        AppLog.w(TAG, "Logging out user due to token refresh failure for account: $accountId (isCurrentAccount: $isCurrentAccount)")
+        AppLog.w(TAG, "Logging out current user due to token refresh failure for account: $accountId")
 
-        // Only emit logout event and navigate to landing screen for current account
+        // Emit logout event and navigate to landing screen for current account
         if (isCurrentAccount && accountId != null) {
             AppLog.i(TAG, "Current account logout - navigating to landing screen")
             appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId))
-        } else if (accountId != null) {
-            AppLog.i(TAG, "Non-current account logout - not navigating to landing screen")
-            // For non-current accounts, we might want to just remove their tokens
-            // without affecting the current user session
         }
 
-        // Clear tokens for the specific account or current account
+        // Clear tokens for current account
         if (isCurrentAccount) {
             userDataStore.logoutCurrentAccount()
-        } else if (accountId != null) {
-            // For non-current accounts, we might want to remove just that account's tokens
-            // This depends on your UserDataStore implementation
-            AppLog.i(TAG, "Removing tokens for non-current account: $accountId")
-            // TODO: Implement account-specific token removal if needed
         }
     }
 
