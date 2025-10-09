@@ -164,7 +164,7 @@ final class DisplayMetricsViewModel: ObservableObject {
     
     /// Disables the heart rate metric in the metrics list when heart rate is off
     private func disableHeartRateMetric() {
-        let heartRateKey = "heartRate"
+        let heartRateKey = ScaleMetrics.heartRateKey
         
         // Disable and reorder heart rate in body metrics
         if let heartRateIndex = metrics.firstIndex(where: { $0.key == heartRateKey }) {
