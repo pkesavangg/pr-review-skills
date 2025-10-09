@@ -16,6 +16,11 @@ struct ScaleSettingsScreen: View {
     @State private var isOtherSettingsSheetPresented = false
     @State private var isSoftwareUpdatePresented = false
     
+    private var truncatedTitle: String {
+        let title = scale.nickname ?? scale.deviceName ?? ""
+        return title.count > 25 ? "\(title.prefix(25))…" : title
+    }
+    
     init(scale: Device, scaleType: ScaleType) {
         self.scale = scale
         self.scaleType = scaleType
@@ -26,7 +31,7 @@ struct ScaleSettingsScreen: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
-                title: scale.nickname ?? scale.deviceName,
+                title: truncatedTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
