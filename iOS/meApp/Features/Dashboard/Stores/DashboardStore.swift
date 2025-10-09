@@ -1574,6 +1574,7 @@ class DashboardStore: ObservableObject {
         // Build an entry that mirrors the current dashboard context
         // If a chart point is selected, use that point's values
         // Otherwise, use averages of the currently visible operations
+        // Initialize with a timestamp that we'll override below based on selection/context
         let entry = Entry(
             id: UUID(),
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
@@ -1601,6 +1602,9 @@ class DashboardStore: ObservableObject {
                 return v == 0 ? nil : v
             }()
 
+            // Use the actual point's timestamp
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: point.date)
+
             entry.scaleEntry = BathScaleEntry(
                 weight: storedWeight,
                 bodyFat: intOrNil(point.bodyFat),
@@ -1618,6 +1622,59 @@ class DashboardStore: ObservableObject {
                 subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
                 visceralFatLevel: scaled10OrNil(point.visceralFatLevel),
                 boneMass: intOrNil(point.boneMass),
+                impedance: nil,
+                unit: nil
+            )
+            return entry
+        }
+
+        // Interpolated selection: show interpolated weight for the selectedXValue and placeholders for body metrics
+        if let selectedDate = state.graph.selectedXValue {
+            // Compute interpolated display weight in current UI context
+            let interpolated = graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+            // Map display weight to stored (handle weightless by adding anchor back)
+            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+            let displayAbsolute: Double? = {
+                if let w = interpolated {
+                    if isWeightlessModeEnabled, let anchor = weightlessAnchorWeight {
+                        return w + anchor
+                    } else {
+                        return w
+                    }
+                }
+                return nil
+            }()
+            let storedWeight: Int? = {
+                guard let displayAbs = displayAbsolute else { return nil }
+                return ConversionTools.convertDisplayToStored(displayAbs, isMetric: unit == .kg)
+            }()
+
+            // Timestamp is the crosshair date selected by the user
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: selectedDate)
+
+            entry.scaleEntry = BathScaleEntry(
+                weight: storedWeight,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: nil,
+                metabolicAge: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                skeletalMusclePercent: nil,
+                subcutaneousFatPercent: nil,
+                visceralFatLevel: nil,
+                boneMass: nil,
                 impedance: nil,
                 unit: nil
             )
