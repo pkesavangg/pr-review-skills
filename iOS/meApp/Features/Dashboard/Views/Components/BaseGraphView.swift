@@ -618,7 +618,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength *  1.05) // Add 5% extra length for trailing padding
                 // When there are no operations (empty-state), explicitly pin the
                 // X-axis domain to the current period tick range so labels render
                 // left-to-right (sun → mon → … → sat for week).
@@ -640,7 +640,6 @@ extension View {
                     let nonLastTicks = Array(allTicks.dropLast())
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
-                    
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: nonLastTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
@@ -729,6 +728,7 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+
                         // Disable selection when there's no data
                         if viewModel.chartOperations.isEmpty {
                             localSelectedXValue.wrappedValue = nil

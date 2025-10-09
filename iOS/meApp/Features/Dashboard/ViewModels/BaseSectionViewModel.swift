@@ -723,9 +723,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
-            // Day-of-month ticks: 1, 8, 15, 22, 29 (only those present in month)
+            // Day-of-month ticks with February rule: exclude 29 even in leap years
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
-            let validDays = [1, 8, 15, 22, 29]
+            // Include the 29th only for months with 30+ days. This excludes February (28/29).
+            let daysRange = calendar.range(of: .day, in: .month, for: monthInterval.start) ?? 1..<32
+            let include29 = daysRange.count >= 30
+            let validDays: [Int] = include29 ? [1, 8, 15, 22, 29, 31] : [1, 8, 15, 22, 29]
             var ticks: [Date] = []
             let compsYM = calendar.dateComponents([.year, .month], from: monthInterval.start)
             for d in validDays {

@@ -7,7 +7,9 @@
 import Foundation
 import Combine
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - IntegrationStore
 /// Observable store that manages the list of integrations shown in `IntegrationsScreen`.
@@ -64,14 +66,7 @@ class IntegrationStore: ObservableObject {
         accountService.$activeAccount
             .sink { [weak self] account in
                 guard let self else { return }
-                let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
-                let mfpOn = account?.integrationSettings?.isMfpOn ?? false
-                accountID = account?.accountId ?? ""
-                self.integrations = [
-                    .init(type: .fitbit, isSelected: fitbitOn),
-                    .init(type: .myFitnessPal, isSelected: mfpOn)
-                ]
-                
+                self.applyAccountState(account)
                 /// Check for invalid integrations only once per screen lifecycle.
                 if !self.hasCheckedInvalidIntegrations && !self.skipInvalidIntegrationsCheck {
                     self.handleInvalidIntegrations(settings: account?.integrationSettings)
@@ -79,6 +74,21 @@ class IntegrationStore: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    /// Applies the `Account` state to local observable properties that drive the UI.
+    /// Updates the following observable properties:
+    ///   - `accountID`: Set to `account.accountId` if `account` is not nil, otherwise set to an empty string.
+    ///   - `integrations`: Set to reflect the integration settings in `account` if present; if `account` is nil, both integrations are set to `isSelected: false`.
+    /// - Parameter account: The latest account value (optional when stream emits nil).
+    private func applyAccountState(_ account: Account?) {
+        let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
+        let mfpOn = account?.integrationSettings?.isMfpOn ?? false
+        accountID = account?.accountId ?? ""
+        self.integrations = [
+            .init(type: .fitbit, isSelected: fitbitOn),
+            .init(type: .myFitnessPal, isSelected: mfpOn)
+        ]
     }
     
     /// Updates the currently selected integration ensuring only one item is selected at a time.
@@ -111,6 +121,7 @@ class IntegrationStore: ObservableObject {
         Task {
             do {
                 let account = try await accountService.refreshAccount()
+                self.applyAccountState(account)
                 handlePostIntegrationResult(using: account)
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to refresh accounts", data: error.localizedDescription)
@@ -148,6 +159,7 @@ class IntegrationStore: ObservableObject {
             guard let provider = mapToIntegrationType(item.type) else { return }
             try await integrationsService.removeIntegration(provider)
             let account = try await accountService.refreshAccount()
+            self.applyAccountState(account)
             handlePostIntegrationResult(using: account)
         } catch {
             switch error {
@@ -253,7 +265,9 @@ class IntegrationStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: alertLang.LinkOpenErrorAlert.dismissButton.uppercased(), type: .secondary) { _ in },
                 AlertButtonModel(title: alertLang.LinkOpenErrorAlert.copyLinkButton.uppercased(), type: .primary) { _ in
+                    #if canImport(UIKit)
                     UIPasteboard.general.string = link.absoluteString
+                    #endif
                 }
             ]
         )
