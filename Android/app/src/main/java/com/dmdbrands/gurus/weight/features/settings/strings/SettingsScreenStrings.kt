@@ -78,7 +78,7 @@ object SettingsScreenStrings {
     }
 
     object DeleteAccountDialog {
-        const val Title = "Delete Account"
+        const val Title = "Delete Your Account"
         const val Body = "Are you sure you want to delete your account? This action cannot be undone."
         const val Confirm = "Delete"
         const val Cancel = "Cancel"

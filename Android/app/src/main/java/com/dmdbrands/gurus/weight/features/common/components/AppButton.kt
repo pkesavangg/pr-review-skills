@@ -4,10 +4,13 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -330,27 +335,57 @@ fun AppButton(
     }
   }
 
-  val buttonColors =
-    ButtonDefaults.buttonColors(
+  val throttledClick = rememberThrottledClick { onClick() }
+
+  // For transparent buttons, use a custom implementation to avoid ripple effects
+  if (finalBackgroundColor == Color.Transparent) {
+    Box(
+      modifier = buttonModifier
+        .clip(shape)
+        .background(
+          color = finalBackgroundColor,
+          shape = shape
+        )
+        .clickable(
+          enabled = enabled,
+          interactionSource = interactionSource,
+          indication = null, // Disable ripple effect
+          onClick = throttledClick
+        ),
+      contentAlignment = Alignment.Center
+    ) {
+      Text(
+        text = text,
+        style = textStyle,
+        color = finalContentColor,
+        maxLines = maxLines,
+        modifier = Modifier.padding(
+          horizontal = hPadding,
+          vertical = vPadding
+        )
+      )
+    }
+  } else {
+    // Use Material3 Button for non-transparent backgrounds
+    val buttonColors = ButtonDefaults.buttonColors(
       containerColor = finalBackgroundColor,
       contentColor = finalContentColor,
       disabledContainerColor = backgroundColor,
       disabledContentColor = contentColor,
     )
 
-  val throttledClick = rememberThrottledClick { onClick() }
-
-  Button(
-    onClick = throttledClick,
-    enabled = enabled,
-    shape = shape,
-    colors = buttonColors,
-    border = borderColor,
-    modifier = buttonModifier,
-    contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
-    interactionSource = interactionSource,
-  ) {
-    Text(text = text, style = textStyle, maxLines = maxLines)
+    Button(
+      onClick = throttledClick,
+      enabled = enabled,
+      shape = shape,
+      colors = buttonColors,
+      border = borderColor,
+      modifier = buttonModifier,
+      contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
+      interactionSource = interactionSource,
+    ) {
+      Text(text = text, style = textStyle, maxLines = maxLines)
+    }
   }
 }
 

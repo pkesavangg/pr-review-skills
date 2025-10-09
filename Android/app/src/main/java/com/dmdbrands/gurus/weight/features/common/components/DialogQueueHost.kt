@@ -74,7 +74,7 @@ fun DialogQueueHost(
                 AppDialog(
                     title = dialog.title,
                     body = dialog.message,
-                    primaryActionType = ButtonType.InlineTextPrimary,
+                    primaryActionType = dialog.primaryActionType,
                     confirmAction =
                         ActionButton(dialog.confirmText) {
                             dialog.onConfirm?.let { it() }
