@@ -16,6 +16,12 @@ struct ScaleSettingsScreen: View {
     @State private var isOtherSettingsSheetPresented = false
     @State private var isSoftwareUpdatePresented = false
     
+    private static let titleTruncationLength = 25
+    private var truncatedTitle: String {
+        let title = scale.nickname ?? scale.deviceName ?? ""
+        return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
+    }
+    
     init(scale: Device, scaleType: ScaleType) {
         self.scale = scale
         self.scaleType = scaleType
@@ -26,7 +32,7 @@ struct ScaleSettingsScreen: View {
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
-                title: scale.nickname ?? scale.deviceName,
+                title: truncatedTitle,
                 leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
