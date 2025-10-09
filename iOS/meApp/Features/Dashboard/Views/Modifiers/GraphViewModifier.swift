@@ -16,7 +16,7 @@ struct GraphViewModifier: ViewModifier {
             .frame(height: 265) 
             .frame(maxWidth: .infinity, minHeight: 240)
             .padding(.leading, canAddPadding ? .spacingXS : 0)
-            .padding(.trailing, .spacingXS)
+            .padding(.trailing, 0)
     }
 }
 
