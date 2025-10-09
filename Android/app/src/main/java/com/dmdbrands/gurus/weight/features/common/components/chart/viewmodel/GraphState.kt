@@ -53,7 +53,8 @@ import java.util.Calendar
 data class GraphState(
   val weightUnit: WeightUnit = WeightUnit.KG,
   val data: List<PeriodBodyScaleSummary> = emptyList(),
-  val secondaryKey: Stat? = null,
+  val target: List<PeriodBodyScaleSummary> = emptyList(),
+  val secondaryStat: Stat? = null,
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
@@ -68,7 +69,7 @@ data class GraphState(
 ) : IReducer.State {
   val graphKey: Int = data.hashCode()
   val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())
-  val secondaryGraphLines: GraphLine? = secondaryKey?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+  val secondaryGraphLines: GraphLine? = secondaryStat?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
 
   fun getStartTimestamp(): Long {
     return this.data.minByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
@@ -101,7 +102,7 @@ data class GraphState(
       PeriodBodyScaleSummary(
         period = timestampToPeriodString(it, segment),
         entryTimestamp = DateTimeConverter.timestampToIso(it),
-        weight = fallbackValues?.first()[index] ?: 0.0,
+        weight = fallbackValues?.firstOrNull()?.get(index) ?: 0.0,
         unit = weightUnit,
       )
     }

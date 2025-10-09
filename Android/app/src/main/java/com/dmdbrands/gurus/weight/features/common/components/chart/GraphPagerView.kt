@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
@@ -92,7 +93,20 @@ fun GraphPagerView(
         factory.create(currentSegment)
       }
       val graphState by viewmodel.state.collectAsState()
+      LaunchedEffect(graphState.target) {
+        labelData = String.format("%.2f", graphState.target.map { it.weight }.average())
+        scrollTarget =
+          if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
+            .toDouble() else null
+        onSelected(graphState.target)
+      }
 
+      LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
+        if (graphState.minTarget != null && graphState.maxTarget != null) {
+          val formattedRange = GraphUtil.formatDateRange(graphState.minTarget!!, graphState.maxTarget!!, currentSegment)
+          subText = formattedRange
+        }
+      }
       Column {
         // Header section for current segment
         ChartHeader(
@@ -110,18 +124,6 @@ fun GraphPagerView(
           secondaryStat = state.selectedStat,
           segment = currentSegment,
           state = graphState,
-          onRangeUpdate = {
-            if (it != null) {
-              subText = it
-            }
-          },
-          onTargetsUpdate = {
-            labelData = String.format("%.2f", it.map { it.weight }.average())
-            scrollTarget =
-              if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
-                .toDouble() else null
-            onSelected(it)
-          },
           viewModel = viewmodel,
         )
       }
@@ -130,7 +132,7 @@ fun GraphPagerView(
     // Segment button group
     SegmentButtonGroup(
       data = GraphSegment.entries.toList(),
-      selectedData = state.selectedSegment,
+      selectedData = GraphSegment.entries[pagerState.currentPage],
       key = GraphSegment::name,
       onSelected = { segment ->
         onSegmentChange(segment)

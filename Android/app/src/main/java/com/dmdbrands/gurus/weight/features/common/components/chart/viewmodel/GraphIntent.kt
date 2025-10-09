@@ -14,7 +14,9 @@ sealed interface GraphIntent : IReducer.Intent {
 
   data class UpdateData(val data: List<PeriodBodyScaleSummary>) : GraphIntent
 
-  data class UpdateSecondaryStat(val stat: Stat?) : GraphIntent
+  data class UpdateTarget(val target: List<PeriodBodyScaleSummary>) : GraphIntent
+
+  data class ReInitializeGraph(val stat: Stat?) : GraphIntent
 
   data class UpdateGoal(val goal: Goal?) : GraphIntent
 
@@ -42,6 +44,5 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Reset graph state */
   object ResetGraph : GraphIntent
 
-  /** Handle scroll event */
   data class SetScrollRange(val min: Long, val max: Long) : GraphIntent
 }

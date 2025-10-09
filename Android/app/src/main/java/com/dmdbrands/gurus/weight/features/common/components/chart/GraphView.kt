@@ -4,10 +4,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -24,6 +24,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /**
@@ -50,11 +51,13 @@ fun GraphView(
   secondaryStat: Stat? = null,
   scrollTarget: Double? = null,
   placeHolder: String? = null,
-  onRangeUpdate: (String?) -> Unit = {},
-  onTargetsUpdate: (data: List<PeriodBodyScaleSummary>) -> Unit = {},
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
+  LaunchedEffect(secondaryStat) {
+    viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
+  }
+  val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
   val chartHeight = remember(state.markerIndex) {
     when (currentDeviceType) {
@@ -62,11 +65,6 @@ fun GraphView(
       DeviceType.Phone -> 300.dp
       DeviceType.Fold -> 250.dp
     }
-  }
-
-  // Store callbacks in ViewModel
-  LaunchedEffect(Unit) {
-    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate)
   }
 
   val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
@@ -95,6 +93,7 @@ fun GraphView(
       ),
     ),
   )
+
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
   //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
@@ -108,7 +107,9 @@ fun GraphView(
   val defaultMarker = rememberDefaultMarker(
     state = state,
     segment = segment,
-    onTargetsUpdate = onTargetsUpdate,
+    onTargetsUpdate = {
+      viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+    },
   )
   val goalMarker = rememberGoalMarker(goal = state.goal)
   val horizontalItemPlacer =
@@ -125,25 +126,26 @@ fun GraphView(
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null) return@rememberGraphChart
-      var markerIndex: Double? = null
-      val outOfBoundaryCondition = click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
-
-      if (outOfBoundaryCondition) {
-        markerIndex = null
-      } else {
-        val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
-        val targetMarkerIndex =
-          getTargetPoints(
-            visibleLabels,
-            targets,
-            click,
-            segment,
-          )
-        if (targetMarkerIndex.isNotEmpty()) {
-          markerIndex = targetMarkerIndex.first()
+      scope.launch {
+        var markerIndex: Double? = null
+        val outOfBoundaryCondition = click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
+        if (outOfBoundaryCondition) {
+          markerIndex = null
+        } else {
+          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+          val targetMarkerIndex =
+            getTargetPoints(
+              visibleLabels,
+              targets,
+              click,
+              segment,
+            )
+          if (targetMarkerIndex.isNotEmpty()) {
+            markerIndex = targetMarkerIndex.first()
+          }
         }
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
     },
   )
 
@@ -156,23 +158,25 @@ fun GraphView(
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     consumeMoveEvents = true,
     onScrollStopped = { range ->
-      if (range != null) {
-        val min = range.visibleXRange.start
-        val max = range.visibleXRange.endInclusive
-        viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
-        val filteredData = state.data.filter { it.getTimeStamp().toDouble() in min..max }
-        if (filteredData.isEmpty()) {
-          val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer)
-          val fallbackValues = scrollState.getInterpolatedYValues(
-            xValues = visibleLabels,
-            interpolationType = InterpolationType.CUBIC,
-          )
-          val fallbackData = state.createFallBackData(
-            segment = segment,
-            timeStamps = visibleLabels.map { it.toLong() },
-            fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-          )
-          onTargetsUpdate(fallbackData)
+      scope.launch {
+        if (range != null) {
+          val min = range.visibleXRange.start
+          val max = range.visibleXRange.endInclusive
+          viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
+          val filteredData = state.data.filter { it.getTimeStamp().toDouble() in min..max }
+          if (filteredData.isEmpty()) {
+            val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer)
+            val fallbackValues = scrollState.getInterpolatedYValues(
+              xValues = visibleLabels,
+              interpolationType = InterpolationType.CUBIC,
+            )
+            val fallbackData = state.createFallBackData(
+              segment = segment,
+              timeStamps = visibleLabels.map { it.toLong() },
+              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+            )
+            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          }
         }
       }
     },
