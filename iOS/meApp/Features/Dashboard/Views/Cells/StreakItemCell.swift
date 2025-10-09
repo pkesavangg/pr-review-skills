@@ -110,7 +110,8 @@ class StreakCardCell: UICollectionViewCell {
                         isBeingDragged: currentIsBeingDragged || isLongPressed, // Use actual drag state
                         isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                         rowIndex: rowIndex,
-                        disableWiggle: isRemoved // removed items must not wiggle
+                        disableWiggle: isRemoved, 
+                        iconOffset: CGSize(width: 5, height: -14) 
                     )
             )
         } else {
