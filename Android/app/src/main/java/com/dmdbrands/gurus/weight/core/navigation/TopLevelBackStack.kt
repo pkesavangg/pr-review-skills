@@ -10,7 +10,6 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.withFrameNanos
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -176,6 +175,37 @@ class TopLevelBackStack<T : NavKey>(
         stacks.remove(topLevelKey)
       }
     }
+  }
+
+  /**
+   * Removes the last route and replaces it with a new route.
+   * This is useful when navigating from a temporary screen (like "Choose Scale")
+   * to a permanent screen (like scale setup), removing the temporary screen from the stack.
+   * @param route The route to navigate to.
+   * @param topLevel The top-level key.
+   */
+  suspend fun replaceLastAndNavigate(
+    route: T,
+    topLevel: T? = null,
+  ) {
+    val topLevelKey = topLevel ?: startKey.first
+    val stacks = _topLevelStacks.value
+    val stack = stacks.getOrPut(topLevelKey) { mutableStateListOf() }
+    val currentRoute = stack.lastOrNull()
+    // Check if we can deactivate the current route
+    if (currentRoute != null && !canDeactivate(currentRoute)) return
+    // Remove the last route (the temporary screen)
+    if (stack.isNotEmpty()) {
+      stack.removeLastOrNull()
+    }
+    // Add the new route
+    if (requiresLogin(route)) {
+      onLoginSuccessRoute = Pair(topLevelKey, route)
+      stack.add(loginKey)
+    } else {
+      stack.add(route)
+    }
+    AppLog.d("TopLevelBackStack", "Replaced last route and navigated to: $route")
   }
 
   fun getStackForTopLevel(topLevel: T): SnapshotStateList<T> = _topLevelStacks.value[topLevel] ?: mutableStateListOf()
