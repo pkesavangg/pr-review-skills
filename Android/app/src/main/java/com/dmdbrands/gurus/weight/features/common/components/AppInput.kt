@@ -31,11 +31,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.DecimalInputVisualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.strings.AppInputStrings
@@ -45,6 +47,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
+import android.R.attr.inputType
 
 enum class AppInputType {
     TEXT,
@@ -175,7 +178,6 @@ fun <T> AppInput(
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
-    maxLength: Int? = null,
     trailingIconId: Int = AppIcons.Outlined.Close,
     maxLength: Int? = null,
     onValueChange: ((T?) -> Unit)? = null,
@@ -210,7 +212,6 @@ fun <T> AppInput(
             showTrailingIconAlways = showTrailingIconAlways,
             onTrailingAction = onTrailingAction,
             trailingIconId = trailingIconId,
-            maxLength = maxLength,
             onImeAction = onImeAction,
             nextFocusRequester = nextFocusRequester,
         )
@@ -232,7 +233,6 @@ fun <T> InputFieldBase(
     showOutline: Boolean = false,
     readOnly: Boolean = false,
     supportingText: String? = null,
-    maxLength: Int? = null,
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
@@ -288,8 +288,6 @@ fun <T> InputFieldBase(
             }
           }
             }
-        }
-        // If maxLength is exceeded, do nothing (don't emit value change)
 
 
     fun clearValueAndNotify() {

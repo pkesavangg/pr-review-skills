@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -71,7 +70,8 @@ private fun EntryScreenContent(
       keyboardController?.hide()
     }
   }
-
+  val navStackController = LocalNavBackStack.current
+  val scope = rememberCoroutineScope()
   BackHandler {
     scope.launch {
       navStackController.removeLast(AppRoute.Home)
