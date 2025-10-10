@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface IEntryService {
   val isUpdating: StateFlow<Boolean>
+  val isEmpty: StateFlow<Boolean>
   val latestEntry: StateFlow<Entry?>
   val last7Days: StateFlow<List<Entry>>
   val last30Days: StateFlow<List<Entry>>
@@ -40,5 +41,4 @@ interface IEntryService {
    * to display the goal card.
    */
   fun initializeGoalCardMonitoring()
-
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -81,20 +80,13 @@ fun DashboardScreen() {
       ),
     )
   }
-  PullToRefreshBox(
-    isRefreshing = state.isRefreshing,
-    onRefresh = {
-      viewmodel.handleIntent(DashboardIntent.Refresh)
-    },
-  ) {
-    DashboardScreenContent(state, viewmodel::handleIntent)
-  }
+  DashboardScreenContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
   val scrollState = rememberScrollState()
-  val scope = rememberCoroutineScope()
+  rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
   var inEditMode by remember { mutableStateOf(false) }
   var currentVisibleMetrics by remember(state.visibleKeys) {
@@ -107,7 +99,16 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val selectedSegment = state.selectedSegment
   val selectedStat = state.selectedStat
 
-  AppScaffold(title = null) {
+  val scope = rememberCoroutineScope()
+
+
+  AppScaffold(
+    title = null,
+    onRefresh = {
+      handleIntent(DashboardIntent.Refresh)
+    },
+    isRefreshing = state.isRefreshing,
+  ) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
 
       GraphPagerView(
@@ -128,7 +129,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
       )
 
 
-      if (state.latestWeight == null) {
+      if (state.isEmpty) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         EmptyMetric(
           onConnectScaleClick = {

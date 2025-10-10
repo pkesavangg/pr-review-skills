@@ -41,12 +41,13 @@ constructor(
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
+
+
   init {
-    viewModelScope.launch {
-      subscribeMetrics()
-      subscribeProgress()
-      subscribeLatestWeight()
-    }
+    subscribeMetrics()
+    subscribeProgress()
+    subscribeLatestWeight()
+    subscribeIsEmpty()
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -80,6 +81,14 @@ constructor(
       dashboardService.refreshDashboard()
       accountService.refreshAccount()
       handleIntent(DashboardIntent.UpdateIsRefreshing(false))
+    }
+  }
+
+  private fun subscribeIsEmpty() {
+    viewModelScope.launch {
+      entryService.isEmpty.collect {
+        handleIntent(DashboardIntent.UpdateIsEmpty(it))
+      }
     }
   }
 

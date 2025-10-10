@@ -25,6 +25,7 @@ data class DashboardState(
   val selectedStat: Stat? = null,
   val pagerState: Int = 0,
   val scrollTarget: Double? = null,
+  val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
 ) : IReducer.State
 
@@ -32,6 +33,8 @@ data class DashboardState(
  * Intent for dashboard actions, such as loading and updating entries.
  */
 sealed interface DashboardIntent : IReducer.Intent {
+
+  data class UpdateIsEmpty(val isEmpty: Boolean) : DashboardIntent
   data object Refresh : DashboardIntent
   data class ResetDashboard(val onConfirm: () -> Unit) : DashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
@@ -55,6 +58,8 @@ sealed interface DashboardIntent : IReducer.Intent {
  */
 class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
   override fun reduce(state: DashboardState, intent: DashboardIntent): DashboardState? = when (intent) {
+    is DashboardIntent.UpdateIsRefreshing -> state.copy(isRefreshing = intent.isRefreshing)
+    is DashboardIntent.UpdateIsEmpty -> state.copy(isEmpty = intent.isEmpty)
     is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
     is DashboardIntent.SetProgress -> state.copy(progress = intent.progress)
     is DashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
