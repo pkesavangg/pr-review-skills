@@ -23,7 +23,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -41,7 +40,6 @@ constructor(
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
   private val healthConnectService: IHealthConnectService,
-  private val accountService: IAccountService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -69,7 +67,7 @@ constructor(
 
   override fun handleIntent(intent: DashboardIntent) {
     when (intent) {
-      is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys)
+      is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
@@ -125,7 +123,6 @@ constructor(
     viewModelScope.launch {
       accountService.activeAccountFlow.collect { account ->
         if (account != null) {
-          Log.d("dashboardtype", "${account.dashboardType}")
           val dashboardType = if (account.dashboardType == DashboardType.DASHBOARD_12_METRICS.value)
             DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
           handleIntent(DashboardIntent.SetDashboardType(dashboardType))
@@ -153,13 +150,13 @@ constructor(
     )
   }
 
-  private fun updateVisibleKeys(keys: List<DashboardKey>) {
+  private fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
     try {
       viewModelScope.launch {
         dialogQueueService.showLoader(
           message = DashboardString.Loader.Save,
         )
-        dashboardService.updateVisibleKeys(keys = keys)
+        dashboardService.updateVisibleKeys(keys = keys, dashboardType = dashboardType)
       }
     } catch (e: Exception) {
     } finally {

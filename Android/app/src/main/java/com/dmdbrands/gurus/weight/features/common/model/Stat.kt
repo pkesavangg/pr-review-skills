@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.model
 
-import com.dmdbrands.gurus.weight.proto.MetricKey
-import com.dmdbrands.gurus.weight.proto.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 
 /**
  * Union type representing either a MetricKey or MilestoneKey.

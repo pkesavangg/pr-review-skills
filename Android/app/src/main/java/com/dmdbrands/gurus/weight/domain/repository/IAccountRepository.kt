@@ -253,5 +253,19 @@ interface IAccountRepository {
    * @param hasShown Whether the notification alert has been shown.
    */
   suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean)
-  suspend fun updateLocalDashboardType(accountId: String, dashboardMetrics: String, dashboardType: DashboardType)
+  suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType)
+
+  /**
+   * Updates dashboard settings including metrics and milestones for the given account.
+   * @param accountId The account ID
+   * @param dashboardMetrics List of metric keys
+   * @param dashboardMilestones List of milestone keys
+   * @param dashboardType The dashboard type
+   */
+  suspend fun updateDashboardSettings(
+    accountId: String,
+    dashboardMetrics: List<String>,
+    dashboardMilestones: List<String>,
+    dashboardType: DashboardType
+  )
 }

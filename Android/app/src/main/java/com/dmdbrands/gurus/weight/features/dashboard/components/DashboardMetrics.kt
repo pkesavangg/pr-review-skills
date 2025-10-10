@@ -22,6 +22,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -35,7 +36,6 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import android.util.Log
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
@@ -75,23 +75,23 @@ fun DashboardMetrics(
       }
     }
   }
-   Log.d("dashboardmetrics", "${dashboardType}")
   // Cache metrics calculations with proper keys to avoid recomputation
   val visibleMetrics = remember(dashboardMetric, metricKeys, isFromSetup, dashboardType) {
     val allMetrics = StatHelper.getMetrics(
       dashboardMetric,
       visibleKeys = metricKeys,
-      useShort = !isFromSetup,
+      useShort = true,
+      showMetricIcon = isFromSetup,
       filterNulls = false,
     )
     // Filter metrics based on dashboard type
     when (dashboardType) {
       DashboardType.DASHBOARD_4_METRICS -> {
         val allowedKeys = listOf(
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BMI),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BODY_FAT),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.MUSCLE_MASS),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BODY_WATER)
+          DashboardKey.Metric(MetricKey.BMI),
+          DashboardKey.Metric(MetricKey.BODY_FAT),
+          DashboardKey.Metric(MetricKey.MUSCLE_MASS),
+          DashboardKey.Metric(MetricKey.BODY_WATER),
         )
         allMetrics.filter { stat ->
           stat.key in allowedKeys
@@ -105,17 +105,18 @@ fun DashboardMetrics(
     val allAvailableMetrics = StatHelper.getMetrics(
       dashboardMetric,
       visibleKeys = null,
-      useShort = !isFromSetup,
+      useShort = true,
+      showMetricIcon = isFromSetup,
       filterNulls = false,
     )
     // Filter all metrics based on dashboard type
     when (dashboardType) {
       DashboardType.DASHBOARD_4_METRICS -> {
         val allowedKeys = listOf(
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BMI),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BODY_FAT),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.MUSCLE_MASS),
-          DashboardKey.Metric(com.dmdbrands.gurus.weight.proto.MetricKey.BODY_WATER)
+          DashboardKey.Metric(MetricKey.BMI),
+          DashboardKey.Metric(MetricKey.BODY_FAT),
+          DashboardKey.Metric(MetricKey.MUSCLE_MASS),
+          DashboardKey.Metric(MetricKey.BODY_WATER),
         )
         allAvailableMetrics.filter { stat ->
           stat.key in allowedKeys

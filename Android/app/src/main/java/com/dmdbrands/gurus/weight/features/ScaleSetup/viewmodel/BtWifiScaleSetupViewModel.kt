@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -32,6 +33,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
+import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -979,7 +981,21 @@ constructor(
                   ),
                 )
                 discoveredScale = deviceService.saveScale(discoveredScale!!)
-                accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
+                if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
+                  accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
+                  val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics
+                  val additionalMetrics = StatHelper.getAdditionalMetrics()
+                  val updatedMetrics = (dashboardMetrics ?: emptyList()).toMutableList().apply {
+                    additionalMetrics.forEach { metric ->
+                      if (!contains(metric)) {
+                        add(metric)
+                      }
+                    }
+                  }
+                  // Convert camelCase strings to MetricKey enums and update via dashboard service
+                  val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
+                  dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
+                }
                 handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
                 onNext()
               }
@@ -1445,7 +1461,7 @@ constructor(
           }
         }
         if (dashboardKeys != null) {
-          dashboardService.updateVisibleKeys(keys = dashboardKeys)
+          dashboardService.updateVisibleKeys(accountId = accountId, keys = dashboardKeys, dashboardType = DashboardType.DASHBOARD_12_METRICS)
         }
         if (preferences != null) {
           val newName = _state.value.usernameForm.username.value

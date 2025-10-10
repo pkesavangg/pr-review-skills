@@ -26,7 +26,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.getMetrics
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
@@ -88,7 +88,7 @@ internal fun MetricItem(
 fun HistoryDetailItemDetails(
   item: ScaleEntry,
 ) {
-  val metrics = getMetrics(fromScaleEntry(item))
+  val metrics = getMetrics(fromScaleEntry(item), showMetricIcon = true)
   val navBackStack = LocalNavBackStack.current
   val scope = rememberCoroutineScope()
   Column(

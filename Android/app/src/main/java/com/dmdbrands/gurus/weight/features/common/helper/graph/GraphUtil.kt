@@ -11,7 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant

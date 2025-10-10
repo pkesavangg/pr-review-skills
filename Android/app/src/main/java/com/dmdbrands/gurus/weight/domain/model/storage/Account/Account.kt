@@ -6,7 +6,8 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertS
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 
@@ -77,10 +78,10 @@ data class Account(
   }
 
   fun toGGBTUserProfile(): GGBTUserProfile {
-    val metricConfig = MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED }.map {
+    val metricConfig = MetricKey.entries.map {
       GGBTMetricConfig(
-        metric = it.name,
-        enabled = dashboardMetrics?.contains(it.name) ?: false,
+        metric = MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase(),
+        enabled = dashboardMetrics?.contains(MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase()) ?: false,
       )
     }
     val heightCm: Double? =

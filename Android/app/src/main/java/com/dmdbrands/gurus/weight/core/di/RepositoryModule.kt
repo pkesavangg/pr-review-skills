@@ -30,7 +30,6 @@ import com.dmdbrands.gurus.weight.data.repository.IntegrationRepository
 import com.dmdbrands.gurus.weight.data.repository.LogRepository
 import com.dmdbrands.gurus.weight.data.repository.NotificationRepository
 import com.dmdbrands.gurus.weight.data.repository.UserSettingsRepository
-import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
@@ -84,12 +83,11 @@ object RepositoryModule {
     fun provideAccountRepository(
       accountDao: AccountDao,
       userDataStore: UserDataStore,
-      dashboardKeysDatastore: DashboardKeysDatastore,
       tokenManager: ITokenManager,
       authAPI: IAuthAPI,
       userAPI: IUserAPI,
     ): IAccountRepository =
-      AccountRepository(accountDao, userDataStore, dashboardKeysDatastore, tokenManager, authAPI, userAPI)
+      AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI)
 
     @Provides
     @Singleton
@@ -156,9 +154,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideDashboardRepository(
-      dashboardKeysDatastore: DashboardKeysDatastore
+      accountDao: AccountDao,
+      accountRepository: IAccountRepository
     ): IDashboardRepository =
-      DashboardRepository(dashboardKeysDatastore)
+      DashboardRepository(accountDao, accountRepository)
 
     @Provides
     @Singleton

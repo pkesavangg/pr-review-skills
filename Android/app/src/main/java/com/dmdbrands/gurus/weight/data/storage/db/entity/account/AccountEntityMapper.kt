@@ -65,8 +65,7 @@ object AccountEntityMapper {
             dashboardMetrics =
                 accountWithRelations.dashboardSettings
                     ?.dashboardMetrics
-                    ?.split(",")
-                    ?.filterNot { it.isBlank() },
+                    ?: emptyList(),
             // Map notification settings
             shouldSendEntryNotifications =
                 accountWithRelations.notificationSettings?.shouldSendEntryNotifications

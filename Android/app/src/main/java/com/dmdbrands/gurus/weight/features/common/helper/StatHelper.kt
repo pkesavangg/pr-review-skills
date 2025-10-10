@@ -2,6 +2,9 @@ package com.dmdbrands.gurus.weight.features.common.helper
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
@@ -12,8 +15,6 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.strings.MetricLabels
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
-import com.dmdbrands.gurus.weight.proto.MetricKey
-import com.dmdbrands.gurus.weight.proto.MilestoneKey
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlin.math.roundToInt
@@ -65,7 +66,12 @@ object StatHelper {
     }
   }
 
-  fun getMetricValue(item: DashboardMetric, key: MetricKey, useShort: Boolean = false): Stat {
+  fun getMetricValue(
+    item: DashboardMetric,
+    key: MetricKey,
+    useShort: Boolean = false,
+    showMetricIcon: Boolean = false
+  ): Stat {
     val value = when (key) {
       MetricKey.WEIGHT -> item.weight
       MetricKey.BMI -> item.bmi
@@ -82,13 +88,18 @@ object StatHelper {
       MetricKey.METABOLIC_AGE -> item.metabolicAge?.toInt()
       else -> null
     }
-    return DashboardKey.Metric(key).toStat(value, useShort, item.unit)
+    return DashboardKey.Metric(key).toStat(value, useShort, item.unit, showMetricIcon = showMetricIcon)
   }
 
   /**
    * Create a Stat for a given DashboardKey and value. Handles special cases.
    */
-  fun DashboardKey.toStat(value: Any?, useShort: Boolean = false, unit: WeightUnit = WeightUnit.LB): Stat {
+  fun DashboardKey.toStat(
+    value: Any?,
+    useShort: Boolean = false,
+    unit: WeightUnit = WeightUnit.LB,
+    showMetricIcon: Boolean = false
+  ): Stat {
     val meta = when (this) {
       is DashboardKey.Metric -> {
         metricStatMetaMap[key] ?: throw IllegalArgumentException("Unknown MetricKey: $key")
@@ -116,7 +127,7 @@ object StatHelper {
       label = meta.labelProvider(useShort),
       value = valueStr,
       unit = calculatedUnit,
-      icon = if (!useShort) meta.icon else null,
+      icon = if (showMetricIcon || this is DashboardKey.Milestone) meta.icon else null,
       key = this,
       valuePrefix = prefix,
       valueSuffix = suffix,
@@ -131,20 +142,21 @@ object StatHelper {
     visibleKeys: List<MetricKey>? = null,
     filterWeight: Boolean = true,
     useShort: Boolean = false,
+    showMetricIcon: Boolean = false,
     filterNulls: Boolean = true
   ): List<Stat> {
     // Pre-filter keys to avoid repeated filtering
     val keysToUse = (visibleKeys ?: MetricKey.entries).filter { key ->
-      key != MetricKey.UNRECOGNIZED && (!filterWeight || key != MetricKey.WEIGHT)
+      !filterWeight || key != MetricKey.WEIGHT
     }
 
     // Use buildList for better performance with large datasets
     return buildList {
       for (key in keysToUse) {
         val stat = if (item != null) {
-          getMetricValue(item, key, useShort)
+          getMetricValue(item, key, useShort, showMetricIcon = showMetricIcon)
         } else {
-          DashboardKey.Metric(key).toStat(null, useShort)
+          DashboardKey.Metric(key).toStat(null, useShort, showMetricIcon = showMetricIcon)
         }
 
         // Only add if not filtering nulls or if value is not null
@@ -162,14 +174,14 @@ object StatHelper {
     progress: Progress,
     visibleKeys: List<MilestoneKey>? = null,
     useShort: Boolean = false,
+    showMetricIcon: Boolean = false,
     filterNulls: Boolean = true,
   ): List<Stat> {
     val keysToUse = (visibleKeys ?: MilestoneKey.entries)
-      .filter { it != MilestoneKey.UNRECOGNIZED }
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
-      DashboardKey.Milestone(key).toStat(value, useShort)
+      DashboardKey.Milestone(key).toStat(value, useShort, showMetricIcon = showMetricIcon)
     }
 
     return if (filterNulls) stats.filter { it.value != null } else stats
@@ -204,6 +216,21 @@ object StatHelper {
       else -> null
     }
   }
+
+  /**
+   * Returns the additional 8 metrics (excluding the basic 4 metrics) in camelCase format.
+   * These are the metrics that get added when upgrading from 4-metric to 12-metric dashboard.
+   */
+  fun getAdditionalMetrics(): List<String> = listOf(
+    MetricKeyConstants.BONE_MASS,
+    MetricKeyConstants.VISCERAL_FAT,
+    MetricKeyConstants.SUBCUTANEOUS_FAT,
+    MetricKeyConstants.PROTEIN,
+    MetricKeyConstants.SKELETAL_MUSCLE,
+    MetricKeyConstants.BMR,
+    MetricKeyConstants.METABOLIC_AGE,
+    MetricKeyConstants.HEART_RATE
+  )
 
   /**
    * Returns a background color for a stat card based on its index and total size.
@@ -250,7 +277,7 @@ internal object StatMeta {
     MetricKey.HEART_RATE to StatMeta(
       labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.HEART_RATE, useShort) },
       unit = "bpm",
-      unitProvider = { useShort -> if (useShort) null else "bpm" },
+      unitProvider = { useShort -> if (useShort) "bpm" else null },
       icon = AppIcons.Metrics.Pulse,
     ),
     MetricKey.BONE_MASS to StatMeta(

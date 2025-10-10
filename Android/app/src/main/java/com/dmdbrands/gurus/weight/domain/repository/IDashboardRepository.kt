@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.proto.MetricKey
-import com.dmdbrands.gurus.weight.proto.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.metricinfo
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

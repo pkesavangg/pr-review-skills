@@ -2,8 +2,8 @@ package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.proto.MetricKey
-import com.dmdbrands.gurus.weight.proto.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -57,7 +57,7 @@ interface IDashboardService {
    */
   suspend fun updateVisibleMilestoneKeys(accountId: String? = null, keys: List<MilestoneKey> = listOf())
 
-  suspend fun updateVisibleKeys(accountId: String? = null, keys: List<DashboardKey> = listOf())
+  suspend fun updateVisibleKeys(accountId: String? = null, keys: List<DashboardKey> = listOf(), dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS)
 
   /**
    * Checks if the given accountId has a visible keys entry.

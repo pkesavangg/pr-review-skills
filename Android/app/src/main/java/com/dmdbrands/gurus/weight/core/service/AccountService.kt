@@ -292,7 +292,7 @@ constructor(
     try {
       val accountId = activeAccountFlow.first()!!.id
       accountRepository.updateDashboardType(type.value)
-      accountRepository.updateLocalDashboardType(accountId, "", dashboardType = DashboardType.DASHBOARD_12_METRICS)
+      accountRepository.updateLocalDashboardType(accountId, dashboardType = type)
     } catch (e: Exception) {
       AppLog.d(TAG, "Error updating Dashboard Type", e.toString())
     }
