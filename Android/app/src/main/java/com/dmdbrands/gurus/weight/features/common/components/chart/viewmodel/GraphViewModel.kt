@@ -222,7 +222,8 @@ class GraphViewModel @AssistedInject constructor(
         val filteredData = data.filter {
           it.getTimeStamp() in startX..endX
         }
-        super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+        if (filteredData.isNotEmpty())
+          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
 
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true

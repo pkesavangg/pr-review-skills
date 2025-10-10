@@ -56,9 +56,6 @@ fun GraphView(
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
-  // LaunchedEffect(secondaryStat) {
-  //   viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
-  // }
   val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
   val chartHeight = remember(state.markerIndex) {
@@ -140,6 +137,10 @@ fun GraphView(
           }
         }
       }
+  }
+
+  LaunchedEffect(secondaryStat) {
+    viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
   }
 
   // LaunchedEffect(scrollTarget) {
