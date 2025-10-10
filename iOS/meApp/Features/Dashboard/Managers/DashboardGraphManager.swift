@@ -1019,8 +1019,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
             
             // More aggressive caching: only recalculate if scroll moved > 25% of domain
-            // This reduces calculations from every 10% to every 25% movement
-            let cacheThreshold = domainLength / 4.0 // 25% instead of 10%
+            // This reduces calculations from every 10% movement
+            let cacheThreshold = domainLength / / 10
             
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
@@ -1054,7 +1054,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Add a minimal buffer to handle timezone edge cases and ensure entries on boundary dates are included
         // This is especially important for daily summaries where dates are normalized to start of day
         let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer to handle timezone differences
-        let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
+        let adjustedLeftEdge = leftEdge.addingTimeInterval(-(24 * 60 * 60))
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
         
         let visibleStart = max(adjustedLeftEdge, minDate)
@@ -1071,7 +1071,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         // Only log actual calculations, not cache hits
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
-        
         return visibleOps
     }
     
