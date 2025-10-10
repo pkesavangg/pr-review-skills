@@ -122,7 +122,8 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(),
                 FormValidations.noWhitespace(),
-                FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH),
+                FormValidations.minLength(AppValidatorConfig.ZipCode.MIN_LENGTH),
+              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH),
               ),
             ),
           birthday =

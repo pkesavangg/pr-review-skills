@@ -21,7 +21,7 @@ class AppValidatorConfig {
 
     object ZipCode {
         const val MIN_LENGTH = 1
-        const val MAX_LENGTH = 6
+        const val MAX_LENGTH = 20
     }
 
     object DateOfBirth {
