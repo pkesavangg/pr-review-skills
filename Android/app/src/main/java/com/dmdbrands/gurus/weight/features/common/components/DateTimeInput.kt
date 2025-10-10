@@ -113,7 +113,7 @@ sealed class DateTimeValue(open val millis: Long) {
   fun getTimeString(): String =
     when (this) {
       is Time ->
-        SimpleDateFormat("hh:mma", Locale.getDefault()).format(
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
           Calendar
             .getInstance()
             .apply {
@@ -123,7 +123,7 @@ sealed class DateTimeValue(open val millis: Long) {
         )
 
       is DateTime ->
-        SimpleDateFormat("hh:mma", Locale.getDefault()).format(
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
           Calendar
             .getInstance()
             .apply {

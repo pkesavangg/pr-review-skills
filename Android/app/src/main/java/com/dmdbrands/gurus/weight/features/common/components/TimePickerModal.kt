@@ -138,19 +138,20 @@ fun TimePickerDialog(
     BaseModal(
       primaryAction =
         ActionButton(
-          text = "OK", // TODO: Use string resource
+          text = "OK",
           enabled = !constraintTriggered,
           action = {
             onConfirm()
           },
         ),
-      secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }), // TODO: Use string resource
+      error = if (constraintTriggered) "Selected time can’t be in the future" else null,
+      secondaryAction = ActionButton(text = "Cancel", action = { onDismiss() }),
     ) {
       Text(
-        if (constraintTriggered) "Time should be less than ${getTimeString(effectiveMaxTime)}" else "Select time",
+        "Select time",
         style = MeTheme.typography.heading6,
         modifier = Modifier.padding(bottom = MeTheme.spacing.md),
-        color = if (constraintTriggered) MeTheme.colorScheme.textError else MeTheme.colorScheme.textHeading,
+        color = MeTheme.colorScheme.textHeading,
       )
       TimePicker(
         state = timePickerState,
