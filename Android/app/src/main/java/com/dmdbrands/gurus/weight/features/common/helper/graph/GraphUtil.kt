@@ -127,7 +127,7 @@ object GraphUtil {
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 7 * ONE_DAY_MILLIS
+      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
       GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
       GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()

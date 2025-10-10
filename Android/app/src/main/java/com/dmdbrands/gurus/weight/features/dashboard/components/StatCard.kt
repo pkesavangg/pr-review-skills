@@ -107,17 +107,25 @@ internal fun StatCard(
       horizontalArrangement = Arrangement.Center,
     ) {
       if (stat.icon != null && stat.key is DashboardKey.Milestone) {
-        AppIcon(
-          id = stat.icon,
-          contentDescription = stat.label,
-          tintColor = MeTheme.colorScheme.streak,
-        )
-        Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+        Row(
+          modifier = Modifier.weight(1f),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          AppIcon(
+            id = stat.icon,
+            contentDescription = stat.label,
+            tintColor = MeTheme.colorScheme.streak,
+          )
+          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+        }
       }
       Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = contentHorizonalAlignment,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+          .fillMaxSize()
+          .weight(2f),
       ) {
         if (stat.icon != null && hideMetricData) {
           AppIcon(

@@ -22,13 +22,10 @@ data class Stat(
   val valueSuffix: String? = null
 ) {
   fun getDisplayValue(): String? {
-    val prefix = valuePrefix ?: ""
-    val suffix = valueSuffix ?: ""
-    return if (value != null) {
-      "$prefix $value $suffix"
-    } else {
-      null
-    }
+    if (value == null) return null
+    val prefix = valuePrefix?.let { "$it " } ?: ""
+    val suffix = valueSuffix?.let { " $it" } ?: ""
+    return "$prefix$value$suffix".trim()
   }
 }
 

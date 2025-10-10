@@ -24,18 +24,22 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: String) {
+  val measurementTakenString = if (value != null)
+    MetricInfoStrings.MeasurementTaken.plus(" $date").lowercase()
+  else
+    MetricInfoStrings.MeasurementNotTaken
   Column(
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     horizontalAlignment = Alignment.Start,
   ) {
     Row(verticalAlignment = Alignment.Bottom) {
       Text(
-        text = value ?: "---",
+        text = value ?: "--",
         style = MeTheme.typography.heading2,
         color = MeTheme.colorScheme.textBody,
       )
-      Spacer(modifier = Modifier.padding(horizontal = MeTheme.spacing.xs))
-      if (unit != null && value != null)
+      Spacer(modifier = Modifier.padding(horizontal = MeTheme.spacing.x2s))
+      if (unit != null)
         Text(
           text = unit,
           style = MeTheme.typography.heading4,
@@ -44,7 +48,7 @@ fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: St
         )
     }
     Text(
-      text = MetricInfoStrings.MeasurementTaken.plus(" $date").lowercase(),
+      text = measurementTakenString,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )

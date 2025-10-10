@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.proto.MetricKey
 data class MetricInfoState(
   val stat: Stat? = null,
   val info: DashboardMetric? = null,
+  val selectedMetricIndex: Int = 0,
 ) : IReducer.State
 
 /**
@@ -20,6 +21,7 @@ sealed interface MetricInfoIntent : IReducer.Intent {
   data class SelectSegment(val key: MetricKey) : MetricInfoIntent
   data class SetMetricInfo(val info: DashboardMetric) : MetricInfoIntent
   data class SetStat(val stat: Stat) : MetricInfoIntent
+  data class SetSelectedIndex(val index: Int) : MetricInfoIntent
   data class OpenResource(val resource: String) : MetricInfoIntent
 }
 
@@ -38,6 +40,11 @@ class MetricInfoReducer : IReducer<MetricInfoState, MetricInfoIntent> {
     is MetricInfoIntent.SetMetricInfo -> state.copy(
       info = intent.info,
     )
+
+    is MetricInfoIntent.SetSelectedIndex -> state.copy(
+      selectedMetricIndex = intent.index,
+    )
+
     else -> state
   }
 }

@@ -1,22 +1,29 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
+import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
  *
- * @property selectedData List of selected GraphPoint(s) for marker display.
  * @property point Current pointer point for marker interaction.
- * @property xLabels List of X-axis labels.
- * @property yLabels List of Y-axis series data.
  * @property timeStamp List of timestamps for the graph.
  * @property minTarget Minimum target timestamp for the visible range.
  * @property maxTarget Maximum target timestamp for the visible range.
@@ -45,8 +52,9 @@ import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
  */
 data class GraphState(
   val weightUnit: WeightUnit = WeightUnit.KG,
-  val graphLines: List<GraphLine> = emptyList(),
-  val secondaryGraphLines: GraphLine? = null,
+  val data: List<PeriodBodyScaleSummary> = emptyList(),
+  val target: List<PeriodBodyScaleSummary> = emptyList(),
+  val secondaryStat: Stat? = null,
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
@@ -59,48 +67,88 @@ data class GraphState(
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
 ) : IReducer.State {
-  val graphKey: Int = graphLines.hashCode()
+  val graphKey: Int = data.hashCode()
+  val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())
+  val secondaryGraphLines: GraphLine? = secondaryStat?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
 
-  // Cached computed properties to avoid repeated calculations
-  val xLabels: List<Label> by lazy {
-    graphLines.flatMap { graphLine ->
-      graphLine.points.map { point -> point.x }
+  fun getStartTimestamp(): Long {
+    return this.data.minByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
+  }
+
+  fun getEndTimestamp(): Long {
+    return this.data.maxByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
+  }
+
+  fun getIntervalCount(segment: GraphSegment): Double {
+    return if (segment == GraphSegment.TOTAL) {
+
+      return GraphUtil.getTotalMonthsBetweenYears(
+        getStartTimestamp(),
+        Calendar.getInstance().timeInMillis,
+      ).toDouble()
+    } else
+      segment.intervalCount()
+  }
+
+  fun createFallBackData(
+    segment: GraphSegment,
+    timeStamps: List<Long>? = null,
+    fallbackValues: List<List<Double>>? = null
+  ): List<PeriodBodyScaleSummary> {
+    if (timeStamps == null && this.markerIndex == null) return emptyList()
+    val filteringTimeStamp = timeStamps ?: listOf(this.markerIndex?.toLong())
+    return filteringTimeStamp.mapIndexedNotNull { index, it ->
+      if (it == null) return@mapIndexedNotNull null
+      PeriodBodyScaleSummary(
+        period = timestampToPeriodString(it, segment),
+        entryTimestamp = DateTimeConverter.timestampToIso(it),
+        weight = fallbackValues?.firstOrNull()?.get(index) ?: 0.0,
+        unit = weightUnit,
+      )
     }
   }
 
-  val yLabels: List<List<Label>> by lazy {
-    graphLines.map { graphLine ->
-      graphLine.points.map { it.y }
+  /**
+   * Converts a timestamp to a period string based on the graph segment.
+   *
+   * @param timestamp The timestamp in milliseconds to convert.
+   * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
+   * @return Formatted period string: "YYYY-MM-DD" for WEEK/MONTH segments, "YYYY-MM" for YEAR/TOTAL segments.
+   */
+  private fun timestampToPeriodString(timestamp: Long, segment: GraphSegment): String {
+    val localZone = ZoneId.systemDefault()
+    val localDateTime = Instant.ofEpochMilli(timestamp).atZone(localZone)
+
+    return when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> {
+        // Format as "YYYY-MM-DD" for day-level precision
+        localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+      }
+
+      GraphSegment.YEAR, GraphSegment.TOTAL -> {
+        // Format as "YYYY-MM" for month-level precision
+        localDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM"))
+      }
     }
-  }
-
-  val initialTimeStamp: Long? by lazy {
-    xLabels.minOfOrNull { it.value.toDouble() }?.toLong()
-  }
-
-  val endTimeStamp: Long? by lazy {
-    xLabels.maxOfOrNull { it.value.toDouble() }?.toLong()
-  }
-
-  val selectedData by lazy {
-    if (markerIndex != null && markerIndex < xLabels.size) {
-      graphLines.mapNotNull { it.points.find { it.x.value.toDouble() == markerIndex } }
-    } else {
-      emptyList()
-    }
-  }
-
-  fun getXStartRange(segment: GraphSegment): Long? {
-    if (graphLines.isEmpty()) return null
-    val xLabels = graphLines.firstNotNullOf { it.points.map { it.x } }
-    val initialTimeStamp = xLabels.map { it.value.toLong() }.sorted().min()
-    return GraphUtil.getStartRange(segment, initialTimeStamp)
-  }
-
-  fun getXEndRange(segment: GraphSegment): Long? {
-    if (graphLines.isEmpty()) return null
-    val xLabels = graphLines.firstNotNullOf { it.points.map { it.x } }
-    val endTimeStamp = xLabels.map { it.value.toLong() }.sorted().max()
-    return GraphUtil.getEndRange(segment, endTimeStamp)
   }
 }
+
+/**
+ * Gets the weight graph points for the given segment.
+ * Optimized to avoid repeated sorting and processing.
+ */
+fun List<PeriodBodyScaleSummary>.getWeightGraphPoints(): GraphLine {
+  val entries = this
+  // Sort only if entries are not already sorted
+  val sortedEntries = if (entries.size <= 1) {
+    entries
+  } else {
+    // Check if already sorted to avoid unnecessary sorting
+    val isSorted = entries.zipWithNext().all { (a, b) -> a.entryTimestamp <= b.entryTimestamp }
+    if (isSorted) entries else entries.sortedBy { it.entryTimestamp }
+  }
+  return sortedEntries.toWeightGraphPoints()
+}
+
+
+
