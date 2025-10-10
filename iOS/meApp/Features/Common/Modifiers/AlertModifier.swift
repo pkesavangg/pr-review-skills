@@ -67,6 +67,8 @@ struct AlertModifier: ViewModifier {
                             } else {
                                 TextField(inputField.placeholder, text: binding)
                                     .keyboardType(inputField.type == .email ? .emailAddress : .default)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
                             }
                         }
                         .autocapitalization(.none)
@@ -79,14 +81,24 @@ struct AlertModifier: ViewModifier {
                             button.action(inputValue)
                             alertData = nil
                         }
+                        .disabled(isPrimaryButtonInvalidEmail(button))
                         .if(button.type == .primary)  { view in
                             view.keyboardShortcut(.defaultAction)
                         }
                     }
                 }
             } message: {
-                if let message = alertData?.message {
-                    Text(message)
+                if let alert = alertData {
+                    if let input = alert.inputField, input.type == .email {
+                        let value = alert.inputField?.value ?? ""
+                        if !value.isEmpty && !isValidEmail(value) {
+                            Text(FormErrorMessages.email)
+                        } else if let msg = alert.message {
+                            Text(msg)
+                        }
+                    } else if let message = alert.message {
+                        Text(message)
+                    }
                 }
             }
     }
@@ -100,5 +112,19 @@ struct AlertModifier: ViewModifier {
         case .danger:
             return .destructive
         }
+    }
+
+    private func isPrimaryButtonInvalidEmail(_ button: AlertButtonModel) -> Bool {
+        guard button.type == .primary,
+              let field = alertData?.inputField,
+              field.type == .email
+        else { return false }
+        let value = field.value
+        // Require non-empty and valid email
+        return value.isEmpty || !isValidEmail(value)
+    }
+
+    private func isValidEmail(_ value: String) -> Bool {
+        Validator<String>.email.fn(value)
     }
 }
