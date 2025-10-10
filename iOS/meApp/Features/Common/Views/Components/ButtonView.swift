@@ -16,6 +16,8 @@ struct ButtonView: View {
     /// Controls both the alignment of the button's frame and the alignment of the text within the button.
     /// Adjust this to change how the button and its text are positioned horizontally.
     var alignment: Alignment = .center
+    /// Optional override for background color for styles that support it (e.g., .filledPrimary)
+    var backgroundColorOverride: Color? = nil
     let action: () -> Void
     
     var body: some View {
@@ -26,7 +28,7 @@ struct ButtonView: View {
                 .if(!type.isInlineText) { view in
                     view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
-                .modifier(CustomButtonStyle(type: type, buttonSize: size))
+                .modifier(CustomButtonStyle(type: type, buttonSize: size, backgroundColorOverride: backgroundColorOverride))
                 .multilineTextAlignment(.leading)
         }
         .disabled(isDisabled)

@@ -179,9 +179,11 @@ store.restartWiggleAnimations()
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.toggleEditMode()
                 })
-                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    tabViewModel.navigateToGoalSetting()
-                })
+                if store.hasGoalSet {
+                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                        tabViewModel.navigateToGoalSetting()
+                    })
+                }
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
