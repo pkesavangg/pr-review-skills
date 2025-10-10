@@ -14,6 +14,7 @@
 - Resolved the issue in Add & Edit scale where the model number input allowed entry of more than more that 4 values.
 - Restricted the display of permissions popup that appears after loading to display only when required permissions are not enabled.
 - Address the inconsistent display of divider in Dashboard.
+- Resolved the issue of scale display name update not reflecting on scale.
 - Resolve inconsistencies in 0412 scale customization.
 - Resolved error text and toast content mismatch issues.
 

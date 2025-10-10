@@ -6,6 +6,7 @@ coil = "2.7.0"
 coreSplashscreen = "1.0.1"
 connectClient = "1.1.0-rc02"
 firebaseBom = "33.16.0"
+material3Version = "1.2.0"
 hiltNavigationFragment = "1.2.0"
 kotlin = "2.1.21"
 ksp = "2.1.21-2.0.1"
@@ -53,7 +54,7 @@ playServicesLocation = "21.3.0"
 workRuntimeKtxVersion = "2.10.3"
 hiltCommon = "1.2.0"
 hiltWork = "1.2.0"
-
+material3 = "1.5.0-alpha06"
 
 [libraries]
 vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
@@ -84,7 +85,8 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 gg-bluetooth-android = { module = "com.dmdbrands.lib:gg-bluetooth-android", version.ref = "ggBluetoothAndroid" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }

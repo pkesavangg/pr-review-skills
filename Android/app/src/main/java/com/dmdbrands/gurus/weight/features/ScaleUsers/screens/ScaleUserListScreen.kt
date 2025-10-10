@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,6 +51,13 @@ fun ScaleUserListScreenContent(
 ) {
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
+  val isSaveEnabled by remember {
+    derivedStateOf {
+      (state.usernameForm.username.dirty || state.usernameForm.username.touched) &&
+        state.hasSetUsername && 
+        state.usernameForm.username.isValueValid()
+    }
+  }
 
   AppScaffold(
     title = ScaleUsersStrings.Header,
@@ -60,15 +69,17 @@ fun ScaleUserListScreenContent(
       }
     },
     actions = {
+
       AppText(
         text = ScaleUsersStrings.SaveButton,
         textType = TextType.ListTitle1,
-        color = colorScheme.primaryAction,
-        enabled = state.usernameForm.username.dirty || state.usernameForm.username.touched && state.hasSetUsername,
+        color = if (isSaveEnabled) colorScheme.primaryAction else colorScheme.primaryActionDisabled,
+        enabled = isSaveEnabled,
         modifier =
           Modifier
             .padding(end = spacing.md)
-            .clickable { handleIntent(ScaleUserListIntent.Save) },
+            .clickable(enabled = isSaveEnabled)
+            { handleIntent(ScaleUserListIntent.Save) },
       )
     },
   ) {

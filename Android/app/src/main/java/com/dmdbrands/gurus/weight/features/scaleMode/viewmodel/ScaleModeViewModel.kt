@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.features.scaleMode.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGDevicePreference
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -12,6 +14,8 @@ import com.dmdbrands.gurus.weight.features.scaleMode.reducer.ScaleModeIntent
 import com.dmdbrands.gurus.weight.features.scaleMode.reducer.ScaleModeReducer
 import com.dmdbrands.gurus.weight.features.scaleMode.reducer.ScaleModeState
 import com.dmdbrands.gurus.weight.features.scaleMode.strings.ScaleModeStrings
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.greatergoods.blewrapper.GGDeviceService
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -25,6 +29,7 @@ class ScaleModeViewModel
 @AssistedInject
 constructor(
   private val deviceService: IDeviceService,
+  private val ggDeviceService: GGDeviceService,
   @Assisted val scaleId: String,
 ) : BaseIntentViewModel<ScaleModeState, ScaleModeIntent>(
   reducer = ScaleModeReducer(),
@@ -122,26 +127,46 @@ constructor(
             shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
             displayMetrics = updatedDisplayMetrics,
           )!!
-
+        val updatedScalePreference = scale.preferences.copy(
+          shouldMeasureImpedance = currentState.isAllBodyMetrics,
+          shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
+          displayMetrics = updatedDisplayMetrics,
+        ).toGGDevicePreference()
+        val updatedScale = scale.toGGBTDevice().copy(preference = updatedScalePreference)
         AppLog.d(
           TAG,
           "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}",
         )
 
-        // Update scale preferences via API
-        val success = deviceService.updateScalePreferences(scaleId, preferences)
+        // Update scale preferences via API and BLE service
+        ggDeviceService.updateAccount(
+          updatedScale,
+        ) {
+          when (it) {
+            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
+              viewModelScope.launch {
+                val success = deviceService.updateScalePreferences(scaleId, preferences)
+                if (success) {
+                  AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
+                  dialogQueueService.dismissLoader()
+                  showToast(ScaleModeStrings.Toast.Success)
+                  // Refresh scale data to get updated preferences
+                  deviceService.syncDevices()
+                  navigateBack()
+                } else {
+                  dialogQueueService.dismissLoader()
+                  AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
+                  showToast(ScaleModeStrings.Toast.Error)
+                }
+              }
+            }
 
-        if (success) {
-          AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
-          dialogQueueService.dismissLoader()
-          showToast(ScaleModeStrings.Toast.Success)
-          // Refresh scale data to get updated preferences
-          deviceService.syncDevices()
-          navigateBack()
-        } else {
-          dialogQueueService.dismissLoader()
-          AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
-          showToast(ScaleModeStrings.Toast.Error)
+            else -> {
+              dialogQueueService.dismissLoader()
+              AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
+              showToast(ScaleModeStrings.Toast.Error)
+            }
+          }
         }
       } catch (err: Exception) {
         AppLog.e(TAG, "Error saving mode settings", err)
