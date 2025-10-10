@@ -7,14 +7,20 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
  */
 class GraphReducer : IReducer<GraphState, GraphIntent> {
   override fun reduce(state: GraphState, intent: GraphIntent): GraphState? = when (intent) {
-    is GraphIntent.InitializeGraph ->
-      state.copy(
-        graphLines = intent.graphLines,
-        secondaryGraphLines = intent.secondaryGraphLines,
-      )
-
     is GraphIntent.UpdateGoal -> state.copy(
       goal = intent.goal,
+    )
+
+    is GraphIntent.UpdateData -> state.copy(
+      data = intent.data,
+    )
+
+    is GraphIntent.ReInitializeGraph -> state.copy(
+      secondaryStat = intent.stat,
+    )
+
+    is GraphIntent.UpdateTarget -> state.copy(
+      target = intent.target,
     )
 
     is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)

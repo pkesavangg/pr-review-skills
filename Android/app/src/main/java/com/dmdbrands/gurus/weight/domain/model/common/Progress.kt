@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 
 data class Progress(
   val latest: Entry? = null,
+  val unit: WeightUnit = WeightUnit.KG,
   val goal: Goal? = null,
   val currentStreak: Int = 0,
   val longestStreak: Int = 0,

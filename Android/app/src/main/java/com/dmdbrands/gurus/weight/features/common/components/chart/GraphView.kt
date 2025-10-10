@@ -1,10 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -16,11 +16,15 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
+import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /**
@@ -43,32 +47,27 @@ import java.util.Calendar
 fun GraphView(
   modifier: Modifier = Modifier,
   state: GraphState,
-  graphLines: List<GraphLine>,
-  secondaryGraphLines: GraphLine? = null,
   segment: GraphSegment = GraphSegment.WEEK,
+  secondaryStat: Stat? = null,
   scrollTarget: Double? = null,
   placeHolder: String? = null,
-  onRangeUpdate: (String?) -> Unit = {},
-  onTargetsUpdate: (targets: List<Double>, fallbackValue: List<Double>) -> Unit = { _, _ -> },
-  onWeightLabelUpdate: (String) -> Unit = {},
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
-  // Initialize graph when data changes
-  LaunchedEffect(graphLines, secondaryGraphLines) {
-    viewModel.handleIntent(
-      GraphIntent.InitializeGraph(
-        graphLines = graphLines,
-        secondaryGraphLines = secondaryGraphLines,
-      ),
-    )
+  LaunchedEffect(secondaryStat) {
+    viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
   }
-  // Store callbacks in ViewModel
-  LaunchedEffect(Unit) {
-    viewModel.setCallbacks(onTargetsUpdate, onRangeUpdate)
+  val scope = rememberCoroutineScope()
+  val currentDeviceType = getDeviceType()
+  val chartHeight = remember(state.markerIndex) {
+    when (currentDeviceType) {
+      DeviceType.Tablet -> 400.dp
+      DeviceType.Phone -> 300.dp
+      DeviceType.Fold -> 250.dp
+    }
   }
 
-  val initialStartX = GraphUtil.getStartRange(segment, state.endTimeStamp)?.toDouble()
+  val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
@@ -94,68 +93,149 @@ fun GraphView(
       ),
     ),
   )
+
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
-  //     scrollState.animateScroll(
-  //       Scroll.Absolute.x(scrollTarget, 0.5f),
-  //     )
+  //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
+  //     if (destinationTarget != null)
+  //       scrollState.animateScroll(
+  //         Scroll.Absolute.x(destinationTarget.toDouble()),
+  //       )
   //   }
   // }
 
-  // Chart layers and components
-  val primaryLayer = primaryLayer(
+  val defaultMarker = rememberDefaultMarker(
+    state = state,
     segment = segment,
-    yRangeValues = state.primaryYAxis,
-    handleIntent = viewModel::handleIntent,
+    onTargetsUpdate = {
+      viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+    },
   )
-
-  val secondaryLayer = secondaryLayer(
-    segment = segment,
-    yRangeValues = state.secondaryYAxis,
-    handleIntent = viewModel::handleIntent,
-  )
-
-  val defaultMarker = rememberDefaultMarker(segment) { fallbackValues ->
-    val weightLabel =
-      state.graphLines.first().points.firstOrNull { it.x.value.toDouble() == state.markerIndex?.toDouble() }?.y?.value?.toString()
-    onWeightLabelUpdate(
-      weightLabel ?: if (fallbackValues.isNotEmpty()) fallbackValues.first().average().toString() else "",
-    )
-    onRangeUpdate(null)
-    onTargetsUpdate(listOfNotNull(state.markerIndex), emptyList())
-  }
   val goalMarker = rememberGoalMarker(goal = state.goal)
+  val horizontalItemPlacer =
+    horizontalItemPlacer(
+      segment = segment,
+    )
 
-  val horizontalItemPlacer = horizontalItemPlacer(
-    segment = segment,
-  )
-
-  val currentDeviceType = getDeviceType()
-  val chartHeight = remember(state.markerIndex) {
-    when (currentDeviceType) {
-      DeviceType.Tablet -> 400.dp
-      DeviceType.Phone -> 300.dp
-      DeviceType.Fold -> 250.dp
-    }
-  }
-
-
-  ChartHostSection(
-    modifier = modifier
-      .height(chartHeight)
-      .fillMaxWidth(),
-    segment = segment,
-    primaryLayer = primaryLayer,
-    secondaryLayer = secondaryLayer,
+  val chart = rememberGraphChart(
+    state = state,
     defaultMarker = defaultMarker,
     goalMarker = goalMarker,
-    xLabels = state.xLabels,
-    markerIndex = state.markerIndex,
-    state = state,
-    modelProducer = state.modelProducer,
-    scrollState = scrollState,
-    handleIntent = viewModel::handleIntent,
-    onWeightLabelChange = onWeightLabelUpdate,
+    segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
+    handleIntent = viewModel::handleIntent,
+    onChartClick = { targets, click ->
+      if (click == null) return@rememberGraphChart
+      scope.launch {
+        var markerIndex: Double? = null
+        val outOfBoundaryCondition = click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
+        if (outOfBoundaryCondition) {
+          markerIndex = null
+        } else {
+          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+          val targetMarkerIndex =
+            getTargetPoints(
+              visibleLabels,
+              targets,
+              click,
+              segment,
+            )
+          if (targetMarkerIndex.isNotEmpty()) {
+            markerIndex = targetMarkerIndex.first()
+          }
+        }
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      }
+    },
   )
+
+  CartesianChartHost(
+    chart = chart,
+    modelProducer = state.modelProducer,
+    modifier = modifier.height(chartHeight),
+    scrollState = scrollState,
+    animateIn = true,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    consumeMoveEvents = true,
+    onScrollStopped = { range ->
+      scope.launch {
+        if (range != null) {
+          val min = range.visibleXRange.start
+          val max = range.visibleXRange.endInclusive
+          viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
+          val filteredData = state.data.filter { it.getTimeStamp().toDouble() in min..max }
+          if (filteredData.isEmpty()) {
+            val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer)
+            val fallbackValues = scrollState.getInterpolatedYValues(
+              xValues = visibleLabels,
+              interpolationType = InterpolationType.CUBIC,
+            )
+            val fallbackData = state.createFallBackData(
+              segment = segment,
+              timeStamps = visibleLabels.map { it.toLong() },
+              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+            )
+            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          }
+        }
+      }
+    },
+  )
+}
+
+fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
+
+  // For TOTAL segment, find nearest targets from click without considering visible labels
+  if (segment == GraphSegment.TOTAL) {
+    val nearestTarget = points.minByOrNull { kotlin.math.abs(it - input) }
+    return listOfNotNull(nearestTarget)
+  }
+
+  // For other segments, use the original logic with visible labels
+  if (fullList.isEmpty()) return emptyList()
+
+  // find lower and upper bound from full list
+  val lower = fullList.filter { it <= input }.maxOrNull()
+  val upper = fullList.filter { it >= input }.minOrNull()
+
+  // edge case: if input is outside range
+  if (lower == null && upper == null) return emptyList()
+  if (lower == null) return listOfNotNull(upper)
+  if (upper == null) return listOfNotNull(lower)
+
+  // filter targets within the upper and lower bound
+  val filteredTargets = points.filter { it in lower..upper }
+
+  return when {
+    filteredTargets.isEmpty() -> {
+      val halfway = (lower + upper) / 2.0
+
+      // check halfway condition to return lower or upper
+      if (input < halfway) {
+        listOf(lower)
+      } else {
+        listOf(upper)
+      }
+    }
+
+    filteredTargets.size == 1 -> {
+      val target = filteredTargets.first()
+      val halfway = (upper - lower) / 2.0
+
+      // check if rounding of the point meets the target
+      if (kotlin.math.abs(target - input) < halfway) {
+        listOf(target)
+      } else if (target > input) {
+        listOf(lower)
+      } else {
+        listOf(upper)
+      }
+    }
+
+    else -> {
+      // return the nearest target to the point
+      val nearestTarget = filteredTargets.minByOrNull { kotlin.math.abs(it - input) }
+      listOfNotNull(nearestTarget)
+    }
+  }
 }

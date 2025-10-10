@@ -56,6 +56,7 @@ fun DashboardMilestone(
     progress = progress,
     visibleKeys = milestoneKeys,
     filterNulls = false,
+    unit = progress.unit,
   ).reorderGrid(
     spanCount = spanCount,
   )
@@ -96,7 +97,7 @@ fun DashboardMilestone(
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       progress = progress,
-      latestWeight = latestWeight
+      latestWeight = latestWeight,
     )
   }
 

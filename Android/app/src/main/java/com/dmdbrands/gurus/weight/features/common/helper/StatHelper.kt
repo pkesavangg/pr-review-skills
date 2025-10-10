@@ -73,17 +73,17 @@ object StatHelper {
     showMetricIcon: Boolean = false
   ): Stat {
     val value = when (key) {
-      MetricKey.WEIGHT -> item.weight
-      MetricKey.BMI -> item.bmi
-      MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.rounded()
-      MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.rounded()
-      MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.rounded()
+      MetricKey.WEIGHT -> item.weight?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BMI -> item.bmi?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BODY_FAT -> item.bodyFat?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.MUSCLE_MASS -> item.muscleMass?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.BODY_WATER -> item.bodyWater?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.HEART_RATE -> item.heartRate
-      MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.rounded()
+      MetricKey.BONE_MASS -> item.boneMass?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.VISCERAL_FAT -> item.visceralFatLevel?.roundToInt()
-      MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.rounded()
-      MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.rounded()
-      MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.rounded()
+      MetricKey.SUBCUTANEOUS_FAT -> item.subcutaneousFatPercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.PROTEIN -> item.proteinPercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
+      MetricKey.SKELETAL_MUSCLE -> item.skeletalMusclePercent?.toDouble()?.let { kotlin.math.round(it * 100) / 100 }
       MetricKey.BMR -> item.bmr?.toInt()
       MetricKey.METABOLIC_AGE -> item.metabolicAge?.toInt()
       else -> null
@@ -123,8 +123,9 @@ object StatHelper {
     } else {
       meta.unitProvider(useShort)
     }
+    val labelProviderCondition = if (this is DashboardKey.Milestone) unit == WeightUnit.LB else useShort
     return Stat(
-      label = meta.labelProvider(useShort),
+      label = meta.labelProvider(labelProviderCondition),
       value = valueStr,
       unit = calculatedUnit,
       icon = if (showMetricIcon || this is DashboardKey.Milestone) meta.icon else null,
@@ -176,6 +177,7 @@ object StatHelper {
     useShort: Boolean = false,
     showMetricIcon: Boolean = false,
     filterNulls: Boolean = true,
+    unit: WeightUnit = WeightUnit.LB
   ): List<Stat> {
     val keysToUse = (visibleKeys ?: MilestoneKey.entries)
 
@@ -347,19 +349,19 @@ internal object StatMeta {
       icon = AppIcons.Milestone.Streak,
     ),
     MilestoneKey.PER_WEEK to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerWeek },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerWeek else DashboardString.MileStone.KgsPerWeek },
     ),
     MilestoneKey.PER_MONTH to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerMonth },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerMonth else DashboardString.MileStone.KgsPerMonth },
     ),
     MilestoneKey.PER_YEAR to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsPerYear },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsPerYear else DashboardString.MileStone.KgsPerYear },
     ),
     MilestoneKey.TOTAL_CHANGE to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsTotal },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsTotal else DashboardString.MileStone.KgsTotal },
     ),
     MilestoneKey.TO_GOAL to StatMeta(
-      labelProvider = { _ -> DashboardString.MileStone.LbsToGoal },
+      labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsToGoal else DashboardString.MileStone.KgsToGoal },
       unit = "lbs",
     ),
   )

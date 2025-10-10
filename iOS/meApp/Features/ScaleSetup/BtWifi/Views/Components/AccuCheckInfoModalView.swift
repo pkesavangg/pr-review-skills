@@ -36,10 +36,12 @@ struct AccuCheckInfoModalView: View {
                     Text(lang.description1)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.center)
                     
                     Text(lang.description2)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.center)
                 }
             }
         }

@@ -21,7 +21,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,7 +79,7 @@ internal fun StatCard(
 
   val shouldShowMetricData = if (isFromSetup) {
     // In setup mode, do NOT show for dashboard metrics and streak milestones
-    !(stat.key is DashboardKey.Metric || isStreakMilestone(stat) )
+    !(stat.key is DashboardKey.Metric || isStreakMilestone(stat))
   } else {
     // Not in setup mode, always show
     true
@@ -108,17 +107,25 @@ internal fun StatCard(
       horizontalArrangement = Arrangement.Center,
     ) {
       if (stat.icon != null && stat.key is DashboardKey.Milestone) {
-        AppIcon(
-          id = stat.icon,
-          contentDescription = stat.label,
-          tintColor = MeTheme.colorScheme.streak,
-        )
-        Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+        Row(
+          modifier = Modifier.weight(1f),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          AppIcon(
+            id = stat.icon,
+            contentDescription = stat.label,
+            tintColor = MeTheme.colorScheme.streak,
+          )
+          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
+        }
       }
       Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = contentHorizonalAlignment,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+          .fillMaxSize()
+          .weight(2f),
       ) {
         if (stat.icon != null && hideMetricData) {
           AppIcon(
@@ -149,7 +156,6 @@ internal fun StatCard(
   }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimatedStatCard(
   stat: Stat,
@@ -173,7 +179,7 @@ fun AnimatedStatCard(
       repeatMode = RepeatMode.Reverse,
     ),
   )
-  val iconTint = if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
+  if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
   val dragCardShadow = if (isDragging) {
     Modifier.dropShadow(
       shape = RoundedCornerShape(MeTheme.spacing.x6s),
@@ -212,7 +218,7 @@ fun AnimatedStatCard(
         rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
       }
       .then(dragCardShadow),
-    ) {
+  ) {
     StatCard(
       stat = stat,
       enabled = isSelected != null && !inEditMode,

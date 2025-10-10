@@ -32,6 +32,7 @@ struct SoftwareUpdateSheet: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { dismiss() },
                 onTrailingTap: {},
+                canShowBorder: true,
                 canShowPresentationIndicator: true
             )
             VStack {

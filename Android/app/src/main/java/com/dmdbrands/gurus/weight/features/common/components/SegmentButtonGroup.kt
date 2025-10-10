@@ -1,34 +1,38 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonColors
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -37,7 +41,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 import java.util.Locale
-import kotlin.math.roundToInt
 import kotlin.reflect.KProperty1
 
 /**
@@ -73,6 +76,11 @@ data class SegmentButtonData(
  */
 object SegmentButtonDefaults {
   /**
+   * Primary color for selected segment buttons.
+   */
+  val PickerCyan: Color = Color(0xFF47B0EC)
+
+  /**
    * Returns the height for the given segment button size.
    */
   fun height(size: SegmentButtonSize): Dp =
@@ -88,8 +96,8 @@ object SegmentButtonDefaults {
   fun minWidth(size: SegmentButtonSize): Dp =
     when (size) {
       SegmentButtonSize.Small -> 0.dp
-      SegmentButtonSize.Medium -> 120.dp
-      SegmentButtonSize.Large -> 160.dp
+      SegmentButtonSize.Medium -> 80.dp
+      SegmentButtonSize.Large -> 100.dp
       // TODO: Need to update after UX answered
     }
 
@@ -97,7 +105,7 @@ object SegmentButtonDefaults {
    * Horizontal spacing between segment buttons in LazyRow.
    */
   val segmentSpacing: Dp
-    @Composable get() = MeTheme.spacing.lg
+    @Composable get() = MeTheme.spacing.xs
 
   /**
    * Returns the horizontal padding for the given segment button size.
@@ -105,7 +113,7 @@ object SegmentButtonDefaults {
   @Composable
   fun horizontalPadding(size: SegmentButtonSize): Dp =
     when (size) {
-      SegmentButtonSize.Small -> MeTheme.spacing.xs
+      SegmentButtonSize.Small -> MeTheme.spacing.sm
       SegmentButtonSize.Medium -> MeTheme.spacing.sm
       SegmentButtonSize.Large -> MeTheme.spacing.sm
     }
@@ -144,13 +152,14 @@ object SegmentButtonDefaults {
  * allowing single selection similar to radio buttons.
  *
  * @param data List of segment labels to display
- * @param selectedIndex Index of the currently selected segment
+ * @param selectedData Currently selected data item
+ * @param key Property reference to extract display text from data items
  * @param onSelected Callback when a segment is selected
  * @param modifier Modifier to be applied to the component
+ * @param contentPadding Padding for scrollable content
  * @param size Size variant of the segment button
  * @param type Type of layout - Single (non-scrollable) or Scrollable (with LazyRow)
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun <T> SegmentButtonGroup(
   modifier: Modifier = Modifier,
@@ -162,61 +171,67 @@ fun <T> SegmentButtonGroup(
   type: SegmentButtonType = SegmentButtonType.Single,
   onSelected: (T) -> Unit,
 ) {
-  SegmentButtonDefaults.minWidth(size)
-  val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
-  val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
-  val colors = SegmentButtonDefaults.colors()
   val textStyle = SegmentButtonDefaults.textStyle(size)
-  val shape = RoundedCornerShape(SegmentButtonDefaults.cornerRadius())
-  val density = LocalDensity.current
-  // val segmentButtonModifier = modifier.height(IntrinsicSize.Min)
+  val horizontalSpacedBy = SegmentButtonDefaults.segmentSpacing
+  val horizontalPadding = SegmentButtonDefaults.horizontalPadding(size)
+  val cornerRadius = SegmentButtonDefaults.cornerRadius()
   val maxLines = 1
 
   val listState = rememberLazyListState()
   val coroutineScope = rememberCoroutineScope()
-  var calculatedItemWidthPx by remember { mutableIntStateOf(0) }
-  var rowWidthPx by remember { mutableIntStateOf(0) }
-
-  // Calculate center offset based on the dynamically calculated item width
-  val centerOffsetPx =
-    with(density) {
-      (rowWidthPx - calculatedItemWidthPx) / 2f
-    }
 
   LaunchedEffect(selectedData) {
-    // Add calculatedItemWidthPx to dependencies
-    if (data.isNotEmpty() && calculatedItemWidthPx > 0) { // Ensure width is calculated
+    if (data.isNotEmpty() && type == SegmentButtonType.Scrollable) {
       coroutineScope.launch {
-        listState.animateScrollToItem(
-          index = data.indexOf(selectedData),
-          scrollOffset = -centerOffsetPx.roundToInt(),
-        )
+        val selectedIndex = data.indexOf(selectedData)
+        if (selectedIndex >= 0) {
+          // Calculate the center position directly
+          val layoutInfo = listState.layoutInfo
+          val viewportWidth = layoutInfo.viewportSize.width
+
+          // Get the selected item's position
+          val selectedItem = layoutInfo.visibleItemsInfo.find { it.index == selectedIndex }
+
+          if (selectedItem != null) {
+            val itemWidth = selectedItem.size
+            val itemOffset = selectedItem.offset
+
+            // Calculate center offset
+            val centerOffset = (viewportWidth - itemWidth) / 2
+            val scrollOffset = itemOffset - centerOffset
+
+            // Smooth scroll directly to center
+            listState.animateScrollBy(scrollOffset.toFloat())
+          } else {
+            // If item is not visible, scroll to it with center offset
+            listState.animateScrollToItem(
+              index = selectedIndex,
+              scrollOffset = -viewportWidth / 2,
+            )
+          }
+        }
       }
     }
   }
 
   if (type == SegmentButtonType.Single) {
     // Non-scrollable, all items visible in one row with spacing
-
-    SingleChoiceSegmentedButtonRow(
-      modifier = Modifier
+    Row(
+      modifier = modifier
         .fillMaxWidth()
         .padding(horizontal = MeTheme.spacing.xs),
+      horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy),
     ) {
-      data.forEach { option ->
-        SegmentedButton(
-          shape = shape,
-          onClick = { onSelected(option) },
-          colors = colors,
-          icon = {},
-          selected = option == selectedData,
-          label = {
-            Text(
-              text = key.get(option).uppercase(Locale.getDefault()),
-              style = textStyle,
-              maxLines = maxLines,
-            )
-          },
+      data.forEach { item ->
+        SegmentButtonItem(
+          item = item,
+          isSelected = selectedData == item,
+          key = key,
+          textStyle = textStyle,
+          horizontalPadding = horizontalPadding,
+          cornerRadius = cornerRadius,
+          maxLines = maxLines,
+          onSelected = onSelected,
         )
       }
     }
@@ -225,55 +240,78 @@ fun <T> SegmentButtonGroup(
     LazyRow(
       state = listState,
       contentPadding = contentPadding,
-      horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.Start),
-      modifier =
-        modifier
-          .onSizeChanged { rowWidthPx = it.width },
+      horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.CenterHorizontally),
+      modifier = modifier,
     ) {
-      itemsIndexed(data) { index, option ->
-        SingleChoiceSegmentedButtonRow(
-          modifier =
-            Modifier
-              .onSizeChanged {
-                // This calculates the width of the current segment button.
-                // You might want to take the max width of all items if they vary.
-                // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
-                if (it.width > calculatedItemWidthPx) {
-                  calculatedItemWidthPx = it.width
-                }
-              },
-        ) {
-          SegmentedButton(
-            shape = shape,
-            onClick = { onSelected(option) },
-            colors = colors,
-            icon = {},
-            selected = option == selectedData,
-            label = {
-              Text(
-                text = key.get(option).uppercase(Locale.getDefault()),
-                style = textStyle,
-                modifier = Modifier
-                  .padding(horizontal = horizontalPadding)
-                  .wrapContentWidth(unbounded = true), // allows growing wider
-                softWrap = false,
-                overflow = TextOverflow.Visible,
-                maxLines = maxLines,
-              )
-            },
-            modifier =
-              modifier
-                .onSizeChanged {
-                  // This calculates the width of the current segment button.
-                  // You might want to take the max width of all items if they vary.
-                  // For simplicity, we'll just set it for the first one encountered or update if a larger one is found.
-                  if (it.width > calculatedItemWidthPx) {
-                    calculatedItemWidthPx = it.width
-                  }
-                },
-          )
-        }
+      items(data) { item ->
+        SegmentButtonItem(
+          item = item,
+          isSelected = selectedData == item,
+          key = key,
+          textStyle = textStyle,
+          horizontalPadding = horizontalPadding,
+          cornerRadius = cornerRadius,
+          maxLines = maxLines,
+          onSelected = onSelected,
+        )
       }
+    }
+  }
+}
+
+/**
+ * Individual segment button item with custom styling and animation.
+ */
+@Composable
+private fun <T> SegmentButtonItem(
+  item: T,
+  isSelected: Boolean,
+  key: KProperty1<T, String>,
+  textStyle: TextStyle,
+  horizontalPadding: Dp,
+  cornerRadius: Dp,
+  maxLines: Int,
+  onSelected: (T) -> Unit,
+) {
+  val colors = SegmentButtonDefaults.colors()
+
+  Box(
+    modifier = Modifier
+      .height(intrinsicSize = IntrinsicSize.Max)
+      .width(intrinsicSize = IntrinsicSize.Max)
+      .clickable(
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+      ) {
+        onSelected(item)
+      },
+    contentAlignment = Alignment.Center,
+  ) {
+
+    if (isSelected) {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .clip(RoundedCornerShape(cornerRadius))
+          .background(colors.activeContainerColor),
+      )
+    }
+
+    // Text content above the animated background
+    Row(
+      modifier = Modifier
+        .padding(
+          horizontal = horizontalPadding,
+          vertical = 8.dp,
+        ),
+    ) {
+      Text(
+        text = key.get(item).uppercase(Locale.getDefault()),
+        style = textStyle,
+        color = if (isSelected) colors.activeContentColor else colors.inactiveContentColor,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+      )
     }
   }
 }

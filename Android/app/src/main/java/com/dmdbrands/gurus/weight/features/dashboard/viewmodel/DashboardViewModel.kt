@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -20,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,7 +35,6 @@ class DashboardViewModel
 @Inject
 constructor(
   private val entryService: IEntryService,
-  private val goalService: IGoalService,
   private val accountService: IAccountService,
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
@@ -45,7 +44,6 @@ constructor(
 ), DefaultLifecycleObserver {
   init {
     viewModelScope.launch {
-      handleIntent(DashboardIntent.LoadEntries)
       subscribeMetrics()
       subscribeDashboardType()
       loadEntries()
@@ -69,7 +67,6 @@ constructor(
     when (intent) {
       is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
-      is DashboardIntent.SaveDashboardMetrics -> saveDashboardMetrics(intent.visibleMetrics)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
       is DashboardIntent.Refresh -> refresh()
@@ -151,18 +148,19 @@ constructor(
   }
 
   private fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
-    try {
-      viewModelScope.launch {
+    viewModelScope.launch {
+      try {
         dialogQueueService.showLoader(
           message = DashboardString.Loader.Save,
         )
         dashboardService.updateVisibleKeys(keys = keys, dashboardType = dashboardType)
+      } catch (e: Exception) {
+      } finally {
+        delay(300)
+        dialogQueueService.dismissLoader()
       }
-    } catch (e: Exception) {
-    } finally {
-      dialogQueueService.dismissLoader()
     }
-  }
+  }  
 
   /**
    * Saves the dashboard metrics configuration.
@@ -197,27 +195,6 @@ constructor(
   }
 
   /**
-   * Loads entries and updates the state accordingly.
-   */
-  private suspend fun loadEntries() {
-    viewModelScope.launch {
-      viewModelScope.launch {
-        entryService.daywiseBodyScaleAverages.collect { dayWise ->
-          handleIntent(DashboardIntent.SetDayWiseEntries(dayWise))
-        }
-      }
-      viewModelScope.launch {
-        entryService.monthlyBodyScaleAverages.collect { monthWise ->
-          handleIntent(DashboardIntent.SetMonthWiseEntries(monthWise))
-        }
-      }
-      viewModelScope.launch {
-        handleIntent(DashboardIntent.SetIsLoading(entryService.isUpdating.value))
-      }
-    }
-  }
-
-  /**
    * Handles pager state changes and updates the selected segment accordingly.
    *
    * @param pagerState The new pager state index.
@@ -227,21 +204,6 @@ constructor(
     if (pagerState in segments.indices) {
       val segment = segments[pagerState]
       handleIntent(DashboardIntent.SetSelectedSegment(segment))
-    }
-  }
-
-  /**
-   * Adds new entries using the entry service and updates the state.
-   *
-   * @param entries The list of entries to add.
-   */
-  fun addEntry(entries: List<ScaleEntry>) {
-    viewModelScope.launch {
-      dialogQueueService.showToast(
-        Toast(
-          message = "Adding ${entries.size} entries",
-        ),
-      )
     }
   }
 

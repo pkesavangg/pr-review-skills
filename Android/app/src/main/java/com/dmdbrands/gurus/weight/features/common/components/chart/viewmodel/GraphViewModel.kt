@@ -2,11 +2,16 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
+import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -18,8 +23,10 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -38,32 +45,44 @@ import android.icu.util.Calendar
 class GraphViewModel @AssistedInject constructor(
   @Assisted val segment: GraphSegment,
   private val goalService: IGoalService,
+  private val entryService: IEntryService,
   private val accountService: IAccountService
 ) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
+
+  override fun handleIntent(intent: GraphIntent) {
+    super.handleIntent(intent)
+    when (intent) {
+      is GraphIntent.ReInitializeGraph -> initializeGraph(
+        secondaryStat = intent.stat,
+      )
+
+      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
+      else -> null
+    }
+  }
 
   @AssistedFactory
   interface Factory {
     fun create(segment: GraphSegment): GraphViewModel
   }
 
-  private var onTargetUpdate: (List<Double>, List<Double>) -> Unit = { _, _ -> }
-  private var onRangeUpdate: (String?) -> Unit = { }
+  private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
+    entryService.daywiseBodyScaleAverages
+  } else {
+    entryService.monthlyBodyScaleAverages
+  }
+
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
 
-  override fun provideInitialState(): GraphState = GraphState()
-
-  override fun onCleared() {
-    super.onCleared()
-    // Cancel any running jobs
-    currentModelProducerJob?.cancel()
-    scrollDebounceJob?.cancel()
+  init {
+    observeDataChanges()
+    subscribeWeightUnit()
   }
 
-  init {
-    subscribeGoals()
+  private fun subscribeWeightUnit() {
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect { weightUnit ->
         if (weightUnit != null)
@@ -74,47 +93,34 @@ class GraphViewModel @AssistedInject constructor(
     }
   }
 
-  private fun subscribeGoals() {
-    viewModelScope.launch {
-      goalService.getCurrentGoal().collect {
-        handleIntent(GraphIntent.UpdateGoal(it))
-      }
-    }
-  }
-
-  override fun handleIntent(intent: GraphIntent) {
-    super.handleIntent(intent)
-    when (intent) {
-      is GraphIntent.InitializeGraph -> initializeGraph(intent)
-      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
-      is GraphIntent.UpdateMarkerIndex -> handleMarkerUpdate(intent.markerIndex)
-      else -> null
-    }
-  }
-
-  private fun handleMarkerUpdate(index: Double?) {
-    val currentState = _state.value
-    if (index == null && currentState.minTarget != null && currentState.maxTarget != null) {
-      val formattedRange = GraphUtil.formatDateRange(currentState.minTarget, currentState.maxTarget, segment)
-      onRangeUpdate(formattedRange)
-    }
+  private fun observeDataChanges() {
+    combine(
+      dataFlow,
+      goalService.goalStatusFlow,
+    ) { data, goal ->
+      handleIntent(GraphIntent.UpdateData(data))
+      handleIntent(GraphIntent.UpdateGoal(goal))
+      initializeGraph(data, goal)
+    }.launchIn(viewModelScope)
   }
 
   /**
    * Initializes the graph with new data and sets up initial state.
    */
-  private fun initializeGraph(intent: GraphIntent.InitializeGraph) {
+  private fun initializeGraph(
+    data: List<PeriodBodyScaleSummary>? = null,
+    goal: Goal? = null,
+    secondaryStat: Stat? = null
+  ) {
     viewModelScope.launch {
-      // Set loading state
-      super.handleIntent(GraphIntent.UpdateIsLoading(true))
+      val data = data ?: _state.value.data
+      val goal = goal ?: _state.value.goal
+      val secondaryStat = secondaryStat ?: _state.value.secondaryStat
       scrollDebounceJob?.cancel()
-      val graphLines = intent.graphLines.first()
-      val secondaryGraphLines = intent.secondaryGraphLines
-      val goal = goalService.getCurrentGoal().first()
 
       // Setup chart model producer
-      if (graphLines.points.isNotEmpty())
-        setupChartModelProducer(graphLines, secondaryGraphLines, goal)
+      if (data.isNotEmpty())
+        setupChartModelProducer(data, secondaryStat, goal)
       else
         setupEmptyModelProducer(goal)
     }
@@ -177,25 +183,47 @@ class GraphViewModel @AssistedInject constructor(
    * Optimized to run heavy computations on background thread.
    */
   private fun setupChartModelProducer(
-    graphLines: GraphLine,
-    secondaryGraphLines: GraphLine?,
+    data: List<PeriodBodyScaleSummary>,
+    secondaryStat: Stat? = null,
     goal: Goal?
   ) {
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
 
-    val currentState = state.value
-    val xLabels = currentState.xLabels
-    val ySeries = currentState.yLabels
+
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
+        val currentState = state.value
+        val graphLines = data.getWeightGraphPoints()
+        val secondaryStat = secondaryStat ?: _state.value.secondaryStat
+        val secondaryGraphLines = secondaryStat?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+        val xLabels = graphLines.points.map { point -> point.x }
+        val ySeries = graphLines.points.map { it.y }
+        val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
+        val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+        val endX =
+          _state.value.maxTarget ?: GraphUtil.getEndRange(segment, endTimeStamp) ?: Calendar.getInstance().timeInMillis
+        val startX =
+          _state.value.minTarget ?: GraphUtil.getStartRange(
+            segment,
+            if (segment == GraphSegment.TOTAL) initialTimeStamp else endTimeStamp,
+          )
+          ?: Calendar.getInstance().timeInMillis
         handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
+
+        val filteredData = data.filter {
+          it.getTimeStamp() in startX..endX
+        }
+        super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+        super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
         // Pre-calculate Y-axis ranges on background thread
-        val primaryYAxisRange = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode)
+        val primaryYAxisRange =
+          calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
         val secondaryYAxisRange = if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
           handleIntent(
             GraphIntent.UpdateSecondaryYAxis(
@@ -207,35 +235,33 @@ class GraphViewModel @AssistedInject constructor(
             goal,
             isWeightlessMode = isWeightlessMode,
             isSecondary = true,
+            min = startX,
+            max = endX,
           )
         } else null
 
         // Pre-calculate series data on background thread
         val primaryXData = xLabels.map { it.value as Long }
-        val primaryYData = ySeries.map { y -> y.map { it.value } }
-        val secondaryXData = secondaryGraphLines?.points?.map { it.x.value as Long }
-        val secondaryYData = secondaryGraphLines?.points?.map { it.y.value }
+        val primaryYData = ySeries.map { it.value as Double }
 
         // Check if job is still active before running transaction
         if (isActive) {
           // Switch to main thread for UI updates
           currentState.modelProducer.runTransaction {
             lineSeries {
-              primaryYData.forEach { y ->
-                series(
-                  x = primaryXData,
-                  y = y,
-                  ranges = primaryYAxisRange,
-                )
-              }
+              series(
+                x = primaryXData,
+                y = primaryYData,
+                ranges = primaryYAxisRange,
+              )
             }
-
-            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty() && primaryYData.isNotEmpty()) {
-
+            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+              val secondaryXData = secondaryGraphLines.points.map { it.x.value as Long }
+              val secondaryYData = secondaryGraphLines.points.map { it.y.value }
               lineSeries {
                 series(
-                  x = secondaryXData!!,
-                  y = secondaryYData!!,
+                  x = secondaryXData,
+                  y = secondaryYData,
                   ranges = secondaryYAxisRange!!,
                 )
               }
@@ -258,9 +284,8 @@ class GraphViewModel @AssistedInject constructor(
   private fun calculateYAxisRange(
     graphLines: GraphLine,
     goal: Goal? = null,
-    min: Long? = null,
-    max: Long? = null,
-    onInit: Boolean = true,
+    min: Long,
+    max: Long,
     isSecondary: Boolean = false,
     isWeightlessMode: Boolean = false,
   ): CartesianRangeValues {
@@ -269,24 +294,16 @@ class GraphViewModel @AssistedInject constructor(
       points = graphLines.points.sortedBy { it.x.value.toLong() },
     )
     val initialTimestamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
-    val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-    val endX = max ?: _state.value.maxTarget ?: endTimeStamp ?: Calendar.getInstance().timeInMillis
-    val startX =
-      min ?: _state.value.minTarget ?: if (segment != GraphSegment.TOTAL)
-        GraphUtil.getStartRange(segment, endX) ?: Calendar.getInstance().timeInMillis
-      else
-        initialTimestamp ?: Calendar.getInstance().timeInMillis
-
     val visibleGraphLines = filterXValuesInRange(
       listOf(graphLines),
-      startX,
-      endX,
+      min,
+      max,
     )
 
     val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, startX, isSecondary)?.toDouble()) +
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min, isSecondary)?.toDouble()) +
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, endX, isSecondary)?.toDouble())
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toDouble())
 
     if (paddedValues.isNotEmpty()) {
       val graphMeta = generateNiceScale(
@@ -302,8 +319,8 @@ class GraphViewModel @AssistedInject constructor(
       return CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
-        maxX = if (onInit) GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble() else null,
-        minX = if (onInit) GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble() else null,
+        maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+        minX = GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble(),
       )
     }
     return CartesianRangeValues(
@@ -317,15 +334,10 @@ class GraphViewModel @AssistedInject constructor(
    * Optimized with debouncing and background processing.
    */
   private fun handleScroll(min: Long, max: Long) {
-    val currentState = state.value
 
+    val currentState = _state.value
     // Cancel any existing debounce job
     scrollDebounceJob?.cancel()
-
-    // Immediate UI update for range display (no debounce for this)
-    val formattedRange = GraphUtil.formatDateRange(min, max, segment)
-    onRangeUpdate(formattedRange)
-
     // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -335,11 +347,10 @@ class GraphViewModel @AssistedInject constructor(
         if (isActive) {
           // Pre-calculate all data on background thread
           val graphLines = filterXValuesInRange(currentState.graphLines, min, max)
-          val currentRangeTimeStamps = graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
+          graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
           val primaryYAxis = calculateYAxisRange(
             currentState.graphLines.first(),
             goal = currentState.goal,
-            onInit = false,
             min = min,
             max = max,
             isWeightlessMode = isWeightlessMode,
@@ -347,7 +358,6 @@ class GraphViewModel @AssistedInject constructor(
           val secondaryYAxis = if (currentState.secondaryGraphLines != null) {
             calculateYAxisRange(
               currentState.secondaryGraphLines,
-              onInit = false,
               min = min,
               max = max,
               isSecondary = true,
@@ -356,7 +366,6 @@ class GraphViewModel @AssistedInject constructor(
           } else null
 
           // Update UI on main thread
-          onTargetUpdate(currentRangeTimeStamps, emptyList())
           super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
           if (secondaryYAxis != null) {
             super.handleIntent(GraphIntent.UpdateSecondaryYAxis(yRangeValues = secondaryYAxis))
@@ -368,14 +377,12 @@ class GraphViewModel @AssistedInject constructor(
     }
   }
 
-  /**
-   * Sets the callback functions for the graph.
-   */
-  fun setCallbacks(
-    onTargetUpdate: (List<Double>, List<Double>) -> Unit,
-    onRangeUpdate: (String?) -> Unit,
-  ) {
-    this.onTargetUpdate = onTargetUpdate
-    this.onRangeUpdate = onRangeUpdate
+  override fun provideInitialState(): GraphState = GraphState()
+
+  override fun onCleared() {
+    super.onCleared()
+    // Cancel any running jobs
+    currentModelProducerJob?.cancel()
+    scrollDebounceJob?.cancel()
   }
 }

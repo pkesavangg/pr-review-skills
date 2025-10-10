@@ -91,21 +91,25 @@ internal fun rememberLineLayerWithConnection(
     }
   } else null
 
+  val lineThickness = if (segment == GraphSegment.TOTAL) 2.5.dp else 3.dp
+  val pointSize = if (segment == GraphSegment.TOTAL) 7f else 8f
+
 
   return rememberLineCartesianLayer(
     lineProvider = LineCartesianLayer.LineProvider.series(
       listOf(lineColor).map {
         LineCartesianLayer.rememberLine(
           fill = LineCartesianLayer.LineFill.single(fill(it)),
-          stroke = LineCartesianLayer.LineStroke.continuous(thickness = 3.dp),
+          stroke = LineCartesianLayer.LineStroke.continuous(thickness = lineThickness),
           pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
           pointProvider = LineCartesianLayer.PointProvider.single(
             point = LineCartesianLayer.Point(
-              rememberShapeComponent(
+              component = rememberShapeComponent(
                 fill(it),
                 CorneredShape.Pill,
                 strokeThickness = 0.dp,
               ),
+              sizeDp = pointSize,
             ),
           ),
         )

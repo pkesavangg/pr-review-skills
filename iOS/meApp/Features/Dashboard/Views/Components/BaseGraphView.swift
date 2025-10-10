@@ -47,8 +47,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     
     // MARK: - Visibility Helpers
     private var shouldShowYAxisLabels: Bool {
-        let goal = viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) ?? viewModel.goalWeight
-        return goal != 0
+        // Show labels if there are entries regardless of goal presence
+        if !viewModel.chartOperations.isEmpty { return true }
+        // No entries: hide labels only when goal is not set
+        let goal = viewModel.goalWeight
+        return goal != nil
     }
     
     // MARK: - Equatable Implementation
@@ -153,8 +156,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
                 
-                // Goal chip overlay (show only if rounded value is non-zero)
-                if viewModel.dashboardStore?.roundedGoalWeight(viewModel.goalWeight) != 0 {
+                // Goal chip overlay: show when goal is set (non-nil)
+                // In weightless mode, goal of 0 is valid (maintain anchor weight)
+                if viewModel.goalWeight != nil {
                     goalChipCallout()
                 }
             }
@@ -429,17 +433,19 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
-        let goalPosition = viewModel.getGoalChipPosition()
-        
-        goalWeightChip(viewModel.goalWeight)
-            .position(
-                x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
-                y: goalPosition.yPosition
-            )
-            .animation(
-                viewModel.shouldAnimateChartData ? .easeOut(duration: 0.3) : .none,
-                value: goalPosition.yPosition
-            )
+        if let goalWeight = viewModel.goalWeight {
+            let goalPosition = viewModel.getGoalChipPosition()
+            
+            goalWeightChip(goalWeight)
+                .position(
+                    x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
+                    y: goalPosition.yPosition
+                )
+                .animation(
+                    viewModel.shouldAnimateChartData ? .easeOut(duration: 0.3) : .none,
+                    value: goalPosition.yPosition
+                )
+        }
     }
     
     // MARK: - Goal Chip UI
@@ -551,9 +557,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         
-        // Cache goal weight label if present
-        if viewModel.goalWeight > 0 && cachedYAxisLabels[viewModel.goalWeight] == nil {
-            cachedYAxisLabels[viewModel.goalWeight] = dashboardStore.formatYAxisTickLabel(viewModel.goalWeight)
+        // Cache goal weight label if present (non-nil)
+        // In weightless mode, goal of 0 is valid (maintain anchor weight)
+        if let goalWeight = viewModel.goalWeight, cachedYAxisLabels[goalWeight] == nil {
+            cachedYAxisLabels[goalWeight] = dashboardStore.formatYAxisTickLabel(goalWeight)
         }
         
         // Cache X-axis labels for scrollable views
@@ -611,7 +618,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength * 1.05) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength *  1.05) // Add 5% extra length for trailing padding
                 // When there are no operations (empty-state), explicitly pin the
                 // X-axis domain to the current period tick range so labels render
                 // left-to-right (sun → mon → … → sat for week).
@@ -633,7 +640,6 @@ extension View {
                     let nonLastTicks = Array(allTicks.dropLast())
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
-                    
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: nonLastTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
@@ -722,6 +728,7 @@ extension View {
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
                     set: { newValue in
+
                         // Disable selection when there's no data
                         if viewModel.chartOperations.isEmpty {
                             localSelectedXValue.wrappedValue = nil

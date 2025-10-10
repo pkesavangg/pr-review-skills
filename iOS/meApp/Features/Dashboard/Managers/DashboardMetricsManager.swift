@@ -16,16 +16,16 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     // MARK: - Private Properties
     private let originalMetrics: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] = [
         (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
-        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.bodyFatUnit, nil, AppAssets.bodyFatIcon),
-        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.muscleUnit, nil, AppAssets.muscleIcon),
-        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.waterUnit, nil, AppAssets.waterIcon),
-        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.heartBpmUnit, nil, AppAssets.heartIcon),
-        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.boneUnit, nil, AppAssets.boneIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
+        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
+        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
+        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
         (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
-        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.subFatUnit, nil, AppAssets.subcutaneousFatIcon),
-        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.proteinUnit, nil, AppAssets.proteinIcon),
-        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.skelMuscleUnit, nil, AppAssets.skeletalMuscleIcon),
-        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.bmrKcalUnit, nil, AppAssets.bmrIcon),
+        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
+        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
+        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
+        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
         (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
     ]
 
@@ -818,7 +818,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Falls back to latest historical values per metric when the visible window has no data for that metric.
     /// Shows placeholders ("--") when no visible operations are available.
     func updateMetricsForVisibleAverage(visibleOperations: [BathScaleWeightSummary]) async {
-        guard !visibleOperations.isEmpty else { 
+        guard !visibleOperations.isEmpty else {
             // No visible operations - show placeholders for all metrics
             setPlaceholdersForAllMetrics()
             return 
@@ -857,7 +857,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 avg,
                 shouldCompose: metric.shouldCompose,
                 wholeNumber: metric.wholeNumber,
-                fallbackValue: avg == nil ? fallbackValue(for: metric.label, from: fallbackValues) : nil
+                fallbackValue: nil
             )
             updateMetricValue(for: metric.label, value: formatted)
         }

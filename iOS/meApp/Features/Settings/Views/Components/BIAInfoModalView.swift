@@ -37,10 +37,13 @@ struct BIAInfoModalView: View {
                 VStack(alignment: .center, spacing: .spacingSM) {
                     Text(lang.biaInfoPara1)
                         .fontOpenSans(.body2)
+                        .multilineTextAlignment(.center)
                     Text(lang.biaInfoPara2)
                         .fontOpenSans(.body2)
+                        .multilineTextAlignment(.center)
                     Text(lang.biaInfoPara3)
                         .fontOpenSans(.body2)
+                        .multilineTextAlignment(.center)
                 }
                 .foregroundColor(theme.textBody)
                 .fixedSize(horizontal: false, vertical: true)

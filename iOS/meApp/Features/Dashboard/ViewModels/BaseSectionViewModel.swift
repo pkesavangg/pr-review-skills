@@ -160,9 +160,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
     }
     
-    /// Goal weight for display
-    var goalWeight: Double {
-        return dashboardStore?.goalWeightForDisplay ?? 0
+    /// Goal weight for display (nil if no goal is set)
+    var goalWeight: Double? {
+        return dashboardStore?.goalWeightForDisplay
     }
     
     /// Current display weight
@@ -382,9 +382,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip position (with X-axis adjustment)
     func getGoalChipPosition() -> (yPosition: CGFloat, placement: GoalPlacement) {
+        // Return default position if no goal is set
+        guard let goalWeightValue = self.goalWeight else {
+            return (yPosition: chartFrame.height / 2, placement: .middle)
+        }
         // Use rounded goal weight in display space for positioning, matching label rounding.
         // In weightless mode this is the rounded goal delta (goal - anchor).
-        let goalWeight = self.dashboardStore?.roundedGoalWeight(self.goalWeight) ?? self.goalWeight
+        let goalWeight = self.dashboardStore?.roundedGoalWeight(goalWeightValue) ?? goalWeightValue
         let domain = yAxisDomain
         
         // Calculate proportional position within the chart
@@ -420,9 +424,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Calculates goal chip X offset based on text width
     func getGoalChipXOffset() -> CGFloat {
-        guard let store = dashboardStore else { return 28 }
+        guard let store = dashboardStore, let goalWeightValue = goalWeight else { return 28 }
         
-        let formattedText = store.formatYAxisTickLabel(goalWeight)
+        let formattedText = store.formatYAxisTickLabel(goalWeightValue)
         
         // Check if it's a 3-digit value or longer
         if formattedText.count >= 3 {
@@ -719,9 +723,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
-            // Day-of-month ticks: 1, 8, 15, 22, 29 (only those present in month)
+            // Day-of-month ticks with February rule: exclude 29 even in leap years
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
-            let validDays = [1, 8, 15, 22, 29]
+            // Include the 29th only for months with 30+ days. This excludes February (28/29).
+            let daysRange = calendar.range(of: .day, in: .month, for: monthInterval.start) ?? 1..<32
+            let include29 = daysRange.count >= 30
+            let validDays: [Int] = include29 ? [1, 8, 15, 22, 29, 31] : [1, 8, 15, 22, 29]
             var ticks: [Date] = []
             let compsYM = calendar.dateComponents([.year, .month], from: monthInterval.start)
             for d in validDays {

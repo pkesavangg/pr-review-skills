@@ -87,7 +87,6 @@ struct DashboardScreen: View {
 store.restartWiggleAnimations()
                 }
             }
-            Task { await store.reloadDashboardConfiguration() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
             Task { await store.reloadDashboardConfiguration(fullRefresh: true) }
@@ -136,7 +135,7 @@ store.restartWiggleAnimations()
                             store.cancelEdit()
                         }
                     }
-                if !store.allContentRemoved && store.state.data.hasAnyEntries {
+                if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
                     DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
                 if store.state.data.hasAnyEntries {
@@ -179,9 +178,11 @@ store.restartWiggleAnimations()
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.toggleEditMode()
                 })
-                ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    tabViewModel.navigateToGoalSetting()
-                })
+                if store.hasGoalSet {
+                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                        tabViewModel.navigateToGoalSetting()
+                    })
+                }
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)

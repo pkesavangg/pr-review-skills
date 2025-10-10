@@ -36,6 +36,21 @@ class MetricInfoViewModel @AssistedInject constructor(
       is MetricInfoIntent.SelectSegment -> {
         val stat = StatHelper.getMetricValue(info, intent.key)
         handleIntent(MetricInfoIntent.SetStat(stat))
+        // Update selected index based on the key
+        val metricKeys = getFilteredMetricKeys()
+        val index = metricKeys.indexOfFirst { it == intent.key }
+        if (index >= 0) {
+          handleIntent(MetricInfoIntent.SetSelectedIndex(index))
+        }
+      }
+
+      is MetricInfoIntent.SetSelectedIndex -> {
+        val metricKeys = getFilteredMetricKeys()
+        if (intent.index in metricKeys.indices) {
+          val selectedKey = metricKeys[intent.index]
+          val selectedStat = StatHelper.getMetricValue(info, selectedKey)
+          handleIntent(MetricInfoIntent.SetStat(selectedStat))
+        }
       }
 
       is MetricInfoIntent.OpenResource -> {

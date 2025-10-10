@@ -53,7 +53,8 @@ struct HKIntegrationHealthAccessView: View {
                     viewModel.showExitAlert(state: state, dismiss: onDismiss)
                 },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                canShowPresentationIndicator: true
             )
             VStack(spacing: 0) {
                 // Image

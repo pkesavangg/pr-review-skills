@@ -34,6 +34,9 @@ final class EntryStore: ObservableObject {
     private let maxBmiValue: Double = 99.0
     private var cancellables = Set<AnyCancellable>()
     private var isAdjustingTime = false
+    private var timeSyncCancellable: AnyCancellable?
+    private var isTimeSyncActive = false
+    private var hasUserAdjustedTime = false
 
     let tag = "EntryStore"
 
@@ -211,6 +214,16 @@ final class EntryStore: ObservableObject {
                 self?.clampTimeForSelectedDate(selectedDate: newDate)
             }
             .store(in: &cancellables)
+
+        // If the user changes time while the picker is open, stop auto updates for this session
+        manualEntryForm.time.$value
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                if self.showTimePicker {
+                    self.hasUserAdjustedTime = true
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func combine(date: Date, time: Date) -> Date {
@@ -328,6 +341,7 @@ final class EntryStore: ObservableObject {
     func resetForm() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        stopAutoTimeSync()
         isBmiAutoCalculationEnabled = true
         manualEntryForm = ManualEntryForm()
         manualEntryForm.objectWillChange
@@ -336,6 +350,7 @@ final class EntryStore: ObservableObject {
         showMetrics = false
         showDatePicker = false
         showTimePicker = false
+        hasUserAdjustedTime = false
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
@@ -373,5 +388,50 @@ final class EntryStore: ObservableObject {
         guard let value = source?.replacingOccurrences(of: "%", with: "") else { return }
         control.value = value
         control.validate()
+    }
+
+    // MARK: - Auto time sync
+    func startAutoTimeSync(intervalSeconds: TimeInterval = 1) {
+        isTimeSyncActive = true
+        timeSyncCancellable?.cancel()
+        // Immediate tick to minimize staleness when entering screen/tab
+        performAutoTimeTick()
+        timeSyncCancellable = Timer
+            .publish(every: intervalSeconds, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.performAutoTimeTick()
+            }
+    }
+
+    func stopAutoTimeSync() {
+        isTimeSyncActive = false
+        timeSyncCancellable?.cancel()
+        timeSyncCancellable = nil
+    }
+
+    private func performAutoTimeTick() {
+        guard isTimeSyncActive else { return }
+        // Only auto-update when selected date is today, picker is not open, and user hasn't adjusted time
+        guard Calendar.current.isDateInToday(manualEntryForm.date.value) else { return }
+        guard !showTimePicker else { return }
+        guard !hasUserAdjustedTime else { return }
+
+        let now = Date()
+        let calendar = Calendar.current
+        // Round down to the minute to avoid jitter due to seconds
+        let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        let nowRounded = calendar.date(from: comps) ?? now
+
+        // Respect clamping logic; ensure not ahead of current moment
+        let clamped = min(nowRounded, maxSelectableTime)
+        if manualEntryForm.time.value != clamped {
+            manualEntryForm.time.value = clamped
+            manualEntryForm.time.markAsPristine()
+            // Ensure SwiftUI sees the nested change
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
     }
 }

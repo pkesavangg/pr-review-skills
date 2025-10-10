@@ -310,6 +310,8 @@ struct ManualEntryScreen: View {
                 .onAppear {
                     // Ensure time defaults to current when landing on this tab
                     entryStore.refreshTimeOnTabSelected()
+                    // Start periodic time sync while on this screen
+                    entryStore.startAutoTimeSync()
                     // Register a handler that decides whether the tab can be left.
                     registerDeactivation {
                         // If the form is clean we can leave immediately.
@@ -318,10 +320,17 @@ struct ManualEntryScreen: View {
                         return await entryStore.confirmDiscardChanges()
                     }
                 }
+                .onDisappear {
+                    // Stop periodic time sync when leaving screen
+                    entryStore.stopAutoTimeSync()
+                }
                 .onChange(of: tabViewModel.selectedTab) { _, newValue in
                     // Update time every time Entry tab becomes active
                     if newValue == .entry {
                         entryStore.refreshTimeOnTabSelected()
+                        entryStore.startAutoTimeSync()
+                    } else {
+                        entryStore.stopAutoTimeSync()
                     }
                     // Pre-populate form if coming from AppSync **Edit** flow
                     if let metrics = tabViewModel.pendingAppSyncEditMetrics, newValue == .entry {
@@ -334,6 +343,14 @@ struct ManualEntryScreen: View {
         }
         .background(theme.backgroundSecondary)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(commonLang.done) {
+                    focusedField = nil
+                }
+            }
+        }
     }
     
     private func performTabSwitchAndHideKeyboard() {

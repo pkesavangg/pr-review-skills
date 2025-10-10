@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.features.common.components.chart
+package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -13,12 +13,24 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineCom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLabelComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
 import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.core.cartesian.axis.Axis
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.common.Position
 import android.graphics.Typeface
+
+@Composable
+internal fun topAxis() = HorizontalAxis.rememberTop(
+  label = null,
+  line = rememberAxisLineComponent(
+    fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+    thickness = 1.dp,
+  ),
+  guideline = null,
+  tickLength = 0.dp,
+)
 
 @Composable
 internal fun bottomAxis(
@@ -40,7 +52,7 @@ internal fun bottomAxis(
         },
       itemPlacer = horizontalItemPlacer,
       guideline = rememberAxisGuidelineComponent(
-        fill = fill(MeTheme.colorScheme.utility.copy(0.5f)),
+        fill = fill(MeTheme.colorScheme.utility),
         thickness = 1.dp,
       ),
       label = rememberAxisLabelComponent(
@@ -81,3 +93,4 @@ internal fun bottomAxis(
       ),
     )
 }
+

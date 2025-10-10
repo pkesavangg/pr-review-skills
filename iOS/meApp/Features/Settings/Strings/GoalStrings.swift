@@ -4,7 +4,7 @@
 import Foundation
 
 struct GoalStrings {
-    static let title = "Set A Goal"
+    static let title = "Goal Setting"
     static let subtitle = "Current Goal"
     // Prompt displayed when choosing goal type
     static let description = "Choose to maintain or set a lose/gain goal."
