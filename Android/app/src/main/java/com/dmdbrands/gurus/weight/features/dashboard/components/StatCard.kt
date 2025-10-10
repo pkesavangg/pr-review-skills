@@ -223,7 +223,7 @@ fun AnimatedStatCard(
       stat = stat,
       enabled = isSelected != null && !inEditMode,
       isVisible = isVisible,
-      isSelected = isSelected ?: false,
+      isSelected = isSelected == true && !inEditMode,
       modifier = modifier,
       isFromSetup = isFromSetup,
     ) {

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -144,6 +145,7 @@ fun AppText(
   enabled: Boolean = true,
   spacing: Dp = LocalSpacing.current.none,
   textAlign: TextAlign = TextAlign.Start,
+  textOverflow: TextOverflow = TextOverflow.Clip,
   color: Color? = null,
   onClick: (() -> Unit)? = null,
   onAnnotationClick: ((String) -> Unit)? = null,
@@ -222,6 +224,7 @@ fun AppText(
               onAnnotationClick(annotation.item)
             }
         },
+        overflow = textOverflow
       )
     } else {
       Text(
@@ -229,6 +232,7 @@ fun AppText(
         style = appearance.style,
         color = color ?: appearance.color,
         textAlign = textAlign,
+        overflow = textOverflow,
         modifier =
           modifier.then(
             if (onClick != null) Modifier.debounceClick { onClick() } else Modifier,

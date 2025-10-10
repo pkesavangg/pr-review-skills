@@ -175,6 +175,7 @@ fun <T> AppInput(
     supportingText: String? = null,
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
+    maxLength: Int? = null,
     trailingIconId: Int = AppIcons.Outlined.Close,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
@@ -201,6 +202,7 @@ fun <T> AppInput(
             showOutline = showOutline,
             supportingText = supportingText,
             inputType = type,
+            maxLength = maxLength,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             showTrailingIcon = showTrailingIcon,
@@ -228,6 +230,7 @@ fun <T> InputFieldBase(
     showOutline: Boolean = false,
     readOnly: Boolean = false,
     supportingText: String? = null,
+    maxLength: Int? = null,
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
@@ -268,16 +271,20 @@ fun <T> InputFieldBase(
     val inputValue = value
 
     val onInputChange: (String) -> Unit = { newValue ->
-        if (onValueChange != null) {
-            onValueChange(newValue as T?)
-        } else {
-            val filtered = AppInputDefaults.filterValue(inputType, newValue)
-            val convertedValue =
-                AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
-            if (convertedValue != null) {
-                formControl?.onValueChange(convertedValue)
+        // Check maxLength constraint before processing the value change
+        if (maxLength == null || newValue.length <= maxLength) {
+            if (onValueChange != null) {
+                onValueChange(newValue as T?)
+            } else {
+                val filtered = AppInputDefaults.filterValue(inputType, newValue)
+                val convertedValue =
+                    AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
+                if (convertedValue != null) {
+                    formControl?.onValueChange(convertedValue)
+                }
             }
         }
+        // If maxLength is exceeded, do nothing (don't emit value change)
     }
 
     fun clearValueAndNotify() {
@@ -459,6 +466,7 @@ fun AppInputPreview() {
         val normal = remember { FormControl.create("Input", emptyList()) }
         val disabled = remember { FormControl.create("", emptyList()) }
         val focused = remember { FormControl.create("", emptyList()) }
+        val maxLength = remember { FormControl.create("", emptyList()) }
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(16.dp),
@@ -471,6 +479,13 @@ fun AppInputPreview() {
                 type = AppInputType.TEXT,
                 enabled = false,
                 supportingText = "must not be left blank"
+            )
+            AppInput(
+                formControl = maxLength,
+                label = "Max Length Input",
+                type = AppInputType.TEXT,
+                maxLength = 10,
+                supportingText = "Maximum 10 characters"
             )
         }
     }

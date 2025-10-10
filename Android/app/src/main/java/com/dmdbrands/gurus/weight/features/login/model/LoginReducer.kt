@@ -29,6 +29,7 @@ data class LoginFormControls(
         FormControl.create(
           initialValue = "",
           validators = listOf(
+            FormValidations.required(),
             FormValidations.minLength(6, LoginStrings.PasswordLabel),
             FormValidations.maxLength(50, LoginStrings.PasswordLabel),
           ),

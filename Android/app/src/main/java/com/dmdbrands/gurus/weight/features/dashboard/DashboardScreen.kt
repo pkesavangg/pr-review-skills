@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -150,10 +151,13 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMetrics = visibleMetrics
           },
         )
-        HorizontalDivider(
-          color = MeTheme.colorScheme.utility,
-          modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
-        )
+        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+          HorizontalDivider(
+            color = MeTheme.colorScheme.utility,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+          )
+        }
+
         DashboardMilestone(
           progress = state.progress,
           latestWeight = state.latestWeight,
@@ -163,7 +167,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMilestones = visibleMilestones
           },
         )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+          Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        }
         DashboardControlPanel(
           inEditMode = inEditMode,
           onResetClick = {
