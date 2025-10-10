@@ -14,6 +14,8 @@ struct UserListItemView: View {
     let user: UserItemInfo
     var openItemID: Binding<UUID?>? // Optional binding to track open item for swipeable actions
     var iconSize: CGFloat = 32
+    /// Width of each swipe action button; allows per-screen customization
+    var swipeButtonWidth: CGFloat = 72
     var onTap: ((String, Bool) -> Void)
     var onDelete: ((String) -> Void)? = nil // optional deletion trigger
     
@@ -24,6 +26,7 @@ struct UserListItemView: View {
                 onTap(user.accountID, user.isExpired)
             }
             .swipeableActions(
+                buttonWidth: swipeButtonWidth,
                 buttons:
                     !user.canShowSelection || onDelete == nil ? [] : [
                         SwipeButton(
@@ -38,7 +41,9 @@ struct UserListItemView: View {
                         )
                     ],
                 itemID: user.id,
-                openItemID: openItemID
+                openItemID: openItemID,
+                openThresholdFraction: 0.1,
+                closeWithoutAnimationOnAction: true
             )
     }
     

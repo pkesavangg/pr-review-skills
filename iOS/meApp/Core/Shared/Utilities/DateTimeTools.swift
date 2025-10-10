@@ -42,7 +42,7 @@ final class DateTimeTools {
     
     // MARK: - Formatters
     /// Thread-local ISO8601 formatter with fractional seconds. Optional UTC configuration.
-    private static func isoFormatter(useUTC: Bool? = nil) -> ISO8601DateFormatter {
+    public static func isoFormatter(useUTC: Bool? = nil) -> ISO8601DateFormatter {
         let scope = (useUTC == true) ? "utc" : "local"
         let key = "DateTimeTools.iso8601::" + scope
         if let existing = Thread.current.threadDictionary[key] as? ISO8601DateFormatter {

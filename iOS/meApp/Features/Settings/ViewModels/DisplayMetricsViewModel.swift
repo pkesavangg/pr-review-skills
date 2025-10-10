@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 // MARK: - DisplayMetricsViewModel
 @MainActor
@@ -239,9 +240,11 @@ final class DisplayMetricsViewModel: ObservableObject {
             return
         }
         
-        metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
-        updateDisplayMetricsValue()
-        hasChanges = true
+        withAnimation {
+            metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
+            updateDisplayMetricsValue()
+            hasChanges = true
+        }
     }
     
     /// Same as `handleBodyMetricToggle` but for progress metrics list.
@@ -252,9 +255,11 @@ final class DisplayMetricsViewModel: ObservableObject {
             return
         }
         
-        progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
-        updateDisplayMetricsValue()
-        hasChanges = true
+        withAnimation {
+            progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
+            updateDisplayMetricsValue()
+            hasChanges = true
+        }
     }
 
     /// Core reordering routine used by both body and progress metric toggles.

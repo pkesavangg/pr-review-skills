@@ -46,8 +46,8 @@ struct LandingScreen: View {
 
                             }, label:{
                                 Text(commonLang.logIn.uppercased())
-                                    .fontOpenSans(.button1)
                                     .fontWeight(.bold)
+                                    .fontOpenSans(.button1)
                                     .frame(minWidth: 96)
                                     .padding(.vertical, .spacingXS)
                                     .padding(.horizontal, .spacingLG)
@@ -56,13 +56,13 @@ struct LandingScreen: View {
                                     .cornerRadius(.radiusPill)
                                     .contentShape(Rectangle())
                             })
-   
+                            
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .signup)
                                 }
                             }
-                            .frame(width: 96)
+                            .frame(width: 96)                            
                         }
                         .padding(.bottom, .spacing6XL)
                         

@@ -56,6 +56,8 @@ final class GoalAlertService: ObservableObject {
         guard !alertAlreadyShown else { return }
         let hasMetGoal: Bool = {
             switch goalType {
+            case .none:
+                return false
             case .gain:
                 return currentWeight >= goalWeight
             case .lose:
@@ -71,6 +73,8 @@ final class GoalAlertService: ObservableObject {
         kv.setValue(true, forKey: storageKey)
 
         switch goalType {
+        case .none:
+            return
         case .maintain:
             await presentGoalLeaveAlert()
         case .gain, .lose:
