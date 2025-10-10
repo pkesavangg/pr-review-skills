@@ -94,14 +94,16 @@ class GraphViewModel @AssistedInject constructor(
   }
 
   private fun observeDataChanges() {
-    combine(
-      dataFlow,
-      goalService.goalStatusFlow,
-    ) { data, goal ->
-      handleIntent(GraphIntent.UpdateData(data))
-      handleIntent(GraphIntent.UpdateGoal(goal))
-      initializeGraph(data, goal)
-    }.launchIn(viewModelScope)
+    viewModelScope.launch {
+      combine(
+        dataFlow,
+        goalService.getCurrentGoal(),
+      ) { data, goal ->
+        handleIntent(GraphIntent.UpdateData(data))
+        handleIntent(GraphIntent.UpdateGoal(goal))
+        initializeGraph(data, goal)
+      }.launchIn(viewModelScope)
+    }
   }
 
   /**
