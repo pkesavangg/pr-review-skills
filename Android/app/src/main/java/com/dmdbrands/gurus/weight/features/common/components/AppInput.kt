@@ -31,11 +31,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.DecimalInputVisualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.strings.AppInputStrings
@@ -45,6 +47,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
+import android.R.attr.inputType
 
 enum class AppInputType {
     TEXT,
@@ -176,6 +179,7 @@ fun <T> AppInput(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    maxLength: Int? = null,
     onValueChange: ((T?) -> Unit)? = null,
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: (() -> Unit)? = null,
@@ -201,6 +205,7 @@ fun <T> AppInput(
             showOutline = showOutline,
             supportingText = supportingText,
             inputType = type,
+            maxLength = maxLength,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             showTrailingIcon = showTrailingIcon,
@@ -231,6 +236,7 @@ fun <T> InputFieldBase(
     showTrailingIcon: Boolean = true,
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
+    maxLength: Int? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -268,17 +274,21 @@ fun <T> InputFieldBase(
     val inputValue = value
 
     val onInputChange: (String) -> Unit = { newValue ->
-        if (onValueChange != null) {
-            onValueChange(newValue as T?)
-        } else {
-            val filtered = AppInputDefaults.filterValue(inputType, newValue)
-            val convertedValue =
-                AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
-            if (convertedValue != null) {
-                formControl?.onValueChange(convertedValue)
+        // Check maxLength constraint before processing the value change
+        if (maxLength == null || newValue.length <= maxLength) {
+            if (onValueChange != null) {
+                onValueChange(newValue as T?)
+            } else {
+                val filtered = AppInputDefaults.filterValue(inputType, newValue)
+                val convertedValue =
+                    AppInputDefaults.stringToValue(inputType, filtered, formControl) as T?
+                if (convertedValue != null) {
+                    formControl?.onValueChange(convertedValue)
+                }
             }
-        }
-    }
+          }
+            }
+
 
     fun clearValueAndNotify() {
         val newValue = ""
@@ -459,6 +469,7 @@ fun AppInputPreview() {
         val normal = remember { FormControl.create("Input", emptyList()) }
         val disabled = remember { FormControl.create("", emptyList()) }
         val focused = remember { FormControl.create("", emptyList()) }
+        val maxLength = remember { FormControl.create("", emptyList()) }
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(16.dp),
@@ -471,6 +482,13 @@ fun AppInputPreview() {
                 type = AppInputType.TEXT,
                 enabled = false,
                 supportingText = "must not be left blank"
+            )
+            AppInput(
+                formControl = maxLength,
+                label = "Max Length Input",
+                type = AppInputType.TEXT,
+                maxLength = 10,
+                supportingText = "Maximum 10 characters"
             )
         }
     }

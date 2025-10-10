@@ -58,11 +58,10 @@ constructor(
 
   private fun loadHistory() {
     viewModelScope.launch {
-      handleIntent(HistoryIntent.Loading(true))
-      entryService.getMonthlyAverage().collect {
+      entryService.monthlyAverage.collect { items ->
         handleIntent(
           HistoryIntent.SetHistoryItems(
-            items = it,
+            items = items,
           ),
         )
       }

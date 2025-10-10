@@ -1,3 +1,23 @@
+#1.0.0 - 10/10/2025
+
+### Added
+
+- Handled the display of dashboard metrics and milestones based on dashboard type.
+
+### Changed
+
+- Updated Android build for Android 15 — upgraded Gradle/AGP, set NDK, added abiFilters with 16KB alignment, and modernized packaging.
+
+### Fixed
+
+- Addressed unresponsive action issue observed in slidable items.
+- Resolved the issue in Add & Edit scale where the model number input allowed entry of more than more that 4 values.
+- Restricted the display of permissions popup that appears after loading to display only when required permissions are not enabled.
+- Address the inconsistent display of divider in Dashboard.
+- Resolved the issue of scale display name update not reflecting on scale.
+- Resolve inconsistencies in 0412 scale customization.
+- Resolved error text and toast content mismatch issues.
+
 ## 5.0.0 - 09/26/2025
 
 ### Added

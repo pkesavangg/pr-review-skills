@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.components.AppProfileAvatar
@@ -38,12 +39,16 @@ fun UserProfileSection(
             text = firstName,
             style = MeTheme.typography.heading4,
             color = MeTheme.colorScheme.textHeading,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
         Text(
             text = email,
             style = MeTheme.typography.body2,
             color = MeTheme.colorScheme.textBody,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     }
@@ -56,7 +61,7 @@ fun UserProfileSectionPreview() {
         UserProfileSection(
             Account(
                 id = "1",
-                firstName = "John",
+                firstName = "cjxbhczxbcnzxmbczxkcbskfksdfdsjhfjdhfjsdhfksdhjfdjkfdskfksdjfjkshdf",
                 lastName = "Doe",
                 dob = "1990-01-01",
                 email = "john.mckinley@examplepetstore.com",

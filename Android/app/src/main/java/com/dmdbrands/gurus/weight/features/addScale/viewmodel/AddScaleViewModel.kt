@@ -132,22 +132,22 @@ constructor(
       when (scaleInfo.setupType) {
         ScaleSetupType.AppSync -> {
           AppLog.d(TAG, "Navigating to AppSync scale setup")
-          navigateTo(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
+          replaceLastAndNavigate(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
         }
 
         ScaleSetupType.Bluetooth -> {
           AppLog.d(TAG, "Navigating to Bluetooth scale setup")
-          navigateTo(AppRoute.ScaleSetup.BtScaleSetup(sku, scaleInfo))
+          replaceLastAndNavigate(AppRoute.ScaleSetup.BtScaleSetup(sku, scaleInfo))
         }
 
         ScaleSetupType.Lcbt -> {
           AppLog.d(TAG, "Navigating to Lcbt scale setup")
-          navigateTo(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
+          replaceLastAndNavigate(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
         }
 
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
-          navigateTo(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
+          replaceLastAndNavigate(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
         }
 
         ScaleSetupType.Wifi,
@@ -155,8 +155,9 @@ constructor(
           AppLog.d(TAG, "Navigating to WiFi scale setup")
           // Use the ScaleSetupNavigationUtils to determine the correct route with ScaleInfo and wifiSetupType
           val route = ScaleSetupNavigationUtils.createWifiSetupRoute(scaleInfo)
-          navigateTo(route)
+          replaceLastAndNavigate(route)
         }
+
       }
     } else {
       AppLog.w(TAG, "Scale info not found for SKU: $sku")
@@ -179,6 +180,18 @@ constructor(
         AppLog.d(TAG, "Successfully navigated to route: $route")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error navigating to route: $route", e)
+      }
+    }
+  }
+
+  private fun replaceLastAndNavigate(route: AppRoute) {
+    AppLog.d(TAG, "Replacing last route and navigating to: $route")
+    viewModelScope.launch {
+      try {
+        navigationService.replaceLastAndNavigate(route)
+        AppLog.d(TAG, "Successfully replaced last route and navigated to: $route")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error replacing last route and navigating to: $route", e)
       }
     }
   }

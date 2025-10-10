@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface IEntryService {
   val isUpdating: StateFlow<Boolean>
+  val isEmpty: StateFlow<Boolean>
   val latestEntry: StateFlow<Entry?>
   val last7Days: StateFlow<List<Entry>>
   val last30Days: StateFlow<List<Entry>>
@@ -19,7 +20,8 @@ interface IEntryService {
   val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
-  suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>>
+  val monthlyAverage: StateFlow<List<HistoryMonth>>
+  suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
 
   suspend fun monthDetails(startDate: String): Flow<List<Entry>>
 
@@ -40,5 +42,4 @@ interface IEntryService {
    * to display the goal card.
    */
   fun initializeGoalCardMonitoring()
-
 }

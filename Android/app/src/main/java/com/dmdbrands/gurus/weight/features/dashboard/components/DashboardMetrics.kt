@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -42,6 +44,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param inEditMode Whether the dashboard is in edit mode
  * @param visibleKeys List of currently visible dashboard keys
  * @param selectedStat Currently selected stat for highlighting
+ * @param dashboardType The dashboard type (4 or 12 metrics)
  * @param onMetricClick Callback when a metric is clicked
  * @param onMetricsChanged Callback when visible metrics are changed (for save functionality)
  */
@@ -52,6 +55,7 @@ fun DashboardMetrics(
   visibleKeys: List<DashboardKey> = listOf(),
   selectedStat: Stat? = null,
   isFromSetup: Boolean = false,
+  dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS,
   onMetricClick: (Stat?) -> Unit = {},
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
@@ -71,24 +75,55 @@ fun DashboardMetrics(
       }
     }
   }
-
   // Cache metrics calculations with proper keys to avoid recomputation
-  val visibleMetrics = remember(dashboardMetric, metricKeys, isFromSetup) {
-    StatHelper.getMetrics(
+  val visibleMetrics = remember(dashboardMetric, metricKeys, isFromSetup, dashboardType) {
+    val allMetrics = StatHelper.getMetrics(
       dashboardMetric,
       visibleKeys = metricKeys,
-      useShort = !isFromSetup,
+      useShort = true,
+      showMetricIcon = isFromSetup,
       filterNulls = false,
     )
+    // Filter metrics based on dashboard type
+    when (dashboardType) {
+      DashboardType.DASHBOARD_4_METRICS -> {
+        val allowedKeys = listOf(
+          DashboardKey.Metric(MetricKey.BMI),
+          DashboardKey.Metric(MetricKey.BODY_FAT),
+          DashboardKey.Metric(MetricKey.MUSCLE_MASS),
+          DashboardKey.Metric(MetricKey.BODY_WATER),
+        )
+        allMetrics.filter { stat ->
+          stat.key in allowedKeys
+        }
+      }
+      DashboardType.DASHBOARD_12_METRICS -> allMetrics
+    }
   }
 
-  val allMetrics = remember(dashboardMetric, isFromSetup) {
-    StatHelper.getMetrics(
+  val allMetrics = remember(dashboardMetric, isFromSetup, dashboardType) {
+    val allAvailableMetrics = StatHelper.getMetrics(
       dashboardMetric,
       visibleKeys = null,
-      useShort = !isFromSetup,
+      useShort = true,
+      showMetricIcon = isFromSetup,
       filterNulls = false,
     )
+    // Filter all metrics based on dashboard type
+    when (dashboardType) {
+      DashboardType.DASHBOARD_4_METRICS -> {
+        val allowedKeys = listOf(
+          DashboardKey.Metric(MetricKey.BMI),
+          DashboardKey.Metric(MetricKey.BODY_FAT),
+          DashboardKey.Metric(MetricKey.MUSCLE_MASS),
+          DashboardKey.Metric(MetricKey.BODY_WATER),
+        )
+        allAvailableMetrics.filter { stat ->
+          stat.key in allowedKeys
+        }
+      }
+      DashboardType.DASHBOARD_12_METRICS -> allAvailableMetrics
+    }
   }
 
   val hiddenMetrics = remember(visibleMetrics, allMetrics) {

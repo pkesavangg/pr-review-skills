@@ -63,7 +63,12 @@ constructor(
   override val pairedScales: Flow<List<Device>>
     get() = _pairedScales.asStateFlow()
 
-  override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
+    override val hasBluetoothWifiScale: Flow<Boolean>
+        get() = _pairedScales.map { devices ->
+            devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
+        }
+
+    override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
     val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
@@ -399,7 +404,6 @@ constructor(
           wifiFotaScheduleTime = 0,
           tzOffset = getTimeZoneInMinutes(),
         )
-      // TODO("Update preferences to the scale via ggBluetoothPlugin")
       // Save preferences to API
       deviceRepository.saveScalePreferencesToApi(updatedPreference)
       syncDevices()

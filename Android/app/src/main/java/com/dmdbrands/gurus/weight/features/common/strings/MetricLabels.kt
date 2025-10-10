@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.strings
 
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 
 object MetricLabels {
   data class LabelPair(val full: String, val short: String? = null)

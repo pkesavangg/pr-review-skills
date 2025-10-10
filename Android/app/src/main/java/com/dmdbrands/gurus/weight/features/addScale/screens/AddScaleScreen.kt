@@ -44,7 +44,6 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -131,6 +130,7 @@ fun AddScaleScreenContent(
             Modifier
               .semantics { contentType = ContentType.PhoneNumber }
               .focusRequester(modelNumberFocusRequester),
+          maxLength = 4,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))

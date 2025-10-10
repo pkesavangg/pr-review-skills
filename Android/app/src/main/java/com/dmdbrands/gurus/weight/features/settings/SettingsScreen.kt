@@ -279,7 +279,7 @@ fun SettingsScreenContent(
           add(
             SettingsItem(
               title = SettingsScreenStrings.SwitchAccounts,
-              type = SettingsItemType.None,
+              type = SettingsItemType.Action(),
               onClick = {
                 handleIntent(SettingsIntent.SwitchAccount)
               },

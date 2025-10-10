@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.proto.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 
 /**
  * Checks if a milestone is the goal progress milestone (TO_GOAL).

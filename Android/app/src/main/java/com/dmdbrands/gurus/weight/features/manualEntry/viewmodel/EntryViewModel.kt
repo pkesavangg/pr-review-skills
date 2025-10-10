@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -35,6 +37,7 @@ constructor(
   private val entryService: IEntryService,
   private val accountService: IAccountService,
   private val appSyncService: IAppSyncService,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
@@ -82,6 +85,18 @@ constructor(
         }
       }
     }
+
+    // Handle hasBluetoothWifiScale flow to update dashboard type
+    viewModelScope.launch {
+      deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
+        val dashboardType = if (hasBluetoothWifiScale) {
+          DashboardType.DASHBOARD_12_METRICS
+        } else {
+          DashboardType.DASHBOARD_4_METRICS
+        }
+        handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
+      }
+    }
   }
 
   override fun handleIntent(intent: EntryIntent) {
@@ -108,6 +123,10 @@ constructor(
             ),
           )
         }
+      }
+
+      is EntryIntent.EarlyExit -> {
+        earlyExitToHome()
       }
 
       else -> null
@@ -149,10 +168,60 @@ constructor(
     }
   }
 
+  fun Exit(){
+    viewModelScope.launch {
+      navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
+        if (state.value.form.isDirty || state.value.form.isTouched) {
+          return@registerOnDeactivate suspendCancellableCoroutine { cont ->
+            var isResumed = false
+
+            dialogQueueService.enqueue(
+              DialogModel.Confirm(
+                title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
+                message = AppPopupStrings.UnsavedChanges.Message,
+                onConfirm = {
+                  if (!isResumed) {
+                    isResumed = true
+                    deactivate()
+                    cont.resume(true)
+                  }
+                },
+                onCancel = {
+                  if (!isResumed) {
+                    isResumed = true
+                    cont.resume(false)
+                  }
+                },
+              ),
+            )
+          }
+        } else {
+          return@registerOnDeactivate true
+        }
+      }
+    }
+  }
+
   fun deactivate() {
     viewModelScope.launch {
       navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
     }
+  }
+
+  /**
+   * Handles early exit with unsaved changes confirmation dialog.
+   * Similar to initDeactivate but for manual back button handling.
+   */
+  fun earlyExit() {
+    Exit()
+  }
+
+  /**
+   * Convenience method for early exit that navigates back to home.
+   * Use this for simple back button handling.
+   */
+  fun earlyExitToHome() {
+    earlyExit()
   }
 
   private fun saveEntry() {

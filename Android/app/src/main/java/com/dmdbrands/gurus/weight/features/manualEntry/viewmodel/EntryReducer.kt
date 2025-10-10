@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
@@ -113,9 +114,7 @@ data class EntryForm(
                 val bmi = ConversionTools.calculateBMI(weight, storedHeight)
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
-                  bmi >= AppValidatorConfig.BodyComp.MAX * 10 -> AppValidatorConfig.BodyComp.MAX.times(
-                    10,
-                  ).toString()
+                  bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
 
                   else -> bmi.toString()
                 }
@@ -135,12 +134,19 @@ data class EntryForm(
               "",
               listOf(
                 FormValidations.bodyCompValidator(
-                  AppValidatorConfig.BodyComp.MIN, AppValidatorConfig.BodyComp.MAX, false,
+                  AppValidatorConfig.HeartRate.MIN, AppValidatorConfig.HeartRate.MAX, false,
                 ),
               ),
             ),
             boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            visceralFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+            visceralFat = FormControl.create(
+                "",
+                listOf(
+                    FormValidations.bodyCompValidator(
+                        AppValidatorConfig.VisceralAge.MIN, AppValidatorConfig.VisceralAge.MAX, false,
+                    ),
+                ),
+            ),
             subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
             protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
             skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
@@ -175,6 +181,7 @@ data class EntryState(
   val form: MultiFormGroup<EntryForm>,
   val weightMode: WeightUnit = WeightUnit.LB,
   val isLoading: Boolean = false,
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
 /**
@@ -183,11 +190,13 @@ data class EntryState(
 sealed interface EntryIntent : IReducer.Intent {
   data object UpdateOnRelaunch : EntryIntent
   data object Save : EntryIntent
+  data object EarlyExit : EntryIntent
   data class UpdateForm(
     val form: MultiFormGroup<EntryForm>,
   ) : EntryIntent
 
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
+    data class UpdateDashboardType(val dashboardType: DashboardType) : EntryIntent
 
   data class LoadAppSyncData(
     val scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry,
@@ -216,7 +225,13 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
         )
       }
 
-      is EntryIntent.LoadAppSyncData -> {
+        is EntryIntent.UpdateDashboardType -> {
+            state.copy(
+                dashboardType = intent.dashboardType,
+            )
+        }
+
+        is EntryIntent.LoadAppSyncData -> {
         // Create new form with AppSync data, following Profile pattern exactly
         val scaleEntry = intent.scaleEntry
         val currentForm = state.form.forms

@@ -3,7 +3,9 @@ package com.dmdbrands.gurus.weight.core.service
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -14,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -122,7 +125,7 @@ constructor(
           HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
           else -> ToastStrings.Error.LoginError.MessageGeneric
         }
-      showErrorToast(message = msg)
+      showErrorToast(title = LoginError.Header, message = msg)
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -285,6 +288,17 @@ constructor(
     }
   }
 
+  override suspend fun updateDashboardType(type: DashboardType) {
+    AppLog.d(TAG, "Update Dashboard Type")
+    try {
+      val accountId = activeAccountFlow.first()!!.id
+      accountRepository.updateDashboardType(type.value)
+      accountRepository.updateLocalDashboardType(accountId, dashboardType = type)
+    } catch (e: Exception) {
+      AppLog.d(TAG, "Error updating Dashboard Type", e.toString())
+    }
+  }
+
   /**
    * Checks login status for the active account by calling getAccount API if online.
    * If offline, checks local DB for isExpired status.
@@ -348,7 +362,7 @@ constructor(
       val anyExpired = loggedInAccounts.any { it.isExpired }
       if (anyExpired) {
         AppLog.d(TAG, "At least one logged-in account is expired in local DB. Returning false.")
-        return false
+        return true
       }
       AppLog.d(TAG, "All logged-in accounts are valid in local DB. Returning true.")
       // Emit true to trigger integration checks

@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.metricinfo
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 
 /**
  * UI state for the metric info feature.

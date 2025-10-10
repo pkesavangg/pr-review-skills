@@ -4,8 +4,10 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToKg
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 
@@ -36,7 +38,7 @@ data class Account(
   val weightlessWeight: Float? = null, // nullable
   val isStreakOn: Boolean? = false,
   val streakTimestamp: String? = null, // nullable
-  val dashboardType: String? = "Dashboard_4_metrics",
+  val dashboardType: String? = DashboardType.DASHBOARD_4_METRICS.value,
   val dashboardMetrics: List<String>? = emptyList(),
   // Notification settings
   val shouldSendEntryNotifications: Boolean? = false,
@@ -76,10 +78,10 @@ data class Account(
   }
 
   fun toGGBTUserProfile(): GGBTUserProfile {
-    val metricConfig = MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED }.map {
+    val metricConfig = MetricKey.entries.map {
       GGBTMetricConfig(
-        metric = it.name,
-        enabled = dashboardMetrics?.contains(it.name) ?: false,
+        metric = MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase(),
+        enabled = dashboardMetrics?.contains(MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase()) ?: false,
       )
     }
     val heightCm: Double? =

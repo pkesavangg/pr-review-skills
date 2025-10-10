@@ -4,13 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,6 +28,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -41,7 +43,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
-import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -81,20 +82,13 @@ fun DashboardScreen() {
       ),
     )
   }
-  PullToRefreshBox(
-    isRefreshing = state.isRefreshing,
-    onRefresh = {
-      viewmodel.handleIntent(DashboardIntent.Refresh)
-    },
-  ) {
-    DashboardScreenContent(state, viewmodel::handleIntent)
-  }
+  DashboardScreenContent(state, viewmodel::handleIntent)
 }
 
 @Composable
 private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
   val scrollState = rememberScrollState()
-  val scope = rememberCoroutineScope()
+  rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
   var inEditMode by remember { mutableStateOf(false) }
   var currentVisibleMetrics by remember(state.visibleKeys) {
@@ -107,7 +101,16 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val selectedSegment = state.selectedSegment
   val selectedStat = state.selectedStat
 
-  AppScaffold(title = null) {
+  val scope = rememberCoroutineScope()
+
+
+  AppScaffold(
+    title = null,
+    onRefresh = {
+      handleIntent(DashboardIntent.Refresh)
+    },
+    isRefreshing = state.isRefreshing,
+  ) {
     Column(modifier = Modifier.verticalScroll(scrollState)) {
 
       GraphPagerView(
@@ -128,7 +131,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
       )
 
 
-      if (state.latestWeight == null) {
+      if (state.isEmpty) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         EmptyMetric(
           onConnectScaleClick = {
@@ -141,6 +144,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMetrics,
           selectedStat = selectedStat,
+          dashboardType = state.dashboardType,
           onMetricClick = { stat ->
             handleIntent(DashboardIntent.SetSelectedStat(stat))
           },
@@ -148,10 +152,13 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMetrics = visibleMetrics
           },
         )
-        HorizontalDivider(
-          color = MeTheme.colorScheme.utility,
-          modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
-        )
+        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+          HorizontalDivider(
+            color = MeTheme.colorScheme.utility,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+          )
+        }
+
         DashboardMilestone(
           progress = state.progress,
           latestWeight = state.latestWeight,
@@ -161,7 +168,9 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMilestones = visibleMilestones
           },
         )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+          Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        }
         DashboardControlPanel(
           inEditMode = inEditMode,
           hasGoal = state.progress.goal?.account != null && state.progress.goal?.account?.goalType != null,
@@ -179,7 +188,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
               // Save dashboard metrics and milestones when exiting edit mode
               val allVisibleKeys =
                 currentVisibleMetrics + currentVisibleMilestones
-              handleIntent(DashboardIntent.SetVisibleKeys(allVisibleKeys))
+              handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys, state.dashboardType))
             }
             inEditMode = editMode
           },

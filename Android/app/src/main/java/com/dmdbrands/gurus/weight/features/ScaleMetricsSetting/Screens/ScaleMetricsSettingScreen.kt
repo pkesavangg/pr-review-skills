@@ -38,6 +38,7 @@ fun ScaleMetricsSettingScreen(
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
   includeHeartRate: Boolean = true,
+  showAllMetrics: Boolean = true,
 ) {
 
   // Separate state for each metric group
@@ -52,7 +53,12 @@ fun ScaleMetricsSettingScreen(
     }
     mutableStateOf(updatedBodyMetrics)
   }
-
+  // Displayed list respects showAllMetrics, but state remains full
+  val displayedBodyMetrics = if (showAllMetrics) {
+    bodyMetricsState
+  } else {
+    bodyMetricsState.filter { it.key == "bmi" }
+  }
   var otherMetricsState by remember(currentMetrics) {
     mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).second)
   }
@@ -74,10 +80,13 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 600.dp),
-      items = bodyMetricsState,
+      items = displayedBodyMetrics,
       onMove = { from, to ->
         val newList = bodyMetricsState.toMutableList()
-        newList.add(to, newList.removeAt(from))
+        val itemToMove = displayedBodyMetrics[from]
+        val toIndexInState = bodyMetricsState.indexOf(displayedBodyMetrics[to])
+        newList.remove(itemToMove)
+        newList.add(toIndexInState, itemToMove)
         bodyMetricsState = newList
         emitCombinedMetrics()
       },

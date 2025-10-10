@@ -233,7 +233,17 @@ fun AppsyncScaleSetupPreview() {
     AppsyncScaleSetupScreenContent(
       state =
         AppsyncScaleSetupState(
-          sku = "0412",
+          sku = "0342",
+          bodyComp = true,
+          steps = listOf(
+            AppsyncScaleSetupStep.SCALE_INFO,
+            AppsyncScaleSetupStep.PERMISSIONS,
+            AppsyncScaleSetupStep.ACTIVATE_SCALE,
+            AppsyncScaleSetupStep.ADD_INFO,
+            AppsyncScaleSetupStep.STEP_ON,
+            AppsyncScaleSetupStep.OPEN_CAMERA,
+            AppsyncScaleSetupStep.SETUP_FINISHED,
+          ),
         ),
       onIntent = {},
     )

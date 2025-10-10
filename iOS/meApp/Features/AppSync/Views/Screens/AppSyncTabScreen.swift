@@ -26,14 +26,14 @@ struct AppSyncTabScreen: View {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
                     onClose: {
-                        tabViewModel.selectTab(.dash)
+                        tabViewModel.restorePreviousTab()
                     },
                     onManualEntry: {
                         tabViewModel.selectTab(.entry)
                     },
                     onScanned: { data in
                         // Forward to store for processing, then return to dashboard
-                        tabViewModel.selectTab(.dash)
+                        tabViewModel.restorePreviousTab()
                         scanStore.handleScanned(data, tabViewModel: tabViewModel)
                     }
                 )

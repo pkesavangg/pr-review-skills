@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.features.metricinfo.strings
 
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import java.time.format.DateTimeFormatter
 
 /**

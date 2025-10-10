@@ -109,7 +109,8 @@ fun ScaleDisplayMetricsScreenContent(
             onMetricsChanged = { enabledMetrics ->
               handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
             },
-            includeHeartRate = scale.preferences?.shouldMeasurePulse == true
+            includeHeartRate = scale.preferences?.shouldMeasurePulse == true,
+            showAllMetrics = !scale.isWeighOnlyModeEnabledByOthers || scale.preferences?.shouldMeasureImpedance == false ,
           )
         }
       }

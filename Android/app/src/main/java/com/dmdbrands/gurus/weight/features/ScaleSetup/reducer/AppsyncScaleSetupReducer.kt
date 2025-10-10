@@ -12,15 +12,8 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 data class AppsyncScaleSetupState(
   val currentStep: AppsyncScaleSetupStep = AppsyncScaleSetupStep.SCALE_INFO,
   val sku: String = "0341",
-  val steps: List<AppsyncScaleSetupStep> = listOf(
-    AppsyncScaleSetupStep.SCALE_INFO,
-    AppsyncScaleSetupStep.PERMISSIONS,
-    AppsyncScaleSetupStep.ACTIVATE_SCALE,
-    AppsyncScaleSetupStep.ADD_INFO,
-    AppsyncScaleSetupStep.STEP_ON,
-    AppsyncScaleSetupStep.OPEN_CAMERA,
-    AppsyncScaleSetupStep.SETUP_FINISHED,
-  ),
+  val bodyComp: Boolean = true,
+  val steps: List<AppsyncScaleSetupStep> = emptyList(),
   val isNextEnabled: Boolean = true,
   val error: String? = null,
   val isSetupFinished: Boolean = false,
@@ -38,6 +31,10 @@ data class AppsyncScaleSetupState(
 sealed interface AppsyncScaleSetupIntent : IReducer.Intent {
   data class SetScaleSku(
     val sku: String,
+  ) : AppsyncScaleSetupIntent
+
+  data class SetBodyComp(
+    val bodyComp: Boolean,
   ) : AppsyncScaleSetupIntent
 
   data class SetCurrentStep(
@@ -71,6 +68,34 @@ sealed interface AppsyncScaleSetupIntent : IReducer.Intent {
 }
 
 /**
+ * Helper function to generate steps based on bodyComp property.
+ */
+private fun generateSteps(bodyComp: Boolean): List<AppsyncScaleSetupStep> {
+  return if (bodyComp) {
+    // Full flow with ADD_INFO step for body composition scales
+    listOf(
+      AppsyncScaleSetupStep.SCALE_INFO,
+      AppsyncScaleSetupStep.PERMISSIONS,
+      AppsyncScaleSetupStep.ACTIVATE_SCALE,
+      AppsyncScaleSetupStep.ADD_INFO,
+      AppsyncScaleSetupStep.STEP_ON,
+      AppsyncScaleSetupStep.OPEN_CAMERA,
+      AppsyncScaleSetupStep.SETUP_FINISHED,
+    )
+  } else {
+    // Simplified flow without ADD_INFO step for basic scales
+    listOf(
+      AppsyncScaleSetupStep.SCALE_INFO,
+      AppsyncScaleSetupStep.PERMISSIONS,
+      AppsyncScaleSetupStep.ACTIVATE_SCALE,
+      AppsyncScaleSetupStep.STEP_ON,
+      AppsyncScaleSetupStep.OPEN_CAMERA,
+      AppsyncScaleSetupStep.SETUP_FINISHED,
+    )
+  }
+}
+
+/**
  * Reducer for AppsyncScaleSetupScreen.
  */
 class AppsyncScaleSetupReducer : IReducer<AppsyncScaleSetupState, AppsyncScaleSetupIntent> {
@@ -80,6 +105,15 @@ class AppsyncScaleSetupReducer : IReducer<AppsyncScaleSetupState, AppsyncScaleSe
   ): AppsyncScaleSetupState? =
     when (intent) {
       is AppsyncScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
+      is AppsyncScaleSetupIntent.SetBodyComp -> {
+        val newSteps = generateSteps(intent.bodyComp)
+        state.copy(
+          bodyComp = intent.bodyComp,
+          steps = newSteps,
+          // Reset to first step if current step is not in new steps
+          currentStep = if (newSteps.contains(state.currentStep)) state.currentStep else newSteps.first()
+        )
+      }
       is AppsyncScaleSetupIntent.SetCurrentStep -> state.copy(currentStep = intent.step)
       is AppsyncScaleSetupIntent.SetNextButtonState -> state.copy(isNextEnabled = intent.isEnabled)
       is AppsyncScaleSetupIntent.SetError -> state.copy(error = intent.error)

@@ -43,7 +43,7 @@ fun ScaleUserItem(
       horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
       // Weight only mode enabled
-      if (user.isBodyMetricsEnabled) {
+      if (!user.isBodyMetricsEnabled) {
         AppIcon(
           id = AppIcons.Default.WeightOnlyMode,
           contentDescription = ScaleUsersStrings.UserProfileIcon,

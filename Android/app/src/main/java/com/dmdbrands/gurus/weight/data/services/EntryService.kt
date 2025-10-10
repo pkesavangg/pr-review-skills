@@ -57,6 +57,10 @@ constructor(
   private val accountRepository: IAccountRepository,
   private val goalService: IGoalService,
 ) : IEntryService {
+
+  private val _isEmpty = MutableStateFlow(false)
+  override val isEmpty: StateFlow<Boolean> = _isEmpty.asStateFlow()
+
   private val _isUpdating = MutableStateFlow(false)
   override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
 
@@ -87,6 +91,9 @@ constructor(
   private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
   override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
 
+  private val _monthlyAverage = MutableStateFlow<List<HistoryMonth>>(listOf())
+  override val monthlyAverage: StateFlow<List<HistoryMonth>> = _monthlyAverage.asStateFlow()
+
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Combined flow for account properties - initialized with defaults
@@ -116,9 +123,9 @@ constructor(
           val entries = entryRepository.getEntriesByAccount(accountId ?: "", false)
           if (entries.size >= 3) {
             goalService.checkGoalCard()
-            AppLog.d("EntryService", "User has ${entries} scale entries (>= 3), checking goal card")
+            AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card")
           } else {
-            AppLog.d("EntryService", "User has only ${entries} scale entries, not enough for goal card")
+            AppLog.d("EntryService", "User has only  scale entries, not enough for goal card")
           }
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
@@ -127,9 +134,9 @@ constructor(
     }
   }
 
-  override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
+  override suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> =
     combine(
-      entryRepository.getMonthlyAverage(accountId ?: ""),
+      entryRepository.getMonthlyAverage(accountId),
       weightSettingsFlow,
     ) { months, weightSettings ->
       months.map {
@@ -222,15 +229,16 @@ constructor(
     // Update account-related flows
     try {
       this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
-
-      // Update latest entry - use first() to get the first value without blocking
-      entryRepository.getLatestEntry(accountId)?.first()?.let { latest ->
-        _latestEntry.value = latest
-      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating account flows", e)
     }
     this.syncOperations()
+    repositoryScope.launch {
+      entryRepository.getEntriesByOperationType(accountId, "create").collect {
+        if (_isEmpty.value != it.isEmpty())
+          _isEmpty.value = it.isEmpty()
+      }
+    }
     repositoryScope.launch {
       updateLast7Days(accountId)
     }
@@ -252,6 +260,11 @@ constructor(
     // Add new body scale data updates
     repositoryScope.launch {
       updateDaywiseBodyScaleAveragesWithJoin()
+    }
+
+    // Add monthly average subscription
+    repositoryScope.launch {
+      updateMonthlyAverage(accountId)
     }
 
     // Check for goal card after account data is updated
@@ -565,6 +578,17 @@ constructor(
     }
   }
 
+  private suspend fun updateMonthlyAverage(accountId: String) {
+    try {
+      getMonthlyAverage(accountId).collect { months ->
+        _monthlyAverage.value = months
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating monthly average", e)
+    } finally {
+    }
+  }
+
   /**
    * Calculates progress based on the latest entry, last 7 days, and last 30 days data.
    * This function is used by the progress Flow to reactively calculate progress.
@@ -817,7 +841,7 @@ internal object EntryServiceHelper {
   fun createOperation(
     entry: Entry,
     type: OperationType,
-  ): Entry? {
+  ): Entry {
     val updatedEntry =
       entry.entry.copy(
         operationType = type.name,

@@ -26,16 +26,16 @@ object ValidationMessages {
   const val INVALID_EMAIL = "must use a valid email"
   const val PATTERN = "invalid"
   const val NOT_SAME = "value should not be same as other field"
-  const val GREATER_THAN = "value must be greater than %s"
-  const val LESS_THAN = "value must be less than %s"
+  const val GREATER_THAN = "value should be greater than %s"
+  const val LESS_THAN = "value should be less than %s"
   const val FUTURE_TIME = "date must not be in the future"
   const val SKU = "model number invalid"
-  const val REQUIRED = "must not leave blank"
+  const val REQUIRED = "must not be left blank"
   const val PASSWORD_MISMATCH = "both passwords must match"
   const val NO_WHITESPACE = "must not leave blank"
   const val INVALID_WEIGHT = "invalid weight"
-  const val KG_RANGE = "weight must be between 0 kg and 450 kg"
-  const val LB_RANGE = "weight must be between 0 lbs and 999 lbs"
+  const val KG_RANGE = "Value should be between 0 kg and 450 kg"
+  const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
   const val WEIGHT_MATCH = "value should not be equal to current weight"
 }
 
@@ -174,20 +174,30 @@ object FormValidations {
         } else {
           if (unitType == WeightUnit.KG) {
             when {
-              v <= AppValidatorConfig.WeightKg.MIN || v > AppValidatorConfig.WeightKg.MAX ->
+              v <= AppValidatorConfig.WeightKg.MIN  ->
                 ValidationError(
-                  ValidationType.NOT_IN_RANGE,
-                  ValidationMessages.KG_RANGE,
+                  ValidationType.GREATER,
+                  String.format(ValidationMessages.GREATER_THAN, AppValidatorConfig.WeightKg.MIN)
+                )
+              v >= AppValidatorConfig.WeightKg.MAX ->
+                ValidationError(
+                  ValidationType.LESSER,
+                  String.format(ValidationMessages.LESS_THAN, AppValidatorConfig.WeightKg.MAX)
                 )
 
               else -> null
             }
           } else {
             when {
-              v <= AppValidatorConfig.WeightLb.MIN || v > AppValidatorConfig.WeightLb.MAX ->
+              v <= AppValidatorConfig.WeightLb.MIN  ->
                 ValidationError(
-                  ValidationType.NOT_IN_RANGE,
-                  ValidationMessages.LB_RANGE,
+                  ValidationType.GREATER,
+                  String.format(ValidationMessages.GREATER_THAN, AppValidatorConfig.WeightLb.MIN)
+                )
+              v >= AppValidatorConfig.WeightLb.MAX ->
+                ValidationError(
+                  ValidationType.LESSER,
+                  String.format(ValidationMessages.LESS_THAN, AppValidatorConfig.WeightLb.MAX)
                 )
 
               else -> null
@@ -224,10 +234,15 @@ object FormValidations {
           ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
         } else {
           when {
-            v < min || v > max ->
+            v <= min  ->
               ValidationError(
-                ValidationType.NOT_IN_RANGE,
-                String.format(ValidationMessages.RANGE, min, max),
+                ValidationType.GREATER,
+                String.format(ValidationMessages.GREATER_THAN, min)
+              )
+            v >= max ->
+              ValidationError(
+                ValidationType.LESSER,
+                String.format(ValidationMessages.LESS_THAN, max)
               )
 
             else -> null

@@ -14,6 +14,10 @@ class AppValidatorConfig {
         const val MAX_LENGTH = 50
     }
 
+  object BMI {
+    const val MAX_VALUE = 999
+  }
+
     object Name {
         const val MIN_LENGTH = 1
         const val MAX_LENGTH = 100
@@ -21,7 +25,7 @@ class AppValidatorConfig {
 
     object ZipCode {
         const val MIN_LENGTH = 1
-        const val MAX_LENGTH = 6
+        const val MAX_LENGTH = 20
     }
 
     object DateOfBirth {
@@ -30,13 +34,18 @@ class AppValidatorConfig {
         const val MAX_LENGTH = 10
     }
 
+    object VisceralAge {
+        const val MIN = 1
+        const val MAX = 60
+    }
+
     object BMR {
-        const val MIN = 800
+        const val MIN = 0
         const val MAX = 10000
     }
 
     object MetabolicAge {
-        const val MIN = 12
+        const val MIN = 0
         const val MAX = 150
     }
 
@@ -44,6 +53,16 @@ class AppValidatorConfig {
         const val MIN = 0
         const val MAX = 99
     }
+
+  object HeartRate {
+    const val MIN = 0
+    const val MAX = 200
+  }
+
+  object VisceralFat {
+    const val MIN = 0
+    const val MAX = 60
+  }
 
     object WeightKg {
         const val MIN = 0
