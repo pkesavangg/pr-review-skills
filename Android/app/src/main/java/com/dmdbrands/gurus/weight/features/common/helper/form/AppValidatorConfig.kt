@@ -14,6 +14,10 @@ class AppValidatorConfig {
         const val MAX_LENGTH = 50
     }
 
+  object BMI {
+    const val MAX_VALUE = 999
+  }
+
     object Name {
         const val MIN_LENGTH = 1
         const val MAX_LENGTH = 100
@@ -36,12 +40,12 @@ class AppValidatorConfig {
     }
 
     object BMR {
-        const val MIN = 800
+        const val MIN = 0
         const val MAX = 10000
     }
 
     object MetabolicAge {
-        const val MIN = 12
+        const val MIN = 0
         const val MAX = 150
     }
 

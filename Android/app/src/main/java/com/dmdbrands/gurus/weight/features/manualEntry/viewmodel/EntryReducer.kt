@@ -114,9 +114,7 @@ data class EntryForm(
                 val bmi = ConversionTools.calculateBMI(weight, storedHeight)
                 val bmiValue = when {
                   bmi <= 0.0 -> ""
-                  bmi >= AppValidatorConfig.BodyComp.MAX * 10 -> AppValidatorConfig.BodyComp.MAX.times(
-                    10,
-                  ).toString()
+                  bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
 
                   else -> bmi.toString()
                 }
