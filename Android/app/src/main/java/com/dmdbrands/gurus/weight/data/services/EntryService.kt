@@ -64,9 +64,6 @@ constructor(
   private val _isUpdating = MutableStateFlow(false)
   override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
 
-  private val _isHistoryLoading = MutableStateFlow(false)
-  override val isHistoryLoading: StateFlow<Boolean> = _isHistoryLoading.asStateFlow()
-
   private val _latestEntry = MutableStateFlow<Entry?>(null)
   override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
 
@@ -583,14 +580,12 @@ constructor(
 
   private suspend fun updateMonthlyAverage(accountId: String) {
     try {
-      _isHistoryLoading.value = true
       getMonthlyAverage(accountId).collect { months ->
         _monthlyAverage.value = months
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating monthly average", e)
     } finally {
-      _isHistoryLoading.value = false
     }
   }
 

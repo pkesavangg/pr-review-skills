@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import android.util.Log
 
 /**
  * Composable for displaying a horizontal pager with 4 graph views for different segments.
@@ -94,7 +95,11 @@ fun GraphPagerView(
       }
       val graphState by viewmodel.state.collectAsState()
       LaunchedEffect(graphState.target) {
-        labelData = String.format("%.2f", graphState.target.map { it.weight }.average())
+        Log.i("CHECKING", graphState.target.map { it.weight }.toString())
+        labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
+          "%.2f",
+          graphState.target.map { it.weight }.average(),
+        )
         scrollTarget =
           if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
             .toDouble() else null

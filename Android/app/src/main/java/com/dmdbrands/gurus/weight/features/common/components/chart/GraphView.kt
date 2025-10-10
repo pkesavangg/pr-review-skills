@@ -24,6 +24,8 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -54,9 +56,9 @@ fun GraphView(
   viewModel: GraphViewModel = hiltViewModel(),
 ) {
 
-  LaunchedEffect(secondaryStat) {
-    viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
-  }
+  // LaunchedEffect(secondaryStat) {
+  //   viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
+  // }
   val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
   val chartHeight = remember(state.markerIndex) {
@@ -94,6 +96,52 @@ fun GraphView(
     ),
   )
 
+  // LaunchedEffect(Unit) {
+  //   scrollState.interactionEvents.collect {
+  //     if (it is ChartInteractionEvent.)
+  //   }
+  // }
+
+  LaunchedEffect(scrollState.value) {
+    if (state.markerIndex != null) {
+      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+    }
+  }
+  val horizontalItemPlacer =
+    horizontalItemPlacer(
+      segment = segment,
+    )
+  LaunchedEffect(Unit) {
+    scrollState.visibleRange
+      .debounce(200)
+      .drop(1)
+      .collect { range ->
+        scope.launch {
+          if (range != null) {
+            val min = range.visibleXRange.start
+            val max = range.visibleXRange.endInclusive
+            viewModel.handleIntent(
+              GraphIntent.SetScrollRange(min.toLong(), max.toLong()) {
+                val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
+                  it in min..max
+                }
+                val fallbackValues = scrollState.getInterpolatedYValues(
+                  xValues = visibleLabels,
+                  interpolationType = InterpolationType.CUBIC,
+                )
+                val fallbackData = state.createFallBackData(
+                  segment = segment,
+                  timeStamps = visibleLabels.map { it.toLong() },
+                  fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+                )
+                viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+              },
+            )
+          }
+        }
+      }
+  }
+
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
   //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
@@ -112,10 +160,6 @@ fun GraphView(
     },
   )
   val goalMarker = rememberGoalMarker(goal = state.goal)
-  val horizontalItemPlacer =
-    horizontalItemPlacer(
-      segment = segment,
-    )
 
   val chart = rememberGraphChart(
     state = state,
@@ -156,30 +200,6 @@ fun GraphView(
     scrollState = scrollState,
     animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
-    consumeMoveEvents = true,
-    onScrollStopped = { range ->
-      scope.launch {
-        if (range != null) {
-          val min = range.visibleXRange.start
-          val max = range.visibleXRange.endInclusive
-          viewModel.handleIntent(GraphIntent.SetScrollRange(min.toLong(), max.toLong()))
-          val filteredData = state.data.filter { it.getTimeStamp().toDouble() in min..max }
-          if (filteredData.isEmpty()) {
-            val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer)
-            val fallbackValues = scrollState.getInterpolatedYValues(
-              xValues = visibleLabels,
-              interpolationType = InterpolationType.CUBIC,
-            )
-            val fallbackData = state.createFallBackData(
-              segment = segment,
-              timeStamps = visibleLabels.map { it.toLong() },
-              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-            )
-            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
-          }
-        }
-      }
-    },
   )
 }
 

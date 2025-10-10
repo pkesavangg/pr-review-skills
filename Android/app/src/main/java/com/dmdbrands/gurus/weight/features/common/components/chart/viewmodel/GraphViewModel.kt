@@ -58,7 +58,7 @@ class GraphViewModel @AssistedInject constructor(
         secondaryStat = intent.stat,
       )
 
-      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max)
+      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
       else -> null
     }
   }
@@ -153,6 +153,13 @@ class GraphViewModel @AssistedInject constructor(
           if (graphMeta != null) {
             handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
           }
+          val startX =
+            GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis) ?: Calendar.getInstance().timeInMillis
+          val endX =
+            GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis) ?: Calendar.getInstance().timeInMillis
+
+          super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+          super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
           currentState.modelProducer.runTransaction {
             lineSeries {
               series(
@@ -160,8 +167,8 @@ class GraphViewModel @AssistedInject constructor(
                 ranges = CartesianRangeValues(
                   minY = graphMeta?.min ?: 2.0,
                   maxY = graphMeta?.max ?: 3.0,
-                  minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-                  maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                  minX = startX.toDouble(),
+                  maxX = endX.toDouble(),
                 ),
               )
             }
@@ -211,12 +218,11 @@ class GraphViewModel @AssistedInject constructor(
           )
           ?: Calendar.getInstance().timeInMillis
         handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-
+        super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
         val filteredData = data.filter {
           it.getTimeStamp() in startX..endX
         }
         super.handleIntent(GraphIntent.UpdateTarget(filteredData))
-        super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
 
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
@@ -333,7 +339,7 @@ class GraphViewModel @AssistedInject constructor(
    * Handles scroll events and updates the visible range.
    * Optimized with debouncing and background processing.
    */
-  private fun handleScroll(min: Long, max: Long) {
+  private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
 
     val currentState = _state.value
     // Cancel any existing debounce job
@@ -344,6 +350,14 @@ class GraphViewModel @AssistedInject constructor(
         // Get weightless mode for Y-axis calculations
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
+        val filteredData = currentState.data.filter {
+          it.getTimeStamp() in min..max
+        }
+        if (filteredData.isEmpty()) {
+          fallback()
+        } else {
+          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+        }
         if (isActive) {
           // Pre-calculate all data on background thread
           val graphLines = filterXValuesInRange(currentState.graphLines, min, max)
