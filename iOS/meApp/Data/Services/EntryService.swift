@@ -180,68 +180,152 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
-        let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue).sorted { $0.entryTimestamp < $1.entryTimestamp }
-        guard let latest = entries.last else {
+        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+            .sorted { $0.entryTimestamp < $1.entryTimestamp }
+
+        guard let latestEntry = allEntries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
-        let latestWeight = latest.scaleEntry?.weight ?? 0
-        let weekEntries = entries.suffix(7)
-        let monthEntries = entries.suffix(30)
-        let yearEntries = entries.suffix(365)
-        let initWeek = weekEntries.first
-        let initMonth = monthEntries.first
-        let initYear = yearEntries.first
-        let week = latestWeight - (initWeek?.scaleEntry?.weight ?? latestWeight)
-        let month = latestWeight - (initMonth?.scaleEntry?.weight ?? latestWeight)
-        let year = latestWeight - (initYear?.scaleEntry?.weight ?? latestWeight)
-        let total = latestWeight - (entries.first?.scaleEntry?.weight ?? latestWeight)
-        let count = entries.count
+
+        let latestWeight = latestEntry.scaleEntry?.weight ?? 0
+
+        // Get entries for the last 7 and 30 days
+        let last7Days = try await localRepo.fetchEntries(lastNDays: 7, userId: accountId)
+            .sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let last30Days = try await localRepo.fetchEntries(lastNDays: 30, userId: accountId)
+            .sorted { $0.entryTimestamp < $1.entryTimestamp }
+
+        let weekStartEntry = last7Days.first
+        let monthStartEntry = last30Days.first
+        let monthKey = monthStartEntry.map { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) } ?? ""
+
+        // Build 12-month data for yearly baseline
+        let monthSeries = try await getMonthYear()
+        let oldestMonth = monthSeries.last
+        let yearKey = oldestMonth?.id ?? oldestMonth?.entryTimestamp ?? ""
+        let yearAvgWeight = oldestMonth?.weight.map(Int.init)
+
+        // Construct a synthetic entry for the year start
+        let yearStartEntry: Entry? = {
+            guard !yearKey.isEmpty else { return nil }
+            let date = DateTimeTools.formatter("yyyy-MM").date(from: yearKey) ?? Date()
+            var entry = Entry(
+                id: UUID(),
+                entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
+                accountId: accountId,
+                operationType: OperationType.create.rawValue,
+                deviceType: "synthetic",
+                isSynced: true
+            )
+            entry.scaleEntry = BathScaleEntry(weight: yearAvgWeight ?? 0, source: "monthly")
+            return entry
+        }()
+
+        // Calculate deltas
+        let weekDelta = latestWeight - (weekStartEntry?.scaleEntry?.weight ?? latestWeight)
+        let monthDelta = latestWeight - (monthStartEntry?.scaleEntry?.weight ?? latestWeight)
+
+        // Year delta adjustment
+        let now = Date()
+        let initYearDate = yearStartEntry.flatMap { DateTimeTools.parse($0.entryTimestamp) }
+        let useMonthAsYearAnchor = initYearDate.map { $0 >= Calendar.current.date(byAdding: .day, value: -30, to: now)! } ?? false
+        let yearAnchorWeight = useMonthAsYearAnchor ? monthStartEntry?.scaleEntry?.weight : yearAvgWeight
+        let yearDelta = latestWeight - (yearAnchorWeight ?? latestWeight)
+
+        // Total progress since start
+        let account = try await accountService.getActiveAccount()
+        let initialWeight = account?.goalSettings?.initialWeight.map(Int.init)
+            ?? allEntries.first?.scaleEntry?.weight
+        let totalDelta = latestWeight - (initialWeight ?? latestWeight)
+
         let streak = try await getStreak()
-        let longestStreak = streak.max
-        let currentStreak = streak.current
+
+        await logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Progress(year): latest=\(latestWeight), initMonthKey=\(monthKey), initYearKey=\(yearKey), yearAvg=\(yearAvgWeight ?? 0), weekDelta=\(weekDelta), monthDelta=\(monthDelta), yearDelta=\(yearDelta)"
+        )
+
         return Progress(
-            count: count,
-            currentStreak: currentStreak,
-            initYear: initYear?.toOperationDTO(),
-            initMonth: initMonth?.toOperationDTO(),
-            initWeek: initWeek?.toOperationDTO(),
-            initWt: Double(entries.first?.scaleEntry?.weight ?? 0),
-            latest: latest.toOperationDTO(),
-            longestStreak: longestStreak,
-            month: Int(month),
+            count: allEntries.count,
+            currentStreak: streak.current,
+            initYear: yearStartEntry?.toOperationDTO(),
+            initMonth: monthStartEntry?.toOperationDTO(),
+            initWeek: weekStartEntry?.toOperationDTO(),
+            initWt: Double(allEntries.first?.scaleEntry?.weight ?? 0),
+            latest: latestEntry.toOperationDTO(),
+            longestStreak: streak.max,
+            month: monthDelta,
             percent: nil,
-            total: Double(total),
-            week: Int(week),
-            year: Int(year)
+            total: Double(totalDelta),
+            week: weekDelta,
+            year: yearDelta
         )
     }
-    
+
     func getStreak() async throws -> Streak {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        // Group by day (YYYY-MM-DD)
-        let days = Set(entries.map { String($0.entryTimestamp.prefix(10)) })
-        let sortedDays = days.sorted()
-        var maxStreak = 0
+        let calendar = Calendar.current
+
+        // Extract unique days
+        let uniqueDays: [Date] = Array(
+            Set(entries.map { DateTimeTools.getLocalDateStringFromUTCDate($0.entryTimestamp) })
+        )
+        .compactMap { DateTimeTools.getDateFromDateString($0, format: "yyyy-MM-dd") }
+        .sorted(by: >)
+
+        guard !uniqueDays.isEmpty else { return Streak(current: 0, max: 0) }
+
+        func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
+
         var currentStreak = 0
-        var prevDate: Date? = nil
-        let formatter = ISO8601DateFormatter()
-        for day in sortedDays {
-            guard let date = formatter.date(from: day + "T00:00:00Z") else { continue }
-            if let prev = prevDate {
-                let diff = Calendar.current.dateComponents([.day], from: prev, to: date).day ?? 0
-                if diff == 1 {
-                    currentStreak += 1
-                } else {
-                    currentStreak = 1
-                }
-            } else {
-                currentStreak = 1
-            }
-            maxStreak = max(maxStreak, currentStreak)
-            prevDate = date
+        var dateToCheck = Date()
+
+        if let first = uniqueDays.first, isSameDay(first, dateToCheck) {
+            currentStreak = 1
+            dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+        } else if let first = uniqueDays.first,
+                  isSameDay(first, calendar.date(byAdding: .day, value: -1, to: dateToCheck)!) {
+            currentStreak = 1
+            dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+        } else {
+            return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDays.sorted()))
         }
-        return Streak(current: currentStreak, max: maxStreak)
+
+        for day in uniqueDays.dropFirst() {
+            if isSameDay(day, dateToCheck) {
+                currentStreak += 1
+                dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+            } else {
+                break
+            }
+        }
+
+        let longestStreak = Self.computeLongestStreak(from: uniqueDays.sorted())
+        return Streak(current: currentStreak, max: longestStreak)
+    }
+
+    private static func computeLongestStreak(from days: [Date]) -> Int {
+        guard !days.isEmpty else { return 0 }
+        let calendar = Calendar.current
+        var longest = 1
+        var current = 1
+
+        for i in 1..<days.count {
+            let prevDay = days[i - 1]
+            let currentDay = days[i]
+            let diff = calendar.dateComponents([.day], from: prevDay, to: currentDay).day ?? 0
+
+            if diff == 1 {
+                current += 1
+            } else if diff > 1 {
+                longest = max(longest, current)
+                current = 1
+            }
+        }
+
+        return max(longest, current)
     }
     
     // MARK: - Migration Logic
@@ -496,8 +580,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             } else if !potentialDuplicates.isEmpty {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 let duplicateEntry = potentialDuplicates.first!
-                var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                updated.id = duplicateEntry.id
+                let updated: Entry = {
+                    var entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    entry.id = duplicateEntry.id
+                    return entry
+                }()
                 try? await localRepo.updateEntry(updated)
             } else {
                 // No local entry - only create if final operation is create

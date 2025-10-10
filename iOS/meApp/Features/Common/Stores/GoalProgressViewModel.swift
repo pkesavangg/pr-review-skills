@@ -14,7 +14,7 @@ final class GoalProgressViewModel: ObservableObject {
     @Published var startWeight: Double = 0         // Initial weight (display units)
     @Published var goalWeight: Double = 0          // Goal weight (display units)
     @Published var progress: CGFloat = 0           // 0…1 progress towards goal
-    @Published var goalType: GoalType = .maintain  // Current goal type
+    @Published var goalType: GoalType = .none      // Current goal type
     @Published var unit: String = WeightUnit.lb.rawValue // "lb" | "kg"
     @Published var weightlessOn: Bool = false           // Weightless mode flag
     
@@ -48,14 +48,25 @@ final class GoalProgressViewModel: ObservableObject {
     
     // MARK: - Data Loading
     private func loadData() async {
-        guard let account = accountService.activeAccount,
-              let goalSettings = account.goalSettings else { return }
+        guard let account = accountService.activeAccount else { return }
+        guard let goalSettings = account.goalSettings else {
+            // No goal configured
+            goalType = .none
+            delta = 0
+            startWeight = 0
+            goalWeight = 0
+            progress = 0
+            weightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+            let weightUnit = account.weightSettings?.weightUnit ?? .lb
+            unit = weightUnit.rawValue
+            return
+        }
         
         // Determine weight unit
         let weightUnit = account.weightSettings?.weightUnit ?? .lb
         unit = weightUnit.rawValue
         
-        goalType = goalSettings.goalType ?? .maintain
+        goalType = goalSettings.goalType ?? .none
         
         let initialWeightStored  = Int(goalSettings.initialWeight ?? 0)
         let goalWeightStored     = Int(goalSettings.goalWeight    ?? 0)

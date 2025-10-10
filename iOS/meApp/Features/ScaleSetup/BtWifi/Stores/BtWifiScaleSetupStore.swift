@@ -640,7 +640,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .availableWifiList:
             // If a network is already connected, proceed without asking for password
             if connectedWifiNetwork != nil {
-                navigateToStep(.customizeSettings)
+                // cancel Wi‑Fi flow and clear any errors before proceeding
+                cancelWifi()
+                scaleSetupError = .none
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.navigateToStep(.customizeSettings)
+                }
             } else {
                 moveToNextStep()
             }
