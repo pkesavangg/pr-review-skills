@@ -10,7 +10,8 @@ struct GoalProgressView: View {
 
     // MARK: - Environment
     @Environment(\.appTheme) private var theme
-
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    
     // MARK: - Constants
     private let lang = DashboardStrings.self
     // Dynamic unit label (lb/lbs or kg) based on a given display value
@@ -25,17 +26,41 @@ struct GoalProgressView: View {
     var body: some View {
         NoteBox(alignCenter: false) {
             Group {
-                if viewModel.goalType == .maintain {
+                if viewModel.goalType == .none {
+                    noGoalSetView
+                } else if viewModel.goalType == .maintain {
                     maintainGoalView
                 } else {
                     goalView
                 }
             }
-            .padding(.leading, .spacingSM)
         }
         .frame(height: 120)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusSM)
+    }
+    
+    // MARK: No Goal Set UI
+    private var noGoalSetView: some View {
+        HStack {
+            Spacer()
+            
+            VStack(alignment: .center, spacing: 6){
+                Text(lang.reachYourGoals)
+                    .fontOpenSans(.heading4)
+                    .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingMD)
+                
+                ButtonView(text: lang.setGoalWeight, type: .filledPrimary, size: .large, isDisabled: false, backgroundColorOverride: theme.statusSuccess,  action: { tabViewModel.navigateToGoalSetting()
+                })
+                .padding(.bottom, .spacingMD)
+
+            }
+                        
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+       
     }
 
     // MARK: - Lose / Gain goal UI
@@ -96,12 +121,13 @@ struct GoalProgressView: View {
     private func formatDeltaText() -> String {
         let prefix: String
         switch viewModel.goalType {
+        case .none:      prefix = ""
         case .gain:      prefix = lang.plus
         case .lose:      prefix = lang.minus
         case .maintain:  prefix = viewModel.delta >= 0 ? lang.plus : lang.minus
         }
         // Maintain goals: only number (unit will be shown in subheading)
-        if viewModel.goalType == .maintain {
+        if viewModel.goalType == .maintain || viewModel.goalType == .none {
             return String(format: "%@%.1f", prefix, abs(viewModel.delta))
         } else {
             return String(format: "%@%.1f", prefix, abs(viewModel.delta))

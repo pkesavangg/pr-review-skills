@@ -20,19 +20,23 @@ struct MetricsSectionView: View {
     
     // Optional parameters for customization
     let showIcon: Bool
+    /// Optional predicate to decide if a particular metric's toggle should be disabled
+    let shouldDisableToggle: ((ScaleMetricSetting) -> Bool)?
     
     init(
         metrics: Binding<[ScaleMetricSetting]>,
         onValueChanged: @escaping () -> Void,
         onMove: @escaping (IndexSet, Int) -> Void,
         showIcon: Bool = true,
-        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil
+        onToggle: ((ScaleMetricSetting, Bool) -> Void)? = nil,
+        shouldDisableToggle: ((ScaleMetricSetting) -> Bool)? = nil
     ) {
         self.metrics = metrics
         self.onValueChanged = onValueChanged
         self.onMove = onMove
         self.showIcon = showIcon
         self.onToggle = onToggle
+        self.shouldDisableToggle = shouldDisableToggle
     }
     
     var body: some View {
@@ -42,8 +46,10 @@ struct MetricsSectionView: View {
                     isOn: $metric.isEnabled,
                     text: metric.name,
                     icon: showIcon ? metric.imagePath : nil,
-                    isDisabled: !metric.isEnabled
+                    isDisabled: !metric.isEnabled,
+                    disableToggle: shouldDisableToggle?(metric) ?? false
                 )
+                .id(metric.key)
                 .onChange(of: metric.isEnabled) { _, newValue in
                     if let onToggle = onToggle {
                         onToggle(metric, newValue)
@@ -51,6 +57,7 @@ struct MetricsSectionView: View {
                         onValueChanged()
                     }
                 }
+                .animation(.default, value: metric.isEnabled)
                 .listRowBackground(theme.backgroundPrimary)
                 .listRowInsets(EdgeInsets())
                 // Hide/disable the drag (reorder) indicator for disabled metrics
@@ -60,6 +67,7 @@ struct MetricsSectionView: View {
                 onMove(indices, newOffset)
                 onValueChanged()
             }
+            .animation(.default, value: metrics.wrappedValue.map { $0.key + ($0.isEnabled ? "1" : "0") }.joined())
         }
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())

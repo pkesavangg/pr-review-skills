@@ -186,14 +186,18 @@ extension View {
         buttonWidth: CGFloat = 72,
         buttons: [SwipeButton],
         itemID: UUID,
-        openItemID: Binding<UUID?>? = nil
+        openItemID: Binding<UUID?>? = nil,
+        openThresholdFraction: CGFloat = 0.5,
+        closeWithoutAnimationOnAction: Bool = false
     ) -> some View {
         modifier(
             SwipeableModifier(
                 swipeButtons: buttons,
                 buttonWidth: buttonWidth,
                 itemID: itemID,
-                openItemID: openItemID
+                openItemID: openItemID,
+                openThresholdFraction: openThresholdFraction,
+                closeWithoutAnimationOnAction: closeWithoutAnimationOnAction
             )
         )
     }
@@ -286,7 +290,8 @@ extension View {
         isBeingDragged: Bool = false,
         isDropTarget: Bool = false,
         rowIndex: Int = 0,
-        disableWiggle: Bool = false
+        disableWiggle: Bool = false,
+        iconOffset: CGSize = CGSize(width: 5, height: -5)
     ) -> some View {
         modifier(EditModeOverlay(
             isEditMode: isEditMode,
@@ -295,7 +300,8 @@ extension View {
             isBeingDragged: isBeingDragged,
             isDropTarget: isDropTarget,
             rowIndex: rowIndex,
-            disableWiggle: disableWiggle
+            disableWiggle: disableWiggle,
+            iconOffset: iconOffset
         ))
     }
     

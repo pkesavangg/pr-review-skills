@@ -15,6 +15,7 @@ struct ToggleListItem: View {
     let showReorderHandle: Bool
     let isDisabled: Bool
     let showDivider: Bool
+    let disableToggle: Bool
     
     init(
         isOn: Binding<Bool>,
@@ -22,7 +23,8 @@ struct ToggleListItem: View {
         icon: String? = nil,
         showReorderHandle: Bool = false,
         isDisabled: Bool = false,
-        showDivider: Bool = true
+        showDivider: Bool = true,
+        disableToggle: Bool = false
     ) {
         self._isOn = isOn
         self.text = text
@@ -30,6 +32,7 @@ struct ToggleListItem: View {
         self.showReorderHandle = showReorderHandle
         self.isDisabled = isDisabled
         self.showDivider = showDivider
+        self.disableToggle = disableToggle
     }
 
     private var imageForegroundColor: Color {
@@ -63,6 +66,7 @@ struct ToggleListItem: View {
             CustomToggleView(isOn: $isOn)
                 .frame(width: 51, height: 31)
                 .padding(.trailing, .spacingSM)
+                .disabled(disableToggle)
             
             // Hide divider when the row is disabled
             if showDivider && !isDisabled {
