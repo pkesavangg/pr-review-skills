@@ -186,14 +186,18 @@ extension View {
         buttonWidth: CGFloat = 72,
         buttons: [SwipeButton],
         itemID: UUID,
-        openItemID: Binding<UUID?>? = nil
+        openItemID: Binding<UUID?>? = nil,
+        openThresholdFraction: CGFloat = 0.5,
+        closeWithoutAnimationOnAction: Bool = false
     ) -> some View {
         modifier(
             SwipeableModifier(
                 swipeButtons: buttons,
                 buttonWidth: buttonWidth,
                 itemID: itemID,
-                openItemID: openItemID
+                openItemID: openItemID,
+                openThresholdFraction: openThresholdFraction,
+                closeWithoutAnimationOnAction: closeWithoutAnimationOnAction
             )
         )
     }
