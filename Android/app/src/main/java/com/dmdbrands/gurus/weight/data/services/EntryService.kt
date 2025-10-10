@@ -57,11 +57,12 @@ constructor(
   private val accountRepository: IAccountRepository,
   private val goalService: IGoalService,
 ) : IEntryService {
+
+  private val _isEmpty = MutableStateFlow(false)
+  override val isEmpty: StateFlow<Boolean> = _isEmpty.asStateFlow()
+
   private val _isUpdating = MutableStateFlow(false)
   override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
-
-  private val _isHistoryLoading = MutableStateFlow(false)
-  override val isHistoryLoading: StateFlow<Boolean> = _isHistoryLoading.asStateFlow()
 
   private val _latestEntry = MutableStateFlow<Entry?>(null)
   override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
@@ -228,15 +229,16 @@ constructor(
     // Update account-related flows
     try {
       this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
-
-      // Update latest entry - use first() to get the first value without blocking
-      entryRepository.getLatestEntry(accountId)?.first()?.let { latest ->
-        _latestEntry.value = latest
-      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating account flows", e)
     }
     this.syncOperations()
+    repositoryScope.launch {
+      entryRepository.getEntriesByOperationType(accountId, "create").collect {
+        if (_isEmpty.value != it.isEmpty())
+          _isEmpty.value = it.isEmpty()
+      }
+    }
     repositoryScope.launch {
       updateLast7Days(accountId)
     }
@@ -578,14 +580,12 @@ constructor(
 
   private suspend fun updateMonthlyAverage(accountId: String) {
     try {
-      _isHistoryLoading.value = true
       getMonthlyAverage(accountId).collect { months ->
         _monthlyAverage.value = months
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating monthly average", e)
     } finally {
-      _isHistoryLoading.value = false
     }
   }
 
@@ -841,7 +841,7 @@ internal object EntryServiceHelper {
   fun createOperation(
     entry: Entry,
     type: OperationType,
-  ): Entry? {
+  ): Entry {
     val updatedEntry =
       entry.entry.copy(
         operationType = type.name,

@@ -44,5 +44,5 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Reset graph state */
   object ResetGraph : GraphIntent
 
-  data class SetScrollRange(val min: Long, val max: Long) : GraphIntent
+  data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
 }
