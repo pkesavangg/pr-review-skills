@@ -157,7 +157,8 @@ class DashboardStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Observe active account changes to reinitialize graph position and data for the new account
+        // Subscribe to active account changes
+        // This is used to reinitialize the dashboard state when the active account changes
         accountService.$activeAccount
             .map { $0?.accountId }
             .removeDuplicates()
