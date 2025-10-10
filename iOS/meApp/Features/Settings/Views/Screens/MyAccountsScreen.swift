@@ -56,6 +56,8 @@ struct MyAccountsScreen: View {
                 UserListItemView(
                     user: account,
                     openItemID: $openItemID,
+                    iconSize: 32,
+                    swipeButtonWidth: 56,
                     onTap: { id, isExpired in
                         if isExpired {
                             accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
