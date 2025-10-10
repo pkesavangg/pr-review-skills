@@ -17,6 +17,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -40,6 +42,7 @@ fun BaseModal(
   title: String? = null,
   subtitle: String? = null,
   body: String? = null,
+  error: String? = null,
   secondaryAction: ActionButton? = null,
   onDismiss: (() -> Unit)? = null,
   content: @Composable (() -> Unit)? = null,
@@ -56,7 +59,8 @@ fun BaseModal(
     colors = cardColors,
   ) {
     Column(
-      modifier = Modifier.padding(MeTheme.spacing.md),
+      modifier = Modifier
+        .padding(MeTheme.spacing.md),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     ) {
@@ -90,6 +94,14 @@ fun BaseModal(
           it()
         }
       }
+
+      Text(
+        text = (error ?: "Error Text").lowercase(),
+        style = MeTheme.typography.subHeading2,
+        color = if (error != null) MeTheme.colorScheme.textError else Color.Transparent,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+      )
     }
     if (secondaryAction != null || primaryAction != null) {
       Column(

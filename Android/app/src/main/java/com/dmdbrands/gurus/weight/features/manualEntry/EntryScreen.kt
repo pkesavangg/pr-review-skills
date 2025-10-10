@@ -46,106 +46,105 @@ import java.util.Calendar
 
 @Composable
 fun EntryScreen() {
-    val viewModel: EntryViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
-    EntryScreenContent(state, viewModel::initDeactivate, viewModel::handleIntent)
+  val viewModel: EntryViewModel = hiltViewModel()
+  val state by viewModel.state.collectAsState()
+  EntryScreenContent(state, viewModel::initDeactivate, viewModel::handleIntent)
 }
 
 @Composable
 private fun EntryScreenContent(
-    state: EntryState,
-    initializeDeactivate: (() -> Unit) -> Unit,
-    handleIntent: (EntryIntent) -> Unit,
+  state: EntryState,
+  initializeDeactivate: (() -> Unit) -> Unit,
+  handleIntent: (EntryIntent) -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) {
-      handleIntent(EntryIntent.UpdateOnRelaunch)
-        initializeDeactivate {
-            focusManager.clearFocus()
-            keyboardController?.hide()
-        }
+  val focusManager = LocalFocusManager.current
+  val keyboardController = LocalSoftwareKeyboardController.current
+  LaunchedEffect(Unit) {
+    handleIntent(EntryIntent.UpdateOnRelaunch)
+    initializeDeactivate {
+      focusManager.clearFocus()
+      keyboardController?.hide()
     }
-    val entryForm = state.form.forms
-    val scrollState = rememberScrollState()
-    val calendar = Calendar.getInstance()
-    val maxValue =
-        DateTimeValue.DateTime(
-            millis = calendar.timeInMillis,
-            hour = calendar.get(Calendar.HOUR_OF_DAY),
-            minute = calendar.get(Calendar.MINUTE),
-        )
-    val interactionSource = remember { MutableInteractionSource() }
-    val weightFocusRequester = remember { FocusRequester() }
+  }
+  val entryForm = state.form.forms
+  val scrollState = rememberScrollState()
+  val calendar = Calendar.getInstance()
+  DateTimeValue.DateTime(
+    millis = calendar.timeInMillis,
+    hour = calendar.get(Calendar.HOUR_OF_DAY),
+    minute = calendar.get(Calendar.MINUTE),
+  )
+  val interactionSource = remember { MutableInteractionSource() }
+  val weightFocusRequester = remember { FocusRequester() }
 
-    AppScaffold(EntryScreenStrings.Title) {
-        Column(
-            modifier =
-                Modifier
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = MeTheme.spacing.sm)
-                    .padding(top = MeTheme.spacing.md)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { focusManager.clearFocus() },
-                    ),
-            verticalArrangement = Arrangement.Top,
-        ) {
-            AppInput(
-                formControl = entryForm.weightDateTime.controls.weight,
-                label = EntryScreenStrings.WEIGHT_LABEL.plus(" (${state.weightMode.label})"),
-                type = AppInputType.BODY_COMP,
-                imeAction = ImeAction.Next,
-                onImeAction = {
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .focusRequester(weightFocusRequester),
-            )
-            DateTimeInput(
-                formControl = entryForm.weightDateTime.controls.dateTime,
-                mode = DateTimeInputMode.DateTime,
-                label = EntryScreenStrings.DATE_LABEL,
-                maxValue = maxValue,
-            )
-            Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
-            // Metrics section as a single expandable card
-            ExpandableMetricsCard(
-                title = EntryScreenStrings.METRICS_SECTION_TITLE,
-                subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
-                generalMetrics = entryForm.generalMetrics.controls,
-                r4ScaleMetrics = entryForm.r4ScaleMetrics?.controls,
-                onImeAction = {
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                },
-                dashboardType = DashboardType.DASHBOARD_12_METRICS,
-            )
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AppButton(
-                    enabled = state.form.isValid,
-                    label = EntryScreenStrings.SaveButton,
-                    size = ButtonSize.Large,
-                    type = ButtonType.PrimaryFilled,
-                    onClick = {
-                        keyboardController?.hide()
-                        handleIntent(EntryIntent.Save)
-                    },
-                )
-            }
-            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
-        }
+  AppScaffold(EntryScreenStrings.Title) {
+    Column(
+      modifier =
+        Modifier
+          .verticalScroll(scrollState)
+          .padding(horizontal = MeTheme.spacing.sm)
+          .padding(top = MeTheme.spacing.md)
+          .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = { focusManager.clearFocus() },
+          ),
+      verticalArrangement = Arrangement.Top,
+    ) {
+      AppInput(
+        formControl = entryForm.weightDateTime.controls.weight,
+        label = EntryScreenStrings.WEIGHT_LABEL.plus(" (${state.weightMode.label})"),
+        type = AppInputType.BODY_COMP,
+        imeAction = ImeAction.Next,
+        onImeAction = {
+          focusManager.clearFocus()
+          keyboardController?.hide()
+        },
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .focusRequester(weightFocusRequester),
+      )
+      DateTimeInput(
+        formControl = entryForm.weightDateTime.controls.dateTime,
+        mode = DateTimeInputMode.DateTime,
+        label = EntryScreenStrings.DATE_LABEL,
+        maxValue = null,
+      )
+      Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
+      // Metrics section as a single expandable card
+      ExpandableMetricsCard(
+        title = EntryScreenStrings.METRICS_SECTION_TITLE,
+        subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
+        generalMetrics = entryForm.generalMetrics.controls,
+        r4ScaleMetrics = entryForm.r4ScaleMetrics?.controls,
+        onImeAction = {
+          focusManager.clearFocus()
+          keyboardController?.hide()
+        },
+        dashboardType = DashboardType.DASHBOARD_12_METRICS,
+      )
+      Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        AppButton(
+          enabled = state.form.isValid,
+          label = EntryScreenStrings.SaveButton,
+          size = ButtonSize.Large,
+          type = ButtonType.PrimaryFilled,
+          onClick = {
+            keyboardController?.hide()
+            handleIntent(EntryIntent.Save)
+          },
+        )
+      }
+      Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
     }
+  }
 }
 
 @PreviewTheme
 @Composable
 fun EntryScreenPreview() {
-    MeAppTheme {
-        EntryScreen()
-    }
+  MeAppTheme {
+    EntryScreen()
+  }
 }

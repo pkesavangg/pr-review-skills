@@ -119,11 +119,8 @@ fun ScaleDetailsScreenContent(
       modifier = Modifier.fillMaxSize(),
       dragHandle = null,
       sheetState = sheetState,
-      sheetGesturesEnabled = false,
       properties = ModalBottomSheetProperties(
         shouldDismissOnBackPress = true,
-        isAppearanceLightStatusBars = !isSystemInDarkTheme(),
-        isAppearanceLightNavigationBars = !isSystemInDarkTheme(),
       ),
     ) {
       when (state.settingsScreenStep) {

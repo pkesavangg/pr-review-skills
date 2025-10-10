@@ -21,8 +21,6 @@ composeBom = "2025.06.01"
 hilt = "2.56.2"
 activityKtx = "1.9.3"
 hiltNavigationCompose = "1.2.0"
-lifecycleRuntimeKtxVersion = "2.6.2"
-material3Version = "1.2.0"
 protobufJavalite = "4.31.1"
 retrofit = "3.0.0"
 okhttp = "4.12.0"
@@ -37,7 +35,6 @@ kotlinxSerializationCore = "1.9.0"
 firebaseMessagingKtx = "24.1.2"
 appcompat = "1.7.1"
 material-icons-extended = "1.7.8"
-material3 = "1.4.0-alpha17"
 googleService = "4.4.3"
 protobuf = "0.9.5"
 runtimeLivedata = "1.8.3"
@@ -87,7 +84,7 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 gg-bluetooth-android = { module = "com.dmdbrands.lib:gg-bluetooth-android", version.ref = "ggBluetoothAndroid" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -126,7 +123,6 @@ ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
 androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 androidx-hilt-common = { group = "androidx.hilt", name = "hilt-common", version.ref = "hiltCommon" }
 androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
