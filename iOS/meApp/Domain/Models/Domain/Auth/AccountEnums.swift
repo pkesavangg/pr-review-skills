@@ -3,6 +3,7 @@ import Foundation
 // MARK: - GoalType
 
 enum GoalType: String, Codable, Equatable {
+    case none = "none"
     case gain = "gain"
     case lose = "lose"
     case maintain = "maintain"

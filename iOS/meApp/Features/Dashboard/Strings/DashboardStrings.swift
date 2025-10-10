@@ -63,6 +63,8 @@ struct DashboardStrings {
     static let minus  = "-"
     static let placeholder = "--"
     static let goalReached = "goal reached!"
+    static let reachYourGoals = "Reach Your Goals!"
+    static let setGoalWeight = "Set a goal weight"
     static func loseGoalWeightLabel(_ unit: String) -> String{
         return "\(unit) to goal"
     }

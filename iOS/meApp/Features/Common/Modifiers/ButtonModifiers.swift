@@ -53,6 +53,7 @@ struct FlatButtonStyle: ViewModifier {
 struct CustomButtonStyle: ViewModifier {
     let type: ButtonType
     let buttonSize: ButtonSize
+    let backgroundColorOverride: Color?
     @Environment(\.appTheme) var theme
     
     func body(content: Content) -> some View {
@@ -61,7 +62,7 @@ struct CustomButtonStyle: ViewModifier {
             content
                 .flatButtonStyle(
                     foregroundColor: theme.textInverse,
-                    backgroundColor: theme.actionPrimary,
+                    backgroundColor: backgroundColorOverride ?? theme.actionPrimary,
                     buttonSize: buttonSize
                 )
             
