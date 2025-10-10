@@ -1054,7 +1054,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Add a minimal buffer to handle timezone edge cases and ensure entries on boundary dates are included
         // This is especially important for daily summaries where dates are normalized to start of day
         let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer to handle timezone differences
-        let adjustedLeftEdge = leftEdge.addingTimeInterval(-(24 * 60 * 60))
+        let dayBufferTime: TimeInterval = 24 * 60 * 60 // 1 day buffer to include midnight-local summaries
+        let adjustedLeftEdge = leftEdge.addingTimeInterval(-dayBufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
         
         let visibleStart = max(adjustedLeftEdge, minDate)
