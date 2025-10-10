@@ -111,7 +111,7 @@ fun GraphView(
       viewModel.handleIntent(GraphIntent.UpdateTarget(it))
     },
   )
-  val goalMarker = rememberGoalMarker(goal = state.goal)
+
   val horizontalItemPlacer =
     horizontalItemPlacer(
       segment = segment,
@@ -120,7 +120,6 @@ fun GraphView(
   val chart = rememberGraphChart(
     state = state,
     defaultMarker = defaultMarker,
-    goalMarker = goalMarker,
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
