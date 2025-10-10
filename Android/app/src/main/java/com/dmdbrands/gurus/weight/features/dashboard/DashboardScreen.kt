@@ -164,6 +164,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         DashboardControlPanel(
           inEditMode = inEditMode,
+          hasGoal = state.progress.goal?.account != null && state.progress.goal?.account?.goalType != null,
           onResetClick = {
             handleIntent(
               DashboardIntent.ResetDashboard(

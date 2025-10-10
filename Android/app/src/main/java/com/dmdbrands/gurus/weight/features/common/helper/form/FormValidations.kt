@@ -17,6 +17,7 @@ object ValidationType {
   const val GREATER = "greater"
   const val LESSER = "lesser"
   const val FUTURE_TIME = "future_time"
+  const val WEIGHT_MATCH = "weightMatch"
 }
 
 object ValidationMessages {
@@ -35,6 +36,7 @@ object ValidationMessages {
   const val INVALID_WEIGHT = "invalid weight"
   const val KG_RANGE = "weight must be between 0 kg and 450 kg"
   const val LB_RANGE = "weight must be between 0 lbs and 999 lbs"
+  const val WEIGHT_MATCH = "value should not be equal to current weight"
 }
 
 object FormValidations {
@@ -259,6 +261,33 @@ object FormValidations {
     { value ->
       if (value.trim().isEmpty()) {
         ValidationError(ValidationType.REQUIRED, ValidationMessages.NO_WHITESPACE)
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Validator for goal weight to ensure it's different from current weight when goal type is losegain.
+   * This validator checks if the goal weight matches the current weight and shows an error if they're the same.
+   *
+   * @param currentWeightControl The current weight form control to compare against
+   * @param goalTypeControl The goal type form control to check if it's losegain
+   * @return Validator that returns error if weights match for losegain goal type
+   */
+  fun weightMatchValidator(
+    currentWeightControl: FormControl<String>,
+    goalTypeControl: FormControl<String>
+  ): Validator<String> =
+    { goalWeightValue ->
+      val currentWeightValue = currentWeightControl.value
+      val goalTypeValue = goalTypeControl.value
+
+      // Only validate if goal type is losegain and both weights have values
+      if (goalTypeValue == "losegain" &&
+          goalWeightValue.isNotEmpty() &&
+          currentWeightValue.isNotEmpty() &&
+          goalWeightValue == currentWeightValue) {
+        ValidationError(ValidationType.WEIGHT_MATCH, ValidationMessages.WEIGHT_MATCH)
       } else {
         null
       }

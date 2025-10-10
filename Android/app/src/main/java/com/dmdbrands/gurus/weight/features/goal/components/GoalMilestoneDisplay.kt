@@ -48,7 +48,7 @@ fun GoalMilestoneDisplay(
   val isMetric = account.isMetricUnit()
   val targetUnit = if (isMetric) WeightUnit.KG else WeightUnit.LB
   // Extract values from account using AccountHelper
-  val currentWeight = latestWeight ?: account.initialWeight
+  val currentWeight = latestWeight ?: 0.0
   val goalWeight = account.goalWeight ?: return // Don't render if no goal weight
   val initialWeight = account.initialWeight
   val goalType =
@@ -58,6 +58,7 @@ fun GoalMilestoneDisplay(
       "gain" -> GoalType.GAIN
       else -> GoalType.LOSE_GAIN
     }
+
   // Get current weights and create a Goal object
   val goal = Goal(
     goalWeight = goalWeight,

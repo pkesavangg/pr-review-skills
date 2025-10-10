@@ -17,12 +17,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
  * CustomDialog composable matching the Figma spec (node 6598-69580).
@@ -94,20 +94,22 @@ fun BaseModal(
           it()
         }
       }
+error?.let { s ->
+Text(
+  text = s.lowercase(),
+  style = MeTheme.typography.subHeading2,
+  color = MeTheme.colorScheme.textError,
+  modifier = Modifier.fillMaxWidth(),
+  textAlign = TextAlign.Center,
+  )
+}
 
-      Text(
-        text = (error ?: "Error Text").lowercase(),
-        style = MeTheme.typography.subHeading2,
-        color = if (error != null) MeTheme.colorScheme.textError else Color.Transparent,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-      )
     }
     if (secondaryAction != null || primaryAction != null) {
       Column(
         modifier =
           Modifier
-            .padding(MeTheme.spacing.md),
+            .padding(top = spacing.xs, bottom = spacing.md, end = spacing.md, start = spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
         BoxWithConstraints {

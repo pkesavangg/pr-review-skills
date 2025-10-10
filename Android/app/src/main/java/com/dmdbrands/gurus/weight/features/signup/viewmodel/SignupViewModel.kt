@@ -103,6 +103,7 @@ constructor(
       handleIntent(SignupIntent.Error("Something went wrong"))
       dialogQueueService.dismissLoader()
       return
+
     }
     val signupData: SignupData = stateValue.form.getValuesAsType()
     viewModelScope.launch {

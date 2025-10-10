@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.features.goal.components.EmptyGoal
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -122,13 +123,16 @@ fun GoalProgressMilestoneCard(
       // Reuse the shared GoalMilestoneDisplay to ensure consistent look and logic.
       // If we have the required account/goal context, render; otherwise, no-op.
       val account = progress.goal?.account
-      if (account != null) {
+      if (account != null && account.goalType != null) {
         GoalMilestoneDisplay(
           account = account,
           latestWeight = latestWeight,
           modifier = Modifier
             .fillMaxWidth(),
         )
+      }
+      else {
+        EmptyGoal({})
       }
     }
   }
