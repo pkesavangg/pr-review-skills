@@ -173,6 +173,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         }
         DashboardControlPanel(
           inEditMode = inEditMode,
+          hasGoal = state.progress.goal?.account != null && state.progress.goal?.account?.goalType != null,
           onResetClick = {
             handleIntent(
               DashboardIntent.ResetDashboard(

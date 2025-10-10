@@ -40,31 +40,34 @@ import android.text.format.DateUtils
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 @Serializable
-sealed class DateTimeValue(open val millis: Long) {
+sealed class DateTimeValue() {
   /**
    * Represents a date value in milliseconds since epoch.
    */
+  @Serializable
   data class Date(
-    override var millis: Long,
-  ) : DateTimeValue(millis)
+     val millis: Long,
+  ) : DateTimeValue()
 
   /**
    * Represents a time value as hour and minute.
    */
+  @Serializable
   data class Time(
     val hour: Int,
     val minute: Int,
-    override val millis: Long = 0L,
-  ) : DateTimeValue(millis = millis)
+     val millis: Long = 0L,
+  ) : DateTimeValue()
 
   /**
    * Represents a combined date and time value.
    */
+  @Serializable
   data class DateTime(
-    override val millis: Long,
+     val millis: Long,
     val hour: Int,
     val minute: Int,
-  ) : DateTimeValue(millis = millis)
+  ) : DateTimeValue()
 
   /**
    * Returns a formatted string representation of the value, depending on the type.
@@ -350,7 +353,7 @@ fun DateTimeInput(
   val currentValue = formControl?.value ?: value
   // Local state for the input value
   var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
-  var isToday by remember { mutableStateOf(DateUtils.isToday(localState.millis)) }
+  var isToday by remember { mutableStateOf(DateUtils.isToday(localState.getTimestamp())) }
   // Keep localState in sync with external valuex
   if (currentValue != null && currentValue != localState) {
     localState = currentValue

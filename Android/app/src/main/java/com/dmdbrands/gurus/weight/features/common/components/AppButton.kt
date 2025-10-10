@@ -54,6 +54,7 @@ enum class ButtonType {
   InlineTextSecondary,
   InlineTextTertiary,
   ErrorText,
+  SuccessFilled
 }
 
 // Color
@@ -88,6 +89,8 @@ object AppButtonDefaults {
 
       ButtonType.SecondaryOutlined ->
         if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
+      ButtonType.SuccessFilled ->
+        if(enabled)  MeTheme.colorScheme.success else MeTheme.colorScheme.success
 
       else -> Color.Transparent
     }
@@ -101,7 +104,7 @@ object AppButtonDefaults {
     enabled: Boolean,
   ): Color =
     when (type) {
-      ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined, ButtonType.TextSecondary, ButtonType.InlineTextSecondary ->
+      ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined, ButtonType.TextSecondary, ButtonType.InlineTextSecondary, ButtonType.SuccessFilled ->
         if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
 
       ButtonType.SecondaryFilled, ButtonType.PrimaryOutlined, ButtonType.TextPrimary, ButtonType.InlineTextPrimary ->
@@ -186,7 +189,7 @@ object AppButtonDefaults {
 
       ButtonType.TextTertiary, ButtonType.InlineTextTertiary -> MeTheme.colorScheme.tertiaryActionSecondary
       ButtonType.ErrorText -> MeTheme.colorScheme.errorAction
-      ButtonType.PrimaryFilled, ButtonType.SecondaryOutlined -> if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
+      ButtonType.PrimaryFilled, ButtonType.SuccessFilled, ButtonType.SecondaryOutlined -> if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled
       ButtonType.SecondaryFilled, ButtonType.PrimaryOutlined -> if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
     }
 

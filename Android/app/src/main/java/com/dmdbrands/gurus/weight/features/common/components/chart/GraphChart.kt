@@ -13,19 +13,18 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.CartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 
 @Composable
 fun rememberGraphChart(
   state: GraphState,
   defaultMarker: CartesianMarker,
-  goalMarker: VerticalAxis.MarkerDecoration? = null,
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
 ): CartesianChart {
+  val goalMarker = rememberGoalMarker(goal = state.goal)
   val markerIndex = state.markerIndex
   val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
   val separators = GraphUtil.periodStarts(

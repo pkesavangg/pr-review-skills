@@ -58,6 +58,49 @@ data class GoalFormControls(
             ),
           ),
       )
+
+    /**
+     * Creates GoalFormControls with weight match validation.
+     * This method should be used when you need cross-field validation between current weight and goal weight.
+     */
+    fun createWithWeightMatchValidation(goalType: GoalType = GoalType.LOSE_GAIN): GoalFormControls {
+      val goalTypeControl = FormControl.create(
+        initialValue = goalType.value,
+        validators = listOf(FormValidations.required()),
+      )
+      val startingWeightControl = FormControl.create(
+        initialValue = "",
+        validators = if (goalType == GoalType.LOSE_GAIN) {
+          listOf(FormValidations.required(), FormValidations.weightValidator())
+        } else {
+          listOf(FormValidations.weightValidator())
+        },
+      )
+      val goalWeightControl = FormControl.create(
+        initialValue = "",
+        validators = listOf(
+          FormValidations.required(),
+          FormValidations.weightValidator(),
+          FormValidations.weightMatchValidator(startingWeightControl, goalTypeControl),
+        ),
+      )
+
+      // Set up cross-field validation: when starting weight changes, re-validate goal weight
+      startingWeightControl.onValueChangeListener { _, _ ->
+        goalWeightControl.validate()
+      }
+
+      // Set up cross-field validation: when goal type changes, re-validate goal weight
+      goalTypeControl.onValueChangeListener { _, _ ->
+        goalWeightControl.validate()
+      }
+
+      return GoalFormControls(
+        goalType = goalTypeControl,
+        startingWeight = startingWeightControl,
+        goalWeight = goalWeightControl,
+      )
+    }
   }
 }
 

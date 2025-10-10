@@ -50,7 +50,7 @@ constructor(
   override fun provideInitialState(): GoalState {
     // Always initialize with LOSE_GAIN
     return GoalState(
-      form = FormGroup(GoalFormControls.create()),  // Default constructor already sets LOSE_GAIN
+      form = FormGroup(GoalFormControls.createWithWeightMatchValidation()),  // Use weight match validation
     )
   }
 
@@ -90,38 +90,47 @@ constructor(
       type = goalType.value,
     ).process(targetUnit, null) // Process with target unit, no weightless needed for goals
     calculateGoalPercentage(currentAccount, state.value.latestWeight)
-    val currentWeightValidators =
-      if (goalType != GoalType.MAINTAIN) { // Changed from LOSE_GAIN to != MAINTAIN
+    // Create form controls with weight match validation
+    val goalTypeControl = FormControl.create(
+      initialValue = goalType.value,
+      validators = listOf(FormValidations.required()),
+    )
+    val startingWeightControl = FormControl.create(
+      initialValue = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString(),
+      validators = if (goalType != GoalType.MAINTAIN) {
         listOf(FormValidations.required(), FormValidations.weightValidator())
       } else {
-        emptyList() // No validation for hidden field in maintain mode
-      }
+        listOf(FormValidations.weightValidator())
+      },
+    )
+    val goalWeightControl = FormControl.create(
+      initialValue = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString(),
+      validators = listOf(
+        FormValidations.required(),
+        FormValidations.weightValidator(),
+        FormValidations.weightMatchValidator(startingWeightControl, goalTypeControl),
+      ),
+    )
+
+    // Set up cross-field validation: when starting weight changes, re-validate goal weight
+    startingWeightControl.onValueChangeListener { _, _ ->
+      goalWeightControl.validate()
+    }
+
+    // Set up cross-field validation: when goal type changes, re-validate goal weight
+    goalTypeControl.onValueChangeListener { _, _ ->
+      goalWeightControl.validate()
+    }
+
     val newState =
       GoalState(
-        form =
-          FormGroup(
-            GoalFormControls(
-              goalType =
-                FormControl.create(
-                  initialValue = goalType.value,
-                  validators = listOf(FormValidations.required()),
-                ),
-              startingWeight =
-                FormControl.create(
-                  initialValue = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString(),
-                  validators = currentWeightValidators,
-                ),
-              goalWeight =
-                FormControl.create(
-                  initialValue = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString(),
-                  validators =
-                    listOf(
-                      FormValidations.required(),
-                      FormValidations.weightValidator(),
-                    ),
-                ),
-            ),
-          ),
+        form = FormGroup(
+          GoalFormControls(
+            goalType = goalTypeControl,
+            startingWeight = startingWeightControl,
+            goalWeight = goalWeightControl,
+          )
+        ),
         account = currentAccount,
         latestWeight = state.value.latestWeight, // Preserve existing latestWeight
       )
@@ -233,7 +242,7 @@ constructor(
     AppLog.d(tag, "Goal met dialog response: setNewGoal=$setNewGoal")
     if (setNewGoal) {
       // Reset form for new goal with LOSE_GAIN as default
-      val newFormControls = GoalFormControls.create(GoalType.LOSE_GAIN)
+      val newFormControls = GoalFormControls.createWithWeightMatchValidation(GoalType.LOSE_GAIN)
       val newState =
         state.value.copy(
           form = FormGroup(newFormControls),
