@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
@@ -105,6 +106,7 @@ data class BtWifiScaleSetupState(
   val isAllBodyMetrics: Boolean = true, // Default to metrics mode (ScaleModeEnum.metrics)
   val isHeartRateOn: Boolean = false, // Default heart rate off
   val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
+  val scaleMetrics: List<String> = ScaleMetricsHelper.getAllMetrics(),
   val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
@@ -199,20 +201,19 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
     val isHeartRateOn: Boolean,
   ) : BtWifiScaleSetupIntent
 
-  data class SetAllBodyMetrics(
-    val isAllBodyMetrics: Boolean,
-  ) : BtWifiScaleSetupIntent
-
-  data class SetHeartRateMode(
-    val isHeartRateOn: Boolean,
-  ) : BtWifiScaleSetupIntent
-
   data class SetHasSavedSettings(
     val hasSavedSettings: Boolean,
   ) : BtWifiScaleSetupIntent
 
+  data class SetScaleMetrics(
+    val scaleMetrics: List<String>
+  ) : BtWifiScaleSetupIntent
   data class SetInitialStep(
     val initialStep: BtWifiSetupStep,
+  ) : BtWifiScaleSetupIntent
+
+  data class UpdateUsernameForm(
+    val username: String,
   ) : BtWifiScaleSetupIntent
 }
 
@@ -281,11 +282,19 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         isAllBodyMetrics = intent.isAllBodyMetrics,
         isHeartRateOn = intent.isHeartRateOn,
       )
-
-      is BtWifiScaleSetupIntent.SetAllBodyMetrics -> state.copy(isAllBodyMetrics = intent.isAllBodyMetrics)
-      is BtWifiScaleSetupIntent.SetHeartRateMode -> state.copy(isHeartRateOn = intent.isHeartRateOn)
       is BtWifiScaleSetupIntent.SetHasSavedSettings -> state.copy(hasSavedSettings = intent.hasSavedSettings)
+      is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(scaleMetrics = intent.scaleMetrics)
       is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
+      is BtWifiScaleSetupIntent.UpdateUsernameForm -> state.copy(
+        usernameForm = ScaleUsernameFormControls.create().copy(
+          username = FormControl.create(
+            initialValue = intent.username,
+            validators = listOf(
+              FormValidations.required(),
+            ),
+          )
+        )
+      )
 
       else -> state
     }

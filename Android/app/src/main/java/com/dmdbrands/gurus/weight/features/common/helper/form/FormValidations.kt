@@ -29,7 +29,7 @@ object ValidationMessages {
   const val LESS_THAN = "value must be less than %s"
   const val FUTURE_TIME = "date must not be in the future"
   const val SKU = "model number invalid"
-  const val REQUIRED = "must not leave blank"
+  const val REQUIRED = "must not be left blank"
   const val PASSWORD_MISMATCH = "both passwords must match"
   const val NO_WHITESPACE = "must not leave blank"
   const val INVALID_WEIGHT = "invalid weight"

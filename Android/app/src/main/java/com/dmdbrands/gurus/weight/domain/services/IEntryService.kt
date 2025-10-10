@@ -20,7 +20,8 @@ interface IEntryService {
   val monthlyBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleAverages: StateFlow<List<PeriodBodyScaleSummary>>
   val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>>
-  suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>>
+  val monthlyAverage: StateFlow<List<HistoryMonth>>
+  suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
 
   suspend fun monthDetails(startDate: String): Flow<List<Entry>>
 

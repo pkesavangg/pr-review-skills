@@ -39,7 +39,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -265,28 +264,36 @@ constructor(
                 val scale = state.value.scale!!
                 dialogQueueService.dismissCurrent()
                 dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
-                if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
-                  ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
-                    if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-                      ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
-                      dialogQueueService.showToast(
-                        Toast(
-                          message = ScaleDetailsStrings.DeleteSuccessMessage,
-                        ),
-                      )
-                    } else {
-                      dialogQueueService.dismissLoader()
-                      dialogQueueService.showToast(
-                        Toast(
-                          message = ScaleDetailsStrings.DeleteErrorMessage,
-                        ),
-                      )
+                try {
+                  if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
+                    ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
+                      if (it == GGUserActionResponseType.DELETE_COMPLETED) {
+                        ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
+                      } else {
+                        dialogQueueService.showToast(
+                          Toast(
+                            message = ScaleDetailsStrings.DeleteErrorMessage,
+                          ),
+                        )
+                      }
                     }
                   }
+                  deviceService.deleteScale(scale.id)
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteSuccessMessage,
+                    ),
+                  )
+                } catch (e: Exception) {
+                  dialogQueueService.showToast(
+                    Toast(
+                      message = ScaleDetailsStrings.DeleteErrorMessage,
+                    ),
+                  )
+                } finally {
+                  dialogQueueService.dismissLoader()
+                  navigateBack()
                 }
-                deviceService.deleteScale(scale.id)
-                dialogQueueService.dismissLoader()
-                navigateBack()
               }
             },
             onDismiss = {

@@ -11,7 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoIntent
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoDescriptions
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
-import com.dmdbrands.gurus.weight.proto.MetricKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 

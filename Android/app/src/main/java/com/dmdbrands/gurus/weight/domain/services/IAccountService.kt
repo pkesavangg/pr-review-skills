@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.services
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -125,6 +126,8 @@ interface IAccountService {
    * @return true if update was successful, false otherwise
    */
   suspend fun updateTokens(tokens: AccountToken): Boolean
+
+  suspend fun updateDashboardType(type: DashboardType)
 
   /**
    * Handles unauthorized logout when token refresh fails. Marks account as expired, removes from storage, and triggers unauthorized logout event.

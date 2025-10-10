@@ -98,7 +98,16 @@ constructor(
    */
   private fun loadScaleInfo() {
     AppLog.d(TAG, "Loading scale info for SKU: $sku")
-    handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
+    val scaleInfo = SCALES.find { it.sku == sku }
+    if (scaleInfo != null) {
+      AppLog.d(TAG, "Found scale info: ${scaleInfo.productName}, bodyComp: ${scaleInfo.bodyComp}")
+      handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
+      handleIntent(AppsyncScaleSetupIntent.SetBodyComp(scaleInfo.bodyComp))
+    } else {
+      AppLog.w(TAG, "Scale info not found for SKU: $sku, using default bodyComp: true")
+      handleIntent(AppsyncScaleSetupIntent.SetScaleSku(sku))
+      handleIntent(AppsyncScaleSetupIntent.SetBodyComp(true))
+    }
   }
 
   private fun observePermissions() {
@@ -194,7 +203,7 @@ constructor(
         }
 
         val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}")
+        AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, bodyComp: ${state.value.bodyComp}")
 
         val appSyncDevice = Device(
           device = GGDeviceDetail(

@@ -33,6 +33,8 @@ class BottomTabBarViewModel: ObservableObject {
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
     @Published var pendingSettingsNavigation: SettingsRoute? = nil
     @Published var setupPayload: ScaleDiscoverSheetInfo? = nil
+    /// Remembers the last selected non-AppSync tab to restore after closing scanner
+    @Published private(set) var previousNonAppSyncTab: BottomTab = .dash
     
     // MARK: - Dependencies
     @Injector private var healthKitService: HealthKitService
@@ -231,7 +233,15 @@ class BottomTabBarViewModel: ObservableObject {
     }
     
     func selectTab(_ tab: BottomTab) {
+        if tab != .appsync {
+            previousNonAppSyncTab = tab
+        }
         selectedTab = tab
+    }
+
+    /// Restores the most recent non-AppSync tab selection
+    func restorePreviousTab() {
+        selectTab(previousNonAppSyncTab)
     }
     
     /// Navigates to the goal setting screen via the settings tab

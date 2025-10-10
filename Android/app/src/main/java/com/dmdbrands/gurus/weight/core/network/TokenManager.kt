@@ -48,6 +48,7 @@ interface ITokenManager {
 
   suspend fun getCurrentAccountID(): String?
   suspend fun getCurrentAcccountExpiresAt(): String?
+  suspend fun getAccountExpiresAt(accountId: String): String?
 }
 
 @Singleton
@@ -152,13 +153,20 @@ constructor(
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
-    override suspend fun getAccessToken(accountId: String): String? {
-        // Prefer in-memory map for fast lookup
-        return accountTokens[accountId]?.accessToken
-            ?: userDataStore.getData().accounts[accountId]?.accessToken
+  override suspend fun getAccessToken(accountId: String): String? {
+    AppLog.d("Accountrepo2", "Processing request for account: $accountId")
+    return try {
+      accountTokens[accountId]?.accessToken
+        ?: userDataStore.getData().accounts[accountId]?.accessToken
+    } catch (e: Exception) {
+      // Log the error if needed
+      AppLog.e("AccountRepo", "Error getting access token for accountId: $accountId", e)
+      null
     }
+  }
 
-    override suspend fun getRefreshToken(accountId: String): String? {
+
+  override suspend fun getRefreshToken(accountId: String): String? {
         // Prefer in-memory map for fast lookup
         return accountTokens[accountId]?.refreshToken
             ?: userDataStore.getData().accounts[accountId]?.refreshToken
@@ -174,6 +182,7 @@ constructor(
         AppLog.v(TAG, "Loading all tokens from UserDataStore")
         accountTokens.clear()
         val allAccounts = userDataStore.getData().accounts
+      AppLog.v(TAG, "all accounts hello $allAccounts")
         allAccounts.forEach { (id, userAccount) ->
             accountTokens[id] =
                 Token(
@@ -184,6 +193,11 @@ constructor(
                     expiresAt = userAccount.expiresAt,
                 )
         }
+
+      val accesstoken = getAccessToken("19b8tDRoc76p9pERxI2zW0")
+      val accesstoken2 = getAccessToken("2ErCi7sEthEa2WFTZgszLH")
+      AppLog.v(TAG, "accesstokeno $accesstoken $accesstoken2")
+
     }
 
   override suspend fun getCurrentAccountID(): String? {
@@ -192,6 +206,12 @@ constructor(
 
   override suspend fun getCurrentAcccountExpiresAt(): String? {
     return userDataStore.getCurrentAccountExpiresAt()
+  }
+
+  override suspend fun getAccountExpiresAt(accountId: String): String? {
+    // Prefer in-memory map for fast lookup
+    return accountTokens[accountId]?.expiresAt
+        ?: userDataStore.getData().accounts[accountId]?.expiresAt
   }
 
 }

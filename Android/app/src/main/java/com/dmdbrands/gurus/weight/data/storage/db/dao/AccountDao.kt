@@ -134,6 +134,9 @@ interface AccountDao {
     @Update
     suspend fun updateDashboardSettings(settings: DashboardSettingsEntity)
 
+    @Query("SELECT * FROM dashboard_settings WHERE accountId = :accountId")
+    fun getDashboardSettings(accountId: String): Flow<DashboardSettingsEntity?>
+
     // Integrations Settings
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIntegrationsSettings(settings: IntegrationsSettingsEntity)

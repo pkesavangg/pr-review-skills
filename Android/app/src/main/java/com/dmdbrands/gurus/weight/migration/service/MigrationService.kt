@@ -1,14 +1,14 @@
 package com.dmdbrands.gurus.weight.migration.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
-import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
-import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.toMetricKey
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
 import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter
 import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter.toThemeMode
+import com.dmdbrands.gurus.weight.migration.helper.toDashboardSettings
 import com.dmdbrands.gurus.weight.migration.helper.toDeviceDetails
 import com.dmdbrands.gurus.weight.migration.helper.toGoalSettings
 import com.dmdbrands.gurus.weight.migration.helper.toIntegrationsSettings
@@ -332,17 +332,11 @@ class MigrationService @Inject constructor(
       ionicAccount.toIntegrationsSettings(),
       ionicAccount.toWeightCompSettings(),
       ionicAccount.toNotificationSettings(),
+      ionicAccount.toDashboardSettings(),
     )
 
-    // Save dashboard metrics
-    val dashboardKeysDatastore = DashboardKeysDatastore(context)
-    val dashboardMetrics = ionicAccount.dashboardMetrics
-    if (dashboardMetrics?.isNotEmpty() == true) {
-      Log.d(TAG, "📋 Dashboard metrics: $dashboardMetrics")
-      val dashboardMetricKeys = dashboardMetrics.mapNotNull { it.toMetricKey() }
-      dashboardKeysDatastore.updateVisibleMetricKeys(accountEntity.id, dashboardMetricKeys)
-    }
-    dashboardKeysDatastore.resetVisibleMilestoneKeys(accountEntity.id)
+    // Dashboard metrics are now properly handled via DashboardSettingsEntity
+    AppLog.i(TAG, "Dashboard settings migrated successfully for ${accountEntity.email}")
   }
 
   /**

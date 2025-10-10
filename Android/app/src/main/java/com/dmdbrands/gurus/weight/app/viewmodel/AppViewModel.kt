@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -89,7 +90,7 @@ constructor(
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
-  private val accountFlagService: IAccountFlagService
+  private val accountFlagService: IAccountFlagService,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -337,7 +338,7 @@ constructor(
       // Then check other logged-in accounts
       val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
 
-      AppLog.d(TAG, "Checked login status for all accounts")
+      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
       AppLog.e(TAG, "Error checking login status", e)
@@ -420,8 +421,19 @@ constructor(
               if (canRequestNotifPermission && hasBtWifiScales) {
                 checkAndRequestNotificationPermission()
               }
-              if(pairedScales.isNotEmpty()){
-              requestPermissions(GGPermissionType.ALL)
+              // Get only the required permissions for the paired scales
+              val requiredPermissionSets = AppPermissionsHelper.getRequiredPermissionSets(pairedScales)
+              if (requiredPermissionSets.isNotEmpty()) {
+                // Check if all required permissions are enabled
+                val areAllRequiredPermissionsEnabled = requiredPermissionSets.all { permissionType ->
+                  val permissionState = permissions[permissionType] ?: PermissionState.NOT_DETERMINED
+                  permissionState == PermissionState.ENABLED
+                }
+                
+                // Only request permissions if they are not all enabled
+                if (!areAllRequiredPermissionsEnabled) {
+                  requestPermissions(GGPermissionType.ALL)
+                }
               }
               initialized = true
             }

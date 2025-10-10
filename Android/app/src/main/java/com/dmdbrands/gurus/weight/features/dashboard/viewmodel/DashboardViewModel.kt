@@ -5,6 +5,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -37,17 +38,20 @@ constructor(
   private val accountService: IAccountService,
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
-  private val healthConnectService: IHealthConnectService
+  private val healthConnectService: IHealthConnectService,
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
 
 
   init {
-    subscribeMetrics()
-    subscribeProgress()
-    subscribeLatestWeight()
-    subscribeIsEmpty()
+    viewModelScope.launch {
+      subscribeMetrics()
+      subscribeDashboardType()
+      subscribeProgress()
+      subscribeLatestWeight()
+       subscribeIsEmpty()
+    }
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -63,7 +67,7 @@ constructor(
 
   override fun handleIntent(intent: DashboardIntent) {
     when (intent) {
-      is DashboardIntent.SetVisibleKeys -> updateVisibleKeys(intent.keys)
+      is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
@@ -122,6 +126,18 @@ constructor(
     }
   }
 
+  private fun subscribeDashboardType() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect { account ->
+        if (account != null) {
+          val dashboardType = if (account.dashboardType == DashboardType.DASHBOARD_12_METRICS.value)
+            DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
+          handleIntent(DashboardIntent.SetDashboardType(dashboardType))
+        }
+      }
+    }
+  }
+
   private fun resetDashboard(onConfirm: () -> Unit) {
     val string = DashboardString.ResetDialog
     dialogQueueService.showDialog(
@@ -133,20 +149,21 @@ constructor(
         onConfirm = {
           viewModelScope.launch {
             onConfirm()
-            dashboardService.resetVisibleKeys()
+            val currentDashboardType = state.value.dashboardType
+            dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
           }
         },
       ),
     )
   }
 
-  private fun updateVisibleKeys(keys: List<DashboardKey>) {
+  private fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
     viewModelScope.launch {
       try {
         dialogQueueService.showLoader(
           message = DashboardString.Loader.Save,
         )
-        dashboardService.updateVisibleKeys(keys = keys)
+        dashboardService.updateVisibleKeys(keys = keys, dashboardType = dashboardType)
       } catch (e: Exception) {
       } finally {
         delay(300)

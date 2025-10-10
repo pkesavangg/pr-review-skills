@@ -31,6 +31,8 @@ interface INavigationUtility {
 
   suspend fun navigateBack(topLevel: AppRoute? = null)
 
+  suspend fun replaceLastAndNavigate(route: AppRoute, topLevel: AppRoute? = null)
+
   suspend fun login()
 
   suspend fun reInitialize()
@@ -71,6 +73,11 @@ sealed interface NavigationIntent {
   ) : NavigationIntent
 
   data class NavigateBack(
+    val topLevel: AppRoute? = null,
+  ) : NavigationIntent
+
+  data class ReplaceLastAndNavigate(
+    val route: AppRoute,
     val topLevel: AppRoute? = null,
   ) : NavigationIntent
 

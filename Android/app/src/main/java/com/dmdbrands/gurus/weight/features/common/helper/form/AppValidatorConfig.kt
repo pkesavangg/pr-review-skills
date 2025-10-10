@@ -21,13 +21,18 @@ class AppValidatorConfig {
 
     object ZipCode {
         const val MIN_LENGTH = 1
-        const val MAX_LENGTH = 6
+        const val MAX_LENGTH = 20
     }
 
     object DateOfBirth {
         const val DEFAULT_VALUE = "2000-01-01"
         const val MIN_LENGTH = 10
         const val MAX_LENGTH = 10
+    }
+
+    object VisceralAge {
+        const val MIN = 1
+        const val MAX = 60
     }
 
     object BMR {

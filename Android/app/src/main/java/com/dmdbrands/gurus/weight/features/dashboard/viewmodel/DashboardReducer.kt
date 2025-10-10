@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -15,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
  * @property dayWiseEntries List of day-wise body scale summaries.
  * @property monthWiseEntries List of month-wise body scale summaries.
  * @property pagerState Current pager state for horizontal graph navigation.
+ * @property dashboardType Current dashboard type (4 or 12 metrics).
  */
 data class DashboardState(
   val visibleKeys: List<DashboardKey> = emptyList(),
@@ -27,6 +29,7 @@ data class DashboardState(
   val scrollTarget: Double? = null,
   val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
 /**
@@ -38,7 +41,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data object Refresh : DashboardIntent
   data class ResetDashboard(val onConfirm: () -> Unit) : DashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
-
+  data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : DashboardIntent
   data class SetProgress(val progress: Progress) : DashboardIntent
 
   data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
@@ -47,7 +50,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
-
+  data class SetDashboardType(val dashboardType: DashboardType) : DashboardIntent
   data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
   object OnConnectScale : DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
@@ -67,6 +70,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetData -> state.copy(data = intent.data)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
+    is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
     is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
     else -> state
   }

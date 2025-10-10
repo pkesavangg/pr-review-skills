@@ -101,7 +101,7 @@ internal fun StatCard(
         .fillMaxSize()
         .padding(vertical = MeTheme.spacing.sm)
         .then(
-          if (isFromSetup) Modifier.height(65.dp) else Modifier,
+          if (isFromSetup) Modifier.height(55.dp) else Modifier,
         ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
@@ -223,7 +223,7 @@ fun AnimatedStatCard(
       stat = stat,
       enabled = isSelected != null && !inEditMode,
       isVisible = isVisible,
-      isSelected = isSelected ?: false,
+      isSelected = isSelected == true && !inEditMode,
       modifier = modifier,
       isFromSetup = isFromSetup,
     ) {

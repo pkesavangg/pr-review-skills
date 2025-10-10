@@ -15,16 +15,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
-import android.graphics.BlurMaskFilter
 
 /**
  * Stateless UI for displaying a toast card.
@@ -42,14 +43,14 @@ fun ToastCard(
     modifier =
       modifier
         .statusBarsPadding()
-        .padding(horizontal = 16.dp, vertical = 16.dp)
-        .boxShadow(
-          shadowColor = colorScheme.glow,
-          offsetX = 2.dp,
-          offsetY = 2.dp,
-          blurRadius = 8.dp,
-          cornerRadius = 10.dp,
-        ),
+        .padding(horizontal = 16.dp, vertical = 16.dp).cssBoxShadow(
+        color = colorScheme.glow,
+    offsetX = 2.dp,
+    offsetY = 2.dp,
+    blurRadius = 8.dp,
+    spread = 0.dp,
+    cornerRadius = 10.dp
+      ),
 
     shape = RoundedCornerShape(10.dp),
     colors =
@@ -98,38 +99,48 @@ fun ToastCard(
   }
 }
 
-private fun Modifier.boxShadow(
-  shadowColor: Color,
-  offsetX: Dp = 0.dp,
-  offsetY: Dp = 0.dp,
-  blurRadius: Dp,
-  cornerRadius: Dp,
-): Modifier =
-  this.drawBehind {
-    val paint = android.graphics.Paint().apply {
-      isAntiAlias = true
-      color = android.graphics.Color.argb(
-        (shadowColor.alpha * 255).toInt(),
-        (shadowColor.red * 255).toInt(),
-        (shadowColor.green * 255).toInt(),
-        (shadowColor.blue * 255).toInt(),
-      )
-      // Gaussian-like blur to emulate Figma's drop shadow
-      maskFilter = BlurMaskFilter(blurRadius.toPx(), BlurMaskFilter.Blur.NORMAL)
-    }
+@Composable
+fun Modifier.cssBoxShadow(
+  color: Color = colorScheme.glow, // rgba(0,0,0,0.15)
+  offsetX: Dp = 2.dp,
+  offsetY: Dp = 2.dp,
+  blurRadius: Dp = 8.dp,
+  spread: Dp = 0.dp,
+  cornerRadius: Dp = 10.dp
+) = this.then(
+  Modifier.drawBehind {
+    val shadowColor = color
+    val transparent = shadowColor.copy(alpha = 0f)
+    val shadowSpread = spread.toPx()
+    val radius = cornerRadius.toPx()
+    val shadowOffsetX = offsetX.toPx()
+    val shadowOffsetY = offsetY.toPx()
+    val shadowBlur = blurRadius.toPx()
 
     drawIntoCanvas { canvas ->
-      val ox = offsetX.toPx()
-      val oy = offsetY.toPx()
-      canvas.nativeCanvas.drawRoundRect(
-        /* left   = */ ox,
-        /* top    = */ oy,
-        /* right  = */ size.width + ox,
-        /* bottom = */ size.height + oy,
-        /* rx     = */ cornerRadius.toPx(),
-        /* ry     = */ cornerRadius.toPx(),
-        /* paint  = */ paint,
+      val paint = Paint().apply {
+        this.color = shadowColor
+        this.asFrameworkPaint().apply {
+          this.isAntiAlias = true
+          this.setShadowLayer(
+            shadowBlur,
+            shadowOffsetX,
+            shadowOffsetY,
+            shadowColor.toArgb()
+          )
+        }
+      }
+
+      val rect = Rect(
+        left = shadowSpread,
+        top = shadowSpread,
+        right = size.width - shadowSpread,
+        bottom = size.height - shadowSpread
       )
+
+      canvas.drawRoundRect(rect.left,rect.top,rect.right,rect.bottom, radius, radius, paint)
     }
   }
+)
+
 

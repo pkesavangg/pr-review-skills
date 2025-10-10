@@ -35,6 +35,7 @@ class TokenAuthenticator @Inject constructor(
         private const val TAG = "TokenAuthenticator"
         private const val TOKEN_EXPIRY_BUFFER_MINUTES = 5 // Same as Angular: 5 minutes buffer
         private const val MAX_REFRESH_ATTEMPTS = 3 // Same as Angular: max 3 attempts
+        private const val MAX_RETRY_ATTEMPTS = 1 // Max retry attempts for 401 handling
     }
 
     private var isRefreshingToken = false
@@ -47,7 +48,8 @@ class TokenAuthenticator @Inject constructor(
             AppLog.v(TAG, "Skipping token refresh for public endpoint or repeated attempt")
             return null
         }
-      val accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
+      var accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
+
       AppLog.v(TAG, "Attempting token refresh for account: $accountId")
         // Skip refresh for login endpoint (same as Angular)
         if (request.url.encodedPath.contains("/account/login")) {
@@ -56,30 +58,67 @@ class TokenAuthenticator @Inject constructor(
         }
 
 
-        // Try to refresh the token (same as Angular tokenRefresh)
+        // Try to refresh the token (same as Angular: proactive + reactive)
         return runBlocking {
             try {
-              val expiresAt = tokenManager.getCurrentAcccountExpiresAt()
-              var refreshResult: Token? = null
-              if (isTokenExpired(expiresAt)) {
-                AppLog.v(TAG, "Token expires within 5 minutes, refreshing proactively...")
-                refreshResult = refreshToken(accountId)
-              }
-
-                if (refreshResult == null) {
-                    return@runBlocking null
+                // First check if token is expired (proactive check like Angular)
+                val expiresAt = if (accountId != null) {
+                    tokenManager.getAccountExpiresAt(accountId)
+                } else {
+                    tokenManager.getCurrentAcccountExpiresAt()
                 }
 
-                // Build new request with fresh access token
+                AppLog.v(TAG, "Token expires at: $expiresAt for account: $accountId")
+
+                var refreshResult: Token? = null
+
+                // Proactive refresh if token expires within 5 minutes (same as Angular)
+                if (isTokenExpired(expiresAt)) {
+                    AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
+                    refreshResult = refreshToken(accountId)
+                } else {
+                    // Reactive refresh for 401 (token might be invalidated server-side)
+                    AppLog.v(TAG, "401 received - attempting reactive token refresh for account: $accountId")
+                    refreshResult = refreshToken(accountId)
+                }
+
+                if (refreshResult == null) {
+                    AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
+                    val isCurrentAccount = isCurrentAccount(accountId)
+
+                    if (isCurrentAccount) {
+                        // For current account, logout and return null to fail the request
+                        logoutUser(accountId, isCurrentAccount)
+                        return@runBlocking null
+                    } else {
+                        // For non-active accounts, just log and let the API call proceed with original request
+                        AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
+                        // Don't return null - let the original request continue and fail naturally
+                        return@runBlocking response.request
+                    }
+                }
+
+                // Build new request with fresh access token (retry the original request)
                 val newRequest = response.request.newBuilder()
                     .header(AppConfig.AUTHORIZATION_HEADER, "Bearer ${refreshResult.accessToken}")
                     .build()
 
+                AppLog.v(TAG, "Token refreshed successfully - retrying original request for account: $accountId")
                 return@runBlocking newRequest
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
-                logoutUser(accountId)
-                return@runBlocking null
+                val isCurrentAccount = isCurrentAccount(accountId)
+
+                if (isCurrentAccount) {
+                    // For current account, logout and return null to fail the request
+                    logoutUser(accountId, isCurrentAccount)
+                    return@runBlocking null
+                } else {
+                    // For non-active accounts, just log and let the API call proceed with original request
+                    AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
+                    // Don't return null - let the original request continue and fail naturally
+                    return@runBlocking response.request
+                }
             }
         }
     }
@@ -95,47 +134,87 @@ class TokenAuthenticator @Inject constructor(
     }
 
     /**
-     * Logout user when token refresh fails (same as Angular)
+     * Check if the given account ID is the current active account
      */
-    private suspend fun logoutUser(accountId: String?) {
-        AppLog.w(TAG, "Logging out user due to token refresh failure for account: $accountId")
+    private suspend fun isCurrentAccount(accountId: String?): Boolean {
+        if (accountId == null) {
+            AppLog.v(TAG, "No account ID provided, assuming current account")
+            return true // If no account ID, assume it's current account
+        }
 
-        // Emit logout event (same as Angular: this.logoutUser.next(true))
-        if (accountId != null) {
+        val currentAccountId = tokenManager.getCurrentAccountID()
+        val isCurrent = accountId == currentAccountId
+        AppLog.v(TAG, "Checking if account $accountId is current account $currentAccountId: $isCurrent")
+        return isCurrent
+    }
+
+    /**
+     * Logout user when token refresh fails (same as Angular)
+     * Only called for current/active accounts
+     */
+    private suspend fun logoutUser(accountId: String?, isCurrentAccount: Boolean) {
+        AppLog.w(TAG, "Logging out current user due to token refresh failure for account: $accountId")
+
+        // Emit logout event and navigate to landing screen for current account
+        if (isCurrentAccount && accountId != null) {
+            AppLog.i(TAG, "Current account logout - navigating to landing screen")
             appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId))
         }
 
-        // Clear tokens (same as Angular: this.clearTokens())
-        userDataStore.logoutCurrentAccount()
+        // Clear tokens for current account
+        if (isCurrentAccount) {
+            userDataStore.logoutCurrentAccount()
+        }
     }
 
     /**
      * Check if token is expired or will expire soon (same as Angular checkTokenExpiration)
      */
     private fun isTokenExpired(expiresAt: String?): Boolean {
-        if (expiresAt.isNullOrEmpty()) return true
+        if (expiresAt.isNullOrEmpty()) {
+            AppLog.v(TAG, "No expiry time available - assuming token is expired")
+            return true // If no expiry time, assume expired and refresh
+        }
 
         return try {
             val tokenExpires = dateFormat.parse(expiresAt)
             val currentTime = Date()
             val timeUntilExpiry = tokenExpires!!.time - currentTime.time
             val bufferTime = TOKEN_EXPIRY_BUFFER_MINUTES * 60 * 1000 // 5 minutes in milliseconds
-          AppLog.e(TAG, "${timeUntilExpiry}${bufferTime}")
 
-            timeUntilExpiry <= bufferTime
+            AppLog.v(TAG, "Time until expiry: ${timeUntilExpiry}ms, buffer: ${bufferTime}ms")
+            val isExpired = timeUntilExpiry <= bufferTime
+
+            if (isExpired) {
+                AppLog.v(TAG, "Token expires within ${TOKEN_EXPIRY_BUFFER_MINUTES} minutes")
+            } else {
+                AppLog.v(TAG, "Token is still valid for ${timeUntilExpiry / (1000 * 60)} minutes")
+            }
+
+            isExpired
         } catch (e: Exception) {
             AppLog.e(TAG, "Error parsing token expiry date: $expiresAt", e.toString())
-            false // Assume expired if parsing fails
+            true // Assume expired if parsing fails
         }
     }
 
     /**
      * Refresh token for the given account (same as Angular tokenRefresh)
-     * Used for both proactive refresh and 401 handling
+     * Used for 401 handling with retry logic
      * @param accountId The account ID to refresh token for
      * @return The new token response if successful, null if failed
      */
-    private suspend fun refreshToken(accountId: String?): com.dmdbrands.gurus.weight.domain.model.api.user.Token? {
+    private suspend fun refreshToken(accountId: String?): Token? {
+        return refreshTokenWithRetry(accountId, 0)
+    }
+
+    /**
+     * Refresh token with retry logic (same as Angular tokenRefresh with retry)
+     * @param accountId The account ID to refresh token for
+     * @param retryAttempt Current retry attempt number
+     * @return The new token response if successful, null if failed
+     */
+    private suspend fun refreshTokenWithRetry(accountId: String?, retryAttempt: Int): com.dmdbrands.gurus.weight.domain.model.api.user.Token? {
         try {
             val refreshToken = if (accountId != null) {
                 tokenManager.getRefreshToken(accountId)
@@ -145,7 +224,6 @@ class TokenAuthenticator @Inject constructor(
 
             if (refreshToken.isNullOrEmpty()) {
                 AppLog.e(TAG, "No refresh token available for account: $accountId")
-                logoutUser(accountId)
                 return null
             }
 
@@ -156,14 +234,13 @@ class TokenAuthenticator @Inject constructor(
             }
 
             isRefreshingToken = true
-            AppLog.v(TAG, "Refreshing token for account: $accountId")
+            AppLog.v(TAG, "Refreshing token for account: $accountId (attempt: ${retryAttempt + 1})")
 
             val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
 
             if (newTokenResponse.accessToken.isEmpty()) {
                 AppLog.e(TAG, "Received empty access token from refresh response")
                 isRefreshingToken = false
-                logoutUser(accountId)
                 return null
             }
 
@@ -185,9 +262,23 @@ class TokenAuthenticator @Inject constructor(
 
         } catch (e: Exception) {
             isRefreshingToken = false
-            AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
-            logoutUser(accountId)
-            return null
+            AppLog.e(TAG, "Token refresh failed for account: $accountId (attempt: ${retryAttempt + 1})", e.toString())
+
+            // Check if this is a 401 error (token invalidated) or network error
+            val isTokenInvalidated = e.message?.contains("401") == true ||
+                                   e.message?.contains("Unauthorized") == true
+
+            if (isTokenInvalidated) {
+                AppLog.e(TAG, "Token invalidated (401) - not retrying for account: $accountId")
+                return null
+            } else if (retryAttempt < MAX_REFRESH_ATTEMPTS - 1) {
+                // Retry for network errors (same as Angular)
+                AppLog.v(TAG, "Retrying token refresh for account: $accountId (attempt: ${retryAttempt + 2})")
+                return refreshTokenWithRetry(accountId, retryAttempt + 1)
+            } else {
+                AppLog.e(TAG, "Max retry attempts reached for account: $accountId")
+                return null
+            }
         }
     }
 }

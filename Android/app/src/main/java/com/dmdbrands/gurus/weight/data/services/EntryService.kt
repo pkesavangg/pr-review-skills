@@ -64,6 +64,9 @@ constructor(
   private val _isUpdating = MutableStateFlow(false)
   override val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
 
+  private val _isHistoryLoading = MutableStateFlow(false)
+  override val isHistoryLoading: StateFlow<Boolean> = _isHistoryLoading.asStateFlow()
+
   private val _latestEntry = MutableStateFlow<Entry?>(null)
   override val latestEntry: StateFlow<Entry?> = _latestEntry.asStateFlow()
 
@@ -90,6 +93,9 @@ constructor(
 
   private val _daywiseBodyScaleLatest = MutableStateFlow<List<PeriodBodyScaleSummary>>(listOf())
   override val daywiseBodyScaleLatest: StateFlow<List<PeriodBodyScaleSummary>> = _daywiseBodyScaleLatest.asStateFlow()
+
+  private val _monthlyAverage = MutableStateFlow<List<HistoryMonth>>(listOf())
+  override val monthlyAverage: StateFlow<List<HistoryMonth>> = _monthlyAverage.asStateFlow()
 
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -120,9 +126,9 @@ constructor(
           val entries = entryRepository.getEntriesByAccount(accountId ?: "", false)
           if (entries.size >= 3) {
             goalService.checkGoalCard()
-            AppLog.d("EntryService", "User has ${entries} scale entries (>= 3), checking goal card")
+            AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card")
           } else {
-            AppLog.d("EntryService", "User has only ${entries} scale entries, not enough for goal card")
+            AppLog.d("EntryService", "User has only  scale entries, not enough for goal card")
           }
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
@@ -131,9 +137,9 @@ constructor(
     }
   }
 
-  override suspend fun getMonthlyAverage(): Flow<List<HistoryMonth>> =
+  override suspend fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> =
     combine(
-      entryRepository.getMonthlyAverage(accountId ?: ""),
+      entryRepository.getMonthlyAverage(accountId),
       weightSettingsFlow,
     ) { months, weightSettings ->
       months.map {
@@ -257,6 +263,11 @@ constructor(
     // Add new body scale data updates
     repositoryScope.launch {
       updateDaywiseBodyScaleAveragesWithJoin()
+    }
+
+    // Add monthly average subscription
+    repositoryScope.launch {
+      updateMonthlyAverage(accountId)
     }
 
     // Check for goal card after account data is updated
@@ -567,6 +578,19 @@ constructor(
         }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
+    }
+  }
+
+  private suspend fun updateMonthlyAverage(accountId: String) {
+    try {
+      _isHistoryLoading.value = true
+      getMonthlyAverage(accountId).collect { months ->
+        _monthlyAverage.value = months
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating monthly average", e)
+    } finally {
+      _isHistoryLoading.value = false
     }
   }
 

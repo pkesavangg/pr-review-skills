@@ -47,7 +47,6 @@ struct PickerView<T: Hashable>: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header with Cancel and Select buttons
-            // TODO: Need to use the custom button style here
             ZStack {
                 if let title = title {
                     Text(title)

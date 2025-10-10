@@ -4,8 +4,8 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation3.runtime.NavKey
-import com.example.nav3integration.TopLevelBackStack
 import com.dmdbrands.gurus.weight.domain.interfaces.NavigationIntent
+import com.example.nav3integration.TopLevelBackStack
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -36,6 +36,10 @@ fun NavigationObserver(
 
           is NavigationIntent.NavigateBack -> {
             backStack.removeLast(intent.topLevel)
+          }
+
+          is NavigationIntent.ReplaceLastAndNavigate -> {
+            backStack.replaceLastAndNavigate(intent.route, intent.topLevel)
           }
 
           is NavigationIntent.GetCurrentRoute -> {

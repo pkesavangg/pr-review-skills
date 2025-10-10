@@ -63,6 +63,20 @@ class AppNavigationService : IAppNavigationService {
     )
   }
 
+  /**
+   * Emits a navigation intent to replace the last route and navigate to a new one.
+   * @param route The route to navigate to.
+   * @param topLevel The top-level key.
+   */
+  override suspend fun replaceLastAndNavigate(route: AppRoute, topLevel: AppRoute?) {
+    emitNavigationIntent(
+      NavigationIntent.ReplaceLastAndNavigate(
+        route,
+        topLevel,
+      ),
+    )
+  }
+
   override suspend fun replaceStack(
     route: AppRoute,
     topLevel: AppRoute?,
