@@ -157,6 +157,16 @@ class DashboardStore: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Observe active account changes to reinitialize graph position and data for the new account
+        accountService.$activeAccount
+            .map { $0?.accountId }
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.handleActiveAccountChanged()
+            }
+            .store(in: &cancellables)
+
         accountService.$activeAccount
             .compactMap { $0?.goalSettings }
             .map { settings -> (Double?, Double?, GoalType?) in
@@ -411,6 +421,31 @@ class DashboardStore: ObservableObject {
         default:
             return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
+    }
+
+    /// Reinitialize dashboard state when the active account changes
+    private func handleActiveAccountChanged() {
+        // Clear caches and scrolling flags to ensure fresh computations
+        clearAllCaches()
+        state.ui.hasInitializedChart = false
+        state.graph.clearSelection()
+
+        // Kick off data loads for the new account
+        loadLatestEntryData()
+        loadGoalCardData()
+
+        // Reset metrics/streak removal state to match the new account config
+        syncRemovalStateFromMetricsManager()
+        syncRemovalStateFromStreakManager()
+
+        // Reposition graph to latest entries for the new account
+        ensureLatestEntriesVisible()
+
+        // Recalculate and cache Y-axis promptly for the new account's data
+        updateYAxisCache(force: true)
+
+        // Force UI refresh so graphs re-render with the new context immediately
+        objectWillChange.send()
     }
 
     // MARK: - Empty-state period labels
