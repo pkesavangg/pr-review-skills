@@ -54,7 +54,7 @@ data class ProfileFormControls(
                 initialValue = zipcode,
                 validators = listOf(
                     FormValidations.required(),
-                    FormValidations.maxLength(10, ProfileStrings.ZipcodeLabel),
+                    FormValidations.maxLength(20, ProfileStrings.ZipcodeLabel),
                 ),
             ),
             birthday =
