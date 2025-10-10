@@ -30,6 +30,7 @@ fun TimePickerDialogContent(
   onOk: (Int, Int) -> Unit,
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
+  isToday: Boolean = false,
 ) {
   val currentTime = Calendar.getInstance()
   val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
@@ -41,24 +42,34 @@ fun TimePickerDialogContent(
   )
 
   val minTime = minValue.asTime()
-  val maxTime = maxValue.asTime()
+  val maxTime = maxValue.asTime() ?: DateTimeValue.Time(
+    Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+    Calendar.getInstance().get(Calendar.MINUTE),
+    59,
+  )
+
+  fun onConfirm() = {
+    val calendar = Calendar.getInstance()
+    val nowHour = calendar.get(Calendar.HOUR_OF_DAY)
+    val nowMinute = calendar.get(Calendar.MINUTE)
+    val effectiveMaxTime = maxTime ?: DateTimeValue.Time(nowHour, nowMinute)
+    val (clampedHour, clampedMinute) = if (isToday) clampTime(
+      timePickerState.hour,
+      timePickerState.minute,
+      minTime,
+      effectiveMaxTime,
+    ) else Pair(timePickerState.hour, timePickerState.minute)
+    onOk(clampedHour, clampedMinute)
+  }
+
   TimePickerDialog(
     timePickerState,
+    isToday = isToday,
     onDismiss = {
       onCancel()
     },
     onConfirm = {
-      val calendar = Calendar.getInstance()
-      val nowHour = calendar.get(Calendar.HOUR_OF_DAY)
-      val nowMinute = calendar.get(Calendar.MINUTE)
-      val effectiveMaxTime = maxTime ?: DateTimeValue.Time(nowHour, nowMinute)
-      val (clampedHour, clampedMinute) = clampTime(
-        timePickerState.hour,
-        timePickerState.minute,
-        minTime,
-        effectiveMaxTime,
-      )
-      onOk(clampedHour, clampedMinute)
+      onOk(timePickerState.hour, timePickerState.minute)
     },
     minTime = minTime,
     maxTime = maxTime,
@@ -73,6 +84,7 @@ fun TimePickerDialog(
   onConfirm: () -> Unit,
   minTime: DateTimeValue.Time? = null,
   maxTime: DateTimeValue.Time? = null,
+  isToday: Boolean = false,
 ) {
   var constraintTriggered by remember { mutableStateOf(false) }
   val timerColors = DateTimeInputDefaults.getTimePickerColor()
@@ -117,7 +129,8 @@ fun TimePickerDialog(
     snapshotFlow { timePickerState.hour to timePickerState.minute }
       .debounce(300)
       .collect {
-        applyTimeConstraints()
+        if (isToday)
+          applyTimeConstraints()
       }
   }
 

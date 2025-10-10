@@ -33,39 +33,38 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
+import android.text.format.DateUtils
 
 /**
  * Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
  */
 @Serializable
-sealed class DateTimeValue {
+sealed class DateTimeValue(open val millis: Long) {
   /**
    * Represents a date value in milliseconds since epoch.
    */
-  @Serializable
   data class Date(
-    val millis: Long,
-  ) : DateTimeValue()
+    override var millis: Long,
+  ) : DateTimeValue(millis)
 
   /**
    * Represents a time value as hour and minute.
    */
-  @Serializable
   data class Time(
     val hour: Int,
     val minute: Int,
-  ) : DateTimeValue()
+    override val millis: Long = 0L,
+  ) : DateTimeValue(millis = millis)
 
   /**
    * Represents a combined date and time value.
    */
-  @Serializable
   data class DateTime(
-    val millis: Long,
+    override val millis: Long,
     val hour: Int,
     val minute: Int,
-  ) : DateTimeValue()
+  ) : DateTimeValue(millis = millis)
 
   /**
    * Returns a formatted string representation of the value, depending on the type.
@@ -351,14 +350,13 @@ fun DateTimeInput(
   val currentValue = formControl?.value ?: value
   // Local state for the input value
   var localState by remember { mutableStateOf(currentValue ?: DateTimeInputDefaults.defaultValueForMode(mode)) }
+  var isToday by remember { mutableStateOf(DateUtils.isToday(localState.millis)) }
   // Keep localState in sync with external valuex
   if (currentValue != null && currentValue != localState) {
     localState = currentValue
   }
   // Error state
   val isError = formControl?.isError ?: false
-  minValue.asMillis()
-  maxValue.asMillis()
   val minTime = minValue.asTime()
   val maxTime = maxValue.asTime()
   Column {
@@ -415,16 +413,26 @@ fun DateTimeInput(
           ?: System.currentTimeMillis(),
       onCancel = { isDateDialogOpen = false },
       onOk = { millis ->
+        isToday = DateUtils.isToday(millis)
         isDateDialogOpen = false
         val newValue =
           if (mode == DateTimeInputMode.Date) {
             DateTimeValue.Date(millis)
           } else {
             val dateTime = localState as? DateTimeValue.DateTime
-            DateTimeValue.DateTime(
-              millis,
+            val (clampedHour, clampedMinute) = if (isToday && dateTime != null) clampTime(
+              dateTime.hour,
+              dateTime.minute,
+              minTime,
+              maxTime,
+            ) else Pair(
               dateTime?.hour ?: 12,
               dateTime?.minute ?: 0,
+            )
+            DateTimeValue.DateTime(
+              millis,
+              clampedHour,
+              clampedMinute,
             )
           }
         if (formControl != null) {
@@ -449,10 +457,14 @@ fun DateTimeInput(
               it.minute,
             )
           },
+      isToday = isToday,
       onCancel = { isTimeDialogOpen = false },
       onOk = { hour, minute ->
         isTimeDialogOpen = false
-        val (clampedHour, clampedMinute) = clampTime(hour, minute, minTime, maxTime)
+        val (clampedHour, clampedMinute) = if (isToday) clampTime(hour, minute, minTime, maxTime) else Pair(
+          hour,
+          minute,
+        )
         val newValue =
           if (mode == DateTimeInputMode.Time) {
             DateTimeValue.Time(clampedHour, clampedMinute)
@@ -558,6 +570,9 @@ fun clampTime(
   min: DateTimeValue.Time?,
   max: DateTimeValue.Time?,
 ): Pair<Int, Int> {
+  val calendar = Calendar.getInstance()
+
+  val max = max ?: DateTimeValue.Time(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE))
   var h = hour
   var m = minute
   min?.let {
