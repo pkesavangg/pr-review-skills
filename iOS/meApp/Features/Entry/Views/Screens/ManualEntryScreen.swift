@@ -343,6 +343,14 @@ struct ManualEntryScreen: View {
         }
         .background(theme.backgroundSecondary)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(commonLang.done) {
+                    focusedField = nil
+                }
+            }
+        }
     }
     
     private func performTabSwitchAndHideKeyboard() {

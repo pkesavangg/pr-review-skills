@@ -986,6 +986,8 @@ extension MetricGridUIKitView {
                     if let custom = collectionView as? CustomCollectionView {
                         custom.isInDragOperation = false
                     }
+                    // Robust cleanup: ensure ALL visible cells clear drag/shadow state post-drop
+                    self.cleanupVisibleCells(collectionView)
                 }
                 if let indexPath = currentDraggingIndexPath,
                    let cell = collectionView.cellForItem(at: indexPath) as? MetricCell {
@@ -1013,6 +1015,8 @@ extension MetricGridUIKitView {
                 if let custom = collectionView as? CustomCollectionView {
                     custom.isInDragOperation = false
                 }
+                // Robust cleanup on cancel as well
+                self.cleanupVisibleCells(collectionView)
             }
         }
 
@@ -1036,6 +1040,17 @@ extension MetricGridUIKitView {
             let x = max(bounds.minX, min(position.x, bounds.maxX))
             let y = max(bounds.minY, min(position.y, bounds.maxY))
             return CGPoint(x: x, y: y)
+        }
+
+        // MARK: - Cleanup Helpers
+        private func cleanupVisibleCells(_ collectionView: UICollectionView) {
+            for cell in collectionView.visibleCells {
+                if let metricCell = cell as? MetricCell {
+                    metricCell.updateDragState(false)
+                    metricCell.clearAllShadowEffects()
+                    metricCell.updateBoundaryState(false)
+                }
+            }
         }
     }
 } 

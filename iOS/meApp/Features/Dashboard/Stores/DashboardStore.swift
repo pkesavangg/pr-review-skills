@@ -251,6 +251,19 @@ class DashboardStore: ObservableObject {
                allStreaksRemoved
     }
     
+    /// Checks if a goal is set for the active account
+    /// Returns true if goalSettings exists and has valid goal type, initial weight, and goal weight
+    var hasGoalSet: Bool {
+            guard let account = accountService.activeAccount,
+                  let goalSettings = account.goalSettings,
+                  let goalType = goalSettings.goalType,
+                  let initialWeight = goalSettings.initialWeight,
+                  let goalWeight = goalSettings.goalWeight else {
+                return false
+            }
+            return initialWeight > 0 && goalWeight > 0
+        }
+    
     var shouldShowStreakGrid: Bool {
         // Only show streak grid if there are visible (non-removed) streaks
         let visibleStreaks = streakItemsToShow.filter { !state.ui.removedStreaks.contains($0.label) }
@@ -1191,8 +1204,6 @@ class DashboardStore: ObservableObject {
                 self.state.graph.clearSelection()
                 self.state.ui.isEditMode = false
                 self.state.ui.resetDragState()
-                self.resetGridLayout()
-                // Reset snapshot after a full dashboard reset
                 self.hasEditSnapshot = false
                 
                 // Force UI update to reflect the reset state
@@ -1524,8 +1535,13 @@ class DashboardStore: ObservableObject {
     }
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        let rounded = roundedGoalWeight(weight)
-        return String(format: "%.0f", rounded)
+        let value = roundedGoalWeight(weight)
+        // Thousand separators; keep decimals only when value has fractional part
+        let nf = NumberFormatter()
+        nf.numberStyle = .decimal
+        nf.maximumFractionDigits = value == floor(value) ? 0 : 2
+        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
+        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
     
     func formatChartDate(_ date: Date) -> String {
@@ -1559,6 +1575,7 @@ class DashboardStore: ObservableObject {
         // Build an entry that mirrors the current dashboard context
         // If a chart point is selected, use that point's values
         // Otherwise, use averages of the currently visible operations
+        // Initialize with a timestamp that we'll override below based on selection/context
         let entry = Entry(
             id: UUID(),
             entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
@@ -1586,6 +1603,9 @@ class DashboardStore: ObservableObject {
                 return v == 0 ? nil : v
             }()
 
+            // Use the actual point's timestamp
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: point.date)
+
             entry.scaleEntry = BathScaleEntry(
                 weight: storedWeight,
                 bodyFat: intOrNil(point.bodyFat),
@@ -1603,6 +1623,59 @@ class DashboardStore: ObservableObject {
                 subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
                 visceralFatLevel: scaled10OrNil(point.visceralFatLevel),
                 boneMass: intOrNil(point.boneMass),
+                impedance: nil,
+                unit: nil
+            )
+            return entry
+        }
+
+        // Interpolated selection: show interpolated weight for the selectedXValue and placeholders for body metrics
+        if let selectedDate = state.graph.selectedXValue {
+            // Compute interpolated display weight in current UI context
+            let interpolated = graphManager.interpolatedDisplayWeight(
+                at: selectedDate,
+                from: continuousOperations,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay
+            )
+            // Map display weight to stored (handle weightless by adding anchor back)
+            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+            let displayAbsolute: Double? = {
+                if let w = interpolated {
+                    if isWeightlessModeEnabled, let anchor = weightlessAnchorWeight {
+                        return w + anchor
+                    } else {
+                        return w
+                    }
+                }
+                return nil
+            }()
+            let storedWeight: Int? = {
+                guard let displayAbs = displayAbsolute else { return nil }
+                return ConversionTools.convertDisplayToStored(displayAbs, isMetric: unit == .kg)
+            }()
+
+            // Timestamp is the crosshair date selected by the user
+            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: selectedDate)
+
+            entry.scaleEntry = BathScaleEntry(
+                weight: storedWeight,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                source: "dashboard"
+            )
+            entry.scaleEntryMetric = BathScaleMetric(
+                bmr: nil,
+                metabolicAge: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                skeletalMusclePercent: nil,
+                subcutaneousFatPercent: nil,
+                visceralFatLevel: nil,
+                boneMass: nil,
                 impedance: nil,
                 unit: nil
             )

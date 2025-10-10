@@ -19,6 +19,8 @@ struct YAxisCalculator {
     private static let FALLBACK_MAX: Double = 100
     private static let FALLBACK_STEP: Double = 25
     private static let GOAL_TICK_OFFSETS: [Double] = [-2, -1, 0, 1, 2]
+    /// Expanded set of nice numbers used for step selection (normalized domain)
+    private static let niceNumbers: [Double] = [1, 2, 4, 5, 10, 15, 20, 25,40, 50, 100, 200]
 
     /// Calculate Y-axis scale for chart display
     /// - Parameters:
@@ -127,6 +129,55 @@ struct YAxisCalculator {
         : sanitizeToNonNegativeUniformTicks(scale: initial, desiredTickCount: max(3, initial.ticks.count))
     }
 
+    /// Compute evenly spaced, human-friendly ticks using classic 1–2–5 × 10^n steps.
+    /// Returns ticks, step, and the snapped domain [niceMin, niceMax].
+    internal static func niceTicks(
+        min: Double,
+        max: Double,
+        desiredTickCount: Int
+    ) -> (ticks: [Double], step: Double, domain: ClosedRange<Double>) {
+        let range = max - min
+        guard range.isFinite, range > 0, desiredTickCount > 1 else {
+            let lo = Swift.min(min, max)
+            let hi = Swift.max(min, max)
+            return (ticks: [lo, hi], step: Swift.max(hi - lo, 1.0), domain: lo...hi)
+        }
+
+        let rawInterval = range / Double(desiredTickCount - 1)
+        // nearest power of 10
+        let magnitude = pow(10, floor(log10(Swift.max(rawInterval, AppConstants.Precision.doubleEqualityEpsilon))))
+        let residual = rawInterval / magnitude
+
+        let niceResidual: Double
+        if residual <= 1 { niceResidual = 1 }
+        else if residual <= 2 { niceResidual = 2 }
+        else if residual <= 5 { niceResidual = 5 }
+        else { niceResidual = 10 }
+
+        let step = niceResidual * magnitude
+
+        // Snap bounds to multiples of step
+        let niceMin = floor(min / step) * step
+        let niceMax = ceil(max / step) * step
+
+        // Build ticks
+        var ticks: [Double] = []
+        var tick = niceMin
+        // Small epsilon to ensure inclusion of upper bound
+        while tick <= niceMax + 1e-9 {
+            // Round to avoid floating artifacts at 10^n boundaries
+            let rounded = (tick / step).rounded() * step
+            ticks.append(rounded)
+            tick += step
+        }
+
+        // De-dup and sort for safety
+        let deduped = Array(Set(ticks)).sorted()
+        let domain = (deduped.first ?? niceMin)...(deduped.last ?? niceMax)
+        let actualStep = deduped.count > 1 ? (deduped[1] - deduped[0]) : step
+        return (ticks: deduped, step: actualStep, domain: domain)
+    }
+
     /// Calculate average weight from operations
     private static func calculateAverage(
         operations: [BathScaleWeightSummary],
@@ -229,40 +280,67 @@ struct YAxisCalculator {
 
     /// Enforce tick limits (min 3, max 8) by adjusting step size
     internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) {
-        var step = initialStep
-        var ticks: [Double] = []
-
-        // Generate initial ticks
-        var currentTick = min
-        while currentTick <= max + 0.001 {
-            ticks.append(currentTick)
-            currentTick += step
+        // Helper to snap values to the nearest nice multiple of step
+        @inline(__always) func snapDown(_ value: Double, step: Double) -> Double {
+            guard step > 0 else { return value }
+            return floor(value / step) * step
+        }
+        @inline(__always) func snapUp(_ value: Double, step: Double) -> Double {
+            guard step > 0 else { return value }
+            return ceil(value / step) * step
+        }
+        @inline(__always) func buildTicks(min: Double, max: Double, step: Double) -> [Double] {
+            guard step > 0 else { return [min, max] }
+            var ticks: [Double] = []
+            var start = snapDown(min, step: step)
+            let end = snapUp(max, step: step)
+            // Guard against degenerate ranges
+            if end < start { return [min, max] }
+            while start <= end + 0.0001 {
+                // Round to avoid floating artifacts
+                let rounded = (start / step).rounded() * step
+                ticks.append(rounded)
+                start += step
+            }
+            return Array(Set(ticks)).sorted()
         }
 
-        // Adjust if too many ticks (> 8)
+        var step = Swift.max(initialStep, 0.0001)
+        let snappedMin = floor(min / step) * step
+        let snappedMax = ceil(max / step) * step
+        var ticks = buildTicks(min: snappedMin, max: snappedMax, step: step)
+
+         // Adjust if too many ticks (> 8)
         while ticks.count > 6 {
-            step *= 2 // Double the step size
-            ticks = []
-            currentTick = min
-            while currentTick <= max + 0.001 {
-                ticks.append(currentTick)
-                currentTick += step
-            }
+            step = pickNiceStep(atLeast: step * 1.999)
+            let sMin = floor(min / step) * step
+            let sMax = ceil(max / step) * step
+            ticks = buildTicks(min: sMin, max: sMax, step: step)
         }
 
         // Adjust if too few ticks (< 3)
         while ticks.count < 3 && step > 0.1 {
-            step /= 2 // Halve the step size
-            ticks = []
-            currentTick = min
-            while currentTick <= max + 0.001 {
-                ticks.append(currentTick)
-                currentTick += step
-            }
+            step = pickNiceStepAtMost(step / 2.001)
+            let sMin = floor(min / step) * step
+            let sMax = ceil(max / step) * step
+            ticks = buildTicks(min: sMin, max: sMax, step: step)
         }
 
-        // Ensure unique ticks and sort
-        ticks = Array(Set(ticks)).sorted()
+        // Final guard: ensure uniform spacing (all diffs equal within epsilon)
+        if ticks.count >= 3 {
+            let diffs = zip(ticks.dropFirst(), ticks).map { $0 - $1 }
+            let mean = diffs.reduce(0, +) / Double(diffs.count)
+            let nonUniform = diffs.contains { abs($0 - mean) > (Swift.max(0.001, step * 0.05)) }
+            if nonUniform {
+                // Force rebuild using the computed mean as step, snapped to a nice step
+                let rng = (ticks.last ?? snappedMax) - (ticks.first ?? snappedMin)
+                let snappedStep = ImprovedNiceScaleCalculator.calculateOptimalStep(range: rng, targetTickCount: Swift.max(3, Swift.min(6, ticks.count)))
+                step = Swift.max(snappedStep, 0.0001)
+                let sMin = floor(min / step) * step
+                let sMax = ceil(max / step) * step
+                ticks = buildTicks(min: sMin, max: sMax, step: step)
+            }
+        }
 
         return (step, ticks)
     }
@@ -327,33 +405,14 @@ struct YAxisCalculator {
         let upperBoundCandidate = max(scale.max, scale.domain.upperBound, scale.ticks.last ?? 0)
         let upper = max(0, upperBoundCandidate)
 
-        // Compute step so that (count - 1) * step >= upper, snapping to a nice step
-        let rawStep = (upper <= 0) ? 1.0 : (upper / Double(count - 1))
-        let step = pickNiceStep(atLeast: max(rawStep, 0.0001))
-
-        // Normalize top tick to a multiple of step
-        let stepsNeeded = ceil(upper / step)
-        let top = max(step, stepsNeeded * step)
-
-        // Rebuild non-negative uniform ticks from 0..top with `count` items
-        var ticks: [Double] = []
-        if count > 1 {
-            let evenStep = top / Double(count - 1)
-            for i in 0..<(count) {
-                // Round each tick to nearest multiple of a small epsilon to avoid floating artifacts
-                let value = Double(i) * evenStep
-                ticks.append(value)
-            }
-        } else {
-            ticks = [0]
-        }
+        let (ticks, step, domain) = niceTicks(min: 0, max: upper, desiredTickCount: count)
 
         let minVal: Double = 0
         let maxVal: Double = ticks.last ?? step
         return YAxisScale(
             min: minVal,
             max: maxVal,
-            step: ticks.count > 1 ? (ticks[1] - ticks[0]) : step,
+            step: step,
             ticks: ticks,
             domain: minVal...maxVal,
             average: scale.average
@@ -361,20 +420,27 @@ struct YAxisCalculator {
     }
 
     /// Pick a "nice" step size that is >= threshold using the same nice numbers logic.
-    private static func pickNiceStep(atLeast threshold: Double) -> Double {
+    static func pickNiceStep(atLeast threshold: Double) -> Double {
         // Determine magnitude (power of 10)
         let magnitude = pow(10.0, floor(log10(max(threshold, AppConstants.Precision.doubleEqualityEpsilon))))
         let normalized = threshold / magnitude
+        // Use expanded nice numbers
+        let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
+        return nice * magnitude
+    }
 
-        // Same nice set as ImprovedNiceScaleCalculator
-        let niceNumbers: [Double] = [1, 2, 5, 10, 15, 20, 25, 40, 50, 100]
-
-        // Find first nice >= normalized, otherwise bump magnitude
-        if let candidate = niceNumbers.first(where: { $0 >= normalized }) {
+    /// Pick the largest nice step <= threshold using classic nice set {1,2,5,10} × 10^k
+    private static func pickNiceStepAtMost(_ threshold: Double) -> Double {
+        let minEps = AppConstants.Precision.doubleEqualityEpsilon
+        let t = Swift.max(threshold, minEps)
+        let magnitude = pow(10.0, floor(log10(t)))
+        let normalized = t / magnitude
+        let reversedNice = niceNumbers.sorted(by: >)
+        if let candidate = reversedNice.first(where: { $0 <= normalized }) {
             return candidate * magnitude
         } else {
-            // If none is big enough, move to next order of magnitude with the smallest nice number
-            return (niceNumbers.first ?? 1) * magnitude * 10.0
+            // Go down one order of magnitude using the largest nice number (200 here)
+            return (niceNumbers.last ?? 1.0) * magnitude / (niceNumbers.last ?? 1.0)
         }
     }
 }
@@ -386,7 +452,7 @@ struct YAxisCalculator {
 fileprivate struct ImprovedNiceScaleCalculator {
 
     /// Nice numbers optimized for weight display (avoiding decimals)
-    private static let niceNumbers: [Double] = [1, 2, 5, 10, 15, 20, 25, 40, 50, 100]
+    private static let niceNumbers: [Double] = [1, 2, 4, 5, 10, 15, 20, 25, 40, 50, 100, 200]
 
     /// Generate a nice Y-axis scale with optimal tick values for gradual changes
     static func generateNiceScale(
@@ -395,26 +461,17 @@ fileprivate struct ImprovedNiceScaleCalculator {
         goalWeight: Double,
         targetTickCount: Int = 6
     ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
-
-        // Ensure we include the full range of actual data values
-        let actualMin = floor(minValue) // Include the full range of data
-        let actualMax = ceil(maxValue)  // Include the full range of data
-
-        // Calculate the raw range of actual data
-        let rawRange = actualMax - actualMin
-
-        // Handle very small ranges (gradual weight changes)
-        if rawRange < 5.0 {
-            return handleSmallRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight)
-        }
-
-        // Handle small ranges (5-15 units)
-        if rawRange < 15.0 {
-            return handleMediumRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight)
-        }
-
-        // Handle normal ranges
-        return handleNormalRange(dataMin: actualMin, dataMax: actualMax, goalWeight: goalWeight, targetTickCount: targetTickCount)
+        let dataMin = Swift.min(minValue, maxValue)
+        let dataMax = Swift.max(minValue, maxValue)
+        let desired = Swift.max(3, Swift.min(6, targetTickCount))
+        let result = YAxisCalculator.niceTicks(min: dataMin, max: dataMax, desiredTickCount: desired)
+        return (
+            min: result.domain.lowerBound,
+            max: result.domain.upperBound,
+            step: result.step,
+            ticks: result.ticks,
+            domain: result.domain
+        )
     }
 
             /// Handle very small ranges (gradual weight changes)
@@ -515,23 +572,16 @@ fileprivate struct ImprovedNiceScaleCalculator {
     }
 
     /// Calculate optimal step size using nice numbers
-    private static func calculateOptimalStep(range: Double, targetTickCount: Int) -> Double {
-        // Calculate rough step
-        let roughStep = range / Double(targetTickCount - 1)
-
-        // Find the magnitude (power of 10)
-        let magnitude = pow(10.0, floor(log10(roughStep)))
-
-        // Normalize the rough step to 0-1 range
-        let normalizedStep = roughStep / magnitude
-
-        // Find the closest nice number
-        let closestNiceNumber = niceNumbers.min { abs($0 - normalizedStep) < abs($1 - normalizedStep) } ?? 1.0
-
-        // Calculate the final step
-        let step = closestNiceNumber * magnitude
-
-        return step
+    public static func calculateOptimalStep(range: Double, targetTickCount: Int) -> Double {
+        // Guard
+        guard targetTickCount > 1 else { return range }
+        let rough = max(range / Double(targetTickCount - 1), 0.0001)
+        // magnitude 10^floor(log10(rough))
+        let magnitude = pow(10.0, floor(log10(rough)))
+        let normalized = rough / magnitude
+        // Pick first nice >= normalized using expanded set
+        let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
+        return nice * magnitude
     }
 }
 

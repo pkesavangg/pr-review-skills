@@ -62,6 +62,8 @@ struct SwipeableModifier: ViewModifier {
     let buttonWidth: CGFloat
     let itemID: UUID
     var openItemID: Binding<UUID?>?
+    let openThresholdFraction: CGFloat
+    let closeWithoutAnimationOnAction: Bool
 
     // MARK: - Configuration
     private let swipeMinimumDistance: CGFloat = 20 // Increased to avoid conflicts with scrolling
@@ -91,6 +93,10 @@ struct SwipeableModifier: ViewModifier {
         CGFloat(swipeButtons.count) * buttonWidth
     }
 
+    private var dynamicExpandThreshold: CGFloat {
+        max(8, totalButtonWidth * openThresholdFraction)
+    }
+
     private var maxSwipeDistance: CGFloat {
         totalButtonWidth + 20 // Small padding for overscroll
     }
@@ -111,14 +117,28 @@ struct SwipeableModifier: ViewModifier {
                     Button(action: {
                         // Only trigger if fully opened
                         if isSwipedOpen {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                savedOffset = 0
-                                currentOffset = 0
-                                swipeState = .closed
-                                isSwipedOpen = false
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            if closeWithoutAnimationOnAction {
+                                // Close without animation to avoid jiggle when alert appears
+                                var tx = Transaction()
+                                tx.disablesAnimations = true
+                                withTransaction(tx) {
+                                    savedOffset = 0
+                                    currentOffset = 0
+                                    swipeState = .closed
+                                    isSwipedOpen = false
+                                }
+                                // Execute action immediately
                                 button.action()
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    savedOffset = 0
+                                    currentOffset = 0
+                                    swipeState = .closed
+                                    isSwipedOpen = false
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    button.action()
+                                }
                             }
                         }
                     }) {
@@ -225,7 +245,7 @@ struct SwipeableModifier: ViewModifier {
         let absOffset = abs(totalTranslation)
         if absOffset > totalButtonWidth {
             swipeState = .triggering
-        } else if absOffset > expandThreshold {
+        } else if absOffset > dynamicExpandThreshold {
             swipeState = .expanded
         } else {
             swipeState = .closed
@@ -261,11 +281,11 @@ struct SwipeableModifier: ViewModifier {
         if velocityTowardsClose {
             // Strong velocity towards closing
             closeSwipe()
-        } else if velocityTowardsOpen && absOffset > expandThreshold / 2 {
+        } else if velocityTowardsOpen && absOffset > dynamicExpandThreshold / 2 {
             // Strong velocity towards opening with minimum distance
             openSwipe()
-        } else if absOffset > totalButtonWidth / 2 {
-            // Crossed halfway point
+        } else if absOffset > totalButtonWidth * openThresholdFraction {
+            // Crossed configured fraction of total width point
             openSwipe()
         } else {
             // Default to close
