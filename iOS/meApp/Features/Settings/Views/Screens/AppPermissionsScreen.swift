@@ -20,7 +20,6 @@ struct AppPermissionsScreen: View {
     private let lang = PermissionsStrings.self
     
     var body: some View {
-        // TODO: Need to bind the actual permission values to the state variables above and update the icons accordingly.
         VStack(spacing: 0) {
             NavbarHeaderView<Image, EmptyView>(
                 title: lang.title,
