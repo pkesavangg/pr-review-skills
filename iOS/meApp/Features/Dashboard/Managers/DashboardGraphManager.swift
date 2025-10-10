@@ -1020,7 +1020,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             
             // More aggressive caching: only recalculate if scroll moved > 25% of domain
             // This reduces calculations from every 10% movement
-            let cacheThreshold = domainLength / / 10
+            let cacheThreshold = domainLength / 10
             
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
