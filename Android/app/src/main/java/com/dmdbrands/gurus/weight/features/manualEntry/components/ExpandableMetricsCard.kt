@@ -97,18 +97,11 @@ fun ExpandableMetricsCard(
                         },
                     onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
                 )
-                r4ScaleMetrics?.let { r4Controls ->
+                if (dashboardType == DashboardType.DASHBOARD_12_METRICS && r4ScaleMetrics != null) {
                     R4ScaleMetricsSection(
-                        r4Controls,
-                        onImeAction = if (dashboardType != DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
-                        heartRateFocusRequester =
-                            if (dashboardType !=
-                                DashboardType.DASHBOARD_4_METRICS
-                            ) {
-                                heartRateFocusRequester
-                            } else {
-                                null
-                            },
+                        r4ScaleMetrics,
+                        onImeAction = onImeAction,
+                        heartRateFocusRequester = heartRateFocusRequester,
                     )
                 }
             }
@@ -145,6 +138,7 @@ private fun ExpandableMetricsCardPreview() {
             subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
             generalMetrics = general,
             r4ScaleMetrics = r4,
+            dashboardType = DashboardType.DASHBOARD_4_METRICS,
             expandedInitially = true,
         )
     }

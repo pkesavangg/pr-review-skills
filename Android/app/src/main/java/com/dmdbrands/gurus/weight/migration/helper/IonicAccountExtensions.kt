@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData
 import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegratedDeviceInfo
 import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegrationData
 import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegrationOperationType
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
@@ -14,6 +15,8 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceDetails
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceMetaDataEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenceEntity
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
 import com.dmdbrands.gurus.weight.migration.model.IonicScale
@@ -90,6 +93,19 @@ fun IonicAccount.toNotificationSettings(): NotificationSettingsEntity {
     isSynced = true,
     shouldSendEntryNotifications = this.shouldSendEntryNotifications ?: false,
     shouldSendWeightInEntryNotifications = this.shouldSendWeightInEntryNotifications ?: false,
+  )
+}
+
+/**
+ * Converts IonicAccount to DashboardSettingsEntity using direct field access.
+ */
+fun IonicAccount.toDashboardSettings(): DashboardSettingsEntity {
+  return DashboardSettingsEntity(
+    accountId = this.id ?: "",
+    dashboardMetrics = this.dashboardMetrics ?: emptyList(),
+    dashboardMilestones = MilestoneKey.getDefaultMilestones().map { it.name.lowercase() },
+    dashboardType = this.dashboardType?.name ?: DashboardType.DASHBOARD_4_METRICS.value,
+    isSynced = true,
   )
 }
 

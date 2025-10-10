@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -37,7 +38,6 @@ import com.dmdbrands.gurus.weight.features.metricinfo.components.MetricInfoValue
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.fullDateFormatter
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.fullMonthYearFormatter
-import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -59,7 +59,7 @@ enum class MetricInfoSource {
 }
 
 fun getFilteredMetricKeys(): List<MetricKey> {
-  return MetricKey.entries.filter { it != MetricKey.UNRECOGNIZED }
+  return MetricKey.entries
 }
 
 fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
@@ -125,8 +125,7 @@ fun MetricInfoScreenContent(
   val scope = rememberCoroutineScope()
   val backStack = LocalNavBackStack.current
 
-  val filteredMetricKeys = getFilteredMetricKeys()
-  val metricKeys = filteredMetricKeys.map {
+  val metricKeys = MetricKey.entries.map {
     MetricInfoKey(
       key = it,
       label = it.name.replace("_", " "),

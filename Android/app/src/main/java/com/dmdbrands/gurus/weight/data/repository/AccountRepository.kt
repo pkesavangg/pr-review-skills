@@ -6,16 +6,17 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
-import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -26,6 +27,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.auth.PasswordResetRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsRequest
+import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -54,7 +56,6 @@ class AccountRepository
 constructor(
   private val accountDao: AccountDao,
   private val userDataStore: UserDataStore,
-  private val dashboardKeysDatastore: DashboardKeysDatastore,
   private val tokenManager: ITokenManager,
   private val authAPI: IAuthAPI,
   private val userAPI: IUserAPI,
@@ -114,11 +115,23 @@ constructor(
   }
 
   override suspend fun updateDashboardMetrics(dashboardKeys: List<String>) {
+    AppLog.d("AccountRepository", "Updating dashboard metrics on server: $dashboardKeys")
     userAPI.updateDashboardMetrics(
       request = DashboardMetricsRequest(
         dashboardMetrics = dashboardKeys,
       ),
     )
+    AppLog.d("AccountRepository", "Dashboard metrics updated successfully on server")
+  }
+
+  override suspend fun updateDashboardType(dashboardType: String) {
+    AppLog.d("AccountRepository", "Updating dashboard type on server: $dashboardType")
+    userAPI.updateDashboardType(
+      request = DashboardTypeRequest(
+        dashboardType = dashboardType,
+      ),
+    )
+    AppLog.d("AccountRepository", "Dashboard type updated successfully on server")
   }
 
   /**
@@ -270,6 +283,48 @@ constructor(
 
     // Update account entity in database
     accountDao.updateAccount(updatedAccountEntity)
+  }
+
+  /**
+   * Updates only the dashboard type while preserving existing metrics and milestones.
+   * @param accountId The account ID
+   * @param dashboardType The new dashboard type to set
+   */
+  override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType){
+    // Get existing settings to preserve metrics and milestones
+    val existingSettings = accountDao.getDashboardSettings(accountId).first()
+    
+    val settings = DashboardSettingsEntity(
+      accountId = accountId,
+      dashboardMetrics = existingSettings?.dashboardMetrics ?: emptyList(),
+      dashboardMilestones = existingSettings?.dashboardMilestones ?: emptyList(),
+      dashboardType = dashboardType.value,
+      isSynced = true
+    )
+    accountDao.insertDashboardSettings(settings)
+  }
+
+  /**
+   * Updates dashboard settings including metrics and milestones for the given account.
+   * @param accountId The account ID
+   * @param dashboardMetrics List of metric keys
+   * @param dashboardMilestones List of milestone keys
+   * @param dashboardType The dashboard type
+   */
+  override suspend fun updateDashboardSettings(
+    accountId: String,
+    dashboardMetrics: List<String>,
+    dashboardMilestones: List<String>,
+    dashboardType: DashboardType
+  ) {
+    val settings = DashboardSettingsEntity(
+      accountId = accountId,
+      dashboardMetrics = dashboardMetrics,
+      dashboardMilestones = dashboardMilestones,
+      dashboardType = dashboardType.value,
+      isSynced = true
+    )
+    accountDao.insertDashboardSettings(settings)
   }
 
   /**
@@ -483,7 +538,6 @@ constructor(
         expiresAt = loginResponse.expiresAt,
       ),
     )
-    dashboardKeysDatastore.initializeDashboardKeys(account.id)
     return account
   }
 

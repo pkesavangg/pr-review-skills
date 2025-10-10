@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.core.di
 
-import com.dmdbrands.gurus.weight.data.storage.datastore.DashboardKeysDatastore
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.GoalAlertDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
@@ -35,12 +34,6 @@ object DataStoreModule {
   fun provideFcmDataStore(
     @ApplicationContext context: Context,
   ): FcmDataStore = FcmDataStore(context)
-
-  @Provides
-  @Singleton
-  fun provideVisileMetricsDataStore(
-    @ApplicationContext context: Context,
-  ): DashboardKeysDatastore = DashboardKeysDatastore(context)
 
   /**
    * Provides a singleton instance of [HealthConnectDataStore].

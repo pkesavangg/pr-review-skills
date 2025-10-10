@@ -5,6 +5,7 @@ import android.util.Log
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
@@ -54,7 +55,8 @@ class MigrationRepository @Inject constructor(
       weightlessSettings: WeightlessSettingsEntity,
       integrationsSettings: IntegrationsSettingsEntity,
       weightCompSettings: WeightCompSettingsEntity,
-      notificationSettings: NotificationSettingsEntity
+      notificationSettings: NotificationSettingsEntity,
+      dashboardSettings: DashboardSettingsEntity
   ) {
     try {
       val appDatabase = AppDatabase.Companion.getInstance(context)
@@ -64,6 +66,7 @@ class MigrationRepository @Inject constructor(
       appDatabase.accountDao().insertIntegrationsSettings(integrationsSettings)
       appDatabase.accountDao().insertWeightCompSettings(weightCompSettings)
       appDatabase.accountDao().insertNotificationSettings(notificationSettings)
+      appDatabase.accountDao().insertDashboardSettings(dashboardSettings)
 
       Log.d(TAG, "Account and settings inserted successfully for ${accountEntity.email}")
     } catch (e: Exception) {

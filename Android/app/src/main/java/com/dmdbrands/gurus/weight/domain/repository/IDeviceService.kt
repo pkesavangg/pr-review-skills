@@ -19,6 +19,7 @@ interface IDeviceService {
   val pairedScales: Flow<List<Device>>
   val connectedScales: Flow<List<Device>>
   val isWeightOnlyModeAlertShown: MutableStateFlow<Boolean>
+  val hasBluetoothWifiScale: Flow<Boolean>
 
   /**
    * Set the current account ID and initialize scale data for that account.

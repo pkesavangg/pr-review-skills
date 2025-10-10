@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
@@ -144,7 +145,7 @@ fun AppUserPreview() {
                     weightlessTimestamp = "2024-01-15T10:30:00.000Z",
                     weightlessWeight = 65.5f,
                     isStreakOn = true,
-                    dashboardType = "Dashboard4",
+                    dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
                     dashboardMetrics = listOf("weight", "bmi", "bodyfat"),
                 ),
                 onAccountSelect = {},
@@ -171,7 +172,7 @@ fun AppUserPreview() {
                 weightlessTimestamp = null,
                 weightlessWeight = null,
                 isStreakOn = false,
-                dashboardType = null,
+                dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
                 dashboardMetrics = null,
                 ),
                 onAccountSelect = {},

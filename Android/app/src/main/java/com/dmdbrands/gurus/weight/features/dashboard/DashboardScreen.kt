@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +28,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -41,7 +43,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewModel
-import com.dmdbrands.gurus.weight.proto.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -108,7 +109,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val selectedStat = state.selectedStat
 
   AppScaffold(title = null) {
-    Column(modifier = Modifier.verticalScroll(scrollState)) {
+    Column(modifier = if (state.latestWeight == null) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState)) {
 
       GraphPagerView(
         state = state,
@@ -141,6 +142,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMetrics,
           selectedStat = selectedStat,
+          dashboardType = state.dashboardType,
           onMetricClick = { stat ->
             handleIntent(DashboardIntent.SetSelectedStat(stat))
           },
@@ -178,7 +180,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
               // Save dashboard metrics and milestones when exiting edit mode
               val allVisibleKeys =
                 currentVisibleMetrics + currentVisibleMilestones
-              handleIntent(DashboardIntent.SetVisibleKeys(allVisibleKeys))
+              handleIntent(DashboardIntent.UpdateVisibleKeys(allVisibleKeys, state.dashboardType))
             }
             inEditMode = editMode
           },

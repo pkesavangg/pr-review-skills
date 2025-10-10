@@ -34,8 +34,6 @@ fun rememberGraphChart(
     endMillis = if (timeStamps.isNotEmpty()) timeStamps.last() else null,
   ).map { it.toDouble() }
 
-  timeStamps.max()
-  timeStamps.min()
   val primaryLayer = primaryLayer(
     segment = segment,
     yRangeValues = state.primaryYAxis,
