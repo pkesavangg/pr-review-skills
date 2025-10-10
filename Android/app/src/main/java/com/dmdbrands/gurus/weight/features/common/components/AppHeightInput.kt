@@ -37,6 +37,7 @@ fun AppHeightInput(
         currentValue.getString(),
         selected = isModalTriggered,
         enabled = enabled && !readOnly,
+        textTransform = TextTransform.NONE,
         modifier = modifier,
     ) {
         if (enabled && !readOnly) {
