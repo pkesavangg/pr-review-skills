@@ -46,7 +46,6 @@ constructor(
     viewModelScope.launch {
       subscribeMetrics()
       subscribeDashboardType()
-      loadEntries()
       subscribeProgress()
       subscribeLatestWeight()
     }
@@ -160,7 +159,7 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
-  }  
+  }
 
   /**
    * Saves the dashboard metrics configuration.

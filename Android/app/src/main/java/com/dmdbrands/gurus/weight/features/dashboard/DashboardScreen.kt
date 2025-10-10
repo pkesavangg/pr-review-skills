@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -110,7 +109,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val selectedStat = state.selectedStat
 
   AppScaffold(title = null) {
-    Column(modifier = if (state.dayWiseEntries.isEmpty() && !state.isLoading) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState)) {
+    Column(modifier = if (state.latestWeight == null) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState)) {
 
       GraphPagerView(
         state = state,

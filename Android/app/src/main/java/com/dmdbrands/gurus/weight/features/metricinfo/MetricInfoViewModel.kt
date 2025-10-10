@@ -1,9 +1,9 @@
 package com.dmdbrands.gurus.weight.features.metricinfo
 
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -45,7 +45,7 @@ class MetricInfoViewModel @AssistedInject constructor(
       }
 
       is MetricInfoIntent.SetSelectedIndex -> {
-        val metricKeys = getFilteredMetricKeys()
+        val metricKeys = MetricKey.getAllMetrics()
         if (intent.index in metricKeys.indices) {
           val selectedKey = metricKeys[intent.index]
           val selectedStat = StatHelper.getMetricValue(info, selectedKey)
