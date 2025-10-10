@@ -3,8 +3,8 @@ package com.dmdbrands.gurus.weight.features.ScaleUsers.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
+import com.dmdbrands.gurus.weight.domain.model.storage.toGGDevicePreference
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListIntent
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListReducer
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListState
@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.greatergoods.blewrapper.GGDeviceService
 import dagger.assisted.Assisted
@@ -60,7 +61,7 @@ constructor(
       deviceService.pairedScales.collect { devices ->
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
-          state.value.usernameForm.username.onValueChange(scaleDevice.preferences?.displayName ?: "")
+          state.value.usernameForm.username.reset(scaleDevice.preferences?.displayName ?: "")
           handleIntent(ScaleUserListIntent.SetScale(scaleDevice, hasSetUsername = true))
           loadScaleUsers()
         }
@@ -115,19 +116,42 @@ constructor(
       try {
         dialogQueueService.showLoader(message = ScaleUsersStrings.LoaderMessage)
 
+        // Create updated preferences with new display metrics
         val preferences =
-          scale.preferences?.copy(
+          scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             displayName = state.value.usernameForm.username.value,
-          ) ?: ScaleMetricsHelper.getDefaultPreference(state.value.usernameForm.username.value)
-        val success = deviceService.updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
-        // ggDeviceService.updateSettings(updatedScale)
+          )!!
 
-        if (success) {
-          dialogQueueService.dismissLoader()
-          showToast(ScaleUsersStrings.Toast.Success)
-          navigateBack()
-        } else {
-          showToast(ScaleUsersStrings.Toast.Error)
+        val updatedScalePreference = scale.preferences.copy(
+          displayName = state.value.usernameForm.username.value,
+        ).toGGDevicePreference()
+        val updatedScale = scale.toGGBTDevice().copy(preference = updatedScalePreference)
+
+        // Update scale preferences via API and BLE service
+        ggDeviceService.updateAccount(
+          updatedScale,
+        ) {
+          when (it) {
+            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
+              viewModelScope.launch {
+                val success = deviceService.updateScalePreferences(scaleId, preferences)
+                if (success) {
+                  dialogQueueService.dismissLoader()
+                  deviceService.syncDevices()
+                  showToast(ScaleUsersStrings.Toast.Success)
+                  navigateBack()
+                } else {
+                  showToast(ScaleUsersStrings.Toast.Error)
+                  dialogQueueService.dismissLoader()
+                }
+              }
+            }
+
+            else -> {
+              showToast(ScaleUsersStrings.Toast.Error)
+              dialogQueueService.dismissLoader()
+            }
+          }
         }
       } catch (err: Exception) {
         dialogQueueService.dismissLoader()

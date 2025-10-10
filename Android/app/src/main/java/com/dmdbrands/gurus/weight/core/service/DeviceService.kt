@@ -404,7 +404,6 @@ constructor(
           wifiFotaScheduleTime = 0,
           tzOffset = getTimeZoneInMinutes(),
         )
-      // TODO("Update preferences to the scale via ggBluetoothPlugin")
       // Save preferences to API
       deviceRepository.saveScalePreferencesToApi(updatedPreference)
       syncDevices()
