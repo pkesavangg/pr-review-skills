@@ -15,8 +15,8 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       data = intent.data,
     )
 
-    is GraphIntent.ReInitializeGraph -> state.copy(
-      secondaryStat = intent.stat,
+    is GraphIntent.SetSecondaryKey -> state.copy(
+      secondaryKey = intent.key,
     )
 
     is GraphIntent.UpdateTarget -> state.copy(

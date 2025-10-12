@@ -16,7 +16,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
@@ -24,8 +23,6 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -50,7 +47,6 @@ fun GraphView(
   modifier: Modifier = Modifier,
   state: GraphState,
   segment: GraphSegment = GraphSegment.WEEK,
-  secondaryStat: Stat? = null,
   scrollTarget: Double? = null,
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
@@ -108,40 +104,6 @@ fun GraphView(
     horizontalItemPlacer(
       segment = segment,
     )
-  LaunchedEffect(Unit) {
-    scrollState.visibleRange
-      .debounce(200)
-      .drop(1)
-      .collect { range ->
-        scope.launch {
-          if (range != null) {
-            val min = range.visibleXRange.start
-            val max = range.visibleXRange.endInclusive
-            viewModel.handleIntent(
-              GraphIntent.SetScrollRange(min.toLong(), max.toLong()) {
-                val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
-                  it in min..max
-                }
-                val fallbackValues = scrollState.getInterpolatedYValues(
-                  xValues = visibleLabels,
-                  interpolationType = InterpolationType.CUBIC,
-                )
-                val fallbackData = state.createFallBackData(
-                  segment = segment,
-                  timeStamps = visibleLabels.map { it.toLong() },
-                  fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-                )
-                viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
-              },
-            )
-          }
-        }
-      }
-  }
-
-  LaunchedEffect(secondaryStat) {
-    viewModel.handleIntent(GraphIntent.ReInitializeGraph(secondaryStat))
-  }
 
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
@@ -160,11 +122,6 @@ fun GraphView(
       viewModel.handleIntent(GraphIntent.UpdateTarget(it))
     },
   )
-
-  val horizontalItemPlacer =
-    horizontalItemPlacer(
-      segment = segment,
-    )
 
   val chart = rememberGraphChart(
     state = state,
@@ -204,6 +161,32 @@ fun GraphView(
     scrollState = scrollState,
     animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
+    onScrollStopped = { range ->
+      scope.launch {
+        if (range != null) {
+          val min = range.visibleXRange.start
+          val max = range.visibleXRange.endInclusive
+          viewModel.handleIntent(
+            GraphIntent.SetScrollRange(min.toLong(), max.toLong()) {
+              val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
+                it in min..max
+              }
+              val fallbackValues = scrollState.getInterpolatedYValues(
+                xValues = visibleLabels,
+                interpolationType = InterpolationType.CUBIC,
+              )
+              val fallbackData = state.createFallBackData(
+                segment = segment,
+                timeStamps = visibleLabels.map { it.toLong() },
+                fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+              )
+              viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+            },
+          )
+        }
+      }
+
+    },
   )
 }
 

@@ -50,7 +50,7 @@ constructor(
       subscribeDashboardType()
       subscribeProgress()
       subscribeLatestWeight()
-       subscribeIsEmpty()
+      subscribeIsEmpty()
     }
   }
 
@@ -71,11 +71,18 @@ constructor(
       is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      is DashboardIntent.SetSelectedStat -> setSelectedStat(intent.stat)
       is DashboardIntent.Refresh -> refresh()
 
       else -> null
     }
     super.handleIntent(intent)
+  }
+
+  private fun setSelectedStat(stat: Stat?) {
+    viewModelScope.launch {
+      dashboardService.setSelectedKey(stat?.key)
+    }
   }
 
   private fun refresh() {

@@ -4,7 +4,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 
 /**
@@ -16,7 +16,7 @@ sealed interface GraphIntent : IReducer.Intent {
 
   data class UpdateTarget(val target: List<PeriodBodyScaleSummary>) : GraphIntent
 
-  data class ReInitializeGraph(val stat: Stat?) : GraphIntent
+  data class SetSecondaryKey(val key: DashboardKey?) : GraphIntent
 
   data class UpdateGoal(val goal: Goal?) : GraphIntent
 

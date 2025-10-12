@@ -13,7 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +36,10 @@ constructor(
   private var accountId: String? = null
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+  private val _selectedKey = MutableStateFlow<DashboardKey?>(null)
+  override val selectedKey: StateFlow<DashboardKey?>
+    get() = _selectedKey.asStateFlow()
+
   private val _visibleKeys = MutableStateFlow<List<DashboardKey>>(listOf())
   override val visibleKeys: StateFlow<List<DashboardKey>>
     get() = _visibleKeys.asStateFlow()
@@ -53,6 +56,10 @@ constructor(
         _visibleKeys.value = it
       }
     }
+  }
+
+  override suspend fun setSelectedKey(key: DashboardKey?) {
+    _selectedKey.value = key
   }
 
   private fun clearAllData() {
@@ -77,7 +84,7 @@ constructor(
       AppLog.d("DashboardService", "Server dashboardMetrics: $serverMetrics")
 
       // Update local database with server data
-      val metricsString = serverMetrics.joinToString(",")
+      serverMetrics.joinToString(",")
 
       // Get current milestones from database, or use defaults if not set
       val currentMilestones = try {
@@ -152,7 +159,7 @@ constructor(
   ) {
     val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
     dashboardRepository.updateVisibleMetricKeys(id, keys, dashboardType)
-    
+
     // Refresh the visible keys StateFlow to notify subscribers
     refreshVisibleKeysFromDatabase(id)
   }
@@ -193,7 +200,7 @@ constructor(
       AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
 
       accountRepository.updateDashboardMetrics(dashboardKeys)
-      
+
       // Refresh the visible keys StateFlow to notify subscribers
       refreshVisibleKeysFromDatabase(id)
     } catch (e: Exception) {
