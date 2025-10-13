@@ -56,6 +56,9 @@ data class ScaleUsernameFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
+          FormValidations.noWhiteSpace(),
+          FormValidations.maxLength(20,),
+          FormValidations.minLength(2,)
         ),
       ),
     )

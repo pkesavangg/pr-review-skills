@@ -23,7 +23,8 @@ data class ScaleNameDialogFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
-          FormValidations.maxLength(100, ScaleNameDialogStrings.ScalenameLabel),
+          FormValidations.noWhiteSpace(),
+        FormValidations.maxLength(100, ScaleNameDialogStrings.ScalenameLabel),
         ),
       ),
     )

@@ -18,6 +18,7 @@ object ValidationType {
   const val LESSER = "lesser"
   const val FUTURE_TIME = "future_time"
   const val WEIGHT_MATCH = "weightMatch"
+  const val BLANK = "blank"
 }
 
 object ValidationMessages {
@@ -33,6 +34,7 @@ object ValidationMessages {
   const val REQUIRED = "must not be left blank"
   const val PASSWORD_MISMATCH = "both passwords must match"
   const val NO_WHITESPACE = "must not leave blank"
+  const val BLANK = "must not be left blank"
   const val INVALID_WEIGHT = "invalid weight"
   const val KG_RANGE = "Value should be between 0 kg and 450 kg"
   const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
@@ -272,10 +274,15 @@ object FormValidations {
       }
     }
 
-  fun noWhitespace(): Validator<String> =
+  /**
+   * Validator that checks if the value contains only whitespace characters.
+   * This matches the TypeScript noWhiteSpace validator behavior.
+   * Returns error if value has length > 0 but trim().length == 0
+   */
+  fun noWhiteSpace(): Validator<String> =
     { value ->
-      if (value.trim().isEmpty()) {
-        ValidationError(ValidationType.REQUIRED, ValidationMessages.NO_WHITESPACE)
+      if (value.isNotEmpty() && value.trim().isEmpty()) {
+        ValidationError(ValidationType.BLANK, ValidationMessages.BLANK)
       } else {
         null
       }
