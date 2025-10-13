@@ -85,10 +85,10 @@ struct TroubleShootingView: View {
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
             Group {
-                ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, onTap: { helpStore.sendWeightGurusLog() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, onTap: { helpStore.resyncEntries() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, onTap: { helpStore.clearAllLocalData() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.rateApp, onTap: { helpStore.showAppRateModal() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, chevronType: .none, onTap: { helpStore.sendWeightGurusLog() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries,chevronType: .none, onTap: { helpStore.resyncEntries() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData,chevronType: .none, onTap: { helpStore.clearAllLocalData() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.rateApp,chevronType: .none, onTap: { helpStore.showAppRateModal() }))
             }
             .listRowInsets()
 
@@ -104,7 +104,7 @@ struct TroubleShootingView: View {
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.sendScaleLog,
-                            chevronType: .right,
+                            chevronType: .none,
                             isDisabled: !helpStore.isSendScaleLogEnabled,
                             onTap: { helpStore.sendScaleLogHandler() }
                         )

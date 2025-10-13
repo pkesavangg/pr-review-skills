@@ -134,7 +134,7 @@ struct AppInputField: View {
                 Button(action: {
                     config.onCustomIconTap?()
                 }) {
-                    AppIconView(icon: customIcon)
+                    AppIconView(icon: customIcon, size: IconSize(width: 35, height: 35))
                         .foregroundColor(theme.actionPrimary)
                 }
             } else {
