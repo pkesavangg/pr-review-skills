@@ -20,7 +20,7 @@ object ChooseScaleStrings {
 object PairedScaleExistsAlert {
   const val Title = "Device already paired"
   fun Message(deviceName: String) =
-    "The device with sku: $deviceName is already paired. Do you want to pair it again?`"
+    "The device with sku: $deviceName is already paired. Do you want to pair it again?"
   const val Cancel = "Cancel"
   const val Pair = "Pair"
 }
