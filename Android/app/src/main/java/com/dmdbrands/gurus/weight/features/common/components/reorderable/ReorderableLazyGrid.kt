@@ -194,7 +194,10 @@ fun LazyGridItemScope.ReorderableItem(
   key: Any,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
-  animateItemModifier: Modifier = Modifier.animateItem(),
+  animateItemModifier: Modifier = Modifier.animateItem(
+    fadeInSpec = null,
+    fadeOutSpec = null,
+  ),
   content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
 ) {
   val dragging by state.isItemDragging(key)
@@ -242,7 +245,7 @@ fun LazyGridItemScope.ReorderableItem(
         translationY = state.previousDraggingItemOffset.value.y.coerceIn(minTranslationY, maxTranslationY)
       }
   } else {
-    Modifier.onGloballyPositioned { itemSize = it.size } then animateItemModifier
+    Modifier.onGloballyPositioned { itemSize = it.size } then if (enabled) animateItemModifier else Modifier
   }
 
   ReorderableCollectionItem(
