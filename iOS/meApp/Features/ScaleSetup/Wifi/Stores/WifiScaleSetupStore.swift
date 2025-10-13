@@ -282,7 +282,7 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     func shouldDisableBackButton() -> Bool {
-        return currentStep == .intro
+        return currentStep == .intro || currentStep == .setupFinish
     }
     
     func handleNextButtonClick() {
