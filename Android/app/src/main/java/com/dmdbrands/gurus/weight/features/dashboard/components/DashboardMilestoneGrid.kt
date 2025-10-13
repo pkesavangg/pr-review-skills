@@ -69,7 +69,7 @@ fun DashboardMilestoneGrid(
           }
           tempLocalVisibleMileStone.toMutableList().apply {
             val goalItemIndex =
-              hasGoalCardBetweenIndices(tempLocalVisibleMileStone, 0, tempLocalVisibleMileStone.size - 1)
+              hasGoalCardBetweenIndices(tempLocalVisibleMileStone, -1, tempLocalVisibleMileStone.size)
             if (goalItemIndex != null) {
               val goalItem = removeAt(goalItemIndex)
               add(goalIndex, goalItem)
