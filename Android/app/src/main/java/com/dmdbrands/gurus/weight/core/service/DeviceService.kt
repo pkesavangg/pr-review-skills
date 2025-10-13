@@ -200,32 +200,32 @@ constructor(
       // 1. Get locally stored devices
       val storedDevices = deviceRepository.getDevices(currentAccountId!!, false).first().toMutableList()
 
-      // 2. Inject a temporary new device if passed  (Fix A: actually use copy())
+      // 2. Inject a temporary new device if passed
       tempDevice?.let { td ->
-        val temp = td.copy(isSynced = false)
+        // ✅ FIX: Only mark as unsynced if it's actually not synced yet
+        val temp = if (td.isSynced) td else td.copy(isSynced = false)
         storedDevices.add(temp)
       }
 
       // 3. Classify devices
       val devicesToSync = storedDevices.filter { device ->
-        (!device.isSynced || (device.preferences != null && !device.preferences.isSynced)) && !device.isDeleted
+        !device.isDeleted &&
+          (!device.isSynced || (device.preferences != null && !device.preferences.isSynced))
       }
       val devicesMarkedDeleted = storedDevices.filter { it.isDeleted }
-      // (Removed unused filter)
 
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
         try {
           var savedDevice = deviceRepository.saveDeviceToApi(device, currentAccountId!!)
-          // mark the saved device as synced
           savedDevice = savedDevice.copy(isSynced = true)
 
-          // sync preference if needed
+          // Sync preference if needed
           if (savedDevice.deviceType == ScaleSetupType.BtWifiR4.value && savedDevice.preferences != null) {
             try {
               val updatedPref = savedDevice.preferences.copy(
                 isSynced = true,
-                id = savedDevice.id, // align pref id to device id (server id)
+                id = savedDevice.id,
               )
               deviceRepository.saveScalePreferencesToApi(updatedPref.toR4ScalePreferenceApiModel())
               savedDevice = savedDevice.copy(preferences = updatedPref)
@@ -237,12 +237,11 @@ constructor(
             }
           }
 
-          // Fix B: if server changed the ID, remove the old offline/temp row so it can't linger
+          // ✅ FIX: If ID changed (server-generated ID), remove old temp record
           if (savedDevice.id != device.id) {
             try {
               deviceRepository.deleteDeviceFromDb(device.id)
             } catch (e: Exception) {
-              // Not fatal; we’ll still write the new one below
               AppLog.e(tag, "Could not delete temp local device ${device.id}", e)
             }
           }
@@ -250,13 +249,11 @@ constructor(
           syncedDevicesToStore.add(savedDevice)
         } catch (e: Exception) {
           AppLog.e(tag, "Error syncing device ${device.id}", e)
-          unsyncedDevices.add(
-            device.copy(isSynced = false),
-          )
+          unsyncedDevices.add(device.copy(isSynced = false))
         }
       }
 
-      // 5. Delete devices marked for deletion (server & local)
+      // 5. Delete devices marked for deletion
       for (device in devicesMarkedDeleted) {
         try {
           deviceRepository.deleteDeviceFromApi(device.id)
@@ -294,11 +291,10 @@ constructor(
         if (localMatch != null) {
           apiDev.copy(
             isSynced = true,
-            isDeleted = localMatch.isDeleted, // preserve deletion flag from local
+            isDeleted = localMatch.isDeleted,
             device = apiDev.device?.copy(
-              // Fix D: guard nullable
-              macAddress = localMatch.device?.macAddress ?: apiDev.device.macAddress,
-              isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device.isWifiConfigured ?: false,
+              macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+              isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
             ),
           )
         } else {
@@ -307,7 +303,8 @@ constructor(
       } + unsyncedDevices.map { it.copy(isSynced = false) }
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API", e)
-      syncedDevicesToStore.map { it.copy(isSynced = true) } + unsyncedDevices.map { it.copy(isSynced = false) }
+      syncedDevicesToStore.map { it.copy(isSynced = true) } +
+        unsyncedDevices.map { it.copy(isSynced = false) }
     }
 
     // 7. Store updated device list locally
@@ -315,7 +312,8 @@ constructor(
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }
-      // 8. Refresh the StateFlow/UI
+
+      // 8. Refresh the pairedScales StateFlow to reflect changes in UI
       fetchScales(currentAccountId)
     } catch (e: Exception) {
       AppLog.e(tag, "Error storing final device list", e)
