@@ -58,14 +58,23 @@ class HistoryDetailViewModel @AssistedInject constructor(
     override fun handleIntent(intent: HistoryDetailIntent) {
         super.handleIntent(intent)
         when (intent) {
+
             is HistoryDetailIntent.Refresh -> {
                 AppLog.d(TAG, "Refreshing history details")
                 viewModelScope.launch {
                     try {
+                        // Set loading state to true
+                        handleIntent(HistoryDetailIntent.SetRefreshing(true))
+                        // Perform sync operations
                         entryService.syncOperations()
                         AppLog.d(TAG, "Sync operations completed")
+
                     } catch (e: Exception) {
                         AppLog.e(TAG, "Error during sync operations", e)
+                        handleIntent(HistoryDetailIntent.SetError("Failed to refresh data"))
+                    } finally {
+                        // Set loading state to false
+                        handleIntent(HistoryDetailIntent.SetRefreshing(false))
                     }
                 }
             }

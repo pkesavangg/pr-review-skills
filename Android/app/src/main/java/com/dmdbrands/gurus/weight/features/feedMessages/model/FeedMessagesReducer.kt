@@ -36,10 +36,7 @@ class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
         state.copy(isLoading = true)
       }
       is FeedMessagesIntent.SetRefreshing -> {
-        state.copy(isRefreshing = true)
-      }
-      is FeedMessagesIntent.ClearRefreshing -> {
-        state.copy(isRefreshing = false)
+        state.copy(isRefreshing = intent.isRefreshing)
       }
       else -> state
     }

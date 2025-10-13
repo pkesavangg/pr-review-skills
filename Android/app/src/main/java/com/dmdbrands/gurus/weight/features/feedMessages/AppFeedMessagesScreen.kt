@@ -1,8 +1,7 @@
 package com.dmdbrands.gurus.weight.features.feedMessages
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,12 +13,14 @@ import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.feedMessages.model.FeedMessagesIntent
+import com.dmdbrands.gurus.weight.features.feedMessages.model.FeedMessagesState
 import com.dmdbrands.gurus.weight.features.feedMessages.strings.FeedMessagesStrings
 import com.dmdbrands.gurus.weight.features.feedMessages.viewmodel.FeedMessagesViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesScreen
+import android.util.Log
 
 /**
  * Feed Messages Screen with TopAppBar
@@ -32,6 +33,10 @@ fun AppFeedMessagesScreen(
 ) {
   val viewModel: FeedMessagesViewModel = hiltViewModel()
   val state by viewModel.state.collectAsState()
+  val isRefreshing = state.isRefreshing
+
+  // Debug logging
+  android.util.Log.d("AppFeedMessagesScreen", "Current state - isRefreshing: $isRefreshing, isLoading: ${state.isLoading}")
 
   // Handle back button press
   BackHandler {
@@ -43,30 +48,49 @@ fun AppFeedMessagesScreen(
     viewModel.handleIntent(FeedMessagesIntent.Initialize)
   }
 
+  AppFeedMessagesScreenContent(
+    state = state,
+    isRefreshing = state.isRefreshing,
+    onRefresh = {
+      android.util.Log.d("AppFeedMessagesScreen", "onRefresh callback triggered!")
+      viewModel.handleIntent(FeedMessagesIntent.Refresh)
+    },
+    handleIntent = viewModel::handleIntent,
+    modifier = modifier,
+  )
+}
+
+@Composable
+fun AppFeedMessagesScreenContent(
+  state: FeedMessagesState,
+  isRefreshing: Boolean = false,
+  onRefresh: (() -> Unit)? = null,
+  handleIntent: (FeedMessagesIntent) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   AppScaffold(
     title = FeedMessagesStrings.Title,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
-        viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
+        handleIntent(FeedMessagesIntent.OnBackPress)
       }
     },
     containerColor = colorScheme.secondaryBackground,
     appBarColor = colorScheme.primaryBackground,
+    isRefreshing = state.isRefreshing,
+    onRefresh = {
+      Log.i("CHECKING" , "triggered")
+    },
     modifier = modifier.fillMaxSize(),
   ) { scaffoldModifier ->
     // Reuse the IAM FeedMessagesScreen content
-    Column(
-      modifier = Modifier
-        .background(colorScheme.primaryBackground)
-        .fillMaxSize()
-        // .padding(horizontal = 16.dp),
-    ) {
+    Box(modifier = scaffoldModifier.fillMaxSize()) {
       FeedMessagesScreen(
         onSettingsPress = {
-          viewModel.handleIntent(FeedMessagesIntent.OnSettingsPress)
+          handleIntent(FeedMessagesIntent.OnSettingsPress)
         },
         onNavigateToFeedLanding = { feedItem ->
-          viewModel.handleIntent(FeedMessagesIntent.OnNavigateToFeedLanding(feedItem))
+          handleIntent(FeedMessagesIntent.OnNavigateToFeedLanding(feedItem))
         }
       )
     }
@@ -77,7 +101,12 @@ fun AppFeedMessagesScreen(
 @Composable
 fun FeedMessagesScreenPreview() {
   MeAppTheme {
-    AppFeedMessagesScreen()
+    AppFeedMessagesScreenContent(
+      state = FeedMessagesState(),
+      isRefreshing = false,
+      onRefresh = {},
+      handleIntent = {},
+    )
   }
 }
 

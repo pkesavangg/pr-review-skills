@@ -10,5 +10,5 @@ data class FeedMessagesState(
   val isLoading: Boolean = false,
   val error: String? = null,
   val feedItems: List<FeedItem> = emptyList(),
-  val isRefreshing: Boolean = false
+  val isRefreshing: Boolean = true
 ) : IReducer.State

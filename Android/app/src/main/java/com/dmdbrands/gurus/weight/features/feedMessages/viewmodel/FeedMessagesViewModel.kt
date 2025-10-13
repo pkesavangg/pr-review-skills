@@ -45,9 +45,13 @@ class FeedMessagesViewModel @Inject constructor(
    */
   override fun handleIntent(intent: FeedMessagesIntent) {
     super.handleIntent(intent)
+    AppLog.d("FeedMessagesViewModel", "Received intent: ${intent::class.simpleName}")
     when (intent) {
       is FeedMessagesIntent.Initialize -> initialize()
-      is FeedMessagesIntent.Refresh -> refresh()
+      is FeedMessagesIntent.Refresh -> {
+        AppLog.d("FeedMessagesViewModel", "Refresh intent received - calling refresh()")
+        refresh()
+      }
       is FeedMessagesIntent.OnBackPress -> navigateBack()
       is FeedMessagesIntent.OnSettingsPress -> navigateToSettings()
       is FeedMessagesIntent.OnNavigateToFeedLanding -> navigateToFeedLanding(intent.feedItem)
@@ -74,13 +78,23 @@ class FeedMessagesViewModel @Inject constructor(
    * Refreshes the feed messages
    */
   private fun refresh() {
+    AppLog.d("FeedMessagesViewModel", "Refresh method called - starting refresh process")
     viewModelScope.launch {
       try {
         AppLog.d("FeedMessagesViewModel", "Refreshing feed messages")
+        // Set refreshing state to true
+        AppLog.d("FeedMessagesViewModel", "Setting isRefreshing to true")
+        handleIntent(FeedMessagesIntent.SetRefreshing(true))
+        // Load feed messages
+        AppLog.d("FeedMessagesViewModel", "Loading feed messages")
         loadFeedMessages()
       } catch (e: Exception) {
         AppLog.e("FeedMessagesViewModel", "Failed to refresh", e.toString())
         handleIntent(FeedMessagesIntent.SetError("Failed to refresh feed messages"))
+      } finally {
+        // Set refreshing state to false
+        AppLog.d("FeedMessagesViewModel", "Setting isRefreshing to false")
+        handleIntent(FeedMessagesIntent.SetRefreshing(false))
       }
     }
   }

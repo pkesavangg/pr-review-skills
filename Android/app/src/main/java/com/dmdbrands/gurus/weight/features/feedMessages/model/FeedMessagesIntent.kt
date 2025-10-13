@@ -16,6 +16,5 @@ sealed class FeedMessagesIntent : IReducer.Intent {
   data class SetError(val error: String) : FeedMessagesIntent()
   data object ClearError : FeedMessagesIntent()
   data object SetLoading : FeedMessagesIntent()
-  data object SetRefreshing : FeedMessagesIntent()
-  data object ClearRefreshing : FeedMessagesIntent()
+  data class SetRefreshing(val isRefreshing: Boolean) : FeedMessagesIntent()
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,11 +64,13 @@ fun FeedMessagesScreen(
         viewModel.handleIntent(FeedMessagesIntent.LoadFeedItems)
     }
 
+  val verticalScrollModifier = if(state.isLoading || state.error != null || state.showEmptyState) Modifier.verticalScroll(rememberScrollState()) else Modifier
+
     Column(
         modifier = modifier
+          .fillMaxSize()
+          .then(verticalScrollModifier)
           .background(colors.secondaryBackground)
-          .fillMaxWidth()
-          .fillMaxHeight(),
     ) {
         // Section Header
         SectionHeader(
@@ -76,7 +81,7 @@ fun FeedMessagesScreen(
             },
         )
 
-        // Content based on state
+        //Content based on state
         when {
             state.isLoading -> {
                 // Loading state
@@ -236,17 +241,10 @@ private fun ErrorContent(
 @Composable
 private fun EmptyStateContent() {
     // Use a Box with fillMaxSize to center the column vertically
-    androidx.compose.foundation.layout.Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-          .fillMaxWidth()
-          .fillMaxHeight()
-          .background(color = IamTheme.colors.secondaryBackground),
-    ) {
         Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
         ) {
             // Primary Empty State Message
             Text(
@@ -267,7 +265,6 @@ private fun EmptyStateContent() {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
-    }
 }
 
 // Preview removed to avoid build issues - can be added later when needed
