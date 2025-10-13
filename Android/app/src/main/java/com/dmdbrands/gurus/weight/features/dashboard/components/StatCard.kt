@@ -166,6 +166,7 @@ fun AnimatedStatCard(
   isFromSetup: Boolean = true,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
+  enabled: Boolean = true,
   onClick: () -> Unit = {},
   reorderableScope: ReorderableCollectionItemScope? = null
 ) {
