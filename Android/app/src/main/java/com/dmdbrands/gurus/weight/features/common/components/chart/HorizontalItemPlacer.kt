@@ -12,7 +12,7 @@ import java.time.ZonedDateTime
  * Internal helper to remember the horizontal item placer for the X axis.
  */
 @Composable
-internal fun horizontalItemPlacer(
+internal fun rememberHorizontalAxisItemPlacer(
   segment: GraphSegment,
 ): HorizontalAxis.ItemPlacer {
   val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()

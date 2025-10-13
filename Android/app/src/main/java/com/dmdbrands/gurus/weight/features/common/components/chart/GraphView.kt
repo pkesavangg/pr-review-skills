@@ -105,7 +105,7 @@ fun GraphView(
     }
   }
   val horizontalItemPlacer =
-    horizontalItemPlacer(
+    rememberHorizontalAxisItemPlacer(
       segment = segment,
     )
   LaunchedEffect(Unit) {
@@ -160,11 +160,6 @@ fun GraphView(
       viewModel.handleIntent(GraphIntent.UpdateTarget(it))
     },
   )
-
-  val horizontalItemPlacer =
-    horizontalItemPlacer(
-      segment = segment,
-    )
 
   val chart = rememberGraphChart(
     state = state,
