@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -11,7 +12,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -44,6 +44,7 @@ import android.icu.util.Calendar
 )
 class GraphViewModel @AssistedInject constructor(
   @Assisted val segment: GraphSegment,
+  private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
   private val accountService: IAccountService
@@ -54,10 +55,6 @@ class GraphViewModel @AssistedInject constructor(
   override fun handleIntent(intent: GraphIntent) {
     super.handleIntent(intent)
     when (intent) {
-      is GraphIntent.ReInitializeGraph -> initializeGraph(
-        secondaryStat = intent.stat,
-      )
-
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
       else -> null
     }
@@ -97,11 +94,13 @@ class GraphViewModel @AssistedInject constructor(
     viewModelScope.launch {
       combine(
         dataFlow,
+        dashboardService.selectedKey,
         goalService.getCurrentGoal(),
-      ) { data, goal ->
+      ) { data, secondaryKey, goal ->
         handleIntent(GraphIntent.UpdateData(data))
         handleIntent(GraphIntent.UpdateGoal(goal))
-        initializeGraph(data, goal)
+        handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
+        initializeGraph(data, goal, secondaryKey = secondaryKey)
       }.launchIn(viewModelScope)
     }
   }
@@ -112,17 +111,17 @@ class GraphViewModel @AssistedInject constructor(
   private fun initializeGraph(
     data: List<PeriodBodyScaleSummary>? = null,
     goal: Goal? = null,
-    secondaryStat: Stat? = null
+    secondaryKey: DashboardKey? = null
   ) {
     viewModelScope.launch {
       val data = data ?: _state.value.data
       val goal = goal ?: _state.value.goal
-      val secondaryStat = secondaryStat ?: _state.value.secondaryStat
+      val secondaryKey = secondaryKey ?: _state.value.secondaryKey
       scrollDebounceJob?.cancel()
 
       // Setup chart model producer
       if (data.isNotEmpty())
-        setupChartModelProducer(data, secondaryStat, goal)
+        setupChartModelProducer(data, secondaryKey, goal)
       else
         setupEmptyModelProducer(goal)
     }
@@ -155,13 +154,6 @@ class GraphViewModel @AssistedInject constructor(
           if (graphMeta != null) {
             handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
           }
-          val startX =
-            GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis) ?: Calendar.getInstance().timeInMillis
-          val endX =
-            GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis) ?: Calendar.getInstance().timeInMillis
-
-          super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
-          super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
           currentState.modelProducer.runTransaction {
             lineSeries {
               series(
@@ -169,8 +161,8 @@ class GraphViewModel @AssistedInject constructor(
                 ranges = CartesianRangeValues(
                   minY = graphMeta?.min ?: 2.0,
                   maxY = graphMeta?.max ?: 3.0,
-                  minX = startX.toDouble(),
-                  maxX = endX.toDouble(),
+                  minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                  maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
                 ),
               )
             }
@@ -193,7 +185,7 @@ class GraphViewModel @AssistedInject constructor(
    */
   private fun setupChartModelProducer(
     data: List<PeriodBodyScaleSummary>,
-    secondaryStat: Stat? = null,
+    secondaryKey: DashboardKey? = null,
     goal: Goal?
   ) {
     // Cancel any existing model producer job
@@ -205,8 +197,8 @@ class GraphViewModel @AssistedInject constructor(
       try {
         val currentState = state.value
         val graphLines = data.getWeightGraphPoints()
-        val secondaryStat = secondaryStat ?: _state.value.secondaryStat
-        val secondaryGraphLines = secondaryStat?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+        val secondaryStat = secondaryKey ?: _state.value.secondaryKey
+        val secondaryGraphLines = secondaryStat?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
         val xLabels = graphLines.points.map { point -> point.x }
         val ySeries = graphLines.points.map { it.y }
         val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }

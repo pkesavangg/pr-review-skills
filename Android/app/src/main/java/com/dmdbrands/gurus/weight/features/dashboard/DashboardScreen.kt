@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -19,7 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -99,7 +97,6 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   }
 
   val selectedSegment = state.selectedSegment
-  val selectedStat = state.selectedStat
 
   val scope = rememberCoroutineScope()
 
@@ -115,7 +112,6 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
 
       GraphPagerView(
         state = state,
-        selectedStat = selectedStat,
         onSegmentChange = {
           handleIntent(DashboardIntent.SetSelectedSegment(it))
         },
@@ -143,7 +139,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           metricData = state.data,
           inEditMode = inEditMode,
           visibleKeys = currentVisibleMetrics,
-          selectedStat = selectedStat,
+          selectedStat = state.selectedStat,
           dashboardType = state.dashboardType,
           onMetricClick = { stat ->
             handleIntent(DashboardIntent.SetSelectedStat(stat))
@@ -152,7 +148,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMetrics = visibleMetrics
           },
         )
-        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+        if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
           HorizontalDivider(
             color = MeTheme.colorScheme.utility,
             modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
@@ -168,7 +164,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
             currentVisibleMilestones = visibleMilestones
           },
         )
-        if((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+        if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
           Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         }
         DashboardControlPanel(
@@ -202,7 +198,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
               navBackStack.addRoute(
                 route = AppRoute.Dashboard.MetricInfo(
                   info = fromPeriodSummary(state.data.first()),
-                  key = (selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
+                  key = (state.selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
                   source = getSourceFromSegment(
                     selectedSegment,
                   ),

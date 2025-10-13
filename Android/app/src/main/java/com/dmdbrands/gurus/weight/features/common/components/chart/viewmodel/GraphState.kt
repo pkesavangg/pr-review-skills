@@ -11,7 +11,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.interva
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
@@ -54,7 +53,7 @@ data class GraphState(
   val weightUnit: WeightUnit = WeightUnit.KG,
   val data: List<PeriodBodyScaleSummary> = emptyList(),
   val target: List<PeriodBodyScaleSummary> = emptyList(),
-  val secondaryStat: Stat? = null,
+  val secondaryKey: DashboardKey? = null,
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
@@ -69,7 +68,7 @@ data class GraphState(
 ) : IReducer.State {
   val graphKey: Int = data.hashCode()
   val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())
-  val secondaryGraphLines: GraphLine? = secondaryStat?.key?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+  val secondaryGraphLines: GraphLine? = secondaryKey?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
 
   fun getStartTimestamp(): Long {
     return this.data.minByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis

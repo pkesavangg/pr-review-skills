@@ -24,8 +24,6 @@ import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -44,7 +42,6 @@ import android.util.Log
 @Composable
 fun GraphPagerView(
   state: DashboardState,
-  selectedStat: Stat? = null,
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
@@ -75,10 +72,6 @@ fun GraphPagerView(
   LaunchedEffect(pagerState.currentPage) {
     onPagerStateChange(pagerState.currentPage)
   }
-
-  if (selectedStat?.key is DashboardKey.Metric) {
-    selectedStat.key.key
-  } else null
 
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
@@ -126,7 +119,6 @@ fun GraphPagerView(
           modifier = Modifier
             .fillMaxWidth(),
           scrollTarget = state.scrollTarget,
-          secondaryStat = state.selectedStat,
           segment = currentSegment,
           state = graphState,
           viewModel = viewmodel,
