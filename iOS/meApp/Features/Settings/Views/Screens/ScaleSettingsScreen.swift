@@ -51,7 +51,7 @@ struct ScaleSettingsScreen: View {
                     }
                 }
                 settingsSection()
-                if scaleType == .bluetoothR4 {
+                if scaleType == .bluetoothR4 || scaleType == .bluetoothA3 || scaleType == .bluetoothA6 {
                     connectionSection()
                 }
                 supportSection()
@@ -190,33 +190,35 @@ struct ScaleSettingsScreen: View {
                     onTap: { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
                 )
             )
-            ActionListItemView(
-                config: ActionListItemConfig(
-                    title: lang.wifi,
-                    value: scaleSettingsStore.connectedWifiSSID,
-                    isDisabled: !scaleSettingsStore.isDeviceConnected,
-                    onTap: { router.navigate(to: .wifi(scale: scale)) }
+            if scaleType == .bluetoothR4 {
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.wifi,
+                        value: scaleSettingsStore.connectedWifiSSID,
+                        isDisabled: !scaleSettingsStore.isDeviceConnected,
+                        onTap: { router.navigate(to: .wifi(scale: scale)) }
+                    )
                 )
-            )
-            ActionListItemView(
-                config: ActionListItemConfig(
-                    title: lang.wifiMacAddress,
-                    chevronType: scaleSettingsStore.isFetchingWifiMacAddress ? .loading : .right,
-                    isDisabled: !scaleSettingsStore.isDeviceConnected,
-                    onTap: {
-                        Task {
-                            if let mac = scaleSettingsStore.wifiMacAddress {
-                                router.navigate(to: .wifiMacAddress(macAddress: mac))
-                            } else {
-                                await scaleSettingsStore.ensureWifiMacAddress()
+                ActionListItemView(
+                    config: ActionListItemConfig(
+                        title: lang.wifiMacAddress,
+                        chevronType: scaleSettingsStore.isFetchingWifiMacAddress ? .loading : .right,
+                        isDisabled: !scaleSettingsStore.isDeviceConnected,
+                        onTap: {
+                            Task {
                                 if let mac = scaleSettingsStore.wifiMacAddress {
                                     router.navigate(to: .wifiMacAddress(macAddress: mac))
+                                } else {
+                                    await scaleSettingsStore.ensureWifiMacAddress()
+                                    if let mac = scaleSettingsStore.wifiMacAddress {
+                                        router.navigate(to: .wifiMacAddress(macAddress: mac))
+                                    }
                                 }
                             }
                         }
-                    }
+                    )
                 )
-            )
+            }
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
