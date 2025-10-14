@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -11,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -30,55 +34,73 @@ fun SetGoalPopup(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    BaseModal(
-        onDismiss = onClose,
-        content = {
+  Dialog(
+    onDismissRequest = onClose,
+    properties = DialogProperties(
+      dismissOnBackPress = true,
+      dismissOnClickOutside = true,
+      usePlatformDefaultWidth = false,
+      decorFitsSystemWindows = false,
+    ),
+  ) {
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(MeTheme.colorScheme.glow),
+    ) {
+      Box(modifier = Modifier.align(Alignment.Center)) {
+        BaseModal(
+          onDismiss = onClose,
+          content = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                // Close button (top right)
-                AppIconButton(
-                    id = AppIcons.Default.Close,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(20.dp),
-                    contentDescription = AppPopupStrings.SetGoalPopup.CloseContentDescription,
-                    type = AppIconButtonType.Primary,
-                    onClick = onClose,
+              // Close button (top right)
+              AppIconButton(
+                id = AppIcons.Default.Close,
+                modifier = Modifier
+                  .align(Alignment.TopEnd)
+                  .size(20.dp),
+                contentDescription = AppPopupStrings.SetGoalPopup.CloseContentDescription,
+                type = AppIconButtonType.Primary,
+                onClick = onClose,
+              )
+
+              Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+
+                AppText(
+                  text = AppPopupStrings.SetGoalPopup.Title,
+                  textType = TextType.Title,
+                  textAlign = TextAlign.Center,
                 )
 
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+                Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-                    AppText(
-                        text = AppPopupStrings.SetGoalPopup.Title,
-                        textType = TextType.Title,
-                        textAlign = TextAlign.Center,
-                    )
+                AppText(
+                  text = AppPopupStrings.SetGoalPopup.Message,
+                  textType = TextType.Body,
+                  textAlign = TextAlign.Center,
+                )
 
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+                Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
 
-                    AppText(
-                        text = AppPopupStrings.SetGoalPopup.Message,
-                        textType = TextType.Body,
-                        textAlign = TextAlign.Center,
-                    )
+                AppButton(
+                  label = AppPopupStrings.SetGoalPopup.ConfirmButton,
+                  type = ButtonType.PrimaryFilled,
+                  size = ButtonSize.Large,
+                  onClick = onSetGoal,
+                )
 
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-
-                    AppButton(
-                        label = AppPopupStrings.SetGoalPopup.ConfirmButton,
-                        type = ButtonType.PrimaryFilled,
-                        size = ButtonSize.Large,
-                        onClick = onSetGoal,
-                    )
-
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.md))
-                }
+                Spacer(modifier = Modifier.height(MeTheme.spacing.md))
+              }
             }
-        },
-    )
+          },
+        )
+      }
+    }
+  }
 }
 
 @PreviewTheme
