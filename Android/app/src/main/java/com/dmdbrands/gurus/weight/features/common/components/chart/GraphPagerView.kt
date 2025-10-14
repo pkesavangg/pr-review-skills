@@ -58,6 +58,7 @@ fun GraphPagerView(
   }
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
+  var weightValue by remember { mutableStateOf(0.0) }
 
   LaunchedEffect(state.selectedSegment) {
     onScrollTargetChange(scrollTarget)
@@ -89,10 +90,12 @@ fun GraphPagerView(
       val graphState by viewmodel.state.collectAsState()
       LaunchedEffect(graphState.target) {
         Log.i("CHECKING", graphState.target.map { it.weight }.toString())
+        val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
         labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
           "%.2f",
-          graphState.target.map { it.weight }.average(),
+          averageWeight,
         )
+        weightValue = averageWeight
         scrollTarget =
           if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
             .toDouble() else null
@@ -112,6 +115,7 @@ fun GraphPagerView(
           segment = currentSegment,
           weightData = labelData,
           rangeData = subText,
+          weightValue = weightValue,
         )
         // Graph view with crossfade animation
 
