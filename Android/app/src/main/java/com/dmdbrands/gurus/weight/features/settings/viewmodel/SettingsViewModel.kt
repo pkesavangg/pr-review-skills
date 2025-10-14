@@ -888,21 +888,6 @@ constructor(
     }
   }
 
-  fun onMessagesClick() {
-    AppLog.d(TAG, "Messages clicked")
-    // TODO: Navigate to messages settings
-  }
-
-  fun onAppPermissionsClick() {
-    AppLog.d(TAG, "App permissions clicked")
-    // TODO: Navigate to app permissions screen
-  }
-
-  fun onHelpClick() {
-    AppLog.d(TAG, "Help clicked")
-    // TODO: Navigate to help screen
-  }
-
   /*
    * Show a confirmation dialog before logging out.
    */
@@ -960,11 +945,6 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
-  }
-
-  fun onDeleteAccountClick() {
-    AppLog.d(TAG, "Delete account clicked")
-    // TODO: Show delete account confirmation dialog
   }
 
   fun onSwitchAccountClick() {

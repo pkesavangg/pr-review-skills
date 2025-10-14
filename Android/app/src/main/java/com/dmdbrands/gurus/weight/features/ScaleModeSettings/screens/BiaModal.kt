@@ -1,12 +1,19 @@
 package com.dmdbrands.gurus.weight.features.ScaleModeSettings.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.components.AppPopup
 import com.dmdbrands.gurus.weight.features.common.components.AppPopupModal
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.scaleMode.strings.ScaleModeStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
  * Modal dialog explaining BIA, matching Figma and AppHelpModal structure.
@@ -18,14 +25,32 @@ fun BiaModal(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  AppPopupModal {
-    AppPopup(
-      visible = true,
-      modifier = modifier,
-      heading = ScaleModeStrings.BiaModalStrings.Title,
-      supportingText = ScaleModeStrings.BiaModalStrings.Messsage,
-      onClose = onClose,
-    )
+  Dialog(
+    onDismissRequest = onClose,
+    properties = DialogProperties(
+      dismissOnBackPress = true,
+      dismissOnClickOutside = true,
+      usePlatformDefaultWidth = false,
+      decorFitsSystemWindows = false,
+    ),
+  ) {
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(MeTheme.colorScheme.glow),
+    ) {
+      Box(modifier = Modifier.align(Alignment.Center)) {
+        AppPopupModal {
+          AppPopup(
+            visible = true,
+            modifier = modifier,
+            heading = ScaleModeStrings.BiaModalStrings.Title,
+            supportingText = ScaleModeStrings.BiaModalStrings.Messsage,
+            onClose = onClose,
+          )
+        }
+      }
+    }
   }
 }
 

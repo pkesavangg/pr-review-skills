@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.features.settings.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -10,8 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButtonType
@@ -31,9 +36,24 @@ fun AccountSwitchInfoModal(
     onAddAccount: () -> Unit,
     onClose: () -> Unit
 ) {
-    BaseModal(
-        onDismiss = onClose,
-        content = {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MeTheme.colorScheme.glow),
+        ) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                BaseModal(
+                    onDismiss = onClose,
+                    content = {
             Box(Modifier.fillMaxWidth()) {
                 // Close button (top right)
                 AppIconButton(
@@ -83,4 +103,7 @@ fun AccountSwitchInfoModal(
             }
         },
     )
+            }
+        }
+    }
 }

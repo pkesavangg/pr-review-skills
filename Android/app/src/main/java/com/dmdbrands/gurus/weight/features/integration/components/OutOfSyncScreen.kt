@@ -1,9 +1,11 @@
 package com.dmdbrands.gurus.weight.features.integration.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +18,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -43,59 +47,77 @@ fun OutOfSyncScreen(
     onSecondaryAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-  BaseModal {
-    Box {
-      AppIcon(
-        id = AppIcons.Filled.Close,
-        contentDescription = "Close",
-        modifier = Modifier
-          .align(Alignment.TopEnd).padding(bottom = spacing.md),
-        type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
-        onClick =  onClose
-      )
-      Column(
-        modifier = modifier
-          .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        Image(
-          painter = painterResource(id = AppIcons.Integrations.Health_Connect_Off),
-          contentDescription = null,
-          modifier = Modifier
-            .width(190.dp)
-            .height(100.dp)
-            .padding(top = MeTheme.spacing.lg),
-        )
-        Spacer(Modifier.padding(top = MeTheme.spacing.lg))
-        AppText(
-          text = HealthConnectStrings.PopupStrings.outOfSyncTitle,
-          textType = TextType.Title,
-          textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.padding(top = MeTheme.spacing.sm))
-        AppText(
-          text = HealthConnectStrings.PopupStrings.outOfSyncDescription,
-          textType = TextType.Subtitle,
-          textAlign = TextAlign.Center,
-        )
-        Spacer(
-          Modifier.padding(
-            bottom = MeTheme.spacing.lg,
-          ),
-        )
-        AppButton(
-          type = ButtonType.PrimaryFilled,
-          label = HealthConnectStrings.ActionButtons.openHealthConnect,
-          size = ButtonSize.Large,
-          onClick = onPrimaryAction,
-        )
-          AppButton(
-            type = ButtonType.TextPrimary,
-            label = HealthConnectStrings.ActionButtons.removeIntegration,
-            size = ButtonSize.Large,
-            onClick = { onSecondaryAction.invoke() },
-            modifier = Modifier.padding(top = MeTheme.spacing.sm),
-          )
+  Dialog(
+    onDismissRequest = onClose,
+    properties = DialogProperties(
+      dismissOnBackPress = true,
+      dismissOnClickOutside = true,
+      usePlatformDefaultWidth = false,
+      decorFitsSystemWindows = false,
+    ),
+  ) {
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(MeTheme.colorScheme.glow),
+    ) {
+      Box(modifier = Modifier.align(Alignment.Center)) {
+        BaseModal {
+          Box {
+            AppIcon(
+              id = AppIcons.Filled.Close,
+              contentDescription = "Close",
+              modifier = Modifier
+                .align(Alignment.TopEnd).padding(bottom = spacing.md),
+              type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
+              onClick = onClose
+            )
+            Column(
+              modifier = modifier
+                .fillMaxWidth(),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+              Image(
+                painter = painterResource(id = AppIcons.Integrations.Health_Connect_Off),
+                contentDescription = null,
+                modifier = Modifier
+                  .width(190.dp)
+                  .height(100.dp)
+                  .padding(top = MeTheme.spacing.lg),
+              )
+              Spacer(Modifier.padding(top = MeTheme.spacing.lg))
+              AppText(
+                text = HealthConnectStrings.PopupStrings.outOfSyncTitle,
+                textType = TextType.Title,
+                textAlign = TextAlign.Center,
+              )
+              Spacer(Modifier.padding(top = MeTheme.spacing.sm))
+              AppText(
+                text = HealthConnectStrings.PopupStrings.outOfSyncDescription,
+                textType = TextType.Subtitle,
+                textAlign = TextAlign.Center,
+              )
+              Spacer(
+                Modifier.padding(
+                  bottom = MeTheme.spacing.lg,
+                ),
+              )
+              AppButton(
+                type = ButtonType.PrimaryFilled,
+                label = HealthConnectStrings.ActionButtons.openHealthConnect,
+                size = ButtonSize.Large,
+                onClick = onPrimaryAction,
+              )
+              AppButton(
+                type = ButtonType.TextPrimary,
+                label = HealthConnectStrings.ActionButtons.removeIntegration,
+                size = ButtonSize.Large,
+                onClick = { onSecondaryAction.invoke() },
+                modifier = Modifier.padding(top = MeTheme.spacing.sm),
+              )
+            }
+          }
+        }
       }
     }
   }

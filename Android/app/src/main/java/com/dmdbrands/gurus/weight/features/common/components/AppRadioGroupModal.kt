@@ -1,6 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
@@ -10,7 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
@@ -68,43 +74,61 @@ fun <T> AppRadioGroupModal(
 ) {
     var currentSelection by remember { mutableStateOf(selectedItem) }
 
-    BaseModal(
-      title = title,
-      subtitle = subtitle,
-      primaryAction =
-            ActionButton(
-                text = confirmText,
-                action = { onOk(currentSelection) },
-            ),
-      secondaryAction =
-            ActionButton(
-                text = cancelText,
-                action = onCancel,
-            ),
-      modifier = modifier,
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
-        // Add spacing before radio group content
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+        Box(
+          modifier = Modifier
+                .fillMaxSize()
+                .background(MeTheme.colorScheme.glow),
+        ) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                BaseModal(
+                    title = title,
+                    subtitle = subtitle,
+                    primaryAction =
+                        ActionButton(
+                            text = confirmText,
+                            action = { onOk(currentSelection) },
+                        ),
+                    secondaryAction =
+                        ActionButton(
+                            text = cancelText,
+                            action = onCancel,
+                        ),
+                    modifier = modifier,
+                ) {
+                    // Add spacing before radio group content
+                    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        // Radio Group Section - auto-sized with optional max height and scrolling
-        val radioGroupModifier =
-            if (maxHeight != null) {
-                Modifier
-                  .fillMaxWidth()
-                  .height(maxHeight)
-                  .verticalScroll(rememberScrollState())
-            } else {
-                Modifier.fillMaxWidth()
+                    // Radio Group Section - auto-sized with optional max height and scrolling
+                    val radioGroupModifier =
+                        if (maxHeight != null) {
+                            Modifier
+                                .fillMaxWidth()
+                                .height(maxHeight)
+                                .verticalScroll(rememberScrollState())
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+
+                    AppRadioGroup(
+                        options = options,
+                        selectedItem = currentSelection,
+                        onOptionSelected = { selectedId ->
+                            currentSelection = selectedId
+                        },
+                        modifier = radioGroupModifier,
+                    )
+                }
             }
-
-        AppRadioGroup(
-            options = options,
-            selectedItem = currentSelection,
-            onOptionSelected = { selectedId ->
-                currentSelection = selectedId
-            },
-            modifier = radioGroupModifier,
-        )
+        }
     }
 }
 
