@@ -83,9 +83,9 @@ fun MultipleDeviceConnectionScreen(
                 modifier = Modifier
                   .width(190.dp)
                   .height(100.dp)
-                  .padding(top = MeTheme.spacing.lg),
+                  .padding(top = spacing.lg),
               )
-              Spacer(Modifier.padding(top = MeTheme.spacing.lg))
+              Spacer(Modifier.padding(top = spacing.lg))
               AppText(
                 text = HealthConnectStrings.AddHealthConnectStrings.Title,
                 textType = TextType.Title,
