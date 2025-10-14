@@ -10,6 +10,7 @@ import SwiftUI
 struct ScaleNameScreen : View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
+    @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     let scale: Device
     let lang = ScaleSettingsStrings.self
     let commonLang = CommonStrings.self
@@ -45,7 +46,12 @@ struct ScaleNameScreen : View {
                         }
                     ))
                 },
-                onLeadingTap: { router.navigateBack() },
+                onLeadingTap: {
+                    Task {
+                        let allow = await viewModel.allowExit(isFormDirty: scaleNameForm.isDirty, editedName: editedName)
+                        if allow { router.navigateBack() }
+                    }
+                },
                 onTrailingTap: {},
                 canShowBorder: true
             )
@@ -78,6 +84,11 @@ struct ScaleNameScreen : View {
         .onAppear {
             editedName = scale.nickname ?? scale.deviceName ?? ""
             scaleNameForm.setScaleName(editedName)
+            scaleNameForm.scaleName.markAsPristine()
+            scaleNameForm.validate()
+            registerDeactivation {
+                await viewModel.allowExit(isFormDirty: scaleNameForm.isDirty, editedName: editedName)
+            }
         }
     }
 }
@@ -91,35 +102,4 @@ struct ScaleNameScreen : View {
         deviceName: "AccuCheck Verve Smart Scale"
     )
     ScaleNameScreen(scale: mockDevice)
-}
-
-import SwiftUI
-
-@MainActor
-final class ScaleNameViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
-    @Injector var scaleService: ScaleService
-    @Injector var logger: LoggerService
-    
-    private let scale: Device
-    private let tag = "ScaleNameViewModel"
-    
-    init(scale: Device) {
-        self.scale = scale
-    }
-    
-    func saveScaleName(_ newName: String, onSuccess: (() -> Void)? = nil) async {
-        notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
-        do {
-            _ = try await scaleService.editDevice(scale.id, properties: ["nickname": newName])
-            await scaleService.pushLocalChangesToServer()
-            notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
-            logger.log(level: .info, tag: tag, message: "Scale name updated successfully", data: ["scaleId": scale.id, "newName": newName])
-            onSuccess?()
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to save scale name: \(error.localizedDescription)", data: error)
-            notificationService.showToast(ToastModel(title: ToastStrings.errorEditingScale, message: ToastStrings.restartApp))
-        }
-        notificationService.dismissLoader()
-    }
 }

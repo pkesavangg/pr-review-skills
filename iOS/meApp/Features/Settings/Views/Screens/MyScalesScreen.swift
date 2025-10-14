@@ -245,6 +245,15 @@ struct MyScalesScreen: View {
             focusedField = nil
             hideKeyboard()
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(CommonStrings.done) {
+                    focusedField = nil
+                    hideKeyboard()
+                }
+            }
+        }
     }
     
     // MARK: - Private Methods

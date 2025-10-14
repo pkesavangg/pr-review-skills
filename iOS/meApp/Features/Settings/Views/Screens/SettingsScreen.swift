@@ -13,6 +13,7 @@ import SwiftUI
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Environment(\.registerTabReselectHandler) private var registerTabReselectHandler
     @StateObject var settingsStore = SettingsStore()
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
@@ -24,57 +25,13 @@ struct SettingsScreen: View {
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
     var body: some View {
-        RoutingView(stack: $router.stack) {
-            VStack(spacing: 0) {
-                NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
-                ZStack {
-                    theme.backgroundSecondary
-                        .ignoresSafeArea()
-                    VStack(spacing: 0) {
-                        List {
-                            profileHeader()
-                            accountSettingsSection()
-                            profileSettingsSection()
-                            appSettingsSection()
-                            supportSection()
-                            accountActionSection()
-                        }
-                        .listStyle(.insetGrouped)
-                        .scrollContentBackground(.hidden)
-                    }
-                }
-                .inAppBrowser(
-                    url: settingsStore.presentingBrowserURL,
-                    isPresented: settingsStore.isBrowserPresented
-                )
+        AnyView(
+            RoutingView(stack: $router.stack) {
+                routingContent
             }
-            .onAppear {
-                tabViewModel.showTabBar = true
-                // Ensure this is the actively selected tab before evaluating modal presentation
-                if tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
-                    // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        router.navigate(to: route)
-                    }
-                }
-            }
-            // Re-evaluate modal presentation whenever the selected tab changes.
-            .onChange(of: tabViewModel.selectedTab) {
-                if tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        router.navigate(to: route)
-                    }
-                }
-            }
-        }
-        .environmentObject(router)
-        .environmentObject(settingsStore)
+            .environmentObject(router)
+            .environmentObject(settingsStore)
+        )
         // Appearance picker fallback for non-iPad or iOS>=18
         .pickerSheet(
             isPresented: $settingsStore.showAppearancePicker,
@@ -165,6 +122,61 @@ struct SettingsScreen: View {
                 }
             }
         )
+    }
+    
+    // Extracted content to reduce type-checking complexity
+    private var routingContent: some View {
+        VStack(spacing: 0) {
+            NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
+            ZStack {
+                theme.backgroundSecondary
+                    .ignoresSafeArea()
+                VStack(spacing: 0) {
+                    List {
+                        profileHeader()
+                        accountSettingsSection()
+                        profileSettingsSection()
+                        appSettingsSection()
+                        supportSection()
+                        accountActionSection()
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .inAppBrowser(
+                url: settingsStore.presentingBrowserURL,
+                isPresented: settingsStore.isBrowserPresented
+            )
+        }
+        .onAppear {
+            tabViewModel.showTabBar = true
+            // Register reselect-to-root behavior for the Settings tab
+            registerTabReselectHandler {
+                router.navigateToRoot()
+            }
+            // Ensure this is the actively selected tab before evaluating modal presentation
+            if tabViewModel.selectedTab == .settings {
+                settingsStore.presentAddAccountModalIfNeeded(router: router)
+                
+                // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
+                if let route = tabViewModel.pendingSettingsNavigation {
+                    tabViewModel.pendingSettingsNavigation = nil
+                    router.navigate(to: route)
+                }
+            }
+        }
+        // Re-evaluate modal presentation whenever the selected tab changes.
+        .onChange(of: tabViewModel.selectedTab) {
+            if tabViewModel.selectedTab == .settings {
+                settingsStore.presentAddAccountModalIfNeeded(router: router)
+                
+                if let route = tabViewModel.pendingSettingsNavigation {
+                    tabViewModel.pendingSettingsNavigation = nil
+                    router.navigate(to: route)
+                }
+            }
+        }
     }
     
     private func profileHeader() -> some View {
