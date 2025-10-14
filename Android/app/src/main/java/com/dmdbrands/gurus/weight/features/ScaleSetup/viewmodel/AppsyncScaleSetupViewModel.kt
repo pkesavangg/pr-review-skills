@@ -243,7 +243,6 @@ constructor(
             "onGuideClick" to {
               AppLog.d(TAG, "User clicked on guide in help modal")
               openProductGuide()
-              dialogQueueService.dismissCurrent()
             },
           ),
       ),
