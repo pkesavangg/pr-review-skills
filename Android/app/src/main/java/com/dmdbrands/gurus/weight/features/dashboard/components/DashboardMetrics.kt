@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -97,6 +96,7 @@ fun DashboardMetrics(
           stat.key in allowedKeys
         }
       }
+
       DashboardType.DASHBOARD_12_METRICS -> allMetrics
     }
   }
@@ -122,6 +122,7 @@ fun DashboardMetrics(
           stat.key in allowedKeys
         }
       }
+
       DashboardType.DASHBOARD_12_METRICS -> allAvailableMetrics
     }
   }
@@ -206,42 +207,35 @@ private fun DashboardMetricsGrid(
       key = { stat -> getMetricKey(stat, isVisible = true) },
     ) { metric ->
       val isSelected = selectedStat?.key == metric.key
-      Box {
-        StatCard(
+      ReorderableItem(
+        state = reorderableState,
+        key = getMetricKey(metric, isVisible = true),
+        enabled = inEditMode,
+      ) { isDragging ->
+        AnimatedStatCard(
           stat = metric,
-          isPlaceHolder = true,
+          isDragging = isDragging,
+          inEditMode = inEditMode,
+          isSelected = isSelected,
           isFromSetup = isFromSetup,
-        )
-        ReorderableItem(
-          state = reorderableState,
-          key = getMetricKey(metric, isVisible = true),
-          enabled = inEditMode,
-        ) { isDragging ->
-          AnimatedStatCard(
-            stat = metric,
-            isDragging = isDragging,
-            inEditMode = inEditMode,
-            isSelected = isSelected,
-            isFromSetup = isFromSetup,
-            modifier = Modifier.longPressDraggableHandle(
-              enabled = inEditMode,
-              onDragStarted = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-              },
-              onDragStopped = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-              },
-            ),
-
-            onBadgeClick = {
-              onMetricMoved(true, false, metric)
+          modifier = Modifier.longPressDraggableHandle(
+            enabled = inEditMode,
+            onDragStarted = {
+              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
             },
-            onClick = {
-              onMetricClick(if (isSelected) null else metric)
+            onDragStopped = {
+              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
             },
+          ),
 
-            )
-        }
+          onBadgeClick = {
+            onMetricMoved(true, false, metric)
+          },
+          onClick = {
+            onMetricClick(if (isSelected) null else metric)
+          },
+
+          )
       }
     }
 
