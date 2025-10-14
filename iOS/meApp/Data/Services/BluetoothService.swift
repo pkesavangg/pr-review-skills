@@ -300,6 +300,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 macAddress: device.mac ?? ""
             )
         }
+        print(ggDevices, ggDevices.map({$0.name}), ggDevices.map({$0}), bluetoothScales.map({$0.isConnected}))
         ggBleSDK.syncDevices(ggDevices)
     }
     
@@ -937,7 +938,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         return userList.first { user in
             bluetoothScales.contains { scale in
                 let isR4Scale = scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue
-                let namesMatch = user.name.lowercased() == (scale.r4ScalePreference?.displayName.lowercased() ?? "")
+                let namesMatch: Bool = {
+                    if let pref = scale.r4ScalePreference {
+                        if let fetched = fetchAttachedPreference(by: pref.id) { return user.name.lowercased() == fetched.displayName.lowercased() }
+                        return user.name.lowercased() == pref.displayName.lowercased()
+                    }
+                    return false
+                }()
                 let idsMatch = discoveredScale.broadcastId == scale.broadcastId
                 
                 return isR4Scale && namesMatch && idsMatch
@@ -1010,6 +1017,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Handle known device discovery
             break
         case .DEVICE_CONNECTED:
+            print("DEVICE_CONNECTED handleSmartScaleData", data.data, bluetoothScales.map({$0.isConnected}))
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
             // Update weight-only mode status when device connects
             if let deviceDetails = data.data as? GGDeviceDetails {
@@ -1017,6 +1025,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
+            print("DEVICE_DISCONNECTED handleSmartScaleData", data.data, bluetoothScales.map({$0.isConnected}))
             await scaleService.updateConnectedDevices(device: data.data, isConnected: false)
             // Clear weight-only mode status when device disconnects
             if let deviceDetails = data.data as? GGDeviceDetails {
@@ -1108,7 +1117,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // Calculate weight-only mode status using the specified condition
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        let shouldMeasureImpedance = scale.r4ScalePreference?.shouldMeasureImpedance ?? false
+        let shouldMeasureImpedance: Bool = {
+            if let pref = scale.r4ScalePreference {
+                if let fetched = fetchAttachedPreference(by: pref.id) { return fetched.shouldMeasureImpedance }
+                return pref.shouldMeasureImpedance
+            }
+            return false
+        }()
         let isWeightOnlyModeEnabledByOthers = !impedanceSwitchState && shouldMeasureImpedance
         
         // Update the scale's weight-only mode status
@@ -1546,17 +1561,31 @@ private extension BluetoothService {
         )
     }
     
-    func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        guard let preference = preference else {
+    // Reattaches a detached SwiftData model by id to the shared context
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
+        let context = PersistenceController.shared.context
+        var descriptor = FetchDescriptor<R4ScalePreference>(
+            predicate: #Predicate<R4ScalePreference> { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        do {
+            let results: [R4ScalePreference] = try context.fetch(descriptor)
+            return results.first
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch attached R4ScalePreference: \(error.localizedDescription)")
             return nil
         }
-        
+    }
+
+    func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
+        guard let preference = preference else { return nil }
+        let attached = fetchAttachedPreference(by: preference.id) ?? preference
         return GGDevicePreference(
-            displayName: preference.displayName,
-            displayMetrics: preference.displayMetrics,
-            shouldMeasureImpedance: preference.shouldMeasureImpedance,
-            shouldMeasurePulse: preference.shouldMeasurePulse,
-            timeFormat: preference.timeFormat
+            displayName: attached.displayName,
+            displayMetrics: attached.displayMetrics,
+            shouldMeasureImpedance: attached.shouldMeasureImpedance,
+            shouldMeasurePulse: attached.shouldMeasurePulse,
+            timeFormat: attached.timeFormat
         )
     }
 }
