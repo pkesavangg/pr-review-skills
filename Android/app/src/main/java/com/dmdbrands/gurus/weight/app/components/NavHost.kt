@@ -1,6 +1,10 @@
 package com.dmdbrands.gurus.weight.app.components
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -67,19 +71,34 @@ fun NavHost(
         feedMessagesEntries()
       },
     transitionSpec = {
-      // Slide in from right when navigating forward
-      slideInHorizontally(initialOffsetX = { it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { -it })
+      // New screen slides in from the right over the old screen
+      slideInHorizontally(
+        initialOffsetX = { it }, // 'it' is the full width for a right-to-left slide
+        animationSpec = tween(250, easing = FastOutSlowInEasing) // Shortened duration to 250ms
+      ) + fadeIn(animationSpec = tween(150, delayMillis = 250)) togetherWith // Fade in during the slide
+
+        // Old screen can optionally fade out quickly or just remain static to be covered
+        // Removing the explicit fadeOut often makes it smoother
+        ExitTransition.None // Or fadeOut(animationSpec = tween(150)) if you want the old screen to vanish
     },
     popTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      // Incoming screen (the one we're returning to) simply fades in
+      fadeIn(
+        animationSpec = tween(500, easing = LinearOutSlowInEasing) // Gentler fade
+      ) togetherWith
+        // Outgoing screen slides out to the right, slightly slower
+        slideOutHorizontally(
+          targetOffsetX = { it },
+          animationSpec = tween(500, easing = EaseOut) // Smoother slide out
+        )
     },
     predictivePopTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      // Clean predictive back
+      fadeIn(animationSpec = tween(150)) togetherWith
+        slideOutHorizontally(
+          targetOffsetX = { it },
+          animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(150))
     },
   )
 }
