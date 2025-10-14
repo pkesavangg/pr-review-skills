@@ -999,8 +999,6 @@ class DashboardStore: ObservableObject {
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
         var clampedPosition = max(0, min(newPosition, maxPosition))
-        // Enforce row-start positions when all streaks are present (no removed streaks)
-        // iPhone: 2 columns → row starts: 0,2,4,6; iPad: 4 columns → 0,4,8,12
         if state.ui.removedStreaks.isEmpty {
             let columns = DevicePlatform.isTablet ? 4 : 2
             clampedPosition = (clampedPosition / columns) * columns

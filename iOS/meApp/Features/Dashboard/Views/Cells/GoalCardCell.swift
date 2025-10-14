@@ -127,12 +127,9 @@ class GoalCardCell: UICollectionViewCell {
         isRemoved = store.state.ui.isGoalCardRemoved
         
         let goalCardView = GoalProgressView()
-        
-        // Always apply EditModeOverlay in edit mode, but pass drag state to control icon visibility
-        // This keeps the UI consistent during drag operations instead of completely hiding the overlay
+
         let viewWithOverlay: AnyView
         if store.state.ui.isEditMode {
-            // Determine if currently being dragged (from any source: UIKit drag, long press, or suppress flag)
             let isDragging = store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged || suppressOverlay
             
             viewWithOverlay = AnyView(

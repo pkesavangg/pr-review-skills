@@ -769,7 +769,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
                 
                 if allStreaksPresent && !hasRemovedStreaks {
-                    // When all 6 streaks are present, restrict goal card to EVEN positions ONLY (0, 2, 4, 6)
+                    // Restrict goal card to even positions when all streaks are present
                     let adjustedDestination = (destinationIndex % 2 == 0)
                         ? destinationIndex
                         : max(0, destinationIndex - 1)
