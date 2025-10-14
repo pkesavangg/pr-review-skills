@@ -106,7 +106,7 @@ constructor(
   init {
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
-        if(it != null){
+        if (it != null) {
           currentAccountId = it.id
         }
       }
@@ -144,7 +144,7 @@ constructor(
     }
   }
 
-  private fun initialiseIAMDialogListener(){
+  private fun initialiseIAMDialogListener() {
     // Initialize IAM dialog events listener
     try {
       initIAMDialogListener()
@@ -154,7 +154,7 @@ constructor(
     }
   }
 
-  private suspend fun updateUnRead(){
+  private suspend fun updateUnRead() {
     // Initialize feed notification listener
     try {
       updateUnreadFeedCount()
@@ -187,7 +187,6 @@ constructor(
       is AppIntent.OnPopUpConnect -> onPopUpConnect()
 
       is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
-
 
       else -> {}
     }
@@ -413,7 +412,7 @@ constructor(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,
                   ScaleSetupType.EspTouchWifi,
-                  ScaleSetupType.Wifi
+                  ScaleSetupType.Wifi,
                 )
               }
               val canRequestNotifPermission = AppPermissionsHelper
@@ -429,7 +428,7 @@ constructor(
                   val permissionState = permissions[permissionType] ?: PermissionState.NOT_DETERMINED
                   permissionState == PermissionState.ENABLED
                 }
-                
+
                 // Only request permissions if they are not all enabled
                 if (!areAllRequiredPermissionsEnabled) {
                   requestPermissions(GGPermissionType.ALL)
@@ -541,59 +540,31 @@ constructor(
         }
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
-          dialogQueueService.showDialog(
-            ReconnectScale.getMaxUserAlert(
-              onConfirm = {
-                viewModelScope.launch {
-                  dialogQueueService.showLoader("Loading...")
-                  val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
-                  if (device == null) {
-                    return@launch
-                  }
-                  ggDeviceService.addCacheDevice(data.broadcastId, device)
-                  ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                    viewModelScope.launch {
-                      dialogQueueService.dismissLoader()
-                      navigationService.navigateTo(
-                        AppRoute.ScaleSetup.BtWifiScaleSetup(
-                          sku = data.getSKU(),
-                          initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
-                          broadcastId = data.broadcastId,
-                          userList = response.user,
-                        ),
-                      )
-                    }
-                  }
-                }
-              },
-              onCancel = {
-                if (data.broadcastId != null) {
-                  ggDeviceService.skipDevice(data.broadcastId!!)
-                }
-              },
-            ),
-          )
-        }
-
-        GGScanResponseType.DEVICE_DUPLICATE_USER -> {
-          try {
+          val currentRoute = navigationService.getCurrentRoute()
+          if (currentRoute !is AppRoute.ScaleSetup) {
             dialogQueueService.showDialog(
-              ReconnectScale.getDuplicateUserAlert(
+              ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
+                    dialogQueueService.showLoader("Loading...")
                     val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
                     if (device == null) {
                       return@launch
                     }
-                    ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
                     ggDeviceService.addCacheDevice(data.broadcastId, device)
-                    navigationService.navigateTo(
-                      AppRoute.ScaleSetup.BtWifiScaleSetup(
-                        data.getSKU(),
-                        BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                        data.broadcastId,
-                      ),
-                    )
+                    ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                      viewModelScope.launch {
+                        dialogQueueService.dismissLoader()
+                        navigationService.navigateTo(
+                          AppRoute.ScaleSetup.BtWifiScaleSetup(
+                            sku = data.getSKU(),
+                            initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                            broadcastId = data.broadcastId,
+                            userList = response.user,
+                          ),
+                        )
+                      }
+                    }
                   }
                 },
                 onCancel = {
@@ -604,7 +575,40 @@ constructor(
               ),
             )
           }
-          catch (e: Exception) {
+        }
+
+        GGScanResponseType.DEVICE_DUPLICATE_USER -> {
+          try {
+            val currentRoute = navigationService.getCurrentRoute()
+            if (currentRoute !is AppRoute.ScaleSetup) {
+              dialogQueueService.showDialog(
+                ReconnectScale.getDuplicateUserAlert(
+                  onConfirm = {
+                    viewModelScope.launch {
+                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
+                      if (device == null) {
+                        return@launch
+                      }
+                      ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
+                      ggDeviceService.addCacheDevice(data.broadcastId, device)
+                      navigationService.navigateTo(
+                        AppRoute.ScaleSetup.BtWifiScaleSetup(
+                          data.getSKU(),
+                          BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                          data.broadcastId,
+                        ),
+                      )
+                    }
+                  },
+                  onCancel = {
+                    if (data.broadcastId != null) {
+                      ggDeviceService.skipDevice(data.broadcastId!!)
+                    }
+                  },
+                ),
+              )
+            }
+          } catch (e: Exception) {
             AppLog.d(TAG, "Error during duplicate user alert $e")
           }
         }
@@ -727,18 +731,20 @@ constructor(
 
   private fun startScan() {
     viewModelScope.launch {
-       accountService.activeAccountFlow.map {
-         it?.toGGBTUserProfile()
-       }.distinctUntilChanged().collect { ggBTUserProfile ->
+      accountService.activeAccountFlow.map {
+        it?.toGGBTUserProfile()
+      }.distinctUntilChanged().collect { ggBTUserProfile ->
         if (ggBTUserProfile != null) {
-          val latestWeightEntry = entryService.latestEntry.value
-          val currentWeight = when (latestWeightEntry) {
+          val currentWeight = when (val latestWeightEntry = entryService.latestEntry.value) {
             is ScaleEntry -> latestWeightEntry.scale.scaleEntry.weight
             else -> ggBTUserProfile.weight // Fallback to initial weight
           }
-          val updatedProfile = ggBTUserProfile.copy(weight = currentWeight, goalWeight = ggBTUserProfile.goalWeight?.div(
-            10
-          ))
+          val updatedProfile = ggBTUserProfile.copy(
+            weight = currentWeight,
+            goalWeight = ggBTUserProfile.goalWeight?.div(
+              10,
+            ),
+          )
           ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
           handleIntent(AppIntent.SetScanStatus(true))
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")
@@ -782,7 +788,10 @@ constructor(
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()
-        AppLog.d(TAG, "Connected scales: ${connectedScales.size}, Weight-only scales: ${deviceService.isWeightOnlyModeAlertShown.value}")
+        AppLog.d(
+          TAG,
+          "Connected scales: ${connectedScales.size}, Weight-only scales: ${deviceService.isWeightOnlyModeAlertShown.value}",
+        )
         if (hasWeightOnlyModeScale && !deviceService.isWeightOnlyModeAlertShown.value) {
           WeightOnlyModeEventService.emit(WeightOnlyModeEventType.SHOW_ALERT)
           deviceService.updateWeightOnlyModeAlertShown(false)
@@ -826,9 +835,10 @@ constructor(
       }
     }
   }
-   // * Checks for account flags and triggers appropriate actions.
-   // * @param trigger The trigger type (e.g., "login", "entry")
-   // */
+
+  // * Checks for account flags and triggers appropriate actions.
+  // * @param trigger The trigger type (e.g., "login", "entry")
+  // */
   private fun checkAccountFlags(trigger: String) {
     viewModelScope.launch {
       try {
