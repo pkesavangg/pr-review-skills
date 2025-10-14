@@ -70,7 +70,7 @@ internal fun rememberDefaultMarker(
       )
     },
     indicatorSize = pointSize.dp,
-    contentPadding = insets(vertical = 29.dp),
+    contentPadding = insets(vertical = 16.dp),
     guideline = guideline,
     yLabelCallback = yLabelCallback(),
     interpolationType = InterpolationType.CUBIC,
