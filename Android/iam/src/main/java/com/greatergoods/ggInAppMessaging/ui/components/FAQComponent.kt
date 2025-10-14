@@ -170,8 +170,6 @@ private fun FAQItemCard(
                 contentScale = ContentScale.Crop,
               )
           }
-
-
         }
       }
     }
