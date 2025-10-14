@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import kotlin.math.min
-import android.util.Log
 
 // --- Constants ---
 object SwipeDefaults {
@@ -184,10 +183,10 @@ private fun PreviewAppSwipeableList() {
             trailingActions = { _, item ->
                 AppSwipeableListActions {
                     AppIcon(
-                        id = AppIcons.Default.Delete,
-                        contentDescription = "Delete",
-                        modifier = Modifier,
-                        type = AppIconType.Secondary,
+                      id = AppIcons.Default.Delete,
+                      contentDescription = "Delete",
+                      modifier = Modifier,
+                      type = AppIconType.Inverse,
                     )
                 }
             },
