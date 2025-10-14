@@ -92,7 +92,15 @@ fun HistoryItem(
                 horizontalAlignment = Alignment.End,
             ) {
                 Text(
-                    text = item.change.toString().plus(" ${item.unit ?: "lbs"}"),
+                    text = buildString {
+                        item.change?.let {
+                          if (it > 0) {
+                            append("+")
+                          }
+                        }
+                        append(item.change.toString())
+                        append(" ${item.unit ?: "lbs"}")
+                    },
                     style = MeTheme.typography.body2,
                     color = MeTheme.colorScheme.textBody,
                 )
