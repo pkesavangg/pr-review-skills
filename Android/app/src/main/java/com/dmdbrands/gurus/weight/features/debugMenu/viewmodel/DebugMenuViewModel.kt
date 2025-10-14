@@ -6,10 +6,14 @@ import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuIntent
@@ -17,12 +21,10 @@ import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuReducer
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuState
 import com.dmdbrands.gurus.weight.features.debugMenu.strings.DebugMenuStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Activity
-import android.content.Context
 
 /**
  * ViewModel for the Debug Menu screen.
@@ -31,18 +33,64 @@ import android.content.Context
  */
 @HiltViewModel
 class DebugMenuViewModel @Inject constructor(
-    private val accountService: IAccountService,
-    private val entryService: IEntryService,
-    private val exportService: IExportService,
-    private val logManager: LogManager,
-    private val appReviewManager: IAppReviewManager,
-    @ApplicationContext private val context: Context,
+  private val accountService: IAccountService,
+  private val deviceService: IDeviceService,
+  private val entryService: IEntryService,
+  private val exportService: IExportService,
+  private val logManager: LogManager,
+  private val appReviewManager: IAppReviewManager,
 
-) : BaseIntentViewModel<DebugMenuState, DebugMenuIntent>(
+  ) : BaseIntentViewModel<DebugMenuState, DebugMenuIntent>(
     reducer = DebugMenuReducer(),
 ) {
 
+  // Scale-related properties similar to Angular cs-menu.page.ts
+  private var scales: List<Device> = emptyList()
+  private var singularScale: Device? = null
+
+  init {
+      viewModelScope.launch {
+        deviceService.pairedScales.collect { pairedScales ->
+          scales = pairedScales
+            .filter { device ->
+              val scaleInfo = getScaleInfoBySku(device.getSKU())
+              scaleInfo?.setupType == com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType.BtWifiR4
+            }
+            .map { device ->
+              val scaleInfo = getScaleInfoBySku(device.getSKU())
+              device.copy(
+                sku = scaleInfo?.sku ?: device.getSKU(),
+              )
+            }
+
+          // Set singular scale if only one scale
+          singularScale = if (scales.size == 1) scales[0] else null
+
+          // Update state
+          _state.value = _state.value.copy(
+            hasScales = scales.isNotEmpty(),
+            isSendScaleLogEnabled = isSendScaleLogEnabled()
+          )
+        }
+      }
+  }
+
     private val tag = "DebugMenuViewModel"
+
+    /**
+     * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
+     */
+    private fun getScaleInfoBySku(sku: String): ScaleInfo? {
+        return SCALES.find { it.sku == sku }
+    }
+
+
+    /**
+     * Check if send scale log is enabled, similar to Angular isSendScaleLogEnabled getter
+     */
+    private fun isSendScaleLogEnabled(): Boolean {
+        return singularScale?.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED || scales.size > 1
+    }
 
     override fun provideInitialState(): DebugMenuState {
         return DebugMenuState(
@@ -53,8 +101,6 @@ class DebugMenuViewModel @Inject constructor(
             currentDateTime = AppStatusService.getCurrentDateTime(),
             timezone = AppStatusService.getUserTimezone(),
             timezoneOffset = AppStatusService.getUserTimezoneOffset(),
-            hasScales = false, // TODO: Implement scale detection
-            isSendScaleLogEnabled = false, // TODO: Implement based on scale connectivity
         )
     }
 
@@ -210,10 +256,23 @@ class DebugMenuViewModel @Inject constructor(
             )
 
             try {
-                // TODO: Implement scale log sending when scale service is available
-                // For now, use a placeholder broadcast ID
-                val placeholderBroadcastId = "00:00:00:00:00:00"
-                exportService.sendScaleLog(placeholderBroadcastId)
+                if (singularScale != null) {
+                    // Send logs for singular scale using its broadcast ID
+                    val broadcastId = singularScale!!.device?.broadcastIdString ?: "00:00:00:00:00:00"
+                    exportService.sendScaleLog(broadcastId)
+                    AppLog.i(tag, "Scale logs sent for singular scale: $singularScale")
+                } else if (scales.size > 1) {
+                    // For multiple scales, send logs for the first connected scale
+                    val connectedScale = scales.find { it.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED }
+                    val broadcastId = connectedScale?.device?.broadcastIdString ?: "00:00:00:00:00:00"
+                    exportService.sendScaleLog(broadcastId)
+                    AppLog.i(tag, "Scale logs sent for connected scale: $singularScale")
+                } else {
+                    // No scales available
+                    AppLog.w(tag, "No scales available for sending logs")
+                    showErrorAlert()
+                    return@launch
+                }
 
                 dialogQueueService.showToast(
                     Toast(

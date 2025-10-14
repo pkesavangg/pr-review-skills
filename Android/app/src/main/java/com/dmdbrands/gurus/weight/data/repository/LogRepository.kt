@@ -48,6 +48,11 @@ class LogRepository
 
         init {
             AppLog.d("LogRepository", "Initialized with session ID: $currentSessionId")
+          repositoryScope.launch {
+                AppLog.d("LogRepository", "Coroutine scope cancelled")
+            val activeAccount = accountService.activeAccountFlow.first()
+            currentAccountId = activeAccount?.id ?: "default"
+            }
         }
 
         override suspend fun initialize() {
@@ -175,7 +180,8 @@ class LogRepository
             try {
                 AppLog.i("LogRepository", "Log sending initiated")
                 // Sync current account ID
-                syncCurrentAccountId()
+              AppLog.i("LogRepository", "Current account ID: $currentAccountId")
+                AppLog.i("LogRepository", "Current account ID: ${getLogsByAccountId(currentAccountId).first()}")
                 // Get recent logs from the last 5 days for current account only
                 val recentLogEntities = getLogsByAccountId(currentAccountId).first()
                     .filter {
@@ -225,7 +231,6 @@ class LogRepository
         override suspend fun clearLogsForCurrentAccount() {
             try {
                 // Sync current account ID
-                syncCurrentAccountId()
                 AppLog.i("LogRepository", "Clearing logs for account: $currentAccountId")
                 deleteLogsByAccountId(currentAccountId)
                 AppLog.i("LogRepository", "Logs cleared for account: $currentAccountId")
@@ -233,14 +238,6 @@ class LogRepository
                 AppLog.e("LogRepository", "Failed to clear logs for current account", e)
                 throw e
             }
-        }
-
-        /**
-         * Updates the current account ID from the active account service.
-         */
-        private suspend fun syncCurrentAccountId() {
-            val activeAccount = accountService.getCurrentAccount()
-            currentAccountId = activeAccount?.id ?: "default"
         }
 
         fun updateAccountId(accountId: String) {

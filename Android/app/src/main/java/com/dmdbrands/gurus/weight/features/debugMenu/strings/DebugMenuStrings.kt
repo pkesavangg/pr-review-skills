@@ -6,7 +6,7 @@ package com.dmdbrands.gurus.weight.features.debugMenu.strings
  */
 object DebugMenuStrings {
     const val PageTitle = "Debug Menu"
-    const val CautionTitle = "CAUTION!"
+    const val CautionTitle = "Caution!"
     const val CautionDescription = "Only use this menu if instructed by Greater Goods Customer Service"
 
     object SectionHeaders {
