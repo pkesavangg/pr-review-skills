@@ -137,6 +137,33 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
     }
 
     func collectionView(_ collectionView: UICollectionView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UICollectionViewDropProposal {
+        // Default proposal
+        guard let destinationIndexPath = destinationIndexPath else {
+            return UICollectionViewDropProposal(operation: .cancel)
+        }
+
+        // Determine if the dragged item is a goal card
+        if let dragItem = session.items.first {
+            let isGoalCard: Bool
+            if let mileStone = dragItem.localObject as? MileStoneType {
+                switch mileStone {
+                case .goalCard: isGoalCard = true
+                default: isGoalCard = false
+                }
+            } else {
+                isGoalCard = false
+            }
+
+            if isGoalCard {
+                // When all streaks are present, forbid dropping goal card at odd indices
+                if isAllStreaksPresent() {
+                    if destinationIndexPath.item % 2 != 0 {
+                        return UICollectionViewDropProposal(operation: .forbidden)
+                    }
+                }
+            }
+        }
+
         return UICollectionViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
     }
 
@@ -149,7 +176,7 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         let draggedWidget = gridModel.mileStones[sourceIndexPath.item]
         
         // Calculate the adjusted destination index
-        let adjustedDestinationIndex: Int
+        var adjustedDestinationIndex: Int
         if case .goalCard = draggedWidget {
             // Special case: when goal card is dragged and ALL streak items AND goal card are present
             // and goal card is at the last index, adjust destination to be one position earlier
@@ -181,6 +208,13 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
             } else {
                 adjustedDestinationIndex = destinationIndexPath.item
             }
+
+            // Enforce row-start index rule when all streaks are present (index % columns == 0)
+            if isAllStreaksPresent() {
+                let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                let targetRow = adjustedDestinationIndex / gridColumns
+                adjustedDestinationIndex = targetRow * gridColumns
+            }
         } else {
             adjustedDestinationIndex = destinationIndexPath.item
         }
@@ -195,6 +229,21 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
 
         // Save the new order to DashboardStore UI state
         persistGridOrderToStore()
+    }
+
+    // MARK: - Helpers
+    private func isAllStreaksPresent() -> Bool {
+        // Count actual (non-removed) streak items currently in the grid
+        let streakCount = gridModel.mileStones.compactMap { widget -> String? in
+            switch widget {
+            case .goalCard:
+                return nil
+            case .streak(let streakItem):
+                return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+            }
+        }.count
+        // All present iff we have exactly 6 active streaks
+        return streakCount == 6
     }
     
     /// Saves the current grid order to DashboardStore UI state

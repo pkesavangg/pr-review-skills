@@ -998,7 +998,13 @@ class DashboardStore: ObservableObject {
     /// - Parameter newPosition: The new position after the divider (0 = first position)
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
-        let clampedPosition = max(0, min(newPosition, maxPosition))
+        var clampedPosition = max(0, min(newPosition, maxPosition))
+        // Enforce row-start positions when all streaks are present (no removed streaks)
+        // iPhone: 2 columns → row starts: 0,2,4,6; iPad: 4 columns → 0,4,8,12
+        if state.ui.removedStreaks.isEmpty {
+            let columns = DevicePlatform.isTablet ? 4 : 2
+            clampedPosition = (clampedPosition / columns) * columns
+        }
         
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
@@ -1006,13 +1012,11 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    /// Ensures goal card position is valid when streaks are removed
+    /// Ensures goal card position is valid and snaps to row-starts when all streaks are present
     func validateGoalCardPosition() {
         let maxPosition = streakItemsToShow.count
-        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
         
-        // More flexible validation: allow goal card to be positioned anywhere
-        // The grid building logic will handle the actual layout
+        // Basic clamping
         if state.ui.goalCardPosition > maxPosition {
             // Only clamp if position is way beyond reasonable bounds
             state.ui.goalCardPosition = maxPosition
@@ -1024,7 +1028,17 @@ class DashboardStore: ObservableObject {
             state.ui.goalCardPosition = 0
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
         }
+
+        // When no streaks are removed (all present), snap to row start to keep layout valid
+        if state.ui.removedStreaks.isEmpty {
+            let columns = DevicePlatform.isTablet ? 4 : 2
+            let snapped = (state.ui.goalCardPosition / columns) * columns
+            if snapped != state.ui.goalCardPosition {
+                state.ui.goalCardPosition = snapped
+            }
+        }
         
+        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
         logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
     
