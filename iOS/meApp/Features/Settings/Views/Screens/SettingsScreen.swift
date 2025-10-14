@@ -13,7 +13,6 @@ import SwiftUI
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
-    @Environment(\.registerTabReselectHandler) private var registerTabReselectHandler
     @StateObject var settingsStore = SettingsStore()
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
@@ -25,13 +24,57 @@ struct SettingsScreen: View {
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
     var body: some View {
-        AnyView(
-            RoutingView(stack: $router.stack) {
-                routingContent
+        RoutingView(stack: $router.stack) {
+            VStack(spacing: 0) {
+                NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
+                ZStack {
+                    theme.backgroundSecondary
+                        .ignoresSafeArea()
+                    VStack(spacing: 0) {
+                        List {
+                            profileHeader()
+                            accountSettingsSection()
+                            profileSettingsSection()
+                            appSettingsSection()
+                            supportSection()
+                            accountActionSection()
+                        }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
+                    }
+                }
+                .inAppBrowser(
+                    url: settingsStore.presentingBrowserURL,
+                    isPresented: settingsStore.isBrowserPresented
+                )
             }
-            .environmentObject(router)
-            .environmentObject(settingsStore)
-        )
+            .onAppear {
+                tabViewModel.showTabBar = true
+                // Ensure this is the actively selected tab before evaluating modal presentation
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                    
+                    // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
+                    if let route = tabViewModel.pendingSettingsNavigation {
+                        tabViewModel.pendingSettingsNavigation = nil
+                        router.navigate(to: route)
+                    }
+                }
+            }
+            // Re-evaluate modal presentation whenever the selected tab changes.
+            .onChange(of: tabViewModel.selectedTab) {
+                if tabViewModel.selectedTab == .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                    
+                    if let route = tabViewModel.pendingSettingsNavigation {
+                        tabViewModel.pendingSettingsNavigation = nil
+                        router.navigate(to: route)
+                    }
+                }
+            }
+        }
+        .environmentObject(router)
+        .environmentObject(settingsStore)
         // Appearance picker fallback for non-iPad or iOS>=18
         .pickerSheet(
             isPresented: $settingsStore.showAppearancePicker,
@@ -124,61 +167,6 @@ struct SettingsScreen: View {
         )
     }
     
-    // Extracted content to reduce type-checking complexity
-    private var routingContent: some View {
-        VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(title: settingsLang.title, canShowBorder: true)
-            ZStack {
-                theme.backgroundSecondary
-                    .ignoresSafeArea()
-                VStack(spacing: 0) {
-                    List {
-                        profileHeader()
-                        accountSettingsSection()
-                        profileSettingsSection()
-                        appSettingsSection()
-                        supportSection()
-                        accountActionSection()
-                    }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                }
-            }
-            .inAppBrowser(
-                url: settingsStore.presentingBrowserURL,
-                isPresented: settingsStore.isBrowserPresented
-            )
-        }
-        .onAppear {
-            tabViewModel.showTabBar = true
-            // Register reselect-to-root behavior for the Settings tab
-            registerTabReselectHandler {
-                router.navigateToRoot()
-            }
-            // Ensure this is the actively selected tab before evaluating modal presentation
-            if tabViewModel.selectedTab == .settings {
-                settingsStore.presentAddAccountModalIfNeeded(router: router)
-                
-                // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
-                if let route = tabViewModel.pendingSettingsNavigation {
-                    tabViewModel.pendingSettingsNavigation = nil
-                    router.navigate(to: route)
-                }
-            }
-        }
-        // Re-evaluate modal presentation whenever the selected tab changes.
-        .onChange(of: tabViewModel.selectedTab) {
-            if tabViewModel.selectedTab == .settings {
-                settingsStore.presentAddAccountModalIfNeeded(router: router)
-                
-                if let route = tabViewModel.pendingSettingsNavigation {
-                    tabViewModel.pendingSettingsNavigation = nil
-                    router.navigate(to: route)
-                }
-            }
-        }
-    }
-    
     private func profileHeader() -> some View {
         VStack(spacing: .spacingXS) {
             InitialIconView(
@@ -238,19 +226,21 @@ struct SettingsScreen: View {
                     router.navigate(to: .goal)
                 }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentGenderPicker() }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentActivityPicker() }))
             .listRowInsets()
-            /// Height selection uses SettingsStore.presentHeightPicker() for modal or sheet behavior.
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.height,
                 value: settingsStore.heightText,
@@ -258,12 +248,14 @@ struct SettingsScreen: View {
                 onTap: { settingsStore.presentHeightPicker() }
             ))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentUnitPicker() }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
@@ -287,7 +279,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
             }))
-            .id(settingsStore.canShowFeedNotificationBadge) // Force row re-identity when the badge toggles
+            .id(settingsStore.canShowFeedNotificationBadge)
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
                 router.navigate(to: .appPermissions)
