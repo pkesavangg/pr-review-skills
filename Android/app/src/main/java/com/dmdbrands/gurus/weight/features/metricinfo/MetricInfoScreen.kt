@@ -174,7 +174,7 @@ fun MetricInfoScreenContent(
         SegmentButtonGroup(
           data = metricKeys,
           contentPadding = PaddingValues(horizontal = spacing.sm),
-          selectedData = selectedMetricInfoKey,
+          selectedData = metricKeys.get(selectedIndex),
           key = MetricInfoKey::label,
           size = SegmentButtonSize.Small,
           type = SegmentButtonType.Scrollable,

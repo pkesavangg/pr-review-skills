@@ -10,7 +10,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
-import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AnimatedAppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
@@ -44,93 +44,109 @@ fun R4ScaleMetricsSection(
     val finalHeartRateFocusRequester = heartRateFocusRequester ?: internalHeartRateFocusRequester
 
     Column(modifier = Modifier.padding(top = MeTheme.spacing.x2s)) {
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.heartRate,
             label = EntryScreenStrings.HEART_RATE_LABEL,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = boneMassFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(finalHeartRateFocusRequester),
+            index = 0,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.boneMass,
             label = EntryScreenStrings.BONE_MASS_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = visceralFatFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(boneMassFocusRequester),
+            index = 1,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.visceralFat,
             label = EntryScreenStrings.VISCERAL_FAT_LABEL,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = subcutaneousFatFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(visceralFatFocusRequester),
+            index = 2,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.subcutaneousFat,
             label = EntryScreenStrings.SUBCUTANEOUS_FAT_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = proteinFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(subcutaneousFatFocusRequester),
+            index = 3,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.protein,
             label = EntryScreenStrings.PROTEIN_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = skeletalMusclesFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(proteinFocusRequester),
+            index = 4,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.skeletalMuscles,
             label = EntryScreenStrings.SKELETAL_MUSCLES_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bmrFocusRequester,
+            onImeAction = null,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(skeletalMusclesFocusRequester),
+            index = 5,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.bmr,
             label = EntryScreenStrings.BMR_LABEL,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = metabolicAgeFocusRequester,
+            onImeAction = null,
             maxLength = 5,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(bmrFocusRequester),
+            index = 6,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.metabolicAge,
             label = EntryScreenStrings.METABOLIC_AGE_LABEL,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Done,
+            nextFocusRequester = null,
             onImeAction = onImeAction,
             maxLength = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(metabolicAgeFocusRequester),
+            index = 7,
         )
     }
 }
