@@ -82,7 +82,8 @@ fun AppScaffold(
                     state = pullRefreshState,
                     indicator = {
                         Indicator(
-                            modifier = Modifier.align(Alignment.TopCenter),
+                            modifier = Modifier
+                                .align(Alignment.TopCenter),
                             isRefreshing = isRefreshing,
                             containerColor = colorScheme.primaryBackground,
                             color = colorScheme.primaryAction,

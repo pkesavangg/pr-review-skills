@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -64,12 +65,10 @@ fun FeedMessagesScreen(
         viewModel.handleIntent(FeedMessagesIntent.LoadFeedItems)
     }
 
-  val verticalScrollModifier = if(state.isLoading || state.error != null || state.showEmptyState) Modifier.verticalScroll(rememberScrollState()) else Modifier
 
     Column(
         modifier = modifier
           .fillMaxSize()
-          .then(verticalScrollModifier)
           .background(colors.secondaryBackground)
     ) {
         // Section Header
@@ -83,28 +82,18 @@ fun FeedMessagesScreen(
 
         //Content based on state
         when {
-            state.isLoading -> {
-                // Loading state
-                LoadingContent()
-            }
-
             state.showEmptyState -> {
                 // Empty State Content
                 EmptyStateContent()
             }
 
-            state.error != null -> {
-                // Error state
-                ErrorContent(
-                    error = state.error!!,
-                    onRetry = { viewModel.handleIntent(FeedMessagesIntent.Retry) },
-                )
-            }
 
             else -> {
+              val listState = rememberLazyListState()
                 // Feed Items List
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
+                  state = listState,
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     items(state.feedItems) { feedItem ->
                         FeedItemCard(
@@ -242,9 +231,9 @@ private fun ErrorContent(
 private fun EmptyStateContent() {
     // Use a Box with fillMaxSize to center the column vertically
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+          modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.Center,
         ) {
             // Primary Empty State Message
             Text(

@@ -20,7 +20,6 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.greatergoods.ggInAppMessaging.ui.screens.FeedMessagesScreen
-import android.util.Log
 
 /**
  * Feed Messages Screen with TopAppBar
@@ -33,10 +32,6 @@ fun AppFeedMessagesScreen(
 ) {
   val viewModel: FeedMessagesViewModel = hiltViewModel()
   val state by viewModel.state.collectAsState()
-  val isRefreshing = state.isRefreshing
-
-  // Debug logging
-  android.util.Log.d("AppFeedMessagesScreen", "Current state - isRefreshing: $isRefreshing, isLoading: ${state.isLoading}")
 
   // Handle back button press
   BackHandler {
@@ -50,7 +45,6 @@ fun AppFeedMessagesScreen(
 
   AppFeedMessagesScreenContent(
     state = state,
-    isRefreshing = state.isRefreshing,
     onRefresh = {
       android.util.Log.d("AppFeedMessagesScreen", "onRefresh callback triggered!")
       viewModel.handleIntent(FeedMessagesIntent.Refresh)
@@ -63,7 +57,6 @@ fun AppFeedMessagesScreen(
 @Composable
 fun AppFeedMessagesScreenContent(
   state: FeedMessagesState,
-  isRefreshing: Boolean = false,
   onRefresh: (() -> Unit)? = null,
   handleIntent: (FeedMessagesIntent) -> Unit,
   modifier: Modifier = Modifier,
@@ -78,9 +71,7 @@ fun AppFeedMessagesScreenContent(
     containerColor = colorScheme.secondaryBackground,
     appBarColor = colorScheme.primaryBackground,
     isRefreshing = state.isRefreshing,
-    onRefresh = {
-      Log.i("CHECKING" , "triggered")
-    },
+    onRefresh = onRefresh,
     modifier = modifier.fillMaxSize(),
   ) { scaffoldModifier ->
     // Reuse the IAM FeedMessagesScreen content
@@ -103,7 +94,6 @@ fun FeedMessagesScreenPreview() {
   MeAppTheme {
     AppFeedMessagesScreenContent(
       state = FeedMessagesState(),
-      isRefreshing = false,
       onRefresh = {},
       handleIntent = {},
     )

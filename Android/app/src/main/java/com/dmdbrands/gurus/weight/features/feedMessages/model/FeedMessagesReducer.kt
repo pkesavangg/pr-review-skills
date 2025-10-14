@@ -18,14 +18,12 @@ class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
         state.copy(
           feedItems = intent.feedItems,
           isLoading = false,
-          isRefreshing = false,
           error = null
         )
       }
       is FeedMessagesIntent.SetError -> {
         state.copy(
           isLoading = false,
-          isRefreshing = false,
           error = intent.error
         )
       }
