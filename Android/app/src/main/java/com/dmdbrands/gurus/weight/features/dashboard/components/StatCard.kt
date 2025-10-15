@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
@@ -64,16 +65,20 @@ internal fun StatCard(
   val metricLabel =
     if (hideMetricData) stat.label.lowercase() else stat.label.plus(" ").plus(stat.unit ?: "").lowercase()
   val metricData = buildString {
-    if (stat.valuePrefix != null) {
-      append(stat.valuePrefix)
-    }
-    if (stat.value != null) {
-      append(formatStatValue(stat.value))
-      if (stat.valueSuffix != null) {
-        append(" " + stat.valueSuffix)
-      }
+    if (isFromSetup && stat.key is DashboardKey.Milestone) {
+      append("+/-")
     } else {
-      if (isFromSetup && stat.key is DashboardKey.Milestone) append("+/-") else append("---")
+      if (stat.valuePrefix != null) {
+        append(stat.valuePrefix)
+      }
+      if (stat.value != null) {
+        append(formatStatValue(stat.value))
+        if (stat.valueSuffix != null) {
+          append(" " + stat.valueSuffix)
+        }
+      } else {
+        append("---")
+      }
     }
   }
 
@@ -109,13 +114,13 @@ internal fun StatCard(
       if (stat.icon != null && stat.key is DashboardKey.Milestone) {
         Row(
           modifier = Modifier.weight(1f),
-          horizontalArrangement = Arrangement.End,
+          horizontalArrangement = Arrangement.Center,
           verticalAlignment = Alignment.CenterVertically,
         ) {
           AppIcon(
             id = stat.icon,
             contentDescription = stat.label,
-            tintColor = MeTheme.colorScheme.streak,
+            tintColor = if (isVisible) MeTheme.colorScheme.streak else MeTheme.colorScheme.iconSecondary,
           )
           Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
         }
@@ -132,7 +137,8 @@ internal fun StatCard(
             id = stat.icon,
             contentDescription = stat.label,
             modifier = Modifier.size(24.dp),
-            tintColor = MeTheme.colorScheme.secondaryAction,
+            type = AppIconType.Secondary,
+            enabled = enabled,
           )
           Spacer(modifier = Modifier.size(MeTheme.spacing.x2s))
         }

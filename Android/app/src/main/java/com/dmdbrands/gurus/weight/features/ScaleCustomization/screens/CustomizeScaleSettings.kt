@@ -76,13 +76,13 @@ fun CustomizeScaleSettings(
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
 
-  var dashboardMetricKeys: List<DashboardKey.Metric> by remember {
+  var dashboardMetricKeys: List<DashboardKey.Metric> by remember(state.dashboardKeys) {
     mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Metric>())
   }
-  var dashboardMilestoneKeys: List<DashboardKey.Milestone> by remember {
+  var dashboardMilestoneKeys: List<DashboardKey.Milestone> by remember(state.dashboardKeys) {
     mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>())
   }
-  var combinedDashboardKeys: List<DashboardKey>? by remember { mutableStateOf(null) }
+  var combinedDashboardKeys: List<DashboardKey>? by remember(state.dashboardKeys) { mutableStateOf(null) }
 
   // Local state for username form
   var localUsername by remember { mutableStateOf(state.usernameForm.username.value) }

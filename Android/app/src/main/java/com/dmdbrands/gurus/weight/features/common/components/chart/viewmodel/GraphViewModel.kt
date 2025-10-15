@@ -77,6 +77,7 @@ class GraphViewModel @AssistedInject constructor(
   init {
     observeDataChanges()
     subscribeWeightUnit()
+    initializeWeightUnit()
   }
 
   private fun subscribeWeightUnit() {
@@ -86,6 +87,25 @@ class GraphViewModel @AssistedInject constructor(
           handleIntent(
             GraphIntent.UpdateWeightUnit(weightUnit),
           )
+      }
+    }
+  }
+
+  /**
+   * Initializes the weight unit from the current account settings immediately.
+   * This ensures the correct unit is displayed on app launch.
+   */
+  private fun initializeWeightUnit() {
+    viewModelScope.launch {
+      try {
+        val currentAccount = accountService.activeAccountFlow.first()
+        val weightUnit = currentAccount?.weightUnit
+        if (weightUnit != null) {
+          handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
+        }
+      } catch (e: Exception) {
+        // Log error but don't crash - fallback to default KG
+        android.util.Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
       }
     }
   }
