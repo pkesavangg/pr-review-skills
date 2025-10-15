@@ -145,6 +145,7 @@ fun AppText(
   enabled: Boolean = true,
   spacing: Dp = LocalSpacing.current.none,
   textAlign: TextAlign = TextAlign.Start,
+  softWrap: Boolean = true,
   textOverflow: TextOverflow = TextOverflow.Clip,
   color: Color? = null,
   onClick: (() -> Unit)? = null,
@@ -232,6 +233,7 @@ fun AppText(
         style = appearance.style,
         color = color ?: appearance.color,
         textAlign = textAlign,
+        softWrap = softWrap,
         overflow = textOverflow,
         modifier =
           modifier.then(

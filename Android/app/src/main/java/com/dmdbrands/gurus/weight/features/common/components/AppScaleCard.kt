@@ -83,12 +83,14 @@ fun AppScaleCard(
       ) {
         AppText(
           text = scale.sku,
-          textType = if (isSavedScale) TextType.ListTitle1 else TextType.ListTitle2,
+          textType = TextType.ListTitle1,
         )
         AppText(
           text = scale.productName.lowercase(),
           textType = TextType.ListSubtitle,
-          textOverflow = TextOverflow.Ellipsis
+          softWrap = false,
+          textOverflow = TextOverflow.Ellipsis,
+          modifier = Modifier.fillMaxWidth()
         )
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
