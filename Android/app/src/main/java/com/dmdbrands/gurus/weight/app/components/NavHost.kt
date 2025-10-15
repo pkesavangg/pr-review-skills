@@ -73,17 +73,17 @@ fun NavHost(
       slideInHorizontally(
         initialOffsetX = { it },
         animationSpec = tween(250, easing = FastOutSlowInEasing)
-      ) + fadeIn(animationSpec = tween(150, delayMillis = 100)) togetherWith
+      ) + fadeIn(animationSpec = tween(150, delayMillis = 200)) togetherWith
 
         ExitTransition.None
     },
     popTransitionSpec = {
       // Clean slide-out: old screen slides out, previous screen fades in
-      fadeIn(animationSpec = tween(150)) togetherWith
+      fadeIn(animationSpec = tween(300)) togetherWith
         slideOutHorizontally(
           targetOffsetX = { it },
-          animationSpec = tween(300, easing = FastOutSlowInEasing)
-        ) + fadeOut(animationSpec = tween(150))
+          animationSpec = tween(400, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(100))
     },
     predictivePopTransitionSpec = {
       // Clean predictive back
