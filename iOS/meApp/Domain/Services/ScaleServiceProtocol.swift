@@ -48,4 +48,13 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     ///   - broadcastId: The broadcast ID of the device.
     ///   - isWeightOnlyModeEnabledByOthers: Whether weight-only mode is enabled by other users.
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async
+
+    /// Fetches an attached R4 scale preference by its scale ID from the repository.
+    /// - Parameter id: The scale/preference ID.
+    /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference?
+
+    /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
+    /// Must be called on main actor. Intended for synchronous call sites.
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
 }

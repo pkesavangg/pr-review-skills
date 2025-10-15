@@ -1561,20 +1561,9 @@ private extension BluetoothService {
         )
     }
     
-    // Reattaches a detached SwiftData model by id to the shared context
+    // Fetch preference via ScaleService/Repository to ensure attached object
     func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
-        let context = PersistenceController.shared.context
-        var descriptor = FetchDescriptor<R4ScalePreference>(
-            predicate: #Predicate<R4ScalePreference> { $0.id == id }
-        )
-        descriptor.fetchLimit = 1
-        do {
-            let results: [R4ScalePreference] = try context.fetch(descriptor)
-            return results.first
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch attached R4ScalePreference: \(error.localizedDescription)")
-            return nil
-        }
+        return scaleService.fetchAttachedPreferenceSync(by: id)
     }
 
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {

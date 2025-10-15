@@ -331,6 +331,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
         }
     }
+
+    // MARK: - Preference Fetching
+    /// Fetches an attached R4 scale preference by its scale ID from the repository.
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? {
+        return await localRepository.fetchAttachedPreference(by: id)
+    }
+
+    /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+        return localRepository.fetchAttachedPreferenceSync(by: id)
+    }
     // MARK: - Public Sync Methods
     
     /// Manually triggers a full sync with the server.
