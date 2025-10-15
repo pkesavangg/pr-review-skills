@@ -58,7 +58,7 @@ data class ScaleUsernameFormControls(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
           FormValidations.maxLength(20,),
-          FormValidations.minLength(2,)
+          FormValidations.minLength(1)
         ),
       ),
     )

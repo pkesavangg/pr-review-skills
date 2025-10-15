@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
@@ -280,7 +281,7 @@ fun ScaleDetailsScreenContent(
                 title = ScaleDetailsStrings.ScaleName,
                 type =
                   SettingsItemType.TextOnly(
-                    scaleName ?: "",
+                    NameUtils.trimNameForSDK(scaleName), // Display truncated name to match SDK limit
                   ),
                 onClick = {
                   handleIntent(ScaleDetailsIntent.ShowScaleNameModal)

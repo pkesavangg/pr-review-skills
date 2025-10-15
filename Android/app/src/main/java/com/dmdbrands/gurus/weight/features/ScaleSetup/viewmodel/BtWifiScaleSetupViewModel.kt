@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
+import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
@@ -65,6 +66,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -191,11 +193,12 @@ constructor(
   /**
    * Initializes the username form with the active account name.
    * This ensures we have a valid username even in the connect popup flow.
+   * Trims the name to 20 characters to prevent duplicate user errors.
    */
   private suspend fun initializeUsernameForm() {
     try {
       val activeAccount = accountService.activeAccountFlow.first()
-      val username = activeAccount?.firstName ?: "Default"
+      val username = NameUtils.trimNameForSDK(activeAccount?.firstName)
       _state.value.usernameForm.username.onValueChange(username)
     } catch (e: Exception) {
       _state.value.usernameForm.username.onValueChange("Default")
@@ -761,6 +764,18 @@ constructor(
   }
 
   /**
+   * Clears the WiFi password form after successful WiFi connection.
+   * Resets both SSID and password fields to empty values.
+   */
+  private fun clearWifiPasswordForm() {
+    AppLog.d(TAG, "Clearing WiFi password form after successful connection")
+    val currentState = state.value
+    currentState.wifiPasswordForm.ssid.reset()
+    currentState.wifiPasswordForm.password.reset()
+    currentState.wifiPasswordForm.noPasswordNetwork.onValueChange(false)
+  }
+
+  /**
    * Refreshes the user list after account changes (delete/update) to keep it in sync.
    * This ensures that the user list is always current for duplicate validation.
    */
@@ -1004,6 +1019,7 @@ constructor(
         bluetoothConnectionTimeoutJob = timeoutJob
 
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
+        Log.d("userdevice", "$ggBtDevice")
         ggDeviceService.pairDevice(
           device = ggBtDevice,
         ) { it ->
@@ -1048,7 +1064,7 @@ constructor(
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
-                  ?: accountService.activeAccountFlow.first()?.firstName
+                  ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
 
                 if (duplicateUserName != null) {
                   AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
@@ -1122,6 +1138,8 @@ constructor(
       viewModelScope.launch {
         val userList = suspendCoroutine { continuation ->
           ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
+
+            Log.d("userslist","$response")
             if (duplicateUserName != null) {
               val user = response.user.first { it.name == duplicateUserName }
               // Don't update discoveredScale token here - keep the original token for proper filtering
@@ -1290,6 +1308,8 @@ constructor(
                 ConnectionState.Success,
               ),
             )
+            // Clear WiFi password form after successful connection
+            clearWifiPasswordForm()
             // Update WiFi details in background but don't block progression
             updateWifiDetails()
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {

@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
+import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -40,6 +41,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import android.util.Log
 
 /**
  * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
@@ -191,6 +193,7 @@ constructor(
         if (currentScale != null) {
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
+            Log.d("scaleinfo", "scaleinfo: $scale")
             handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
             val scaleName = scale.nickname
             handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
@@ -210,6 +213,7 @@ constructor(
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           AppLog.d(TAG, "Updating scale info for: ${scaleDevice.nickname}")
+          Log.d("scaleinfo", "scaleinfo: $scaleDevice")
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
@@ -346,7 +350,7 @@ constructor(
     if (!state.value.scaleNameForm.isValid) {
       return
     }
-    val scaleName = state.value.scaleNameForm.controls.name.value
+    val scaleName = NameUtils.trimNameForSDK(state.value.scaleNameForm.controls.name.value)
     dialogQueueService.showLoader(
       message = ScaleNameDialogStrings.LoaderMessage,
     )
