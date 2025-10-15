@@ -19,6 +19,7 @@ struct WeightOnlyContentView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 18, height: 18)
+                        .themeDropShadow()
                     
                     Text(lang.weightOnlyIndicatorLabel)
                         .fontOpenSans(.body2)
