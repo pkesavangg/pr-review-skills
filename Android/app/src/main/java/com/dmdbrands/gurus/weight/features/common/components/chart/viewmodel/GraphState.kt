@@ -6,8 +6,6 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -76,17 +74,6 @@ data class GraphState(
 
   fun getEndTimestamp(): Long {
     return this.data.maxByOrNull { it.getTimeStamp() }?.getTimeStamp() ?: Calendar.getInstance().timeInMillis
-  }
-
-  fun getIntervalCount(segment: GraphSegment): Double {
-    return if (segment == GraphSegment.TOTAL) {
-
-      return GraphUtil.getTotalMonthsBetweenYears(
-        getStartTimestamp(),
-        Calendar.getInstance().timeInMillis,
-      ).toDouble()
-    } else
-      segment.intervalCount()
   }
 
   fun createFallBackData(

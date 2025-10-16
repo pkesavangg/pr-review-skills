@@ -186,6 +186,7 @@ class ReorderableLazyGridState internal constructor(
  * @param key The key of the item, must be the same as the key passed to [LazyGridScope.item](androidx.compose.foundation.lazy.grid.item), [LazyGridScope.items](androidx.compose.foundation.lazy.grid.items) or similar functions in [LazyGridScope](androidx.compose.foundation.lazy.grid.LazyGridScope)
  * @param enabled Whether or this item is reorderable. If true, the item will not move for other items but may still be draggable. To make an item not draggable, set `enable = false` in [sh.calvin.reorderable.draggable] or [Modifier.longPressDraggable] instead.
  * @param animateItemModifier The [Modifier] that will be applied to items that are not being dragged.
+ * @param dragThresholdPadding The padding threshold applied only when dragging to prevent items from being dragged too close to edges.
  */
 
 @Composable
@@ -194,7 +195,10 @@ fun LazyGridItemScope.ReorderableItem(
   key: Any,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
-  animateItemModifier: Modifier = Modifier.animateItem(),
+  animateItemModifier: Modifier = Modifier.animateItem(
+    fadeInSpec = null,
+    fadeOutSpec = null,
+  ),
   content: @Composable ReorderableCollectionItemScope.(isDragging: Boolean) -> Unit,
 ) {
   val dragging by state.isItemDragging(key)
@@ -218,7 +222,7 @@ fun LazyGridItemScope.ReorderableItem(
         val minTranslationX = -originX
         val maxTranslationX = clampedMaxX - originX
         val minTranslationY = -originY
-        val maxTranslationY = clampedMaxY - originY
+        val maxTranslationY = clampedMaxY - originY - draggingSize.height.div(3)
         translationX = state.draggingItemOffset.x.coerceIn(minTranslationX, maxTranslationX)
         translationY = state.draggingItemOffset.y.coerceIn(minTranslationY, maxTranslationY)
       }
@@ -228,21 +232,15 @@ fun LazyGridItemScope.ReorderableItem(
       .zIndex(1f)
       .graphicsLayer {
         val originX = draggingOrigin?.x?.toFloat() ?: 0f
-        val originY = draggingOrigin?.y?.toFloat() ?: 0f
         val maxX = (viewportSize.width - draggingSize.width).toFloat()
-        val maxY = (viewportSize.height - draggingSize.height).toFloat()
         // Ensure bounds are valid (non-negative)
         val clampedMaxX = maxX.coerceAtLeast(0f)
-        val clampedMaxY = maxY.coerceAtLeast(0f)
         val minTranslationX = -originX
         val maxTranslationX = clampedMaxX - originX
-        val minTranslationY = -originY
-        val maxTranslationY = clampedMaxY - originY
         translationX = state.previousDraggingItemOffset.value.x.coerceIn(minTranslationX, maxTranslationX)
-        translationY = state.previousDraggingItemOffset.value.y.coerceIn(minTranslationY, maxTranslationY)
       }
   } else {
-    Modifier.onGloballyPositioned { itemSize = it.size } then animateItemModifier
+    Modifier.onGloballyPositioned { itemSize = it.size } then if (enabled) animateItemModifier else Modifier
   }
 
   ReorderableCollectionItem(

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.common.helper.graph
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -11,7 +12,6 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
@@ -412,7 +412,7 @@ object GraphUtil {
    * @return Total number of months between the years of the timestamps
    */
   fun getTotalMonthsBetweenYears(startTimeMillis: Long, endTimeMillis: Long): Int {
-    if (startTimeMillis <= 0 || endTimeMillis <= 0 || startTimeMillis > endTimeMillis) {
+    if (startTimeMillis > endTimeMillis) {
       return 0
     }
 
@@ -422,7 +422,7 @@ object GraphUtil {
     val endYear = Instant.ofEpochMilli(endTimeMillis).atZone(localZone).year
 
     // Calculate total months between years
-    return (endYear - startYear + 1) * 12
+    return ((endYear - startYear + 1) * 12)
   }
 
   // endregion

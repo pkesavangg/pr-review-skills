@@ -52,7 +52,7 @@ fun DashboardMilestoneGrid(
   val spanCount = if (currentDeviceType == DeviceType.Tablet) 3 else 2
 
   var localVisibleMilestones by remember(visibleMilestones) {
-    mutableStateOf(visibleMilestones.reorderGridComprehensive(spanCount, isAfterRemoval = false))
+    mutableStateOf(visibleMilestones.reorderGrid(spanCount))
   }
   val hapticFeedback = LocalHapticFeedback.current
   val lazyGridState = rememberLazyGridState()
@@ -61,10 +61,26 @@ fun DashboardMilestoneGrid(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
       if (!isGoalProgressMilestone(localVisibleMilestones[to.index])) {
-        // Direct reordering with adjusted index, then normalize layout for span-2 item
-        localVisibleMilestones = localVisibleMilestones.toMutableList().apply {
-          val item = removeAt(from.index)
-          add(to.index, item)
+        val goalIndex = hasGoalCardBetweenIndices(localVisibleMilestones, from.index, to.index)
+        localVisibleMilestones = if (goalIndex != null) {
+          val tempLocalVisibleMileStone = localVisibleMilestones.toMutableList().apply {
+            val item = removeAt(from.index)
+            add(to.index, item)
+          }
+          tempLocalVisibleMileStone.toMutableList().apply {
+            val goalItemIndex =
+              hasGoalCardBetweenIndices(tempLocalVisibleMileStone, -1, tempLocalVisibleMileStone.size)
+            if (goalItemIndex != null) {
+              val goalItem = removeAt(goalItemIndex)
+              add(goalIndex, goalItem)
+            }
+          }
+        } else {
+          // 📦 Move item to 'to.index' and shift others accordingly
+          localVisibleMilestones.toMutableList().apply {
+            val item = removeAt(from.index)
+            add(to.index, item)
+          }
         }
 
         hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
@@ -83,17 +99,10 @@ fun DashboardMilestoneGrid(
     if (!isAdded && !isGoalProgressMilestone(milestone)) {
       // Determine where the tile was before removal so we know if it was from the first row
       val removedIndex = localVisibleMilestones.indexOf(milestone)
-      val wasFromFirstRow = removedIndex in 0 until spanCount
+      removedIndex in 0 until spanCount
 
       // Update local state to reflect the removal
       localVisibleMilestones = localVisibleMilestones.filter { it != milestone }
-
-      // Reposition goal card after removal using comprehensive logic, aware of first-row removals
-      localVisibleMilestones = localVisibleMilestones.reorderGridComprehensive(
-        spanCount = spanCount,
-        isAfterRemoval = true,
-        removedFromFirstRow = wasFromFirstRow,
-      )
 
       // Notify parent of the reordered state
       onMilestoneReordered(localVisibleMilestones)
@@ -138,7 +147,7 @@ fun DashboardMilestoneGrid(
           isVisible = true,
           onMilestoneMoved = handleMilestoneMoved,
           reorderableScope = this,
-          latestWeight = latestWeight
+          latestWeight = latestWeight,
         )
       }
     }
@@ -163,7 +172,7 @@ fun DashboardMilestoneGrid(
           isFromSetup = isFromSetup,
           onMilestoneMoved = handleMilestoneMoved,
           reorderableScope = null,
-          latestWeight = latestWeight
+          latestWeight = latestWeight,
         )
       }
     }
@@ -176,7 +185,7 @@ fun DashboardMilestoneGrid(
  * per-item span (read from Stat.span).
  */
 fun List<Stat>.reorderGrid(spanCount: Int): List<Stat> {
-  if (isEmpty()) return this
+  return this
 
   val idx = indexOfFirst { isGoalProgressMilestone(it) }
   if (idx == -1 || idx == lastIndex) return this
@@ -212,157 +221,31 @@ fun List<Stat>.reorderGrid(spanCount: Int): List<Stat> {
 }
 
 /**
- * Repositions the goal card to snap above the last odd visible tile after a tile is removed.
- * This handles cases where removing a tile near the goal card should cause it to move up.
+ * Checks if there's a goal progress milestone between two indices in the list.
  *
- * Examples:
- * - If we have [1,2,3,4,5,6,goal] and remove 6, goal should move to [1,2,3,4,5,goal]
- * - If we have [1,2,3,4,5,6,7,goal] and remove 4, goal should move to [1,2,3,goal,5,6,7]
- *
- * @param spanCount Number of columns in the grid (2 for mobile, 3 for tablet)
- * @return New list with goal card repositioned appropriately
+ * @param milestones List of milestone stats
+ * @param fromIndex Starting index
+ * @param toIndex Target index
+ * @return true if there's a goal card between the indices, false otherwise
  */
-fun List<Stat>.repositionGoalAfterRemoval(spanCount: Int): List<Stat> {
-  if (isEmpty()) return this
+private fun hasGoalCardBetweenIndices(
+  milestones: List<Stat>,
+  fromIndex: Int,
+  toIndex: Int
+): Int? {
+  val startIndex = minOf(fromIndex, toIndex)
+  val endIndex = maxOf(fromIndex, toIndex)
 
-  val goalIdx = indexOfFirst { isGoalProgressMilestone(it) }
-  if (goalIdx == -1) return this
-
-  // Get all non-goal milestones (regular tiles)
-  val regularMilestones = filterNot { isGoalProgressMilestone(it) }
-  if (regularMilestones.isEmpty()) return this
-
-  // Calculate how many tiles are in the last incomplete row
-  val totalRegularTiles = regularMilestones.size
-  val tilesPerRow = spanCount
-  val completeRows = totalRegularTiles / tilesPerRow
-  val tilesInLastRow = totalRegularTiles % tilesPerRow
-
-  // Determine where to place the goal card
-  val insertPosition = when {
-    tilesInLastRow == 0 -> totalRegularTiles
-    tilesInLastRow == 1 -> completeRows * tilesPerRow
-    else -> completeRows * tilesPerRow
-  }
-
-  // Create new list with goal repositioned
-  val result = mutableListOf<Stat>()
-  var regularIndex = 0
-
-  for (i in indices) {
-    if (isGoalProgressMilestone(this[i])) {
-      // Skip goal for now, we'll insert it at the calculated position
-      continue
-    } else {
-      result.add(this[i])
-      regularIndex++
-
-      // Insert goal after the calculated number of regular tiles
-      if (regularIndex == insertPosition && goalIdx != i) {
-        result.add(this[goalIdx])
-      }
+  // Check if there's a goal card in the range between startIndex and endIndex (exclusive)
+  for (i in startIndex + 1 until endIndex) {
+    if (i < milestones.size && isGoalProgressMilestone(milestones[i])) {
+      return i
     }
   }
 
-  // If goal wasn't inserted yet (shouldn't happen), add it at the end
-  if (!result.any { isGoalProgressMilestone(it) }) {
-    result.add(this[goalIdx])
-  }
-
-  return result
+  return null
 }
 
-/**
- * Comprehensive grid reordering that handles both initial positioning and repositioning after removal.
- * This function ensures the goal card is always positioned optimally based on the current tile layout.
- *
- * Handles the following scenarios:
- * 1. Initial positioning: Goal card starts on a new row if it wouldn't fit in current row
- * 2. After removal: Goal card snaps above the last odd visible tile
- *
- * Examples for mobile (spanCount=2):
- * - [1,2,3,4,5,6,goal] -> remove 6 -> [1,2,3,4,5,goal]
- * - [1,2,3,4,5,6,7,goal] -> remove 4 -> [1,2,3,goal,5,6,7]
- *
- * @param spanCount Number of columns in the grid (2 for mobile, 3 for tablet)
- * @param isAfterRemoval Whether this is being called after a tile removal (affects positioning logic)
- * @param removedFromFirstRow Whether the removed tile came from the first row (fix for Case 1)
- * @return New list with optimal goal card positioning
- */
-fun List<Stat>.reorderGridComprehensive(
-  spanCount: Int,
-  isAfterRemoval: Boolean = false,
-  removedFromFirstRow: Boolean = false
-): List<Stat> {
-  if (isEmpty()) return this
-
-  val goalIdx = indexOfFirst { isGoalProgressMilestone(it) }
-  if (goalIdx == -1) return this
-
-  // Get all non-goal milestones (regular tiles)
-  val regularMilestones = filterNot { isGoalProgressMilestone(it) }
-  if (regularMilestones.isEmpty()) return this
-
-  // Calculate optimal position for goal card
-  val totalRegularTiles = regularMilestones.size
-  val tilesPerRow = spanCount
-  val completeRows = totalRegularTiles / tilesPerRow
-  val tilesInLastRow = totalRegularTiles % tilesPerRow
-
-  val insertPosition = when {
-    // Case 1: removed from first row → goal to the very beginning
-    isAfterRemoval && removedFromFirstRow -> 0
-
-    // After-removal general behavior (Cases 2 & 3 unchanged)
-    isAfterRemoval -> when {
-      // If last row has 0 tiles (shouldn't happen), goal goes at end
-      tilesInLastRow == 0 -> totalRegularTiles
-      // If last row has 1 tile, or 2+ tiles — both snap above the last odd block
-      else -> completeRows * tilesPerRow
-    }
-
-    // Initial positioning (unchanged)
-    else -> {
-      val usedBefore = (0 until goalIdx).sumOf {
-        if (isGoalProgressMilestone(this[it])) spanCount else 1
-      } % spanCount
-      val remaining = spanCount - usedBefore
-
-      if (usedBefore == 0 || spanCount <= remaining) {
-        goalIdx // Keep current position
-      } else {
-        // Move to next available position
-        var moveBy = 0
-        var filled = 0
-        while (goalIdx + 1 + moveBy <= lastIndex && filled < remaining) {
-          filled += if (isGoalProgressMilestone(this[goalIdx + 1 + moveBy])) spanCount else 1
-          moveBy++
-        }
-        (goalIdx + moveBy).coerceAtMost(lastIndex)
-      }
-    }
-  }
-
-  // Create new list with goal repositioned
-  val result = mutableListOf<Stat>()
-  var regularIndex = 0
-
-  for (i in indices) {
-    if (isGoalProgressMilestone(this[i])) {
-      // Skip goal for now, we'll insert it at the calculated position
-      continue
-    } else {
-      result.add(this[i])
-    }
-  }
-
-  // If goal wasn't inserted yet, add it at the end
-  if (!result.any { isGoalProgressMilestone(it) }) {
-    result.add(insertPosition, this[goalIdx])
-  }
-
-  return result
-}
 
 
 

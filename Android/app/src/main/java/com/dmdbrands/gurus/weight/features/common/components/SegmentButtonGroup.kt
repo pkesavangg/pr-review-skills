@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,7 +40,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.reflect.KProperty1
 
@@ -178,41 +178,19 @@ fun <T> SegmentButtonGroup(
   val maxLines = 1
 
   val listState = rememberLazyListState()
-  val coroutineScope = rememberCoroutineScope()
+  rememberCoroutineScope()
 
   LaunchedEffect(selectedData) {
     if (data.isNotEmpty() && type == SegmentButtonType.Scrollable) {
-      coroutineScope.launch {
-        val selectedIndex = data.indexOf(selectedData)
-        if (selectedIndex >= 0) {
-          // Calculate the center position directly
-          val layoutInfo = listState.layoutInfo
-          val viewportWidth = layoutInfo.viewportSize.width
+      val selectedKey = key.get(selectedData)
+      val selectedIndex = data.indexOfFirst { key.get(it) == selectedKey }
 
-          // Get the selected item's position
-          val selectedItem = layoutInfo.visibleItemsInfo.find { it.index == selectedIndex }
-
-          if (selectedItem != null) {
-            val itemWidth = selectedItem.size
-            val itemOffset = selectedItem.offset
-
-            // Calculate center offset
-            val centerOffset = (viewportWidth - itemWidth) / 2
-            val scrollOffset = itemOffset - centerOffset
-
-            // Smooth scroll directly to center
-            listState.animateScrollBy(scrollOffset.toFloat())
-          } else {
-            // If item is not visible, scroll to it with center offset
-            listState.animateScrollToItem(
-              index = selectedIndex,
-              scrollOffset = -viewportWidth / 2,
-            )
-          }
-        }
+      if (selectedIndex >= 0) {
+        listState.animateScrollToItemCenter(selectedIndex)
       }
     }
   }
+
 
   if (type == SegmentButtonType.Single) {
     // Non-scrollable, all items visible in one row with spacing
@@ -225,7 +203,7 @@ fun <T> SegmentButtonGroup(
       data.forEach { item ->
         SegmentButtonItem(
           item = item,
-          isSelected = selectedData == item,
+          isSelected = key.get(selectedData) == key.get(item),
           key = key,
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
@@ -240,13 +218,15 @@ fun <T> SegmentButtonGroup(
     LazyRow(
       state = listState,
       contentPadding = contentPadding,
-      horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy, Alignment.CenterHorizontally),
       modifier = modifier,
     ) {
-      items(data) { item ->
+      items(
+        items = data,
+        key = { item -> key.get(item) }, // Use stable keys for better performance
+      ) { item ->
         SegmentButtonItem(
           item = item,
-          isSelected = selectedData == item,
+          isSelected = key.get(selectedData) == key.get(item),
           key = key,
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
@@ -403,4 +383,23 @@ fun SegmentButtonPreview() {
       )
     }
   }
+}
+
+suspend fun LazyListState.animateScrollToItemCenter(index: Int) {
+  layoutInfo.resolveItemOffsetToCenter(index)?.let {
+    animateScrollToItem(index, it)
+    return
+  }
+
+  scrollToItem(index)
+
+  layoutInfo.resolveItemOffsetToCenter(index)?.let {
+    animateScrollToItem(index, it)
+  }
+}
+
+private fun LazyListLayoutInfo.resolveItemOffsetToCenter(index: Int): Int? {
+  val itemInfo = visibleItemsInfo.firstOrNull { it.index == index } ?: return null
+  val containerSize = viewportSize.width - beforeContentPadding - afterContentPadding
+  return -(containerSize - itemInfo.size) / 2
 }

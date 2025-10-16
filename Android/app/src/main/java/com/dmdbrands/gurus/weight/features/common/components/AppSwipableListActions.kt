@@ -43,16 +43,16 @@ private fun PreviewAppSwipeableListActionsLight() {
             Row {
                 AppSwipeableListActions {
                     AppIcon(
-                        id = com.dmdbrands.gurus.weight.resources.AppIcons.Default.Delete,
-                        contentDescription = "Delete",
-                        modifier = Modifier,
-                        type = AppIconType.Secondary,
+                      id = com.dmdbrands.gurus.weight.resources.AppIcons.Default.Delete,
+                      contentDescription = "Delete",
+                      modifier = Modifier,
+                      type = AppIconType.Inverse,
                     )
                     AppIcon(
-                        id = com.dmdbrands.gurus.weight.resources.AppIcons.Default.Graph,
-                        contentDescription = "Edit",
-                        modifier = Modifier,
-                        type = AppIconType.Secondary,
+                      id = com.dmdbrands.gurus.weight.resources.AppIcons.Default.Graph,
+                      contentDescription = "Edit",
+                      modifier = Modifier,
+                      type = AppIconType.Inverse,
                     )
                 }
             }

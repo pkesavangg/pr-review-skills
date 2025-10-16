@@ -77,6 +77,7 @@ class GraphViewModel @AssistedInject constructor(
   init {
     observeDataChanges()
     subscribeWeightUnit()
+    initializeWeightUnit()
   }
 
   private fun subscribeWeightUnit() {
@@ -86,6 +87,25 @@ class GraphViewModel @AssistedInject constructor(
           handleIntent(
             GraphIntent.UpdateWeightUnit(weightUnit),
           )
+      }
+    }
+  }
+
+  /**
+   * Initializes the weight unit from the current account settings immediately.
+   * This ensures the correct unit is displayed on app launch.
+   */
+  private fun initializeWeightUnit() {
+    viewModelScope.launch {
+      try {
+        val currentAccount = accountService.activeAccountFlow.first()
+        val weightUnit = currentAccount?.weightUnit
+        if (weightUnit != null) {
+          handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
+        }
+      } catch (e: Exception) {
+        // Log error but don't crash - fallback to default KG
+        android.util.Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
       }
     }
   }
@@ -203,14 +223,30 @@ class GraphViewModel @AssistedInject constructor(
         val ySeries = graphLines.points.map { it.y }
         val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
         val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-        val endX =
-          _state.value.maxTarget ?: GraphUtil.getEndRange(segment, endTimeStamp) ?: Calendar.getInstance().timeInMillis
-        val startX =
-          _state.value.minTarget ?: GraphUtil.getStartRange(
+        val calendar = Calendar.getInstance()
+
+        val (startX, endX) = if (segment == GraphSegment.TOTAL) {
+          val start = (initialTimeStamp ?: calendar.timeInMillis).let {
+            Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
+          }
+          val end = (endTimeStamp ?: calendar.timeInMillis).let {
+            Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
+          }
+          start to end
+        } else {
+          val start = _state.value.minTarget ?: GraphUtil.getStartRange(
             segment,
-            if (segment == GraphSegment.TOTAL) initialTimeStamp else endTimeStamp,
-          )
-          ?: Calendar.getInstance().timeInMillis
+            endTimeStamp,
+          ) ?: calendar.timeInMillis
+
+          val end = _state.value.maxTarget ?: GraphUtil.getEndRange(
+            segment,
+            endTimeStamp,
+          ) ?: calendar.timeInMillis
+
+          start to end
+        }
+
         handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
         super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
         val filteredData = data.filter {
@@ -320,13 +356,21 @@ class GraphViewModel @AssistedInject constructor(
       return CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
-        maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-        minX = GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble(),
+        maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+          segment,
+          Calendar.getInstance().timeInMillis,
+        )?.toDouble(),
+        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+          ?.toDouble(),
       )
     }
     return CartesianRangeValues(
-      maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-      minX = GraphUtil.getStartRange(segment, initialTimestamp)?.toDouble(),
+      maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+        segment,
+        Calendar.getInstance().timeInMillis,
+      )?.toDouble(),
+      minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+        ?.toDouble(),
     )
   }
 
