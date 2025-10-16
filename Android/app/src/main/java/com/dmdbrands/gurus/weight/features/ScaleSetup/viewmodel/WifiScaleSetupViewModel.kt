@@ -399,7 +399,6 @@ constructor(
             "showGuide" to true,
             "onGuideClick" to {
               openProductGuide()
-              dialogQueueService.dismissCurrent()
             },
           ),
       ),
