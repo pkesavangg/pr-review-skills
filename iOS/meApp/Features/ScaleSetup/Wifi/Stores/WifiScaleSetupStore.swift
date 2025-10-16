@@ -14,6 +14,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var httpClient: HTTPClient
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -92,6 +93,9 @@ final class WifiScaleSetupStore: ObservableObject {
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
+    
+    /// Controls whether to skip network connectivity checks during AP mode
+    private var skipCheckNetwork: Bool = false
     
     // MARK: - Forms
     @Published var networkForm = NetworkForm()
@@ -182,6 +186,9 @@ final class WifiScaleSetupStore: ObservableObject {
     
     // MARK: - Lifecycle
     init() {
+        // Initialize HTTPClient skipCheckNetwork to false
+        httpClient.skipCheckNetwork = false
+        
         // Observe permission updates
         permissionsService.$permissions
             .receive(on: DispatchQueue.main)
@@ -286,6 +293,9 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     func handleNextButtonClick() {
+        // Handle skipCheckNetwork based on current step (similar to Angular skipNetworkStatOnApMode)
+        handleSkipCheckNetworkForStep()
+        
         switch currentStep {
         case .intro:
             // User is following the normal wizard path – clear any previously-set "Get-MAC" flag.
@@ -346,6 +356,9 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     func handleBackButtonClick() {
+        // Handle skipCheckNetwork based on current step (similar to Angular skipNetworkStatOnApMode)
+        handleSkipCheckNetworkForStep()
+        
         switch currentStep {
         case .activatePairingMode:
             // "Back" from pairing mode behaves differently when in the Get-MAC flow:
@@ -458,13 +471,42 @@ final class WifiScaleSetupStore: ObservableObject {
             Task { await startSmartConnect() }
         case .apModeConfirm:
             Task { await startApMode() }
+        case .apMode:
+            // Set skipCheckNetwork to true when entering AP mode
+            setSkipCheckNetwork(true)
         default:
+            // Reset skipCheckNetwork to false for other steps
+            setSkipCheckNetwork(false)
             break
         }
     }
     
     private func openWifiSettings() {
         permissionsService.navigateToWifiSettings()
+    }
+    
+    /// Controls the skipCheckNetwork flag on HTTPClient
+    /// - Parameter skip: Whether to skip network connectivity checks
+    private func setSkipCheckNetwork(_ skip: Bool) {
+        skipCheckNetwork = skip
+        httpClient.skipCheckNetwork = skip
+        logger.log(level: .debug, tag: tag, message: "skipCheckNetwork set to: \(skip)")
+    }
+    
+    /// Handles skipCheckNetwork logic based on current step (similar to Angular skipNetworkStatOnApMode)
+    private func handleSkipCheckNetworkForStep() {
+        // Set skipCheckNetwork to true when entering AP mode
+        if currentStep == .apMode {
+            setSkipCheckNetwork(true)
+        } else {
+            // Reset to false for other steps
+            setSkipCheckNetwork(false)
+        }
+    }
+    
+    /// Resets skipCheckNetwork to false (called when view disappears)
+    func resetSkipCheckNetwork() {
+        setSkipCheckNetwork(false)
     }
     
     private func arePermissionsEnabled() -> Bool {
@@ -530,6 +572,10 @@ final class WifiScaleSetupStore: ObservableObject {
         if checkScaleToken() == nil {
             return
         }
+        
+        // Reset skipCheckNetwork to false when saving (similar to Angular code)
+        setSkipCheckNetwork(false)
+        
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
         guard let scaleItem, let userNumber = selectedUserNumber else {
@@ -630,6 +676,9 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     private func exitSetup() {
+        // Reset skipCheckNetwork when exiting setup
+        setSkipCheckNetwork(false)
+        
         Task {
             await self.wifiScaleService.stop()
             dismissAction?()

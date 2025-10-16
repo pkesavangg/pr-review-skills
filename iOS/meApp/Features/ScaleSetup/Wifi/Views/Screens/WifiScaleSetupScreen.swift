@@ -58,6 +58,10 @@ struct WifiScaleSetupScreen: View {
             setupStore.dismissAction = dismiss
             setupStore.configure(with: sku)
         }
+        .onDisappear {
+            // Reset skipCheckNetwork when view disappears (similar to Angular ionViewWillLeave)
+            setupStore.resetSkipCheckNetwork()
+        }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
     }
