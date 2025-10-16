@@ -20,7 +20,8 @@ protocol AccountRepositoryProtocol {
     /// - Returns: An array of all Account objects.
     func fetchAllAccounts() async throws -> [Account]
     
-    /// Synchronously fetches all accounts for early initialization (use sparingly)
+    /// Synchronously fetches all accounts for early initialization (use sparingly).
+    /// **Blocks the caller thread; invoke only during controlled startup on the main thread or from a background context known to be safe for the underlying storage.**
     /// - Returns: An array of all Account objects.
     func fetchAllAccountsSync() throws -> [Account]
 

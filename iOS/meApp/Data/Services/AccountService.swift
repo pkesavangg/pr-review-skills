@@ -24,11 +24,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private let tag = "AccountService"
 
     init() {
-        // Synchronously load active account from local storage to set theme early
-        if let activeAcct = try? localRepo.fetchAllAccountsSync()
-            .first(where: { $0.isActiveAccount == true }) {
-            self.activeAccount = activeAcct
-            Theme.shared.setActiveAccount(activeAcct.accountId)
+        // Asynchronously load active account from local storage to set theme early
+        Task {
+            do {
+                if let activeAcct = try localRepo.fetchAllAccountsSync()
+                    .first(where: { $0.isActiveAccount == true }) {
+                    self.activeAccount = activeAcct
+                    Theme.shared.setActiveAccount(activeAcct.accountId)
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to fetch accounts on startup: \(error.localizedDescription)")
+            }
         }
         
         // Load initial accounts from local storage
@@ -1030,10 +1036,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         
         if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
-            // Only update theme if account ID actually changed
-            if activeAccount?.accountId != nextActive?.accountId {
-                Theme.shared.setActiveAccount(nextActive?.accountId)
-            }
+            // Always update theme when active account changes (including logout)
+            Theme.shared.setActiveAccount(nextActive?.accountId)
         }
         logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil"), forceRefresh=\(forceRefresh)")
     }
