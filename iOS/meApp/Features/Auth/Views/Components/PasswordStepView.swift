@@ -85,7 +85,7 @@ struct PasswordStepView: View {
                     Button {
                         showTerms = true
                     } label: {
-                        Text(passwordStepLang.termsOfService)
+                        Text(passwordStepLang.termsOfService.uppercased())
                             .fontOpenSans(.link2)
                             .foregroundColor(theme.actionPrimary)
                     }
@@ -98,7 +98,7 @@ struct PasswordStepView: View {
                     Button {
                         showPrivacy = true
                     } label: {
-                        Text(passwordStepLang.privacyPolicy)
+                        Text(passwordStepLang.privacyPolicy.uppercased())
                             .fontOpenSans(.link2)
                             .foregroundColor(theme.actionPrimary)
                     }
