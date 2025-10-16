@@ -11,7 +11,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AnimatedAppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
@@ -41,43 +41,46 @@ fun GeneralMetricsSection(
     val isLastSection = isDashboardType == DashboardType.DASHBOARD_4_METRICS
 
     Column(modifier = Modifier.padding(top = MeTheme.spacing.md)) {
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.bodyMassIndex,
             label = EntryScreenStrings.BODY_MASS_INDEX_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyFatFocusRequester,
+            onImeAction = null,
             maxLength = 3,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(bmiFocusRequester),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(bmiFocusRequester),
+            index = 0,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.bodyFat,
             label = EntryScreenStrings.BODY_FAT_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = muscleMassFocusRequester,
+            onImeAction = null,
             maxLength = 3,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(bodyFatFocusRequester),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(bodyFatFocusRequester),
+            index = 1,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.muscleMass,
             label = EntryScreenStrings.MUSCLE_MASS_LABEL,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyWaterFocusRequester,
+            onImeAction = null,
             maxLength = 3,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(muscleMassFocusRequester),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(muscleMassFocusRequester),
+            index = 2,
         )
-        AppInput(
+        AnimatedAppInput(
             formControl = controls.bodyWater,
             label = EntryScreenStrings.BODY_WATER_LABEL,
             type = AppInputType.BODY_COMP,
@@ -85,10 +88,10 @@ fun GeneralMetricsSection(
             nextFocusRequester = if (!isLastSection) nextFocusRequester else null,
             onImeAction = if (isLastSection) onImeAction else null,
             maxLength = 3,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(bodyWaterFocusRequester),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(bodyWaterFocusRequester),
+            index = 3,
         )
     }
 }

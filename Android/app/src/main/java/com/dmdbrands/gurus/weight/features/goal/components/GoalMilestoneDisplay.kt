@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -189,7 +190,7 @@ private fun MaintainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = spacing.md, horizontal = spacing.sm),
+        .padding(vertical = 20.dp, horizontal = spacing.sm),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
@@ -252,7 +253,7 @@ private fun LoseGainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = spacing.md),
+        .padding(top = spacing.sm, bottom = 21.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
@@ -263,7 +264,6 @@ private fun LoseGainGoalDisplay(
     ) {
       Row(verticalAlignment = Alignment.Bottom) {
         AppText(
-          textType = TextType.CardTitle,
           text =
             if (progressPercentage >= 100) {
               toGoal = 0.toString()
@@ -275,16 +275,17 @@ private fun LoseGainGoalDisplay(
             } else {
               "+$toGoal"
             },
+          textType = TextType.CardTitle,
           // Always show negative for lose goal
           color = colorScheme.textHeading,
+          modifier = Modifier.offset(y = 5.dp),
         )
         AppText(
           text = " $weightUnit ${GoalStrings.Goal}",
           textType = TextType.ListSubtitle,
           color = colorScheme.textBody,
-          modifier = Modifier.padding(bottom = spacing.xs),
+          modifier = Modifier.padding(bottom = spacing.x4s),
         )
-
       }
       if(progressPercentage >= 100) {
         AppText(
@@ -292,11 +293,11 @@ private fun LoseGainGoalDisplay(
           textType = TextType.ListSubtitle,
           color = colorScheme.textBody,
           textAlign = TextAlign.End,
-          modifier = Modifier.padding(bottom = spacing.xs),
+          modifier = Modifier.padding(bottom = spacing.x4s),
           // .padding(top = spacing.x3s),
         )
       }
-      }
+    }
       // Progress Slider using AppLinearProgressIndicator
     AppLinearProgressIndicator(
       progress = (progressPercentage / 100.0).toFloat().coerceIn(0f, 1f),
@@ -305,7 +306,7 @@ private fun LoseGainGoalDisplay(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = spacing.sm, end = spacing.sm, top = spacing.x2s, bottom = spacing.x3s),
+          .padding(start = spacing.sm, end = spacing.sm, top = spacing.x3s, bottom = spacing.x4s),
     )
     Row(
       modifier = Modifier

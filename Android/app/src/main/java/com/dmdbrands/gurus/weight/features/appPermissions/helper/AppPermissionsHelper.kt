@@ -428,12 +428,6 @@ object AppPermissionsHelper {
     pairedScales.forEach { scale ->
       val scaleSetupType = ScaleSetupType.fromString(scale.deviceType)
       when (scaleSetupType) {
-        ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> {
-          requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
-          requiredPermissions.add(GGPermissionType.LOCATION)
-          requiredPermissions.add(CustomPermissionType.WIFI_SWITCH_LOCATION.value)
-        }
-
         ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> {
           requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -459,9 +453,9 @@ object AppPermissionsHelper {
           requiredPermissions.add(GGPermissionType.NOTIFICATION)
         }
 
-        null -> {
+        else -> {
           // Handle unknown setup type - default to basic Bluetooth permissions
-          requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
+          return requiredPermissions
         }
       }
     }
