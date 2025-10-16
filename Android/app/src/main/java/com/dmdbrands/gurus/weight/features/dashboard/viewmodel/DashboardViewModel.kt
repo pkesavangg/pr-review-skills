@@ -68,7 +68,7 @@ constructor(
   override fun handleIntent(intent: DashboardIntent) {
     when (intent) {
       is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
-      is DashboardIntent.ResetDashboard -> resetDashboard(intent.onConfirm)
+      is DashboardIntent.ResetDashboard -> showResetDashboardAlert(intent.onConfirm)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
       is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
       is DashboardIntent.SetSelectedStat -> setSelectedStat(intent.stat)
@@ -145,7 +145,7 @@ constructor(
     }
   }
 
-  private fun resetDashboard(onConfirm: () -> Unit) {
+  private fun showResetDashboardAlert(onConfirm: () -> Unit) {
     val string = DashboardString.ResetDialog
     dialogQueueService.showDialog(
       DialogModel.Confirm(
@@ -155,13 +155,28 @@ constructor(
         cancelText = string.CancelText,
         onConfirm = {
           viewModelScope.launch {
+            resetDashboard()
             onConfirm()
-            val currentDashboardType = state.value.dashboardType
-            dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
           }
         },
       ),
     )
+  }
+
+  private fun resetDashboard() {
+    viewModelScope.launch {
+      try {
+        dialogQueueService.showLoader(
+          message = DashboardString.Loader.Save,
+        )
+        val currentDashboardType = state.value.dashboardType
+        dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
+      } catch (e: Exception) {
+      } finally {
+        delay(300)
+        dialogQueueService.dismissLoader()
+      }
+    }
   }
 
   private fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
