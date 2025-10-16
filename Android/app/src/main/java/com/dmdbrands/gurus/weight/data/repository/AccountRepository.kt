@@ -243,6 +243,18 @@ constructor(
         isSynced = true,
       )
     accountDao.insertGoalSettings(goalEntity)
+
+    val integrationEntity = IntegrationsSettingsEntity(
+      accountId = account.id,
+      isSynced = true,
+      isFitbitOn = account.isFitbitOn,
+      isFitbitValid = account.isFitbitValid,
+      isHealthConnectOn = account.isHealthConnectOn,
+      isHealthKitOn = account.isHealthKitOn,
+      isMFPOn = account.isMFPOn,
+      isMFPValid = account.isMFPValid,
+    )
+    accountDao.insertIntegrationsSettings(integrationEntity)
     AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
     return account
   }
@@ -293,7 +305,7 @@ constructor(
   override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType){
     // Get existing settings to preserve metrics and milestones
     val existingSettings = accountDao.getDashboardSettings(accountId).first()
-    
+
     val settings = DashboardSettingsEntity(
       accountId = accountId,
       dashboardMetrics = existingSettings?.dashboardMetrics ?: emptyList(),
@@ -704,6 +716,7 @@ constructor(
   /**
    * Syncs all account settings with server data.
    * Updates local database with the latest settings from server.
+   * Follows the same pattern as addAccountFromResponse during login.
    * @param accountInfo The account info from server containing latest settings
    */
   override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo) {
@@ -764,7 +777,10 @@ constructor(
         isMFPValid = accountInfo.isMFPValid,
         isSynced = true,
       )
-      accountDao.insertIntegrationsSettings(integrationsSettings)
+      accountDao.updateIntegrationsSettings(integrationsSettings)
+
+      // Mark account as synced after all settings are updated
+      accountDao.markAccountSynced(accountInfo.id)
       AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)

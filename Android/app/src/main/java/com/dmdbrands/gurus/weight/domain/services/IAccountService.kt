@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.domain.services
 
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
-import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -111,21 +110,27 @@ interface IAccountService {
 
   /**
    * Switches to the specified account.
+   * Validates account via API before switching, prevents switching when offline,
+   * and syncs server settings with local data after successful switch.
+   *
    * @param account The [Account] to switch to
    * @param showToast Whether to show a toast notification after switching (default: false)
    * @return true if the switch was successful, false otherwise
+   *
+   * @throws Exception if network is unavailable (offline prevention)
+   *
+   * Behavior:
+   * - Checks network availability; returns false if offline
+   * - Validates account via API call (getAccountFromAPI)
+   * - On validation error (401 Unauthorized): marks account as expired, logs it out, shows error
+   * - On validation error (other HTTP errors): shows generic error toast
+   * - On success: switches account, syncs server settings with local data
+   * - Account sync continues even if sync fails (graceful degradation)
    */
   suspend fun switchAccount(
     account: Account,
     showToast: Boolean = false,
   ): Boolean
-
-  /**
-   * Updates the account's tokens in the local database.
-   * @param tokens Map of token values to update
-   * @return true if update was successful, false otherwise
-   */
-  suspend fun updateTokens(tokens: AccountToken): Boolean
 
   suspend fun updateDashboardType(type: DashboardType)
 

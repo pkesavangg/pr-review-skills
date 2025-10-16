@@ -56,28 +56,25 @@ class TokenAuthenticator @Inject constructor(
             AppLog.v(TAG, "Skipping token refresh for login endpoint")
             return null
         }
-
-
         // Try to refresh the token (same as Angular: proactive + reactive)
         return runBlocking {
             try {
-                // First check if token is expired (proactive check like Angular)
+              if(accountId == null){
+                accountId = tokenManager.getCurrentAccountID()
+              }
+
                 val expiresAt = if (accountId != null) {
                     tokenManager.getAccountExpiresAt(accountId)
                 } else {
-                    tokenManager.getCurrentAcccountExpiresAt()
+                  tokenManager.getCurrentAcccountExpiresAt()
                 }
 
-                AppLog.v(TAG, "Token expires at: $expiresAt for account: $accountId")
-
+              AppLog.v(TAG, "Token expires at: $expiresAt for account: $accountId")
                 var refreshResult: Token? = null
-
-                // Proactive refresh if token expires within 5 minutes (same as Angular)
                 if (isTokenExpired(expiresAt)) {
                     AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
                     refreshResult = refreshToken(accountId)
                 } else {
-                    // Reactive refresh for 401 (token might be invalidated server-side)
                     AppLog.v(TAG, "401 received - attempting reactive token refresh for account: $accountId")
                     refreshResult = refreshToken(accountId)
                 }
@@ -139,7 +136,7 @@ class TokenAuthenticator @Inject constructor(
     private suspend fun isCurrentAccount(accountId: String?): Boolean {
         if (accountId == null) {
             AppLog.v(TAG, "No account ID provided, assuming current account")
-            return true // If no account ID, assume it's current account
+            return false // If no account ID, assume it's current account
         }
 
         val currentAccountId = tokenManager.getCurrentAccountID()
@@ -160,7 +157,6 @@ class TokenAuthenticator @Inject constructor(
             AppLog.i(TAG, "Current account logout - navigating to landing screen")
             appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId))
         }
-
         // Clear tokens for current account
         if (isCurrentAccount) {
             userDataStore.logoutCurrentAccount()
@@ -245,7 +241,7 @@ class TokenAuthenticator @Inject constructor(
             }
 
             // Create new token with preserved account ID
-            val newToken = com.dmdbrands.gurus.weight.domain.model.api.user.Token(
+            val newToken = Token(
                 accountId = accountId ?: "",
                 isActive = true,
                 accessToken = newTokenResponse.accessToken,

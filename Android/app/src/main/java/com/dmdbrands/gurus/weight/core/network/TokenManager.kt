@@ -205,7 +205,7 @@ constructor(
   }
 
   override suspend fun getCurrentAcccountExpiresAt(): String? {
-    return userDataStore.getCurrentAccountExpiresAt()
+    return userDataStore.currentAccountFlow.first()?.expiresAt
   }
 
   override suspend fun getAccountExpiresAt(accountId: String): String? {

@@ -88,8 +88,11 @@ class MyAccountsViewModel @Inject constructor(
         if (!account.isActiveAccount) {
             viewModelScope.launch {
                 try {
-                    accountService.switchAccount(account, true)
+                    val canSwitch = accountService.switchAccount(account, true)
+                  AppLog.e("onAccountSelect", "Failed to switch account: ${canSwitch}")
+                  if(canSwitch){
                     navigationService.reInitialize()
+                  }
                 } catch (e: Exception) {
                     AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}", e)
                 }
