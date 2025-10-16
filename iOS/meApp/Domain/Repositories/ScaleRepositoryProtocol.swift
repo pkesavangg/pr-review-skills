@@ -87,9 +87,9 @@ protocol ScaleRepositoryProtocol {
     /// Fetches an attached R4 scale preference by its scale ID from the shared SwiftData context.
     /// - Parameter id: The scale/preference ID.
     /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
-    func fetchAttachedPreference(by id: String) async -> R4ScalePreference?
-
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference?
+    
     /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
     /// Note: Call on the main actor.
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
+    @MainActor func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
 }

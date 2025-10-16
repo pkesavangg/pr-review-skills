@@ -300,7 +300,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 macAddress: device.mac ?? ""
             )
         }
-        print(ggDevices, ggDevices.map({$0.name}), ggDevices.map({$0}), bluetoothScales.map({$0.isConnected}))
         ggBleSDK.syncDevices(ggDevices)
     }
     
@@ -1017,7 +1016,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             // Handle known device discovery
             break
         case .DEVICE_CONNECTED:
-            print("DEVICE_CONNECTED handleSmartScaleData", data.data, bluetoothScales.map({$0.isConnected}))
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
             // Update weight-only mode status when device connects
             if let deviceDetails = data.data as? GGDeviceDetails {
@@ -1025,7 +1023,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
-            print("DEVICE_DISCONNECTED handleSmartScaleData", data.data, bluetoothScales.map({$0.isConnected}))
             await scaleService.updateConnectedDevices(device: data.data, isConnected: false)
             // Clear weight-only mode status when device disconnects
             if let deviceDetails = data.data as? GGDeviceDetails {
