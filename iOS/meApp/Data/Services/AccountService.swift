@@ -70,6 +70,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
+            // TODO: Extract duplicated account preparation logic into private helper method
+            // This logic is duplicated in signUp() and logIn() - consider refactoring into
+            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
             let account: Account
             if let existing = existingAccount {
                 // Update existing account in place
@@ -120,6 +123,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
+            // TODO: Extract duplicated account preparation logic into private helper method
+            // This logic is duplicated in signUp() and logIn() - consider refactoring into
+            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
             let account: Account
             if let existing = existingAccount {
                 // Update existing account in place
