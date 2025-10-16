@@ -96,7 +96,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             try await makeOtherAccountsInactive(except: account)
-            try await localRepo.updateAccount(account)
+            if existingAccount == nil {
+                try await localRepo.saveAccount(account)
+            } else {
+                try await localRepo.updateAccount(account)
+            }
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Sign up successful for accountId=\(account.accountId)")
             return account
@@ -149,7 +153,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             
             try await makeOtherAccountsInactive(except: account)
-            try await localRepo.updateAccount(account)
+            if existingAccount == nil {
+                try await localRepo.saveAccount(account)
+            } else {
+                try await localRepo.updateAccount(account)
+            }
             try await updatePublishedState()
             try await refreshAccount()
             logger.log(level: .info, tag: tag, message: "Login successful for accountId=\(account.accountId)")
