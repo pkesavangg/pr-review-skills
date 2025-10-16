@@ -50,12 +50,8 @@ struct LandingScreen: View {
                                     .fontOpenSans(.button1)
                                     .frame(minWidth: 96)
                                     .padding(.vertical, .spacingXS)
-                                    .padding(.horizontal, .spacingLG)
-                                    .foregroundColor(theme.actionPrimary)
-                                    .background(theme.textInverse)
-                                    .cornerRadius(.radiusPill)
-                                    .contentShape(Rectangle())
                             })
+                            .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
                             
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {

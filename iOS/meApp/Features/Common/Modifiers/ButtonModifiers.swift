@@ -51,58 +51,6 @@ struct FlatButtonStyle: ViewModifier {
     }
 }
 
-struct CustomButtonStyle: ViewModifier {
-    let type: ButtonType
-    let buttonSize: ButtonSize
-    let backgroundColorOverride: Color?
-    @Environment(\.appTheme) var theme
-    
-    func body(content: Content) -> some View {
-        switch type {
-        case .filledPrimary:
-            content
-                .flatButtonStyle(
-                    foregroundColor: theme.textInverse,
-                    backgroundColor: backgroundColorOverride ?? theme.actionPrimary,
-                    buttonSize: buttonSize
-                )
-            
-        case .filledSecondary:
-            content
-                .flatButtonStyle(
-                    foregroundColor: theme.actionPrimary,
-                    backgroundColor: theme.textInverse,
-                    buttonSize: buttonSize
-                )
-        case .outlinedPrimary:
-            content
-                .borderedButtonStyle(
-                    backgroundColor: theme.textInverse,
-                    borderColor: theme.actionPrimary,
-                    buttonSize: buttonSize
-                )
-            
-        case .outlinedSecondary:
-            content
-                .borderedButtonStyle(
-                    backgroundColor: theme.actionPrimary,
-                    borderColor: theme.textInverse,
-                    buttonSize: buttonSize
-                )
-        case .textPrimary, .inlineTextPrimary:
-            content
-                .basicButtonStyle(foregroundColor: theme.actionPrimary)
-            
-        case .textSecondary, .inlineTextSecondary:
-            content
-                .basicButtonStyle(foregroundColor: theme.textInverse)
-            
-        case .textTertiary, .inlineTextTertiary:
-            content
-                .basicButtonStyle(foregroundColor: theme.actionTertiary)
-        }
-    }
-}
 
 // MARK: - Pressed-state aware ButtonStyle
 
