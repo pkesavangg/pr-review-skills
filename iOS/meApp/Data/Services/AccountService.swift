@@ -60,17 +60,40 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
-            let account = Account(from: response.account)
-            account.accessToken = response.accessToken
-            account.refreshToken = response.refreshToken
-            account.expiresAt = response.expiresAt
-            account.isSynced = true
-            account.isLoggedIn = true // New account is logged in by default
-            account.isActiveAccount = true // New account is active by default
-            account.isExpired = false // New account is not expired by default
-            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            
+            // Check if account somehow already exists
+            let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
+            let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
+            
+            // Break reference to old object BEFORE any context changes
+            if isSameAccount {
+                activeAccount = nil
+            }
+            
+            let account: Account
+            if let existing = existingAccount {
+                // Update existing account in place
+                existing.update(from: response)
+                existing.isLoggedIn = true
+                existing.isActiveAccount = true
+                existing.isExpired = false
+                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+                account = existing
+            } else {
+                // Create new account
+                account = Account(from: response.account)
+                account.accessToken = response.accessToken
+                account.refreshToken = response.refreshToken
+                account.expiresAt = response.expiresAt
+                account.isSynced = true
+                account.isLoggedIn = true
+                account.isActiveAccount = true
+                account.isExpired = false
+                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            }
+            
             try await makeOtherAccountsInactive(except: account)
-            try await localRepo.saveAccount(account)
+            try await localRepo.updateAccount(account)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Sign up successful for accountId=\(account.accountId)")
             return account
@@ -87,17 +110,40 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.logIn(email: email, password: password)
-            let account = Account(from: response.account)
-            account.accessToken = response.accessToken
-            account.refreshToken = response.refreshToken
-            account.expiresAt = response.expiresAt
-            account.isSynced = true
-            account.isLoggedIn = true // New account is logged in by default
-            account.isActiveAccount = true // New account is active by default
-            account.isExpired = false // New account is not expired by default
-            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            
+            // Check if logging in with same account
+            let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
+            let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
+            
+            // Break reference to old object BEFORE any context changes
+            if isSameAccount {
+                activeAccount = nil
+            }
+            
+            let account: Account
+            if let existing = existingAccount {
+                // Update existing account in place
+                existing.update(from: response)
+                existing.isLoggedIn = true
+                existing.isActiveAccount = true
+                existing.isExpired = false
+                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+                account = existing
+            } else {
+                // Create new account
+                account = Account(from: response.account)
+                account.accessToken = response.accessToken
+                account.refreshToken = response.refreshToken
+                account.expiresAt = response.expiresAt
+                account.isSynced = true
+                account.isLoggedIn = true
+                account.isActiveAccount = true
+                account.isExpired = false
+                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            }
+            
             try await makeOtherAccountsInactive(except: account)
-            try await localRepo.saveAccount(account)
+            try await localRepo.updateAccount(account)
             try await updatePublishedState()
             try await refreshAccount()
             logger.log(level: .info, tag: tag, message: "Login successful for accountId=\(account.accountId)")
