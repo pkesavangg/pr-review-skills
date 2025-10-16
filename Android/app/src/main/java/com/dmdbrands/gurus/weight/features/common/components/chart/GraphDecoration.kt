@@ -18,6 +18,7 @@ import com.patrykandpatrick.vico.compose.common.insets
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.common.Position
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
+import kotlin.math.roundToInt
 import android.graphics.Typeface
 import android.text.Layout
 
@@ -44,9 +45,9 @@ fun rememberGoalMarker(goal: Goal? = null): VerticalAxis.MarkerDecoration? {
 
   return remember(goal){
     VerticalAxis.MarkerDecoration(
-      y = { goal.goalWeight.div(10) },
+      y = { goal.goalWeight.div(10).roundToInt().toDouble() },
       markerComponent = labelComponent,
-      label = { goal.goalWeight.div(10).toInt().toString() },
+      label = { goal.goalWeight.div(10).roundToInt().toString() },
       horizontalLabelPosition = VerticalAxis.HorizontalLabelPosition.Outside,
       verticalLabelPosition = Position.Vertical.Center,
       outsideRangeOffset = 60f

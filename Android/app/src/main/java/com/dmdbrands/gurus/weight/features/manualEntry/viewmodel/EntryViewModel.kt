@@ -57,6 +57,9 @@ constructor(
           includeR4ScaleMetrics = true,
           weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
           height = accountService.activeAccountFlow.first()?.height,
+          isValueChangeAllowed = { _, _ ->
+            !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
+          },
         )
       handleIntent(
         EntryIntent.UpdateForm(
@@ -113,6 +116,9 @@ constructor(
               includeR4ScaleMetrics = true,
               weightUnit = state.value.weightMode,
               height = accountService.activeAccountFlow.first()?.height,
+              isValueChangeAllowed = { _, _ ->
+                !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
+              },
             )
           handleIntent(
             EntryIntent.UpdateForm(
@@ -168,7 +174,7 @@ constructor(
     }
   }
 
-  fun Exit(){
+  fun Exit() {
     viewModelScope.launch {
       navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
         if (state.value.form.isDirty || state.value.form.isTouched) {
