@@ -526,7 +526,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Normalize timestamp format variants to improve matching reliability
             // Some entries may be stored with millisecond precision (".000Z"); others without.
             let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
-            let tsCandidates = Array(Set([timestamp, normalizedTimestamp]))
+            let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
             
             // Attempt to find local entries by trying both timestamp variants
             var localEntry: Entry? = nil

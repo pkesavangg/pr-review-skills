@@ -504,11 +504,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         // Collect duplicates by mac/broadcastIdString (including self)
         var candidates: [Device] = [target]
-        if let mac = target.mac, !mac.isEmpty {
+        let mac = target.mac
+        let bid = target.broadcastIdString
+        if let mac = mac, !mac.isEmpty, let bid = bid, !bid.isEmpty {
+            // Both mac and broadcastIdString present: single compound OR fetch
+            let compound = #Predicate<Device> { $0.mac == mac || $0.broadcastIdString == bid }
+            let descriptor = FetchDescriptor<Device>(predicate: compound)
+            if let others = try? localRepository.context.fetch(descriptor) { candidates.append(contentsOf: others) }
+        } else if let mac = mac, !mac.isEmpty {
             let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac })
             if let others = try? localRepository.context.fetch(byMac) { candidates.append(contentsOf: others) }
-        }
-        if let bid = target.broadcastIdString, !bid.isEmpty {
+        } else if let bid = bid, !bid.isEmpty {
             let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid })
             if let others = try? localRepository.context.fetch(byBid) { candidates.append(contentsOf: others) }
         }
@@ -521,6 +527,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             return keep
         }
         
+        var didChange = false
         for device in candidates {
             // Check if this is a purely local device (never synced to server)
             let isPurelyLocal = try await localRepository.isDevicePurelyLocal(device.id)
@@ -529,15 +536,19 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 // Purely local device - delete immediately from local storage
                 try await localRepository.deleteScale(device.id)
                 logger.log(level: .info, tag: tag, message: "Deleted purely local device \(device.id)")
+                didChange = true
             } else {
                 // Device exists on server - mark for deletion and let sync handle it
                 try await localRepository.markDeviceAsDeleted(device.id)
                 logger.log(level: .info, tag: tag, message: "Marked device \(device.id) for deletion")
+                didChange = true
             }
         }
         
         await refreshScalesFromLocal()
-        await pushLocalChangesToServer()
+        if didChange {
+            await pushLocalChangesToServer()
+        }
     }
     
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
