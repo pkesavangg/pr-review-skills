@@ -105,9 +105,8 @@ private fun SettingsItemRow(
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MeTheme.colorScheme.primaryBackground,
-         onClick = item.onClick,
+      modifier = Modifier.fillMaxWidth().debounceClick(onClick = {if(item.enabled) item.onClick.invoke()} ),
+      color = MeTheme.colorScheme.primaryBackground,
     ) {
         Row(
             modifier =

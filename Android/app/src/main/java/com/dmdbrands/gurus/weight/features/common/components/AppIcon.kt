@@ -1,12 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -59,13 +56,8 @@ fun AppIcon(
     val modifier =
       if (onClick != null)
         modifier
-            .clickable(
-                indication = null,
-                interactionSource =
-                    remember {
-                        MutableInteractionSource()
-                    },
-                enabled = enabled ,
+            .debounceClick(
+                enabled = enabled,
             ) { onClick.invoke() }
   else modifier
     val tintColor = tintColor ?: AppIconDefaults.tintColor(type, enabled)

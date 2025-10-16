@@ -126,7 +126,7 @@ class CustomTabManager
         override fun openChromeTab(url: String) {
             CoroutineScope(Dispatchers.IO).launch {
                 val isBound = bindService()
-                delay(500)
+                delay(300)
                 if (isBound) {
                     launchUrl(url)
                 }
