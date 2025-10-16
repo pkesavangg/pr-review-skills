@@ -68,19 +68,19 @@ object AppPopupStrings {
 
   object PermissionsPopup {
     fun Title(permissionType: String) = when (permissionType) {
-      GGPermissionType.BLUETOOTH_SWITCH -> "Bluetooth Access is Disabled"
+      GGPermissionType.BLUETOOTH_SWITCH -> "It looks like your Bluetooth is disabled!"
       GGPermissionType.NEARBY_DEVICE -> "Nearby Devices Permission."
       GGPermissionType.LOCATION_SWITCH -> "Your Location may be disabled!"
       GGPermissionType.LOCATION -> "Weight Gurus needs location access to connect your scale."
       GGPermissionType.NOTIFICATION -> "Notifications are disabled!"
-      GGPermissionType.CAMERA -> "Weight Gurus needs Camera permission to Scan your scale."
+      GGPermissionType.CAMERA -> "You have not given permission to access camera!"
       GGPermissionType.ALL -> "Unable to scan devices!"
       else -> ""
     }
 
     fun Message(permissionType: String) = when (permissionType) {
       GGPermissionType.BLUETOOTH_SWITCH ->
-        "To sync with your device, please enable Bluetooth access."
+        "You will not be able to sync with your Bluetooth scale."
 
       GGPermissionType.NEARBY_DEVICE ->
         "Android requires apps that connect to a Bluetooth LE device ask for permission that determines " +
@@ -115,6 +115,8 @@ object AppPopupStrings {
 
     fun CancelButton(permissionType: String) = when (permissionType) {
       GGPermissionType.ALL -> "Cancel"
+      GGPermissionType.BLUETOOTH_SWITCH,
+      GGPermissionType.NOTIFICATION -> "Ignore"
       else -> "Return"
     }
   }
