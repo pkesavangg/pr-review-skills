@@ -360,21 +360,18 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Fetches an attached R4 scale preference by its scale ID from the shared SwiftData context.
     /// - Parameter id: The scale/preference ID.
     /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
-    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? {
-        var descriptor = FetchDescriptor<R4ScalePreference>(
-            predicate: #Predicate<R4ScalePreference> { $0.id == id }
-        )
-        descriptor.fetchLimit = 1
-        do {
-            let results: [R4ScalePreference] = try context.fetch(descriptor)
-            return results.first
-        } catch {
-            logger.log(level: .error, tag: "ScaleRepository", message: "Failed to fetch attached R4ScalePreference: \(error.localizedDescription)")
-            return nil
-        }
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
+        return fetchAttachedPreferenceInternal(by: id)
     }
 
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+    @MainActor func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+        return fetchAttachedPreferenceInternal(by: id)
+    }
+    
+    /// Private helper to fetch attached R4ScalePreference by ID with consistent error handling.
+    /// - Parameter id: The scale/preference ID.
+    /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
+    private func fetchAttachedPreferenceInternal(by id: String) -> R4ScalePreference? {
         var descriptor = FetchDescriptor<R4ScalePreference>(
             predicate: #Predicate<R4ScalePreference> { $0.id == id }
         )
