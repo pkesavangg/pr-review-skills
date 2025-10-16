@@ -162,6 +162,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleScalesUpdate(_ scales: [Device]?) async {
         guard let scales = scales, !scales.isEmpty else {
             bluetoothScales = []
+            syncDevices([])
             return
         }
         let allowedTypes: [ScaleSourceType] = [
