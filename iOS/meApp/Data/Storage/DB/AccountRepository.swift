@@ -63,4 +63,11 @@ final class AccountRepository: AccountRepositoryProtocol {
         }
         try context.save()
     }
+    
+    /// Synchronously fetches all accounts for early initialization (use sparingly)
+    /// - Returns: An array of all Account objects.
+    func fetchAllAccountsSync() throws -> [Account] {
+        let descriptor = FetchDescriptor<Account>()
+        return try context.fetch(descriptor)
+    }
 } 

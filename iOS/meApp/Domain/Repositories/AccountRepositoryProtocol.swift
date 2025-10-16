@@ -19,6 +19,10 @@ protocol AccountRepositoryProtocol {
     /// Fetches all accounts stored locally.
     /// - Returns: An array of all Account objects.
     func fetchAllAccounts() async throws -> [Account]
+    
+    /// Synchronously fetches all accounts for early initialization (use sparingly)
+    /// - Returns: An array of all Account objects.
+    func fetchAllAccountsSync() throws -> [Account]
 
     /// Saves a new account to the local data store.
     /// - Parameter account: The Account object to save.

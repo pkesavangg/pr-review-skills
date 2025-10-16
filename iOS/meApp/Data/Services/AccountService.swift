@@ -24,6 +24,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private let tag = "AccountService"
 
     init() {
+        // Synchronously load active account from local storage to set theme early
+        if let activeAcct = try? localRepo.fetchAllAccountsSync()
+            .first(where: { $0.isActiveAccount == true }) {
+            self.activeAccount = activeAcct
+            Theme.shared.setActiveAccount(activeAcct.accountId)
+        }
+        
         // Load initial accounts from local storage
         Task {
             do {
