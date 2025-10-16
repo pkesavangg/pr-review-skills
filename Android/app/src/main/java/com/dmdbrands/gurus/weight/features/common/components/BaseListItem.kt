@@ -171,7 +171,7 @@ fun BaseListItemAllCombinationsPreview() {
             id = AppIcons.Default.RightCaret,
             contentDescription = "Right Arrow",
             modifier = Modifier.size(24.dp),
-            type = AppIconType.Secondary,
+            type = AppIconType.Inverse,
           )
         },
         modifier = Modifier,
@@ -225,7 +225,7 @@ fun BaseListItemAllCombinationsPreview() {
             id = AppIcons.Default.RightCaret,
             contentDescription = "Right Arrow",
             modifier = Modifier.size(24.dp),
-            type = AppIconType.Secondary,
+            type = AppIconType.Inverse,
           )
         },
         enableCheckbox = true,

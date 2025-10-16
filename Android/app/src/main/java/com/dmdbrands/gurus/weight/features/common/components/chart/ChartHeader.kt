@@ -21,7 +21,8 @@ fun ChartHeader(
   state: GraphState,
   segment: GraphSegment,
   weightData: String,
-  rangeData: String
+  rangeData: String,
+  weightValue: Double
 ) {
   val headerText =
     if (state.markerIndex != null) {
@@ -51,7 +52,7 @@ fun ChartHeader(
       )
       Spacer(modifier = Modifier.width(4.dp))
       Text(
-        text = state.weightUnit.name.lowercase(),
+        text = state.weightUnit.getDisplayUnit(weightValue),
         style = MeTheme.typography.subHeading2,
         color = MeTheme.colorScheme.textSubheading,
         modifier = Modifier.offset(y = (-10).dp),

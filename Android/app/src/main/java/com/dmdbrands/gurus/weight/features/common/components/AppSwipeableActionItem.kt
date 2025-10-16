@@ -67,11 +67,11 @@ fun AppSwipeableActionItem(
     ) {
         if (iconId != null)
             AppIcon(
-                id = iconId,
-                contentDescription = contentDescription, // handled by semantics
-                modifier = Modifier.size(20.dp),
-                type = AppIconType.Secondary,
-                onClick = onClick
+              id = iconId,
+              contentDescription = contentDescription, // handled by semantics
+              modifier = Modifier.size(20.dp),
+              type = AppIconType.Inverse,
+              onClick = onClick
             )
         if (!text.isNullOrBlank()) {
             Text(

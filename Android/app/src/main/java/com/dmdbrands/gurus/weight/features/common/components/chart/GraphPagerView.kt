@@ -58,6 +58,7 @@ fun GraphPagerView(
   }
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
+  var weightValue by remember { mutableStateOf(0.0) }
 
   LaunchedEffect(state.selectedSegment) {
     onScrollTargetChange(scrollTarget)
@@ -89,10 +90,12 @@ fun GraphPagerView(
       val graphState by viewmodel.state.collectAsState()
       LaunchedEffect(graphState.target) {
         Log.i("CHECKING", graphState.target.map { it.weight }.toString())
+        val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
         labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
           "%.2f",
-          graphState.target.map { it.weight }.average(),
+          averageWeight,
         )
+        weightValue = averageWeight
         scrollTarget =
           if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
             .toDouble() else null
@@ -101,7 +104,21 @@ fun GraphPagerView(
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
         if (graphState.minTarget != null && graphState.maxTarget != null) {
-          val formattedRange = GraphUtil.formatDateRange(graphState.minTarget!!, graphState.maxTarget!!, currentSegment)
+          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL) {
+            val calendar = java.util.Calendar.getInstance()
+            calendar.timeInMillis = graphState.minTarget!!
+            calendar.add(java.util.Calendar.MONTH, +6)
+            val min = calendar.timeInMillis
+
+            val calendar1 = java.util.Calendar.getInstance()
+            calendar1.timeInMillis = graphState.maxTarget!!
+            calendar1.add(java.util.Calendar.MONTH, -6)
+            val max = calendar1.timeInMillis
+            min to max
+          } else {
+            graphState.minTarget!! to graphState.maxTarget!!
+          }
+          val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
           subText = formattedRange
         }
       }
@@ -112,6 +129,7 @@ fun GraphPagerView(
           segment = currentSegment,
           weightData = labelData,
           rangeData = subText,
+          weightValue = weightValue,
         )
         // Graph view with crossfade animation
 
@@ -123,6 +141,7 @@ fun GraphPagerView(
           state = graphState,
           viewModel = viewmodel,
         )
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
     }
 

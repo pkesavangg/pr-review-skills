@@ -55,7 +55,7 @@ fun MilestoneItem(
       progress = progress,
       inEditMode = inEditMode,
       isVisible = isVisible,
-      latestWeight = latestWeight ,
+      latestWeight = latestWeight,
       modifier = modifier,
       isDragging = isDragging,
       onBadgeClick = {
@@ -68,7 +68,7 @@ fun MilestoneItem(
       inEditMode = inEditMode,
       isDragging = isDragging,
       isFromSetup = isFromSetup,
-      isSelected = if (isVisible) false else null,
+      isSelected = null,
       isVisible = isVisible,
       modifier = modifier,
       onBadgeClick = {

@@ -442,7 +442,6 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             "showGuide" to true,
             "onGuideClick" to {
               openProductGuide()
-              dialogQueueService.dismissCurrent()
             },
           ),
       ),

@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,12 +15,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -26,8 +32,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.getMetrics
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,6 +89,39 @@ internal fun MetricItem(
   }
 }
 
+@Composable
+private fun AnimatedMetricItem(
+  stat: Stat,
+  modifier: Modifier = Modifier,
+  index: Int,
+  size: Int = 1,
+  onMetricClick: () -> Unit = {},
+  isVisible: Boolean,
+) {
+  val alpha = remember { Animatable(0f) }
+  rememberCoroutineScope()
+
+  LaunchedEffect(isVisible) {
+    if (isVisible) {
+      // Common delay for all sizes - balanced timing
+      val delayMs = 50L  // Balanced timing to match manual entry
+
+      delay(index * delayMs)
+      alpha.animateTo(1f, animationSpec = tween(300))
+    } else {
+      alpha.snapTo(0f)
+    }
+  }
+
+  MetricItem(
+    stat = stat,
+    modifier = modifier.graphicsLayer { this.alpha = alpha.value },
+    index = index,
+    size = size,
+    onMetricClick = onMetricClick,
+  )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HistoryDetailItemDetails(
@@ -91,6 +130,7 @@ fun HistoryDetailItemDetails(
   val metrics = getMetrics(fromScaleEntry(item), showMetricIcon = true)
   val navBackStack = LocalNavBackStack.current
   val scope = rememberCoroutineScope()
+
   Column(
     modifier =
       Modifier
@@ -98,21 +138,23 @@ fun HistoryDetailItemDetails(
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
     metrics.forEachIndexed { index, metric ->
-      MetricItem(
+      AnimatedMetricItem(
         stat = metric,
         index = index,
         size = metrics.size,
-      ) {
-        val bodyMetric = fromScaleEntry(item)
-        scope.launch {
-          navBackStack.addRoute(
-            AppRoute.Dashboard.MetricInfo(
-              info = bodyMetric,
-              key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
-            ),
-          )
-        }
-      }
+        isVisible = true, // Always visible, animation handled internally
+        onMetricClick = {
+          val bodyMetric = fromScaleEntry(item)
+          scope.launch {
+            navBackStack.addRoute(
+              AppRoute.Dashboard.MetricInfo(
+                info = bodyMetric,
+                key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
+              ),
+            )
+          }
+        },
+      )
     }
     if (metrics.size % 2 != 0) {
       HorizontalDivider(

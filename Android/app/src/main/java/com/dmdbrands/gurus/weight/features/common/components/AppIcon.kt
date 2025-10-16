@@ -19,6 +19,7 @@ enum class AppIconType {
     Secondary,
     Tertiary,
     Danger,
+    Inverse,
     Default,
 }
 
@@ -30,6 +31,9 @@ object AppIconDefaults {
                 if (enabled) MeTheme.colorScheme.primaryAction
                 else MeTheme.colorScheme.primaryActionDisabled
             AppIconType.Secondary ->
+                if (enabled) MeTheme.colorScheme.secondaryAction
+                else MeTheme.colorScheme.secondaryActionDisabled
+            AppIconType.Inverse ->
                 if (enabled) MeTheme.colorScheme.inverseAction
                 else MeTheme.colorScheme.inverseActionDisabled
             AppIconType.Tertiary ->
@@ -79,7 +83,7 @@ fun AppIconPreview() {
     MeAppTheme {
         Column {
             AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview")
-            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Secondary)
+            AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Inverse)
             AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Tertiary)
             AppIcon(id = AppIcons.Default.Close, contentDescription = "Preview", type = AppIconType.Danger)
         }
