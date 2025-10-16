@@ -27,6 +27,7 @@ struct ModelNumberHelpModalView: View {
             Image(AppAssets.skuNumberSticker)
                 .resizable()
                 .scaledToFit()
+                .frame(maxWidth: 300)
                 .padding(.bottom, .spacingSM)
             
             VStack(alignment: .center, spacing: .spacingMD) {
