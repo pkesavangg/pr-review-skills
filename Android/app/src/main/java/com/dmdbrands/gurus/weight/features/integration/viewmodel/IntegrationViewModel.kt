@@ -23,9 +23,7 @@ import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationString
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -147,14 +145,17 @@ class IntegrationViewModel @Inject constructor(
   }
 
   private fun subscribeBrowserState() {
+
     viewModelScope.launch {
       try {
-        customTabManager.subscribeChromeState().map { it  }.distinctUntilChanged().collect { state ->
+        customTabManager.subscribeChromeState().collect { state ->
           when (state) {
             ChromeTabState.TabHidden -> {
               AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed")
+              if(!isTabHidden){
                 isTabHidden = true
                 checkOAuthFlowCompletion()
+              }
                 AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed hello")
             }
 
@@ -478,19 +479,7 @@ class IntegrationViewModel @Inject constructor(
     }
   }
 
-  /**
-   * Checks for inactive integrations by verifying connection and validity status.
-   * @return List of inactive integration providers
-   */
-  private suspend fun checkForInactiveIntegrations(): List<IntegrationProvider> {
-    return try {
-      AppLog.d(TAG, "Checking for inactive integrations via IntegrationService")
-      integrationService.checkForInactiveIntegrations()
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to check for inactive integrations", e)
-      emptyList()
-    }
-  }
+
 
   /**
    * Shows reintegrate alert for inactive integrations.
@@ -590,14 +579,18 @@ class IntegrationViewModel @Inject constructor(
             currentAccount?.let { account ->
               startOAuthFlow(provider = provider, accountId = account.id)
             }
+
           }
           dialogQueueService.dismissCurrent()
+          isTabHidden = false
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
+          isTabHidden = false
         },
         onDismiss = {
           dialogQueueService.dismissCurrent()
+          isTabHidden = false
         },
       ),
     )
@@ -611,8 +604,8 @@ class IntegrationViewModel @Inject constructor(
         dismissText = IntegrationStrings.ok,
         onDismiss = {
           dialogQueueService.dismissCurrent()
+          isTabHidden = false
         },
-
         ),
     )
   }
