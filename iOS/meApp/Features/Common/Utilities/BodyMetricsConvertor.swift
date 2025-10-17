@@ -13,14 +13,18 @@ enum BodyMetricsConvertor {
         if let value = value {
             // Apply composition transformation if needed
             let processedValue = shouldCompose ? value / 10.0 : value
+            
 
             // Check if the processed value is valid (not NaN, infinite, or unreasonably negative)
             if !processedValue.isNaN && !processedValue.isInfinite && processedValue >= 0 {
+                // Apply robust rounding logic for 1 decimal place
+                let roundedValue = round(processedValue * 10) / 10
+                
                 // Format the value based on requirements
                 if wholeNumber {
-                    return String(format: "%.0f", processedValue)
+                    return String(format: "%.0f", roundedValue)
                 } else {
-                    return String(format: "%.1f", processedValue)
+                    return String(format: "%.1f", roundedValue)
                 }
             }
         }
@@ -30,10 +34,13 @@ enum BodyMetricsConvertor {
             let processedFallback = shouldCompose ? fallbackValue / 10.0 : fallbackValue
 
             if !processedFallback.isNaN && !processedFallback.isInfinite && processedFallback >= 0 {
+                // Apply robust rounding logic for 1 decimal place
+                let roundedFallback = round(processedFallback * 10) / 10
+                
                 if wholeNumber {
-                    return String(format: "%.0f", processedFallback)
+                    return String(format: "%.0f", roundedFallback)
                 } else {
-                    return String(format: "%.1f", processedFallback)
+                    return String(format: "%.1f", roundedFallback)
                 }
             }
         }
