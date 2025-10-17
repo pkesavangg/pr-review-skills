@@ -75,6 +75,7 @@ struct HistoryListScreen: View {
                         NoEntryView {
                             tabViewModel.pendingSettingsNavigation = .addEditScales
                             tabViewModel.selectedTab = .settings
+                            tabViewModel.settingsNavigationSourceTab = .history
                         }
                     }
                 }

@@ -347,7 +347,9 @@ struct ManualEntryScreen: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(commonLang.done) {
-                    focusedField = nil
+                    withAnimation {
+                        focusedField = nil
+                    }
                 }
             }
         }

@@ -32,6 +32,9 @@ class BottomTabBarViewModel: ObservableObject {
     /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
     @Published var pendingSettingsNavigation: SettingsRoute? = nil
+    /// Tracks the source tab that initiated navigation to settings screens.
+    /// Used to return to the original tab when closing settings screens.
+    @Published var settingsNavigationSourceTab: BottomTab? = nil
     @Published var setupPayload: ScaleDiscoverSheetInfo? = nil
     /// Remembers the last selected non-AppSync tab to restore after closing scanner
     @Published private(set) var previousNonAppSyncTab: BottomTab = .dash
@@ -194,8 +197,7 @@ class BottomTabBarViewModel: ObservableObject {
     
     /// Selects the **Settings** tab and navigates to the App Permissions screen.
     private func navigateToAppPermissions() {
-        selectTab(.settings)
-        pendingSettingsNavigation = .appPermissions
+        navigateToSettings(route: .appPermissions)
     }
     
     // MARK: - Tab Deactivation Handling
@@ -250,6 +252,12 @@ class BottomTabBarViewModel: ObservableObject {
         if tab != .appsync {
             previousNonAppSyncTab = tab
         }
+        
+        // If switching away from settings tab, clear the source tab tracking
+        if selectedTab == .settings && tab != .settings {
+            clearSettingsNavigationSource()
+        }
+        
         selectedTab = tab
     }
 
@@ -258,10 +266,33 @@ class BottomTabBarViewModel: ObservableObject {
         selectTab(previousNonAppSyncTab)
     }
     
+    /// Returns to the source tab that initiated navigation to settings screens.
+    /// Clears the source tab tracking after navigation.
+    func returnToSettingsSourceTab() {
+        if let sourceTab = settingsNavigationSourceTab {
+            settingsNavigationSourceTab = nil
+            selectTab(sourceTab)
+        }
+    }
+    
+    /// Clears the settings navigation source tab tracking.
+    func clearSettingsNavigationSource() {
+        settingsNavigationSourceTab = nil
+    }
+    
+    /// Navigates to a specific settings screen from any tab.
+    /// - Parameters:
+    ///   - route: The settings route to navigate to
+    ///   - sourceTab: The tab that initiated the navigation (defaults to current selected tab)
+    func navigateToSettings(route: SettingsRoute, sourceTab: BottomTab? = nil) {
+        settingsNavigationSourceTab = sourceTab ?? selectedTab
+        selectTab(.settings)
+        pendingSettingsNavigation = route
+    }
+    
     /// Navigates to the goal setting screen via the settings tab
     func navigateToGoalSetting() {
-        selectTab(.settings)
-        pendingSettingsNavigation = .goal
+        navigateToSettings(route: .goal)
     }
     
     /// Dismisses the “Scale Discovered” sheet.
@@ -325,8 +356,7 @@ class BottomTabBarViewModel: ObservableObject {
                 guard let self else { return }
                 self.notificationService.dismissModal()
                 // Switch to Settings tab and queue navigation to the Integrations screen.
-                self.selectTab(.settings)
-                self.pendingSettingsNavigation = .integrations
+                self.navigateToSettings(route: .integrations)
             }
             onSecondary = nil
             

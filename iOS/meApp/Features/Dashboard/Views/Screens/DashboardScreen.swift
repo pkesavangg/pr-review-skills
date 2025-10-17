@@ -198,6 +198,7 @@ store.restartWiggleAnimations()
             onButtonTap: {
                 tabViewModel.pendingSettingsNavigation = .addEditScales
                 tabViewModel.selectedTab = .settings
+                tabViewModel.settingsNavigationSourceTab = .dash
             }
         )
     }

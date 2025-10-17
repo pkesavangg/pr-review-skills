@@ -254,6 +254,15 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         })
         let syncedDevices = try context.fetch(syncedDescriptor)
         
+        // Capture existing connection status before deletion to preserve real-time state
+        var connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]
+        for device in syncedDevices {
+            if let broadcastId = device.broadcastIdString {
+                connectionStatusMap[broadcastId] = (device.isConnected ?? false, device.isWifiConfigured ?? false)
+            }
+        }
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Captured connection status for \(connectionStatusMap.count) devices")
+        
         logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting \(syncedDevices.count) synced devices for account \(accountId)")
         for device in syncedDevices {
             logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting synced device: \(device.id), sku: \(device.sku ?? "nil")")
@@ -285,6 +294,14 @@ final class ScaleRepository: ScaleRepositoryProtocol {
 
             device.isSynced = true // Mark as synced since they come from server
             device.hasServerID = true
+            
+            // Restore preserved connection status from the map
+            if let broadcastId = device.broadcastIdString,
+               let preservedStatus = connectionStatusMap[broadcastId] {
+                device.isConnected = preservedStatus.isConnected
+                device.isWifiConfigured = preservedStatus.isWifiConfigured
+                logger.log(level: .debug, tag: "ScaleRepository", message: "Restored connection status for device \(device.id): connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)")
+            }
             
             // Insert the main device first
             context.insert(device)
@@ -355,5 +372,33 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         // A device is purely local if it has never been synced AND doesn't have a server ID
         return device.isSynced == false && device.hasServerID == false
+    }
+
+    /// Fetches an attached R4 scale preference by its scale ID from the shared SwiftData context.
+    /// - Parameter id: The scale/preference ID.
+    /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
+        return fetchAttachedPreferenceInternal(by: id)
+    }
+
+    @MainActor func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+        return fetchAttachedPreferenceInternal(by: id)
+    }
+    
+    /// Private helper to fetch attached R4ScalePreference by ID with consistent error handling.
+    /// - Parameter id: The scale/preference ID.
+    /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
+    private func fetchAttachedPreferenceInternal(by id: String) -> R4ScalePreference? {
+        var descriptor = FetchDescriptor<R4ScalePreference>(
+            predicate: #Predicate<R4ScalePreference> { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        do {
+            let results: [R4ScalePreference] = try context.fetch(descriptor)
+            return results.first
+        } catch {
+            logger.log(level: .error, tag: "ScaleRepository", message: "Failed to fetch attached R4ScalePreference: \(error.localizedDescription)")
+            return nil
+        }
     }
 }

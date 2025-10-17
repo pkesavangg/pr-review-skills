@@ -105,6 +105,10 @@ final class ContentViewModel: ObservableObject {
         do {
             try await accountService.updatePublishedState()
             currentAccount = accountService.activeAccount
+            // Ensure theme is set for current account
+            if let accountId = currentAccount?.accountId {
+                Theme.shared.setActiveAccount(accountId)
+            }
         } catch {
             currentAccount = nil
         }
