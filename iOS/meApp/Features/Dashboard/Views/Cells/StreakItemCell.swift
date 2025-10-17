@@ -216,8 +216,8 @@ class StreakCardCell: UICollectionViewCell {
     /// Updates the drag state for this cell
     /// - Parameter isBeingDragged: Whether this cell is currently being dragged
     func updateDragState(_ isBeingDragged: Bool) {
-        let previousState = currentIsBeingDragged
-        if previousState == isBeingDragged { return }
+        let currentState = currentIsBeingDragged
+        if currentState == isBeingDragged { return }
         currentIsBeingDragged = isBeingDragged
         
         if isBeingDragged {

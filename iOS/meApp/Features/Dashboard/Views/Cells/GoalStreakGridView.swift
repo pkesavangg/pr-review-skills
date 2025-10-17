@@ -181,30 +181,30 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         // Check if all streaks are present BEFORE moving
         let allStreaksPresent = isAllStreaksPresent()
         
-        print("🎯 DROP: source=\(sourceIndexPath.item), dest=\(destinationIndexPath.item), allStreaksPresent=\(allStreaksPresent)")
+        
         
         if case .goalCard = draggedWidget {
-            print("🎯 GOAL CARD DRAG: adjustedDestIndex before=\(adjustedDestinationIndex)")
+            
             
             // When all streak items are present (6 streaks)
             if allStreaksPresent {
-                print("🎯 ALL STREAKS PRESENT - applying snap logic")
+                
                 // Snap index 1 to 0 when all streaks present
                 if adjustedDestinationIndex == 1 {
-                    print("🎯 SNAPPING from 1 to 0")
+                    
                     adjustedDestinationIndex = 0
                 } else {
                     // Enforce row-start for other positions
                     let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
                     let targetRow = adjustedDestinationIndex / gridColumns
                     adjustedDestinationIndex = targetRow * gridColumns
-                    print("🎯 ROW START: targetRow=\(targetRow), adjusted=\(adjustedDestinationIndex)")
+                    
                 }
             } else {
-                print("🎯 NOT all streaks present - skipping snap logic")
+                
             }
             
-            print("🎯 GOAL CARD DRAG: adjustedDestIndex after=\(adjustedDestinationIndex)")
+            
         }
 
         gridModel.moveWidget(from: sourceIndexPath.item, to: adjustedDestinationIndex)
@@ -234,9 +234,7 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         let activeStreakLabels = allStreakLabels.filter { !store.isStreakRemoved($0) }
         let streakCount = activeStreakLabels.count
         
-        print("🎯 isAllStreaksPresent: total streaks=\(allStreakLabels.count), active=\(streakCount), result=\(streakCount == 6)")
-        print("🎯 Active streaks: \(activeStreakLabels)")
-        print("🎯 Removed streaks: \(store.state.streak.removedStreaks)")
+        
         
         // All present iff we have exactly 6 active streaks
         return streakCount == 6
