@@ -375,11 +375,14 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         // Check for existing device more thoroughly
         let existingDevice = skipDuplicateCheck ? nil : existingDevices.first { localDevice in
-            // Check by ID first
+            // Check by ID
             if localDevice.id == device.id { return true }
-            // Then check by other identifiers
-            if let localBroadcastId = localDevice.broadcastIdString, let newBroadcastId = device.broadcastIdString, localBroadcastId == newBroadcastId { return true }
-            if let localMac = localDevice.mac, let newMac = device.mac, localMac == newMac { return true }
+            // Check by broadcastIdString
+            if let localBid = localDevice.broadcastIdString, let newBid = device.broadcastIdString, !localBid.isEmpty, localBid == newBid { return true }
+            // Check by MAC
+            if let localMac = localDevice.mac, let newMac = device.mac, !localMac.isEmpty, localMac == newMac { return true }
+            // Check by SKU+type (weak fallback)
+            if let localSku = localDevice.sku, let newSku = device.sku, localSku == newSku, localDevice.deviceType == device.deviceType { return true }
             return false
         }
         
@@ -495,24 +498,57 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws {
-        guard (try await localRepository.getDevice(deviceId)) != nil else {
+        guard let target = try await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
         
-        // Check if this is a purely local device (never synced to server)
-        let isPurelyLocal = try await localRepository.isDevicePurelyLocal(deviceId)
+        // Collect duplicates by mac/broadcastIdString (including self)
+        var candidates: [Device] = [target]
+        let mac = target.mac
+        let bid = target.broadcastIdString
+        if let mac = mac, !mac.isEmpty, let bid = bid, !bid.isEmpty {
+            // Both mac and broadcastIdString present: single compound OR fetch
+            let compound = #Predicate<Device> { $0.mac == mac || $0.broadcastIdString == bid }
+            let descriptor = FetchDescriptor<Device>(predicate: compound)
+            if let others = try? localRepository.context.fetch(descriptor) { candidates.append(contentsOf: others) }
+        } else if let mac = mac, !mac.isEmpty {
+            let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac })
+            if let others = try? localRepository.context.fetch(byMac) { candidates.append(contentsOf: others) }
+        } else if let bid = bid, !bid.isEmpty {
+            let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid })
+            if let others = try? localRepository.context.fetch(byBid) { candidates.append(contentsOf: others) }
+        }
         
-        if isPurelyLocal {
-            // Purely local device - delete immediately from local storage
-            try await localRepository.deleteScale(deviceId)
-            logger.log(level: .info, tag: tag, message: "Deleted purely local device \(deviceId)")
-        } else {
-            // Device exists on server - mark for deletion and let sync handle it
-            try await localRepository.markDeviceAsDeleted(deviceId)
-            logger.log(level: .info, tag: tag, message: "Marked device \(deviceId) for deletion")
+        // Deduplicate list by id
+        var seen = Set<String>()
+        candidates = candidates.filter { dev in
+            let keep = !seen.contains(dev.id)
+            seen.insert(dev.id)
+            return keep
+        }
+        
+        var didChange = false
+        for device in candidates {
+            // Check if this is a purely local device (never synced to server)
+            let isPurelyLocal = try await localRepository.isDevicePurelyLocal(device.id)
+            
+            if isPurelyLocal {
+                // Purely local device - delete immediately from local storage
+                try await localRepository.deleteScale(device.id)
+                logger.log(level: .info, tag: tag, message: "Deleted purely local device \(device.id)")
+                didChange = true
+            } else {
+                // Device exists on server - mark for deletion and let sync handle it
+                try await localRepository.markDeviceAsDeleted(device.id)
+                logger.log(level: .info, tag: tag, message: "Marked device \(device.id) for deletion")
+                didChange = true
+            }
         }
         
         await refreshScalesFromLocal()
+        if didChange {
+            await pushLocalChangesToServer()
+        }
     }
     
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
@@ -572,13 +608,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let accountId = try await getAccountId()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
             let activeScales = allScales.filter { $0.isSoftDeleted != true }
-            logger.log(level: .debug, tag: tag, message: "Refreshing scales: found \(allScales.count) total, \(activeScales.count) active for account \(accountId)")
-            
-            // Log each scale for debugging
-            for scale in activeScales {
-                logger.log(level: .debug, tag: tag, message: "Active scale: id=\(scale.id), sku=\(scale.sku ?? "nil"), synced=\(scale.isSynced ?? false)")
-            }
-            
+            logger.log(level: .debug, tag: tag, message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId)")
+
             self.scales = activeScales
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
@@ -719,7 +750,85 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Replace synced devices with server state, preserve unsynced local devices
             try await localRepository.replaceAllDevicesForAccount(accountId, with: serverScales, preserveUnsynced: unsyncedDevices)
             await refreshScalesFromLocal()
-            logger.log(level: .info, tag: tag, message: "Successfully replaced local storage with \(serverScales.count) devices from server, preserved \(unsyncedDevices.count) unsynced local devices")
+            logger.log(level: .debug, tag: tag, message: "Replaced local storage with server devices; preserved unsynced: \(unsyncedDevices.count)")
+
+            var corrected = 0
+            for dto in serverScales {
+                // Prefer match by server id
+                if let devId = dto.id, let device = try await localRepository.getDevice(devId) {
+                    if device.accountId != accountId {
+                        device.accountId = accountId
+                        try await localRepository.updateDevice(device)
+                        corrected += 1
+                        logger.log(level: .debug, tag: tag, message: "Corrected device accountId by id: id=\(device.id) -> account=\(accountId)")
+                    }
+                    continue
+                }
+                
+                // Fallback: try match by MAC
+                var matchedDevice: Device? = nil
+                if let mac = dto.mac, !mac.isEmpty {
+                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac })
+                    if let found = try? localRepository.context.fetch(byMac).first {
+                        matchedDevice = found
+                    }
+                }
+                
+                // Fallback: try match by broadcastIdString
+                if matchedDevice == nil, let bid = dto.broadcastIdString, !bid.isEmpty {
+                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid })
+                    if let found = try? localRepository.context.fetch(byBid).first {
+                        matchedDevice = found
+                    }
+                }
+                
+                if let device = matchedDevice {
+                    // Normalize accountId
+                    if device.accountId != accountId {
+                        device.accountId = accountId
+                        try await localRepository.updateDevice(device)
+                        corrected += 1
+                        logger.log(level: .debug, tag: tag, message: "Corrected device accountId by mac/broadcastId: id=\(device.id) -> account=\(accountId)")
+                    }
+                    // If server has an ID and local has a different ID, unify to server ID to avoid duplicates
+                    if let serverId = dto.id, device.id != serverId {
+                        let oldId = device.id
+                        device.id = serverId
+                        try await localRepository.updateDeviceWithNewId(oldId: oldId, updatedDevice: device)
+                        corrected += 1
+                        logger.log(level: .debug, tag: tag, message: "Unified device id: old=\(oldId) -> serverId=\(serverId)")
+                    }
+                }
+            }
+            if corrected > 0 {
+                await refreshScalesFromLocal()
+                logger.log(level: .debug, tag: tag, message: "Refreshed scales after correcting \(corrected) device accountId/id(s)")
+            }
+            
+            // Prune orphan purely-local devices that don't exist on server for this account
+            // Build server match keys
+            let serverIds = Set(serverScales.compactMap { $0.id })
+            let serverMacs = Set(serverScales.compactMap { $0.mac }.filter { !$0.isEmpty })
+            let serverBids = Set(serverScales.compactMap { $0.broadcastIdString }.filter { !$0.isEmpty })
+            
+            let localForAccount = try await localRepository.listScales(forAccountId: accountId)
+            var pruned = 0
+            for dev in localForAccount {
+                // If any server device matches by id/mac/broadcastId, keep it
+                let matchesServer = serverIds.contains(dev.id) ||
+                    (dev.mac != nil && serverMacs.contains(dev.mac!)) ||
+                    (dev.broadcastIdString != nil && serverBids.contains(dev.broadcastIdString!))
+                if !matchesServer {
+                    // Orphan local device -> delete to align with server
+                    try await localRepository.deleteScale(dev.id)
+                    pruned += 1
+                    logger.log(level: .debug, tag: tag, message: "Pruned orphan local device (no server match): id=\(dev.id)")
+                }
+            }
+            if pruned > 0 {
+                await refreshScalesFromLocal()
+                logger.log(level: .debug, tag: tag, message: "Refreshed scales after pruning \(pruned) orphan device(s)")
+            }
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: \(error.localizedDescription)")
         }

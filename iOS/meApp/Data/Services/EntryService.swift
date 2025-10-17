@@ -410,7 +410,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // 6. Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
             
-            await logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
+            await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
             
         } catch {
             await logger.log(level: .error, tag: tag, message: "Sync failed: \(error.localizedDescription)")
@@ -436,13 +436,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     if operation.operationType == "create" {
                         operation.isSynced = true
                         try await localRepo.updateEntry(operation)
-                        // Log based on operation type
-                        await logger.log(level: .info, tag: tag, message: "Entry create/update synced: \(operation.id)")
+                        await logger.log(level: .debug, tag: tag, message: "Entry create/update synced: \(operation.id)")
                     } else {
                         try await localRepo.deleteEntry(byId: operation.id.uuidString)
                         try await handleEntryDeleted(operation)
-                        // Log based on operation type
-                        await logger.log(level: .info, tag: tag, message: "Entry deleted: \(operation.id)")
+                        await logger.log(level: .debug, tag: tag, message: "Entry deleted: \(operation.id)")
                     }
                 } catch {
                     //check if error is due to unauthorized access
@@ -525,16 +523,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             guard let finalOp = sortedOps.last else { continue }
             
             // Check if local entry exists with this timestamp
-            // Normalize timestamp format - remove .000Z if present to match local format
+            // Normalize timestamp format variants to improve matching reliability
+            // Some entries may be stored with millisecond precision (".000Z"); others without.
             let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
+            let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
             
-            let localEntries = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: normalizedTimestamp)
-            let localEntry = localEntries?.first
+            // Attempt to find local entries by trying both timestamp variants
+            var localEntry: Entry? = nil
+            var localEntries: [Entry]? = nil
+            for ts in tsCandidates {
+                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
+                    localEntries = fetched
+                    localEntry = fetched.first
+                    break
+                }
+            }
             
             // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
             let potentialDuplicates = localEntries?.filter { entry in
                 if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
+                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
                 }
                 return false
             } ?? []
@@ -813,7 +821,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func loadDashboardData() async {
         do {
             let accountId = try await getAccountId()
-            await logger.log(level: .info, tag: tag, message: "Loading dashboard data")
+            await logger.log(level: .debug, tag: tag, message: "Loading dashboard data")
             // Get all entries for the account
             let entries = try await getAllEntries()
             // Aggregate data by day and month
@@ -824,7 +832,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             dailySummaries = dailyData.compactMap { $0 }.sorted { $0.period < $1.period }
             monthlySummaries = monthlyData.compactMap { $0 }.sorted { $0.period < $1.period }
             
-            await logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
+            await logger.log(level: .debug, tag: tag, message: "Dashboard data loaded - Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
         }
@@ -834,7 +842,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func handleEntryAdded(_ entry: Entry) async throws {
         let accountId = try await getAccountId()
         
-        await logger.log(level: .info, tag: tag, message: "Handling entry addition: \(entry.id)")
+        await logger.log(level: .debug, tag: tag, message: "Handling entry addition: \(entry.id)")
         
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
@@ -867,7 +875,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     /// Handles entry update by treating as delete + add
     func handleEntryUpdated(_ entry: Entry) async throws {
-        await logger.log(level: .info, tag: tag, message: "Handling entry update: \(entry.id)")
+        await logger.log(level: .debug, tag: tag, message: "Handling entry update: \(entry.id)")
         
         // For updates, we can treat as delete + add for simplicity
         try await handleEntryDeleted(entry)
@@ -878,7 +886,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func handleEntryDeleted(_ entry: Entry) async throws {
         let accountId = try await getAccountId()
         
-        await logger.log(level: .info, tag: tag, message: "Handling entry deletion: \(entry.id)")
+        await logger.log(level: .debug, tag: tag, message: "Handling entry deletion: \(entry.id)")
         
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
