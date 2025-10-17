@@ -45,10 +45,10 @@ data class DashboardMetric(
       rangeText: String? = null
     ): DashboardMetric =
       if (periodBodyScaleSummaries.isEmpty())
-        this.empty()
+        this.empty(rangeText = rangeText?.lowercase())
       else
         DashboardMetric(
-          rangeText = rangeText,
+          rangeText = rangeText?.lowercase(),
           isSingleEntry = isSingleEntry,
           entryTimeStamp = periodBodyScaleSummaries.map { it.entryTimestamp },
           weight = periodBodyScaleSummaries.map { it.weight }.averageOrNull(),
@@ -92,7 +92,7 @@ data class DashboardMetric(
      * Creates an empty DashboardMetrics object.
      * @return Empty DashboardMetrics with all values set to null.
      */
-    fun empty(): DashboardMetric =
+    fun empty(rangeText: String? = null): DashboardMetric =
       DashboardMetric(
         bmi = null,
         weight = null,
@@ -107,7 +107,9 @@ data class DashboardMetric(
         skeletalMusclePercent = null,
         bmr = null,
         metabolicAge = null,
+        isSingleEntry = false,
         unit = WeightUnit.LB,
+        rangeText = rangeText,
         isEmpty = true,
       )
   }

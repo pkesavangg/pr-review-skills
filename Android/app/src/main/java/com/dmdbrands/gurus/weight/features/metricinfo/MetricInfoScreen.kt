@@ -120,14 +120,6 @@ fun MetricInfoScreenContent(
   source: MetricInfoSource,
   handleIntent: (MetricInfoIntent) -> Unit,
 ) {
-
-  fun generateExceptionalString(): String {
-    return when {
-      source != MetricInfoSource.TOTAL -> " this ${source.name.lowercase()}"
-      else -> ""
-    }
-  }
-
   val scope = rememberCoroutineScope()
   val backStack = LocalNavBackStack.current
 
@@ -213,7 +205,7 @@ fun MetricInfoScreenContent(
         }
 
         val measurementTakenString = if (info.isEmpty)
-          "no entries".plus(generateExceptionalString())
+          "no entries".plus(" $date")
         else if (currentStat.getDisplayValue() != null)
           sourceName.plus(" average $date").lowercase()
         else

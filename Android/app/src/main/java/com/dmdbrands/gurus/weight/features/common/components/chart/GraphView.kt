@@ -79,7 +79,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL && !state.isEmptyGraph,
+    scrollEnabled = segment != GraphSegment.TOTAL,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
@@ -183,6 +183,7 @@ fun GraphView(
               viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
             },
           )
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
         }
       }
 
