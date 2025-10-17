@@ -114,6 +114,7 @@ constructor(
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
+
   override fun handleIntent(intent: BtWifiScaleSetupIntent) {
     when (intent) {
       is BtWifiScaleSetupIntent.ReplaceAccount -> {
@@ -646,6 +647,13 @@ constructor(
       clearAllTimeouts()
 
       if (discoveredScale != null) {
+        // Ensure WiFi configuration is up to date before final save
+        updateWifiDetails()
+        
+        // Save the scale with final configuration
+        discoveredScale = deviceService.saveScale(discoveredScale!!)
+        AppLog.i(TAG, "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}")
+        
         ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
         if (!isScaleConnected) {
           ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
@@ -751,7 +759,6 @@ constructor(
         ConnectionState.Failed.Error,
       ),
     )
-    handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_001"))
   }
 
   private fun setGatheringNetworkFailed(){
@@ -762,7 +769,6 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("NET_002"))
     }
   }
 
@@ -776,7 +782,6 @@ constructor(
         ConnectionState.Failed.Error,
       )
     )
-    handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_001"))
   }
 
 
@@ -902,7 +907,6 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_002"))
             stopObservingDevices()
           }
         }
@@ -918,7 +922,6 @@ constructor(
             ConnectionState.Failed.Error,
           ),
         )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WAKEUP_002"))
       }
     }
   }
@@ -947,7 +950,6 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_TIMEOUT"))
             stopObservingDevices()
           }
         }
@@ -1040,7 +1042,6 @@ constructor(
             ConnectionState.Failed.Error,
           ),
         )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
       }
     }
   }
@@ -1096,7 +1097,6 @@ constructor(
         ),
       )
       // Use BT_002 for general Bluetooth errors (consistent with existing error code)
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("BT_002"))
     }
   }
 
@@ -1190,7 +1190,6 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_TIMEOUT"))
           }
         }
 
@@ -1212,7 +1211,6 @@ constructor(
             ConnectionState.Failed.Error,
           ),
         )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
       }
     }
   }
@@ -1256,7 +1254,7 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_001"))
+            handleIntent(BtWifiScaleSetupIntent.SetErrorCode(it.errorCode))
           }
         }
       }
@@ -1272,7 +1270,6 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("WIFI_002"))
     }
   }
 
@@ -1339,7 +1336,7 @@ constructor(
       }
     }
 
-    suspendCancellableCoroutine<String?> { cont ->
+    val wifiSSID = suspendCancellableCoroutine<String?> { cont ->
       ggDeviceService.getConnectedWifiSSID(device) { ssid ->
         cont.resume(ssid)
       }
@@ -1351,6 +1348,12 @@ constructor(
         wifiMacAddress = wifiMac,
       ),
     )
+
+    // Save the scale with updated WiFi configuration to ensure UI updates properly
+    discoveredScale?.let { scale ->
+      AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
+      deviceService.saveScale(scale)
+    }
   }
 
   private fun stepOn() {
@@ -1371,7 +1374,6 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
-      handleIntent(BtWifiScaleSetupIntent.SetErrorCode("STEP_ON_002"))
     }
   }
 
@@ -1396,7 +1398,6 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_TIMEOUT"))
           }
         }
 
@@ -1417,7 +1418,6 @@ constructor(
             ConnectionState.Failed.Error,
           ),
         )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("MEASUREMENT_002"))
       }
     }
   }
@@ -1451,7 +1451,6 @@ constructor(
                 ConnectionState.Failed.Error,
               ),
             )
-            handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_TIMEOUT"))
           }
         }
         if (dashboardKeys != null) {
@@ -1492,7 +1491,6 @@ constructor(
                       ConnectionState.Failed.Error,
                     ),
                   )
-                  handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_001"))
                 }
               }
             }
@@ -1510,7 +1508,6 @@ constructor(
             ConnectionState.Failed.Error,
           ),
         )
-        handleIntent(BtWifiScaleSetupIntent.SetErrorCode("UPDATE_002"))
       }
     }
   }

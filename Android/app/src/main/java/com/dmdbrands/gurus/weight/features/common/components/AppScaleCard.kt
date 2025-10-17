@@ -120,7 +120,7 @@ fun AppScaleCard(
               text =
                 when {
                   !scale.isConnected!! && isBluetoothSetup -> AppListStrings.NotConnected
-                  !scale.isWifiConfigured!! && isWifiSetup -> AppListStrings.SetupIncomplete
+                  !scale.isWifiConfigured!! && scale.isConnected == true && scale.setupType == ScaleSetupType.BtWifiR4 -> AppListStrings.SetupIncomplete
                   scale.isConnected && isBluetoothSetup -> AppListStrings.Connected
                   else -> ""
                 },

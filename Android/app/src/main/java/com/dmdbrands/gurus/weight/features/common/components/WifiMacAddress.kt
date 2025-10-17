@@ -42,7 +42,7 @@ fun WifiMacAddress(
 
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
       AppNote(
-        message = WifiMacAddressStrings.MacEncryption,
+        message = macAddress,
         messageType = TextType.Message
       )
 

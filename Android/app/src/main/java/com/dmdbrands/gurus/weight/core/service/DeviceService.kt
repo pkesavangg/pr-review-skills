@@ -97,6 +97,16 @@ constructor(
         currentDevices[deviceIndex] = updatedDevice
         _pairedScales.value = currentDevices
         _connectedScales.value = currentDevices
+        
+        // If WiFi configuration changed, save the updated device to database
+        if (device.device?.isWifiConfigured != deviceDetail.isWifiConfigured) {
+          AppLog.d(tag, "WiFi configuration changed for device ${macAddress}: ${device.device?.isWifiConfigured} -> ${deviceDetail.isWifiConfigured}")
+          try {
+            deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
+          } catch (e: Exception) {
+            AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
+          }
+        }
       }
     }
     // Optionally log or handle the null case
