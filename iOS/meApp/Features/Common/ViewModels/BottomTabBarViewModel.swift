@@ -203,6 +203,8 @@ class BottomTabBarViewModel: ObservableObject {
     /// to leave the current tab, or `false` to cancel navigation. Views are responsible for registering and removing
     /// their own handlers via `registerDeactivationHandler` / `removeDeactivationHandler`.
     private var deactivationHandlers: [BottomTab: () async -> Bool] = [:]
+    /// A dictionary holding tab reselect handlers; invoked when the user taps the currently-selected tab again.
+    private var reselectHandlers: [BottomTab: () -> Void] = [:]
     
     /// Registers a de-activation handler for the given tab, overriding any existing handler.
     /// - Parameters:
@@ -222,6 +224,18 @@ class BottomTabBarViewModel: ObservableObject {
     /// - Parameter tab: The tab whose handler is requested.
     func deactivationHandler(for tab: BottomTab) -> (() async -> Bool)? {
         deactivationHandlers[tab]
+    }
+
+    /// Registers a handler to be invoked when the user taps the currently selected tab again.
+    func registerReselectHandler(for tab: BottomTab, handler: @escaping () -> Void) {
+        reselectHandlers[tab] = handler
+    }
+    
+    /// Handles re-selection of the current tab; if a handler is registered it will be invoked.
+    func handleTabReselect(_ tab: BottomTab) {
+        if let handler = reselectHandlers[tab] {
+            handler()
+        }
     }
     
     var visibleTabs: [BottomTab] {

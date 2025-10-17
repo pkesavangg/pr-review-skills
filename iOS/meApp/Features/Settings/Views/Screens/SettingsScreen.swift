@@ -226,19 +226,21 @@ struct SettingsScreen: View {
                     router.navigate(to: .goal)
                 }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentGenderPicker() }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentActivityPicker() }))
             .listRowInsets()
-            /// Height selection uses SettingsStore.presentHeightPicker() for modal or sheet behavior.
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.height,
                 value: settingsStore.heightText,
@@ -246,12 +248,14 @@ struct SettingsScreen: View {
                 onTap: { settingsStore.presentHeightPicker() }
             ))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
                 chevronType: .upDown,
                 onTap: { settingsStore.presentUnitPicker() }))
             .listRowInsets()
+            
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
                 value: settingsStore.weightlessText,
@@ -275,7 +279,7 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
                 router.navigate(to: .messages)
             }))
-            .id(settingsStore.canShowFeedNotificationBadge) // Force row re-identity when the badge toggles
+            .id(settingsStore.canShowFeedNotificationBadge)
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
                 router.navigate(to: .appPermissions)

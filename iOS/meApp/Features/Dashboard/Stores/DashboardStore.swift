@@ -998,7 +998,11 @@ class DashboardStore: ObservableObject {
     /// - Parameter newPosition: The new position after the divider (0 = first position)
     func updateGoalCardPosition(_ newPosition: Int) {
         let maxPosition = streakItemsToShow.count // Goal card can be at the end
-        let clampedPosition = max(0, min(newPosition, maxPosition))
+        var clampedPosition = max(0, min(newPosition, maxPosition))
+        if state.ui.removedStreaks.isEmpty {
+            let columns = DevicePlatform.isTablet ? 4 : 2
+            clampedPosition = (clampedPosition / columns) * columns
+        }
         
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
@@ -1006,13 +1010,11 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    /// Ensures goal card position is valid when streaks are removed
+    /// Ensures goal card position is valid and snaps to row-starts when all streaks are present
     func validateGoalCardPosition() {
         let maxPosition = streakItemsToShow.count
-        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
         
-        // More flexible validation: allow goal card to be positioned anywhere
-        // The grid building logic will handle the actual layout
+        // Basic clamping
         if state.ui.goalCardPosition > maxPosition {
             // Only clamp if position is way beyond reasonable bounds
             state.ui.goalCardPosition = maxPosition
@@ -1024,7 +1026,17 @@ class DashboardStore: ObservableObject {
             state.ui.goalCardPosition = 0
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
         }
+
+        // When no streaks are removed (all present), snap to row start to keep layout valid
+        if state.ui.removedStreaks.isEmpty {
+            let columns = DevicePlatform.isTablet ? 4 : 2
+            let snapped = (state.ui.goalCardPosition / columns) * columns
+            if snapped != state.ui.goalCardPosition {
+                state.ui.goalCardPosition = snapped
+            }
+        }
         
+        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
         logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
     
@@ -1138,16 +1150,14 @@ class DashboardStore: ObservableObject {
     
     // Delegate save operations to MetricsManager
     func saveChanges() {
-        state.ui.isLoading = true
-        state.ui.loaderOverride = LoaderModel(text: lang.saving)
-        
         state.ui.selectedMetricLabel = nil
         state.ui.resetDragState()
-        
+
+        notificationService.showLoader(LoaderModel(text: lang.saving))
         Task {
+            defer { notificationService.dismissLoader() }
             do {
                 try await metricsManager.saveMetricsToAPI()
-                
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
                 commonPostSaveUIReset()
             } catch {
@@ -1158,15 +1168,11 @@ class DashboardStore: ObservableObject {
     }
 
     private func commonPostSaveUIReset() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.state.ui.selectedMetricLabel = nil
-                self.hasEditSnapshot = false
-            }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            self.state.ui.isEditMode = false
+            self.state.ui.resetDragState()
+            self.state.ui.selectedMetricLabel = nil
+            self.hasEditSnapshot = false
         }
     }
     

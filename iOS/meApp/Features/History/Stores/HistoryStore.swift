@@ -194,24 +194,18 @@ final class HistoryStore: ObservableObject {
             logger.log(level: .debug, tag: tag, message: "Fetched \(fetched.count) entries for month \(selectedMonth.id)")
 
             // UI-level deduplication:
-            // Fixes duplicate history entries from wifi scales by grouping on entryTimestamp and keeping the latest by serverTimestamp.
-            let deduplicated = Dictionary(
-                grouping: fetched,
-                by: { $0.entryTimestamp }
-            ).compactMap { $0.value.max(by: { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }) }
-            
-            // Log deduplication results
-            let duplicateCount = fetched.count - deduplicated.count
-            if duplicateCount > 0 {
-                logger.log(level: .info, tag: tag, message: "Removed \(duplicateCount) duplicate entries for month \(selectedMonth.id)")
+            // Group by entryTimestamp and keep the latest operation by serverTimestamp.
+            let grouped = Dictionary(grouping: fetched, by: { $0.entryTimestamp })
+            let latestPerTimestamp: [Entry] = grouped.compactMap { (_, values) in
+                values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
-            
-            // Parse once per entry, then sort on the parsed timestamp
-            let pairs = deduplicated.map { entry -> (Entry, Int64) in
+            // Show only final creates; hide deletes
+            let visible = latestPerTimestamp.filter { $0.operationType == OperationType.create.rawValue }
+            // Sort newest first by entryTimestamp
+            let pairs = visible.map { entry -> (Entry, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
             }
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
-            
             self.entries = sorted
         } catch {
             self.entries = []

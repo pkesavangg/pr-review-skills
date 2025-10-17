@@ -36,6 +36,10 @@ struct BottomTabBarView: View {
                             // Register a deactivation handler for the tab
                             deactivationHandlers[tab] = handler
                         }
+                        .environment(\.registerTabReselectHandler) { handler in
+                            // Register a reselect handler for the tab
+                            viewModel.registerReselectHandler(for: tab, handler: handler)
+                        }
                         .opacity(viewModel.selectedTab == tab ? 1 : 0)
                         .allowsHitTesting(viewModel.selectedTab == tab)
                         .onDisappear { viewModel.removeDeactivationHandler(for: tab) }
@@ -47,7 +51,19 @@ struct BottomTabBarView: View {
                     ForEach(Array(viewModel.visibleTabs.enumerated()), id: \.element) { index, tab in
                         Spacer()
                         Button {
-                            handleTabSelection(tab)
+                            if viewModel.selectedTab == tab {
+                                // Guard reselect actions (e.g., pop-to-root) with any active deactivation handler
+                                Task {
+                                    if let canDeactivate = deactivationHandlers[tab] {
+                                        let allow = await canDeactivate()
+                                        if allow { viewModel.handleTabReselect(tab) }
+                                    } else {
+                                        viewModel.handleTabReselect(tab)
+                                    }
+                                }
+                            } else {
+                                handleTabSelection(tab)
+                            }
                         } label: {
                             TabBarItemView(
                                 tab: tab,

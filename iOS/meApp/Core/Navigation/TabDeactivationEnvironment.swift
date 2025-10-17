@@ -31,3 +31,19 @@ extension EnvironmentValues {
         set { self[TabDeactivationRegisterKey.self] = newValue }
     }
 } 
+
+// MARK: - Tab Reselect Registration
+
+/// Registers a handler to be invoked when the currently selected tab is tapped again.
+/// Tabs can use this to implement behavior such as popping to root or scrolling to top.
+struct TabReselectRegisterKey: EnvironmentKey {
+    static let defaultValue: (@escaping () -> Void) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    /// Allows a tab view to register a reselect handler with the parent `BottomTabBarView`.
+    var registerTabReselectHandler: (@escaping () -> Void) -> Void {
+        get { self[TabReselectRegisterKey.self] }
+        set { self[TabReselectRegisterKey.self] = newValue }
+    }
+}
