@@ -17,6 +17,8 @@ struct ColorTokens {
     static let neutral500 = Color("neutral-500")
     static let neutral600 = Color("neutral-600")
     static let neutral700 = Color("neutral-700")
+    static let neutral750 = Color("neutral-750")
+    static let neutral800 = Color("neutral-800")
     static let neutral900 = Color("neutral-900")
     
     // Brand colors
@@ -24,9 +26,11 @@ struct ColorTokens {
     static let blue100 = Color("blue-100")
     static let blue500 = Color("blue-500")
     static let blue900 = Color("blue-900")
+    static let blue800 = Color("blue-800")
     
     // Status colors
     static let red100 = Color("red-100")
+    static let red800 = Color("red-800")
     static let red900 = Color("red-900")
     static let green100 = Color("green-100")
     static let yellow100 = Color("yellow-100")
@@ -67,16 +71,23 @@ struct ColorTokens {
             glow: neutral700,
             
             // Action
-            actionPrimary: blue900,
+            actionPrimary: blue800,
+            actionPrimaryPressed: blue900,
             actionPrimaryDisabled: blue500,
-            actionSecondary: neutral900,
+            actionSecondary: neutral800,
+            actionSecondaryPressed: neutral900,
             actionSecondaryDisabled: neutral400,
-            actionTertiary: neutral600,
+            actionTertiary: neutral700,
+            actionTertiaryPressed: neutral750,
             actionTertiaryDisabled: neutral400,
+            
             actionInverse: neutral100,
+            actionInversePressed: neutral200,
             actionInverseDisabled: neutral300,
             actionInverseSecondary: neutral200,
-            actionError: red900,
+            
+            actionError: red800,
+            actionErrorPressed: red900,
             actionErrorDisabled: red100,
             
             // Brand

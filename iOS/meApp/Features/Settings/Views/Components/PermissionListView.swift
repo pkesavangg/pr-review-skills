@@ -181,7 +181,7 @@ struct PermissionListView: View {
             .fontOpenSans(.heading5)
             .foregroundColor(theme.textHeading)
             .padding(.bottom, .spacingXS)
-            .padding(.top, .spacingMD)
+            .padding(.top, .spacingSM)
     }
     
     private func pageHeader(description: String) -> some View {
