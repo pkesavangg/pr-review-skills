@@ -269,7 +269,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         + h01 * ys[i + 1]
         + h11 * h_i * d[i + 1]
         
-        return y.isFinite ? y : nil
+        guard y.isFinite else { return nil }
+        
+        // Apply same rounding logic as other weight calculations
+        let roundedY = (y * 100).rounded(.toNearestOrAwayFromZero) / 100
+        
+        return roundedY
     }
     
     func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {
@@ -1663,12 +1668,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             guard let latestWeight = allOps.last.map({ convertWeight(Int($0.weight)) }) else {
                 return nil
             }
-            return latestWeight - anchorWeight
+            let weightlessValue = latestWeight - anchorWeight
+            // Apply same rounding logic as other weight calculations
+            return (weightlessValue * 100).rounded(.toNearestOrAwayFromZero) / 100
         case .year, .total:
             let weights = allOps.map { convertWeight(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)
-            return averageWeight - anchorWeight
+            let weightlessValue = averageWeight - anchorWeight
+            // Apply same rounding logic as other weight calculations
+            return (weightlessValue * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
     }
     
@@ -1796,8 +1805,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         
         let average = interpolatedWeights.reduce(0, +) / Double(interpolatedWeights.count)
         
+        // Apply same rounding logic as other weight calculations
+        let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
         
-        return average
+        return roundedAverage
     }
     
     func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {
@@ -1812,7 +1823,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         guard !weightValues.isEmpty else { return 0 }
         let average = weightValues.reduce(0, +) / Double(weightValues.count)
-        return average
+        
+        // Apply same robust rounding logic as other weight calculations
+        let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+        return roundedAverage
     }
     
     

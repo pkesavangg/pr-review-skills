@@ -42,6 +42,7 @@ class ServiceRegistry {
         DependencyContainer.shared.register(GoalAlertService.shared)
         DependencyContainer.shared.register(AccountFlagService.shared)
         DependencyContainer.shared.register(AppReviewService.shared)
+        DependencyContainer.shared.register(HTTPClient.shared)
     }
 
     /// Registers services needed after login
@@ -67,6 +68,7 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: GoalAlertService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AccountFlagService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: AppReviewService.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: HTTPClient.self))
     }
 
     /// Deregisters session-level services (call during logout or deinit)
