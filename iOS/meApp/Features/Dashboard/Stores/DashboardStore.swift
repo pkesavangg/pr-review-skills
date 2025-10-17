@@ -1150,16 +1150,14 @@ class DashboardStore: ObservableObject {
     
     // Delegate save operations to MetricsManager
     func saveChanges() {
-        state.ui.isLoading = true
-        state.ui.loaderOverride = LoaderModel(text: lang.saving)
-        
         state.ui.selectedMetricLabel = nil
         state.ui.resetDragState()
-        
+
+        notificationService.showLoader(LoaderModel(text: lang.saving))
         Task {
+            defer { notificationService.dismissLoader() }
             do {
                 try await metricsManager.saveMetricsToAPI()
-                
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
                 commonPostSaveUIReset()
             } catch {
@@ -1170,15 +1168,11 @@ class DashboardStore: ObservableObject {
     }
 
     private func commonPostSaveUIReset() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.state.ui.selectedMetricLabel = nil
-                self.hasEditSnapshot = false
-            }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            self.state.ui.isEditMode = false
+            self.state.ui.resetDragState()
+            self.state.ui.selectedMetricLabel = nil
+            self.hasEditSnapshot = false
         }
     }
     

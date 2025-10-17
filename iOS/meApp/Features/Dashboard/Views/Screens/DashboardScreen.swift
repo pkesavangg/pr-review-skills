@@ -39,7 +39,6 @@ struct DashboardScreen: View {
         .onAppear(perform: store.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
-        .presentLoader(loaderData: store.loaderData)
         .sheet(item: $selectedEntry) { entry in
             ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
         }

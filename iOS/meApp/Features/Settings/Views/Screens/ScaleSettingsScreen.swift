@@ -93,6 +93,7 @@ struct ScaleSettingsScreen: View {
             .frame(width: 180, height: 180)
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
+            .themeDropShadow()
     }
     
     private func setupWiFiItem() -> some View {
