@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -55,6 +56,7 @@ fun AppIconButton(
     @DrawableRes id: Int,
     modifier: Modifier = Modifier,
     type: AppIconButtonType = AppIconButtonType.Primary,
+    iconSize: Dp = 24.dp,
     contentDescription: String? = null,
     enabled: Boolean = true,
     onClick: () -> Unit,
@@ -65,7 +67,7 @@ fun AppIconButton(
           painter = painterResource(id),
           contentDescription = contentDescription,
           tint = iconColor,
-          modifier = Modifier.size(24.dp),
+          modifier = Modifier.size(iconSize),
         )
     }
 }
