@@ -77,7 +77,7 @@ struct PasswordStepView: View {
                 HStack(spacing: 4) {
                     Spacer()
                     Text(passwordStepLang.termsAndPrivacyText.lowercased())
-                        .fontOpenSans(.link2)
+                        .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.textBody)
                     Spacer()
                 }
