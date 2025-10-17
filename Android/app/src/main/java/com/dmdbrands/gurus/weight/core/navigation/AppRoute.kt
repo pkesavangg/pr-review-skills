@@ -1,12 +1,12 @@
 package com.dmdbrands.gurus.weight.core.navigation
 
 import androidx.navigation3.runtime.NavKey
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.example.nav3integration.PublicRoute
 import kotlinx.serialization.Contextual
@@ -156,10 +156,13 @@ sealed class AppRoute : NavKey {
   sealed class Feed : AppRoute() {
     @Serializable
     data object FeedMessages : Feed()
+
     @Serializable
-    data object FeedMessageSetting: Feed()
+    data object FeedMessageSetting : Feed()
+
     @Serializable
     data object FeedLanding : Feed()
+
     @Serializable
     data object FeedFAQ : Feed()
   }
@@ -207,7 +210,7 @@ sealed class AppRoute : NavKey {
     data class MetricInfo(
       val info: DashboardMetric,
       val key: MetricKey = MetricKey.BMI,
-      val source: MetricInfoSource = MetricInfoSource.DAY
+      val source: MetricInfoSource = MetricInfoSource.WEEK
     ) : Dashboard()
   }
 }

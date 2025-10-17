@@ -23,11 +23,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param unit The unit of the metric value.
  */
 @Composable
-fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: String) {
-  val measurementTakenString = if (value != null)
-    MetricInfoStrings.MeasurementTaken.plus(" $date").lowercase()
-  else
-    MetricInfoStrings.MeasurementNotTaken
+fun MetricInfoValueSection(subText : String , value: String? = null, unit: String? = null) {
   Column(
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     horizontalAlignment = Alignment.Start,
@@ -48,7 +44,7 @@ fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: St
         )
     }
     Text(
-      text = measurementTakenString,
+      text = subText,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )
@@ -59,7 +55,7 @@ fun MetricInfoValueSection(value: String? = null, unit: String? = null, date: St
 @Composable
 fun PreviewMetricInfoValueSectionLight() {
   MeAppTheme {
-    MetricInfoValueSection(value = "18", unit = "bpm", date = "Today")
+    MetricInfoValueSection(value = "18", unit = "bpm", subText = "Today")
   }
 }
 

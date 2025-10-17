@@ -46,6 +46,8 @@ fun GraphPagerView(
   onPagerStateChange: (Int) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetChange: (Double?) -> Unit = {},
+  onRangeChange: (String) -> Unit = { },
+  onMarkerIndexChange: (Double?) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -102,6 +104,10 @@ fun GraphPagerView(
         onSelected(graphState.target)
       }
 
+      LaunchedEffect(graphState.markerIndex) {
+        onMarkerIndexChange(graphState.markerIndex)
+      }
+
       LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
         if (graphState.minTarget != null && graphState.maxTarget != null) {
           val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL) {
@@ -120,6 +126,7 @@ fun GraphPagerView(
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
           subText = formattedRange
+          onRangeChange(formattedRange)
         }
       }
       Column {

@@ -25,7 +25,6 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
-import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
@@ -39,7 +38,6 @@ import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.fullDateFormatter
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.fullMonthYearFormatter
 import com.dmdbrands.gurus.weight.resources.AppIcons
-import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
@@ -54,8 +52,10 @@ data class MetricInfoKey(
 
 @Serializable
 enum class MetricInfoSource {
-  DAY,
+  WEEK,
   MONTH,
+  YEAR,
+  TOTAL
 }
 
 fun getFilteredMetricKeys(): List<MetricKey> {
@@ -64,8 +64,8 @@ fun getFilteredMetricKeys(): List<MetricKey> {
 
 fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
   val formatter = when (source) {
-    MetricInfoSource.DAY -> fullDateFormatter
-    MetricInfoSource.MONTH -> fullMonthYearFormatter
+    MetricInfoSource.WEEK, MetricInfoSource.MONTH -> fullDateFormatter
+    MetricInfoSource.YEAR, MetricInfoSource.TOTAL -> fullMonthYearFormatter
   }
   val zone = ZoneId.systemDefault()
   val startDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
@@ -81,7 +81,7 @@ fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
 fun MetricInfoScreen(
   info: DashboardMetric,
   key: MetricKey = MetricKey.WEIGHT,
-  source: MetricInfoSource = MetricInfoSource.DAY
+  source: MetricInfoSource = MetricInfoSource.WEEK
 ) {
   val viewModel = hiltViewModel<MetricInfoViewModel, MetricInfoViewModel.Factory>(
     creationCallback = { factory ->
@@ -95,10 +95,8 @@ fun MetricInfoScreen(
     MetricInfoScreenContent(
       stat = state.stat!!,
       info = info,
+      source = source,
       selectedIndex = state.selectedMetricIndex,
-      date = getFormattedDate(
-        DateTimeConverter.isoToTimestamp(info.entryTimeStamp), source,
-      ),
       handleIntent = viewModel::handleIntent,
     )
   }
@@ -119,7 +117,7 @@ fun MetricInfoScreenContent(
   stat: Stat,
   info: DashboardMetric,
   selectedIndex: Int,
-  date: String,
+  source: MetricInfoSource,
   handleIntent: (MetricInfoIntent) -> Unit,
 ) {
   val scope = rememberCoroutineScope()
@@ -192,6 +190,28 @@ fun MetricInfoScreenContent(
         val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
         val pageScrollState = rememberScrollState()
 
+        val date = when {
+          info.isSingleEntry -> getFormattedDate(
+            DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()), source = source,
+          )
+
+          info.rangeText != null -> info.rangeText
+          else -> ""
+        }
+
+        val sourceName = when {
+          info.isSingleEntry -> if (source == MetricInfoSource.WEEK || source == MetricInfoSource.MONTH) "day" else "month"
+          else -> source.name.lowercase()
+        }
+
+        val measurementTakenString = if (info.isEmpty)
+          "no entries".plus(" $date")
+        else if (currentStat.getDisplayValue() != null)
+          sourceName.plus(" average $date").lowercase()
+        else
+          MetricInfoStrings.MeasurementNotTaken
+
+
         Column(
           modifier = modifier
             .fillMaxSize()
@@ -199,7 +219,11 @@ fun MetricInfoScreenContent(
             .padding(horizontal = spacing.sm, vertical = spacing.md),
           verticalArrangement = Arrangement.Top,
         ) {
-          MetricInfoValueSection(value = currentStat.getDisplayValue(), unit = currentStat.unit, date = date)
+          MetricInfoValueSection(
+            value = currentStat.getDisplayValue(),
+            unit = currentStat.unit,
+            subText = measurementTakenString,
+          )
 
           Spacer(modifier = Modifier.height(spacing.xl))
 
@@ -211,40 +235,5 @@ fun MetricInfoScreenContent(
         }
       }
     }
-  }
-}
-
-@PreviewTheme
-@Composable
-fun PreviewMetricInfoScreenLight() {
-  MeAppTheme {
-    MetricInfoScreenContent(
-      stat = Stat(
-        label = "Heart Rate",
-        value = "18",
-        unit = "bpm",
-        icon = null,
-        key = DashboardKey.Metric(MetricKey.HEART_RATE),
-      ),
-      info = DashboardMetric(
-        weight = 150.0,
-        bmi = null,
-        bodyFat = null,
-        muscleMass = null,
-        bodyWater = null,
-        heartRate = 18,
-        boneMass = null,
-        visceralFatLevel = null,
-        subcutaneousFatPercent = null,
-        proteinPercent = null,
-        skeletalMusclePercent = null,
-        bmr = null,
-        metabolicAge = null,
-        unit = com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB,
-      ),
-      selectedIndex = 0,
-      date = "Today",
-      handleIntent = {},
-    )
   }
 }

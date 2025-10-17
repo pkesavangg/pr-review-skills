@@ -82,7 +82,7 @@ interface EntryDao {
   suspend fun delete(entry: Entry) {
     val deleteEntry = entry.entry.copy(
       id = 0,
-      operationType = "DELETE",
+      operationType = "delete",
       opTimestamp = entry.entry.opTimestamp,
     )
     insertEntryEntity(deleteEntry)
