@@ -155,9 +155,10 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
             }
 
             if isGoalCard {
-                // When all streaks are present, forbid dropping goal card at odd indices
+                // When all streaks are present, forbid dropping goal card at non-row-start indices
                 if isAllStreaksPresent() {
-                    if destinationIndexPath.item % 2 != 0 {
+                    let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                    if destinationIndexPath.item % gridColumns != 0 {
                         return UICollectionViewDropProposal(operation: .forbidden)
                     }
                 }
@@ -184,27 +185,12 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         
         
         if case .goalCard = draggedWidget {
-            
-            
-            // When all streak items are present (6 streaks)
+            // When all streak items are present (6 streaks), snap to row start (column 0)
             if allStreaksPresent {
-                
-                // Snap index 1 to 0 when all streaks present
-                if adjustedDestinationIndex == 1 {
-                    
-                    adjustedDestinationIndex = 0
-                } else {
-                    // Enforce row-start for other positions
-                    let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
-                    let targetRow = adjustedDestinationIndex / gridColumns
-                    adjustedDestinationIndex = targetRow * gridColumns
-                    
-                }
-            } else {
-                
+                let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                let targetRow = adjustedDestinationIndex / gridColumns
+                adjustedDestinationIndex = targetRow * gridColumns
             }
-            
-            
         }
 
         gridModel.moveWidget(from: sourceIndexPath.item, to: adjustedDestinationIndex)
