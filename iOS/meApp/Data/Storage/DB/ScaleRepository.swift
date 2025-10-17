@@ -254,6 +254,15 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         })
         let syncedDevices = try context.fetch(syncedDescriptor)
         
+        // Capture existing connection status before deletion to preserve real-time state
+        var connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]
+        for device in syncedDevices {
+            if let broadcastId = device.broadcastIdString {
+                connectionStatusMap[broadcastId] = (device.isConnected ?? false, device.isWifiConfigured ?? false)
+            }
+        }
+        logger.log(level: .debug, tag: "ScaleRepository", message: "Captured connection status for \(connectionStatusMap.count) devices")
+        
         logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting \(syncedDevices.count) synced devices for account \(accountId)")
         for device in syncedDevices {
             logger.log(level: .debug, tag: "ScaleRepository", message: "Deleting synced device: \(device.id), sku: \(device.sku ?? "nil")")
@@ -285,6 +294,14 @@ final class ScaleRepository: ScaleRepositoryProtocol {
 
             device.isSynced = true // Mark as synced since they come from server
             device.hasServerID = true
+            
+            // Restore preserved connection status from the map
+            if let broadcastId = device.broadcastIdString,
+               let preservedStatus = connectionStatusMap[broadcastId] {
+                device.isConnected = preservedStatus.isConnected
+                device.isWifiConfigured = preservedStatus.isWifiConfigured
+                logger.log(level: .debug, tag: "ScaleRepository", message: "Restored connection status for device \(device.id): connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)")
+            }
             
             // Insert the main device first
             context.insert(device)
