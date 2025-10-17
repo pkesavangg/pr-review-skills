@@ -57,21 +57,29 @@ struct SettingsScreen: View {
                     // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
                     if let route = tabViewModel.pendingSettingsNavigation {
                         tabViewModel.pendingSettingsNavigation = nil
+                        // Clear any existing navigation stack when navigating from external source
+                        router.navigateToRoot()
                         router.navigate(to: route)
                     }
                 }
             }
-            // Re-evaluate modal presentation whenever the selected tab changes.
-            .onChange(of: tabViewModel.selectedTab) {
+            .onChange(of: router.stack) { _, newStack in
+                // If we're back to the root settings screen and there's a source tab to return to
+                if newStack.isEmpty && tabViewModel.settingsNavigationSourceTab != nil {
+                    // Small delay to ensure the UI has updated
+                    tabViewModel.returnToSettingsSourceTab()
+                }
+            }
+            .onChange(of: tabViewModel.pendingSettingsNavigation, { _, _ in
                 if tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
                     if let route = tabViewModel.pendingSettingsNavigation {
                         tabViewModel.pendingSettingsNavigation = nil
+                        // Clear any existing navigation stack when navigating from external source
+                        router.navigateToRoot()
                         router.navigate(to: route)
                     }
                 }
-            }
+            })
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
