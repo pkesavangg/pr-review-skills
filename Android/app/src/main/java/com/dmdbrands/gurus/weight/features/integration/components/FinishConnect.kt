@@ -28,6 +28,7 @@ fun FinishConnect(
         image = image,
         title = title,
         description = HealthConnectStrings.FinishConnectStrings.Description,
+        annotatedString = HealthConnectStrings.FinishConnectStrings.AnnonatedDesc,
         primaryButtonLabel = HealthConnectStrings.ActionButtons.finish,
       ),
       onPrimaryAction = onPrimaryAction,

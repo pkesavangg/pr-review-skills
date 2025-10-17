@@ -3,20 +3,25 @@ package com.dmdbrands.gurus.weight.data.services
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.data.services.EntryServiceHelper.processWeight
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.toPeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
+import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +61,8 @@ constructor(
   private val goalRepository: IGoalRepository,
   private val accountRepository: IAccountRepository,
   private val goalService: IGoalService,
+  private val healthConnectService: IHealthConnectService,
+  private val healthConnectRepository: IHealthConnectRepository,
 ) : IEntryService {
 
   private val _isEmpty = MutableStateFlow(false)
@@ -461,6 +468,11 @@ constructor(
                 ),
             )
           successfulOperations.add(syncedOperation)
+
+          // Try local integration for create operations
+          if (operation.entry.operationType == OperationType.CREATE.name) {
+            tryLocalIntegration(operation)
+          }
         } catch (e: Exception) {
           // If failed, increment attempts and store for retry
           val failedOperation =
@@ -481,6 +493,7 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
         )
       }
 
@@ -526,6 +539,7 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
         )
       }
 
@@ -534,6 +548,7 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
         )
       }
 
@@ -759,6 +774,41 @@ constructor(
     }
 
   /**
+   * Tries to sync entry data to local health integrations (Health Connect).
+   * Similar to tryLocalIntegration in Angular operation service.
+   * @param entry The entry to sync to health integrations
+   */
+  private suspend fun tryLocalIntegration(entry: Entry) {
+    AppLog.d("EntryService", "Operation: tryLocalIntegration called", entry.toString())
+    try {
+      if (entry is ScaleEntry) {
+        val summary = entry.toPeriodBodyScaleSummary()
+        if (summary != null) {
+          healthConnectService.syncData(listOf(summary))
+          var latestEntry = HealthConnectSyncEntry(
+            weight = summary.weight,
+            timestamp = summary.entryTimestamp,
+            type = IntegrationType.HEALTH_CONNECT,
+            sentAt = System.currentTimeMillis().toString(),
+            bodyFat = summary.bodyFat,
+            muscleMass = summary.muscleMass,
+            water = summary.water,
+            bmi = summary.bmi,
+            data = emptyList(),
+          )
+          healthConnectRepository.syncEntry(latestEntry)
+          AppLog.d("EntryService", "Successfully synced entry to Health Connect")
+        } else {
+          AppLog.w("EntryService", "Could not convert entry to PeriodBodyScaleSummary")
+        }
+      }
+    } catch (err: Exception) {
+      AppLog.e("EntryService", "Error syncing to Health Connect", err)
+      // Don't throw - this is a non-critical operation
+    }
+  }
+
+  /**
    * Calculates the current streak based on the TypeScript implementation.
    * @return The current streak count
    */
@@ -866,15 +916,22 @@ internal object EntryServiceHelper {
    * Executes a list of operations received from the server.
    * @param entryRepository The entry repository.
    * @param operations The list of operations to execute.
+   * @param tryLocalIntegration Optional suspend function to call for local integration (Health Connect).
    */
   suspend fun executeOperations(
     entryRepository: IEntryRepository,
     operations: List<Entry>,
+    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
     try {
       val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
       entryRepository.insert(sortedOperations)
+
+      // Try local integration for create operations
+      for (operation in sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }) {
+        tryLocalIntegration?.invoke(operation)
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error executing operations", e)
     }
@@ -886,12 +943,14 @@ internal object EntryServiceHelper {
    * @param operations The list of operations to execute.
    * @param userHasOperations Whether the user has existing operations.
    * @param arePlaceholders Whether the operations are placeholders (not yet synced).
+   * @param tryLocalIntegration Optional suspend function to call for local integration (Health Connect).
    */
   suspend fun executeOperations(
     entryRepository: IEntryRepository,
     operations: List<Entry>,
     userHasOperations: Boolean = true,
     arePlaceholders: Boolean = false,
+    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
 
@@ -921,6 +980,9 @@ internal object EntryServiceHelper {
           // Insert new entry
           entryRepository.insert(operation)
         }
+
+        // Try local integration for create operations
+        tryLocalIntegration?.invoke(operation)
       }
 
       // Handle delete operations

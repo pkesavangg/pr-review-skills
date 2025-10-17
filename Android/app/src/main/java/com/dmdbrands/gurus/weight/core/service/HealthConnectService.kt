@@ -1,19 +1,10 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import androidx.activity.ComponentActivity
-import com.greatergoods.libs.healthconnect.HealthConnect
-import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
-import com.greatergoods.libs.healthconnect.enums.DataType
-import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
-import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
-import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
-import com.greatergoods.libs.healthconnect.model.HealthConnectData
-import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
-import com.greatergoods.libs.healthconnect.model.HealthConnectResult
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationData
@@ -27,12 +18,19 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
-import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStrings
+import com.greatergoods.libs.healthconnect.HealthConnect
+import com.greatergoods.libs.healthconnect.enums.DataType
+import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
+import com.greatergoods.libs.healthconnect.model.HealthConnectData
+import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
+import com.greatergoods.libs.healthconnect.model.HealthConnectResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -62,7 +60,6 @@ class HealthConnectService @Inject constructor(
   appNavigationService: IAppNavigationService,
   private val entryRepository: IEntryRepository, // Add entry repository for fetching entries
   private val integrationRepository: IIntegrationRepository, // Inject IntegrationRepository for integrations flow
-  private val entryService: IEntryService,
   // Inject IntegrationService for API calls
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IHealthConnectService {
 
@@ -76,37 +73,6 @@ class HealthConnectService @Inject constructor(
 
   // Global account ID - automatically updated when account changes
   private var currentAccountId: String? = null
-
-  /**
-   * Initializes the service and starts observing account changes.
-   */
-  init {
-    // Start observing account changes to update global accountId
-    CoroutineScope(Dispatchers.IO).launch {
-      accountRepository.getActiveAccount().collect { account ->
-        currentAccountId = account?.id
-        AppLog.v(tag, "Account changed, updated global accountId: $currentAccountId")
-      }
-      currentAccountId?.let {
-        entryService.latestEntry.collect { entry ->
-          var entry = entry?.toPeriodBodyScaleSummary()
-          var latestEntry = HealthConnectSyncEntry(
-            weight = entry?.weight,
-            timestamp = entry?.entryTimestamp ?: "",
-            type = IntegrationType.HEALTH_CONNECT,
-            sentAt = System.currentTimeMillis().toString(),
-            bodyFat = entry?.bodyFat,
-            muscleMass = entry?.muscleMass,
-            water = entry?.water,
-            bmi = entry?.bmi,
-            data = emptyList(),
-          )
-          healthConnectRepository.syncEntry(latestEntry)
-        }
-      }
-    }
-  }
-
   /**
    * Checks if there's an active account.
    * @return true if there's an active account, false otherwise
@@ -370,7 +336,7 @@ class HealthConnectService @Inject constructor(
     }
   }
 
-  private suspend fun syncData(entries: List<PeriodBodyScaleSummary>) {
+  override suspend fun syncData(entries: List<PeriodBodyScaleSummary>) {
     val finalData = mutableListOf<HealthConnectData>()
     for (entry in entries) {
       entry.weight.let {
@@ -425,6 +391,71 @@ class HealthConnectService @Inject constructor(
   // Helper to calculate lean body mass
   private fun calculateLeanBodyMass(weight: Double, bodyFat: Double): Double {
     return weight * (1 - bodyFat / 100)
+  }
+
+  override suspend fun deleteEntry(entry: Entry): Boolean {
+    return try {
+      if (!isLoaded) {
+        AppLog.w(tag, "Health Connect service not loaded")
+        return false
+      }
+
+      // Convert entry to PeriodBodyScaleSummary
+      val summary = entry.toPeriodBodyScaleSummary()
+      if (summary == null) {
+        AppLog.w(tag, "Could not convert entry to PeriodBodyScaleSummary for deletion")
+        return false
+      }
+
+      // Check if integrated
+      val isIntegrated = checkIfAlreadyUsed()
+      if (!isIntegrated) {
+        AppLog.w(tag, "Health Connect not integrated, skipping deletion")
+        return false
+      }
+
+      // Build data to delete matching the Angular implementation
+      val dataToDelete = mutableListOf<HealthConnectData>()
+      val timestamp = Instant.parse(summary.entryTimestamp)
+
+      summary.weight?.let {
+        dataToDelete.add(HealthConnectData(DataType.Weight, it, timeStamp = timestamp))
+      }
+      summary.bodyFat?.let {
+        dataToDelete.add(HealthConnectData(DataType.BodyFat, it, timeStamp = timestamp))
+      }
+      if (summary.muscleMass != null && summary.weight != null) {
+        val leanBodyMass = (summary.muscleMass * summary.weight) / 100
+        dataToDelete.add(HealthConnectData(DataType.LeanBodyMass, leanBodyMass, timeStamp = timestamp))
+      }
+      if (summary.boneMass != null && summary.weight != null) {
+        val boneMassValue = (summary.boneMass * summary.weight) / 100
+        dataToDelete.add(HealthConnectData(DataType.BoneMass, boneMassValue, timeStamp = timestamp))
+      }
+      summary.bmr?.let {
+        dataToDelete.add(HealthConnectData(DataType.BasalMetabolicRate, it, timeStamp = timestamp))
+      }
+      summary.pulse?.let {
+        dataToDelete.add(HealthConnectData(DataType.RestingHeartRate, it, timeStamp = timestamp))
+      }
+
+      // Delete data from Health Connect
+      val result = healthConnect.deleteEntry(dataToDelete)
+
+      when (result) {
+        is HealthConnectResult.Success -> {
+          AppLog.i(tag, "Successfully deleted entry from Health Connect")
+          true
+        }
+        is HealthConnectResult.Error -> {
+          AppLog.e(tag, "Failed to delete entry from Health Connect", result.toString())
+          false
+        }
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Exception while deleting entry from Health Connect", e)
+      false
+    }
   }
 
   override suspend fun deleteAllData(): Boolean {
@@ -748,8 +779,7 @@ class HealthConnectService @Inject constructor(
    */
   override suspend fun checkHealthConnectPermissionDisabled() {
     val healthConnectStatus = healthConnectStatus()
-    val accountId = currentAccountId
-    if (accountId == null) return
+    val accountId = currentAccountId ?: return
     val healthConnectData = healthConnectRepository.getAccountByID(accountId)
     val isHealthConnectOpened = healthConnectData?.open ?: false
     val outOfSyncSession = healthConnectData?.outOfSync ?: false

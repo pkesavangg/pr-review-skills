@@ -8,9 +8,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
-import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
-import com.dmdbrands.gurus.weight.domain.services.IIntegrationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,8 +37,6 @@ object HealthConnectModule {
     dialogQueueService: IDialogQueueService,
     appNavigationService: IAppNavigationService,
     entryRepository: IEntryRepository,
-    integrationService: IIntegrationService,
-    entryService: IEntryService,
     connectivityObserver: IConnectivityObserver,
   ): IHealthConnectService = HealthConnectService(
     context,
@@ -51,6 +47,5 @@ object HealthConnectModule {
     appNavigationService,
     entryRepository,
     integrationRepository,
-    entryService,
   )
 }

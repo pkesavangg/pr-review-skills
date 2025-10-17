@@ -71,19 +71,22 @@ object HealthConnectStrings  {
   object FinishConnectStrings {
     const val Title = "Integration Connected"
     const val Description =
-      "Manage settings anytime by opening Health Connect and going to App Permissions → Weight Gurus."
+      "Manage settings anytime by opening Health Connect and going to"
+    const val AnnonatedDesc = "App Permissions → Weight Gurus."
   }
 
   object StartFullReconnectStrings {
     const val Title = "Integration Reconnected"
     const val Description =
-      "All metrics are enabled. Manage settings in Health Connect by navigating to App Permissions → Weight Gurus."
+      "All metrics are enabled. Manage settings in Health Connect by navigating to "
+    const val AnnonatedDesc = "App Permissions → Weight Gurus."
   }
 
   object PartialReconnectStrings {
     const val Title = "Reconnecting Integration"
     const val Description =
-      "Some metrics may already be enabled and won't show on the next screen. Manage settings in Health Connect by navigating to App Permissions → Weight Gurus."
+      "Some metrics may already be enabled and won't show on the next screen. Manage settings in Health Connect by navigating to "
+    const val AnnonatedDesc = "App Permissions → Weight Gurus."
   }
 
   object FinishPartialReconnectStrings {

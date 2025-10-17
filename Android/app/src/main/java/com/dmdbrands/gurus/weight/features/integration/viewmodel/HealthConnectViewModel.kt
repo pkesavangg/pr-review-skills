@@ -3,8 +3,6 @@ package com.dmdbrands.gurus.weight.features.integration.viewmodel
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
-import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
@@ -16,6 +14,8 @@ import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectReduce
 import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectSetup
 import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectUiState
 import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStrings
+import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -262,8 +262,8 @@ class HealthConnectViewModel @Inject constructor(
      * Handles the connect action.
      */
     private suspend fun handleConnect(fromIncomplete: Boolean = false) {
+      dialogQueueService.showLoader("Loading...")
         try {
-            dialogQueueService.showLoader("Loading...")
             healthConnectService.requestAuthorization { requestStatus ->
                 viewModelScope.launch {
                     when (requestStatus) {
@@ -321,6 +321,7 @@ class HealthConnectViewModel @Inject constructor(
      */
     fun openHealthConnect() {
         viewModelScope.launch {
+          dialogQueueService.showLoader("Loading...")
             try {
                 healthConnectService.openHealthConnect(true)
             } catch (e: Exception) {
@@ -329,6 +330,9 @@ class HealthConnectViewModel @Inject constructor(
                     currentState.copy(errorMessage = "Failed to open Health Connect: ${e.message}")
                 }
             }
+          finally {
+            dialogQueueService.dismissLoader()
+          }
         }
     }
 

@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 )
 class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
+    private val healthConnectService: IHealthConnectService,
     @Assisted val month: String,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
 
@@ -100,7 +102,18 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
                         dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
                         viewModelScope.launch {
+                            // Delete from entry service (local + API)
                             entryService.deleteEntry(entry)
+
+                            // Try to delete from Health Connect (non-blocking)
+                            try {
+                                healthConnectService.deleteEntry(entry)
+                                AppLog.d(TAG, "Entry deleted from Health Connect")
+                            } catch (e: Exception) {
+                                AppLog.w(TAG, "Failed to delete entry from Health Connect")
+                                // Don't fail the operation if HC deletion fails
+                            }
+
                             dialogQueueService.dismissCurrent()
                             dialogQueueService.dismissLoader()
                         }

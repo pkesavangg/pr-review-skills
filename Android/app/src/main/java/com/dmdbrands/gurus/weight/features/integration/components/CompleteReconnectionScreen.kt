@@ -27,6 +27,7 @@ fun CompleteReconnectionScreen(
       image = AppIcons.Integrations.Full_Permission,
       title = HealthConnectStrings.StartFullReconnectStrings.Title,
       description = HealthConnectStrings.StartFullReconnectStrings.Description,
+      annotatedString = HealthConnectStrings.StartFullReconnectStrings.AnnonatedDesc,
       primaryButtonLabel = HealthConnectStrings.ActionButtons.finish
     ),
     onPrimaryAction = onPrimaryAction,
