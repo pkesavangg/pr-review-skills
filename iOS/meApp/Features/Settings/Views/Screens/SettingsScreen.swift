@@ -55,29 +55,18 @@ struct SettingsScreen: View {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
                     
                     // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        // Clear any existing navigation stack when navigating from external source
-                        router.navigateToRoot()
-                        router.navigate(to: route)
-                    }
+                    handlePendingSettingsNavigation()
                 }
             }
             .onChange(of: router.stack) { _, newStack in
                 // If we're back to the root settings screen and there's a source tab to return to
                 if newStack.isEmpty && tabViewModel.settingsNavigationSourceTab != nil {
-                    // Small delay to ensure the UI has updated
                     tabViewModel.returnToSettingsSourceTab()
                 }
             }
             .onChange(of: tabViewModel.pendingSettingsNavigation, { _, _ in
                 if tabViewModel.selectedTab == .settings {
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        // Clear any existing navigation stack when navigating from external source
-                        router.navigateToRoot()
-                        router.navigate(to: route)
-                    }
+                    handlePendingSettingsNavigation()
                 }
             })
         }
@@ -391,6 +380,17 @@ struct SettingsScreen: View {
             .textCase(.none)
             .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
+    }
+    
+    // MARK: - Private Helpers
+    /// Handles pending settings navigation by clearing the stack and navigating to the route
+    private func handlePendingSettingsNavigation() {
+        if let route = tabViewModel.pendingSettingsNavigation {
+            tabViewModel.pendingSettingsNavigation = nil
+            // Clear any existing navigation stack when navigating from external source
+            router.navigateToRoot()
+            router.navigate(to: route)
+        }
     }
     
 }
