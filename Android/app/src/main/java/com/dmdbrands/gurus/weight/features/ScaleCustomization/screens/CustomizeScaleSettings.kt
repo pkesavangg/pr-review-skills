@@ -268,6 +268,24 @@ fun CustomizeScaleSettings(
         }
       }
 
+      CustomizeSettings.SCALE_METRICS -> {
+        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
+
+        CustomizationLayout(
+          title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
+          subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
+        ) {
+          ScaleMetricsSettingScreen(
+            currentMetrics = scaleMetrics,
+            onMetricsChanged = { metrics ->
+              // Only update local state, don't update reducer state until save
+              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
+              scaleMetrics = metrics
+            },
+          )
+        }
+      }
+
       CustomizeSettings.SCALE_MODE -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_MODE)
 
@@ -287,24 +305,6 @@ fun CustomizeScaleSettings(
             },
             onBioimpedanceClick = {
               // Handle bioimpedance modal - can be implemented if needed
-            },
-          )
-        }
-      }
-
-      CustomizeSettings.SCALE_METRICS -> {
-        visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-
-        CustomizationLayout(
-          title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
-          subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
-        ) {
-          ScaleMetricsSettingScreen(
-            currentMetrics = scaleMetrics,
-            onMetricsChanged = { metrics ->
-              // Only update local state, don't update reducer state until save
-              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
-              scaleMetrics = metrics
             },
           )
         }

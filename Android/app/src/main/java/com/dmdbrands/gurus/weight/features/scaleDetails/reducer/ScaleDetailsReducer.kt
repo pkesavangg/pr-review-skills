@@ -39,7 +39,7 @@ data class ScaleDetailsState(
   val scaleNameForm: FormGroup<ScaleNameDialogFormControls>,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val settingsScreenStep: ScaleSettingSteps = ScaleSettingSteps.NONE,
-  val connectedSSID: String = "",
+  val connectedSSID: String? = null,
   val deviceInfo: GGDeviceDetail? = null,
   val isSessionImpedanceEnabled: Boolean = false,
   val enableTestingFeatures: Boolean = false,
@@ -57,7 +57,7 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
     val scale: Device,
   ) : ScaleDetailsIntent
 
-  data class SetConnectedSSID(val connectedSSID: String) : ScaleDetailsIntent
+  data class SetConnectedSSID(val connectedSSID: String?) : ScaleDetailsIntent
 
   object EditName : ScaleDetailsIntent
 

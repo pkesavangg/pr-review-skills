@@ -57,7 +57,8 @@ object BtWifiScaleSetupStrings {
   }
 
   object WifiList {
-    const val Title = "Select a 2.4 GHz Network"
+    fun Title(isConfigured: Boolean) =
+      if (isConfigured) "The scale has already been connected to Wi-Fi" else "Select a 2.4 GHz Network"
     fun Subtitle(isConfigured: Boolean) = if(isConfigured) "Continue or choose a different 2.4 GHz Wi-Fi network." else
       "If you have multiple Wi-Fi networks, pick the 2.4 GHz network closest to your scale."
     const val NoNetworks = "Unable to gather networks.."
@@ -79,8 +80,9 @@ object BtWifiScaleSetupStrings {
     fun LastActive(date: String?) = "last active $date"
 
     object RestoreConfirmation {
-      const val Title = "Restore Account"
-      const val Message = "This will replace the existing user account on the scale. Are you sure you want to continue?"
+      const val Title = "Confirm Account Restore"
+      const val Message =
+        "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
       const val Restore = "Restore"
       const val GoBack = "Go Back"
     }

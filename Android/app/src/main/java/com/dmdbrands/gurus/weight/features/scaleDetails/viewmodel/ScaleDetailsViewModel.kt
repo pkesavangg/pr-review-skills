@@ -83,9 +83,6 @@ constructor(
   override fun handleIntent(intent: ScaleDetailsIntent) {
     super.handleIntent(intent)
     when (intent) {
-      ScaleDetailsIntent.EditName -> {
-        // TODO: Handle edit name
-      }
 
       ScaleDetailsIntent.DeleteScale -> {
         deleteScaleAlert()
@@ -149,10 +146,12 @@ constructor(
 
   private fun configureR4ScaleDetails() {
     viewModelScope.launch {
-      if (state.value.scale?.device?.wifiMacAddress != null) {
+      try {
         ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
-          handleIntent(ScaleDetailsIntent.SetConnectedSSID(ssid.cleanCorruptedChars()))
+          handleIntent(ScaleDetailsIntent.SetConnectedSSID(if (ssid.isEmpty()) null else ssid.cleanCorruptedChars()))
         }
+      } catch (e: Exception) {
+        handleIntent(ScaleDetailsIntent.SetConnectedSSID(null))
       }
     }
   }
@@ -196,6 +195,7 @@ constructor(
             val scaleName = scale.nickname
             handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
             getDeviceInfo()
+            configureR4ScaleDetails()
           }
         }
       }
