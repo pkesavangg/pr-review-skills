@@ -833,7 +833,14 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 getMetricValue(for: label, from: summary)
             }
             guard !values.isEmpty else { return nil }
-            return values.reduce(0, +) / Double(values.count)
+            
+            // Calculate raw average
+            let rawAverage = values.reduce(0, +) / Double(values.count)
+            
+            // Apply same robust rounding logic as weight calculations
+            let roundedAverage = (rawAverage * 100).rounded(.toNearestOrAwayFromZero) / 100
+            
+            return roundedAverage
         }
         // Define all metrics and their conversion params in an array
         let metrics: [(label: String, shouldCompose: Bool, wholeNumber: Bool, fallbackValue: Double?)] = [
