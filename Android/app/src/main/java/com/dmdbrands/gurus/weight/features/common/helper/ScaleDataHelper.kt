@@ -32,19 +32,14 @@ object ScaleDataHelper {
         // Determine bodyComp from SCALES or fallback to false
         val bodyComp = SCALES.find { it.sku == sku }?.bodyComp ?: false
 
-        // WiFi is considered configured only if the device has isWifiConfigured=true
-        // Connection status is separate from WiFi configuration status
-        val isWifiConfigured = this.device?.isWifiConfigured ?: false
-
         return ScaleInfo(
             productName = if (this.nickname.isNotBlank()) this.nickname else productName,
             sku = sku,
             setupType = setupType,
             bodyComp = bodyComp,
             isConnected = this.connectionStatus == BLEStatus.CONNECTED,
-            isWifiConfigured = isWifiConfigured,
+            isWifiConfigured = this.device?.isWifiConfigured,
             scaleId = this.id,
-            createdAt = this.createdAt,
         )
     }
 

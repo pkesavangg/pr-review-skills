@@ -71,46 +71,55 @@ constructor(
     override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
-    val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-    val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
-    val connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED
-    macAddress.let { macAddress ->
-      _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
-        this[macAddress] = connectionStatus
-      }
+    val macAddress = deviceDetail.macAddress
+    val resolvedConnectionStatus = connectionStatus ?: BLEStatus.DISCONNECTED
+    
+    AppLog.d(tag, "onDeviceUpdate called for device ${macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}")
+    
+    // Update connection status map
+    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
+      this[macAddress] = resolvedConnectionStatus
+    }
 
-      // Immediately update the device with new connection status and recalculate weight-only mode
-      val currentDevices = _pairedScales.value.toMutableList()
-      val deviceIndex = currentDevices.indexOfFirst { it.device?.macAddress == macAddress }
+    // Try to find the device in current paired scales
+    val currentDevices = _pairedScales.value.toMutableList()
+    val deviceIndex = currentDevices.indexOfFirst { it.device?.macAddress == macAddress }
 
-      if (deviceIndex >= 0) {
-        val device = currentDevices[deviceIndex]
+    if (deviceIndex >= 0) {
+      // Device found in current list - update it directly
+      val device = currentDevices[deviceIndex]
+      val oldWifiConfigured = device.device?.isWifiConfigured
 
-        val updatedDevice = device.copy(
-          connectionStatus = connectionStatus,
-          device = device.device?.copy(
-            isWifiConfigured = deviceDetail.isWifiConfigured,
-          ),
-          isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
-        )
+      val updatedDevice = device.copy(
+        connectionStatus = resolvedConnectionStatus,
+        device = device.device?.copy(
+          isWifiConfigured = deviceDetail.isWifiConfigured,
+        ),
+        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
+      )
 
-        currentDevices[deviceIndex] = updatedDevice
-        _pairedScales.value = currentDevices
-        _connectedScales.value = currentDevices
-        
-        // If WiFi configuration changed, save the updated device to database
-        if (device.device?.isWifiConfigured != deviceDetail.isWifiConfigured) {
-          AppLog.d(tag, "WiFi configuration changed for device ${macAddress}: ${device.device?.isWifiConfigured} -> ${deviceDetail.isWifiConfigured}")
-          try {
-            deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
-          } catch (e: Exception) {
-            AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
-          }
+      currentDevices[deviceIndex] = updatedDevice
+      _pairedScales.value = currentDevices
+      _connectedScales.value = currentDevices
+      
+      // If WiFi configuration changed, save the updated device to database
+      if (oldWifiConfigured != deviceDetail.isWifiConfigured) {
+        AppLog.d(tag, "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}")
+        try {
+          deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
+        } catch (e: Exception) {
+          AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
         }
       }
+    } else {
+      // Device not found in current list - trigger a refresh to get updated data
+      AppLog.d(tag, "Device ${macAddress} not found in current paired scales, triggering refresh")
+      try {
+        fetchScales(currentAccountId)
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error refreshing scales after device update", e)
+      }
     }
-    // Optionally log or handle the null case
-    // else log.warn("Received update with null MAC address")
   }
 
   /**

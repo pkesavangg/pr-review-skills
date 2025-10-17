@@ -608,7 +608,7 @@ constructor(
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
-          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          // ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
         },
         onCancel = {
@@ -651,8 +651,19 @@ constructor(
         updateWifiDetails()
         
         // Save the scale with final configuration
-        discoveredScale = deviceService.saveScale(discoveredScale!!)
+        val savedScale = deviceService.saveScale(discoveredScale!!)
+        discoveredScale = savedScale ?: discoveredScale
         AppLog.i(TAG, "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}")
+        
+        // Trigger onDeviceUpdate to ensure pairedScales flow is updated with final configuration
+        discoveredScale?.let { scale ->
+          val deviceDetail = scale.device
+          if (deviceDetail != null) {
+            AppLog.d(TAG, "Triggering final onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}")
+            deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
+            AppLog.d(TAG, "Triggered final onDeviceUpdate for WiFi configuration")
+          }
+        }
         
         ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
         if (!isScaleConnected) {
@@ -746,6 +757,7 @@ constructor(
             "showGuide" to true,
             "onGuideClick" to {
               openProductGuide()
+              dialogQueueService.dismissCurrent()
             },
           ),
       ),
@@ -1352,7 +1364,16 @@ constructor(
     // Save the scale with updated WiFi configuration to ensure UI updates properly
     discoveredScale?.let { scale ->
       AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
-      deviceService.saveScale(scale)
+      val savedScale = deviceService.saveScale(scale)
+      
+      // Use the saved scale (which might have updated ID) for onDeviceUpdate
+      val scaleToUpdate = savedScale ?: scale
+      val deviceDetail = scaleToUpdate.device
+      if (deviceDetail != null) {
+        AppLog.d(TAG, "Triggering onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}")
+        deviceService.onDeviceUpdate(deviceDetail, scaleToUpdate.connectionStatus)
+        AppLog.d(TAG, "Triggered onDeviceUpdate for WiFi configuration change")
+      }
     }
   }
 

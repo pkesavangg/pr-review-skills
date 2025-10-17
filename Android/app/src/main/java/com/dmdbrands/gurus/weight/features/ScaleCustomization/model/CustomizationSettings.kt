@@ -20,17 +20,17 @@ val CustomizeSettingsList = listOf(
     isVisited = false,
   ),
   CustomizeSettingsCard(
-    iconId = AppIcons.Default.WeightOnlyMode,
-    title = "Scale Modes",
-    subtitle = "Those with specific medical conditions may want to change modes.",
-    step = CustomizeSettings.SCALE_MODE,
-    isVisited = false,
-  ),
-  CustomizeSettingsCard(
     iconId = AppIcons.Setup.Graph,
     title = "Scale Metrics",
     subtitle = "Customize the metrics you’ll see when weighing-in.",
     step = CustomizeSettings.SCALE_METRICS,
+    isVisited = false,
+  ),
+  CustomizeSettingsCard(
+    iconId = AppIcons.Default.WeightOnlyMode,
+    title = "Scale Modes",
+    subtitle = "Those with specific medical conditions may want to change modes.",
+    step = CustomizeSettings.SCALE_MODE,
     isVisited = false,
   ),
   CustomizeSettingsCard(
