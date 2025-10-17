@@ -299,6 +299,18 @@ constructor(
             AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
           }
 
+          is AuthState.NavigateToMyAccounts -> {
+            // Stop scan when navigating to MyAccounts screen
+            stopScan()
+            AppLog.d(TAG, "Stopped scan due to navigation to MyAccounts screen")
+          }
+
+          is AuthState.NavigateBackFromMyAccounts -> {
+            // Start scan when navigating back from MyAccounts screen
+            startScan()
+            AppLog.d(TAG, "Started scan due to navigation back from MyAccounts screen")
+          }
+
           is AuthState.Error -> {
             // Handle auth errors without triggering navigation
             AppLog.e(TAG, "Auth error: ${authState.message}")

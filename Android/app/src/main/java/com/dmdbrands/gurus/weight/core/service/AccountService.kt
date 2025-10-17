@@ -675,4 +675,20 @@ constructor(
         .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
     return listOfNotNull(active) + others
   }
+
+  /**
+   * Emits navigation to MyAccounts event to stop scanning.
+   */
+  override suspend fun emitNavigateToMyAccounts() {
+    appNavigationService.emitAuthEvent(AuthState.NavigateToMyAccounts)
+    AppLog.d(TAG, "Emitted NavigateToMyAccounts event")
+  }
+
+  /**
+   * Emits navigation back from MyAccounts event to start scanning.
+   */
+  override suspend fun emitNavigateBackFromMyAccounts() {
+    appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
+    AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
+  }
 }

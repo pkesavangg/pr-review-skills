@@ -59,8 +59,12 @@ class MyAccountsViewModel @Inject constructor(
     }
 
     init {
+        // Stop scanning when MyAccounts screen loads
         viewModelScope.launch {
+            accountService.emitNavigateToMyAccounts()
+        }
 
+        viewModelScope.launch {
             accountService.loggedInAccountsFlow.collectLatest {
                 val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
                 handleIntent(MyAccountsIntent.SetAccounts(it, hasReachedMaxAccounts))
@@ -149,6 +153,16 @@ class MyAccountsViewModel @Inject constructor(
                     dialogQueueService.dismissLoader()
                 }
             }
+        }
+    }
+
+    /**
+     * Called when user navigates back from MyAccounts screen
+     * This will start scanning again
+     */
+    fun onNavigateBack() {
+        viewModelScope.launch {
+            accountService.emitNavigateBackFromMyAccounts()
         }
     }
 }

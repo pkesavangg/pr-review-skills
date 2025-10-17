@@ -190,6 +190,16 @@ interface IAccountService {
    * @param hasShown Whether the notification alert has been shown.
    */
   suspend fun setNotificationAlertShownForAccount(accountId: String, hasShown: Boolean)
+
+  /**
+   * Emits navigation to MyAccounts event to stop scanning.
+   */
+  suspend fun emitNavigateToMyAccounts()
+
+  /**
+   * Emits navigation back from MyAccounts event to start scanning.
+   */
+  suspend fun emitNavigateBackFromMyAccounts()
 }
 
 /**
@@ -232,6 +242,10 @@ sealed class AuthState {
     val isActiveAccount: Boolean,
     val message: String? = null,
   ) : AuthState()
+
+  data object NavigateToMyAccounts : AuthState()
+
+  data object NavigateBackFromMyAccounts : AuthState()
 }
 
 /**
