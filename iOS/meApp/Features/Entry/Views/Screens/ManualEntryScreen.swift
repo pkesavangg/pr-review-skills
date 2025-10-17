@@ -69,8 +69,7 @@ struct ManualEntryScreen: View {
                         .onChange(of: entryStore.showDatePicker) { _, isPresented in
                             if isPresented {
                                 dismissKeyboardAndUnfocus()
-                                // Ensure only one picker is visible at a time
-                                entryStore.showTimePicker = false
+                                dismissOtherPicker(for: .date)
                             }
                         }
                         
@@ -81,8 +80,7 @@ struct ManualEntryScreen: View {
                         .onChange(of: entryStore.showTimePicker) { _, isPresented in
                             if isPresented {
                                 dismissKeyboardAndUnfocus()
-                                // Ensure only one picker is visible at a time
-                                entryStore.showDatePicker = false
+                                dismissOtherPicker(for: .time)
                             }
                         }
                     }
@@ -372,16 +370,36 @@ struct ManualEntryScreen: View {
     private func toggleDatePicker() {
         dismissKeyboardAndUnfocus()
         withAnimation {
-            entryStore.showTimePicker = false
             entryStore.showDatePicker.toggle()
         }
+        // Ensure the other picker is dismissed consistently
+        dismissOtherPicker(for: .date, animated: false)
     }
 
     private func toggleTimePicker() {
         dismissKeyboardAndUnfocus()
         withAnimation {
-            entryStore.showDatePicker = false
             entryStore.showTimePicker.toggle()
+        }
+        // Ensure the other picker is dismissed consistently
+        dismissOtherPicker(for: .time, animated: false)
+    }
+
+    private enum PickerKind { case date, time }
+
+    private func dismissOtherPicker(for picker: PickerKind, animated: Bool = true) {
+        let apply: () -> Void = {
+            switch picker {
+            case .date:
+                if entryStore.showTimePicker { entryStore.showTimePicker = false }
+            case .time:
+                if entryStore.showDatePicker { entryStore.showDatePicker = false }
+            }
+        }
+        if animated {
+            withAnimation { apply() }
+        } else {
+            apply()
         }
     }
 
