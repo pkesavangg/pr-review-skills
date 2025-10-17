@@ -28,9 +28,9 @@ struct ButtonView: View {
                 .if(!type.isInlineText) { view in
                     view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
-                .modifier(CustomButtonStyle(type: type, buttonSize: size, backgroundColorOverride: backgroundColorOverride))
                 .multilineTextAlignment(.leading)
         }
+        .buttonStyle(AppPressableButtonStyle(type: type, size: size, backgroundColorOverride: backgroundColorOverride))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
     }

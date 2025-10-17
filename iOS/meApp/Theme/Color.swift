@@ -38,15 +38,20 @@ enum AppColors {
         
         // Action colors
         let actionPrimary: Color
+        let actionPrimaryPressed : Color
         let actionPrimaryDisabled: Color
         let actionSecondary: Color
+        let actionSecondaryPressed : Color
         let actionSecondaryDisabled: Color
         let actionTertiary: Color
+        let actionTertiaryPressed : Color
         let actionTertiaryDisabled: Color
         let actionInverse: Color
+        let actionInversePressed : Color
         let actionInverseDisabled: Color
         let actionInverseSecondary: Color
         let actionError: Color
+        let actionErrorPressed : Color
         let actionErrorDisabled: Color
         
         // Brand colors

@@ -20,10 +20,11 @@ struct BorderedButtonStyle: ViewModifier {
     var backgroundColor: Color
     var borderColor: Color
     var buttonSize: ButtonSize
+    var foregroundColor: Color? = nil
     func body(content: Content) -> some View{
         content
             .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
-            .foregroundColor(borderColor)
+            .foregroundColor(foregroundColor ?? borderColor)
             .background(backgroundColor)
             .overlay(
                 RoundedRectangle(cornerRadius: .radiusPill)
@@ -50,55 +51,104 @@ struct FlatButtonStyle: ViewModifier {
     }
 }
 
-struct CustomButtonStyle: ViewModifier {
+
+// MARK: - Pressed-state aware ButtonStyle
+
+/// A unified ButtonStyle that applies pressed-state feedback for all ButtonType variants.
+/// - For flat buttons: darkens background and scales slightly when pressed.
+/// - For bordered buttons: darkens border/background and scales slightly when pressed.
+/// - For basic/text buttons: adjusts foreground color opacity when pressed.
+struct AppPressableButtonStyle: ButtonStyle {
     let type: ButtonType
-    let buttonSize: ButtonSize
+    let size: ButtonSize
     let backgroundColorOverride: Color?
-    @Environment(\.appTheme) var theme
-    
-    func body(content: Content) -> some View {
+    @Environment(\.appTheme) private var theme
+
+    func makeBody(configuration: Configuration) -> some View {
+        let isPressed = configuration.isPressed
+
         switch type {
         case .filledPrimary:
-            content
-                .flatButtonStyle(
-                    foregroundColor: theme.textInverse,
-                    backgroundColor: backgroundColorOverride ?? theme.actionPrimary,
-                    buttonSize: buttonSize
-                )
-            
+            let baseBg = backgroundColorOverride ?? theme.actionPrimary
+            let bg = isPressed ? theme.actionPrimaryPressed : baseBg
+            let fg = theme.textInverse
+            return AnyView(
+                configuration.label
+                    .modifier(FlatButtonStyle(
+                        foregroundColor: fg,
+                        backgroundColor: bg,
+                        buttonSize: size
+                    ))
+            )
+
         case .filledSecondary:
-            content
-                .flatButtonStyle(
-                    foregroundColor: theme.actionPrimary,
-                    backgroundColor: theme.textInverse,
-                    buttonSize: buttonSize
-                )
+            let baseBg = theme.actionInverse
+            let bg = isPressed ? theme.actionInversePressed : baseBg
+            let fg = theme.actionPrimary
+            return AnyView(
+                configuration.label
+                    .modifier(FlatButtonStyle(
+                        foregroundColor: fg,
+                        backgroundColor: bg,
+                        buttonSize: size
+                    ))
+            )
+
         case .outlinedPrimary:
-            content
-                .borderedButtonStyle(
-                    backgroundColor: theme.textInverse,
-                    borderColor: theme.actionPrimary,
-                    buttonSize: buttonSize
-                )
-            
+            let baseBg = theme.actionInverse
+            let bg = isPressed ? theme.actionInversePressed : baseBg
+            let baseBorder = theme.actionPrimary
+            let border = isPressed ? theme.actionPrimaryPressed : baseBorder
+            let fg = theme.actionPrimary
+            return AnyView(
+                configuration.label
+                    .modifier(BorderedButtonStyle(
+                        backgroundColor: bg,
+                        borderColor: border,
+                        buttonSize: size,
+                        foregroundColor: fg
+                    ))
+            )
+
         case .outlinedSecondary:
-            content
-                .borderedButtonStyle(
-                    backgroundColor: theme.actionPrimary,
-                    borderColor: theme.textInverse,
-                    buttonSize: buttonSize
-                )
+            let baseBg = theme.actionPrimary
+            let bg = isPressed ? theme.actionPrimaryPressed : baseBg
+            let baseBorder = theme.actionInverse
+            let border = isPressed ? theme.actionInversePressed : baseBorder
+            let fg = theme.actionInverse
+            return AnyView(
+                configuration.label
+                    .modifier(BorderedButtonStyle(
+                        backgroundColor: bg,
+                        borderColor: border,
+                        buttonSize: size,
+                        foregroundColor: fg
+                    ))
+            )
+
         case .textPrimary, .inlineTextPrimary:
-            content
-                .basicButtonStyle(foregroundColor: theme.actionPrimary)
-            
+            let baseFg = theme.actionPrimary
+            let fg = isPressed ? theme.actionPrimaryPressed : baseFg
+            return AnyView(
+                configuration.label
+                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+            )
+
         case .textSecondary, .inlineTextSecondary:
-            content
-                .basicButtonStyle(foregroundColor: theme.textInverse)
-            
+            let baseFg = theme.textInverse
+            let fg = isPressed ? theme.actionInversePressed : baseFg
+            return AnyView(
+                configuration.label
+                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+            )
+
         case .textTertiary, .inlineTextTertiary:
-            content
-                .basicButtonStyle(foregroundColor: theme.actionTertiary)
+            let baseFg = theme.actionTertiary
+            let fg = isPressed ? theme.actionTertiaryPressed : baseFg
+            return AnyView(
+                configuration.label
+                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+            )
         }
     }
 }
