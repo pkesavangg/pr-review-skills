@@ -22,7 +22,7 @@ struct SetAGoalCardView: View {
             HStack {
                 Spacer()
                 Button(action: onClose) {
-                    AppIconView(icon: appAssets.xmark, size: IconSize(width: 22, height: 20))
+                    AppIconView(icon: appAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
             }
