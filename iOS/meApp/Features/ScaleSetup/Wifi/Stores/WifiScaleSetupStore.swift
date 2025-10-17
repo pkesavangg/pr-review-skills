@@ -293,9 +293,6 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     func handleNextButtonClick() {
-        // Handle skipCheckNetwork based on current step (similar to Angular skipNetworkStatOnApMode)
-        handleSkipCheckNetworkForStep()
-        
         switch currentStep {
         case .intro:
             // User is following the normal wizard path – clear any previously-set "Get-MAC" flag.
@@ -356,9 +353,6 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     func handleBackButtonClick() {
-        // Handle skipCheckNetwork based on current step (similar to Angular skipNetworkStatOnApMode)
-        handleSkipCheckNetworkForStep()
-        
         switch currentStep {
         case .activatePairingMode:
             // "Back" from pairing mode behaves differently when in the Get-MAC flow:
@@ -493,16 +487,6 @@ final class WifiScaleSetupStore: ObservableObject {
         logger.log(level: .debug, tag: tag, message: "skipCheckNetwork set to: \(skip)")
     }
     
-    /// Handles skipCheckNetwork logic based on current step (similar to Angular skipNetworkStatOnApMode)
-    private func handleSkipCheckNetworkForStep() {
-        // Set skipCheckNetwork to true when entering AP mode
-        if currentStep == .apMode {
-            setSkipCheckNetwork(true)
-        } else {
-            // Reset to false for other steps
-            setSkipCheckNetwork(false)
-        }
-    }
     
     /// Resets skipCheckNetwork to false (called when view disappears)
     func resetSkipCheckNetwork() {
