@@ -84,7 +84,7 @@ data class GraphState(
     if (timeStamps == null && this.markerIndex == null) return emptyList()
     val filteringTimeStamp = timeStamps ?: listOf(this.markerIndex?.toLong())
     return filteringTimeStamp.mapIndexedNotNull { index, it ->
-      if (it == null) return@mapIndexedNotNull null
+      if (it == null || fallbackValues?.isEmpty() == true) return@mapIndexedNotNull null
       PeriodBodyScaleSummary(
         period = timestampToPeriodString(it, segment),
         entryTimestamp = DateTimeConverter.timestampToIso(it),

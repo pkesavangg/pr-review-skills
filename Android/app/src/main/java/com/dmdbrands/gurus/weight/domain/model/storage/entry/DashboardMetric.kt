@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.domain.model.storage.entry
 
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageOrNull
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
+import kotlin.math.roundToInt
 import android.os.Parcelable
 
 /**
@@ -12,7 +14,9 @@ import android.os.Parcelable
 @Serializable
 @Parcelize
 data class DashboardMetric(
-  val entryTimeStamp: String? = null,
+  val isSingleEntry: Boolean = true,
+  val rangeText: String? = null,
+  val entryTimeStamp: List<String>? = null,
   val weight: Double?,
   val bmi: Double?,
   val bodyFat: Double?,
@@ -27,35 +31,47 @@ data class DashboardMetric(
   val bmr: Double?,
   val metabolicAge: Int?,
   val unit: WeightUnit,
+  val isEmpty: Boolean = false,
 ) : Parcelable {
   companion object {
     /**
      * Creates DashboardMetrics from a PeriodBodyScaleSummary.
-     * @param summary The period summary containing the metrics data.
+     * @param periodBodyScaleSummaries The period summary containing the metrics data.
      * @return DashboardMetrics object with the extracted metrics.
      */
-    fun fromPeriodSummary(summary: PeriodBodyScaleSummary): DashboardMetric =
-      DashboardMetric(
-        entryTimeStamp = summary.entryTimestamp,
-        weight = summary.weight,
-        bmi = summary.bmi,
-        bodyFat = summary.bodyFat,
-        muscleMass = summary.muscleMass,
-        bodyWater = summary.water,
-        heartRate = summary.pulse?.toInt(),
-        boneMass = summary.boneMass,
-        visceralFatLevel = summary.visceralFatLevel,
-        subcutaneousFatPercent = summary.subcutaneousFatPercent,
-        proteinPercent = summary.proteinPercent,
-        skeletalMusclePercent = summary.skeletalMusclePercent,
-        bmr = summary.bmr,
-        metabolicAge = summary.metabolicAge?.toInt(),
-        unit = summary.unit,
-      )
+    fun fromPeriodSummaries(
+      periodBodyScaleSummaries: List<PeriodBodyScaleSummary>,
+      isSingleEntry: Boolean = true,
+      rangeText: String? = null
+    ): DashboardMetric =
+      if (periodBodyScaleSummaries.isEmpty())
+        this.empty()
+      else
+        DashboardMetric(
+          rangeText = rangeText,
+          isSingleEntry = isSingleEntry,
+          entryTimeStamp = periodBodyScaleSummaries.map { it.entryTimestamp },
+          weight = periodBodyScaleSummaries.map { it.weight }.averageOrNull(),
+          bmi = periodBodyScaleSummaries.mapNotNull { it.bmi }.averageOrNull(),
+          bodyFat = periodBodyScaleSummaries.mapNotNull { it.bodyFat }.averageOrNull(),
+          muscleMass = periodBodyScaleSummaries.mapNotNull { it.muscleMass }.averageOrNull(),
+          bodyWater = periodBodyScaleSummaries.mapNotNull { it.water }.averageOrNull(),
+          heartRate = periodBodyScaleSummaries.mapNotNull { it.pulse }.averageOrNull()?.toInt(),
+          boneMass = periodBodyScaleSummaries.mapNotNull { it.boneMass }.averageOrNull(),
+          visceralFatLevel = periodBodyScaleSummaries.mapNotNull { it.visceralFatLevel }.averageOrNull()?.roundToInt()
+            ?.toDouble(),
+          subcutaneousFatPercent = periodBodyScaleSummaries.mapNotNull { it.subcutaneousFatPercent }.averageOrNull(),
+          proteinPercent = periodBodyScaleSummaries.mapNotNull { it.proteinPercent }.averageOrNull(),
+          skeletalMusclePercent = periodBodyScaleSummaries.mapNotNull { it.skeletalMusclePercent }.averageOrNull(),
+          bmr = periodBodyScaleSummaries.mapNotNull { it.bmr }.averageOrNull(),
+          metabolicAge = periodBodyScaleSummaries.mapNotNull { it.metabolicAge }.averageOrNull()?.roundToInt(),
+          unit = periodBodyScaleSummaries.random().unit,
+        )
 
     fun fromScaleEntry(scaleEntry: ScaleEntry): DashboardMetric =
       DashboardMetric(
-        entryTimeStamp = scaleEntry.entry.entryTimestamp,
+        isSingleEntry = true,
+        entryTimeStamp = listOf(scaleEntry.entry.entryTimestamp),
         weight = scaleEntry.scale.scaleEntry.weight,
         bmi = scaleEntry.scale.scaleEntry.bmi,
         bodyFat = scaleEntry.scale.scaleEntry.bodyFat,
@@ -92,6 +108,7 @@ data class DashboardMetric(
         bmr = null,
         metabolicAge = null,
         unit = WeightUnit.LB,
+        isEmpty = true,
       )
   }
 }

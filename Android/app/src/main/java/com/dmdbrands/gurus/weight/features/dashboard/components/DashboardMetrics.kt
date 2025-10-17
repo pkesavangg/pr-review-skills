@@ -27,7 +27,6 @@ import com.dmdbrands.gurus.weight.features.common.components.reorderable.remembe
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageSummary
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -56,10 +55,8 @@ fun DashboardMetrics(
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
 
-  // Cache expensive calculations to avoid repeated processing
-  val latestSummary = remember(metricData) { averageSummary(metricData) }
-  val dashboardMetric = remember(latestSummary) {
-    latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
+  val dashboardMetric = remember(metricData) {
+    if (metricData.isNotEmpty()) DashboardMetric.fromPeriodSummaries(metricData) else DashboardMetric.empty()
   }
 
   val metricKeys = remember(visibleKeys) {
