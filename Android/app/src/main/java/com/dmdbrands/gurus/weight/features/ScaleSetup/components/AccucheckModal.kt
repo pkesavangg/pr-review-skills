@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -39,7 +40,8 @@ fun AccucheckModal(
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
+        .background(MeTheme.colorScheme.glow)
+        .clickable { onClose() },
     ) {
       Box(modifier = Modifier.align(Alignment.Center)) {
         AppPopupModal {

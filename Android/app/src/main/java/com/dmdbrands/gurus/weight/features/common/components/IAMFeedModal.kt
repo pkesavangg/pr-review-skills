@@ -1,16 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.greatergoods.ggInAppMessaging.domain.models.FeaturedProduct
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
@@ -29,41 +22,28 @@ fun IAMFeedModal(
   onAction: (String) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  Dialog(
-    onDismissRequest = onDismiss,
-    properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-      usePlatformDefaultWidth = false,
-      decorFitsSystemWindows = false,
-    ),
+  ModalDialog(
+    onDismiss = onDismiss,
+    config = ModalConfigs.Informational, // Perfect for promotional/informational content
   ) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
-    ) {
-      Box(modifier = Modifier.align(Alignment.Center)) {
-        FeedPopup(
-          imageUrl = feedItem.titleImage,
-          messageType = feedItem.messageTypeText,
-          headline = feedItem.titleText,
-          supportingText = feedItem.subtitleFeedText,
-          primaryButtonText = feedItem.linkText,
-          secondaryButtonText = FeedPopupStrings.MessageSettings,
-          onPrimaryButtonClick = {
-            onAction("buy_now")
-            onDismiss()
-          },
-          onSecondaryButtonClick = {
-            onAction("settings")
-            onDismiss()
-          },
-          onCloseClick = onDismiss,
-          modifier = modifier,
-        )
-      }
-    }
+    FeedPopup(
+      imageUrl = feedItem.titleImage,
+      messageType = feedItem.messageTypeText,
+      headline = feedItem.titleText,
+      supportingText = feedItem.subtitleFeedText,
+      primaryButtonText = feedItem.linkText,
+      secondaryButtonText = FeedPopupStrings.MessageSettings,
+      onPrimaryButtonClick = {
+        onAction("buy_now")
+        onDismiss()
+      },
+      onSecondaryButtonClick = {
+        onAction("settings")
+        onDismiss()
+      },
+      onCloseClick = onDismiss,
+      modifier = modifier,
+    )
   }
 }
 
