@@ -77,6 +77,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self.localKVRepo = ScaleRepositoryLocal()
         Task {
             await refreshScalesFromLocal()
+            // Reset all connection statuses to false on app launch
+            // Only Bluetooth events (DEVICE_CONNECTED) should set them to true
+            await resetAllConnectionStatusOnLaunch()
         }
         
         // React to active account changes so the scales list reflects the correct account immediately.
@@ -578,6 +581,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     // MARK: - Internal Helpers
+    
+    /// Resets all scale connection statuses to false on app launch.
+    /// Connection status is ephemeral and should only be true when confirmed by Bluetooth events.
+    private func resetAllConnectionStatusOnLaunch() async {
+        do {
+            let accountId = try await getAccountId()
+            let allScales = try await localRepository.listScales(forAccountId: accountId)
+            
+            for scale in allScales {
+                scale.isConnected = false
+                scale.isWifiConfigured = false
+            }
+            
+            try localRepository.context.save()
+            logger.log(level: .info, tag: tag, message: "Reset connection status for \(allScales.count) scales on app launch")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to reset connection statuses on launch: \(error.localizedDescription)")
+        }
+    }
+    
     private func refreshScalesFromLocal() async {
         do {
             let accountId = try await getAccountId()

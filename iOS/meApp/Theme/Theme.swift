@@ -71,8 +71,8 @@ final class Theme: ObservableObject {
     /// Loads appearance mode for the current active account
     func loadAppearanceModeForAccount() {
         guard let accountId = activeAccountId else {
-            // No account, load global setting
-            loadGlobalAppearanceMode()
+            // No account, reset to system settings
+            appearanceMode = .system
             return
         }
         
