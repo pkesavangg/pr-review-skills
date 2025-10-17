@@ -76,7 +76,7 @@ struct ScaleItemView: View {
                             size: IconSize(width: 24, height: 24)
                         )
                         .foregroundColor(statusIconDetails.color)
-                        .opacity(isDisabled ? 0.5 : 1)
+                        .opacity((status == .notConnected || isDisabled) ? 0.5 : 1)
                         
                         Text(status.displayText)
                             .fontOpenSans(.body2)
