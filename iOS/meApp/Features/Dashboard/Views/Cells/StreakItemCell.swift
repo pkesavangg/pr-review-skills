@@ -216,31 +216,27 @@ class StreakCardCell: UICollectionViewCell {
     /// Updates the drag state for this cell
     /// - Parameter isBeingDragged: Whether this cell is currently being dragged
     func updateDragState(_ isBeingDragged: Bool) {
-        let oldState = currentIsBeingDragged
+        let previousState = currentIsBeingDragged
+        if previousState == isBeingDragged { return }
         currentIsBeingDragged = isBeingDragged
         
-
-        
         if isBeingDragged {
-            // Enable smooth animations during drag for beautiful cell movement
             layer.actions = [
                 "position": NSNull(),
                 "bounds": NSNull(),
                 "transform": NSNull(),
                 "opacity": NSNull()
             ]
-            
-            // Add subtle shadow and scale effect during drag
             layer.shadowOpacity = 0.3
             layer.shadowRadius = 8
             layer.shadowOffset = CGSize(width: 0, height: 4)
-            
-            // Smooth transform animation
             UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
                 self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
             })
+            // Set suppressOverlay immediately without reconfigure
+            suppressOverlay = true
+            isLongPressed = true
         } else {
-            // Restore normal behavior when not dragging
             layer.actions = [
                 "position": NSNull(),
                 "bounds": NSNull(),
@@ -253,31 +249,23 @@ class StreakCardCell: UICollectionViewCell {
                 "hidden": NSNull(),
                 "cornerRadius": NSNull()
             ]
-            
-            // Completely remove all drag effects and shadows
             layer.shadowOpacity = 0.0
             layer.shadowRadius = 0
             layer.shadowOffset = .zero
             layer.shadowColor = nil
             layer.shadowPath = nil
-            
-            // Force immediate shadow removal
             layer.setNeedsDisplay()
             layer.displayIfNeeded()
-            
-            // Also call the dedicated shadow clearing method
             clearAllShadowEffects()
-            
-            // Smooth return to normal size
             UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
                 self.transform = .identity
             })
+            // Clear suppressOverlay immediately without reconfigure
+            suppressOverlay = false
+            isLongPressed = false
         }
         
-        // Always reconfigure to update overlay visibility when drag state changes
-        if let item = representedItem, let store = currentStore {
-            configure(with: item, store: store)
-        }
+        // NO reconfigure during drag to prevent blinking
     }
     
     func setOverlaySuppressed(_ suppressed: Bool) {
@@ -333,24 +321,15 @@ class StreakCardCell: UICollectionViewCell {
         
         switch dragState {
         case .none:
-            // Restore full opacity when drag ends
             hostingController?.view.alpha = 1.0
-            // Clear interaction states
-            if !suppressOverlay {
-                isLongPressed = false
-            } else {
-                isLongPressed = true
-            }
-
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, store: store)
-            }
+            suppressOverlay = false
+            isLongPressed = false
+            // NO reconfigure to prevent blinking
         case .lifting, .dragging:
             hostingController?.view.alpha = 1.0
+            suppressOverlay = true
             isLongPressed = true
-            if let item = representedItem, let store = currentStore {
-                configure(with: item, store: store)
-            }
+            // NO reconfigure to prevent blinking
         @unknown default:
             break
         }

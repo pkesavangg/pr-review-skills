@@ -17,6 +17,7 @@ final class GoalProgressViewModel: ObservableObject {
     @Published var goalType: GoalType = .none      // Current goal type
     @Published var unit: String = WeightUnit.lb.rawValue // "lb" | "kg"
     @Published var weightlessOn: Bool = false           // Weightless mode flag
+    @Published var isLoaded: Bool = false               // Prevents transient UI during async load
     
     // MARK: - Dependencies
     @Injector private var accountService: AccountService
@@ -48,6 +49,7 @@ final class GoalProgressViewModel: ObservableObject {
     
     // MARK: - Data Loading
     private func loadData() async {
+        isLoaded = false
         guard let account = accountService.activeAccount else { return }
         guard let goalSettings = account.goalSettings else {
             // No goal configured
@@ -59,6 +61,7 @@ final class GoalProgressViewModel: ObservableObject {
             weightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
             let weightUnit = account.weightSettings?.weightUnit ?? .lb
             unit = weightUnit.rawValue
+            isLoaded = true
             return
         }
         
@@ -109,6 +112,7 @@ final class GoalProgressViewModel: ObservableObject {
             let clampedAchieved  = max(signedAchieved, 0) // Prevent negative progress
             progress = totalDistance > 0 ? CGFloat(min(clampedAchieved / totalDistance, 1)) : 1
         }
+        isLoaded = true
     }
     
     // MARK: - Helpers

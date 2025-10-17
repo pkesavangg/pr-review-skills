@@ -307,16 +307,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     widgets.append(.goalCard)
                 }
             } else {
-                // When all streaks are present: Apply even position restriction
+                // When all streaks are present (non-edit mode): force row-start placement
+                // If the stored position is 1, snap to 0. Generally, enforce start of row.
                 let maxPosition = streakCount
                 let clampedGoalCardPos = min(goalCardPos, maxPosition)
-                let finalGoalCardPos = max(0, clampedGoalCardPos)
-                
-                
+                let gridColumns = DevicePlatform.isTablet ? 4 : 2
+                let rowStart = (clampedGoalCardPos / gridColumns) * gridColumns
+
                 var goalCardAdded = false
-                
                 for i in 0...maxPosition {
-                    if i == finalGoalCardPos {
+                    if i == rowStart {
                         widgets.append(.goalCard)
                         goalCardAdded = true
                     }
@@ -324,11 +324,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         widgets.append(.streak(nonRemovedStreaks[i]))
                     }
                 }
-                
-                // Fallback: if goal card wasn't added, add it at the end
-                if !goalCardAdded {
-                    widgets.append(.goalCard)
-                }
+                if !goalCardAdded { widgets.append(.goalCard) }
             }
         } else {
             widgets = nonRemovedStreaks.map { .streak($0) }
@@ -676,7 +672,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             case .goalCard:
                 // Goal card positioning logic based on streak removal state
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
-                
+                let allStreaksPresent = isAllStreaksPresent()
+                          
                 if hasRemovedStreaks {
                     // When streaks are removed, allow flexible positioning but clamp to valid range
                     let remainingStreakCount = gridModel.mileStones.compactMap { widget -> String? in
@@ -690,14 +687,25 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     let maxValidPosition = remainingStreakCount
                     let clampedPosition = min(proposedIndexPath.item, maxValidPosition)
                     
+                    
                     return IndexPath(item: clampedPosition, section: proposedIndexPath.section)
                 } else {
-                    // When all streaks are present, enforce row boundaries
+                    // When all streaks are present, enforce row boundaries and handle adjacent-drop-forward rule
                     let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                    let sourceRowStart = (originalIndexPath.item / columns) * columns
                     let targetRow = proposedIndexPath.item / columns
                     let rowStartIndex = targetRow * columns
+                    let endOfSourceRow = sourceRowStart + (columns - 1)
                     
-                    // Return the row start index to ensure goal card starts at row boundary
+                  
+                    // Special case: if goal card is at row start and user drops on the adjacent slot in the same row,
+                    // snap to the start of the NEXT row (e.g., 0->1 => 2, 2->3 => 4, 4->5 => 6)
+                    if originalIndexPath.item == sourceRowStart && proposedIndexPath.item == endOfSourceRow {
+                        let nextRowStart = min(sourceRowStart + columns, maxValidIndex)
+                        return IndexPath(item: nextRowStart, section: proposedIndexPath.section)
+                    }
+                    
+                    // Default: snap to the start of the proposed row
                     return IndexPath(item: min(rowStartIndex, maxValidIndex), section: proposedIndexPath.section)
                 }
                 
@@ -768,12 +776,46 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let allStreaksPresent = isAllStreaksPresent()
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
                 
+                
+                
                 if allStreaksPresent && !hasRemovedStreaks {
-                    // Restrict goal card to even positions when all streaks are present
-                    let adjustedDestination = (destinationIndex % 2 == 0)
-                        ? destinationIndex
-                        : max(0, destinationIndex - 1)
-                    gridModel.moveWidget(from: sourceIndex, to: adjustedDestination)
+                    // Enforce row-start placement when all streaks are present (works for iPhone/iPad)
+                    let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                    let sourceRowStart = (sourceIndex / gridColumns) * gridColumns
+                    let endOfSourceRow = sourceRowStart + (gridColumns - 1)
+                    let maxValidIndex = firstRemovedIndex - 1
+                    
+                    // Adjacent-drop-forward rule: if dropping from row start to the adjacent slot in same row,
+                    // push the goal card to the start of the next row
+                    if sourceIndex == sourceRowStart && destinationIndex == endOfSourceRow {
+                        let nextRowStart = min(sourceRowStart + gridColumns, maxValidIndex)
+                        
+                        gridModel.moveWidget(from: sourceIndex, to: nextRowStart)
+                    } else {
+                        let rowStart = (destinationIndex / gridColumns) * gridColumns
+                        
+                        gridModel.moveWidget(from: sourceIndex, to: rowStart)
+                    }
+                    // Final normalization: if goal card still ends on an odd index (1 or 3 for 2-column), snap appropriately
+                    if let finalGoalIndex = gridModel.mileStones.firstIndex(where: { $0 == .goalCard }) {
+                        let col = finalGoalIndex % gridColumns
+                        if col != 0 {
+                            let finalRowStart = (finalGoalIndex / gridColumns) * gridColumns
+                            // If move was adjacent-forward (from row start to adjacent), push to next row-start; else snap back to row-start
+                            if sourceIndex == finalRowStart && finalGoalIndex == finalRowStart + 1 {
+                                let nextRowStart = min(finalRowStart + gridColumns, maxValidIndex)
+                                if nextRowStart != finalGoalIndex {
+                                    
+                                    gridModel.moveWidget(from: finalGoalIndex, to: nextRowStart)
+                                }
+                            } else {
+                                if finalRowStart != finalGoalIndex {
+                                    
+                                    gridModel.moveWidget(from: finalGoalIndex, to: finalRowStart)
+                                }
+                            }
+                        }
+                    }
                 } else if hasRemovedStreaks {
                     // When streaks are removed, allow flexible positioning but ensure valid placement
                     // Calculate the maximum valid position based on remaining streaks
@@ -790,12 +832,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     
                     gridModel.moveWidget(from: sourceIndex, to: clampedDestination)
                 } else {
-                    // Fallback: when streaks are not all present and none removed (edge case)
-                    // Still enforce even positions for safety
-                    let adjustedDestination = (destinationIndex % 2 == 0)
-                        ? destinationIndex
-                        : max(0, destinationIndex - 1)
-                    gridModel.moveWidget(from: sourceIndex, to: adjustedDestination)
+                    // Fallback: keep row-start alignment for safety
+                    let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                    let rowStart = (destinationIndex / gridColumns) * gridColumns
+                    gridModel.moveWidget(from: sourceIndex, to: rowStart)
                 }
             } else {
                 gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
@@ -1966,6 +2006,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Save goal card position
             store.state.ui.goalCardPosition = goalCardPosition ?? 0
             
+            
+            
             // Force UI update to reflect the changes
             store.objectWillChange.send()
         }
@@ -1980,15 +2022,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         /// Helper function to check if all streaks are present (not removed)
         private func isAllStreaksPresent() -> Bool {
             // Count actual streak items (not removed)
-            let streakCount = gridModel.mileStones.compactMap { widget -> String? in
+            let allStreakLabels = gridModel.mileStones.compactMap { widget -> String? in
                 switch widget {
                 case .goalCard: return nil
                 case .streak(let streakItem):
                     return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
                 }
-            }.count
+            }
+            let streakCount = allStreakLabels.count
+            let result = streakCount == 6
+            
             // All streaks present means we have exactly 6 streak items
-            return streakCount == 6
+            return result
         }
         
     }

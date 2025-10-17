@@ -176,47 +176,35 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         let draggedWidget = gridModel.mileStones[sourceIndexPath.item]
         
         // Calculate the adjusted destination index
-        var adjustedDestinationIndex: Int
+        var adjustedDestinationIndex = destinationIndexPath.item
+        
+        // Check if all streaks are present BEFORE moving
+        let allStreaksPresent = isAllStreaksPresent()
+        
+        print("🎯 DROP: source=\(sourceIndexPath.item), dest=\(destinationIndexPath.item), allStreaksPresent=\(allStreaksPresent)")
+        
         if case .goalCard = draggedWidget {
-            // Special case: when goal card is dragged and ALL streak items AND goal card are present
-            // and goal card is at the last index, adjust destination to be one position earlier
-            let allWidgetsPresent = gridModel.mileStones.allSatisfy { widget in
-                switch widget {
-                case .goalCard: return true
-                case .streak(let streakItem): 
-                    // Check if streak is removed by comparing with active streak count
-                    return !store.isStreakRemoved(streakItem.label)
+            print("🎯 GOAL CARD DRAG: adjustedDestIndex before=\(adjustedDestinationIndex)")
+            
+            // When all streak items are present (6 streaks)
+            if allStreaksPresent {
+                print("🎯 ALL STREAKS PRESENT - applying snap logic")
+                // Snap index 1 to 0 when all streaks present
+                if adjustedDestinationIndex == 1 {
+                    print("🎯 SNAPPING from 1 to 0")
+                    adjustedDestinationIndex = 0
+                } else {
+                    // Enforce row-start for other positions
+                    let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
+                    let targetRow = adjustedDestinationIndex / gridColumns
+                    adjustedDestinationIndex = targetRow * gridColumns
+                    print("🎯 ROW START: targetRow=\(targetRow), adjusted=\(adjustedDestinationIndex)")
                 }
-            }
-            
-            let goalCardPresent = gridModel.mileStones.contains { widget in
-                if case .goalCard = widget { return true }
-                return false
-            }
-            
-            let goalCardAtLastIndex = sourceIndexPath.item == gridModel.mileStones.count - 1
-            
-            // Constants for position adjustment logic
-            let goalCardPositionAdjustment = 1 // Move one position earlier when special conditions are met
-            
-            // Only apply special case when ALL streak items AND goal card are present
-            // and goal card is at the last index, and destination is one position before the goal card
-            if allWidgetsPresent && goalCardPresent && goalCardAtLastIndex && destinationIndexPath.item == sourceIndexPath.item - 1 {
-                // Adjust destination to be one position earlier than the proposed destination
-                // This ensures proper grid layout when goal card is moved from last position
-                adjustedDestinationIndex = destinationIndexPath.item - goalCardPositionAdjustment
             } else {
-                adjustedDestinationIndex = destinationIndexPath.item
+                print("🎯 NOT all streaks present - skipping snap logic")
             }
-
-            // Enforce row-start index rule when all streaks are present (index % columns == 0)
-            if isAllStreaksPresent() {
-                let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
-                let targetRow = adjustedDestinationIndex / gridColumns
-                adjustedDestinationIndex = targetRow * gridColumns
-            }
-        } else {
-            adjustedDestinationIndex = destinationIndexPath.item
+            
+            print("🎯 GOAL CARD DRAG: adjustedDestIndex after=\(adjustedDestinationIndex)")
         }
 
         gridModel.moveWidget(from: sourceIndexPath.item, to: adjustedDestinationIndex)
@@ -234,14 +222,22 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
     // MARK: - Helpers
     private func isAllStreaksPresent() -> Bool {
         // Count actual (non-removed) streak items currently in the grid
-        let streakCount = gridModel.mileStones.compactMap { widget -> String? in
+        let allStreakLabels = gridModel.mileStones.compactMap { widget -> String? in
             switch widget {
             case .goalCard:
                 return nil
             case .streak(let streakItem):
-                return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+                return streakItem.label
             }
-        }.count
+        }
+        
+        let activeStreakLabels = allStreakLabels.filter { !store.isStreakRemoved($0) }
+        let streakCount = activeStreakLabels.count
+        
+        print("🎯 isAllStreaksPresent: total streaks=\(allStreakLabels.count), active=\(streakCount), result=\(streakCount == 6)")
+        print("🎯 Active streaks: \(activeStreakLabels)")
+        print("🎯 Removed streaks: \(store.state.streak.removedStreaks)")
+        
         // All present iff we have exactly 6 active streaks
         return streakCount == 6
     }
