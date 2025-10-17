@@ -54,14 +54,11 @@ struct ManualEntryScreen: View {
                             DateLabelView(date: entryStore.manualEntryForm.date.value,
                                           isSelected: entryStore.showDatePicker
                             ) {
-                                withAnimation { entryStore.showDatePicker.toggle()
-                                }
+                                toggleDatePicker()
                             }
                             TimeLabelView(time: entryStore.manualEntryForm.time.value,
                                           isSelected: entryStore.showTimePicker) {
-                                withAnimation {
-                                    entryStore.showTimePicker.toggle()
-                                }
+                                toggleTimePicker()
                             }
                         }
                         
@@ -69,11 +66,25 @@ struct ManualEntryScreen: View {
                         DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
                                        endDate: Date())
+                        .onChange(of: entryStore.showDatePicker) { _, isPresented in
+                            if isPresented {
+                                dismissKeyboardAndUnfocus()
+                                // Ensure only one picker is visible at a time
+                                entryStore.showTimePicker = false
+                            }
+                        }
                         
                         TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
                                        selectedDate: entryStore.manualEntryForm.date.value,
                                        endTime: entryStore.maxSelectableTime)
+                        .onChange(of: entryStore.showTimePicker) { _, isPresented in
+                            if isPresented {
+                                dismissKeyboardAndUnfocus()
+                                // Ensure only one picker is visible at a time
+                                entryStore.showDatePicker = false
+                            }
+                        }
                     }
                     
                     // Accordion header
@@ -353,6 +364,27 @@ struct ManualEntryScreen: View {
         }
     }
     
+    private func dismissKeyboardAndUnfocus() {
+        focusedField = nil
+        hideKeyboard()
+    }
+
+    private func toggleDatePicker() {
+        dismissKeyboardAndUnfocus()
+        withAnimation {
+            entryStore.showTimePicker = false
+            entryStore.showDatePicker.toggle()
+        }
+    }
+
+    private func toggleTimePicker() {
+        dismissKeyboardAndUnfocus()
+        withAnimation {
+            entryStore.showDatePicker = false
+            entryStore.showTimePicker.toggle()
+        }
+    }
+
     private func performTabSwitchAndHideKeyboard() {
         hideKeyboard()
         // Let the keyboard dismissal/animation settle before a big tab switch.

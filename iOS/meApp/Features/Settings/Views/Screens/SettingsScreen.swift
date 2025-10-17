@@ -367,7 +367,7 @@ struct SettingsScreen: View {
             }
             
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.deleteAccount.uppercased(),
+                title: settingsLang.deleteAccount,
                 chevronType: .none,
                 isDestructive: true,
                 onTap: {
