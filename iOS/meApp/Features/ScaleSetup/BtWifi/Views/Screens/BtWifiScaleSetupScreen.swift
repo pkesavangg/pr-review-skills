@@ -106,8 +106,6 @@ struct BtWifiScaleSetupScreen: View {
                                  isReconnect: isReconnect,
                                  isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
-            // Ensure Wi-Fi status is refreshed when view appears
-            setupStore.refreshCurrentWifiStatus()
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)

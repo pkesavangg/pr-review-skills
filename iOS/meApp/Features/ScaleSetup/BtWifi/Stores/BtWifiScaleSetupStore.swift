@@ -488,11 +488,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
             self.bluetoothService.isSetupInProgress = true
-            
-            // Get current Wi-Fi status immediately for Wi-Fi setup only mode
-            if isWifiSetupOnly {
-                getCurrentWifiStatus()
-            }
         } else {
             self.isWifiSetupOnly = false
         }
@@ -625,7 +620,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Checks if the back button should be disabled based on the current step.
     func shouldDisableBackButton() -> Bool {
-        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings
+        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings || currentStep == .availableWifiList
     }
     
     /// Handles the next button click based on the current step.
@@ -1312,23 +1307,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Gets the current Wi-Fi status immediately without waiting for scale communication
-    private func getCurrentWifiStatus() {
-        Task { @MainActor in
-            let wifiStatus = await wifiScaleService.getConnectedWifiInfo()
-            
-            // Update connected Wi-Fi network if we have a valid SSID
-            if let ssid = wifiStatus.ssid, !ssid.isEmpty, wifiStatus.status == .connected {
-                self.connectedWifiNetwork = WifiDetails(macAddress: wifiStatus.bssid ?? "", ssid: ssid, rssi: 0)
-            }
-        }
-    }
-    
-    /// Public method to refresh current Wi-Fi status - can be called from views
-    func refreshCurrentWifiStatus() {
-        getCurrentWifiStatus()
-    }
-    
     /// Fetches WiFi networks from the scale and handles error cases
     private func fetchWifiNetworks(for scale: Device) async {
         do {
@@ -1360,6 +1338,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Find connected network in the list
                 if let connectedSSID = connectedSSID {
                     self.connectedWifiNetwork = WifiDetails(macAddress: "", ssid: connectedSSID, rssi: 0)
+                } else {
+                    self.connectedWifiNetwork = nil
                 }
                 
                 // Check if no networks were found
