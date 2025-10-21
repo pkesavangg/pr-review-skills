@@ -65,8 +65,6 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         } else {
             status = .disabled
         }
-
-        print("Wi-Fi status getConnectedWifiInfo", WifiStatus(status: status, locationStatus: locationStatus, ssid: ssid, bssid: bssid))
         return WifiStatus(status: status, locationStatus: locationStatus, ssid: ssid, bssid: bssid)
     }
 
