@@ -141,6 +141,13 @@ fun CustomizeScaleSettings(
                   // Reset scale metrics to last saved state
                   scaleMetrics = state.scaleMetrics
                 }
+
+                CustomizeSettings.DASHBOARD_METRICS.ordinal -> {
+                  // Reset dashboard metrics to last saved state
+                  dashboardMetricKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Metric>()
+                  dashboardMilestoneKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>()
+                  combinedDashboardKeys = null
+                }
               }
               pagerState.scrollToPage(0)
             }
