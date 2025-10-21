@@ -23,7 +23,8 @@ public struct WifiScaleSetupStrings {
     }
     struct WifiPasswordViewStrings {
         static let title = "What network should your scale connect to?"
-        static let description = "If you have multiple Wi-Fi networks, use the 2.4 GHz network closest to your scale."
+        static let description = "Make sure you phone is connected to a 2.4 GHZ Wi-Fi Network. The network name you enter should match the one you phone is currently connected to."
+        static let simpleDescription = "Make sure you phone is connected to a 2.4 GHZ Wi-Fi Network."
         static let networkHasNoPassword = "Network has no password"
         static let note = "Your phone should stay connected to the chosen 2.4 GHz network until setup is complete."
     }
@@ -45,10 +46,18 @@ public struct WifiScaleSetupStrings {
     
     struct ApModeConnectionViewStrings {
         static let title = "Switch your wi-fi network"
-        static let description = "In your phone's wi-fi settings change the connected network to: gg_SmartScale_##."
         static let changeNetwork = "Change your Network"
         static let gotoSettings = "GO TO WIFI SETTINGS"
         static let boldWords = ["gg_SmartScale_##"]
+        
+        // Step instructions
+        static let step1 = "1. Open your iPhone Settings"
+        static let step2 = "2. Tap Wi-Fi"
+        static let step3 = "3. Select the network that looks like: gg_SmartScale_##"
+        static let step4Number = "4. "
+        static let step4Text = "Come back to this app and tap Next."
+        static let step3BoldWords = ["gg_SmartScale_##"]
+        static let inactiveNote = "(If it's still inactive, double-check that your phone is connected to the \"gg_SmartScale_##\" network.)"
     }
 
     struct ErrorDetailViewStrings {

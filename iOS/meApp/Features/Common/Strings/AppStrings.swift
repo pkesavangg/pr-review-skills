@@ -15,13 +15,13 @@ struct CommonStrings {
     static let cancel = "Cancel"
     static let submit = "Submit"
     static let next = "Next"
-    static let back = "Back"
     static let save = "Save"
     static let skip = "Skip"
     static let logIn = "Log in"
     static let signUp = "Sign up"
     static let complete = "Complete"
     static let edit = "Edit"
+    static let exit = "Exit"
     static let dash = "dash"
     static let entry = "entry"
     static let history = "history"
@@ -58,6 +58,8 @@ struct CommonStrings {
     static let connect = "Connect"
     static let dismiss = "Dismiss"
     static let emailAlreadyInUse = "Email already in use"
+    static let why = "Why?"
+    static let back = "Back"
 }
 
 /// Constants for entry strings used in the app
@@ -560,16 +562,22 @@ struct AlertStrings {
 
     struct PermissionAlerts {
         // MARK: - Bluetooth
-        static let bluetoothDisabledTitle = "Bluetooth is Disconnected"
-        static let bluetoothDisabledMessage = "From Settings, go to Bluetooth and ensure it’s on and accepting new connections."
+        static let bluetoothDisabledTitle = "To turn on Bluetooth"
+        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Return to this app"
         static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
         static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
 
         // MARK: - Location
-        static let locationDisabledTitle = "Location Services are Off"
-        static let locationDisabledMessage = "From Settings, go to Privacy & Security > Location Services and ensure it’s on."
+        static let locationDisabledTitle = "To turn on Location Services"
+        static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n4. Toggle Location Services on\n5. Return to this app"
         static let locationAuthTitle = "Weight Gurus needs location permissions."
-        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn’t store this data. On the next screen, select ‘Allow while using app.’ Choosing ‘Allow once’ will block future connections with the scale."
+        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
+        static let locationWhyTitle = "Why are we asking your location permission?"
+        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. We don't track or store your location—it's just an Apple requirement for device setup."
+
+        // MARK: - WiFi
+        static let wifiDisabledTitle = "To turn on Wi-Fi"
+        static let wifiDisabledMessage = "1. Open Settings on your phone\n2. Tap Wi-Fi\n3. Toggle Wi-Fi on\n4. Return to this app"
 
         // MARK: - Camera
         static let cameraDisabledTitle = "Camera Access is Disabled"

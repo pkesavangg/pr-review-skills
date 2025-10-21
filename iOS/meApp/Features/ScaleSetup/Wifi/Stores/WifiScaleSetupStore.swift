@@ -119,7 +119,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
-                return AnyView(WifiPasswordView(allowEditSsid: (scaleItem.setupType != .espTouchWifi || permissionsSkipped)) {
+                return AnyView(WifiPasswordView(showWifiConnectionDetails: (scaleItem.setupType == .espTouchWifi && !permissionsSkipped)) {
                     self.openWifiSettings()
                 })
             case .selectUser:
@@ -304,6 +304,7 @@ final class WifiScaleSetupStore: ObservableObject {
             if checkScaleToken() == nil {
                 return
             }
+            permissionsSkipped = false
             // When the user launched the dedicated "Get-MAC" flow we bypass the regular password & user-selection steps.
             if isForGetMac {
                 navigateToStep(.activatePairingMode)
