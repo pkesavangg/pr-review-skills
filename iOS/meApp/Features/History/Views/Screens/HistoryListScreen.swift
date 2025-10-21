@@ -48,6 +48,12 @@ struct HistoryListScreen: View {
                   .background(theme.backgroundSecondary)
                   .edgesIgnoringSafeArea(.bottom)
           }
+          .onAppear(perform: {
+              // Register reselect handler to pop to root when settings tab is tapped
+              tabViewModel.registerReselectHandler(for: .history) {
+                  router.navigateToRoot()
+              }
+          })
           .background(theme.backgroundSecondary)
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
