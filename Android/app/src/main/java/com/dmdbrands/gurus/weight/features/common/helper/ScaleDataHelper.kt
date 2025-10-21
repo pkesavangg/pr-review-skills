@@ -39,6 +39,7 @@ object ScaleDataHelper {
       bodyComp = bodyComp,
       isConnected = this.connectionStatus == BLEStatus.CONNECTED,
       isWifiConfigured = this.device?.isWifiConfigured == true,
+      createdAt = this.createdAt,
       scaleId = this.id,
     )
   }

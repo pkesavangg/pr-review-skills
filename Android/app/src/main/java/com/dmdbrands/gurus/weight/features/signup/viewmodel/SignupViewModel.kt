@@ -122,7 +122,7 @@ constructor(
             signupData.password,
             DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
             controls.height.value.toStoredHeight(),
-            if (isMetric) WeightUnit.KG else WeightUnit.LB,
+            if (isMetric) WeightUnit.KG.value else WeightUnit.LB.value,
           )
         val account = accountService.signup(signupRequest)
         if (account != null) {
