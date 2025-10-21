@@ -112,6 +112,7 @@ struct BtWifiScaleSetupScreen: View {
         // Clear the deactivation handler when the view disappears to avoid stale closures.
         .onDisappear {
             registerDeactivation { true }
+            setupStore.cleanup()
         }
     }
     

@@ -414,8 +414,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         permissionsService.$permissions
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.updateNextEnabled()
-                self?.handlePermissionChange()
+                guard let self = self else { return }
+                self.updateNextEnabled()
+                self.handlePermissionChange()
             }
             .store(in: &cancellables)
         
@@ -545,6 +546,29 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
         self.bluetoothService.isSetupInProgress = false
+    }
+    
+    /// Cleans up all subscriptions and resources when the setup is dismissed
+    func cleanup() {        
+        // Cancel all Combine subscriptions
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        
+        // Cancel other subscriptions
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        networkFormCancellable?.cancel()
+        networkFormCancellable = nil
+        newEntrySubscription?.cancel()
+        newEntrySubscription = nil
+        liveMeasurementSubscription?.cancel()
+        liveMeasurementSubscription = nil
+        measurementTimeoutTask?.cancel()
+        measurementTimeoutTask = nil
+        stepTimerTask?.cancel()
+        
+        // Clear dismiss action
+        dismissAction = nil
     }
     
     /// Presents the standard exit-alert.
@@ -1866,7 +1890,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
 }
     
-    deinit {
+    deinit {        
+        // Cancel all Combine subscriptions first
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        
         // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
@@ -1883,13 +1911,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
         
+        // Cancel any in-flight timeout task.
+        stepTimerTask?.cancel()
+        
+        // Clear dismiss action to break any potential retain cycles
+        dismissAction = nil
+        
         // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil
         discoveryEvent = nil
-        
-        // Cancel any in-flight timeout task.
-        stepTimerTask?.cancel()
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
     }
 }
