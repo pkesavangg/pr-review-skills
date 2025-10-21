@@ -49,7 +49,7 @@ struct HistoryListScreen: View {
                   .edgesIgnoringSafeArea(.bottom)
           }
           .onAppear(perform: {
-              // Register reselect handler to pop to root when settings tab is tapped
+              // Register reselect handler to pop to root when history tab is tapped
               tabViewModel.registerReselectHandler(for: .history) {
                   router.navigateToRoot()
               }
