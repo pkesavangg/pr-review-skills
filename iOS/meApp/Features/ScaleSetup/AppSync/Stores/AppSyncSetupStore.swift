@@ -65,6 +65,7 @@ final class AppSyncSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
     }
@@ -167,6 +168,12 @@ final class AppSyncSetupStore: ObservableObject {
         }
 
         let cameraEnabled = permissionsService.getPermissionState(.CAMERA) == .ENABLED
+        
+        // Automatically request camera permission if not enabled
+        if !cameraEnabled {
+            Task { await permissionsService.handlePermission(.camera) }
+        }
+        
         isNextEnabled = cameraEnabled
     }
 
@@ -257,6 +264,19 @@ final class AppSyncSetupStore: ObservableObject {
     /// Returns `true` when the camera permission has already been granted.
     private func isCameraPermissionEnabled() -> Bool {
         permissionsService.getPermissionState(.CAMERA) == .ENABLED
+    }
+    
+    /// Handles permission changes during the setup flow
+    private func handlePermissionChange() {
+        let showError = !isCameraPermissionEnabled()
+        if showError {
+            if currentStep == .appSync {
+                // Navigate back to permissions screen if camera permission is revoked during app sync
+                if let permissionStepIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionStepIndex
+                }
+            }
+        }
     }
     
     /// Cleans up all subscriptions and resources when the view disappears
