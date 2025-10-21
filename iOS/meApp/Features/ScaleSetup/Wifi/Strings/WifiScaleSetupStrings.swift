@@ -23,8 +23,8 @@ public struct WifiScaleSetupStrings {
     }
     struct WifiPasswordViewStrings {
         static let title = "What network should your scale connect to?"
-        static let description = "Make sure you phone is connected to a 2.4 GHZ Wi-Fi Network. The network name you enter should match the one you phone is currently connected to."
-        static let simpleDescription = "Make sure you phone is connected to a 2.4 GHZ Wi-Fi Network."
+        static let description = "Make sure your phone is connected to a 2.4 GHZ Wi-Fi Network. The network name you enter should match the one you phone is currently connected to."
+        static let simpleDescription = "Make sure your phone is connected to a 2.4 GHZ Wi-Fi Network."
         static let networkHasNoPassword = "Network has no password"
         static let note = "Your phone should stay connected to the chosen 2.4 GHz network until setup is complete."
     }
