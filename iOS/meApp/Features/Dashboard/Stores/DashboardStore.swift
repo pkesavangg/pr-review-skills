@@ -164,7 +164,7 @@ class DashboardStore: ObservableObject {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] account in
-                if (account != nil) {
+                if account != nil {
                     self?.handleActiveAccountChanged()
                 }
             }
