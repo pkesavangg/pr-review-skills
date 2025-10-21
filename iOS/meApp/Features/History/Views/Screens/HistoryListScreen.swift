@@ -21,6 +21,7 @@ struct HistoryListScreen: View {
     
     // Prevent multiple simultaneous navigation
     @State private var isNavigating = false
+    @State private var navigationTask: Task<Void, Never>?
     
     var body: some View {
       RoutingView(stack: $router.stack) {
@@ -63,6 +64,11 @@ struct HistoryListScreen: View {
               }
           }
         }
+        .onDisappear {
+            // Cancel any pending navigation task when view disappears
+            navigationTask?.cancel()
+            navigationTask = nil
+        }
         .environmentObject(Theme.shared)
         .environmentObject(router)
         .environmentObject(store)
@@ -93,8 +99,11 @@ struct HistoryListScreen: View {
                                 store.setSelectedMonth(selectedMonth: month)
                                 router.navigate(to: .historyMonthList(month: month))
                                 
+                                // Cancel any existing navigation task
+                                navigationTask?.cancel()
+                                
                                 // Reset navigation flag after a short delay
-                                Task {
+                                navigationTask = Task {
                                     try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
                                     await MainActor.run {
                                         isNavigating = false

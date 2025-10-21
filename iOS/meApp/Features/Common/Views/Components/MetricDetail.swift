@@ -83,16 +83,10 @@ struct MetricDetailView: View {
                         .foregroundColor(theme.textHeading)
                         .padding(.trailing, .spacingXS/2)
                     }
-                      if formattedValue == placeholder {
-                          Text(placeholder)
-                              .fontOpenSans(.heading2)
-                              .foregroundColor(theme.textHeading)
-                              .offset(y: 8)
-                      } else {
-                          Text(formattedValue)
-                            .fontOpenSans(.heading2)
-                            .foregroundColor(theme.textHeading)
-                      }
+                      Text(formattedValue)
+                        .fontOpenSans(.heading2)
+                        .foregroundColor(theme.textHeading)
+                        .offset(y: formattedValue == placeholder ? 8 : 0)
                     
                     if metric == .weight {
                       Text(weightUnitLabel)
