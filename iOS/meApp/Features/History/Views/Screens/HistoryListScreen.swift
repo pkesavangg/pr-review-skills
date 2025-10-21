@@ -19,6 +19,9 @@ struct HistoryListScreen: View {
     @State private var hasAppeared = false
     @State private var lastTabCheck: BottomTab? = nil
     
+    // Prevent multiple simultaneous navigation
+    @State private var isNavigating = false
+    
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
@@ -85,8 +88,18 @@ struct HistoryListScreen: View {
                         MonthSummaryItem(month: month)
                             .contentShape(Rectangle())
                             .onTapGesture {
+                                guard !isNavigating else { return }
+                                isNavigating = true
                                 store.setSelectedMonth(selectedMonth: month)
                                 router.navigate(to: .historyMonthList(month: month))
+                                
+                                // Reset navigation flag after a short delay
+                                Task {
+                                    try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+                                    await MainActor.run {
+                                        isNavigating = false
+                                    }
+                                }
                             }
                             .background(theme.backgroundSecondary)
                     }
