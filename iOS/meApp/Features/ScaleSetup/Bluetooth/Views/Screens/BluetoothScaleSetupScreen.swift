@@ -14,6 +14,9 @@ struct BluetoothScaleSetupScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
     
+    // Track if view is being dismissed to prevent onDisappear from being called during presentation
+    @State private var isBeingDismissed = false
+    
     // MARK: - Input
     let sku: String
     
@@ -56,8 +59,20 @@ struct BluetoothScaleSetupScreen: View {
                 .padding(.spacingSM)
         }
         .onAppear {
-            setupStore.dismissAction = dismiss
+            // Reset dismissal flag when view appears
+            isBeingDismissed = false
+            
+            setupStore.dismissAction = {
+                isBeingDismissed = true
+                dismiss()
+            }
             setupStore.configure(with: sku)
+        }
+        .onDisappear {
+            // Only perform cleanup if the view is actually being dismissed, not just presented
+            if isBeingDismissed {
+                setupStore.cleanUp()
+            }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)

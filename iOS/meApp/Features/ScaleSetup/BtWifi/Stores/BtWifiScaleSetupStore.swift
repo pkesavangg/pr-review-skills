@@ -31,7 +31,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     /// Discovered scale information
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
@@ -161,7 +161,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return !networkForm.password.value.isEmpty
         }
     }
-
+    
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
         .connectingBluetooth,
@@ -414,9 +414,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         permissionsService.$permissions
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                guard let self = self else { return }
-                self.updateNextEnabled()
-                self.handlePermissionChange()
+                self?.updateNextEnabled()
+                self?.handlePermissionChange()
             }
             .store(in: &cancellables)
         
@@ -467,7 +466,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     ///   - isDuplicated: Indicates if this is handling a duplicate user error (optional).
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
-                   discoveryEvent: DeviceDiscoveryEvent? = nil, 
+                   discoveryEvent: DeviceDiscoveryEvent? = nil,
                    saveScale: Device? = nil,
                    isReconnect: Bool = false,
                    isDuplicated: Bool = false,
@@ -546,29 +545,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
         self.bluetoothService.isSetupInProgress = false
-    }
-    
-    /// Cleans up all subscriptions and resources when the setup is dismissed
-    func cleanup() {        
-        // Cancel all Combine subscriptions
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
         
-        // Cancel other subscriptions
-        deviceDiscoveryCancellable?.cancel()
-        deviceDiscoveryCancellable = nil
-        networkFormCancellable?.cancel()
-        networkFormCancellable = nil
-        newEntrySubscription?.cancel()
-        newEntrySubscription = nil
-        liveMeasurementSubscription?.cancel()
-        liveMeasurementSubscription = nil
-        measurementTimeoutTask?.cancel()
-        measurementTimeoutTask = nil
-        stepTimerTask?.cancel()
-        
-        // Clear dismiss action
-        dismissAction = nil
+        // Clean up the store to break retain cycles
+        cleanup()
     }
     
     /// Presents the standard exit-alert.
@@ -598,18 +577,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // Called by the ✕ button.
     func handleExit() {
-        guard currentStep != .scaleConnected else { performExitCleanup(); return }
-        presentExitAlert(onConfirm: performExitCleanup)
+        guard currentStep != .scaleConnected else {
+            performExitCleanup()
+            return
+        }
+        presentExitAlert(onConfirm: { [weak self] in
+            self?.performExitCleanup()
+        })
     }
     
     // Used by tab-switch logic.
     func confirmExit() async -> Bool {
-        if currentStep == .scaleConnected { performExitCleanup(); return true }
+        if currentStep == .scaleConnected {
+            performExitCleanup()
+            return true
+        }
         
         return await withCheckedContinuation { cont in
             presentExitAlert(
-                onConfirm: {
-                    self.performExitCleanup()
+                onConfirm: { [weak self] in
+                    self?.performExitCleanup()
                     cont.resume(returning: true)
                 },
                 onCancel: {
@@ -1844,6 +1831,35 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Cleanup Methods
     
+    /// Cleans up the store and breaks any retain cycles
+    func cleanup() {
+        // Clear the dismiss action to break retain cycle
+        dismissAction = nil
+        
+        // Cancel all subscriptions
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        networkFormCancellable?.cancel()
+        networkFormCancellable = nil
+        newEntrySubscription?.cancel()
+        newEntrySubscription = nil
+        liveMeasurementSubscription?.cancel()
+        liveMeasurementSubscription = nil
+        measurementTimeoutTask?.cancel()
+        measurementTimeoutTask = nil
+        stepTimerTask?.cancel()
+        stepTimerTask = nil
+        
+        // Cancel all cancellables
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        
+        // Clear other references
+        discoveredScale = nil
+        discoveryEvent = nil
+        savedScale = nil
+    }
+    
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
     private func disconnectDevice() {
         guard let broadcastId = discoveredScale?.broadcastIdString, !broadcastId.isEmpty, savedScale == nil else { return }
@@ -1869,7 +1885,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.networkForm = NetworkForm()
         subscribeToNetworkForm()
     }
-       
+    
     // MARK: - Network Comparison Methods
     /// Check if two networks are the same by comparing SSID and MAC address
     func isSameNetwork(_ network1: WifiDetails, _ network2: WifiDetails) -> Bool {
@@ -1888,37 +1904,5 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let mac2 = cleanMAC(network2.macAddress)
         
         return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
-}
-    
-    deinit {        
-        // Cancel all Combine subscriptions first
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
-        
-        // Cancel active Combine subscription before releasing it.
-        deviceDiscoveryCancellable?.cancel()
-        deviceDiscoveryCancellable = nil
-        
-        // Cancel network form subscription
-        networkFormCancellable?.cancel()
-        networkFormCancellable = nil
-        
-        // Cancel measurement subscriptions and timeout
-        newEntrySubscription?.cancel()
-        newEntrySubscription = nil
-        liveMeasurementSubscription?.cancel()
-        liveMeasurementSubscription = nil
-        measurementTimeoutTask?.cancel()
-        measurementTimeoutTask = nil
-        
-        // Cancel any in-flight timeout task.
-        stepTimerTask?.cancel()
-        
-        // Clear dismiss action to break any potential retain cycles
-        dismissAction = nil
-        
-        // Nil out discovery data so subsequent runs start fresh.
-        discoveredScale = nil
-        discoveryEvent = nil
     }
 }

@@ -7,6 +7,9 @@ struct WifiScaleSetupScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
     
+    // Track if view is being dismissed to prevent onDisappear from being called during presentation
+    @State private var isBeingDismissed = false
+    
     // MARK: - Input
     let sku: String
     let commonLang = CommonStrings.self
@@ -55,12 +58,21 @@ struct WifiScaleSetupScreen: View {
         }
         .environmentObject(setupStore)
         .onAppear {
-            setupStore.dismissAction = dismiss
+            // Reset dismissal flag when view appears
+            isBeingDismissed = false
+            
+            setupStore.dismissAction = {
+                isBeingDismissed = true
+                dismiss()
+            }
             setupStore.configure(with: sku)
         }
         .onDisappear {
-            // Reset skipCheckNetwork when view disappears (similar to Angular ionViewWillLeave)
-            setupStore.resetSkipCheckNetwork()
+            // Only perform cleanup if the view is actually being dismissed, not just presented
+            if isBeingDismissed {
+                setupStore.resetSkipCheckNetwork()
+                setupStore.cleanUp()
+            }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)

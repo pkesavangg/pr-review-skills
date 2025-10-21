@@ -47,7 +47,7 @@ final class AppSyncSetupStore: ObservableObject {
         }
     }
 
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
 
     // MARK: - Private
     private let tag = "AppSyncSetupStore"
@@ -257,6 +257,12 @@ final class AppSyncSetupStore: ObservableObject {
     /// Returns `true` when the camera permission has already been granted.
     private func isCameraPermissionEnabled() -> Bool {
         permissionsService.getPermissionState(.CAMERA) == .ENABLED
+    }
+    
+    /// Cleans up all subscriptions and resources when the view disappears
+    func cleanUp() {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
 
     deinit {

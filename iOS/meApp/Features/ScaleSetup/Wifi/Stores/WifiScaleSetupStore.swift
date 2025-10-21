@@ -89,7 +89,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var permissionsSkipped: Bool = false
     
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
@@ -411,6 +411,11 @@ final class WifiScaleSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
         // Note: `permissionsSkipped` is set inside the alert action above.
+    }
+    
+    func cleanUp() {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
     
     /// Starts observing the network form changes to update the next button state.
