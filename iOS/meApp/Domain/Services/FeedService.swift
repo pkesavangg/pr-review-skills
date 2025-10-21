@@ -21,6 +21,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     let notificationBadgeUpdated = CurrentValueSubject<Bool, Never>(false)
     
     private let tag = "FeedService"
+    private let feedModalTimeout = 3.0
     private var cancellables = Set<AnyCancellable>()
     init() {
         let initialFeedSettings = getFeedSettings()
@@ -116,8 +117,10 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     func checkAndTriggerFeedModal() {
         let result = ggIAMService.checkFeedModalTrigger()
         if let feedItem = result {
-            Task {
-                await showFeedModalWithPreloadedImage(feedItem: feedItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + feedModalTimeout) {
+                Task {
+                    await self.showFeedModalWithPreloadedImage(feedItem: feedItem)
+                }
             }
         }
     }
