@@ -174,14 +174,26 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
     }
     
+    /// Normalizes timestamp to include fractional seconds if missing
+    private func normalizeTimestamp(_ timestamp: String) -> String {
+        // If timestamp ends with just 'Z', add '.000' before it
+        if timestamp.hasSuffix("Z") && !timestamp.contains(".") {
+            return timestamp.replacingOccurrences(of: "Z", with: ".000Z")
+        }
+        return timestamp
+    }
+    
     /// Converts entries into `HealthKitData` payloads ready for saving.
     private func buildHealthKitData(from entries: [Entry]) -> [HealthKitData] {
         var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for entry in entries {
-            guard let scaleEntry = entry.scaleEntry,
-                  let timestamp = formatter.date(from: entry.entryTimestamp) else {
+            guard let scaleEntry = entry.scaleEntry else { continue }
+            
+            // Normalize timestamp to include fractional seconds if missing
+            let normalizedTimestamp = normalizeTimestamp(entry.entryTimestamp)
+            guard let timestamp = formatter.date(from: normalizedTimestamp) else {
                 continue
             }
             
