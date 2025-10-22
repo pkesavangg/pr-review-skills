@@ -622,7 +622,7 @@ constructor(
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
-          // ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
         },
         onCancel = {
@@ -660,71 +660,35 @@ constructor(
       // Clear all timeouts before exiting
       clearAllTimeouts()
 
-      // Start navigation immediately to improve perceived performance
-      val navigationJob = launch {
-        try {
-          navigateBack()
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to navigate back from scale setup", e)
-        }
-      }
-
-      // Run scale cleanup operations in parallel with navigation
       if (discoveredScale != null) {
-        launch {
-          try {
-            // Ensure WiFi configuration is up to date before final save
-            updateWifiDetails()
+        // Save the scale with final configuration
+        val savedScale = deviceService.saveScale(discoveredScale!!)
+        discoveredScale = savedScale ?: discoveredScale
+        AppLog.i(
+          TAG,
+          "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
+        )
 
-            // Save the scale with final configuration
-            val savedScale = deviceService.saveScale(discoveredScale!!)
-            discoveredScale = savedScale ?: discoveredScale
-            AppLog.i(
+        // Trigger onDeviceUpdate to ensure pairedScales flow is updated with final configuration
+        discoveredScale?.let { scale ->
+          val deviceDetail = scale.device
+          if (deviceDetail != null) {
+            AppLog.d(
               TAG,
-              "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
+              "Triggering final onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
             )
-
-            // Trigger onDeviceUpdate to ensure pairedScales flow is updated with final configuration
-            discoveredScale?.let { scale ->
-              val deviceDetail = scale.device
-              if (deviceDetail != null) {
-                AppLog.d(
-                  TAG,
-                  "Triggering final onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
-                )
-                deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
-                AppLog.d(TAG, "Triggered final onDeviceUpdate for WiFi configuration")
-              }
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error during scale cleanup operations", e)
+            deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
+            AppLog.d(TAG, "Triggered final onDeviceUpdate for WiFi configuration")
           }
         }
 
-        // Run Bluetooth cleanup operations in parallel
-        launch {
-          try {
-            ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-            if (!isScaleConnected) {
-              ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error during Bluetooth cleanup", e)
-          }
+        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+        if (!isScaleConnected) {
+          ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
         }
       }
-
-      // Resume scanning in parallel
-      launch {
-        try {
-          ggDeviceService.resumeScan(false)
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Error resuming scan", e)
-        }
-      }
-
-      // Wait for navigation to complete before finishing
-      navigationJob.join()
+      ggDeviceService.resumeScan(false)
+      navigateBack()
     }
   }
 
@@ -1702,7 +1666,8 @@ constructor(
   }
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
-    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    val username =
+      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
     val device = Device(
