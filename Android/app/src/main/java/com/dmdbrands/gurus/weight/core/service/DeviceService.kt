@@ -96,6 +96,7 @@ constructor(
         connectionStatus = resolvedConnectionStatus,
         device = device.device?.copy(
           isWifiConfigured = deviceDetail.isWifiConfigured,
+          wifiMacAddress = if (deviceDetail.isWifiConfigured == true) deviceDetail.wifiMacAddress else null,
         ),
         isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
       )
@@ -105,7 +106,9 @@ constructor(
       _connectedScales.value = currentDevices
 
       // If WiFi configuration changed, save the updated device to database
-      if (oldWifiConfigured != deviceDetail.isWifiConfigured) {
+      if (oldWifiConfigured != deviceDetail.isWifiConfigured ||
+        device.device?.wifiMacAddress != deviceDetail.wifiMacAddress
+      ) {
         AppLog.d(
           tag,
           "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}",
