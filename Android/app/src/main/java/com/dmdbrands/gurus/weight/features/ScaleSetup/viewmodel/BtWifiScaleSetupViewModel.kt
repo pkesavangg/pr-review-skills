@@ -55,6 +55,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -656,39 +659,57 @@ constructor(
   }
 
   private fun onExit() {
+    // Clear all timeouts before exiting
+    clearAllTimeouts()
+
+    // Create separate coroutines with SupervisorJob for independent execution
+    val supervisorJob = SupervisorJob()
+    val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
+
+    // Database operations in separate coroutine
+    supervisorScope.launch {
+      try {
+        updateWifiDetails()
+        if (discoveredScale != null) {
+          // Save the scale with final configuration
+          if (discoveredScale!!.device != null)
+            deviceService.updateConnectionStatus(discoveredScale!!.device!!.macAddress, BLEStatus.CONNECTED)
+
+          val savedScale = deviceService.saveScale(discoveredScale!!)
+          discoveredScale = savedScale ?: discoveredScale
+          AppLog.i(
+            TAG,
+            "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
+          )
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during scale cleanup operations", e)
+      }
+    }
+
+    // Only navigation remains in viewModelScope
     viewModelScope.launch {
-      // Clear all timeouts before exiting
-      clearAllTimeouts()
-
-      if (discoveredScale != null) {
-        // Save the scale with final configuration
-        val savedScale = deviceService.saveScale(discoveredScale!!)
-        discoveredScale = savedScale ?: discoveredScale
-        AppLog.i(
-          TAG,
-          "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
-        )
-
-        // Trigger onDeviceUpdate to ensure pairedScales flow is updated with final configuration
-        discoveredScale?.let { scale ->
-          val deviceDetail = scale.device
-          if (deviceDetail != null) {
-            AppLog.d(
-              TAG,
-              "Triggering final onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
-            )
-            deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
-            AppLog.d(TAG, "Triggered final onDeviceUpdate for WiFi configuration")
+      // Ensure WiFi configuration is up to date before final save
+      try {
+        if (discoveredScale != null) {
+          ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+          if (!isScaleConnected) {
+            ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
           }
         }
-
-        ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-        if (!isScaleConnected) {
-          ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
-        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during Bluetooth cleanup", e)
       }
-      ggDeviceService.resumeScan(false)
-      navigateBack()
+      try {
+        ggDeviceService.resumeScan(false)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error resuming scan", e)
+      }
+      try {
+        navigateBack()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e)
+      }
     }
   }
 
@@ -1363,12 +1384,6 @@ constructor(
     val wifiMac = suspendCancellableCoroutine<String?> { cont ->
       ggDeviceService.getConnectedWifiMacAddress(device) { mac ->
         cont.resume(mac)
-      }
-    }
-
-    suspendCancellableCoroutine<String?> { cont ->
-      ggDeviceService.getConnectedWifiSSID(device) { ssid ->
-        cont.resume(ssid)
       }
     }
 

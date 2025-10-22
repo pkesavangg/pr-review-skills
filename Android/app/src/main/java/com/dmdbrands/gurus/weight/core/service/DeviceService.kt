@@ -69,6 +69,12 @@ constructor(
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
+  override suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus) {
+    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
+      this[macAddress] = connectionStatus
+    }
+  }
+
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
     val macAddress = deviceDetail.macAddress
     val resolvedConnectionStatus = connectionStatus ?: BLEStatus.DISCONNECTED
@@ -79,9 +85,7 @@ constructor(
     )
 
     // Update connection status map
-    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
-      this[macAddress] = resolvedConnectionStatus
-    }
+    updateConnectionStatus(macAddress, resolvedConnectionStatus)
 
     // Try to find the device in current paired scales
     val currentDevices = _pairedScales.value.toMutableList()
