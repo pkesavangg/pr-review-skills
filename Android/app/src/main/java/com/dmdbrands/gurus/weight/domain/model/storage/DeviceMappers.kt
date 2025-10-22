@@ -23,8 +23,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       broadcastId = convertIntToHex(device.broadcastId, device.deviceType),
       broadcastIdString = device.broadcastIdString,
       password = convertIntToHex(device.password, device.deviceType),
-      wifiMacAddress = device.wifiMac,
-      isWifiConfigured = device.wifiMac != null,
+      isWifiConfigured = device.isWifiConfigured
       // Add other fields as needed
     ),
     nickname = device.nickname ?: device.deviceName ?: "",
@@ -82,8 +81,7 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       broadcastId = convertIntToHex(broadcastId, deviceType),
       broadcastIdString = broadcastIdString,
       password = convertIntToHex(password, deviceType),
-      wifiMacAddress = wifiMac,
-      isWifiConfigured = wifiMac != null,
+      isWifiConfigured = isWifiConfigured,
     ),
     nickname = nickname ?: deviceName ?: "",
     sku = sku,
@@ -119,7 +117,7 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         createdAt = createdAt, // Not present in GGDevice
         isSynced = isSynced,
         hasServerID = hasServerID,
-        wifiMac = device?.wifiMacAddress,
+        isWifiConfigured = device?.isWifiConfigured == true,
         isDeleted = isDeleted,
         token = token,
       ),

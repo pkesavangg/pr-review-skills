@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import android.util.Log
 
 /**
  * Card composable for displaying a ScaleInfo's info as per Figma.
@@ -99,8 +100,8 @@ fun AppScaleCard(
             // 2. WiFi is explicitly not configured (isWifiConfigured == false)
             // 3. Scale type is BtWifiR4 (which requires WiFi setup)
             val showExclamation =
-              scale.isWifiConfigured == false && 
-              scale.isConnected == true && 
+              scale.isWifiConfigured != true &&
+              scale.isConnected == true &&
               scale.setupType == ScaleSetupType.BtWifiR4
             val setupIndicationIcon =
               if (showExclamation) {

@@ -197,7 +197,7 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
     createdAt = this.createdAt,
     isSynced = true,
     hasServerID = !this.id.isNullOrBlank(),
-    wifiMac = this.metaData?.wifiMac,
+    isWifiConfigured = this.isWifiConfigured == true,
     token = this.scaleToken,
   )
 }

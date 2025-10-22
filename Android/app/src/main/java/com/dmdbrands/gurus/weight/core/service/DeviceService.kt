@@ -23,7 +23,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -63,19 +62,22 @@ constructor(
   override val pairedScales: Flow<List<Device>>
     get() = _pairedScales.asStateFlow()
 
-    override val hasBluetoothWifiScale: Flow<Boolean>
-        get() = _pairedScales.map { devices ->
-            devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
-        }
+  override val hasBluetoothWifiScale: Flow<Boolean>
+    get() = _pairedScales.map { devices ->
+      devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
+    }
 
-    override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
+  override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
     val macAddress = deviceDetail.macAddress
     val resolvedConnectionStatus = connectionStatus ?: BLEStatus.DISCONNECTED
-    
-    AppLog.d(tag, "onDeviceUpdate called for device ${macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}")
-    
+
+    AppLog.d(
+      tag,
+      "onDeviceUpdate called for device ${macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
+    )
+
     // Update connection status map
     _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
       this[macAddress] = resolvedConnectionStatus
@@ -101,10 +103,13 @@ constructor(
       currentDevices[deviceIndex] = updatedDevice
       _pairedScales.value = currentDevices
       _connectedScales.value = currentDevices
-      
+
       // If WiFi configuration changed, save the updated device to database
       if (oldWifiConfigured != deviceDetail.isWifiConfigured) {
-        AppLog.d(tag, "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}")
+        AppLog.d(
+          tag,
+          "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}",
+        )
         try {
           deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
         } catch (e: Exception) {
@@ -142,12 +147,10 @@ constructor(
     fetchJob?.cancel()
 
     fetchJob = repositoryScope.launch {
-      combine(
-        deviceRepository.getDevices(resolvedAccountId),
-        _connectionStatusMap,
-      ) { devices, connectionStatusMap ->
-        devices.map { device ->
-          val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+      deviceRepository.getDevices(resolvedAccountId).collect { devices ->
+
+        val updatedDevices = devices.map { device ->
+          val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
 
           device.copy(
             connectionStatus = connectionStatus,
@@ -156,7 +159,6 @@ constructor(
             ),
           )
         }
-      }.collect { updatedDevices ->
         _pairedScales.value = updatedDevices
         AppLog.d(tag, "Updated ${updatedDevices.size} devices with connection status and weight-only mode calculation")
       }
