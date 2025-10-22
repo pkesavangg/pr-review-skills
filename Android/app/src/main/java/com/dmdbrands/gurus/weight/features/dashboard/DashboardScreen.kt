@@ -50,10 +50,8 @@ import kotlinx.coroutines.launch
 fun DashboardScreen() {
   val viewmodel: DashboardViewModel = hiltViewModel()
   val state by viewmodel.state.collectAsState()
-  val context = LocalContext.current
-  val activity = context as? AppCompatActivity
 
-  val scope = rememberCoroutineScope()
+  rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
@@ -67,24 +65,20 @@ fun DashboardScreen() {
     }
   }
 
-  BackHandler {
-    viewmodel.dialogQueueService.showDialog(
-      DialogModel.Confirm(
-        title = "Exit Dashboard",
-        message = "Are you sure you want to exit the dashboard?",
-        onConfirm = {
-          scope.launch {
-            activity?.finishAffinity()
-          }
-        },
-      ),
-    )
-  }
-  DashboardScreenContent(state, viewmodel::handleIntent)
+
+  DashboardScreenContent(
+    state,
+    showDialog = viewmodel.dialogQueueService::showDialog,
+    handleIntent = viewmodel::handleIntent,
+  )
 }
 
 @Composable
-private fun DashboardScreenContent(state: DashboardState, handleIntent: (DashboardIntent) -> Unit) {
+private fun DashboardScreenContent(
+  state: DashboardState,
+  showDialog: (DialogModel) -> Unit,
+  handleIntent: (DashboardIntent) -> Unit
+) {
   val scrollState = rememberScrollState()
   rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
@@ -99,7 +93,32 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
   val selectedSegment = state.selectedSegment
 
   val scope = rememberCoroutineScope()
-
+  val context = LocalContext.current
+  val activity = context as? AppCompatActivity
+  BackHandler {
+    if (!inEditMode && activity != null) {
+      showDialog(
+        DialogModel.Confirm(
+          title = "Exit Dashboard",
+          message = "Are you sure you want to exit the dashboard?",
+          onConfirm = {
+            scope.launch {
+              activity.finishAffinity()
+            }
+          },
+        ),
+      )
+    } else {
+      scope.launch {
+        scrollState.animateScrollTo(0)
+      }
+      if (inEditMode) {
+        inEditMode = false
+        currentVisibleMetrics = state.visibleKeys.filter { it is DashboardKey.Metric }
+        currentVisibleMilestones = state.visibleKeys.filter { it is DashboardKey.Milestone }
+      }
+    }
+  }
 
   AppScaffold(
     title = null,
@@ -219,6 +238,7 @@ private fun DashboardPreview() {
   MeAppTheme {
     DashboardScreenContent(
       state = DashboardState(),
+      showDialog = {},
       handleIntent = {},
     )
   }

@@ -1,6 +1,11 @@
 package com.dmdbrands.gurus.weight.features.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
@@ -59,7 +66,7 @@ fun HomeScreenContent(
   val context = LocalContext.current
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
-
+  val keyboardController = LocalSoftwareKeyboardController.current
   // Observe shouldAskForReview state and launch review when true
   LaunchedEffect(state.shouldAskForReview) {
     if (state.shouldAskForReview) {
@@ -69,35 +76,37 @@ fun HomeScreenContent(
 
   Scaffold(
     bottomBar = {
-      MainBottomNav(
-        showAppsync = state.showAppsync,
-        showUnreadFeedIndicator = showUnreadFeedIndicator,
-        onOpenAppSync = {
-          handleIntent(
-            HomeIntent.CheckAndRequestPermission { isEnabled ->
-              if (isEnabled && !isScanning) {
-                isScanning = true
-                coroutineScope.launch {
-                  try {
-                    val result = startAppSyncScan(
-                      context = context,
-                      zoom = 2,
-                      showManualEntryButton = true,
-                    )
-                    handleIntent(HomeIntent.HandleAppSyncResult(result))
-                  } catch (e: Exception) {
-                    // Handle error
-                  } finally {
-                    isScanning = false
+      if (!isKeyboardOpen()) {
+        MainBottomNav(
+          showAppsync = state.showAppsync,
+          showUnreadFeedIndicator = showUnreadFeedIndicator,
+          onOpenAppSync = {
+            handleIntent(
+              HomeIntent.CheckAndRequestPermission { isEnabled ->
+                if (isEnabled && !isScanning) {
+                  isScanning = true
+                  coroutineScope.launch {
+                    try {
+                      val result = startAppSyncScan(
+                        context = context,
+                        zoom = 2,
+                        showManualEntryButton = true,
+                      )
+                      handleIntent(HomeIntent.HandleAppSyncResult(result))
+                    } catch (e: Exception) {
+                      // Handle error
+                    } finally {
+                      isScanning = false
+                    }
                   }
+                } else {
+                  // Optional: show alert or log permission not granted
                 }
-              } else {
-                // Optional: show alert or log permission not granted
-              }
-            },
-          )
-        },
-      )
+              },
+            )
+          },
+        )
+      }
     },
     floatingActionButton = {
       if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed && !state.isBodyMetricsEnabled) {
@@ -159,6 +168,11 @@ fun OpenWeightOnlyModePopup(
       onDismiss = onDismiss,
     )
   }
+}
+
+@Composable
+fun isKeyboardOpen(): Boolean {
+  return WindowInsets.ime.getBottom(LocalDensity.current) > 0
 }
 
 @PreviewTheme
