@@ -33,6 +33,7 @@ fun DashboardMilestone(
   latestWeight: Double? = null,
   inEditMode: Boolean = false,
   isFromSetup: Boolean = false,
+  hasVisibleMetrics: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   modifier: Modifier = Modifier
@@ -94,6 +95,7 @@ fun DashboardMilestone(
       hiddenMilestones = hiddenMilestones,
       inEditMode = inEditMode,
       isFromSetup = isFromSetup,
+      hasVisibleMetrics = hasVisibleMetrics,
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       progress = progress,

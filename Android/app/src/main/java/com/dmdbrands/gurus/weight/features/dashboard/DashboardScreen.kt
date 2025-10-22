@@ -170,6 +170,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
           progress = state.progress,
           latestWeight = state.latestWeight,
           inEditMode = inEditMode,
+          hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->
             currentVisibleMilestones = visibleMilestones
@@ -180,7 +181,7 @@ private fun DashboardScreenContent(state: DashboardState, handleIntent: (Dashboa
         }
         DashboardControlPanel(
           inEditMode = inEditMode,
-          hasGoal = state.progress.goal?.account != null && state.progress.goal?.account?.goalType != null,
+          hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
           onResetClick = {
             handleIntent(
               DashboardIntent.ResetDashboard(
