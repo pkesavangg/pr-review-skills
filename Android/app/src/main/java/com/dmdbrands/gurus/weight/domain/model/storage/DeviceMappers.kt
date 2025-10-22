@@ -1,13 +1,13 @@
 package com.dmdbrands.gurus.weight.domain.model.storage
 
-import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
-import com.dmdbrands.library.ggbluetooth.model.GGDevicePreference
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceDetails
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenceEntity
 import com.dmdbrands.gurus.weight.domain.model.api.device.convertHexToInt
 import com.dmdbrands.gurus.weight.domain.model.api.device.convertIntToHex
+import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGDevicePreference
 
 /**
  * Extension functions for mapping between Device domain model and database entities.
@@ -24,7 +24,7 @@ fun DeviceDetails.toDeviceDomainModel(): Device =
       broadcastIdString = device.broadcastIdString,
       password = convertIntToHex(device.password, device.deviceType),
       wifiMacAddress = device.wifiMac,
-      isWifiConfigured = device.wifiMac != null,
+      isWifiConfigured = device.isWifiConfigured,
       // Add other fields as needed
     ),
     nickname = device.nickname ?: device.deviceName ?: "",
@@ -83,7 +83,7 @@ fun DeviceEntity.toDeviceDomainModel(): Device =
       broadcastIdString = broadcastIdString,
       password = convertIntToHex(password, deviceType),
       wifiMacAddress = wifiMac,
-      isWifiConfigured = wifiMac != null,
+      isWifiConfigured = isWifiConfigured,
     ),
     nickname = nickname ?: deviceName ?: "",
     sku = sku,
@@ -120,6 +120,7 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         isSynced = isSynced,
         hasServerID = hasServerID,
         wifiMac = device?.wifiMacAddress,
+        isWifiConfigured = device?.isWifiConfigured == true,
         isDeleted = isDeleted,
         token = token,
       ),
