@@ -1,7 +1,5 @@
 package com.dmdbrands.gurus.weight.domain.model.api.auth
 
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-
 data class SignupRequest(
     val email: String,
     val firstName: String,
@@ -11,7 +9,7 @@ data class SignupRequest(
     val password: String,
     val dob: String, // formatted date
     val height: Int,
-    var weightUnit: WeightUnit? = null, // nullable in case goal is skipped
+    var weightUnit: String? = null, // nullable in case goal is skipped, must be "lb" or "kg"
     val goal: GoalData? = null, // optional embedded goal object
 )
 
