@@ -55,9 +55,15 @@ struct GoalProgressView: View {
                     .foregroundColor(theme.textHeading)
                     .padding(.top, .spacingMD)
                 
-                ButtonView(text: lang.setGoalWeight, type: .filledPrimary, size: .large, isDisabled: false, backgroundColorOverride: theme.statusSuccess,  action: {
-                    tabViewModel.navigateToGoalSetting()
-                })
+                ButtonView(
+                    text: lang.setGoalWeight,
+                    type: .filledSuccess,
+                    size: .large,
+                    isDisabled: false,
+                    action: {
+                        tabViewModel.navigateToGoalSetting()
+                    }
+                )
                 .padding(.bottom, .spacingMD)
 
             }
