@@ -1,5 +1,6 @@
 package com.greatergoods.libs.appsync.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraControl
@@ -149,6 +150,11 @@ fun AppSyncScanScreen(
             showResultTransition = true
             onResult(result)
         }
+    }
+
+    // Handle back button press
+    BackHandler {
+        handleCancel()
     }
 
     // Initialize zoom manager when camera is ready
