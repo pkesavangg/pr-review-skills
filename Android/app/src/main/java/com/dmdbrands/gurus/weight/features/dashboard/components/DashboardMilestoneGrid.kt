@@ -42,6 +42,7 @@ fun DashboardMilestoneGrid(
   progress: Progress,
   visibleMilestones: List<Stat>,
   hiddenMilestones: List<Stat>,
+  hasVisibleMetrics: Boolean = false,
   inEditMode: Boolean,
   isFromSetup: Boolean,
   latestWeight: Double? = null,
@@ -112,7 +113,11 @@ fun DashboardMilestoneGrid(
   LazyVerticalGrid(
     columns = GridCells.Fixed(spanCount),
     state = lazyGridState,
-    contentPadding = PaddingValues(vertical = MeTheme.spacing.sm),
+    contentPadding = if (inEditMode || hasVisibleMetrics) {
+      PaddingValues(vertical = MeTheme.spacing.sm)
+    } else {
+      PaddingValues(bottom = MeTheme.spacing.sm)
+    },
     userScrollEnabled = false,
     modifier = Modifier
       .fillMaxWidth()
