@@ -32,11 +32,11 @@ struct ScaleMetricSetting: Identifiable, Equatable {
     
     /// Core reordering routine used when toggling metrics on/off.
     /// Moves the toggled metric to the end of its enabled/disabled group.
+    /// Caller should update `isEnabled` on the target item before invoking this function.
     static func reorderOnToggle(items: [ScaleMetricSetting], key: String, isEnabled: Bool) -> [ScaleMetricSetting] {
         var current = items
         guard let idx = current.firstIndex(where: { $0.key == key }) else { return items }
-        var changed = current.remove(at: idx)
-        changed.isEnabled = isEnabled
+        let changed = current.remove(at: idx)
         
         if !isEnabled {
             // Moving to disabled: append to end of disabled metrics

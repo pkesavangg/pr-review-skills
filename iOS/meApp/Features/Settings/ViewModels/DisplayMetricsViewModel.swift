@@ -167,12 +167,14 @@ final class DisplayMetricsViewModel: ObservableObject {
         let heartRateKey = "heartRate"
         
         // Disable and reorder heart rate in body metrics
-        if let heartRateIndex = metrics.firstIndex(where: { $0.key == heartRateKey }) {
+        if let idx = metrics.firstIndex(where: { $0.key == heartRateKey }) {
+            metrics[idx].isEnabled = false
             metrics = ScaleMetricSetting.reorderOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
         }
         
         // Disable and reorder heart rate in progress metrics (if it exists there)
-        if let heartRateIndex = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
+        if let idx = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
+            progressMetrics[idx].isEnabled = false
             progressMetrics = ScaleMetricSetting.reorderOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
         }
         
