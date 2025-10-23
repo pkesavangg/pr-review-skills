@@ -111,12 +111,16 @@ fun TimePickerDialog(
     val selectedHour = timePickerState.hour
     val selectedMinute = timePickerState.minute
 
-    if (selectedHour > effectiveMaxTime.hour || selectedMinute > effectiveMaxTime.minute) {
+    if (selectedHour > effectiveMaxTime.hour ||
+      (selectedHour == effectiveMaxTime.hour && selectedMinute > effectiveMaxTime.minute)
+    ) {
       constraintTriggered = true
       return
     }
     if (minTime != null) {
-      if (selectedHour < minTime.hour || selectedMinute < minTime.minute) {
+      if (selectedHour < minTime.hour ||
+        (selectedHour == minTime.hour && selectedMinute < minTime.minute)
+      ) {
         constraintTriggered = true
         return
       }
