@@ -138,7 +138,7 @@ fun AppsyncScaleSetupScreenContent(
               type = ButtonType.PrimaryFilled,
               label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
               size = ButtonSize.Small,
-              enabled = state.isNextEnabled || !isScanning,
+              enabled = state.isNextEnabled && !isScanning,
               onClick = {
                 focusManager.clearFocus()
                 if (state.isLastStep) {

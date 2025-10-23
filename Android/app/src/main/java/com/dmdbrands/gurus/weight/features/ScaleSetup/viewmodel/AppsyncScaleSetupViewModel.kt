@@ -28,6 +28,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.util.Log
 
 /**
  * ViewModel for the AppsyncScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -115,8 +116,17 @@ constructor(
     viewModelScope.launch {
       try {
         permissionService.permissionCallBackFlow.collect { permissions ->
+          val areRequiredPermissionsEnabled =
+            AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.AppSync)
           AppLog.d(TAG, "Permission status updated: ${permissions.size} permissions")
           handleIntent(AppsyncScaleSetupIntent.SetPermissions(permissions))
+          handleIntent(AppsyncScaleSetupIntent.SetNextButtonState(areRequiredPermissionsEnabled))
+          if (!areRequiredPermissionsEnabled) {
+            if (state.value.currentStep != AppsyncScaleSetupStep.PERMISSIONS && state.value.currentStep != AppsyncScaleSetupStep.SCALE_INFO) {
+              AppLog.d(TAG, "Permissions not granted, moving to permissions step")
+              handleIntent(AppsyncScaleSetupIntent.SetCurrentStep(AppsyncScaleSetupStep.PERMISSIONS))
+            }
+          }
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error observing permissions", e)
