@@ -50,6 +50,9 @@ enum AppColors {
         let actionInversePressed : Color
         let actionInverseDisabled: Color
         let actionInverseSecondary: Color
+        let actionSuccess: Color
+        let actionSuccessPressed : Color
+        let actionSuccessDisabled: Color
         let actionError: Color
         let actionErrorPressed : Color
         let actionErrorDisabled: Color
