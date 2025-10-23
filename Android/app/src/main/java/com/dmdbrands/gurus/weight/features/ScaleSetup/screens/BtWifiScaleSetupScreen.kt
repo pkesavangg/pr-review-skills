@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScalePermission
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoader
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiPasswordForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiSelection
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LoaderIconType
@@ -330,21 +331,9 @@ fun BtWifiScaleSetupScreenContent(
           }
 
           BtWifiSetupStep.WIFI_PASSWORD -> {
-            SetupForm(
-              formControl = state.wifiPasswordForm.password,
-              title = BtWifiScaleSetupStrings.WifiPassword.Title,
-              label = BtWifiScaleSetupStrings.WifiPassword.PasswordLabel,
-              subtitle = BtWifiScaleSetupStrings.WifiPassword.Subtitle,
-              subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
-              hasToggle = true,
-              toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
-              toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
-              onToggleChanged = {
-                state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
-                state.wifiPasswordForm.password.reset()
-                onIntent(BtWifiScaleSetupIntent.HandlePasswordNetworkStatus)
-              },
-              inputType = AppInputType.PASSWORD,
+            WifiPasswordForm(
+              state = state,
+              onIntent = onIntent,
             )
           }
 

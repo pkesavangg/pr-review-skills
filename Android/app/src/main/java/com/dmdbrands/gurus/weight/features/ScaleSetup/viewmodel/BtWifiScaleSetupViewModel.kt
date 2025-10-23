@@ -146,6 +146,7 @@ constructor(
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
       BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
       is BtWifiScaleSetupIntent.DeleteUser -> deleteUser(intent.user)
+      BtWifiScaleSetupIntent.ClearWifiPasswordForm -> clearWifiPasswordForm()
       else -> {}
     }
     super.handleIntent(intent)
@@ -337,7 +338,7 @@ constructor(
         onConfirm = {
           // Delete duplicate users and restore account
           viewModelScope.launch {
-            accountService.activeAccountFlow.first()?.firstName
+            accountService.activeAccountFlow.first()?.firstName?.take(20)
             // First check for duplicate users
             checkDuplicateUserList()
             // Then delete them
@@ -571,6 +572,7 @@ constructor(
   private fun onBack() {
     val currentState = state.value
     AppLog.d(TAG, "Moving to previous step from: ${currentState.currentStep}")
+
     when (currentState.currentStep) {
       BtWifiSetupStep.WAKEUP -> {
         ggDeviceService.resumeScan(true)
@@ -578,6 +580,10 @@ constructor(
 
       BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
         handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
+      }
+
+      BtWifiSetupStep.WIFI_PASSWORD -> {
+        handleIntent(SetCurrentStep(BtWifiSetupStep.AVAILABLE_WIFI_LIST))
       }
 
       else -> {
@@ -770,10 +776,11 @@ constructor(
   private fun clearWifiPasswordForm() {
     AppLog.d(TAG, "Clearing WiFi password form after successful connection")
     val currentState = state.value
-    currentState.wifiPasswordForm.ssid.reset()
+    // currentState.wifiPasswordForm.ssid.reset()
     currentState.wifiPasswordForm.password.reset()
     currentState.wifiPasswordForm.noPasswordNetwork.onValueChange(false)
   }
+
 
   /**
    * Refreshes the user list after account changes (delete/update) to keep it in sync.
@@ -1308,9 +1315,7 @@ constructor(
                 ConnectionState.Success,
               ),
             )
-            // Clear WiFi password form after successful connection
             clearWifiPasswordForm()
-            // Update WiFi details in background but don't block progression
             updateWifiDetails()
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
               onExitSetup(true)
@@ -1702,7 +1707,7 @@ constructor(
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
     val username =
-      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName ?: "Default"
+      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20) ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
     val device = Device(

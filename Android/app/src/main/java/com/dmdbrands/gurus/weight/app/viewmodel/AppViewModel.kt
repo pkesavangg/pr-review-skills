@@ -390,12 +390,12 @@ constructor(
           deviceInfoService.updateDeviceInfo()
         }
         navigationService.autoLogin()
-        // Check for IAM feed modal trigger after fetching feed items
         entryService.initializeGoalCardMonitoring()
+        // Check for IAM feed modal trigger after fetching feed items
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
-        updateUnRead()
         feedService.checkAndTriggerFeedModal()
+        updateUnRead()
         subscribePermissions()
         subscribeDeviceCallback()
         syncScales()
