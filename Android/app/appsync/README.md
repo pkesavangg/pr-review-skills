@@ -89,6 +89,7 @@ The `startAppSyncScan` function accepts the following parameters:
 | `context`               | `Context` | Required | Activity context for launching the scan UI |
 | `zoom`                  | `Int`     | `1`      | Initial zoom level (1-5)                   |
 | `showManualEntryButton` | `Boolean` | `true`   | Whether to show the manual entry button    |
+| `onBack`                | `() -> Unit` | Required | Callback function for handling back button navigation |
 
 ### Response Format
 
@@ -119,6 +120,11 @@ data class AppSyncResult(
 2. **Canceled**: `canceled = true`, all measurement values are null
 3. **Manual Entry**: `manual = true`, all measurement values are null
 4. **Invalid Scan**: `errors > 0`, some or all measurement values may be null
+5. **Back Button Pressed**: `canceled = true`, all measurement values are null, `onBack` callback is executed
+
+### Back Navigation
+
+When the user presses the back button during scanning, the `onBack` callback is executed and the scan returns a cancelled result. This allows the parent screen to handle navigation logic (e.g., removing the current screen from the navigation stack). The `onBack` callback is required and must be provided when calling `startAppSyncScan`.
 
 ## Permissions
 
@@ -207,7 +213,14 @@ class ScaleScanScreen : ComponentActivity() {
                                 val result = startAppSyncScan(
                                     context = this@ScaleScanScreen,
                                     zoom = 2,
-                                    showManualEntryButton = true
+                                    showManualEntryButton = true,
+                                    onBack = {
+                                        // Handle back navigation - remove current screen from stack
+                                        lifecycleScope.launch {
+                                            // Example: navigate back to previous screen
+                                            // navController.popBackStack()
+                                        }
+                                    }
                                 )
                                 scanResult = result
                             } catch (e: Exception) {
