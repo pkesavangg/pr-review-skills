@@ -211,7 +211,6 @@ constructor(
         val device = devices.find { it.id == scaleId }
         device?.let { scaleDevice ->
           AppLog.d(TAG, "Updating scale info for: ${scaleDevice.nickname}")
-          Log.d("scaleinfo", "scaleinfo: $scaleDevice")
           handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
           // Initialize form with current scale name after scale data is loaded
           val scaleName = scaleDevice.nickname
