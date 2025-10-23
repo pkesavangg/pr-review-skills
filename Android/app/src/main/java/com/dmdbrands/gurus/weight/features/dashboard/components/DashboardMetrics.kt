@@ -144,6 +144,7 @@ fun DashboardMetrics(
     onMetricClick = onMetricClick,
     onMetricMoved = onMetricMoved,
     isFromSetup = isFromSetup,
+    dashboardType = dashboardType,
     onReorder = {
       val localVisibleKeys = it.map { it.key }
       onMetricsChanged(localVisibleKeys)
@@ -163,6 +164,7 @@ private fun DashboardMetricsGrid(
   selectedStat: Stat?,
   onMetricClick: (Stat?) -> Unit,
   onReorder: (List<Stat>) -> Unit,
+  dashboardType: DashboardType,
   onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
 ) {
   val hapticFeedback = LocalHapticFeedback.current
@@ -181,7 +183,7 @@ private fun DashboardMetricsGrid(
 
   val columnCount = when (currentDeviceType) {
     DeviceType.Tablet -> 4
-    else -> 3
+    else -> if (dashboardType == DashboardType.DASHBOARD_12_METRICS) 3 else 2
   }
   LazyVerticalGrid(
     columns = GridCells.Fixed(count = columnCount),
