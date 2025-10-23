@@ -1,17 +1,17 @@
 package com.dmdbrands.gurus.weight.features.metricinfo.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.debounceClick
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoIntent
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoDescriptions
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
-import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -33,7 +33,7 @@ fun MetricInfoResourcesSection(metricKey: MetricKey, handleIntent: (MetricInfoIn
         text = resource.title.uppercase(),
         style = MeTheme.typography.link1,
         color = MeTheme.colorScheme.primaryAction,
-        modifier = Modifier.clickable {
+        modifier = Modifier.debounceClick {
           handleIntent(MetricInfoIntent.OpenResource(resource.link))
         },
       )

@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,7 +60,7 @@ fun AppScaleCard(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable { onClick(scale) },
+        .debounceClick { onClick(scale) },
     color = colorScheme.secondaryBackground,
     shadowElevation = 0.dp,
   ) {

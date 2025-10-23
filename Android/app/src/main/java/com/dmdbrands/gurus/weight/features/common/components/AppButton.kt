@@ -252,7 +252,7 @@ object AppButtonDefaults {
  */
 @Composable
 private fun rememberThrottledClick(
-  throttleTime: Long = 500L,
+  throttleTime: Long = 700L,
   onClick: () -> Unit,
 ): () -> Unit {
   // Persist across recompositions and process death safe defaults
