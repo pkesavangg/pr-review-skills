@@ -82,34 +82,26 @@ fun AppsyncEntryPopup(
               textType = TextType.Body,
             )
 
-            displayBodyFat?.let { fat ->
-              AppText(
-                text = AppPopupStrings.AppsyncEntryPopup.Bodyfat(bodyfat = fat),
-                textType = TextType.Body,
-              )
-            }
+            AppText(
+              text = AppPopupStrings.AppsyncEntryPopup.Bodyfat(bodyfat = displayBodyFat),
+              textType = TextType.Body,
+            )
 
-            displayMuscleMass?.let { muscle ->
-              AppText(
-                text = AppPopupStrings.AppsyncEntryPopup.MuscleMass(muscleMass = muscle),
-                textType = TextType.Body,
-              )
-            }
+            AppText(
+              text = AppPopupStrings.AppsyncEntryPopup.MuscleMass(muscleMass = displayMuscleMass),
+              textType = TextType.Body,
+            )
 
-            displayWater?.let { water ->
-              AppText(
-                text = AppPopupStrings.AppsyncEntryPopup.WaterWeight(waterWeight = water),
-                textType = TextType.Body,
-              )
-            }
+            AppText(
+              text = AppPopupStrings.AppsyncEntryPopup.WaterWeight(waterWeight = displayWater),
+              textType = TextType.Body,
+            )
 
             // Display BMI if available
-            displayBmi?.let { bmi ->
-              AppText(
-                text = AppPopupStrings.AppsyncEntryPopup.Bmi(bmi),
-                textType = TextType.Body,
-              )
-            }
+            AppText(
+              text = AppPopupStrings.AppsyncEntryPopup.Bmi(displayBmi),
+              textType = TextType.Body,
+            )
 
             Spacer(modifier = Modifier.height(spacing.md))
             AppButton(
