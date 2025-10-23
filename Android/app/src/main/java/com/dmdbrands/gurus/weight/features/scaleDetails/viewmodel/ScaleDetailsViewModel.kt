@@ -41,7 +41,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import android.util.Log
 
 /**
  * ViewModel for the ScaleDetails screen. Handles scale details logic and navigation.
@@ -193,7 +192,6 @@ constructor(
         if (currentScale != null) {
           val updatedScale = devices.find { it.id == scaleId }
           updatedScale?.let { scale ->
-            Log.d("scaleinfo", "scaleinfo: $scale")
             handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
             val scaleName = scale.nickname
             handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
