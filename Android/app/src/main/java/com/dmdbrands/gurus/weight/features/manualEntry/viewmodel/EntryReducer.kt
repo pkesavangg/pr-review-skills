@@ -182,6 +182,7 @@ data class EntryState(
   val form: MultiFormGroup<EntryForm>,
   val weightMode: WeightUnit = WeightUnit.LB,
   val isLoading: Boolean = false,
+  val isMetricFieldsExpandedInitially: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
@@ -198,7 +199,7 @@ sealed interface EntryIntent : IReducer.Intent {
 
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
   data class UpdateDashboardType(val dashboardType: DashboardType) : EntryIntent
-
+  data class UpdateMetricFieldsExpandedStatus(val isExpanded: Boolean) : EntryIntent
   data class LoadAppSyncData(
     val scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry,
     val height: Int? = null
@@ -229,6 +230,12 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
       is EntryIntent.UpdateDashboardType -> {
         state.copy(
           dashboardType = intent.dashboardType,
+        )
+      }
+
+      is EntryIntent.UpdateMetricFieldsExpandedStatus -> {
+        state.copy(
+          isMetricFieldsExpandedInitially = intent.isExpanded,
         )
       }
 

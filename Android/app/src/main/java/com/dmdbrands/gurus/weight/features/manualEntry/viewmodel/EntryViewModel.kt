@@ -52,8 +52,12 @@ constructor(
 
   init {
     viewModelScope.launch {
-      val entryForm =
-        EntryForm.create(
+      // Step 1: Check for AppSync data
+      val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
+
+      // Step 2: Create initial form only if no AppSync data
+      if (!hasAppSyncData) {
+        val entryForm = EntryForm.create(
           includeR4ScaleMetrics = true,
           weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
           height = accountService.activeAccountFlow.first()?.height,
@@ -61,43 +65,42 @@ constructor(
             !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
           },
         )
-      handleIntent(
-        EntryIntent.UpdateForm(
-          form =
-            MultiFormGroup.create(
-              forms = entryForm,
-            ),
-        ),
-      )
-    }
-    viewModelScope.launch {
-      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
-        if (it != null) {
-          handleIntent(
-            EntryIntent.UpdateWeightUnit(it),
-          )
+        handleIntent(
+          EntryIntent.UpdateForm(
+            form = MultiFormGroup.create(forms = entryForm),
+          ),
+        )
+      } else {
+        handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
+      }
+
+      // Step 3: Set up continuous flows
+      launch {
+        accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
+          if (it != null) {
+            handleIntent(EntryIntent.UpdateWeightUnit(it))
+          }
+        }
+      }
+
+      launch {
+        deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
+          val dashboardType = if (hasBluetoothWifiScale) {
+            DashboardType.DASHBOARD_12_METRICS
+          } else {
+            DashboardType.DASHBOARD_4_METRICS
+          }
+          handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
         }
       }
     }
 
-    // Check if there's AppSync data to load
+    // Keep AppSync data collection separate
     viewModelScope.launch {
       appSyncService.appSyncDataForEditing.collectLatest { scaleEntry ->
         if (scaleEntry != null) {
           loadAppSyncData(scaleEntry)
         }
-      }
-    }
-
-    // Handle hasBluetoothWifiScale flow to update dashboard type
-    viewModelScope.launch {
-      deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
-        val dashboardType = if (hasBluetoothWifiScale) {
-          DashboardType.DASHBOARD_12_METRICS
-        } else {
-          DashboardType.DASHBOARD_4_METRICS
-        }
-        handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
       }
     }
   }
@@ -111,8 +114,10 @@ constructor(
 
       is EntryIntent.UpdateOnRelaunch -> {
         viewModelScope.launch {
-          val entryForm =
-            EntryForm.create(
+          val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
+
+          if (!hasAppSyncData) {
+            val entryForm = EntryForm.create(
               includeR4ScaleMetrics = true,
               weightUnit = state.value.weightMode,
               height = accountService.activeAccountFlow.first()?.height,
@@ -120,14 +125,13 @@ constructor(
                 !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
               },
             )
-          handleIntent(
-            EntryIntent.UpdateForm(
-              form =
-                MultiFormGroup.create(
-                  forms = entryForm,
-                ),
-            ),
-          )
+            handleIntent(
+              EntryIntent.UpdateForm(
+                form = MultiFormGroup.create(forms = entryForm),
+              ),
+            )
+          }
+          // If AppSync data exists, leave the form alone - it's already properly set up
         }
       }
 
@@ -210,7 +214,10 @@ constructor(
 
   fun deactivate() {
     viewModelScope.launch {
+      handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(false))
       navigationService.unregisterOnDeactivate(AppRoute.Main.Entry)
+      // Clear AppSync data when exiting EntryScreen
+      appSyncService.setAppSyncDataForEditing(null)
     }
   }
 
@@ -294,7 +301,6 @@ constructor(
 
         // Validate the form
         _state.value.form.validate()
-        // Mark the form as touched and dirty to enable save button for AppSync editing
 
         AppLog.i(
           TAG,

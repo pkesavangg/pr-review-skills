@@ -129,6 +129,7 @@ private fun EntryScreenContent(
         subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
         generalMetrics = entryForm.generalMetrics.controls,
         r4ScaleMetrics = entryForm.r4ScaleMetrics?.controls,
+        expandedInitially = state.isMetricFieldsExpandedInitially,
         onImeAction = {
           focusManager.clearFocus()
           keyboardController?.hide()
