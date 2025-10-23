@@ -209,7 +209,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if let account = account {
             self.activeAccount = account
             // Don't start scanning immediately - wait for dashboard to be ready
-            // The scan will be triggered by initialize() when called from ContentViewModel
+            // The scan will be triggered by startBluetoothOperations() when called from ContentViewModel
         } else if isSmartScanStarted {
             stopScan()
         }
