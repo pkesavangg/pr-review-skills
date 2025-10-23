@@ -96,6 +96,9 @@ class GraphViewModel @AssistedInject constructor(
       val immediateData = dataFlow.value
       val immediateGoal = goalService.getCurrentGoalSync()
       val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
+      super.handleIntent(GraphIntent.UpdateData(immediateData))
+      super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
+      super.handleIntent(GraphIntent.SetSecondaryKey(immediateSecondaryKey))
       initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
     } catch (e: Exception) {
       // Log error but don't crash - fallback to async initialization
