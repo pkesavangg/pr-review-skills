@@ -800,14 +800,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
             }
         case .dashboardMetrics:
-            // Begin edit mode to track changes properly
+            // Begin edit mode and snapshot current state for change detection
             dashboardStore.beginEdit()
-            // Snapshot current dashboard state for change detection
-            initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
-            initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
-            initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
-            initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
-            initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
+            snapshotDashboardState()
             // Subscribe to dashboard edits to update Save button enablement live
             dashboardStoreCancellable?.cancel()
             dashboardStoreCancellable = dashboardStore.objectWillChange
@@ -1898,28 +1893,37 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return idx
     }
     
+    /// Snapshots the current dashboard state for change detection
+    private func snapshotDashboardState() {
+        initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
+        initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
+        initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
+        initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
+        initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
+    }
+    
     /// Returns true if dashboard customization has changed compared to initial snapshot
     private func hasDashboardCustomizationChanged() -> Bool {
-        let labelsNow = dashboardStore.metricsManager.state.metrics.map { $0.label }
-        let removedNow = dashboardStore.state.ui.removedMetrics
-        let streakOrderNow = dashboardStore.state.ui.streakGridOrder
-        let goalRemovedNow = dashboardStore.state.ui.isGoalCardRemoved
-        let goalPosNow = dashboardStore.state.ui.goalCardPosition
-        if let labelsInitial = initialDashboardMetricLabelsSnapshot, labelsInitial != labelsNow { return true }
-        if let removedInitial = initialDashboardRemovedMetricsSnapshot, removedInitial != removedNow { return true }
-        if let orderInitial = initialDashboardStreakOrderSnapshot, orderInitial != streakOrderNow { return true }
-        if let goalRemovedInitial = initialDashboardGoalCardRemovedSnapshot, goalRemovedInitial != goalRemovedNow { return true }
-        if let goalPosInitial = initialDashboardGoalCardPositionSnapshot, goalPosInitial != goalPosNow { return true }
-        return false
+        let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
+        let removed = dashboardStore.state.ui.removedMetrics
+        let order = dashboardStore.state.ui.streakGridOrder
+        let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
+        let goalPos = dashboardStore.state.ui.goalCardPosition
+        
+        return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
+               (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
+               (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
+               (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
+               (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
     }
     
     /// Discards dashboard customization changes by canceling edit mode
     private func discardDashboardCustomization() {
         dashboardStore.cancelEdit()
-        // Clear the dashboard changes flag
-        hasCustomizeChanges = false
         // Remove from selected items (unsaved changes), but keep in visited items (checkmark stays)
         selectedCustomizeItems.remove(CustomizeSettingsItem.dashboardMetrics.rawValue)
+        // Only clear hasCustomizeChanges if no other settings have been changed
+        hasCustomizeChanges = !selectedCustomizeItems.isEmpty
     }
     
     /// Opens the BIA model information modal.
