@@ -69,6 +69,12 @@ constructor(
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
+  override suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus) {
+    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
+      this[macAddress] = connectionStatus
+    }
+  }
+
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
     val macAddress = deviceDetail.macAddress
     val resolvedConnectionStatus = connectionStatus ?: BLEStatus.DISCONNECTED
@@ -79,9 +85,7 @@ constructor(
     )
 
     // Update connection status map
-    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
-      this[macAddress] = resolvedConnectionStatus
-    }
+    updateConnectionStatus(macAddress, resolvedConnectionStatus)
 
     // Try to find the device in current paired scales
     val currentDevices = _pairedScales.value.toMutableList()
@@ -359,7 +363,7 @@ constructor(
     val updatedPrefs = current.preferences?.copy(
       id = scaleID,
     )
-    var updatedDevice = current.copy(
+    val updatedDevice = current.copy(
       id = scaleID,
       preferences = updatedPrefs,
     )
@@ -367,6 +371,14 @@ constructor(
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
+        deviceRepository.saveScalePreferencesToApi(
+          updatedPrefs.toR4ScalePreferenceApiModel().copy(
+            scaleId = savedDevice.id,
+          ),
+        )
+        savedDevice.copy(preferences = updatedPrefs)
+      }
       val adjusted = if (savedDevice.preferences != null) {
         val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
         savedDevice.copy(preferences = updatedPreferences)

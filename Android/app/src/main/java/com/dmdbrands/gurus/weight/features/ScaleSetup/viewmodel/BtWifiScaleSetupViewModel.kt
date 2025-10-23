@@ -55,6 +55,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -622,7 +625,7 @@ constructor(
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
-          // ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
         },
         onCancel = {
@@ -656,75 +659,57 @@ constructor(
   }
 
   private fun onExit() {
+    // Clear all timeouts before exiting
+    clearAllTimeouts()
+
+    // Create separate coroutines with SupervisorJob for independent execution
+    val supervisorJob = SupervisorJob()
+    val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
+
+    // Database operations in separate coroutine
+    supervisorScope.launch {
+      try {
+        updateWifiDetails()
+        if (discoveredScale != null) {
+          // Save the scale with final configuration
+          if (discoveredScale!!.device != null)
+            deviceService.updateConnectionStatus(discoveredScale!!.device!!.macAddress, BLEStatus.CONNECTED)
+
+          val savedScale = deviceService.saveScale(discoveredScale!!)
+          discoveredScale = savedScale ?: discoveredScale
+          AppLog.i(
+            TAG,
+            "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
+          )
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during scale cleanup operations", e)
+      }
+    }
+
+    // Only navigation remains in viewModelScope
     viewModelScope.launch {
-      // Clear all timeouts before exiting
-      clearAllTimeouts()
-
-      // Start navigation immediately to improve perceived performance
-      val navigationJob = launch {
-        try {
-          navigateBack()
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to navigate back from scale setup", e)
-        }
-      }
-
-      // Run scale cleanup operations in parallel with navigation
-      if (discoveredScale != null) {
-        launch {
-          try {
-            // Ensure WiFi configuration is up to date before final save
-            updateWifiDetails()
-
-            // Save the scale with final configuration
-            val savedScale = deviceService.saveScale(discoveredScale!!)
-            discoveredScale = savedScale ?: discoveredScale
-            AppLog.i(
-              TAG,
-              "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
-            )
-
-            // Trigger onDeviceUpdate to ensure pairedScales flow is updated with final configuration
-            discoveredScale?.let { scale ->
-              val deviceDetail = scale.device
-              if (deviceDetail != null) {
-                AppLog.d(
-                  TAG,
-                  "Triggering final onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
-                )
-                deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
-                AppLog.d(TAG, "Triggered final onDeviceUpdate for WiFi configuration")
-              }
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error during scale cleanup operations", e)
+      // Ensure WiFi configuration is up to date before final save
+      try {
+        if (discoveredScale != null) {
+          ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+          if (!isScaleConnected) {
+            ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
           }
         }
-
-        // Run Bluetooth cleanup operations in parallel
-        launch {
-          try {
-            ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-            if (!isScaleConnected) {
-              ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
-            }
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error during Bluetooth cleanup", e)
-          }
-        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error during Bluetooth cleanup", e)
       }
-
-      // Resume scanning in parallel
-      launch {
-        try {
-          ggDeviceService.resumeScan(false)
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Error resuming scan", e)
-        }
+      try {
+        ggDeviceService.resumeScan(false)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error resuming scan", e)
       }
-
-      // Wait for navigation to complete before finishing
-      navigationJob.join()
+      try {
+        navigateBack()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate back from scale setup", e)
+      }
     }
   }
 
@@ -1402,12 +1387,6 @@ constructor(
       }
     }
 
-    suspendCancellableCoroutine<String?> { cont ->
-      ggDeviceService.getConnectedWifiSSID(device) { ssid ->
-        cont.resume(ssid)
-      }
-    }
-
     discoveredScale = discoveredScale?.copy(
       device = discoveredScale?.device?.copy(
         isWifiConfigured = !wifiMac.isNullOrEmpty(),
@@ -1702,7 +1681,8 @@ constructor(
   }
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
-    val username = accountService.activeAccountFlow.first()?.firstName ?: "Default"
+    val username =
+      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
     val device = Device(
