@@ -64,6 +64,7 @@ object AppPopupStrings {
 
   object ScaleDiscoveredPopup {
     const val Title = "New Scale Discovered"
+    const val CloseContentDescription = "Close"
   }
 
   object PermissionsPopup {

@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.app
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -22,7 +21,6 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
-import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.example.nav3integration.rememberTopLevelBackStack
@@ -72,9 +70,9 @@ fun MeApp() {
         onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
         containerColor = colorScheme.primaryBackground,
       ) {
-        ScaleDiscoveredModal(sku = uiState.sku) {
+        ScaleDiscoveredModal(sku = uiState.sku, onConnect = {
           appViewModel.handleIntent(AppIntent.OnPopUpConnect)
-        }
+        }, onClose = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss)})
       }
     }
   }

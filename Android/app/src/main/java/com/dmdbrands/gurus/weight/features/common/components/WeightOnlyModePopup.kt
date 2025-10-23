@@ -1,13 +1,16 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
@@ -22,13 +25,32 @@ fun WeightOnlyModePopup(
     onDismiss: () -> Unit
 ) {
 
-    Column(
-        modifier = modifier
-          .fillMaxWidth()
-          .padding(spacing.x2l, end = spacing.x2l, bottom = spacing.x3l),
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = modifier.fillMaxWidth()
     ) {
+      Row(
+        modifier = Modifier.align(Alignment.TopEnd)
+      ){
+        AppIcon(
+          id = AppIcons.Default.closeFilled,
+          contentDescription = AppPopupStrings.ScaleDiscoveredPopup.CloseContentDescription,
+          modifier = Modifier
+            .padding(top = spacing.md, end = spacing.sm)
+            .size(24.dp),
+          type = AppIconType.Primary,
+          tintColor = Color.Unspecified,
+          onClick = onDismiss
+        )
+      }
+
+        // Main content with padding
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = spacing.x3l,bottom = spacing.x3l, start = spacing.x2l, end = spacing.x2l),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
         AppIcon(
             id = AppIcons.Default.WeightOnlyMode,
             contentDescription = "Weightonlymode",
@@ -58,6 +80,7 @@ fun WeightOnlyModePopup(
             type = ButtonType.TextPrimary,
             onClick = onDismiss,
         )
+        }
     }
 }
 

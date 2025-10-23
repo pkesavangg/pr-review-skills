@@ -368,22 +368,15 @@ object AppPermissionsHelper {
       }
 
       // Custom descriptions for SKU 0384
-      val (enabledDescription, disabledDescription) = if (sku == "0384") {
-        getCustomDescriptionsForSku0384(type, meta.enabledDescription ?: "", meta.disabledDescription ?: "")
-      } else {
+      val (enabledDescription, disabledDescription) =
         // For WIFI_SWITCH_LOCATION, use dynamic WiFi name if available
         if (type == CustomPermissionType.WIFI_SWITCH_LOCATION.value && wifiName != null) {
-          val enabledDesc = if (wifiName.isNotEmpty()) {
-            "${AppPermissionsScreenStrings.EnabledWifiDescription}$wifiName"
-          } else {
-            AppPermissionsScreenStrings.EnabledWifiDescription
-          }
+          val enabledDesc = "${AppPermissionsScreenStrings.EnabledWifiDescription} $wifiName"
           val disabledDesc = AppPermissionsScreenStrings.DisabledWifiDescription
           enabledDesc to disabledDesc
         } else {
           meta.enabledDescription to meta.disabledDescription
         }
-      }
 
       PermissionItem(
         key = type,
@@ -403,11 +396,17 @@ object AppPermissionsHelper {
   private fun getCustomDescriptionsForSku0384(
     permissionType: String,
     defaultEnabled: String,
-    defaultDisabled: String
+    defaultDisabled: String,
+    wifiName: String? = null
   ): Pair<String, String> {
     return when (permissionType) {
       GGPermissionType.WIFI_SWITCH -> {
-        AppPermissionsScreenStrings.EnabledWifiDescription to AppPermissionsScreenStrings.DisabledWifiDescription
+        val enabledDesc = if (wifiName != null && wifiName.isNotEmpty()) {
+          "${AppPermissionsScreenStrings.EnabledWifiDescription} + $wifiName"
+        } else {
+          AppPermissionsScreenStrings.EnabledWifiDescription
+        }
+        enabledDesc to AppPermissionsScreenStrings.DisabledWifiDescription
       }
 
       else -> defaultEnabled to defaultDisabled

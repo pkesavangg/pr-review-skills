@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.R
 object AppIcons {
   object Default {
     val Close = R.drawable.ic_close
+    val closeFilled = R.drawable.filled_close
     val Delete = R.drawable.ic_delete
     val EyeOpened = R.drawable.ic_eye_open
     val EyeClosed = R.drawable.ic_eye_close

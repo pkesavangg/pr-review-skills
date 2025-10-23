@@ -504,12 +504,9 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-        // Update SSID if it changed
-        if (status.ssid.isNotEmpty() && status.ssid != lastSsid) {
           lastSsid = status.ssid
           handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
           updateFormValuesWithSsid(status.ssid)
-        }
         handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
       } catch (e: Exception) {
       }
