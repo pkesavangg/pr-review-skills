@@ -356,6 +356,20 @@ constructor(
       goal?.process(weightUnit, weightless)
     }
 
+  /**
+   * Gets the current goal immediately without suspension.
+   * @return Current goal or null
+   */
+  override fun getCurrentGoalSync(): Goal? {
+    return try {
+      val currentGoal = _goalStatusFlow.value
+      currentGoal
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error getting current goal synchronously", e)
+      null
+    }
+  }
+
 
   /**
    * Shows goal met alert dialog.

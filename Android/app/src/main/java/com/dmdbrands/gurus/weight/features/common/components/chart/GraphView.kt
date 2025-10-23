@@ -112,7 +112,6 @@ fun GraphView(
           viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
         },
       )
-      viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
     }
   }
 
@@ -129,10 +128,8 @@ fun GraphView(
   }
 
   LaunchedEffect(state.markerIndex) {
-    if (state.markerIndex == null) {
-      val min = state.minTarget ?: Calendar.getInstance().timeInMillis
-      val max = state.maxTarget ?: Calendar.getInstance().timeInMillis
-      onScrollUpdate(min, max)
+    if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
+      onScrollUpdate(state.minTarget, state.maxTarget)
     }
   }
 
@@ -164,7 +161,9 @@ fun GraphView(
       if (click == null) return@rememberGraphChart
       scope.launch {
         var markerIndex: Double? = null
-        val outOfBoundaryCondition = click.toLong() !in state.getStartTimestamp()..state.getEndTimestamp()
+        val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
+        val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
+        val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
         if (outOfBoundaryCondition) {
           markerIndex = null
         } else {
@@ -177,7 +176,15 @@ fun GraphView(
               segment,
             )
           if (targetMarkerIndex.isNotEmpty()) {
-            markerIndex = targetMarkerIndex.first()
+            val targetIndex = targetMarkerIndex.first().toLong()
+            markerIndex = if (targetIndex in state.getStartTimestamp()..state.getEndTimestamp())
+              targetMarkerIndex.first()
+            else if (targetIndex < state.getStartTimestamp())
+              state.getStartTimestamp().toDouble()
+            else if (targetIndex > state.getEndTimestamp())
+              state.getEndTimestamp().toDouble()
+            else
+              null
           }
         }
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
@@ -197,6 +204,8 @@ fun GraphView(
         val min = range.visibleXRange.start
         val max = range.visibleXRange.endInclusive
         onScrollUpdate(min.toLong(), max.toLong())
+        if (!state.isEmptyGraph)
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
       }
     },
   )

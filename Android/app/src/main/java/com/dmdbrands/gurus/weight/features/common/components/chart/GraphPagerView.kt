@@ -106,7 +106,7 @@ fun GraphPagerView(
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
         if (graphState.minTarget != null && graphState.maxTarget != null) {
-          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL) {
+          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()
             calendar.timeInMillis = graphState.minTarget!!
             calendar.add(java.util.Calendar.MONTH, +6)
