@@ -88,6 +88,33 @@ fun GraphView(
       ),
     ),
   )
+  val horizontalItemPlacer =
+    rememberHorizontalAxisItemPlacer(
+      segment = segment,
+    )
+
+  fun onScrollUpdate(min: Long, max: Long) {
+    scope.launch {
+      viewModel.handleIntent(
+        GraphIntent.SetScrollRange(min, max) {
+          val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
+            it.toLong() in min..max
+          }
+          val fallbackValues = scrollState.getInterpolatedYValues(
+            xValues = visibleLabels,
+            interpolationType = InterpolationType.CUBIC,
+          )
+          val fallbackData = state.createFallBackData(
+            segment = segment,
+            timeStamps = visibleLabels.map { it.toLong() },
+            fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+          )
+          viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+        },
+      )
+      viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
+    }
+  }
 
   // LaunchedEffect(Unit) {
   //   scrollState.interactionEvents.collect {
@@ -100,10 +127,14 @@ fun GraphView(
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     }
   }
-  val horizontalItemPlacer =
-    rememberHorizontalAxisItemPlacer(
-      segment = segment,
-    )
+
+  LaunchedEffect(state.markerIndex) {
+    if (state.markerIndex == null) {
+      val min = state.minTarget ?: Calendar.getInstance().timeInMillis
+      val max = state.maxTarget ?: Calendar.getInstance().timeInMillis
+      onScrollUpdate(min, max)
+    }
+  }
 
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
@@ -162,31 +193,11 @@ fun GraphView(
     animateIn = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
-      scope.launch {
-        if (range != null) {
-          val min = range.visibleXRange.start
-          val max = range.visibleXRange.endInclusive
-          viewModel.handleIntent(
-            GraphIntent.SetScrollRange(min.toLong(), max.toLong()) {
-              val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
-                it in min..max
-              }
-              val fallbackValues = scrollState.getInterpolatedYValues(
-                xValues = visibleLabels,
-                interpolationType = InterpolationType.CUBIC,
-              )
-              val fallbackData = state.createFallBackData(
-                segment = segment,
-                timeStamps = visibleLabels.map { it.toLong() },
-                fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-              )
-              viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
-            },
-          )
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
-        }
+      if (range != null) {
+        val min = range.visibleXRange.start
+        val max = range.visibleXRange.endInclusive
+        onScrollUpdate(min.toLong(), max.toLong())
       }
-
     },
   )
 }
