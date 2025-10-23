@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -134,9 +135,9 @@ constructor(
 
                 // Show success toast
                 dialogQueueService.showToast(
-                    Toast(
-                        title = "Email Sent!",
-                        message = "Password reset instructions have been sent to your email address.",
+                  Toast(
+                    title = ToastStrings.Success.ResetPasswordSuccess.Header,
+                    message = ToastStrings.Success.ResetPasswordSuccess.Message(email),
                         action = null,
                     ),
                 )
@@ -146,8 +147,8 @@ constructor(
                 // Show error toast
                 dialogQueueService.showToast(
                     Toast(
-                        title = "Error",
-                        message = "Failed to send password reset email. Please try again.",
+                      ToastStrings.Error.ResetPasswordError.Header,
+                      ToastStrings.Error.ResetPasswordError.Message,
                         action = null,
                     ),
                 )
