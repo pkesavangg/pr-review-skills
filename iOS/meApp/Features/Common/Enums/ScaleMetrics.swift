@@ -29,6 +29,29 @@ struct ScaleMetricSetting: Identifiable, Equatable {
         self.isEnabled = isEnabled
         self.isProgressMetrics = isProgressMetrics
     }
+    
+    /// Core reordering routine used when toggling metrics on/off.
+    /// Moves the toggled metric to the end of its enabled/disabled group.
+    static func reorderOnToggle(items: [ScaleMetricSetting], key: String, isEnabled: Bool) -> [ScaleMetricSetting] {
+        var current = items
+        guard let idx = current.firstIndex(where: { $0.key == key }) else { return items }
+        var changed = current.remove(at: idx)
+        changed.isEnabled = isEnabled
+        
+        if !isEnabled {
+            // Moving to disabled: append to end of disabled metrics
+            let enabled = current.filter { $0.isEnabled }
+            var disabled = current.filter { !$0.isEnabled }
+            disabled.append(changed)
+            return enabled + disabled
+        } else {
+            // Moving to enabled: append to end of enabled metrics
+            var enabled = current.filter { $0.isEnabled }
+            let disabled = current.filter { !$0.isEnabled }
+            enabled.append(changed)
+            return enabled + disabled
+        }
+    }
 }
 
 /// Central configuration for all scale metric settings
