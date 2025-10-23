@@ -26,7 +26,6 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import android.util.Log
 
 /**
  * Card composable for displaying a ScaleInfo's info as per Figma.
@@ -89,7 +88,8 @@ fun AppScaleCard(
         AppText(
           text = scale.productName.lowercase(),
           textType = TextType.ListSubtitle,
-          textOverflow = TextOverflow.Ellipsis
+          textOverflow = TextOverflow.Ellipsis,
+          softWrap = false,
         )
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
