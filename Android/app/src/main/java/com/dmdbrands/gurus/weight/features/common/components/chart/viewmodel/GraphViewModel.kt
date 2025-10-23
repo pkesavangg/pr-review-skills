@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -25,8 +26,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -34,6 +35,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 import kotlin.math.floor
 import android.icu.util.Calendar
+import android.util.Log
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
@@ -75,9 +77,30 @@ class GraphViewModel @AssistedInject constructor(
   private var scrollDebounceJob: Job? = null
 
   init {
+    initializeWeightUnit()
+    initializeImmediateData()
     observeDataChanges()
     subscribeWeightUnit()
-    initializeWeightUnit()
+  }
+
+  private fun initInialize() {
+  }
+
+  /**
+   * Initializes the graph with immediate data from services without suspension.
+   * This provides instant initialization while the async flows are being set up.
+   */
+  private fun initializeImmediateData() {
+    try {
+      // Get immediate data from services (excluding EntryService and AccountService as requested)
+      val immediateData = dataFlow.value
+      val immediateGoal = goalService.getCurrentGoalSync()
+      val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
+      initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
+    } catch (e: Exception) {
+      // Log error but don't crash - fallback to async initialization
+      Log.w("GraphViewModel", "Failed to initialize immediate data, falling back to async", e)
+    }
   }
 
   private fun subscribeWeightUnit() {
@@ -96,32 +119,36 @@ class GraphViewModel @AssistedInject constructor(
    * This ensures the correct unit is displayed on app launch.
    */
   private fun initializeWeightUnit() {
-    viewModelScope.launch {
-      try {
-        val currentAccount = accountService.activeAccountFlow.first()
-        val weightUnit = currentAccount?.weightUnit
-        if (weightUnit != null) {
-          handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
-        }
-      } catch (e: Exception) {
-        // Log error but don't crash - fallback to default KG
-        android.util.Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
+    try {
+      val currentAccount = accountService.activeAccountFlow.asLiveData().value
+      val weightUnit = currentAccount?.weightUnit
+      if (weightUnit != null) {
+        handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
       }
+    } catch (e: Exception) {
+      // Log error but don't crash - fallback to default KG
+      Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
     }
   }
 
   private fun observeDataChanges() {
     viewModelScope.launch {
+      // Start observing combined updates immediately
+      // The immediate data initialization already handled the initial state
       combine(
         dataFlow,
         dashboardService.selectedKey,
         goalService.getCurrentGoal(),
       ) { data, secondaryKey, goal ->
-        handleIntent(GraphIntent.UpdateData(data))
-        handleIntent(GraphIntent.UpdateGoal(goal))
-        handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
-        initializeGraph(data, goal, secondaryKey = secondaryKey)
-      }.launchIn(viewModelScope)
+        Triple(data, secondaryKey, goal)
+      }
+        .drop(1)
+        .collect { (data, secondaryKey, goal) ->
+          handleIntent(GraphIntent.UpdateData(data))
+          handleIntent(GraphIntent.UpdateGoal(goal))
+          handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
+          initializeGraph(data, goal, secondaryKey = secondaryKey)
+        }
     }
   }
 
@@ -133,18 +160,16 @@ class GraphViewModel @AssistedInject constructor(
     goal: Goal? = null,
     secondaryKey: DashboardKey? = null
   ) {
-    viewModelScope.launch {
-      val data = data ?: _state.value.data
-      val goal = goal ?: _state.value.goal
-      val secondaryKey = secondaryKey ?: _state.value.secondaryKey
-      scrollDebounceJob?.cancel()
+    val data = data ?: _state.value.data
+    val goal = goal ?: _state.value.goal
+    val secondaryKey = secondaryKey ?: _state.value.secondaryKey
+    scrollDebounceJob?.cancel()
 
-      // Setup chart model producer
-      if (data.isNotEmpty())
-        setupChartModelProducer(data, secondaryKey, goal)
-      else
-        setupEmptyModelProducer(goal)
-    }
+    // Setup chart model producer
+    if (data.isNotEmpty())
+      setupChartModelProducer(data, secondaryKey, goal)
+    else
+      setupEmptyModelProducer(goal)
   }
 
   /**
@@ -164,6 +189,12 @@ class GraphViewModel @AssistedInject constructor(
           val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
           handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+          val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
+          val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+          if (startx != null && endx != null) {
+            super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
+          }
+          super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
           val graphMeta = if (goal != null) generateNiceScale(
             goal.goalWeight.div(10.0) - 10.0,
             goal.goalWeight.div(10.0) + 10.0,
@@ -190,7 +221,7 @@ class GraphViewModel @AssistedInject constructor(
         }
       } catch (e: Exception) {
         // Log error but don't crash the UI
-        android.util.Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
+        Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
         // Clear loading state on error
         withContext(Dispatchers.Main) {
           super.handleIntent(GraphIntent.UpdateIsLoading(false))
@@ -210,50 +241,49 @@ class GraphViewModel @AssistedInject constructor(
   ) {
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
+    val currentState = state.value
+    val graphLines = data.getWeightGraphPoints()
+    val secondaryStat = secondaryKey ?: _state.value.secondaryKey
+    val secondaryGraphLines = secondaryStat?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+    val xLabels = graphLines.points.map { point -> point.x }
+    val ySeries = graphLines.points.map { it.y }
+    val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
+    val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+    val calendar = Calendar.getInstance()
 
+    val (startX, endX) = if (segment == GraphSegment.TOTAL) {
+      val start = (initialTimeStamp ?: calendar.timeInMillis).let {
+        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
+      }
+      val end = (endTimeStamp ?: calendar.timeInMillis).let {
+        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
+      }
+      start to end
+    } else {
+      val start = _state.value.minTarget ?: GraphUtil.getStartRange(
+        segment,
+        endTimeStamp,
+      ) ?: calendar.timeInMillis
+
+      val end = _state.value.maxTarget ?: GraphUtil.getEndRange(
+        segment,
+        endTimeStamp,
+      ) ?: calendar.timeInMillis
+
+      start to end
+    }
+
+    handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
+    super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+    val filteredData = data.filter {
+      it.getTimeStamp() in startX..endX
+    }
+    if (filteredData.isNotEmpty())
+      super.handleIntent(GraphIntent.UpdateTarget(filteredData))
 
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        val currentState = state.value
-        val graphLines = data.getWeightGraphPoints()
-        val secondaryStat = secondaryKey ?: _state.value.secondaryKey
-        val secondaryGraphLines = secondaryStat?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
-        val xLabels = graphLines.points.map { point -> point.x }
-        val ySeries = graphLines.points.map { it.y }
-        val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
-        val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
-        val calendar = Calendar.getInstance()
-
-        val (startX, endX) = if (segment == GraphSegment.TOTAL) {
-          val start = (initialTimeStamp ?: calendar.timeInMillis).let {
-            Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
-          }
-          val end = (endTimeStamp ?: calendar.timeInMillis).let {
-            Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
-          }
-          start to end
-        } else {
-          val start = _state.value.minTarget ?: GraphUtil.getStartRange(
-            segment,
-            endTimeStamp,
-          ) ?: calendar.timeInMillis
-
-          val end = _state.value.maxTarget ?: GraphUtil.getEndRange(
-            segment,
-            endTimeStamp,
-          ) ?: calendar.timeInMillis
-
-          start to end
-        }
-
-        handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-        super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
-        val filteredData = data.filter {
-          it.getTimeStamp() in startX..endX
-        }
-        if (filteredData.isNotEmpty())
-          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
 
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
@@ -309,7 +339,7 @@ class GraphViewModel @AssistedInject constructor(
         }
       } catch (e: Exception) {
         // Log error but don't crash the UI
-        android.util.Log.e("GraphViewModel", "Error setting up chart model producer", e)
+        Log.e("GraphViewModel", "Error setting up chart model producer", e)
         // Clear loading state on error
         withContext(Dispatchers.Main) {
           super.handleIntent(GraphIntent.UpdateIsLoading(false))
@@ -425,7 +455,7 @@ class GraphViewModel @AssistedInject constructor(
           }
         }
       } catch (e: Exception) {
-        android.util.Log.e("GraphViewModel", "Error handling scroll", e)
+        Log.e("GraphViewModel", "Error handling scroll", e)
       }
     }
   }

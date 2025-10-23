@@ -63,6 +63,12 @@ interface IGoalService {
   suspend fun getCurrentGoal(): Flow<Goal?>
 
   /**
+   * Gets the current goal immediately without suspension.
+   * @return Current goal or null
+   */
+  fun getCurrentGoalSync(): Goal?
+
+  /**
    * Creates a goal for a newly created account during signup.
    * Converts display weights to stored format and determines the correct goal type.
    *
