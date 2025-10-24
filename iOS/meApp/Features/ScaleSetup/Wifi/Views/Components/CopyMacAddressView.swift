@@ -33,7 +33,7 @@ struct CopyMacAddressView: View {
             
             VStack(spacing: .spacingSM) {
                 Text(macAddress)
-                    .fontOpenSans(.body2)
+                    .fontOpenSans(.body1)
                     .foregroundColor(theme.textBody)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 48)
