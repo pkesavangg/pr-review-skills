@@ -80,10 +80,11 @@ struct MonthSummaryItem: View {
                     .foregroundColor(theme.textSubheading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, .spacingMD)
 
             // Chevron icon
-           AppIconView(icon: AppAssets.chevronRight)
+            AppIconView(icon: AppAssets.chevronRight, size: IconSize(
+                width: 32, height: 32
+            ))
                 .foregroundColor(theme.statusIconPrimary)
 
         }

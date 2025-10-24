@@ -36,6 +36,10 @@ struct DateOfBirthStepView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onChange(of: signupStore.currentStep) { _, _ in
+            // Close calendar when step changes
+            showDatePicker = false
+        }
     }
 }
 

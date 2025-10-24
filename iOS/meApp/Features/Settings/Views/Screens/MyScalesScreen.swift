@@ -102,7 +102,7 @@ struct MyScalesScreen: View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
                 title: lang.addEditScales,
-                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
@@ -240,7 +240,6 @@ struct MyScalesScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        
         .onTapGesture {
             focusedField = nil
             hideKeyboard()
