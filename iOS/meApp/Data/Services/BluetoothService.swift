@@ -1574,14 +1574,25 @@ private extension BluetoothService {
     }
 
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
+        // Prefer an attached instance to avoid SwiftData detached faults.
         guard let preference = preference else { return nil }
-        let attached = fetchAttachedPreference(by: preference.id) ?? preference
+        guard let attached = fetchAttachedPreference(by: preference.id) else {
+            // If we cannot fetch an attached instance, avoid touching possibly-detached properties.
+            // Return nil so the caller can proceed without a preference.
+            return nil
+        }
+        // Copy values into plain Swift types immediately to avoid lazy faulting later
+        let displayName = attached.displayName
+        let displayMetricsCopy: [String] = Array(attached.displayMetrics)
+        let shouldMeasureImpedance = attached.shouldMeasureImpedance
+        let shouldMeasurePulse = attached.shouldMeasurePulse
+        let timeFormat = attached.timeFormat
         return GGDevicePreference(
-            displayName: attached.displayName,
-            displayMetrics: attached.displayMetrics,
-            shouldMeasureImpedance: attached.shouldMeasureImpedance,
-            shouldMeasurePulse: attached.shouldMeasurePulse,
-            timeFormat: attached.timeFormat
+            displayName: displayName,
+            displayMetrics: displayMetricsCopy,
+            shouldMeasureImpedance: shouldMeasureImpedance,
+            shouldMeasurePulse: shouldMeasurePulse,
+            timeFormat: timeFormat
         )
     }
 }
