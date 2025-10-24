@@ -16,6 +16,8 @@ struct MetricDetailView: View {
 
     let entry: Entry
     let metric: BodyMetric
+    
+    private let placeholder = "--"
 
     private var config: MetricData { BodyMetrics.config[metric]! }
 
@@ -81,9 +83,11 @@ struct MetricDetailView: View {
                         .foregroundColor(theme.textHeading)
                         .padding(.trailing, .spacingXS/2)
                     }
-                    Text(formattedValue)
-                      .fontOpenSans(.heading2)
-                      .foregroundColor(theme.textHeading)
+                      Text(formattedValue)
+                        .fontOpenSans(.heading2)
+                        .foregroundColor(theme.textHeading)
+                        .offset(y: formattedValue == placeholder ? 8 : 0)
+                    
                     if metric == .weight {
                       Text(weightUnitLabel)
                         .fontOpenSans(.heading4)
