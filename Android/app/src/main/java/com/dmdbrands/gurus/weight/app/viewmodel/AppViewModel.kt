@@ -41,6 +41,7 @@ import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
@@ -655,7 +656,34 @@ constructor(
       if (device == null) {
         return@launch
       }
-      val entry = ggEntry.map { it.toScaleEntry(accountId ?: "", device.id) }
+      
+      // Get user height for BMI calculation
+      val activeAccount = accountService.activeAccountFlow.first()
+      val userHeight = activeAccount?.height
+      
+      val entry = ggEntry.map { ggScaleEntry ->
+        val scaleEntry = ggScaleEntry.toScaleEntry(accountId ?: "", device.id)
+        
+        // Check if BMI is 0.0 or null and calculate it if user height is available
+        if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) && userHeight != null) {
+          val calculatedBmi = EntryHelper.getCalculatedBMI(
+            weight = scaleEntry.scale.scaleEntry.weight.toFloat(),
+            unit = scaleEntry.entry.unit,
+            height = userHeight
+          )
+          
+          // Update the BMI in the scale entry
+          val updatedScaleEntry = scaleEntry.scale.scaleEntry.copy(bmi = calculatedBmi)
+          val updatedScaleEntryWithMetrics = scaleEntry.scale.copy(scaleEntry = updatedScaleEntry)
+          
+          AppLog.d(TAG, "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight")
+          
+          scaleEntry.copy(scale = updatedScaleEntryWithMetrics)
+        } else {
+          scaleEntry
+        }
+      }
+      
       try {
         entryService.addEntry(entry)
         dialogQueueService.showToast(

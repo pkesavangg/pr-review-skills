@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Singleton
+import android.util.Log
 
 @Singleton
 class BLESetupDependencies @Inject constructor(
@@ -267,6 +268,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
         try {
           ggDeviceService.deviceCallbackFlow.filter { it is GGScanResponse.Entry }
             .collect { scanResponse ->
+              Log.d("Entryyy: 1", "${scanResponse}")
               AppLog.d(TAG, "Received entry scan response: ${scanResponse::class.simpleName}")
               onEntryResponse(scanResponse as GGScanResponse.Entry, onEntryFound)
             }

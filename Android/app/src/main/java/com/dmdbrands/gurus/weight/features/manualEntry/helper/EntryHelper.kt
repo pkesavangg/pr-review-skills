@@ -287,6 +287,15 @@ object EntryHelper {
     else -> ScaleSetupType.toSource(ScaleSetupType.Bluetooth.value)
   }
 
+  fun getCalculatedBMI(weight: Float, unit: WeightUnit, height: Int): Double {
+    val weightKg = when (unit.value) {
+      "kg" -> weight.toDouble()
+      else -> weight.toDouble() * 0.453592 // Convert lbs to kg
+    }
+    val heightCm = ConversionTools.convertStoredHeightToCm(height)
+    return ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
+  }
+
   /**
    * Converts AppSyncResult to ScaleEntry format
    */
