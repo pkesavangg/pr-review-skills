@@ -151,7 +151,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
           AppInput(
             formControl = state.form.controls.weightlessWeight,
             enabled = state.isWeightlessOn,
-            label = "${WeightlessStrings.WeightlessWeightLabel} ($weightUnit)",
+            label = "${WeightlessStrings.WeightlessWeightLabel} (${weightUnit.label})",
             type = AppInputType.BODY_COMP,
             showTrailingIcon = false,
             imeAction = ImeAction.Done,
