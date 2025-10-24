@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
-import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -94,7 +94,7 @@ class GraphViewModel @AssistedInject constructor(
     try {
       // Get immediate data from services (excluding EntryService and AccountService as requested)
       val immediateData = dataFlow.value
-      val immediateGoal = goalService.getCurrentGoalSync()
+      val immediateGoal = accountService.activeAccount.value.toGoal()
       val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
       super.handleIntent(GraphIntent.UpdateData(immediateData))
       super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
@@ -108,7 +108,7 @@ class GraphViewModel @AssistedInject constructor(
 
   private fun subscribeWeightUnit() {
     viewModelScope.launch {
-      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect { weightUnit ->
+      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().drop(1).collect { weightUnit ->
         if (weightUnit != null)
           handleIntent(
             GraphIntent.UpdateWeightUnit(weightUnit),
@@ -123,7 +123,7 @@ class GraphViewModel @AssistedInject constructor(
    */
   private fun initializeWeightUnit() {
     try {
-      val currentAccount = accountService.activeAccountFlow.asLiveData().value
+      val currentAccount = accountService.activeAccount.value
       val weightUnit = currentAccount?.weightUnit
       if (weightUnit != null) {
         handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))

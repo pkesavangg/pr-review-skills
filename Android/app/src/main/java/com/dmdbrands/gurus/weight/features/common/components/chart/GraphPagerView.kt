@@ -93,7 +93,7 @@ fun GraphPagerView(
       LaunchedEffect(graphState.target) {
         val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
         labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
-          "%.2f",
+          "%.1f",
           averageWeight,
         )
         weightValue = averageWeight

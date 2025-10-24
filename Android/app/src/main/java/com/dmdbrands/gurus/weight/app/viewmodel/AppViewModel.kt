@@ -382,6 +382,7 @@ constructor(
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
+        accountService.subscribeAccount()
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
         deviceService.setAccountId(account.id)

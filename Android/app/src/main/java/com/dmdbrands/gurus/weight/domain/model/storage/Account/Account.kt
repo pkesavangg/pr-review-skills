@@ -5,9 +5,10 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertS
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 
@@ -98,4 +99,15 @@ data class Account(
       metrics = metricConfig,
     )
   }
+}
+
+fun Account?.toGoal(): Goal? {
+  val activeAccount = this ?: return null
+  return Goal(
+    goalWeight = activeAccount.goalWeight ?: 0.0,
+    initialWeight = activeAccount.initialWeight,
+    type = activeAccount.goalType ?: "",
+    percent = activeAccount.goalPercent,
+    metPreviousGoal = activeAccount.metPreviousGoal ?: false,
+  )
 }
