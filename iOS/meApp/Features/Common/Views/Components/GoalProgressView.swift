@@ -22,6 +22,12 @@ struct GoalProgressView: View {
     // Goal completion flag
     private var isGoalReached: Bool { viewModel.progress >= 1 }
 
+    // Optional control to disable the "Set Goal Weight" button from parent contexts
+    let isSetGoalButtonDisabled: Bool?
+
+    init(isSetGoalButtonDisabled: Bool? = nil) {
+        self.isSetGoalButtonDisabled = isSetGoalButtonDisabled
+    }
 
     var body: some View {
         NoteBox(alignCenter: false) {
@@ -59,7 +65,7 @@ struct GoalProgressView: View {
                     text: lang.setGoalWeight,
                     type: .filledSuccess,
                     size: .large,
-                    isDisabled: false,
+                    isDisabled: isSetGoalButtonDisabled ?? false,
                     action: {
                         tabViewModel.navigateToGoalSetting()
                     }
