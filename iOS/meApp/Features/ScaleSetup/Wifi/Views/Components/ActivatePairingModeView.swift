@@ -30,7 +30,8 @@ struct ActivatePairingModeView: View {
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.wifiStepOnGif(sku), height: 250)
-                        .frame(width: 370, height: 250)
+                        .frame(height: 250)
+                        .frame(maxWidth: 370)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
