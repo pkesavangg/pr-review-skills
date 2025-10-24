@@ -91,6 +91,11 @@ final class ContentViewModel: ObservableObject {
 
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
+            
+            // Start Bluetooth operations after dashboard is ready
+            if afterUpdate {
+                await bluetoothService.startBluetoothOperations()
+            }
 
             // Run migration in background so it doesn't block first-frame rendering
             let entryService = self.entryService
