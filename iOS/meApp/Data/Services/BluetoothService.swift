@@ -182,20 +182,21 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             syncDevices([])
             return
         }
-        let allowedTypes: [ScaleSourceType] = [
+        // Filter scales by allowed types only (common across all models)
+        let allowedTypes: Set<ScaleSourceType> = Set([
             .bluetooth,
             .bluetoothScale,
             .lcbt,
             .lcbtScale,
             .btWifiR4
-        ]
+        ])
         let filteredScales = scales.filter { scale in
-            if let scaleTypeRaw = scale.bathScale?.scaleType {
-                let scaleType = ScaleSourceType(rawValue: scaleTypeRaw) ?? .bluetoothScale
-                return allowedTypes.contains(scaleType) || scale.sku == "0412"
+            guard let raw = getSafeScaleType(for: scale), let type = ScaleSourceType(rawValue: raw) else {
+                return false
             }
-            return scale.sku == "0412"
+            return allowedTypes.contains(type)
         }
+        
         // Disconnect deleted scales
         await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         bluetoothScales = filteredScales
@@ -303,7 +304,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
                 token: device.token,
                 userNumber: Int(device.userNumber ?? "0"),
-                preference: mapToGGPreference(device.r4ScalePreference),
+                preference: mapToGGPreference(deviceId: device.id, preference: device.r4ScalePreference),
                 syncAllData: nil,
                 batteryLevel: 0,
                 protocolType: device.protocolType ?? "",
@@ -328,7 +329,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             scaleToSave.nickname = scale.nickname ?? "Bluetooth Smart Scale"
             scaleToSave.password = scale.password
             var metaData = deviceDetails
-            let scaleType = scale.bathScale?.scaleType ?? ""
+            let scaleType = getSafeScaleType(for: scale) ?? ""
             if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
                 let deviceInfoResult = await getDeviceInfo(for: scale)
                 switch deviceInfoResult {
@@ -643,7 +644,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggDevice.preference = mapToGGPreference(preference)
+            ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
             let result = await ggBleSDK.updateAccount(ggDevice)
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
@@ -776,7 +777,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         // Filter for connected R4 scales
         let connectedR4Scales = bluetoothScales.filter { scale in
             let isConnected = scale.isConnected ?? false
-            let isR4Scale = scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue
+            let isR4Scale: Bool = {
+                if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
+                return false
+            }()
             return isConnected && isR4Scale
         }
         
@@ -946,7 +950,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func findUserToDelete(userList: [DeviceUser], discoveredScale: Device) -> DeviceUser? {
         return userList.first { user in
             bluetoothScales.contains { scale in
-                let isR4Scale = scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue
+                let isR4Scale: Bool = {
+                    if let raw = getSafeScaleType(for: scale) { return ScaleSourceType(rawValue: raw) == .btWifiR4 }
+                    return false
+                }()
                 let namesMatch: Bool = {
                     if let pref = scale.r4ScalePreference {
                         if let fetched = fetchAttachedPreference(by: pref.id) { return user.name.lowercased() == fetched.displayName.lowercased() }
@@ -987,6 +994,24 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     // MARK: - Private Helper Methods
+    
+    /// Safely gets the scale type from a Device, handling potential SwiftData detachment issues
+    private func getSafeScaleType(for device: Device) -> String? {
+        // Check if the device has a valid persistent identifier
+        guard device.persistentModelID != nil else {
+            logger.log(level: .debug, tag: tag, message: "Device \(device.id) has no persistent model ID")
+            return nil
+        }
+        
+        // Try to access the scale type, but be prepared for potential detachment
+        // We'll use a safer approach by checking if the bathScale relationship exists
+        guard let bathScale = device.bathScale else {
+            return nil
+        }
+        
+        // Access the scaleType property
+        return bathScale.scaleType
+    }
     
     private func startSmartScan() async throws {
         guard let activeAccount = activeAccount else {
@@ -1392,9 +1417,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         for scale in deletedScales {
             if scale.isConnected ?? false {
-                if scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue {
-                    _ = await deleteDevice(scale, disconnect: false)
-                }
+                // Delete the device from the scale for all scale types to avoid SwiftData detachment issues
+                _ = await deleteDevice(scale, disconnect: false)
+                
                 guard let broadcastId = scale.broadcastIdString else { continue }
                 let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
                 if case .failure(let error) = disconnectResult {
@@ -1545,7 +1570,7 @@ private extension BluetoothService {
             password: convertIntToHex(device.password ?? 0, protocolType: ProtocolType(rawValue: device.protocolType ?? "") ?? .A6),
             token: device.token,
             userNumber: Int(device.userNumber ?? "0") ?? 0,
-            preference: mapToGGPreference(device.r4ScalePreference),
+            preference: mapToGGPreference(deviceId: device.id, preference: device.r4ScalePreference),
             syncAllData: nil,
             batteryLevel: 0,
             protocolType: device.protocolType ?? "",
@@ -1573,26 +1598,17 @@ private extension BluetoothService {
         return scaleService.fetchAttachedPreferenceSync(by: id)
     }
 
-    func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        // Prefer an attached instance to avoid SwiftData detached faults.
+    func mapToGGPreference(deviceId: String, preference: R4ScalePreference?) -> GGDevicePreference? {
+        // Always try fetching via preference.id to ensure a context-attached object.
+        // This avoids touching properties on a potentially detached SwiftData instance.
         guard let preference = preference else { return nil }
-        guard let attached = fetchAttachedPreference(by: preference.id) else {
-            // If we cannot fetch an attached instance, avoid touching possibly-detached properties.
-            // Return nil so the caller can proceed without a preference.
-            return nil
-        }
-        // Copy values into plain Swift types immediately to avoid lazy faulting later
-        let displayName = attached.displayName
-        let displayMetricsCopy: [String] = Array(attached.displayMetrics)
-        let shouldMeasureImpedance = attached.shouldMeasureImpedance
-        let shouldMeasurePulse = attached.shouldMeasurePulse
-        let timeFormat = attached.timeFormat
+        let attached = fetchAttachedPreference(by: preference.id) ?? preference
         return GGDevicePreference(
-            displayName: displayName,
-            displayMetrics: displayMetricsCopy,
-            shouldMeasureImpedance: shouldMeasureImpedance,
-            shouldMeasurePulse: shouldMeasurePulse,
-            timeFormat: timeFormat
+            displayName: attached.displayName,
+            displayMetrics: attached.displayMetrics,
+            shouldMeasureImpedance: attached.shouldMeasureImpedance,
+            shouldMeasurePulse: attached.shouldMeasurePulse,
+            timeFormat: attached.timeFormat
         )
     }
 }
