@@ -263,7 +263,7 @@ constructor(
         if (scalesToUpdate.isNotEmpty()) {
           // Show loading toast
           dialogQueueService.showLoader(
-            "Updating scale settings...",
+            "Updating Mode...",
           )
 
           for (scale in scalesToUpdate) {
@@ -271,14 +271,12 @@ constructor(
             try {
               enableSessionImpedence(scale)
               dialogQueueService.dismissLoader()
-              WeightOnlyModeEventService.events.emit(WeightOnlyModeEventType.HIDE_ALERT)
               handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
               AppLog.d(TAG, "Updated settings for scale: ${scale.device?.deviceName}")
             } catch (e: Exception) {
               AppLog.e(TAG, "Failed to update scale settings", e)
             }
           }
-
           // Show success toast
           dialogQueueService.showToast(
             Toast(message = "Body metrics enabled successfully!"),
@@ -294,6 +292,7 @@ constructor(
       }
       finally {
           dialogQueueService.dismissLoader()
+        dialogQueueService.dismissCurrent()
       }
     }
   }

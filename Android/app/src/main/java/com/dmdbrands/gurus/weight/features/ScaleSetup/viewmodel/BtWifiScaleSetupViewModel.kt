@@ -905,7 +905,6 @@ constructor(
       BtWifiSetupStep.UPDATE_SETTINGS -> {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = null
-        // updateSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {

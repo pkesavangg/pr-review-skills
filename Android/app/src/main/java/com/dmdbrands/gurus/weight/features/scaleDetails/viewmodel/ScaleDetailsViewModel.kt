@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -133,6 +134,8 @@ constructor(
       // Dialog Management Handlers
       ScaleDetailsIntent.ShowTimeFormatDialog -> showTimeFormatModal()
       ScaleDetailsIntent.ShowClearDataDialog -> showClearDataModal()
+      ScaleDetailsIntent.ShowEnableBodyMetricsAlert -> showEnableBodyMetricsAlert()
+      ScaleDetailsIntent.EnableBodyMetrics -> enableBodyMetrics()
       else -> {}
     }
   }
@@ -738,6 +741,96 @@ constructor(
         handleIntent(ScaleDetailsIntent.ClearScaleData(selectedValue ?: ""))
       },
     )
+  }
+
+  /**
+   * Shows the enable body metrics alert dialog.
+   */
+  private fun showEnableBodyMetricsAlert() {
+    try {
+      viewModelScope.launch {
+        dialogQueueService.showDialog(
+          DialogModel.Confirm(
+            title = ScaleDetailsStrings.EnableBodyMetricsAlertTitle,
+            message = ScaleDetailsStrings.EnableBodyMetricsAlertMessage,
+            confirmText = ScaleDetailsStrings.EnableBodyMetricsAlertConfirm,
+            cancelText = ScaleDetailsStrings.EnableBodyMetricsAlertCancel,
+            onConfirm = {
+              viewModelScope.launch {
+                dialogQueueService.dismissCurrent()
+                handleIntent(ScaleDetailsIntent.EnableBodyMetrics)
+              }
+            },
+            onDismiss = {
+              dialogQueueService.dismissCurrent()
+            },
+          ),
+        )
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error showing enable body metrics alert", e.toString())
+    }
+  }
+
+  /**
+   * Enables body metrics for the scale (temporarily).
+   * This follows the same pattern as onWeightOnlyModeEnable() in HomeViewModel.
+   */
+  private fun enableBodyMetrics() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+          AppLog.d(TAG, "Enabling body metrics for scale: ${scale.device?.deviceName}")
+
+          // Show loading toast
+          dialogQueueService.showLoader(
+            message = ScaleDetailsStrings.UpdateMode,
+          )
+
+          // Update scale settings to enable body metrics (session impedance)
+          enableSessionImpedence(scale)
+
+          // Show success toast
+          dialogQueueService.showToast(
+            Toast(
+              message = ScaleDetailsStrings.EnableBodyMetricsAlertSuccess,
+            ),
+          )
+
+          AppLog.d(TAG, "Body metrics enabled successfully for scale: ${scale.device?.deviceName}")
+        } else {
+          showToast(ScaleDetailsStrings.ScaleNotConnectedImpedance) // Reuse existing message
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error enabling body metrics", e.toString())
+        showToast(ScaleDetailsStrings.EnableBodyMetricsAlertError)
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  /**
+   * Enables session impedance for the scale to allow body metrics collection.
+   * This follows the same pattern as enableSessionImpedence() in HomeViewModel.
+   */
+  private fun enableSessionImpedence(device: Device) {
+    viewModelScope.launch {
+      try {
+        ggDeviceService.updateSettings(
+          device.toGGBTDevice(),
+          GGBTSetting(
+            key = GGBTSettingType.SESSION_IMPEDANCE,
+            value = GGBTSettingValue.Boolean(true),
+          ),
+        )
+        AppLog.d(TAG, "Session impedance enabled for scale: ${device.device?.deviceName}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to enable session impedance for scale: ${device.device?.deviceName}", e)
+        throw e // Re-throw to be handled by the calling method
+      }
+    }
   }
 
   private fun navigateBack() {

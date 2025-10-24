@@ -10,4 +10,9 @@ object ScaleDisplayMetricsStrings {
     const val Success = "Scale mode preference updated."
     const val Error = "Error updating scale mode preference."
   }
+
+  object WeightOnlyModeNotes {
+    const val Title = "A user has Weight Only Mode on"
+    const val Message = "You can temporarily enable All Body Metrics and/or review users from scale settings."
+  }
 }

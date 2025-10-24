@@ -100,6 +100,8 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   // Dialog Management Intents (handled by dialog service)
   object ShowTimeFormatDialog : ScaleDetailsIntent
   object ShowClearDataDialog : ScaleDetailsIntent
+  object ShowEnableBodyMetricsAlert : ScaleDetailsIntent
+  object EnableBodyMetrics : ScaleDetailsIntent
 }
 
 /**
@@ -155,6 +157,8 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
       // Dialog Management Reducers (no state changes needed - handled by dialog service)
       ScaleDetailsIntent.ShowTimeFormatDialog -> state.copy()
       ScaleDetailsIntent.ShowClearDataDialog -> state.copy()
+      ScaleDetailsIntent.ShowEnableBodyMetricsAlert -> state.copy()
+      ScaleDetailsIntent.EnableBodyMetrics -> state.copy()
 
       else -> state.copy()
     }
