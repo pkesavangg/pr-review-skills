@@ -39,6 +39,10 @@ interface IAccountService {
    */
   val checkIntegrations: StateFlow<Boolean>
 
+  val activeAccount: StateFlow<Account?>
+
+  fun subscribeAccount()
+
   /**
    * Logs in a user with the provided email and password.
    * @param email User's email

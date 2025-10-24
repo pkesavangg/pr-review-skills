@@ -17,11 +17,16 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,12 +51,17 @@ constructor(
     private const val TAG = "AccountService"
   }
 
+  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
   // region Public Properties
 
   /**
    * Flow emitting authentication state changes (login, logout, errors, etc).
    */
   override val authEvent = appNavigationService.authEvent
+
+  private val _activeAccount = MutableStateFlow<Account?>(null)
+  override val activeAccount: StateFlow<Account?> = _activeAccount
 
   /**
    * Flow emitting the currently active account, or null if none is active.
@@ -75,6 +85,16 @@ constructor(
    */
   private val _checkIntegrations = MutableStateFlow(false)
   override val checkIntegrations: StateFlow<Boolean> = _checkIntegrations
+
+  override fun subscribeAccount() {
+    repositoryScope.cancel()
+    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    repositoryScope.launch {
+      accountRepository.getActiveAccount().collect {
+        _activeAccount.value = it
+      }
+    }
+  }
 
   /**
    * Gets the current active account.
@@ -118,10 +138,10 @@ constructor(
     } catch (e: HttpException) {
       val msg =
         when (e.code()) {
-          HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.LoginError.MessageNoConn
-          HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.LoginError.MessageServError
-          HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.LoginError.MessageNotAuth
-          else -> ToastStrings.Error.LoginError.MessageGeneric
+          HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> LoginError.MessageNoConn
+          HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> LoginError.MessageServError
+          HttpErrorConfig.ResponseCode.UNAUTHORIZED -> LoginError.MessageNotAuth
+          else -> LoginError.MessageGeneric
         }
       showErrorToast(title = LoginError.Header, message = msg)
       AppLog.e(TAG, "Login failed", e)
@@ -274,7 +294,7 @@ constructor(
             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
-          val header = when(e.code()){
+          val header = when (e.code()) {
             HttpErrorConfig.ResponseCode.UNAUTHORIZED, HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
             else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
           }
@@ -452,7 +472,7 @@ constructor(
       AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
-      accountRepository.setNotificationAlertShownForAccount(accountId,false)
+      accountRepository.setNotificationAlertShownForAccount(accountId, false)
       AppLog.d(TAG, "Logout successful")
       appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
       result
@@ -523,10 +543,12 @@ constructor(
     AppLog.v(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
 
     // Check network availability - prevent offline switching
-    requireNetworkAvailable(onError = {
-      AppLog.w(TAG, "Cannot switch account while offline")
-      showNetworkErrorAndThrow()
-    })
+    requireNetworkAvailable(
+      onError = {
+        AppLog.w(TAG, "Cannot switch account while offline")
+        showNetworkErrorAndThrow()
+      },
+    )
 
     return try {
       accountRepository.getAccountFromAPI(account.id)
@@ -539,8 +561,7 @@ constructor(
       AppLog.e(TAG, "Failed to switch account", e)
       handleAccountValidationError(account.id, e)
       false
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       // Optional: handle unexpected exceptions
       AppLog.e(TAG, "Unexpected error while switching account", e)
       false
@@ -597,7 +618,7 @@ constructor(
       dialogQueueService.showToast(
         Toast(
           title = null,
-          message = ToastStrings.Error.LoginError.MessageGeneric,
+          message = LoginError.MessageGeneric,
         ),
       )
     }
