@@ -15,9 +15,10 @@ struct IntegrationsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            NavbarHeaderView<AppIconView, EmptyView>(
+            NavbarHeaderView(
                 title: IntegrationsStrings.title,
-                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
+                trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 canShowBorder: true
             )

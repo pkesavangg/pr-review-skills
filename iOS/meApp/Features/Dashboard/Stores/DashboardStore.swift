@@ -163,8 +163,10 @@ class DashboardStore: ObservableObject {
             .map { $0?.accountId }
             .removeDuplicates()
             .dropFirst()
-            .sink { [weak self] _ in
-                self?.handleActiveAccountChanged()
+            .sink { [weak self] account in
+                if account != nil {
+                    self?.handleActiveAccountChanged()
+                }
             }
             .store(in: &cancellables)
 

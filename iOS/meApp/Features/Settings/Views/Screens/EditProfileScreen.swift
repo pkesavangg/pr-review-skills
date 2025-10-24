@@ -111,9 +111,13 @@ struct EditProfileScreen: View {
                             .fontOpenSans(.subHeading1)
                             .foregroundColor(theme.textSubheading)
                         
-                        DateLabelView(date: settingsStore.editProfileForm.birthday.value) {
+                        DateLabelView(
+                            date: settingsStore.editProfileForm.birthday.value,
+                            isSelected: showDatePicker
+                        ) {
                             withAnimation { showDatePicker.toggle() }
                         }
+                        .padding(.leading, 2)
                         
                         DatePickerView(isPresented: $showDatePicker,
                                        date: $settingsStore.editProfileForm.birthday.value,
@@ -152,6 +156,10 @@ struct EditProfileScreen: View {
         .onDisappear {
             // Remove deactivation handler when leaving screen.
             registerDeactivation { true }
+        }
+        .onChange(of: focusedField) { _, _ in
+            // Close calendar when focus changes to other fields
+            showDatePicker = false
         }
     }
 }

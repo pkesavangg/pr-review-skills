@@ -19,6 +19,10 @@ struct HistoryListScreen: View {
     @State private var hasAppeared = false
     @State private var lastTabCheck: BottomTab? = nil
     
+    // Prevent multiple simultaneous navigation
+    @State private var isNavigating = false
+    @State private var navigationTask: Task<Void, Never>?
+    
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
@@ -45,6 +49,12 @@ struct HistoryListScreen: View {
                   .background(theme.backgroundSecondary)
                   .edgesIgnoringSafeArea(.bottom)
           }
+          .onAppear(perform: {
+              // Register reselect handler to pop to root when history tab is tapped
+              tabViewModel.registerReselectHandler(for: .history) {
+                  router.navigateToRoot()
+              }
+          })
           .background(theme.backgroundSecondary)
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
@@ -59,6 +69,11 @@ struct HistoryListScreen: View {
                   }
               }
           }
+        }
+        .onDisappear {
+            // Cancel any pending navigation task when view disappears
+            navigationTask?.cancel()
+            navigationTask = nil
         }
         .environmentObject(Theme.shared)
         .environmentObject(router)
@@ -85,8 +100,21 @@ struct HistoryListScreen: View {
                         MonthSummaryItem(month: month)
                             .contentShape(Rectangle())
                             .onTapGesture {
+                                guard !isNavigating else { return }
+                                isNavigating = true
                                 store.setSelectedMonth(selectedMonth: month)
                                 router.navigate(to: .historyMonthList(month: month))
+                                
+                                // Cancel any existing navigation task
+                                navigationTask?.cancel()
+                                
+                                // Reset navigation flag after a short delay
+                                navigationTask = Task {
+                                    try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+                                    await MainActor.run {
+                                        isNavigating = false
+                                    }
+                                }
                             }
                             .background(theme.backgroundSecondary)
                     }
