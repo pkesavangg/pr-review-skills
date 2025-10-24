@@ -67,7 +67,7 @@ fun FAQComponent(
     ),
   )
 
-  var expandedFaqId by remember { mutableStateOf<String?>(null) }
+  var expandedFaqId by remember { mutableStateOf<String?>("faq1") }
 
   LazyColumn(
     modifier = modifier
