@@ -63,7 +63,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -615,7 +614,6 @@ constructor(
                   },
                   onCancel = {
                     if (data.broadcastId != null) {
-                      Log.i("CHECKING", data.broadcastId.toString())
                       ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
                     }
                   },
