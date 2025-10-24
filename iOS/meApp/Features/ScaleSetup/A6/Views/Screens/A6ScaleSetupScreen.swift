@@ -14,6 +14,9 @@ struct A6ScaleSetupScreen: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
     
+    // Track if view is being dismissed to prevent onDisappear from being called during presentation
+    @State private var isBeingDismissed = false
+    
     // MARK: - Input
     let sku: String
     let discoveredScale: Device?
@@ -36,7 +39,7 @@ struct A6ScaleSetupScreen: View {
             NavbarHeaderView(
                 title: scaleSetupLang.setupHeader(sku),
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
+                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
@@ -65,10 +68,22 @@ struct A6ScaleSetupScreen: View {
             }
         }
         .onAppear {
-            setupStore.dismissAction = dismiss
+            // Reset dismissal flag when view appears
+            isBeingDismissed = false
+            
+            setupStore.dismissAction = {
+                isBeingDismissed = true
+                dismiss()
+            }
             setupStore.configure(with: sku,
                                  discoveredScale: discoveredScale,
                                  discoveryEvent: discoveryEvent)
+        }
+        .onDisappear {
+            // Only perform cleanup if the view is actually being dismissed, not just presented
+            if isBeingDismissed {
+                setupStore.cleanUp()
+            }
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)

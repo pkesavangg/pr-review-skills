@@ -17,40 +17,45 @@ struct ApModeConnectionView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                VStack(alignment: .leading, spacing: .spacingSM) {
-                    Text(lang.title.asAttributed(withBoldWords: lang.boldWords))
+                VStack(alignment: .leading) {
+                    Text(lang.title)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.leading)
+                        .padding(.bottom, .spacingXS)
                     
-                    Text(lang.description)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                }
-                
-                VStack(spacing: .spacingSM) {
-                    if permissionsSkipped {
-                        ButtonView(
-                            text: lang.gotoSettings,
-                            type: .filledPrimary,
-                            size: .large,
-                            isDisabled: false,
-                            action: {
-                                onClickNetworkChange?()
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(lang.step1)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                        
+                        Text(lang.step2)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                        
+                        Text(lang.step3.asAttributed(withBoldWords: lang.step3BoldWords))
+                            .foregroundColor(theme.textBody)
+                        
+                        VStack(alignment: .leading) {
+                            HStack(alignment: .top, spacing: 0) {
+                                Text(lang.step4Number)
+                                    .fontOpenSans(.body2)
+                                    .foregroundColor(theme.textBody)
+                                
+                                VStack(alignment: .leading) {
+                                    Text(lang.step4Text)
+                                        .fontOpenSans(.body2)
+                                        .foregroundColor(theme.textBody)
+                                    
+                                    if !permissionsSkipped {
+                                        Text(lang.inactiveNote)
+                                            .fontOpenSans(.body2)
+                                            .foregroundColor(theme.textBody)
+                                    }
+                                }
                             }
-                        )
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    } else {
-                        ActionListItemView(config: ActionListItemConfig(
-                            title: connectedSSID.isEmpty ? lang.changeNetwork :  connectedSSID,
-                            chevronType: .right,
-                            onTap: {
-                                onClickNetworkChange?()
-                            }
-                        ))
-                        .padding(.horizontal, .spacingSM)
-                        .background(theme.backgroundPrimary)
-                        .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
+                        }
+
                     }
                 }
             }

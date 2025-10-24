@@ -28,7 +28,8 @@ struct SoftwareUpdateSheet: View {
         VStack(spacing: 0) {
             NavbarHeaderView(
                 title: FirmwareUpdateStrings.title,
-                leadingContent: { AppIconView(icon: AppAssets.xmark) },
+                leadingContent: { AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
+                    .foregroundColor(theme.statusIconPrimary) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { dismiss() },
                 onTrailingTap: {},

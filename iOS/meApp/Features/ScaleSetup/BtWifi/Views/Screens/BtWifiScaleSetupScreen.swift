@@ -17,6 +17,9 @@ struct BtWifiScaleSetupScreen: View {
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @Environment(\.dismiss) private var dismiss
     
+    // Track if view is being dismissed to prevent onDisappear from being called during presentation
+    @State private var isBeingDismissed = false
+    
     // MARK: - Input
     let sku: String
     let discoveredScale: Device?
@@ -93,12 +96,18 @@ struct BtWifiScaleSetupScreen: View {
         }
         .environmentObject(setupStore)
         .onAppear {
+            // Reset dismissal flag when view appears
+            isBeingDismissed = false
+            
             // Register a tab de-activation handler so attempts to switch tabs while the
             // Wi-Fi setup flow is active will first show the exit confirmation alert.
             registerDeactivation {
                 await setupStore.confirmExit()
             }
-            setupStore.dismissAction = dismiss
+            setupStore.dismissAction = {
+                isBeingDismissed = true
+                dismiss()
+            }
             setupStore.configure(with: sku,
                                  discoveredScale: discoveredScale,
                                  discoveryEvent: discoveryEvent,
@@ -111,7 +120,11 @@ struct BtWifiScaleSetupScreen: View {
         .background(theme.backgroundSecondary)
         // Clear the deactivation handler when the view disappears to avoid stale closures.
         .onDisappear {
-            registerDeactivation { true }
+            // Only perform cleanup if the view is actually being dismissed, not just presented
+            if isBeingDismissed {
+                registerDeactivation { true }
+                setupStore.cleanup()
+            }
         }
     }
     

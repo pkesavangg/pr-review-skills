@@ -30,7 +30,7 @@ final class A6ScaleSetupStore: ObservableObject {
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     /// Discovered scale information
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
@@ -304,6 +304,7 @@ final class A6ScaleSetupStore: ObservableObject {
             )
             
             await scaleService.syncAllScalesWithRemote()
+            bluetoothService.syncDevices([])
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
             
@@ -395,6 +396,17 @@ final class A6ScaleSetupStore: ObservableObject {
             ]
         )
         notificationService.showAlert(alert)
+    }
+    
+    /// Cleans up all subscriptions and resources when the view disappears
+    func cleanUp() {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        stepTimerTask = nil
+        resetDiscoveryState()
     }
     
     // Cancel active Combine subscription before releasing it.
