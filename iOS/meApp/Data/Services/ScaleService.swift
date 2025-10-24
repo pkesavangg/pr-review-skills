@@ -395,8 +395,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             if let localBid = localDevice.broadcastIdString, let newBid = device.broadcastIdString, !localBid.isEmpty, localBid == newBid { return true }
             // Check by MAC
             if let localMac = localDevice.mac, let newMac = device.mac, !localMac.isEmpty, localMac == newMac { return true }
-            // Check by SKU+type (weak fallback)
-            if let localSku = localDevice.sku, let newSku = device.sku, localSku == newSku, localDevice.deviceType == device.deviceType { return true }
             return false
         }
         
@@ -662,7 +660,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private func isDuplicateDevice(device: Device, remoteDTO: ScaleDTO) -> Bool {
         if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
         if let deviceMac = device.mac, let remoteMac = remoteDTO.mac, deviceMac == remoteMac { return true }
-        if let deviceSku = device.sku, let remoteSku = remoteDTO.sku, deviceSku == remoteSku { return true }
         return false
     }
     

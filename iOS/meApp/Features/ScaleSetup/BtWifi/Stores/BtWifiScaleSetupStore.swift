@@ -136,8 +136,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Heart rate measurement setting
     @Published var isHeartRateEnabled: Bool = false
     
-    /// Selected customize settings items that have been configured
+    /// Selected customize settings items that have been configured and saved
     @Published var selectedCustomizeItems: Set<String> = []
+    
+    /// Visited customize settings items (tracks which screens user has visited)
+    @Published var visitedCustomizeItems: Set<String> = []
     
     /// Selected scale metric keys from the Scale Metrics customization screen.
     /// Defaults to all available metrics so that, unless the user removes metrics, everything is sent to the scale.
@@ -183,6 +186,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // Dashboard store used for the Dashboard Metrics customization view
     private let dashboardStore = DashboardStore()
+    // Snapshots to detect changes and gate Save button enabling
+    private var initialDisplayNameSnapshot: String?
+    private var initialScaleModeSnapshot: ScaleModes?
+    private var initialHeartRateEnabledSnapshot: Bool?
+    private var initialDashboardMetricLabelsSnapshot: [String]? = nil
+    private var initialDashboardRemovedMetricsSnapshot: Set<String>? = nil
+    private var initialDashboardStreakOrderSnapshot: [String]? = nil
+    private var initialDashboardGoalCardRemovedSnapshot: Bool? = nil
+    private var initialDashboardGoalCardPositionSnapshot: Int? = nil
+    private var dashboardStoreCancellable: AnyCancellable? = nil
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -299,14 +312,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
                                 }
                             )
-                        case .scaleMetrics:
-                            // Scale metrics customization screen.
-                            ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics in
-                                self?.selectedScaleMetrics = metrics
-                                // Mark that changes were made so we trigger update later.
-                                self?.hasCustomizeChanges = true
-                                self?.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
-                            }
+            case .scaleMetrics:
+                // Scale metrics customization screen.
+                ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics, hasChanged in
+                    guard let self else { return }
+                    self.selectedScaleMetrics = metrics
+                    // Only mark changes when there is a real delta
+                    self.hasCustomizeChanges = hasChanged || self.hasCustomizeChanges
+                    if hasChanged {
+                        self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
+                    } else {
+                        self.selectedCustomizeItems.remove(CustomizeSettingsItem.scaleMetrics.rawValue)
+                    }
+                    // Re-evaluate footer button enabled state
+                    self.updateNextEnabled()
+                }
                             
                         case .dashboardMetrics:
                             ScrollView {
@@ -505,6 +525,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.hasCustomizeChanges = false
         self.currentCustomizeSetting = .none
         self.selectedCustomizeItems = []
+        self.visitedCustomizeItems = []
         
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
@@ -775,6 +796,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 ScaleUser(name: deviceUser.name, token: deviceUser.token)
             }
             userNameForm.updateUserList(scaleUsers)
+            initialDisplayNameSnapshot = displayName
         case .scaleMode:
             // Pre-populate scale mode settings from attached preference
             Task { [weak self] in
@@ -786,6 +808,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     }
                 }
             }
+            initialScaleModeSnapshot = selectedScaleMode
+            initialHeartRateEnabledSnapshot = isHeartRateEnabled
         case .scaleMetrics:
             // Preload saved display metrics from an attached preference
             Task { [weak self] in
@@ -797,6 +821,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     await MainActor.run { self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys }
                 }
             }
+        case .dashboardMetrics:
+            // Begin edit mode and snapshot current state for change detection
+            dashboardStore.beginEdit()
+            snapshotDashboardState()
+            // Subscribe to dashboard edits to update Save button enablement live
+            dashboardStoreCancellable?.cancel()
+            dashboardStoreCancellable = dashboardStore.objectWillChange
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                        self.updateNextEnabled()
+                    }
+                }
         default:
             break
         }
@@ -823,14 +861,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         ))
     }
     
-    /// Adds a customize settings item to the selected items set
+    /// Adds a customize settings item to the visited items set (tracks that user has opened this screen)
     func addSelectedCustomizeItem(_ item: String) {
-        selectedCustomizeItems.insert(item)
+        visitedCustomizeItems.insert(item)
     }
     
-    /// Checks if a customize settings item is selected
+    /// Checks if a customize settings item has been visited
     func isCustomizeItemSelected(_ item: String) -> Bool {
-        return selectedCustomizeItems.contains(item)
+        return visitedCustomizeItems.contains(item)
     }
     
     /// Handles the save action from the view settings screen
@@ -874,10 +912,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             break
         case .dashboardMetrics:
+            // Save dashboard changes immediately when Save is clicked
+            dashboardStore.saveChanges()
             // Mark that changes were made so the flow can treat it as updated
-            // Dashboard metrics will be saved to API when Next button is clicked
             self.hasCustomizeChanges = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            // Post notification to refresh dashboard screen when user returns to it
+            NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
             break
         default:
             break
@@ -895,8 +936,28 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.currentCustomizeSetting = .none
         }
         
-        // Don't mark changes as made when going back without saving
-        // The changes flag should only be set when actually saving changes
+        // Revert unsaved changes for each customize screen
+        switch currentCustomizeSetting {
+        case .dashboardMetrics:
+            // Discard dashboard customization changes
+            discardDashboardCustomization()
+        case .scaleMode:
+            if let savedScale = savedScale {
+                // Restore previously snapshotted values
+                let originalMode = initialScaleModeSnapshot ?? (savedScale.r4ScalePreference?.shouldMeasureImpedance == true ? .allBodyMetrics : .weightOnly)
+                let originalPulse = initialHeartRateEnabledSnapshot ?? (savedScale.r4ScalePreference?.shouldMeasurePulse ?? false)
+                selectedScaleMode = originalMode
+                isHeartRateEnabled = originalPulse
+            }
+        case .scaleUsername:
+            if let original = initialDisplayNameSnapshot {
+                userNameForm.setDisplayName(original)
+                // Mark the form as pristine to clear the dirty state and validation errors
+                userNameForm.displayName.markAsPristine()
+            }
+        default:
+            break
+        }
         
         // Navigation back to customize settings will be handled by moveToPreviousStep()
     }
@@ -1629,14 +1690,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            let saveDashboardMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
-            
-            // Save dashboard metrics to API when Next button is clicked
-            if saveDashboardMetrics {
-                dashboardStore.saveChanges()
-                // Post notification to refresh dashboard screen when user returns to it
-                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-            }
+            // Dashboard metrics are already saved when Save button is clicked, no need to save again
             
             // Get current preference or create default
             let currentPreference: R4ScalePreference = await {
@@ -1808,9 +1862,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Enable the Next button only when all permissions are granted
             isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
         case .gatheringNetwork:
-            // Enable save button only when there's a duplicate error and username is valid
+            // Enable save button only when there's a duplicate error and username is valid and changed
             if scaleSetupError == .duplicatesFound {
-                isNextEnabled = userNameForm.displayName.isValid
+                let current = removeWhiteSpace(userNameForm.displayName.value)
+                let initial = removeWhiteSpace(firstName ?? "User")
+                isNextEnabled = userNameForm.displayName.isValid && current != initial
             } else {
                 isNextEnabled = true
             }
@@ -1822,10 +1878,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 isNextEnabled = networkForm.ssid.isValid && networkForm.password.isValid
             }
         case .viewSettings:
-            // Enable save button based on current customize setting
+            // Enable Save only when there is a real change for each setting
             switch currentCustomizeSetting {
             case .scaleUsername:
-                isNextEnabled = userNameForm.displayName.isValid
+                let current = removeWhiteSpace(userNameForm.displayName.value)
+                let initial = removeWhiteSpace(initialDisplayNameSnapshot ?? (firstName ?? "User"))
+                isNextEnabled = userNameForm.displayName.isValid && current != initial
+            case .scaleMetrics:
+                isNextEnabled = hasCustomizeChanges && selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
+            case .scaleMode:
+                let changed = (selectedScaleMode != initialScaleModeSnapshot) || (isHeartRateEnabled != (initialHeartRateEnabledSnapshot ?? false))
+                isNextEnabled = changed
+            case .dashboardMetrics:
+                isNextEnabled = hasDashboardCustomizationChanged()
             default:
                 isNextEnabled = true
             }
@@ -1848,6 +1913,39 @@ final class BtWifiScaleSetupStore: ObservableObject {
             idx += direction
         }
         return idx
+    }
+    
+    /// Snapshots the current dashboard state for change detection
+    private func snapshotDashboardState() {
+        initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
+        initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
+        initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
+        initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
+        initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
+    }
+    
+    /// Returns true if dashboard customization has changed compared to initial snapshot
+    private func hasDashboardCustomizationChanged() -> Bool {
+        let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
+        let removed = dashboardStore.state.ui.removedMetrics
+        let order = dashboardStore.state.ui.streakGridOrder
+        let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
+        let goalPos = dashboardStore.state.ui.goalCardPosition
+        
+        return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
+               (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
+               (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
+               (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
+               (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
+    }
+    
+    /// Discards dashboard customization changes by canceling edit mode
+    private func discardDashboardCustomization() {
+        dashboardStore.cancelEdit()
+        // Remove from selected items (unsaved changes), but keep in visited items (checkmark stays)
+        selectedCustomizeItems.remove(CustomizeSettingsItem.dashboardMetrics.rawValue)
+        // Only clear hasCustomizeChanges if no other settings have been changed
+        hasCustomizeChanges = !selectedCustomizeItems.isEmpty
     }
     
     /// Opens the BIA model information modal.

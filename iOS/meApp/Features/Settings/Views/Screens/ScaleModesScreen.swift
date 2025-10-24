@@ -12,6 +12,7 @@ import SwiftUI
 struct ScaleModesScreen: View {
     // MARK: - Environment Objects
     @EnvironmentObject var router: Router<SettingsRoute>
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.appTheme) private var theme
     
     // MARK: - Observed Objects
@@ -20,12 +21,15 @@ struct ScaleModesScreen: View {
     // MARK: - Properties
     let scale: Device
     let isR4ScaleSetup: Bool
+    /// When true, renders a sheet-style header (xmark) and dismisses the sheet instead of navigating back
+    let isPresentedAsSheet: Bool
     private let lang = ScaleModesStrings.self
 
     // MARK: - Initializer
-    init(scale: Device, isR4ScaleSetup: Bool = false, isWeighOnlyModeEnabledByOthers: Bool = false) {
+    init(scale: Device, isR4ScaleSetup: Bool = false, isWeighOnlyModeEnabledByOthers: Bool = false, isPresentedAsSheet: Bool = false) {
         self.scale = scale
         self.isR4ScaleSetup = isR4ScaleSetup
+        self.isPresentedAsSheet = isPresentedAsSheet
         _viewModel = StateObject(wrappedValue: ScaleModesViewModel(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
     }
 
@@ -34,9 +38,14 @@ struct ScaleModesScreen: View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: isR4ScaleSetup ? lang.r4scaleSetupTitle : lang.modeTitle,
-                leadingContent: { 
-                    Image(AppAssets.chevronLeft)
-                        .accessibilityLabel("Back")
+                leadingContent: {
+                    if isPresentedAsSheet {
+                        Image(AppAssets.xmarkSmall)
+                            .accessibilityLabel("Close")
+                    } else {
+                        Image(AppAssets.chevronLeft)
+                            .accessibilityLabel("Back")
+                    }
                 },
                 trailingContent: {
                     Group {
@@ -56,7 +65,7 @@ struct ScaleModesScreen: View {
                                 action: {
                                     Task {
                                         await viewModel.handleScaleModeSave() {
-                                            router.navigateBack()
+                                            if isPresentedAsSheet { dismiss() } else { router.navigateBack() }
                                         }
                                     }
                                 }
@@ -65,7 +74,7 @@ struct ScaleModesScreen: View {
                         }
                     }
                 },
-                onLeadingTap: { router.navigateBack() },
+                onLeadingTap: { if isPresentedAsSheet { dismiss() } else { router.navigateBack() } },
                 onTrailingTap: {},
                 canShowBorder: true
             )

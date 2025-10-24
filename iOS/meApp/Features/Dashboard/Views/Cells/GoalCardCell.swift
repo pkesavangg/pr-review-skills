@@ -126,7 +126,7 @@ class GoalCardCell: UICollectionViewCell {
         // Set the removal state
         isRemoved = store.state.ui.isGoalCardRemoved
         
-        let goalCardView = GoalProgressView()
+        let goalCardView = GoalProgressView(isSetGoalButtonDisabled: store.state.ui.isEditMode)
 
         let viewWithOverlay: AnyView
         if store.state.ui.isEditMode {

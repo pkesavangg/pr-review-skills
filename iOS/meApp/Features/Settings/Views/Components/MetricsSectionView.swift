@@ -49,7 +49,7 @@ struct MetricsSectionView: View {
                     isDisabled: !metric.isEnabled,
                     disableToggle: shouldDisableToggle?(metric) ?? false
                 )
-                .id(metric.key)
+                .id(metric.key + (metric.isEnabled ? "-on" : "-off"))
                 .onChange(of: metric.isEnabled) { _, newValue in
                     if let onToggle = onToggle {
                         onToggle(metric, newValue)
@@ -57,7 +57,6 @@ struct MetricsSectionView: View {
                         onValueChanged()
                     }
                 }
-                .animation(.default, value: metric.isEnabled)
                 .listRowBackground(theme.backgroundPrimary)
                 .listRowInsets(EdgeInsets())
                 // Hide/disable the drag (reorder) indicator for disabled metrics
@@ -67,7 +66,6 @@ struct MetricsSectionView: View {
                 onMove(indices, newOffset)
                 onValueChanged()
             }
-            .animation(.default, value: metrics.wrappedValue.map { $0.key + ($0.isEnabled ? "1" : "0") }.joined())
         }
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())

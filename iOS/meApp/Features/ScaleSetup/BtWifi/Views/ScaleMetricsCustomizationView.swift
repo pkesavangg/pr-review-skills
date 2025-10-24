@@ -10,13 +10,14 @@ struct ScaleMetricsCustomizationView: View {
     @State private var bodyMetrics: [ScaleMetricSetting] = []
     @State private var progressMetrics: [ScaleMetricSetting] = []
 
-    /// Emits ordered list of enabled metric keys whenever user toggles / reorders.
-    let onSave: ([String]) -> Void
+    /// Emits ordered list of enabled metric keys and whether it differs from the initial keys
+    /// whenever user toggles / reorders.
+    let onSave: ([String], Bool) -> Void
 
     private let lang = BtWifiScaleSetupStrings.ScaleMetricsCustomizationViewStrings.self
 
     init(initialEnabledKeys: [String] = ScaleMetrics.defaultMetricsKeys,
-         onSave: @escaping ([String]) -> Void) {
+         onSave: @escaping ([String], Bool) -> Void) {
         self.initialEnabledKeys = initialEnabledKeys
         self.onSave = onSave
 
@@ -31,7 +32,8 @@ struct ScaleMetricsCustomizationView: View {
                 MetricsSectionView(
                     metrics: $bodyMetrics,
                     onValueChanged: saveMetrics,
-                    onMove: moveBodyMetrics
+                    onMove: moveBodyMetrics,
+                    onToggle: handleBodyMetricToggle
                 )
             }
             
@@ -41,7 +43,8 @@ struct ScaleMetricsCustomizationView: View {
                     metrics: $progressMetrics,
                     onValueChanged: saveMetrics,
                     onMove: moveProgressMetrics,
-                    showIcon: false
+                    showIcon: false,
+                    onToggle: handleProgressMetricToggle
                 )
             }
         }
@@ -63,7 +66,8 @@ struct ScaleMetricsCustomizationView: View {
     private func saveMetrics() {
         let enabledMetrics = bodyMetrics.filter { $0.isEnabled }.map { $0.key } +
                            progressMetrics.filter { $0.isEnabled }.map { $0.key }
-        onSave(enabledMetrics)
+        let hasChanged = enabledMetrics != initialEnabledKeys
+        onSave(enabledMetrics, hasChanged)
     }
     
     private func descriptionSection() -> some View {
@@ -111,10 +115,42 @@ struct ScaleMetricsCustomizationView: View {
         bodyMetrics = allBody
         progressMetrics = allProgress
     }
+
+    /// Handles metric toggle and reorders the list to move toggled item to end of its group
+    private func handleBodyMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = bodyMetrics.firstIndex(where: { $0.key == metric.key }) {
+            bodyMetrics[idx].isEnabled = isEnabled
+        }
+        saveMetrics()
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.bodyMetrics = ScaleMetricSetting.reorderOnToggle(items: self.bodyMetrics, key: metric.key, isEnabled: isEnabled)
+            }
+        }
+    }
+    
+    /// Handles progress metric toggle and reorders the list
+    private func handleProgressMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = progressMetrics.firstIndex(where: { $0.key == metric.key }) {
+            progressMetrics[idx].isEnabled = isEnabled
+        }
+        saveMetrics()
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: metric.key, isEnabled: isEnabled)
+            }
+        }
+    }
 }
 
 #Preview {
-    ScaleMetricsCustomizationView { metrics in
+    ScaleMetricsCustomizationView { metrics,arg  in
         print("Saved metrics:", metrics)
     }
     .environmentObject(Theme.shared)

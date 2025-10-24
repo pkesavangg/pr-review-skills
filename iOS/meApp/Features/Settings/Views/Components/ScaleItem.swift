@@ -92,9 +92,8 @@ struct ScaleItemView: View {
                 Button(action: {
                     onTap()
                 }) {
-                    Image(AppAssets.chevronRight)
+                    AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
                         .foregroundColor(theme.actionPrimary)
-                        .frame(width: 24, height: 24)
                 }
             }
         }

@@ -10,9 +10,12 @@ struct MetricDetailView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.weightlessSettings) private var weightlessSettings
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
 
     @State private var presentingBrowserURL: URL?
     @State private var isBrowserPresented: Bool = false
+    @State private var showScaleModesSheet: Bool = false
 
     let entry: Entry
     let metric: BodyMetric
@@ -66,8 +69,30 @@ struct MetricDetailView: View {
         return MetricStrings.measurementTaken + " \(date)"
     }
 
+    private var shouldShowHeartRateBanner: Bool {
+        guard metric == .pulse else { return false }
+        return !heartRateDisabledScales.isEmpty
+    }
+
     private var content: MetricDetailContent {
         MetricContentRepository.content(for: metric)
+    }
+
+    // MARK: - Scale Preference Helpers
+    private var allScales: [Device] { ScaleService.shared.scales }
+    private var heartRateDisabledScales: [Device] {
+        allScales.filter { device in
+            guard let pref = device.r4ScalePreference else { return false }
+            return pref.shouldMeasureImpedance && !pref.shouldMeasurePulse
+        }
+    }
+    private var activePreference: R4ScalePreference? { allScales.first?.r4ScalePreference }
+    private var selectedDisabledPreference: R4ScalePreference? { heartRateDisabledScales.first?.r4ScalePreference }
+    private var isHeartRateOnBannerState: Bool { heartRateDisabledScales.isEmpty }
+    private var selectedModeFromPreference: ScaleModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
+    /// Preferred scale for presenting ScaleModes when exactly one scale needs update.
+    private var selectedScale: Device? {
+        heartRateDisabledScales.first ?? ScaleService.shared.scales.first
     }
 
     var body: some View {
@@ -105,6 +130,26 @@ struct MetricDetailView: View {
                     Text(measurementDescription)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.textSubheading)
+
+                    // Heart-rate banner (only for Heart Rate metric when HR is OFF)
+                    if shouldShowHeartRateBanner {
+                        HeartRateBanner(
+                            isHeartRateOn: isHeartRateOnBannerState,
+                            onUpdate: {
+                                let disabled = heartRateDisabledScales
+                                if disabled.count == 1 {
+                                    showScaleModesSheet = true
+                                } else if disabled.count > 1 {
+                                    // Dismiss this modal first, then route to My Scales via Settings tab routing
+                                    dismiss()
+                                    tabViewModel.navigateToSettings(route: .addEditScales)
+                                }
+                            },
+                            showOnlyContent: true
+                        )
+                        .padding(.top, .spacingXL)
+                        .padding(.bottom, .spacingXS)
+                    }
                 }
                 .padding(.top, .spacingLG)
 
@@ -122,8 +167,6 @@ struct MetricDetailView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-
-
 
                 // Resources
                 if !content.resources.isEmpty {
@@ -160,5 +203,18 @@ struct MetricDetailView: View {
           url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
           isPresented: $isBrowserPresented
       )
+        .sheet(isPresented: $showScaleModesSheet) {
+            if let scale = selectedScale {
+                ScaleModesScreen(
+                    scale: scale,
+                    isR4ScaleSetup: false,
+                    isPresentedAsSheet: true
+                )
+                .environmentObject(Theme.shared)
+                .environmentObject(Router<SettingsRoute>())
+            } else {
+                EmptyView()
+            }
+        }
     }
 }

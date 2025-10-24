@@ -167,13 +167,15 @@ final class DisplayMetricsViewModel: ObservableObject {
         let heartRateKey = "heartRate"
         
         // Disable and reorder heart rate in body metrics
-        if let heartRateIndex = metrics.firstIndex(where: { $0.key == heartRateKey }) {
-            metrics = reorderMetricsOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
+        if let idx = metrics.firstIndex(where: { $0.key == heartRateKey }) {
+            metrics[idx].isEnabled = false
+            metrics = ScaleMetricSetting.reorderOnToggle(items: metrics, key: heartRateKey, isEnabled: false)
         }
         
         // Disable and reorder heart rate in progress metrics (if it exists there)
-        if let heartRateIndex = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
-            progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
+        if let idx = progressMetrics.firstIndex(where: { $0.key == heartRateKey }) {
+            progressMetrics[idx].isEnabled = false
+            progressMetrics = ScaleMetricSetting.reorderOnToggle(items: progressMetrics, key: heartRateKey, isEnabled: false)
         }
         
         // Update display metrics value to reflect the change
@@ -240,10 +242,18 @@ final class DisplayMetricsViewModel: ObservableObject {
             return
         }
         
-        withAnimation {
-            metrics = reorderMetricsOnToggle(items: metrics, key: key, isEnabled: isEnabled)
-            updateDisplayMetricsValue()
-            hasChanges = true
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = metrics.firstIndex(where: { $0.key == key }) {
+            metrics[idx].isEnabled = isEnabled
+        }
+        updateDisplayMetricsValue()
+        hasChanges = true
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.metrics = ScaleMetricSetting.reorderOnToggle(items: self.metrics, key: key, isEnabled: isEnabled)
+            }
         }
     }
     
@@ -255,29 +265,18 @@ final class DisplayMetricsViewModel: ObservableObject {
             return
         }
         
-        withAnimation {
-            progressMetrics = reorderMetricsOnToggle(items: progressMetrics, key: key, isEnabled: isEnabled)
-            updateDisplayMetricsValue()
-            hasChanges = true
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = progressMetrics.firstIndex(where: { $0.key == key }) {
+            progressMetrics[idx].isEnabled = isEnabled
         }
-    }
-
-    /// Core reordering routine used by both body and progress metric toggles.
-    private func reorderMetricsOnToggle(items: [ScaleMetricSetting], key: String, isEnabled: Bool) -> [ScaleMetricSetting] {
-        var current = items
-        guard let idx = current.firstIndex(where: { $0.key == key }) else { return items }
-        var changed = current.remove(at: idx)
-        changed.isEnabled = isEnabled
-        if !isEnabled {
-            let enabled = current.filter { $0.isEnabled }
-            var disabled = current.filter { !$0.isEnabled }
-            disabled.append(changed)
-            return enabled + disabled
-        } else {
-            var enabled = current.filter { $0.isEnabled }
-            let disabled = current.filter { !$0.isEnabled }
-            enabled.append(changed)
-            return enabled + disabled
+        updateDisplayMetricsValue()
+        hasChanges = true
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: key, isEnabled: isEnabled)
+            }
         }
     }
     

@@ -68,6 +68,19 @@ struct AppPressableButtonStyle: ButtonStyle {
         let isPressed = configuration.isPressed
 
         switch type {
+        case .filledSuccess:
+            let baseBg = theme.actionSuccess
+            let bg = isPressed ? theme.actionSuccessPressed : baseBg
+            let fg = theme.textInverse
+            return AnyView(
+                configuration.label
+                    .modifier(FlatButtonStyle(
+                        foregroundColor: fg,
+                        backgroundColor: bg,
+                        buttonSize: size
+                    ))
+            )
+
         case .filledPrimary:
             let baseBg = backgroundColorOverride ?? theme.actionPrimary
             let bg = isPressed ? theme.actionPrimaryPressed : baseBg

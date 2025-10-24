@@ -248,7 +248,13 @@ final class ScaleSettingsStore: ObservableObject {
         switch result {
         case .success:
             logger.log(level: .info, tag: tag, message: "Successfully enabled body metrics for session")
-            notificationService.showToast(ToastModel(title: toastLang.success, message: ScaleModesStrings.bodyMetricsEnabled))
+            
+            // Show different toast messages based on who enabled weight-only mode
+            let toastMessage = isWeighOnlyModeEnabledByOthers ? 
+                WeightOnlyModeStrings.temporaryOverride : 
+                ScaleModesStrings.bodyMetricsEnabled
+            
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastMessage))
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to enable body metrics: \(error.localizedDescription)", data: error)
         }

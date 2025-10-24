@@ -219,9 +219,6 @@ class GoalStreakGridViewController: UIViewController, UICollectionViewDataSource
         
         let activeStreakLabels = allStreakLabels.filter { !store.isStreakRemoved($0) }
         let streakCount = activeStreakLabels.count
-        
-        
-        
         // All present iff we have exactly 6 active streaks
         return streakCount == 6
     }
