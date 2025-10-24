@@ -73,11 +73,9 @@ class GGDeviceService @Inject constructor(
   ) {
     try {
       ggBluetooth.deleteUser(device, disconnect, callback)
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       throw e
     }
-
   }
 
   fun getUsers(
@@ -110,8 +108,8 @@ class GGDeviceService @Inject constructor(
     ggBluetooth.disconnectDevice(device.broadcastId)
   }
 
-  fun skipDevice(broadCastId: String) {
-    ggBluetooth.skipDevice(broadCastId)
+  fun skipDevice(broadCastId: String, considerForSession: Boolean = false) {
+    ggBluetooth.skipDevice(broadCastId, considerForSession)
   }
 
   fun clearPairedDevices() {
