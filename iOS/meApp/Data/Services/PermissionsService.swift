@@ -77,7 +77,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         case .camera:
             return await self.showCameraDisabledAlert()
         case .wifiSwitch, .internet:
-            return await self.permissionRequest(.WIFI_SWITCH)
+            return await self.showWifiDisabledAlert()
         }
     }
     
@@ -131,17 +131,10 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                 title: AlertStrings.PermissionAlerts.bluetoothDisabledTitle,
                 message: AlertStrings.PermissionAlerts.bluetoothDisabledMessage,
                 buttons: [
-                    AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    AlertButtonModel(title: CommonStrings.exit, type: .secondary) { [weak self] _ in
                         guard let self else { return }
                         let current = self.getPermissionState(.BLUETOOTH_SWITCH) ?? .DISABLED
                         continuation.resume(returning: current)
-                    },
-                    AlertButtonModel(title: CommonStrings.settings, type: .primary) { [weak self] _ in
-                        guard let self else { return }
-                        Task {
-                            let newState = await self.permissionRequest(.BLUETOOTH_SWITCH)
-                            continuation.resume(returning: newState)
-                        }
                     }
                 ]
             )
@@ -185,18 +178,19 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                 title: AlertStrings.PermissionAlerts.locationDisabledTitle,
                 message: AlertStrings.PermissionAlerts.locationDisabledMessage,
                 buttons: [
-                    AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    AlertButtonModel(title: CommonStrings.exit, type: .secondary) { [weak self] _ in
                         guard let self else { return }
                         let current = self.getPermissionState(.LOCATION_SWITCH) ?? .DISABLED
                         continuation.resume(returning: current)
                     },
-                    AlertButtonModel(title: CommonStrings.settings, type: .primary) { [weak self] _ in
+                    AlertButtonModel(title: CommonStrings.why, type: .primary) { [weak self] _ in
                         guard let self else { return }
                         Task {
-                            let newState = await self.permissionRequest(.LOCATION_SWITCH)
-                            continuation.resume(returning: newState)
+                            await self.showLocationWhyAlert()
+                            let current = self.getPermissionState(.LOCATION_SWITCH) ?? .DISABLED
+                            continuation.resume(returning: current)
                         }
-                    }
+                    },
                 ]
             )
             self.notificationService.showAlert(alert)
@@ -268,6 +262,40 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                             let newState = await self.permissionRequest(.NOTIFICATION)
                             continuation.resume(returning: newState)
                         }
+                    }
+                ]
+            )
+            self.notificationService.showAlert(alert)
+        }
+    }
+
+    /// Shows an alert explaining why location permission is required for Bluetooth device connections.
+    private func showLocationWhyAlert() async {
+        await withCheckedContinuation { continuation in
+            let alert = AlertModel(
+                title: AlertStrings.PermissionAlerts.locationWhyTitle,
+                message: AlertStrings.PermissionAlerts.locationWhyMessage,
+                buttons: [
+                    AlertButtonModel(title: CommonStrings.back, type: .primary) { _ in
+                        continuation.resume(returning: ())
+                    }
+                ]
+            )
+            self.notificationService.showAlert(alert)
+        }
+    }
+
+    /// Shows an alert informing the user that Wi-Fi is disabled and provides instructions to enable it.
+    private func showWifiDisabledAlert() async -> GGPermissionState {
+        await withCheckedContinuation { continuation in
+            let alert = AlertModel(
+                title: AlertStrings.PermissionAlerts.wifiDisabledTitle,
+                message: AlertStrings.PermissionAlerts.wifiDisabledMessage,
+                buttons: [
+                    AlertButtonModel(title: CommonStrings.exit, type: .secondary) { [weak self] _ in
+                        guard let self else { return }
+                        let current = self.getPermissionState(.WIFI_SWITCH) ?? .DISABLED
+                        continuation.resume(returning: current)
                     }
                 ]
             )

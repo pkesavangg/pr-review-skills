@@ -57,6 +57,13 @@ struct SettingsScreen: View {
                     // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
                     handlePendingSettingsNavigation()
                 }
+                
+                // Register reselect handler to pop to root when settings tab is tapped
+                tabViewModel.registerReselectHandler(for: .settings) {
+                    // Clear the source tab so we don't return to the original tab
+                    tabViewModel.clearSettingsNavigationSource()
+                    router.navigateToRoot()
+                }
             }
             .onChange(of: router.stack) { _, newStack in
                 // If we're back to the root settings screen and there's a source tab to return to
