@@ -31,7 +31,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     /// Discovered scale information
     private var discoveredScale: Device?
     /// Discovery event from Bluetooth service
@@ -161,7 +161,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return !networkForm.password.value.isEmpty
         }
     }
-
+    
     let stepsToHideFooter: Set<BtWifiScaleSetupStep> = [
         .wakeup,
         .connectingBluetooth,
@@ -466,7 +466,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     ///   - isDuplicated: Indicates if this is handling a duplicate user error (optional).
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
-                   discoveryEvent: DeviceDiscoveryEvent? = nil, 
+                   discoveryEvent: DeviceDiscoveryEvent? = nil,
                    saveScale: Device? = nil,
                    isReconnect: Bool = false,
                    isDuplicated: Bool = false,
@@ -488,11 +488,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
             self.bluetoothService.isSetupInProgress = true
-            
-            // Get current Wi-Fi status immediately for Wi-Fi setup only mode
-            if isWifiSetupOnly {
-                getCurrentWifiStatus()
-            }
         } else {
             self.isWifiSetupOnly = false
         }
@@ -550,6 +545,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
         self.bluetoothService.isSetupInProgress = false
+        
+        // Clean up the store to break retain cycles
+        cleanup()
     }
     
     /// Presents the standard exit-alert.
@@ -579,18 +577,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // Called by the ✕ button.
     func handleExit() {
-        guard currentStep != .scaleConnected else { performExitCleanup(); return }
-        presentExitAlert(onConfirm: performExitCleanup)
+        guard currentStep != .scaleConnected else {
+            performExitCleanup()
+            return
+        }
+        presentExitAlert(onConfirm: { [weak self] in
+            self?.performExitCleanup()
+        })
     }
     
     // Used by tab-switch logic.
     func confirmExit() async -> Bool {
-        if currentStep == .scaleConnected { performExitCleanup(); return true }
+        if currentStep == .scaleConnected {
+            performExitCleanup()
+            return true
+        }
         
         return await withCheckedContinuation { cont in
             presentExitAlert(
-                onConfirm: {
-                    self.performExitCleanup()
+                onConfirm: { [weak self] in
+                    self?.performExitCleanup()
                     cont.resume(returning: true)
                 },
                 onCancel: {
@@ -625,7 +631,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Checks if the back button should be disabled based on the current step.
     func shouldDisableBackButton() -> Bool {
-        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings
+        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings || currentStep == .availableWifiList
     }
     
     /// Handles the next button click based on the current step.
@@ -753,9 +759,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Pre-populate form data based on the setting
         switch setting {
         case .scaleUsername:
-            // Set the display name from saved scale or first name
-            let displayName = savedScale?.r4ScalePreference?.displayName ?? firstName ?? "User"
-            userNameForm.setDisplayName(displayName)
+            // Set the display name from attached preference or first name
+            Task { [weak self] in
+                guard let self else { return }
+                var displayName = self.firstName ?? "User"
+                if let savedScale = self.savedScale,
+                   let attached = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    displayName = attached.displayName
+                }
+                await MainActor.run { self.userNameForm.setDisplayName(displayName) }
+            }
             
             // Convert DeviceUser list to ScaleUser list for form validation
             let scaleUsers = userList.map { deviceUser in
@@ -763,17 +776,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             userNameForm.updateUserList(scaleUsers)
         case .scaleMode:
-            // Pre-populate scale mode settings from saved scale preferences
-            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-                selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
-                isHeartRateEnabled = preference.shouldMeasurePulse
+            // Pre-populate scale mode settings from attached preference
+            Task { [weak self] in
+                guard let self, let savedScale = self.savedScale else { return }
+                if let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    await MainActor.run {
+                        self.selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
+                        self.isHeartRateEnabled = preference.shouldMeasurePulse
+                    }
+                }
             }
         case .scaleMetrics:
-            // Preload currently saved display metrics so the customization screen accurately reflects existing configuration.
-            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-                selectedScaleMetrics = preference.displayMetrics
-            } else {
-                selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
+            // Preload saved display metrics from an attached preference
+            Task { [weak self] in
+                guard let self else { return }
+                if let savedScale = self.savedScale,
+                   let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    await MainActor.run { self.selectedScaleMetrics = Array(preference.displayMetrics) }
+                } else {
+                    await MainActor.run { self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys }
+                }
             }
         default:
             break
@@ -818,24 +840,36 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Validate the form first
             guard userNameForm.displayName.isValid else { return }
             
-            // Update the scale preference with the new display name
+            // Update the attached scale preference with the new display name
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.displayName = userNameForm.displayName.value
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
         case .scaleMode:
-            // Update the scale preference with the new scale mode settings
+            // Update the attached preference with new scale mode settings
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
-                savedScale.r4ScalePreference?.shouldMeasurePulse = isHeartRateEnabled
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
+                        attached.shouldMeasurePulse = isHeartRateEnabled
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
         case .scaleMetrics:
-            // Persist the user's selected display metrics into the local preference so it can be synced later.
+            // Persist into attached preference to avoid detached faults
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.displayMetrics = selectedScaleMetrics
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.displayMetrics = selectedScaleMetrics
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
@@ -1312,23 +1346,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
-    /// Gets the current Wi-Fi status immediately without waiting for scale communication
-    private func getCurrentWifiStatus() {
-        Task { @MainActor in
-            let wifiStatus = await wifiScaleService.getConnectedWifiInfo()
-            
-            // Update connected Wi-Fi network if we have a valid SSID
-            if let ssid = wifiStatus.ssid, !ssid.isEmpty, wifiStatus.status == .connected {
-                self.connectedWifiNetwork = WifiDetails(macAddress: wifiStatus.bssid ?? "", ssid: ssid, rssi: 0)
-            }
-        }
-    }
-    
-    /// Public method to refresh current Wi-Fi status - can be called from views
-    func refreshCurrentWifiStatus() {
-        getCurrentWifiStatus()
-    }
-    
     /// Fetches WiFi networks from the scale and handles error cases
     private func fetchWifiNetworks(for scale: Device) async {
         do {
@@ -1360,6 +1377,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Find connected network in the list
                 if let connectedSSID = connectedSSID {
                     self.connectedWifiNetwork = WifiDetails(macAddress: "", ssid: connectedSSID, rssi: 0)
+                } else {
+                    self.connectedWifiNetwork = nil
                 }
                 
                 // Check if no networks were found
@@ -1620,7 +1639,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             
             // Get current preference or create default
-            let currentPreference = savedScale.r4ScalePreference ?? {
+            let currentPreference: R4ScalePreference = await {
+                if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    return attached
+                }
                 let defaultDTO = R4ScalePreferenceDTO(
                     scaleId: savedScale.id,
                     displayName: firstName ?? "User",
@@ -1640,7 +1662,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Build updated preference object
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
-                displayName: saveScaleUsername ? (savedScale.r4ScalePreference?.displayName ?? firstName ?? "User") : currentPreference.displayName,
+                displayName: currentPreference.displayName,
                 displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
@@ -1840,6 +1862,35 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Cleanup Methods
     
+    /// Cleans up the store and breaks any retain cycles
+    func cleanup() {
+        // Clear the dismiss action to break retain cycle
+        dismissAction = nil
+        
+        // Cancel all subscriptions
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        networkFormCancellable?.cancel()
+        networkFormCancellable = nil
+        newEntrySubscription?.cancel()
+        newEntrySubscription = nil
+        liveMeasurementSubscription?.cancel()
+        liveMeasurementSubscription = nil
+        measurementTimeoutTask?.cancel()
+        measurementTimeoutTask = nil
+        stepTimerTask?.cancel()
+        stepTimerTask = nil
+        
+        // Cancel all cancellables
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        
+        // Clear other references
+        discoveredScale = nil
+        discoveryEvent = nil
+        savedScale = nil
+    }
+    
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
     private func disconnectDevice() {
         guard let broadcastId = discoveredScale?.broadcastIdString, !broadcastId.isEmpty, savedScale == nil else { return }
@@ -1865,7 +1916,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.networkForm = NetworkForm()
         subscribeToNetworkForm()
     }
-       
+    
     // MARK: - Network Comparison Methods
     /// Check if two networks are the same by comparing SSID and MAC address
     func isSameNetwork(_ network1: WifiDetails, _ network2: WifiDetails) -> Bool {
@@ -1884,32 +1935,5 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let mac2 = cleanMAC(network2.macAddress)
         
         return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
-}
-    
-    deinit {
-        // Cancel active Combine subscription before releasing it.
-        deviceDiscoveryCancellable?.cancel()
-        deviceDiscoveryCancellable = nil
-        
-        // Cancel network form subscription
-        networkFormCancellable?.cancel()
-        networkFormCancellable = nil
-        
-        // Cancel measurement subscriptions and timeout
-        newEntrySubscription?.cancel()
-        newEntrySubscription = nil
-        liveMeasurementSubscription?.cancel()
-        liveMeasurementSubscription = nil
-        measurementTimeoutTask?.cancel()
-        measurementTimeoutTask = nil
-        
-        // Nil out discovery data so subsequent runs start fresh.
-        discoveredScale = nil
-        discoveryEvent = nil
-        
-        // Cancel any in-flight timeout task.
-        stepTimerTask?.cancel()
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
     }
 }

@@ -29,7 +29,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private var discoveredScale: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -587,5 +587,17 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func setConnectionFailure() {
         self.bluetoothConnectionState = .failure
         self.resetDiscoveryState()
+    }
+    
+    /// Cleans up all subscriptions and resources when the view disappears
+    func cleanUp() {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        stepTimerTask = nil
+        cleanupEntrySubscription()
+        resetDiscoveryState()
     }
 }

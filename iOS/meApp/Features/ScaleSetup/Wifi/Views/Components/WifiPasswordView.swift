@@ -10,7 +10,7 @@ struct WifiPasswordView: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var store: WifiScaleSetupStore
     @State private var focusedField: FocusField?
-    var allowEditSsid: Bool = true
+    var showWifiConnectionDetails: Bool = true
     var onClickNetworkName: (() -> Void)? = nil
     private let labels = InputFieldLabels.self
     private let lang = WifiScaleSetupStrings.WifiPasswordViewStrings.self
@@ -24,41 +24,25 @@ struct WifiPasswordView: View {
                             .fontOpenSans(.heading4)
                             .fontWeight(.bold)
                             .foregroundColor(theme.textBody)
-                        Text(lang.description)
+                        Text(showWifiConnectionDetails ? lang.description : lang.simpleDescription)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
                     .padding(.bottom, .spacingLG)
                     
                     VStack {
-                        if allowEditSsid {
-                            AppInputField(
-                                config: TextInputConfig(
-                                    label: labels.networkName,
-                                    inputType: .text,
-                                    submitLabel: .next,
-                                    errorMessage: store.networkForm.getError(for: store.networkForm.ssid),
-                                    focusField: .networkName,
-                                ),
-                                value: $store.networkForm.ssid.value,
-                                focusedField: $focusedField
-                            ) {
-                                focusedField = .password
-                            }
-                        } else {
-                            VStack {
-                                ActionListItemView(config: ActionListItemConfig(
-                                    title: store.networkForm.ssid.value,
-                                    chevronType: .right,
-                                    onTap: {
-                                        onClickNetworkName?()
-                                    }
-                                ))
-                                .padding(.horizontal, .spacingSM)
-                                .background(theme.backgroundPrimary)
-                                .clipShape(RoundedRectangle(cornerRadius: .radiusSM))
-                            }
-                            .padding(.bottom, .spacingMD)
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: labels.networkName,
+                                inputType: .text,
+                                submitLabel: .next,
+                                errorMessage: store.networkForm.getError(for: store.networkForm.ssid),
+                                focusField: .networkName,
+                            ),
+                            value: $store.networkForm.ssid.value,
+                            focusedField: $focusedField
+                        ) {
+                            focusedField = .password
                         }
                         
                         AppInputField(

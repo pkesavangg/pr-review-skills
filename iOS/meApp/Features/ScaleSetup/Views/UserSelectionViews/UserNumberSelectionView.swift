@@ -21,7 +21,7 @@ struct UserNumberSelectionView: View {
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: .spacingLG) {
+            VStack(alignment: .center, spacing: .spacingLG) {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(lang.title)
                         .fontOpenSans(.heading4)
@@ -36,12 +36,12 @@ struct UserNumberSelectionView: View {
                         .lineLimit(nil)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .spacingSM)
                 UserNumberButtonGrid(
                     numbers: numbers,
                     selectedNumber: $selectedNumber,
                     onNumberSelected: onNumberSelected
                 )
+                .padding(.horizontal, 2)
             }
             .padding(.top, .spacingLG)
         }
