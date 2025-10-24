@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -198,7 +199,7 @@ fun <T> SegmentButtonGroup(
       modifier = modifier
         .fillMaxWidth()
         .padding(horizontal = MeTheme.spacing.xs),
-      horizontalArrangement = Arrangement.spacedBy(horizontalSpacedBy),
+      horizontalArrangement = Arrangement.SpaceAround,
     ) {
       data.forEach { item ->
         SegmentButtonItem(
@@ -210,6 +211,7 @@ fun <T> SegmentButtonGroup(
           cornerRadius = cornerRadius,
           maxLines = maxLines,
           onSelected = onSelected,
+          modifier = Modifier.width(intrinsicSize = IntrinsicSize.Max), // Take natural content width
         )
       }
     }
@@ -233,6 +235,7 @@ fun <T> SegmentButtonGroup(
           cornerRadius = cornerRadius,
           maxLines = maxLines,
           onSelected = onSelected,
+          modifier = Modifier.width(intrinsicSize = IntrinsicSize.Max), // Maintain intrinsic width for scrollable
         )
       }
     }
@@ -252,13 +255,13 @@ private fun <T> SegmentButtonItem(
   cornerRadius: Dp,
   maxLines: Int,
   onSelected: (T) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   val colors = SegmentButtonDefaults.colors()
 
   Box(
-    modifier = Modifier
+    modifier = modifier
       .height(intrinsicSize = IntrinsicSize.Max)
-      .width(intrinsicSize = IntrinsicSize.Max)
       .clickable(
         indication = null,
         interactionSource = remember { MutableInteractionSource() },
@@ -291,6 +294,9 @@ private fun <T> SegmentButtonItem(
         color = if (isSelected) colors.activeContentColor else colors.inactiveContentColor,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.basicMarquee(
+          iterations = Int.MAX_VALUE, // Infinite scrolling
+        ),
       )
     }
   }
@@ -308,7 +314,7 @@ fun SegmentButtonPreview() {
       verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
     ) {
       val sampleSmallData =
-        listOf("Day", "Week", "Month").mapIndexed { index, label ->
+        listOf("Day", "Week", "Month", "Year").mapIndexed { index, label ->
           SegmentButtonData(id = index, label = label)
         }
       val sampleMediumData =
@@ -339,9 +345,20 @@ fun SegmentButtonPreview() {
           SegmentButtonData(id = index, label = label)
         }
 
+      val sampleLongTextData =
+        listOf(
+          "Very Long Text",
+          "Extremely Long Button Text",
+          "Super Long Text Content",
+          "Maximum Length Text",
+        ).mapIndexed { index, label ->
+          SegmentButtonData(id = index, label = label)
+        }
+
       var selectedSmallData by remember { mutableStateOf(sampleSmallData[0]) }
       var selectedMediumData by remember { mutableStateOf(sampleMediumData[0]) }
       var selectedLargeData by remember { mutableStateOf(sampleLargeData[0]) }
+      var selectedLongTextData by remember { mutableStateOf(sampleLongTextData[0]) }
       // --- Single Type - Small size ---
       SegmentButtonGroup(
         data =
@@ -380,6 +397,16 @@ fun SegmentButtonPreview() {
         onSelected = { selectedLargeData = it },
         size = SegmentButtonSize.Small,
         type = SegmentButtonType.Scrollable,
+      )
+
+      // --- Single Type - Long text test ---
+      SegmentButtonGroup(
+        data = sampleLongTextData,
+        key = SegmentButtonData::label,
+        selectedData = selectedLongTextData,
+        onSelected = { selectedLongTextData = it },
+        size = SegmentButtonSize.Medium,
+        type = SegmentButtonType.Single,
       )
     }
   }
