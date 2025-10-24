@@ -177,29 +177,12 @@ struct DisplayMetricsScreen: View {
     }
     
     private func heartRateBanner() -> some View {
-        let commonLang = CommonStrings.self
-        let iconAndLabelColor = viewModel.isHeartRateOn ? theme.statusIconPrimary : theme.statusIconSecondary
-        
-        return NoteBox {
-            HStack(spacing: .spacingSM) {
-                HStack(spacing: .spacingXS) {
-                    AppIconView(icon: AppAssets.heartIcon, size: IconSize(width: 20, height: 20))
-                        .foregroundColor(iconAndLabelColor)
-                    
-                    Text(commonLang.heartRateLabel)
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textBody)
-                    
-                    Text(viewModel.isHeartRateOn ? commonLang.on.uppercased() : commonLang.off.uppercased())
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textBody)
-                }
-                Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
-                    router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
-                })
+        HeartRateBanner(
+            isHeartRateOn: viewModel.isHeartRateOn,
+            onUpdate: {
+                router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
             }
-        }
+        )
     }
 }
 

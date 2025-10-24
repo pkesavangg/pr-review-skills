@@ -31,7 +31,8 @@ struct ScaleMetricsCustomizationView: View {
                 MetricsSectionView(
                     metrics: $bodyMetrics,
                     onValueChanged: saveMetrics,
-                    onMove: moveBodyMetrics
+                    onMove: moveBodyMetrics,
+                    onToggle: handleBodyMetricToggle
                 )
             }
             
@@ -41,7 +42,8 @@ struct ScaleMetricsCustomizationView: View {
                     metrics: $progressMetrics,
                     onValueChanged: saveMetrics,
                     onMove: moveProgressMetrics,
-                    showIcon: false
+                    showIcon: false,
+                    onToggle: handleProgressMetricToggle
                 )
             }
         }
@@ -110,6 +112,38 @@ struct ScaleMetricsCustomizationView: View {
 
         bodyMetrics = allBody
         progressMetrics = allProgress
+    }
+
+    /// Handles metric toggle and reorders the list to move toggled item to end of its group
+    private func handleBodyMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = bodyMetrics.firstIndex(where: { $0.key == metric.key }) {
+            bodyMetrics[idx].isEnabled = isEnabled
+        }
+        saveMetrics()
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.bodyMetrics = ScaleMetricSetting.reorderOnToggle(items: self.bodyMetrics, key: metric.key, isEnabled: isEnabled)
+            }
+        }
+    }
+    
+    /// Handles progress metric toggle and reorders the list
+    private func handleProgressMetricToggle(metric: ScaleMetricSetting, isEnabled: Bool) {
+        // Update toggle state immediately so SwiftUI can re-evaluate .moveDisabled()
+        if let idx = progressMetrics.firstIndex(where: { $0.key == metric.key }) {
+            progressMetrics[idx].isEnabled = isEnabled
+        }
+        saveMetrics()
+        
+        // Reorder on next run loop to ensure .moveDisabled() is updated first
+        DispatchQueue.main.async {
+            withAnimation {
+                self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: metric.key, isEnabled: isEnabled)
+            }
+        }
     }
 }
 
