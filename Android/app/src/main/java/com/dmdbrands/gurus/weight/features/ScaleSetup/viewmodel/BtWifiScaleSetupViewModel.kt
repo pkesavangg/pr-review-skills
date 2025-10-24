@@ -627,10 +627,10 @@ constructor(
   private fun showWifiSkipConfirmation() {
     dialogQueueService.enqueue(
       DialogModel.Confirm(
-        title = ScaleSetupStrings.SkipWifiPermissions.Title,
-        message = ScaleSetupStrings.SkipWifiPermissions.Message,
-        confirmText = ScaleSetupStrings.SkipWifiPermissions.Skip,
-        cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
+        title = ScaleSetupStrings.SkipBtWifiPermissions.Title,
+        message = ScaleSetupStrings.SkipBtWifiPermissions.Message,
+        confirmText = ScaleSetupStrings.SkipBtWifiPermissions.Skip,
+        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.Goback,
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")

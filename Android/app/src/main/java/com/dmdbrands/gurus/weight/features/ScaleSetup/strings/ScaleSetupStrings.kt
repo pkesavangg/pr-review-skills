@@ -72,8 +72,14 @@ object ScaleSetupStrings {
   object SkipWifiPermissions {
     const val Title = "Are you sure you want to skip?"
     const val Message = "Doing so makes necessary a more in-depth, time consuming setup process."
-    const val Skip = "Skip"
-    const val Goback = "Go Back"
+    const val Skip = "YES, SKIP"
+    const val Goback = "GO BACK"
+  }
+  object SkipBtWifiPermissions {
+    const val Title = "Are you sure you want to skip Wi-Fi?"
+    const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
+    const val Skip = "SKIP"
+    const val Goback = "GO BACK"
   }
 
   object PermissionAlerts {
