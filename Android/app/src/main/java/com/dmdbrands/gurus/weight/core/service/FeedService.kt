@@ -41,12 +41,13 @@ class FeedService @Inject constructor(
   private val feedRepository: IFeedRepository,
   private val accountService: IAccountService,
   private val ggIAMService: GGInAppMessagingService,
-  private val connectivityObserver: IConnectivityObserver,
-  private val dialogQueueService: IDialogQueueService,
-  private val appNavigationService: IAppNavigationService,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
   private val selectedFeedItemHolder: SelectedFeedItemHolder,
   @ApplicationContext private val context: Context
-) : IFeedService {
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
+  IFeedService {
 
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -70,7 +71,7 @@ class FeedService @Inject constructor(
   init {
     // Initialize feed settings in a coroutine
     serviceScope.launch {
-      val initialFeedSettings = getFeedSettings()
+     getFeedSettings()
     }
 
     // Listen for feed notification changes from the GG IAM service
@@ -99,8 +100,16 @@ class FeedService @Inject constructor(
   // MARK: - Feed Items Management
 
   override suspend fun fetchFeedItems() {
-    // TODO: Check network status when Network utility is available
     try {
+      // Check internet connectivity first - follow AccountService pattern
+      if (!isNetworkAvailable()) {
+        AppLog.w(TAG, "No internet connection available, returning empty feed items")
+        _feedsChanged.emit(emptyList())
+        updateNotificationBadge()
+        return
+      }
+
+      AppLog.d(TAG, "Internet connection available, fetching feed items")
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
       val items = feedRepository.fetchFeedItems()
       // TODO: Need to uncomment the setfeeditems
@@ -111,6 +120,8 @@ class FeedService @Inject constructor(
       AppLog.i(TAG, "Successfully fetched feed items")
     } catch (error: Exception) {
       AppLog.e(TAG, "Failed to fetch feed items", error.toString())
+      // Emit empty list on error to ensure UI shows no items
+      _feedsChanged.emit(emptyList())
       updateNotificationBadge()
     }
   }

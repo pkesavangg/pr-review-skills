@@ -31,6 +31,9 @@ class FeedMessagesViewModel @Inject constructor(
   override fun provideInitialState(): FeedMessagesState = FeedMessagesState()
 
   init {
+    viewModelScope.launch {
+    feedService.fetchFeedItems()
+    }
     // Observe feed changes
     feedService.feedsChanged
       .onEach { feedItems ->
