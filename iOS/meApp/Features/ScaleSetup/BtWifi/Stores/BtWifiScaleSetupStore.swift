@@ -759,9 +759,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Pre-populate form data based on the setting
         switch setting {
         case .scaleUsername:
-            // Set the display name from saved scale or first name
-            let displayName = savedScale?.r4ScalePreference?.displayName ?? firstName ?? "User"
-            userNameForm.setDisplayName(displayName)
+            // Set the display name from attached preference or first name
+            Task { [weak self] in
+                guard let self else { return }
+                var displayName = self.firstName ?? "User"
+                if let savedScale = self.savedScale,
+                   let attached = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    displayName = attached.displayName
+                }
+                await MainActor.run { self.userNameForm.setDisplayName(displayName) }
+            }
             
             // Convert DeviceUser list to ScaleUser list for form validation
             let scaleUsers = userList.map { deviceUser in
@@ -769,17 +776,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             userNameForm.updateUserList(scaleUsers)
         case .scaleMode:
-            // Pre-populate scale mode settings from saved scale preferences
-            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-                selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
-                isHeartRateEnabled = preference.shouldMeasurePulse
+            // Pre-populate scale mode settings from attached preference
+            Task { [weak self] in
+                guard let self, let savedScale = self.savedScale else { return }
+                if let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    await MainActor.run {
+                        self.selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
+                        self.isHeartRateEnabled = preference.shouldMeasurePulse
+                    }
+                }
             }
         case .scaleMetrics:
-            // Preload currently saved display metrics so the customization screen accurately reflects existing configuration.
-            if let savedScale = savedScale, let preference = savedScale.r4ScalePreference {
-                selectedScaleMetrics = preference.displayMetrics
-            } else {
-                selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
+            // Preload saved display metrics from an attached preference
+            Task { [weak self] in
+                guard let self else { return }
+                if let savedScale = self.savedScale,
+                   let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    await MainActor.run { self.selectedScaleMetrics = Array(preference.displayMetrics) }
+                } else {
+                    await MainActor.run { self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys }
+                }
             }
         default:
             break
@@ -824,24 +840,36 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Validate the form first
             guard userNameForm.displayName.isValid else { return }
             
-            // Update the scale preference with the new display name
+            // Update the attached scale preference with the new display name
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.displayName = userNameForm.displayName.value
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.displayName = userNameForm.displayName.value
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
         case .scaleMode:
-            // Update the scale preference with the new scale mode settings
+            // Update the attached preference with new scale mode settings
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
-                savedScale.r4ScalePreference?.shouldMeasurePulse = isHeartRateEnabled
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
+                        attached.shouldMeasurePulse = isHeartRateEnabled
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
         case .scaleMetrics:
-            // Persist the user's selected display metrics into the local preference so it can be synced later.
+            // Persist into attached preference to avoid detached faults
             if let savedScale = savedScale {
-                savedScale.r4ScalePreference?.displayMetrics = selectedScaleMetrics
+                Task {
+                    if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                        attached.displayMetrics = selectedScaleMetrics
+                    }
+                }
             }
             self.hasCustomizeChanges = true
             break
@@ -1611,7 +1639,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             
             // Get current preference or create default
-            let currentPreference = savedScale.r4ScalePreference ?? {
+            let currentPreference: R4ScalePreference = await {
+                if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    return attached
+                }
                 let defaultDTO = R4ScalePreferenceDTO(
                     scaleId: savedScale.id,
                     displayName: firstName ?? "User",
@@ -1631,7 +1662,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Build updated preference object
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
-                displayName: saveScaleUsername ? (savedScale.r4ScalePreference?.displayName ?? firstName ?? "User") : currentPreference.displayName,
+                displayName: currentPreference.displayName,
                 displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
