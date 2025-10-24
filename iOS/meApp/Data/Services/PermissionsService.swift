@@ -187,8 +187,10 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                         guard let self else { return }
                         Task {
                             await self.showLocationWhyAlert()
-                            let current = self.getPermissionState(.LOCATION_SWITCH) ?? .DISABLED
-                            continuation.resume(returning: current)
+                            // After returning from the "Why" screen, re-show the disabled alert
+                            // and only resolve when the user makes a final choice there.
+                            let state = await self.showLocationDisabledAlert()
+                            continuation.resume(returning: state)
                         }
                     },
                 ]

@@ -563,7 +563,7 @@ struct AlertStrings {
     struct PermissionAlerts {
         // MARK: - Bluetooth
         static let bluetoothDisabledTitle = "To turn on Bluetooth"
-        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Return to this app"
+        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Tap Allow New Connections\n5. Return to this app"
         static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
         static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
 
