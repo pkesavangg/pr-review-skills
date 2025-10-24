@@ -89,7 +89,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Published var permissionsSkipped: Bool = false
     
     /// Callback used by the screen to dismiss itself.
-    var dismissAction: DismissAction?
+    var dismissAction: (() -> Void)?
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
@@ -119,7 +119,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .permissions:
                 return AnyView(PermissionListView(setupType: .wifi))
             case .wifiPassword:
-                return AnyView(WifiPasswordView(allowEditSsid: (scaleItem.setupType != .espTouchWifi || permissionsSkipped)) {
+                return AnyView(WifiPasswordView(showWifiConnectionDetails: (scaleItem.setupType == .espTouchWifi && !permissionsSkipped)) {
                     self.openWifiSettings()
                 })
             case .selectUser:
@@ -304,6 +304,7 @@ final class WifiScaleSetupStore: ObservableObject {
             if checkScaleToken() == nil {
                 return
             }
+            permissionsSkipped = false
             // When the user launched the dedicated "Get-MAC" flow we bypass the regular password & user-selection steps.
             if isForGetMac {
                 navigateToStep(.activatePairingMode)
@@ -410,6 +411,11 @@ final class WifiScaleSetupStore: ObservableObject {
         )
         notificationService.showAlert(alert)
         // Note: `permissionsSkipped` is set inside the alert action above.
+    }
+    
+    func cleanUp() {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
     
     /// Starts observing the network form changes to update the next button state.

@@ -29,7 +29,7 @@ struct ChangePasswordScreen: View {
             // Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
+                leadingContent: { Image(AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,

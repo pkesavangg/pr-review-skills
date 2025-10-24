@@ -21,6 +21,9 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     let notificationBadgeUpdated = CurrentValueSubject<Bool, Never>(false)
     
     private let tag = "FeedService"
+    
+    /// Delay in seconds before displaying the feed modal to improve UX
+    private let feedModalTimeout = 3.0
     private var cancellables = Set<AnyCancellable>()
     init() {
         let initialFeedSettings = getFeedSettings()
@@ -117,11 +120,13 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let result = ggIAMService.checkFeedModalTrigger()
         if let feedItem = result {
             Task {
-                await showFeedModalWithPreloadedImage(feedItem: feedItem)
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(feedModalTimeout * 1_000_000_000))
+                    await showFeedModalWithPreloadedImage(feedItem: feedItem)
+                } catch {}
             }
         }
     }
-    
     /// Preloads the feed item image before showing the modal
     private func showFeedModalWithPreloadedImage(feedItem: FeedItem) async {
         // Preload the image first

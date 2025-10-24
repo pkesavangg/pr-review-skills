@@ -65,7 +65,6 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         } else {
             status = .disabled
         }
-
         return WifiStatus(status: status, locationStatus: locationStatus, ssid: ssid, bssid: bssid)
     }
 
@@ -75,7 +74,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         logger.log(level: .info, tag: tag, message: "Cancelling any ongoing Wi-Fi scale operations")
         wifiScale.cancel()
     }
-
+ 
     /// Performs a SmartConfig Wi-Fi setup sequence.
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
