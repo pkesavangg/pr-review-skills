@@ -40,7 +40,8 @@ struct HKIntegrationHealthAccessView: View {
         VStack {
             NavbarHeaderView(
                 title: lang.healthAccess,
-                leadingContent: { Image(AppAssets.xmark) },
+                leadingContent: { AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
+                    .foregroundColor(theme.statusIconPrimary) },
                 trailingContent: {
                     Button {
                         viewModel.showHelpModal()

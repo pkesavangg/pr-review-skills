@@ -52,13 +52,18 @@ struct BottomTabBarView: View {
                         Spacer()
                         Button {
                             if viewModel.selectedTab == tab {
-                                // Guard reselect actions (e.g., pop-to-root) with any active deactivation handler
-                                Task {
-                                    if let canDeactivate = deactivationHandlers[tab] {
-                                        let allow = await canDeactivate()
-                                        if allow { viewModel.handleTabReselect(tab) }
-                                    } else {
-                                        viewModel.handleTabReselect(tab)
+                                // For entry tab, handle reselect without deactivation check
+                                // For other tabs, guard reselect actions with deactivation handler
+                                if tab == .entry {
+                                    viewModel.handleTabReselect(tab)
+                                } else {
+                                    Task {
+                                        if let canDeactivate = deactivationHandlers[tab] {
+                                            let allow = await canDeactivate()
+                                            if allow { viewModel.handleTabReselect(tab) }
+                                        } else {
+                                            viewModel.handleTabReselect(tab)
+                                        }
                                     }
                                 }
                             } else {

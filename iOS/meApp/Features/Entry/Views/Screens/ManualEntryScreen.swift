@@ -321,11 +321,15 @@ struct ManualEntryScreen: View {
                     entryStore.refreshTimeOnTabSelected()
                     // Start periodic time sync while on this screen
                     entryStore.startAutoTimeSync()
+                    // Register a reselect handler for same-tab clicks (do nothing)
+                    tabViewModel.registerReselectHandler(for: .entry) {
+                        // Do nothing when clicking the same tab - just stay on it
+                    }
                     // Register a handler that decides whether the tab can be left.
                     registerDeactivation {
                         // If the form is clean we can leave immediately.
                         guard entryStore.manualEntryForm.isDirty else { return true }
-                        // Otherwise ask the user via the store's confirmation helper.
+                        // Ask the user via the store's confirmation helper.
                         return await entryStore.confirmDiscardChanges()
                     }
                 }

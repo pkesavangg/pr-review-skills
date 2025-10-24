@@ -159,6 +159,23 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .store(in: &cancellables)
     }
     
+    /**
+     Starts Bluetooth scanning and device synchronization.
+     This should be called when the dashboard is ready to receive Bluetooth events.
+     */
+    func startBluetoothOperations() async {
+        guard activeAccount != nil else {
+            logger.log(level: .info, tag: tag, message: "Cannot start Bluetooth operations: no active account")
+            return
+        }
+        
+        if !isSmartScanStarted {
+            clearDevices()
+            await scan()
+            syncDevices([])
+        }
+    }
+    
     private func handleScalesUpdate(_ scales: [Device]?) async {
         guard let scales = scales, !scales.isEmpty else {
             bluetoothScales = []
@@ -191,16 +208,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleAccountUpdate(_ account: Account?) async {
         if let account = account {
             self.activeAccount = account
-            if !isSmartScanStarted {
-                clearDevices()
-                await scan()
-                syncDevices([])
-            }
-            // do {
-            //     _ = try await updateUserProfileForR4Scales()
-            // } catch {
-            //   logger.log(level: .error, tag: tag, message: BluetoothServiceError.updateProfileFailed(error).localizedDescription)
-            // }
+            // Don't start scanning immediately - wait for dashboard to be ready
+            // The scan will be triggered by startBluetoothOperations() when called from ContentViewModel
         } else if isSmartScanStarted {
             stopScan()
         }
@@ -1565,14 +1574,25 @@ private extension BluetoothService {
     }
 
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
+        // Prefer an attached instance to avoid SwiftData detached faults.
         guard let preference = preference else { return nil }
-        let attached = fetchAttachedPreference(by: preference.id) ?? preference
+        guard let attached = fetchAttachedPreference(by: preference.id) else {
+            // If we cannot fetch an attached instance, avoid touching possibly-detached properties.
+            // Return nil so the caller can proceed without a preference.
+            return nil
+        }
+        // Copy values into plain Swift types immediately to avoid lazy faulting later
+        let displayName = attached.displayName
+        let displayMetricsCopy: [String] = Array(attached.displayMetrics)
+        let shouldMeasureImpedance = attached.shouldMeasureImpedance
+        let shouldMeasurePulse = attached.shouldMeasurePulse
+        let timeFormat = attached.timeFormat
         return GGDevicePreference(
-            displayName: attached.displayName,
-            displayMetrics: attached.displayMetrics,
-            shouldMeasureImpedance: attached.shouldMeasureImpedance,
-            shouldMeasurePulse: attached.shouldMeasurePulse,
-            timeFormat: attached.timeFormat
+            displayName: displayName,
+            displayMetrics: displayMetricsCopy,
+            shouldMeasureImpedance: shouldMeasureImpedance,
+            shouldMeasurePulse: shouldMeasurePulse,
+            timeFormat: timeFormat
         )
     }
 }
