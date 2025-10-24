@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
@@ -34,12 +35,13 @@ fun ScaleDiscoveredModal(
       modifier = Modifier.align(Alignment.TopEnd)
     ){
       AppIcon(
-        id = AppIcons.Default.Close,
+        id = AppIcons.Default.closeFilled,
         contentDescription = AppPopupStrings.ScaleDiscoveredPopup.CloseContentDescription,
         modifier = Modifier
-          .padding( end = spacing.sm)
-          .size(20.dp),
+          .padding( top = spacing.md,end = spacing.sm)
+          .size(24.dp),
         type = AppIconType.Primary,
+        tintColor = Color.Unspecified,
         onClick = onClose
       )
     }

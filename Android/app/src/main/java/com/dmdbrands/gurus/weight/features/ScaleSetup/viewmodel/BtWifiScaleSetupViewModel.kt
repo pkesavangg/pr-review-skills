@@ -1026,7 +1026,6 @@ constructor(
         bluetoothConnectionTimeoutJob = timeoutJob
 
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
-        Log.d("userdevice", "$ggBtDevice")
         ggDeviceService.pairDevice(
           device = ggBtDevice,
         ) { it ->
@@ -1067,12 +1066,13 @@ constructor(
             }
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+              Log.d("discoveredscale", "$discoveredScale")
               viewModelScope.launch {
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
                   ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
-
+                 Log.d("duplicateusername", "$discoveredScale")
                 if (duplicateUserName != null) {
                   AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
                   fetchUserList(duplicateUserName = duplicateUserName)

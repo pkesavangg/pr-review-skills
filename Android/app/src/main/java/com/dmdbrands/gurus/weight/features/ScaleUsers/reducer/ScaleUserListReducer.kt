@@ -2,8 +2,10 @@ package com.dmdbrands.gurus.weight.features.ScaleUsers.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 
 /**
@@ -13,11 +15,21 @@ data class ScaleUsernameFormControls(
   val username: FormControl<String>,
 ) {
   companion object {
-    fun create() = ScaleUsernameFormControls(
+    fun create(userList: List<GGBTUser> = emptyList()) = ScaleUsernameFormControls(
       username = FormControl.create(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
+          FormValidations.noWhiteSpace(),
+          FormValidations.maxLength(20),
+          // Add duplicate name validator
+          { value ->
+            if (userList.isNotEmpty() && value.let { name ->
+                userList.any { user -> user.name.equals(name, ignoreCase = true) }
+              }) {
+              ValidationError("DUPLICATE_NAME", BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
+            } else null
+          }
         ),
       ),
     )
@@ -45,6 +57,10 @@ sealed interface ScaleUserListIntent : IReducer.Intent {
   ) : ScaleUserListIntent
 
   data class SetUserList(
+    val userList: List<GGBTUser>,
+  ) : ScaleUserListIntent
+
+  data class UpdateFormWithUserList(
     val userList: List<GGBTUser>,
   ) : ScaleUserListIntent
 
@@ -79,6 +95,17 @@ class ScaleUserListReducer : IReducer<ScaleUserListState, ScaleUserListIntent> {
         state.copy(
           scaleUserList = intent.userList,
           isLoading = false,
+        )
+      }
+
+      is ScaleUserListIntent.UpdateFormWithUserList -> {
+        // Preserve the current username value and form state when updating form controls
+        val currentUsername = state.usernameForm.username.value
+        val newFormControls = ScaleUsernameFormControls.create(intent.userList)
+        newFormControls.username.onValueChange(currentUsername)
+        // Restore the dirty and touched states
+        state.copy(
+          usernameForm = newFormControls
         )
       }
 

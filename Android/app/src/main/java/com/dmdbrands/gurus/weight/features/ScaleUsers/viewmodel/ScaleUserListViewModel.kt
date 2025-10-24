@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListIntent
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListReducer
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListState
+import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUsernameFormControls
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -20,7 +21,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import android.util.Log
 
 @HiltViewModel(
   assistedFactory = ScaleUserListViewModel.Factory::class,
@@ -39,7 +39,9 @@ constructor(
     fun create(scaleId: String): ScaleUserListViewModel
   }
 
-  override fun provideInitialState(): ScaleUserListState = ScaleUserListState()
+  override fun provideInitialState(): ScaleUserListState = ScaleUserListState(
+    usernameForm = ScaleUsernameFormControls.create()
+  )
 
   override fun handleIntent(intent: ScaleUserListIntent) {
     super.handleIntent(intent)
@@ -90,14 +92,12 @@ constructor(
             response.user
           }
 
-          Log.d(
-            "ScaleUserList",
-            "Current user: $currentUserDisplayName, Total users: ${response.user.size}, Filtered users: ${filteredUsers.size}",
-          )
           handleIntent(ScaleUserListIntent.SetUserList(filteredUsers))
+          handleIntent(ScaleUserListIntent.UpdateFormWithUserList(filteredUsers))
         }
       } catch (err: Exception) {
         handleIntent(ScaleUserListIntent.SetUserList(emptyList()))
+        handleIntent(ScaleUserListIntent.UpdateFormWithUserList(emptyList()))
         showToast(ScaleUsersStrings.Toast.LoadError)
       }
     }

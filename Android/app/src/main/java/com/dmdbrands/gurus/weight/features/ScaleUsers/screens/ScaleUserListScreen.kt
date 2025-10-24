@@ -51,13 +51,27 @@ fun ScaleUserListScreenContent(
 ) {
   val backStack = LocalNavBackStack.current
   val coroutineScope = rememberCoroutineScope()
-  val isSaveEnabled by remember {
+  // Store the original username to compare against
+  val originalUsername by remember {
     derivedStateOf {
-      (state.usernameForm.username.dirty || state.usernameForm.username.touched) &&
-        state.hasSetUsername && 
-        state.usernameForm.username.isValueValid()
+      state.scale?.preferences?.displayName ?: ""
     }
   }
+
+  val isSaveEnabled by remember(state.usernameForm.username.value, state.hasSetUsername, originalUsername) {
+    derivedStateOf {
+      val hasSetUsername = state.hasSetUsername
+      val currentValue = state.usernameForm.username.value
+      val valueNotEmpty = currentValue.isNotEmpty()
+      val isValid = state.usernameForm.username.isValueValid()
+      val hasChanged = currentValue != originalUsername
+      hasSetUsername &&
+        valueNotEmpty &&
+        isValid &&
+        hasChanged
+    }
+  }
+
 
   AppScaffold(
     title = ScaleUsersStrings.Header,
