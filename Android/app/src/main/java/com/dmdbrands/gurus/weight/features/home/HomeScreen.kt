@@ -162,6 +162,7 @@ fun OpenWeightOnlyModePopup(
     modifier = Modifier.navigationBarsPadding(),
     onDismissRequest = onClose,
     containerColor = MeTheme.colorScheme.primaryBackground,
+    dragHandle = null
   ) {
     WeightOnlyModePopup(
       onEnable = onEnable,
