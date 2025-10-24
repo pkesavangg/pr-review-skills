@@ -29,6 +29,7 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
     val month: String,
     val items: List<ScaleEntry>,
   ) : HistoryDetailIntent
+  data class SetRefreshing(val isRefreshing: Boolean) : HistoryDetailIntent
 }
 
 /**
@@ -51,7 +52,7 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
           isLoading = false,
           errorMessage = null,
         )
-
+      is HistoryDetailIntent.SetRefreshing -> state.copy(isLoading = intent.isRefreshing)
       HistoryDetailIntent.Retry -> state.copy(isLoading = true)
       else -> state
     }

@@ -8,8 +8,7 @@ import java.time.format.DateTimeFormatter
  */
 object MetricInfoStrings {
   const val AppBarTitle = "Metric Info"
-  const val MeasurementTaken = "Measurement Taken"
-  const val MeasurementNotTaken = "No Measurement available."
+  const val MeasurementNotTaken = "no measurement available"
 
   const val ResourcesTitle = "Resources"
 }

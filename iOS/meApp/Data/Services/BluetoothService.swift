@@ -162,6 +162,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleScalesUpdate(_ scales: [Device]?) async {
         guard let scales = scales, !scales.isEmpty else {
             bluetoothScales = []
+            syncDevices([])
             return
         }
         let allowedTypes: [ScaleSourceType] = [
@@ -937,7 +938,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         return userList.first { user in
             bluetoothScales.contains { scale in
                 let isR4Scale = scale.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue
-                let namesMatch = user.name.lowercased() == (scale.r4ScalePreference?.displayName.lowercased() ?? "")
+                let namesMatch: Bool = {
+                    if let pref = scale.r4ScalePreference {
+                        if let fetched = fetchAttachedPreference(by: pref.id) { return user.name.lowercased() == fetched.displayName.lowercased() }
+                        return user.name.lowercased() == pref.displayName.lowercased()
+                    }
+                    return false
+                }()
                 let idsMatch = discoveredScale.broadcastId == scale.broadcastId
                 
                 return isR4Scale && namesMatch && idsMatch
@@ -1108,7 +1115,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // Calculate weight-only mode status using the specified condition
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        let shouldMeasureImpedance = scale.r4ScalePreference?.shouldMeasureImpedance ?? false
+        let shouldMeasureImpedance: Bool = {
+            if let pref = scale.r4ScalePreference {
+                if let fetched = fetchAttachedPreference(by: pref.id) { return fetched.shouldMeasureImpedance }
+                return pref.shouldMeasureImpedance
+            }
+            return false
+        }()
         let isWeightOnlyModeEnabledByOthers = !impedanceSwitchState && shouldMeasureImpedance
         
         // Update the scale's weight-only mode status
@@ -1546,17 +1559,20 @@ private extension BluetoothService {
         )
     }
     
+    // Fetch preference via ScaleService/Repository to ensure attached object
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
+        return scaleService.fetchAttachedPreferenceSync(by: id)
+    }
+
     func mapToGGPreference(_ preference: R4ScalePreference?) -> GGDevicePreference? {
-        guard let preference = preference else {
-            return nil
-        }
-        
+        guard let preference = preference else { return nil }
+        let attached = fetchAttachedPreference(by: preference.id) ?? preference
         return GGDevicePreference(
-            displayName: preference.displayName,
-            displayMetrics: preference.displayMetrics,
-            shouldMeasureImpedance: preference.shouldMeasureImpedance,
-            shouldMeasurePulse: preference.shouldMeasurePulse,
-            timeFormat: preference.timeFormat
+            displayName: attached.displayName,
+            displayMetrics: attached.displayMetrics,
+            shouldMeasureImpedance: attached.shouldMeasureImpedance,
+            shouldMeasurePulse: attached.shouldMeasurePulse,
+            timeFormat: attached.timeFormat
         )
     }
 }

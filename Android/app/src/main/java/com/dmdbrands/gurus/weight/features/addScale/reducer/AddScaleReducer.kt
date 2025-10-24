@@ -77,7 +77,13 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
       AddScaleIntent.ShowHelp -> state.copy()
       AddScaleIntent.Submit -> state.copy(isSubmitting = true)
       AddScaleIntent.OpenScaleChooser -> state.copy()
-      is AddScaleIntent.SetSavedScales -> state.copy(savedScales = intent.scales.map { it.toScaleInfo() })
+      is AddScaleIntent.SetSavedScales -> state.copy(
+        savedScales = intent.scales
+          .map { it.toScaleInfo() }
+          .sortedByDescending { scaleInfo ->
+            scaleInfo.createdAt?.toLongOrNull() ?: 0L
+          }
+      )
       is AddScaleIntent.OpenSelectedScaleSetup -> state.copy(selectedSku = intent.sku)
       is AddScaleIntent.OpenScaleSettings -> state.copy(scaleId = intent.scaleId)
       else -> state

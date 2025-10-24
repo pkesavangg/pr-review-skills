@@ -38,9 +38,12 @@ import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
 import com.dmdbrands.gurus.weight.features.home.viewmodel.HomeViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.greatergoods.libs.appsync.AppSyncResultHolder
 import com.greatergoods.libs.appsync.startAppSyncScan
+import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.launch
 import android.app.Activity
+import android.util.Log
 
 /**
  * Home screen displaying current user data, logout option, and switch account section.
@@ -76,28 +79,33 @@ fun HomeScreenContent(
 
   Scaffold(
     bottomBar = {
-      if (!isKeyboardOpen()) {
-        MainBottomNav(
-          showAppsync = state.showAppsync,
-          showUnreadFeedIndicator = showUnreadFeedIndicator,
-          onOpenAppSync = {
-            handleIntent(
-              HomeIntent.CheckAndRequestPermission { isEnabled ->
-                if (isEnabled && !isScanning) {
-                  isScanning = true
-                  coroutineScope.launch {
-                    try {
-                      val result = startAppSyncScan(
-                        context = context,
-                        zoom = 2,
-                        showManualEntryButton = true,
-                      )
-                      handleIntent(HomeIntent.HandleAppSyncResult(result))
-                    } catch (e: Exception) {
-                      // Handle error
-                    } finally {
-                      isScanning = false
-                    }
+      MainBottomNav(
+        showAppsync = state.showAppsync,
+        showUnreadFeedIndicator = showUnreadFeedIndicator,
+        onOpenAppSync = {
+          handleIntent(
+            HomeIntent.CheckAndRequestPermission { isEnabled ->
+              if (isEnabled && !isScanning) {
+                isScanning = true
+                coroutineScope.launch {
+                  try {
+                    val result = startAppSyncScan(
+                      context = context,
+                      zoom = 2,
+                      showManualEntryButton = true,
+                      onBack = {
+                        // Create cancelled result and call intent handler immediately
+                        Log.d("APPSYNC RES", "APPSYNC CANCELLED")
+                        val cancelResult = AppSyncResultFactory.createCancelResult(2)
+                        AppSyncResultHolder.result = cancelResult
+                        handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
+                      },
+                    )
+                    handleIntent(HomeIntent.HandleAppSyncResult(result))
+                  } catch (e: Exception) {
+                    // Handle error
+                  } finally {
+                    isScanning = false
                   }
                 } else {
                   // Optional: show alert or log permission not granted

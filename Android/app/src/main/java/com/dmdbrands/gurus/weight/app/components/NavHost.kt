@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.app.components
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -67,19 +69,29 @@ fun NavHost(
         feedMessagesEntries()
       },
     transitionSpec = {
-      // Slide in from right when navigating forward
-      slideInHorizontally(initialOffsetX = { it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { -it })
+      // New screen slides in from the right over the old screen
+      slideInHorizontally(
+        initialOffsetX = { it },
+        animationSpec = tween(250, easing = FastOutSlowInEasing)
+      ) + fadeIn(animationSpec = tween(150, delayMillis = 200)) togetherWith
+
+        ExitTransition.None
     },
     popTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      // Clean slide-out: old screen slides out, previous screen fades in
+      fadeIn(animationSpec = tween(300)) togetherWith
+        slideOutHorizontally(
+          targetOffsetX = { it },
+          animationSpec = tween(400, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(100))
     },
     predictivePopTransitionSpec = {
-      // Slide in from left when navigating back
-      slideInHorizontally(initialOffsetX = { -it }) togetherWith
-        slideOutHorizontally(targetOffsetX = { it })
+      // Clean predictive back
+      fadeIn(animationSpec = tween(150)) togetherWith
+        slideOutHorizontally(
+          targetOffsetX = { it },
+          animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + fadeOut(animationSpec = tween(150))
     },
   )
 }

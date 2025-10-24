@@ -88,13 +88,21 @@ fun AppScaleCard(
         AppText(
           text = scale.productName.lowercase(),
           textType = TextType.ListSubtitle,
-          textOverflow = TextOverflow.Ellipsis
+          textOverflow = TextOverflow.Ellipsis,
+          softWrap = false,
         )
         if (showConnectionStatus) {
           Spacer(modifier = Modifier.height(spacing.x3s))
           Row(verticalAlignment = Alignment.CenterVertically) {
+            // Show exclamation only when we're certain WiFi setup is incomplete
+            // For BtWifiR4 scales, show exclamation if:
+            // 1. Scale is connected (so we can check WiFi status)
+            // 2. WiFi is explicitly not configured (isWifiConfigured == false)
+            // 3. Scale type is BtWifiR4 (which requires WiFi setup)
             val showExclamation =
-              scale.isWifiConfigured == false && scale.isConnected == true && scale.setupType == ScaleSetupType.BtWifiR4
+              scale.isWifiConfigured != true &&
+              scale.isConnected == true &&
+              scale.setupType == ScaleSetupType.BtWifiR4
             val setupIndicationIcon =
               if (showExclamation) {
                 AppIcons.Default.Exclamation
@@ -118,7 +126,7 @@ fun AppScaleCard(
               text =
                 when {
                   !scale.isConnected!! && isBluetoothSetup -> AppListStrings.NotConnected
-                  !scale.isWifiConfigured!! && isWifiSetup -> AppListStrings.SetupIncomplete
+                  showExclamation -> AppListStrings.SetupIncomplete
                   scale.isConnected && isBluetoothSetup -> AppListStrings.Connected
                   else -> ""
                 },

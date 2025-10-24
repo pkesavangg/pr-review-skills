@@ -58,6 +58,8 @@ interface IDeviceService {
    */
   suspend fun saveScale(device: Device): Device?
 
+  suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus)
+
   /**
    * Delete a scale from both local database and API.
    *

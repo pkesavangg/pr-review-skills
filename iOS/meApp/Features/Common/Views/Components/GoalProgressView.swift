@@ -26,7 +26,10 @@ struct GoalProgressView: View {
     var body: some View {
         NoteBox(alignCenter: false) {
             Group {
-                if viewModel.goalType == .none {
+                if !viewModel.isLoaded {
+                    // Keep last UI while loading to avoid flicker
+                    EmptyView()
+                } else if viewModel.goalType == .none {
                     noGoalSetView
                 } else if viewModel.goalType == .maintain {
                     maintainGoalView
@@ -35,6 +38,7 @@ struct GoalProgressView: View {
                 }
             }
         }
+        .padding(.horizontal, .spacingXS)
         .frame(height: 120)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusSM)
@@ -51,7 +55,8 @@ struct GoalProgressView: View {
                     .foregroundColor(theme.textHeading)
                     .padding(.top, .spacingMD)
                 
-                ButtonView(text: lang.setGoalWeight, type: .filledPrimary, size: .large, isDisabled: false, backgroundColorOverride: theme.statusSuccess,  action: { tabViewModel.navigateToGoalSetting()
+                ButtonView(text: lang.setGoalWeight, type: .filledPrimary, size: .large, isDisabled: false, backgroundColorOverride: theme.statusSuccess,  action: {
+                    tabViewModel.navigateToGoalSetting()
                 })
                 .padding(.bottom, .spacingMD)
 

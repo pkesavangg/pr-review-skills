@@ -12,9 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -31,6 +34,7 @@ data class HealthConnectScreenContent(
   val image: Int,
   val title: String,
   val description: String,
+  val annotatedString: String? = null,
   val primaryButtonLabel: String,
   val secondaryButtonLabel: String? = null
 )
@@ -75,6 +79,9 @@ fun HealthConnectScreen(
       text = content.description,
       textType = TextType.Subtitle,
       textAlign = TextAlign.Center,
+      annotatedText = content.annotatedString,
+      annotationPosition = AnnotationPosition.End,
+      spanStyle = if(content.annotatedString != null) SpanStyle(fontWeight = FontWeight.Bold) else null
     )
     Spacer(
       Modifier.padding(

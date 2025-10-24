@@ -2,9 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,7 +25,6 @@ import com.dmdbrands.gurus.weight.features.common.components.reorderable.remembe
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.averageSummary
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -56,10 +53,8 @@ fun DashboardMetrics(
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
 
-  // Cache expensive calculations to avoid repeated processing
-  val latestSummary = remember(metricData) { averageSummary(metricData) }
-  val dashboardMetric = remember(latestSummary) {
-    latestSummary?.let { DashboardMetric.fromPeriodSummary(it) } ?: DashboardMetric.empty()
+  val dashboardMetric = remember(metricData) {
+    if (metricData.isNotEmpty()) DashboardMetric.fromPeriodSummaries(metricData) else DashboardMetric.empty()
   }
 
   val metricKeys = remember(visibleKeys) {
@@ -149,13 +144,12 @@ fun DashboardMetrics(
     onMetricClick = onMetricClick,
     onMetricMoved = onMetricMoved,
     isFromSetup = isFromSetup,
+    dashboardType = dashboardType,
     onReorder = {
       val localVisibleKeys = it.map { it.key }
       onMetricsChanged(localVisibleKeys)
     },
   )
-
-  Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 }
 
 /**
@@ -170,6 +164,7 @@ private fun DashboardMetricsGrid(
   selectedStat: Stat?,
   onMetricClick: (Stat?) -> Unit,
   onReorder: (List<Stat>) -> Unit,
+  dashboardType: DashboardType,
   onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
 ) {
   val hapticFeedback = LocalHapticFeedback.current
@@ -188,7 +183,7 @@ private fun DashboardMetricsGrid(
 
   val columnCount = when (currentDeviceType) {
     DeviceType.Tablet -> 4
-    else -> 3
+    else -> if (dashboardType == DashboardType.DASHBOARD_12_METRICS) 3 else 2
   }
   LazyVerticalGrid(
     columns = GridCells.Fixed(count = columnCount),

@@ -24,7 +24,7 @@ android {
     minSdk = 26
     targetSdk = 36
     versionCode = 9000000
-    versionName = "5.0.0"
+    versionName = "1.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance

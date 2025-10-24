@@ -29,7 +29,7 @@ constructor(
 ) : BaseIntentViewModel<AddScaleState, AddScaleIntent>(AddScaleReducer()) {
   override fun provideInitialState(): AddScaleState =
     AddScaleState(
-      form = FormGroup(AddScaleFormControls.Companion.create()),
+      form = FormGroup(AddScaleFormControls.create()),
     )
 
   override fun handleIntent(intent: AddScaleIntent) {
@@ -72,6 +72,7 @@ constructor(
     viewModelScope.launch {
       // Collect saved scales from DeviceService
       deviceService.pairedScales.collect { devices ->
+
         handleIntent(AddScaleIntent.SetSavedScales(devices))
       }
     }

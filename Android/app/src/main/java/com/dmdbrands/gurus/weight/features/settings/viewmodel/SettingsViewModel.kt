@@ -241,9 +241,11 @@ constructor(
           navigationService.emitAuthEvent(AuthState.AccountDeleted(account.isActiveAccount))
         }
         dialogQueueService.dismissLoader()
-        // navigationService.reInitialize() // Go to landing/login
       } catch (e: Exception) {
         dialogQueueService.dismissLoader()
+      }
+      finally {
+        dialogQueueService.clear()
       }
     }
   }
@@ -930,6 +932,7 @@ constructor(
         AppLog.e(TAG, "Failed to log out", e)
       } finally {
         dialogQueueService.dismissLoader()
+        dialogQueueService.clear()
       }
     }
   }
@@ -943,6 +946,7 @@ constructor(
         AppLog.e(TAG, "Failed to log out all accounts", e)
       } finally {
         dialogQueueService.dismissLoader()
+        dialogQueueService.clear()
       }
     }
   }

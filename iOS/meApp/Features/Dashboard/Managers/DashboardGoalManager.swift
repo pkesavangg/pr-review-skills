@@ -263,20 +263,23 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
+        // Round to 1 decimal place for proper display using robust rounding to handle floating-point precision
+        let roundedWeight = (weight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        
         // Drop trailing .0 for integers; keep one decimal otherwise
-        let isInteger = abs(weight - weight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
+        let isInteger = abs(roundedWeight - roundedWeight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
         if isWeightlessMode {
-            let prefix = weight > 0 ? "+" : "" // minus handled by formatting
+            let prefix = roundedWeight > 0 ? "+" : "" // minus handled by formatting
             if isInteger {
-                return "\(prefix)\(Int(weight.rounded()))"
+                return "\(prefix)\(Int(roundedWeight.rounded()))"
             } else {
-                return String(format: "%@%.1f", prefix, weight)
+                return String(format: "%@%.1f", prefix, roundedWeight)
             }
         } else {
             if isInteger {
-                return "\(Int(weight.rounded()))"
+                return "\(Int(roundedWeight.rounded()))"
             } else {
-                return String(format: "%.1f", weight)
+                return String(format: "%.1f", roundedWeight)
             }
         }
     }
@@ -332,8 +335,11 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 return convertWeight(Int(summary.weight))
             }
         }
-        if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            logAverage(averageWeight)
+        if !weightValues.isEmpty {
+            let rawAverage = weightValues.reduce(0, +) / Double(weightValues.count)
+            // Apply same robust rounding logic as other weight calculations
+            let roundedAverage = (rawAverage * 100).rounded(.toNearestOrAwayFromZero) / 100
+            logAverage(roundedAverage)
         }
     }
 }

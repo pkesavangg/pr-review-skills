@@ -23,7 +23,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -63,44 +62,76 @@ constructor(
   override val pairedScales: Flow<List<Device>>
     get() = _pairedScales.asStateFlow()
 
-    override val hasBluetoothWifiScale: Flow<Boolean>
-        get() = _pairedScales.map { devices ->
-            devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
-        }
+  override val hasBluetoothWifiScale: Flow<Boolean>
+    get() = _pairedScales.map { devices ->
+      devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
+    }
 
-    override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
+  override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
+
+  override suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus) {
+    _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
+      this[macAddress] = connectionStatus
+    }
+  }
 
   override suspend fun onDeviceUpdate(deviceDetail: GGDeviceDetail, connectionStatus: BLEStatus?) {
-    val device = pairedScales.first().find { it.device?.macAddress == deviceDetail.macAddress }
-    val macAddress = device?.device?.macAddress ?: deviceDetail.macAddress
-    val connectionStatus = connectionStatus ?: device?.connectionStatus ?: BLEStatus.DISCONNECTED
-    macAddress.let { macAddress ->
-      _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
-        this[macAddress] = connectionStatus
-      }
+    val macAddress = deviceDetail.macAddress
+    val resolvedConnectionStatus = connectionStatus ?: BLEStatus.DISCONNECTED
 
-      // Immediately update the device with new connection status and recalculate weight-only mode
-      val currentDevices = _pairedScales.value.toMutableList()
-      val deviceIndex = currentDevices.indexOfFirst { it.device?.macAddress == macAddress }
+    AppLog.d(
+      tag,
+      "onDeviceUpdate called for device ${macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
+    )
 
-      if (deviceIndex >= 0) {
-        val device = currentDevices[deviceIndex]
+    // Update connection status map
+    updateConnectionStatus(macAddress, resolvedConnectionStatus)
 
-        val updatedDevice = device.copy(
-          connectionStatus = connectionStatus,
-          device = device.device?.copy(
-            isWifiConfigured = deviceDetail.isWifiConfigured,
-          ),
-          isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
+    // Try to find the device in current paired scales
+    val currentDevices = _pairedScales.value.toMutableList()
+    val deviceIndex = currentDevices.indexOfFirst { it.device?.macAddress == macAddress }
+
+    if (deviceIndex >= 0) {
+      // Device found in current list - update it directly
+      val device = currentDevices[deviceIndex]
+      val oldWifiConfigured = device.device?.isWifiConfigured
+
+      val updatedDevice = device.copy(
+        connectionStatus = resolvedConnectionStatus,
+        device = device.device?.copy(
+          isWifiConfigured = deviceDetail.isWifiConfigured,
+          wifiMacAddress = if (deviceDetail.isWifiConfigured == true) deviceDetail.wifiMacAddress else null,
+        ),
+        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
+      )
+
+      currentDevices[deviceIndex] = updatedDevice
+      _pairedScales.value = currentDevices
+      _connectedScales.value = currentDevices
+
+      // If WiFi configuration changed, save the updated device to database
+      if (oldWifiConfigured != deviceDetail.isWifiConfigured ||
+        device.device?.wifiMacAddress != deviceDetail.wifiMacAddress
+      ) {
+        AppLog.d(
+          tag,
+          "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}",
         )
-
-        currentDevices[deviceIndex] = updatedDevice
-        _pairedScales.value = currentDevices
-        _connectedScales.value = currentDevices
+        try {
+          deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
+        } catch (e: Exception) {
+          AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
+        }
+      }
+    } else {
+      // Device not found in current list - trigger a refresh to get updated data
+      AppLog.d(tag, "Device ${macAddress} not found in current paired scales, triggering refresh")
+      try {
+        fetchScales(currentAccountId)
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error refreshing scales after device update", e)
       }
     }
-    // Optionally log or handle the null case
-    // else log.warn("Received update with null MAC address")
   }
 
   /**
@@ -123,12 +154,10 @@ constructor(
     fetchJob?.cancel()
 
     fetchJob = repositoryScope.launch {
-      combine(
-        deviceRepository.getDevices(resolvedAccountId),
-        _connectionStatusMap,
-      ) { devices, connectionStatusMap ->
-        devices.map { device ->
-          val connectionStatus = connectionStatusMap[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+      deviceRepository.getDevices(resolvedAccountId).collect { devices ->
+
+        val updatedDevices = devices.map { device ->
+          val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
 
           device.copy(
             connectionStatus = connectionStatus,
@@ -137,7 +166,6 @@ constructor(
             ),
           )
         }
-      }.collect { updatedDevices ->
         _pairedScales.value = updatedDevices
         AppLog.d(tag, "Updated ${updatedDevices.size} devices with connection status and weight-only mode calculation")
       }
@@ -335,7 +363,7 @@ constructor(
     val updatedPrefs = current.preferences?.copy(
       id = scaleID,
     )
-    var updatedDevice = current.copy(
+    val updatedDevice = current.copy(
       id = scaleID,
       preferences = updatedPrefs,
     )
@@ -343,6 +371,14 @@ constructor(
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
+        deviceRepository.saveScalePreferencesToApi(
+          updatedPrefs.toR4ScalePreferenceApiModel().copy(
+            scaleId = savedDevice.id,
+          ),
+        )
+        savedDevice.copy(preferences = updatedPrefs)
+      }
       val adjusted = if (savedDevice.preferences != null) {
         val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
         savedDevice.copy(preferences = updatedPreferences)

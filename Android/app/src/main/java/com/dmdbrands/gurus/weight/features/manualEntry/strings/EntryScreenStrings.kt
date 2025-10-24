@@ -35,13 +35,13 @@ object EntryScreenStrings {
     const val BODY_WATER_LABEL = "body water (%)"
 
     /** Label for the heart rate input field. */
-    const val HEART_RATE_LABEL = "heart rate"
+    const val HEART_RATE_LABEL = "heart rate (bpm)"
 
     /** Label for the bone mass input field. */
     const val BONE_MASS_LABEL = "bone mass (%)"
 
     /** Label for the visceral fat input field. */
-    const val VISCERAL_FAT_LABEL = "visceral fat (lv.)"
+    const val VISCERAL_FAT_LABEL = "visceral fat (Lv.)"
 
     /** Label for the subcutaneous fat input field. */
     const val SUBCUTANEOUS_FAT_LABEL = "subcutaneous fat (%)"
@@ -53,10 +53,10 @@ object EntryScreenStrings {
     const val SKELETAL_MUSCLES_LABEL = "skeletal muscles (%)"
 
     /** Label for the BMR input field. */
-    const val BMR_LABEL = "bmr"
+    const val BMR_LABEL = "basal metabolic rate (kcal)"
 
     /** Label for the metabolic age input field. */
-    const val METABOLIC_AGE_LABEL = "metabolic age"
+    const val METABOLIC_AGE_LABEL = "metabolic age (yrs)"
 
     /** Title for the metrics section card. */
     const val METRICS_SECTION_TITLE = "Body Metrics"

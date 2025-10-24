@@ -15,19 +15,19 @@ struct ModelNumberHelpModalView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
+            HStack(spacing: 0) {
                 Button(action: onClose) {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.bottom, .spacingXS)
             
             Image(AppAssets.skuNumberSticker)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 264)
+                .frame(maxWidth: 300)
                 .padding(.bottom, .spacingSM)
             
             VStack(alignment: .center, spacing: .spacingMD) {

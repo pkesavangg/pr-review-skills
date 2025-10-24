@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
@@ -105,15 +104,16 @@ private fun SettingsItemRow(
             SettingColorType.Danger -> MeTheme.colorScheme.danger
         }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MeTheme.colorScheme.primaryBackground,
-         onClick = item.onClick,
+      modifier = Modifier
+        .fillMaxWidth()
+        .debounceClick(onClick = { if (item.enabled) item.onClick.invoke() }),
+      color = MeTheme.colorScheme.primaryBackground,
     ) {
         Row(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .padding(MeTheme.spacing.sm),
+                  .fillMaxWidth()
+                  .padding(MeTheme.spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -124,10 +124,10 @@ private fun SettingsItemRow(
                 // Unread indicator dot
                 if (item.showUnreadIndicator) {
                     Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color.Red),
+                      modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MeTheme.colorScheme.danger),
                     )
                 }
 

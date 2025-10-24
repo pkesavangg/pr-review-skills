@@ -83,4 +83,13 @@ protocol ScaleRepositoryProtocol {
     /// - Parameter deviceId: The ID of the device to check.
     /// - Returns: True if the device is purely local, false otherwise.
     func isDevicePurelyLocal(_ deviceId: String) async throws -> Bool
+
+    /// Fetches an attached R4 scale preference by its scale ID from the shared SwiftData context.
+    /// - Parameter id: The scale/preference ID.
+    /// - Returns: The attached `R4ScalePreference` if found, otherwise nil.
+    func fetchAttachedPreference(by id: String) -> R4ScalePreference?
+    
+    /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
+    /// Note: Call on the main actor.
+    @MainActor func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference?
 }

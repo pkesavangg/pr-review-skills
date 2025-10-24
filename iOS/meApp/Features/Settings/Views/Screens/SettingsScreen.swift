@@ -55,23 +55,20 @@ struct SettingsScreen: View {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
                     
                     // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        router.navigate(to: route)
-                    }
+                    handlePendingSettingsNavigation()
                 }
             }
-            // Re-evaluate modal presentation whenever the selected tab changes.
-            .onChange(of: tabViewModel.selectedTab) {
+            .onChange(of: router.stack) { _, newStack in
+                // If we're back to the root settings screen and there's a source tab to return to
+                if newStack.isEmpty && tabViewModel.settingsNavigationSourceTab != nil {
+                    tabViewModel.returnToSettingsSourceTab()
+                }
+            }
+            .onChange(of: tabViewModel.pendingSettingsNavigation, { _, _ in
                 if tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
-                    if let route = tabViewModel.pendingSettingsNavigation {
-                        tabViewModel.pendingSettingsNavigation = nil
-                        router.navigate(to: route)
-                    }
+                    handlePendingSettingsNavigation()
                 }
-            }
+            })
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
@@ -367,7 +364,7 @@ struct SettingsScreen: View {
             }
             
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.deleteAccount.uppercased(),
+                title: settingsLang.deleteAccount,
                 chevronType: .none,
                 isDestructive: true,
                 onTap: {
@@ -387,6 +384,17 @@ struct SettingsScreen: View {
             .textCase(.none)
             .padding(.bottom, .spacingXS)
             .padding(.leading, -16)
+    }
+    
+    // MARK: - Private Helpers
+    /// Handles pending settings navigation by clearing the stack and navigating to the route
+    private func handlePendingSettingsNavigation() {
+        if let route = tabViewModel.pendingSettingsNavigation {
+            tabViewModel.pendingSettingsNavigation = nil
+            // Clear any existing navigation stack when navigating from external source
+            router.navigateToRoot()
+            router.navigate(to: route)
+        }
     }
     
 }

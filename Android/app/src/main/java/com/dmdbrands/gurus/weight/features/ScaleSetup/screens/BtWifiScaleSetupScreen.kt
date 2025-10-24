@@ -311,7 +311,7 @@ fun BtWifiScaleSetupScreenContent(
           BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
             WifiSelection(
               wifiList = state.wifiList,
-              title = BtWifiScaleSetupStrings.WifiList.Title,
+              title = BtWifiScaleSetupStrings.WifiList.Title(!state.connectedSSID.isNullOrEmpty()),
               subtitle = BtWifiScaleSetupStrings.WifiList.Subtitle(!state.connectedSSID.isNullOrEmpty()),
               configuredSSID = state.connectedSSID,
               onSelect = { selectedSSID ->

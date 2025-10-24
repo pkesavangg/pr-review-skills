@@ -106,4 +106,10 @@ interface IDashboardService {
     accountId: String? = null,
     dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
   )
+
+  /**
+   * Gets the current selected key immediately without suspension.
+   * @return Current selected key or null
+   */
+  fun getCurrentSelectedKey(): DashboardKey?
 }

@@ -99,8 +99,10 @@ object GraphUtil {
   }
 
   fun getSourceFromSegment(segment: GraphSegment): MetricInfoSource = when (segment) {
-    GraphSegment.WEEK, GraphSegment.MONTH -> MetricInfoSource.DAY
-    GraphSegment.YEAR, GraphSegment.TOTAL -> MetricInfoSource.MONTH
+    GraphSegment.WEEK -> MetricInfoSource.WEEK
+    GraphSegment.MONTH -> MetricInfoSource.MONTH
+    GraphSegment.YEAR -> MetricInfoSource.YEAR
+    GraphSegment.TOTAL -> MetricInfoSource.TOTAL
   }
 
   private val metricKeyPropertyMap: Map<MetricKey, KProperty1<PeriodBodyScaleSummary, *>> = mapOf(
@@ -244,6 +246,15 @@ object GraphUtil {
       line.name to label
     }
     return result
+  }
+
+  fun MetricInfoSource.toSegment(): GraphSegment {
+    return when (this) {
+      MetricInfoSource.WEEK -> GraphSegment.WEEK
+      MetricInfoSource.MONTH -> GraphSegment.MONTH
+      MetricInfoSource.YEAR -> GraphSegment.YEAR
+      MetricInfoSource.TOTAL -> GraphSegment.TOTAL
+    }
   }
 
   fun averageSummary(metrics: List<PeriodBodyScaleSummary>): PeriodBodyScaleSummary? {

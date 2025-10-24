@@ -59,8 +59,12 @@ class MyAccountsViewModel @Inject constructor(
     }
 
     init {
+        // Stop scanning when MyAccounts screen loads
         viewModelScope.launch {
+            accountService.emitNavigateToMyAccounts()
+        }
 
+        viewModelScope.launch {
             accountService.loggedInAccountsFlow.collectLatest {
                 val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
                 handleIntent(MyAccountsIntent.SetAccounts(it, hasReachedMaxAccounts))
@@ -88,8 +92,11 @@ class MyAccountsViewModel @Inject constructor(
         if (!account.isActiveAccount) {
             viewModelScope.launch {
                 try {
-                    accountService.switchAccount(account, true)
+                    val canSwitch = accountService.switchAccount(account, true)
+                  AppLog.e("onAccountSelect", "Failed to switch account: ${canSwitch}")
+                  if(canSwitch){
                     navigationService.reInitialize()
+                  }
                 } catch (e: Exception) {
                     AppLog.e("onAccountSelect", "Failed to switch account: ${e.message}", e)
                 }
@@ -146,6 +153,16 @@ class MyAccountsViewModel @Inject constructor(
                     dialogQueueService.dismissLoader()
                 }
             }
+        }
+    }
+
+    /**
+     * Called when user navigates back from MyAccounts screen
+     * This will start scanning again
+     */
+    fun onNavigateBack() {
+        viewModelScope.launch {
+            accountService.emitNavigateBackFromMyAccounts()
         }
     }
 }

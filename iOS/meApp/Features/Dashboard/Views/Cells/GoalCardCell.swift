@@ -189,20 +189,14 @@ class GoalCardCell: UICollectionViewCell {
             } else {
                 isLongPressed = true
             }
-            // Always reconfigure to update overlay visibility
-            if let store = currentStore {
-                configure(with: store)
-            }
+            // Do NOT reconfigure here to avoid blinking; overlay restoration handled by coordinator
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
             // This prevents items from appearing "removed" during drag operations
             hostingController?.view.alpha = 1.0
             // Set interaction states to hide overlay during drag
             isLongPressed = true
-            // Always reconfigure to update overlay visibility
-            if let store = currentStore {
-                configure(with: store)
-            }
+            // Do NOT reconfigure during drag to avoid blinking
         @unknown default:
             break
         }
@@ -290,10 +284,8 @@ class GoalCardCell: UICollectionViewCell {
             layer.shadowRadius = 8
             layer.shadowOffset = CGSize(width: 0, height: 4)
             
-            // Smooth transform animation
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
-                self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
-            })
+            // Avoid scaling to prevent perceived resizing during drag
+            self.transform = .identity
         } else {
             // Restore normal behavior when not dragging
             layer.actions = [
@@ -323,16 +315,11 @@ class GoalCardCell: UICollectionViewCell {
             // Also call the dedicated shadow clearing method
             clearAllShadowEffects()
             
-            // Smooth return to normal size
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
-                self.transform = .identity
-            })
+            // Keep identity transform
+            self.transform = .identity
         }
         
-        // Always reconfigure to update overlay visibility when drag state changes
-        if let store = currentStore {
-            configure(with: store)
-        }
+        // Do NOT reconfigure here to avoid blinking; overlay visibility handled by coordinator using setOverlaySuppressed
     }
     
     func setOverlaySuppressed(_ suppressed: Bool) {

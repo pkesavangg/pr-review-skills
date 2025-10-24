@@ -76,7 +76,7 @@ data class SignupFormControls(
               signupData.firstName,
               listOf(
                 FormValidations.required(),
-                FormValidations.noWhitespace(),
+                FormValidations.noWhiteSpace(),
                 FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
               ),
             ),
@@ -85,7 +85,7 @@ data class SignupFormControls(
               signupData.lastName,
               listOf(
                 FormValidations.required(),
-                FormValidations.noWhitespace(),
+                FormValidations.noWhiteSpace(),
                 FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
               ),
             ),
@@ -121,7 +121,7 @@ data class SignupFormControls(
               signupData.zipcode,
               listOf(
                 FormValidations.required(),
-                FormValidations.noWhitespace(),
+                FormValidations.noWhiteSpace(),
                 FormValidations.minLength(AppValidatorConfig.ZipCode.MIN_LENGTH),
               FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH),
               ),

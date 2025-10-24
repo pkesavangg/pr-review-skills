@@ -93,7 +93,7 @@ fun MainBottomNav(
                         .size(8.dp)
                         .clip(CircleShape)
                         .align(Alignment.BottomEnd)
-                        .background(Color.Red),
+                        .background(MeTheme.colorScheme.danger),
                   )
                 }
               },

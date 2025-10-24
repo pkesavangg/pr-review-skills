@@ -37,6 +37,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.greatergoods.libs.appsync.startAppSyncScan
+import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -89,6 +90,12 @@ fun AppsyncScaleSetupScreenContent(
             context = context,
             zoom = 4,
             showManualEntryButton = false,
+            onBack = {
+              // Create cancelled result and call intent handler immediately
+              val cancelResult = AppSyncResultFactory.createCancelResult(4)
+              com.greatergoods.libs.appsync.AppSyncResultHolder.result = cancelResult
+              onIntent(AppsyncScaleSetupIntent.HandleAppSyncResult(cancelResult))
+            },
           )
           onIntent(AppsyncScaleSetupIntent.HandleAppSyncResult(result))
         } catch (e: Exception) {
@@ -117,7 +124,7 @@ fun AppsyncScaleSetupScreenContent(
               type = ButtonType.TextPrimary,
               label = ScaleSetupStrings.backButton,
               size = ButtonSize.Small,
-              enabled = !state.isFirstStep,
+              enabled = !state.isFirstStep && !state.isLastStep,
               onClick = { onIntent(AppsyncScaleSetupIntent.Back) },
             )
           }
@@ -131,7 +138,7 @@ fun AppsyncScaleSetupScreenContent(
               type = ButtonType.PrimaryFilled,
               label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
               size = ButtonSize.Small,
-              enabled = state.isNextEnabled || !isScanning,
+              enabled = state.isNextEnabled && !isScanning,
               onClick = {
                 focusManager.clearFocus()
                 if (state.isLastStep) {

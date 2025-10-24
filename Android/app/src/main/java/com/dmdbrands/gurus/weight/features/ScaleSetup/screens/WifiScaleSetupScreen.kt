@@ -146,7 +146,7 @@ fun WifiScaleSetupScreenContent(
         // Show skip button only on permissions step and NOT in MAC setup mode
         if (!state.isGetMACSetup && state.currentStep == WifiScaleSetupStep.PERMISSIONS) {
           AppButton(
-            type = ButtonType.TextPrimary,
+            type = ButtonType.TextTertiary,
             label = ScaleSetupStrings.SetupButtons.Skip,
             size = ButtonSize.Small,
             enabled = !state.isLoading && !state.isNavigating,
@@ -201,7 +201,6 @@ fun WifiScaleSetupScreenContent(
                 subtitle = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
                 label = WifiScaleSetupStrings.NetworkFormSlide.Password,
                 secondaryLabel = WifiScaleSetupStrings.NetworkFormSlide.NetworkName,
-                subtitleAnnotatedText = state.wifiPasswordForm.ssid.value,
                 isWifiConnected = false,
                 hasToggle = true,
                 toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,

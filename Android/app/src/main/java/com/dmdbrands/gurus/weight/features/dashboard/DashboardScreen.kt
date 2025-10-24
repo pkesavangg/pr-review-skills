@@ -27,7 +27,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummaries
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
@@ -86,11 +86,16 @@ private fun DashboardScreenContent(
   var currentVisibleMetrics by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Metric })
   }
+  var isSingleEntry by remember {
+    mutableStateOf(false)
+  }
+
+  var rangeText: String? by remember {
+    mutableStateOf(null)
+  }
   var currentVisibleMilestones by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Milestone })
   }
-
-  val selectedSegment = state.selectedSegment
 
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
@@ -143,6 +148,12 @@ private fun DashboardScreenContent(
         onScrollTargetChange = { scrollTarget ->
           handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
         },
+        onRangeChange = {
+          rangeText = it
+        },
+        onMarkerIndexChange = {
+          isSingleEntry = it != null
+        },
       )
 
 
@@ -178,6 +189,7 @@ private fun DashboardScreenContent(
           progress = state.progress,
           latestWeight = state.latestWeight,
           inEditMode = inEditMode,
+          hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->
             currentVisibleMilestones = visibleMilestones
@@ -188,7 +200,7 @@ private fun DashboardScreenContent(
         }
         DashboardControlPanel(
           inEditMode = inEditMode,
-          hasGoal = state.progress.goal?.account != null && state.progress.goal?.account?.goalType != null,
+          hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
           onResetClick = {
             handleIntent(
               DashboardIntent.ResetDashboard(
@@ -216,11 +228,9 @@ private fun DashboardScreenContent(
             scope.launch {
               navBackStack.addRoute(
                 route = AppRoute.Dashboard.MetricInfo(
-                  info = fromPeriodSummary(state.data.first()),
+                  info = fromPeriodSummaries(state.data, isSingleEntry = isSingleEntry, rangeText = rangeText),
                   key = (state.selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
-                  source = getSourceFromSegment(
-                    selectedSegment,
-                  ),
+                  source = getSourceFromSegment(state.selectedSegment),
                 ),
               )
             }

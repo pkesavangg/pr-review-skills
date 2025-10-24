@@ -3,12 +3,10 @@ package com.dmdbrands.gurus.weight.features.history
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -71,10 +69,6 @@ fun HistoryScreenContent(
   ) { modifier ->
     Box(modifier = modifier.fillMaxSize()) {
       when {
-        state.isLoading && !isRefreshing -> {
-          CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        }
-
         state.historyItems.isEmpty() -> {
           HistoryEmptyState(
             onRetry = { handleIntent(HistoryIntent.Retry) },

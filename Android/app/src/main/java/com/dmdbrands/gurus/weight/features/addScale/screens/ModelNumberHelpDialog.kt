@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.addScale.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,7 +46,8 @@ fun ModelNumberHelpDialog(
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
+        .background(MeTheme.colorScheme.glow)
+        .clickable { onClose() },
     ) {
       Box(modifier = Modifier.align(Alignment.Center)) {
         AppPopupModal {

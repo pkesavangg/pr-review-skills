@@ -5,9 +5,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
-import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
-import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -521,38 +519,58 @@ constructor(
   override suspend fun switchAccount(
     account: Account,
     showToast: Boolean,
-  ): Boolean =
-    try {
-      AppLog.v(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
-      requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
+  ): Boolean {
+    AppLog.v(TAG, "switchAccount() called for accountId: ${account.id}, showToast: $showToast")
+
+    // Check network availability - prevent offline switching
+    requireNetworkAvailable(onError = {
+      AppLog.w(TAG, "Cannot switch account while offline")
+      showNetworkErrorAndThrow()
+    })
+
+    return try {
+      accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
       AppLog.d(TAG, "Successfully switched to account: ${account.email}")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
-    } catch (e: Exception) {
+    } catch (e: HttpException) {
       AppLog.e(TAG, "Failed to switch account", e)
-      appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Failed to switch account"))
+      handleAccountValidationError(account.id, e)
       false
     }
+    catch (e: Exception) {
+      // Optional: handle unexpected exceptions
+      AppLog.e(TAG, "Unexpected error while switching account", e)
+      false
+    }
+  }
 
   /**
-   * Updates the account's tokens.
-   * @param tokens New token data
-   * @return true if update was successful
+   * Handles validation errors when checking account validity during switch.
+   * @param accountId The account ID that failed validation
+   * @param exception The HTTP exception from the validation call
    */
-  override suspend fun updateTokens(tokens: AccountToken): Boolean =
-    try {
-      AppLog.d(TAG, "updateTokens() called for accountId: ${tokens.accountId}")
-      accountRepository.updateTokens(tokens)
-      AppLog.d(TAG, "Tokens updated successfully")
-      appNavigationService.emitAuthEvent(AuthState.TokensUpdated)
-      true
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Token update failed", e)
-      appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Token update failed"))
-      false
+  private suspend fun handleAccountValidationError(accountId: String, exception: HttpException) {
+    when (exception.code()) {
+      HttpErrorConfig.ResponseCode.UNAUTHORIZED -> {
+        AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: $accountId")
+        // Mark account as expired and stop further processing
+        accountRepository.markAccountExpired(accountId)
+        accountRepository.removeAccount(accountId)
+      }
+
+      else -> {
+        AppLog.e(TAG, "Account validation failed with code ${exception.code()}: $accountId", exception)
+        // Show generic error for other HTTP errors
+        showErrorToast(
+          LoginError.Header,
+          LoginError.MessageGeneric,
+        )
+      }
     }
+  }
 
   /**
    * Sets the theme mode for the active account.
@@ -656,5 +674,21 @@ constructor(
         .filter { !it.isActiveAccount }
         .sortedByDescending { it.lastActiveTime?.toLongOrNull() ?: 0L }
     return listOfNotNull(active) + others
+  }
+
+  /**
+   * Emits navigation to MyAccounts event to stop scanning.
+   */
+  override suspend fun emitNavigateToMyAccounts() {
+    appNavigationService.emitAuthEvent(AuthState.NavigateToMyAccounts)
+    AppLog.d(TAG, "Emitted NavigateToMyAccounts event")
+  }
+
+  /**
+   * Emits navigation back from MyAccounts event to start scanning.
+   */
+  override suspend fun emitNavigateBackFromMyAccounts() {
+    appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
+    AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
   }
 }

@@ -60,6 +60,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IIntegrationService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
@@ -208,8 +209,10 @@ object ServiceModule {
     entryRepository: IEntryRepository,
     goalRepository: IGoalRepository,
     accountRepository: IAccountRepository,
+    healthConnectService: IHealthConnectService,
+    healthConnectRepository: IHealthConnectRepository,
     goalService: IGoalService
-  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository, goalService)
+  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository, goalService, healthConnectService, healthConnectRepository)
 
   @Provides
   @Singleton

@@ -98,7 +98,7 @@ constructor(
             WeightlessFormControls(
               weightlessWeight =
                 FormControl.create(
-                  initialValue = displayWeight.toInt().toString(),
+                  initialValue = if(displayWeight.toString() == "0.0") "" else displayWeight.toInt().toString(),
                   validators = weightValidators,
                 ),
             ),

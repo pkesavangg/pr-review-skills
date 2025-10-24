@@ -105,7 +105,7 @@ class FeedService @Inject constructor(
       val items = feedRepository.fetchFeedItems()
       // TODO: Need to uncomment the setfeeditems
       ggIAMService.setFeedItems(items)
-      // setMockFeedItems()
+      setMockFeedItems()
       _feedsChanged.emit(items)
       updateNotificationBadge()
       AppLog.i(TAG, "Successfully fetched feed items")

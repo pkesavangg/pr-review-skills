@@ -62,6 +62,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -221,8 +222,6 @@ constructor(
   private fun onPopUpDismiss() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
-      if (discoveredBroadcastId != null)
-        ggDeviceService.skipDevice(discoveredBroadcastId!!)
       delay(30 * 1000)
       canShowPopUp = true
     }
@@ -297,6 +296,18 @@ constructor(
           is AuthState.ProfileUpdated -> {
             // Profile updated - no navigation needed, just log
             AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
+          }
+
+          is AuthState.NavigateToMyAccounts -> {
+            // Stop scan when navigating to MyAccounts screen
+            stopScan()
+            AppLog.d(TAG, "Stopped scan due to navigation to MyAccounts screen")
+          }
+
+          is AuthState.NavigateBackFromMyAccounts -> {
+            // Start scan when navigating back from MyAccounts screen
+            startScan()
+            AppLog.d(TAG, "Started scan due to navigation back from MyAccounts screen")
           }
 
           is AuthState.Error -> {
@@ -570,6 +581,7 @@ constructor(
                 onCancel = {
                   if (data.broadcastId != null) {
                     ggDeviceService.skipDevice(data.broadcastId!!)
+                    ggDeviceService.skipDevice(data.broadcastId!!)
                   }
                 },
               ),
@@ -602,6 +614,8 @@ constructor(
                   },
                   onCancel = {
                     if (data.broadcastId != null) {
+                      Log.i("CHECKING", data.broadcastId.toString())
+                      ggDeviceService.skipDevice(data.broadcastId!!)
                       ggDeviceService.skipDevice(data.broadcastId!!)
                     }
                   },

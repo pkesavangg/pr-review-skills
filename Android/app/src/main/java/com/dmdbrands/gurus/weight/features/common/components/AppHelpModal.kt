@@ -1,17 +1,12 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import com.dmdbrands.gurus.weight.features.common.strings.AppHelpModalStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -35,69 +30,56 @@ fun AppHelpModal(
   onGuideClick: (() -> Unit)? = null,
 ) {
   val context = LocalContext.current
-  Dialog(
-    onDismissRequest = onClose,
-    properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-      usePlatformDefaultWidth = false,
-      decorFitsSystemWindows = false,
-    ),
+  ModalDialog(
+    onDismiss = onClose,
+    config = ModalConfigs.Informational, // Perfect for help/support modals
   ) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
-    ) {
-      Box(modifier = Modifier.align(Alignment.Center)) {
-        AppPopupModal {
-          AppPopup(
-            true,
-            modifier = Modifier,
-            AppHelpModalStrings.Title,
-            supportingText = AppHelpModalStrings.SupportingText,
-            onClose = {
-              onClose()
-            },
-            imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
-          ) {
-            Spacer(Modifier.height(MeTheme.spacing.x6s))
-            // Phone row
-            val phoneNumber = AppHelpModalStrings.Phone
+    AppPopupModal {
+      AppPopup(
+        true,
+        modifier = Modifier,
+        AppHelpModalStrings.Title,
+        supportingText = AppHelpModalStrings.SupportingText,
+        onClose = {
+          onClose()
+        },
+        imageType = AppPopupImageType.DefaultImage(AppIcons.Default.ggLogo),
+      ) {
+        Spacer(Modifier.height(MeTheme.spacing.x6s))
+        // Phone row
+        val phoneNumber = AppHelpModalStrings.Phone
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              if (showGuide && onGuideClick != null) {
-                AppButton(
-                  label = AppHelpModalStrings.GuideButton,
-                  type = ButtonType.InlineTextPrimary,
-                  onClick = onGuideClick,
-                )
-              }
-              AppButton(
-                label = phoneNumber,
-                type = ButtonType.InlineTextPrimary,
-                onClick = {
-                  val intent =
-                    Intent(Intent.ACTION_DIAL).apply {
-                      data = "tel:$phoneNumber".toUri()
-                    }
-                  context.startActivity(intent)
-                },
-              )
-
-              AppButton(
-                label = AppHelpModalStrings.Email,
-                type = ButtonType.InlineTextPrimary,
-                onClick = {
-                  val intent =
-                    Intent(Intent.ACTION_SENDTO).apply {
-                      data = "mailto:${AppHelpModalStrings.Email}".toUri()
-                    }
-                  context.startActivity(intent)
-                },
-              )
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+          if (showGuide && onGuideClick != null) {
+            AppButton(
+              label = AppHelpModalStrings.GuideButton,
+              type = ButtonType.InlineTextPrimary,
+              onClick = onGuideClick,
+            )
           }
+          AppButton(
+            label = phoneNumber,
+            type = ButtonType.InlineTextPrimary,
+            onClick = {
+              val intent =
+                Intent(Intent.ACTION_DIAL).apply {
+                  data = "tel:$phoneNumber".toUri()
+                }
+              context.startActivity(intent)
+            },
+          )
+
+          AppButton(
+            label = AppHelpModalStrings.Email,
+            type = ButtonType.InlineTextPrimary,
+            onClick = {
+              val intent =
+                Intent(Intent.ACTION_SENDTO).apply {
+                  data = "mailto:${AppHelpModalStrings.Email}".toUri()
+                }
+              context.startActivity(intent)
+            },
+          )
         }
       }
     }

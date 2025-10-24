@@ -18,14 +18,12 @@ class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
         state.copy(
           feedItems = intent.feedItems,
           isLoading = false,
-          isRefreshing = false,
           error = null
         )
       }
       is FeedMessagesIntent.SetError -> {
         state.copy(
           isLoading = false,
-          isRefreshing = false,
           error = intent.error
         )
       }
@@ -36,10 +34,7 @@ class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
         state.copy(isLoading = true)
       }
       is FeedMessagesIntent.SetRefreshing -> {
-        state.copy(isRefreshing = true)
-      }
-      is FeedMessagesIntent.ClearRefreshing -> {
-        state.copy(isRefreshing = false)
+        state.copy(isRefreshing = intent.isRefreshing)
       }
       else -> state
     }

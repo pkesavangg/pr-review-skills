@@ -259,4 +259,10 @@ constructor(
       AppLog.e("DashboardService", "Failed to refresh visible keys from database", e.toString())
     }
   }
+
+  /**
+   * Gets the current selected key immediately without suspension.
+   * @return Current selected key or null
+   */
+  override fun getCurrentSelectedKey(): DashboardKey? = _selectedKey.value
 }

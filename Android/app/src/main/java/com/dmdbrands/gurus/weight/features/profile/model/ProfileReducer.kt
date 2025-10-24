@@ -29,16 +29,18 @@ data class ProfileFormControls(
             )
         ) = ProfileFormControls(
             firstName = FormControl.create(
-                initialValue = firstName,
-                validators = listOf(
+              initialValue = firstName,
+              validators = listOf(
                     FormValidations.required(),
-                    FormValidations.maxLength(50, ProfileStrings.FirstNameLabel),
+                    FormValidations.noWhiteSpace(),
+              FormValidations.maxLength(50, ProfileStrings.FirstNameLabel),
                 ),
             ),
             lastName = FormControl.create(
                 initialValue = lastName,
                 validators = listOf(
                     FormValidations.required(),
+                    FormValidations.noWhiteSpace(),
                     FormValidations.maxLength(50, ProfileStrings.LastNameLabel),
                 ),
             ),
@@ -54,6 +56,7 @@ data class ProfileFormControls(
                 initialValue = zipcode,
                 validators = listOf(
                     FormValidations.required(),
+                    FormValidations.noWhiteSpace(),
                     FormValidations.maxLength(20, ProfileStrings.ZipcodeLabel),
                 ),
             ),

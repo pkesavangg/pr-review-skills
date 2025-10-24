@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.domain.services
 
 import androidx.activity.ComponentActivity
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
@@ -115,5 +117,13 @@ interface IHealthConnectService {
     suspend fun healthConnectOutOfSync(): Boolean
     fun syncWeightHistory()
     suspend fun checkHealthConnectPermissionDisabled()
+  suspend fun syncData(entries: List<PeriodBodyScaleSummary>)
+
+  /**
+   * Deletes an entry from Health Connect.
+   * @param entry The entry to delete from Health Connect
+   * @return true if deletion was successful, false otherwise
+   */
+  suspend fun deleteEntry(entry: Entry): Boolean
 
 }

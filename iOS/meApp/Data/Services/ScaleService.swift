@@ -77,6 +77,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         self.localKVRepo = ScaleRepositoryLocal()
         Task {
             await refreshScalesFromLocal()
+            // Reset all connection statuses to false on app launch
+            // Only Bluetooth events (DEVICE_CONNECTED) should set them to true
+            await resetAllConnectionStatusOnLaunch()
         }
         
         // React to active account changes so the scales list reflects the correct account immediately.
@@ -330,6 +333,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
             }
         }
+    }
+
+    // MARK: - Preference Fetching
+    /// Fetches an attached R4 scale preference by its scale ID from the repository.
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? {
+        return await localRepository.fetchAttachedPreference(by: id)
+    }
+
+    /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+        return localRepository.fetchAttachedPreferenceSync(by: id)
     }
     // MARK: - Public Sync Methods
     
@@ -603,6 +617,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     // MARK: - Internal Helpers
+    
+    /// Resets all scale connection statuses to false on app launch.
+    /// Connection status is ephemeral and should only be true when confirmed by Bluetooth events.
+    private func resetAllConnectionStatusOnLaunch() async {
+        do {
+            let accountId = try await getAccountId()
+            let allScales = try await localRepository.listScales(forAccountId: accountId)
+            
+            for scale in allScales {
+                scale.isConnected = false
+                scale.isWifiConfigured = false
+            }
+            
+            try localRepository.context.save()
+            logger.log(level: .info, tag: tag, message: "Reset connection status for \(allScales.count) scales on app launch")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to reset connection statuses on launch: \(error.localizedDescription)")
+        }
+    }
+    
     private func refreshScalesFromLocal() async {
         do {
             let accountId = try await getAccountId()

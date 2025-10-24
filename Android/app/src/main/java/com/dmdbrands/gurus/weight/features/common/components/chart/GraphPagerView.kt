@@ -27,7 +27,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import android.util.Log
 
 /**
  * Composable for displaying a horizontal pager with 4 graph views for different segments.
@@ -46,6 +45,8 @@ fun GraphPagerView(
   onPagerStateChange: (Int) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetChange: (Double?) -> Unit = {},
+  onRangeChange: (String) -> Unit = { },
+  onMarkerIndexChange: (Double?) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -88,8 +89,8 @@ fun GraphPagerView(
         factory.create(currentSegment)
       }
       val graphState by viewmodel.state.collectAsState()
+
       LaunchedEffect(graphState.target) {
-        Log.i("CHECKING", graphState.target.map { it.weight }.toString())
         val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
         labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
           "%.2f",
@@ -102,9 +103,10 @@ fun GraphPagerView(
         onSelected(graphState.target)
       }
 
+
       LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
         if (graphState.minTarget != null && graphState.maxTarget != null) {
-          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL) {
+          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()
             calendar.timeInMillis = graphState.minTarget!!
             calendar.add(java.util.Calendar.MONTH, +6)
@@ -120,6 +122,7 @@ fun GraphPagerView(
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
           subText = formattedRange
+          onRangeChange(formattedRange)
         }
       }
       Column {

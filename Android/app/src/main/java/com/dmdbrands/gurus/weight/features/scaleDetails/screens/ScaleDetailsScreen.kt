@@ -224,7 +224,9 @@ fun ScaleDetailsScreenContent(
             },
           )
         }
-        if (state.scale?.device?.isWifiConfigured == false && state.scale.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
+        // Show SetupIncomplete note if WiFi is not configured AND no SSID is connected
+        val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+        if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
             message = ScaleDetailsStrings.SetupIncomplete,
             icon = AppIcons.Default.Exclamation,
@@ -316,11 +318,13 @@ fun ScaleDetailsScreenContent(
                 ),
               )
               if (scaleSetupType == ScaleSetupType.BtWifiR4) {
+                // WiFi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
+                val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
                 add(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
                     type = SettingsItemType.Action(state.connectedSSID),
-                    enabled = device?.device?.isWifiConfigured ?: false,
+                    enabled = isWifiConfigured,
                     onClick = {
                       handleIntent(
                         ScaleDetailsIntent.OpenWiFiSetup,
@@ -332,7 +336,7 @@ fun ScaleDetailsScreenContent(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFiMacAddress,
                     type = SettingsItemType.Action(),
-                    enabled = device?.device?.isWifiConfigured ?: false,
+                    enabled = isWifiConfigured,
                     onClick = {
                       handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))
                       bottomSheetVisible = true

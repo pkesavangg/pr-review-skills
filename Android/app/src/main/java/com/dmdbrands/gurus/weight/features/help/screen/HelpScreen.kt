@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.config.AppConfig
@@ -166,7 +167,10 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
         text = HelpScreenStrings.UserManualSectionTitle,
         textType = TextType.Title,
       )
-      AppIconButton(AppIcons.Outlined.Help) {
+      AppIconButton(
+        AppIcons.Outlined.Help,
+        iconSize = 20.dp,
+      ) {
         handleIntent(HelpIntent.ShowModelNumberHelpPopup)
       }
     }
@@ -186,7 +190,7 @@ private fun AppVersionContent() {
     horizontalAlignment = Alignment.Start,
     modifier = Modifier
       .fillMaxWidth()
-      .padding( vertical = MeTheme.spacing.xl),
+      .padding(vertical = MeTheme.spacing.xl),
   ) {
     VersionText(
       modifier = Modifier.fillMaxWidth(),

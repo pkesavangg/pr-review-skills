@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,11 +65,11 @@ fun FeedMessagesScreen(
         viewModel.handleIntent(FeedMessagesIntent.LoadFeedItems)
     }
 
+
     Column(
         modifier = modifier
+          .fillMaxSize()
           .background(colors.secondaryBackground)
-          .fillMaxWidth()
-          .fillMaxHeight(),
     ) {
         // Section Header
         SectionHeader(
@@ -76,30 +80,20 @@ fun FeedMessagesScreen(
             },
         )
 
-        // Content based on state
+        //Content based on state
         when {
-            state.isLoading -> {
-                // Loading state
-                LoadingContent()
-            }
-
             state.showEmptyState -> {
                 // Empty State Content
                 EmptyStateContent()
             }
 
-            state.error != null -> {
-                // Error state
-                ErrorContent(
-                    error = state.error!!,
-                    onRetry = { viewModel.handleIntent(FeedMessagesIntent.Retry) },
-                )
-            }
 
             else -> {
+              val listState = rememberLazyListState()
                 // Feed Items List
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
+                  state = listState,
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     items(state.feedItems) { feedItem ->
                         FeedItemCard(
@@ -236,17 +230,10 @@ private fun ErrorContent(
 @Composable
 private fun EmptyStateContent() {
     // Use a Box with fillMaxSize to center the column vertically
-    androidx.compose.foundation.layout.Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-          .fillMaxWidth()
-          .fillMaxHeight()
-          .background(color = IamTheme.colors.secondaryBackground),
-    ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
+          modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.Center,
         ) {
             // Primary Empty State Message
             Text(
@@ -267,7 +254,6 @@ private fun EmptyStateContent() {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
-    }
 }
 
 // Preview removed to avoid build issues - can be added later when needed

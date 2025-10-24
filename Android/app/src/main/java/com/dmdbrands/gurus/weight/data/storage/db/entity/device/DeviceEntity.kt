@@ -45,6 +45,7 @@ data class DeviceEntity(
   val createdAt: String?,
   val isSynced: Boolean = false,
   val hasServerID: Boolean = false,
-  val wifiMac: String?,
+  val wifiMac: String? = null,
+  val isWifiConfigured: Boolean = false,
   val token: String?,
 )

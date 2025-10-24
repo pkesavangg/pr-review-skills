@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.MyAccounts.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,11 @@ fun MyAccountsScreen() {
     val viewmodel: MyAccountsViewModel = hiltViewModel()
     val state by viewmodel.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    MyAccountsScreenContent(state, viewmodel::handleIntent)
+    MyAccountsScreenContent(
+        state = state,
+        handleIntent = viewmodel::handleIntent,
+        onNavigateBack = viewmodel::onNavigateBack
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,13 +53,23 @@ fun MyAccountsScreen() {
 fun MyAccountsScreenContent(
     state: MyAccountsState,
     handleIntent: (MyAccountsIntent) -> Unit,
+    onNavigateBack: () -> Unit,
 ) {
     val backStack = LocalNavBackStack.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Handle system back button
+    BackHandler {
+        onNavigateBack() // Start scanning when navigating back
+        coroutineScope.launch {
+            backStack.removeLast()
+        }
+    }
     AppScaffold(
         title = MyAccountsScreenStrings.Title,
         navigationIcon = {
             AppIconButton(AppIcons.Default.Close) {
+                onNavigateBack() // Start scanning when navigating back
                 coroutineScope.launch {
                     backStack.removeLast()
                 }

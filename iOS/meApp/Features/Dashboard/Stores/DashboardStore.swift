@@ -410,7 +410,10 @@ class DashboardStore: ObservableObject {
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
         
-        return averageWeight
+        // Apply same rounding logic as getCurrentAverageWeight() and formatWeightForDisplay()
+        // Use a more robust rounding approach to handle floating-point precision issues
+        let roundedAverage = (averageWeight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        return roundedAverage
     }
     
     var weightLabel: String {
@@ -542,29 +545,49 @@ class DashboardStore: ObservableObject {
         return goalManager.getWeightDisplayLabel(for: state.graph.selectedPeriod)
     }
     
-    /// Returns the average weight for the current visible or all operations
+    /// Returns the average weight for the current visible operations with proper rounding
+    /// - Returns: The average weight rounded to 1 decimal place, or 0 if no operations are available
     @MainActor
     func getCurrentAverageWeight() -> Double {
         // Prefer strict on-screen visible operations; if empty, fall back to buffered visible range
         // This avoids returning 0.0 when the left boundary barely excludes entries (e.g., UTC vs local midnight)
         let strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
         let opsToUse = strictVisibleOps.isEmpty ? visibleOperations : strictVisibleOps
-        if opsToUse.isEmpty {
-            return 0
+        
+        // Return 0 if no operations are available
+        guard !opsToUse.isEmpty else { 
+            return 0 
         }
-        let weightValues = opsToUse.map { summary -> Double in
-            if isWeightlessModeEnabled {
-                guard let anchorWeight = weightlessAnchorWeight else { return 0 }
-                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return goalManager.convertWeightToDisplay(Int(summary.weight))
+        
+        // Calculate weight values with proper error handling
+        let weightValues = opsToUse.compactMap { summary -> Double? in
+            do {
+                if isWeightlessModeEnabled {
+                    guard let anchorWeight = weightlessAnchorWeight else {
+                        return nil 
+                    }
+                    let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
+                    return currentWeight - anchorWeight
+                } else {
+                    return goalManager.convertWeightToDisplay(Int(summary.weight))
+                }
+            } catch {
+                return nil
             }
         }
         
-        guard !weightValues.isEmpty else { return 0 }
-        let average = weightValues.reduce(0, +) / Double(weightValues.count)
-        return average
+        // Return 0 if no valid weight values were calculated
+        guard !weightValues.isEmpty else { 
+            return 0 
+        }
+        
+        // Calculate average with proper rounding to 1 decimal place
+        let sum = weightValues.reduce(0, +)
+        let average = sum / Double(weightValues.count)
+        
+        // Round to 1 decimal place using a more robust approach to handle floating-point precision
+        let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+        return roundedAverage
     }
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
