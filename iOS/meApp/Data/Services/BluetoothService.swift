@@ -183,13 +183,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
         // Filter scales by allowed types only (common across all models)
-        let allowedTypes: Set<ScaleSourceType> = [
+        let allowedTypes: Set<ScaleSourceType> = Set([
             .bluetooth,
             .bluetoothScale,
             .lcbt,
             .lcbtScale,
             .btWifiR4
-        ]
+        ])
         let filteredScales = scales.filter { scale in
             guard let raw = getSafeScaleType(for: scale), let type = ScaleSourceType(rawValue: raw) else {
                 return false
@@ -1599,10 +1599,10 @@ private extension BluetoothService {
     }
 
     func mapToGGPreference(deviceId: String, preference: R4ScalePreference?) -> GGDevicePreference? {
-        // Always try fetching via deviceId to ensure a context-attached object.
+        // Always try fetching via preference.id to ensure a context-attached object.
         // This avoids touching properties on a potentially detached SwiftData instance.
-        let attached = fetchAttachedPreference(by: deviceId) ?? preference
-        guard let attached = attached else { return nil }
+        guard let preference = preference else { return nil }
+        let attached = fetchAttachedPreference(by: preference.id) ?? preference
         return GGDevicePreference(
             displayName: attached.displayName,
             displayMetrics: attached.displayMetrics,

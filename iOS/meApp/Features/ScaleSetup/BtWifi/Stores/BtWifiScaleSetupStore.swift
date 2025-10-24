@@ -1716,10 +1716,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         do {
             // Check which customize settings pages need to be saved
-            // Scale metrics are already saved when Save button is clicked, no need to save again
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            // Dashboard metrics are already saved when Save button is clicked, no need to save again
             
             // Get current preference or create default
             let currentPreference: R4ScalePreference = await {
