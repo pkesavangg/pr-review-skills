@@ -23,7 +23,7 @@ struct CustomToggleView: View {
     init(
         isOn: Binding<Bool>,
         text: String? = nil,
-        onColor: Color = .blue900,
+        onColor: Color = .blue800,
         offColor: Color = .neutral400,
         thumbColor: Color = .neutral100,
         isDisabled: Bool = false,

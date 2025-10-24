@@ -10,13 +10,14 @@ struct ScaleMetricsCustomizationView: View {
     @State private var bodyMetrics: [ScaleMetricSetting] = []
     @State private var progressMetrics: [ScaleMetricSetting] = []
 
-    /// Emits ordered list of enabled metric keys whenever user toggles / reorders.
-    let onSave: ([String]) -> Void
+    /// Emits ordered list of enabled metric keys and whether it differs from the initial keys
+    /// whenever user toggles / reorders.
+    let onSave: ([String], Bool) -> Void
 
     private let lang = BtWifiScaleSetupStrings.ScaleMetricsCustomizationViewStrings.self
 
     init(initialEnabledKeys: [String] = ScaleMetrics.defaultMetricsKeys,
-         onSave: @escaping ([String]) -> Void) {
+         onSave: @escaping ([String], Bool) -> Void) {
         self.initialEnabledKeys = initialEnabledKeys
         self.onSave = onSave
 
@@ -65,7 +66,8 @@ struct ScaleMetricsCustomizationView: View {
     private func saveMetrics() {
         let enabledMetrics = bodyMetrics.filter { $0.isEnabled }.map { $0.key } +
                            progressMetrics.filter { $0.isEnabled }.map { $0.key }
-        onSave(enabledMetrics)
+        let hasChanged = enabledMetrics != initialEnabledKeys
+        onSave(enabledMetrics, hasChanged)
     }
     
     private func descriptionSection() -> some View {
@@ -148,7 +150,7 @@ struct ScaleMetricsCustomizationView: View {
 }
 
 #Preview {
-    ScaleMetricsCustomizationView { metrics in
+    ScaleMetricsCustomizationView { metrics,arg  in
         print("Saved metrics:", metrics)
     }
     .environmentObject(Theme.shared)
