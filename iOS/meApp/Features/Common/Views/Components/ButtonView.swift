@@ -30,7 +30,11 @@ struct ButtonView: View {
                 }
                 .multilineTextAlignment(.leading)
         }
-        .buttonStyle(AppPressableButtonStyle(type: type, size: size, backgroundColorOverride: backgroundColorOverride))
+        .buttonStyle(AppPressableButtonStyle(
+            type: type,
+            size: size,
+            backgroundColorOverride: backgroundColorOverride
+        ))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
     }

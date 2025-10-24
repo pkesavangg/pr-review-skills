@@ -75,7 +75,7 @@ struct UsersScreen: View {
                         .padding(.top, .spacingLG)
                         
                         // Other Users section
-                        VStack(alignment: .leading, spacing: .spacingXS) {
+                        VStack(alignment: .leading, spacing: .zero) {
                             if viewModel.isLoadingUsers {
                                 ProgressView()
                                     .scaleEffect(1.5)
@@ -90,6 +90,7 @@ struct UsersScreen: View {
                                 Text(lang.maxUsers)
                                     .fontOpenSans(.subHeading2)
                                     .foregroundColor(theme.textSubheading)
+                                    .padding(.bottom, .spacingXS)
                                 
                                 DeviceUserListView(
                                     users: viewModel.otherDeviceUsersList,

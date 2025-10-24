@@ -13,6 +13,7 @@ public enum ButtonSize {
 }
 
 public enum ButtonType: CaseIterable {
+    case filledSuccess
     case filledPrimary
     case filledSecondary
     case outlinedPrimary
@@ -26,6 +27,7 @@ public enum ButtonType: CaseIterable {
 
     var label: String {
         switch self {
+        case .filledSuccess: return "Filled Success"
         case .filledPrimary: return "Filled Primary"
         case .filledSecondary: return "Filled Secondary"
         case .outlinedPrimary: return "Outlined Primary"
