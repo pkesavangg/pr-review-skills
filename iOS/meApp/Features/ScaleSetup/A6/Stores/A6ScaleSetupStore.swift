@@ -304,6 +304,7 @@ final class A6ScaleSetupStore: ObservableObject {
             )
             
             await scaleService.syncAllScalesWithRemote()
+            bluetoothService.syncDevices([])
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
             

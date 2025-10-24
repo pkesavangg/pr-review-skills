@@ -27,7 +27,7 @@ struct WifiScaleSetupScreen: View {
             NavbarHeaderView(
                 title: scaleSetupLang.setupHeader(sku),
                 leadingContent: {
-                    AppIconView(icon: AppAssets.xmark, size: IconSize(width: 24, height: 24))
+                    AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                 },
                 trailingContent: {
