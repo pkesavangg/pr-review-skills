@@ -581,8 +581,7 @@ constructor(
                 },
                 onCancel = {
                   if (data.broadcastId != null) {
-                    ggDeviceService.skipDevice(data.broadcastId!!)
-                    ggDeviceService.skipDevice(data.broadcastId!!)
+                    ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
                   }
                 },
               ),
@@ -616,8 +615,7 @@ constructor(
                   onCancel = {
                     if (data.broadcastId != null) {
                       Log.i("CHECKING", data.broadcastId.toString())
-                      ggDeviceService.skipDevice(data.broadcastId!!)
-                      ggDeviceService.skipDevice(data.broadcastId!!)
+                      ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
                     }
                   },
                 ),
