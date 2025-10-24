@@ -88,6 +88,10 @@ struct MetricDetailView: View {
     private var selectedDisabledPreference: R4ScalePreference? { heartRateDisabledScales.first?.r4ScalePreference }
     private var isHeartRateOnBannerState: Bool { heartRateDisabledScales.isEmpty }
     private var selectedModeFromPreference: ScaleModes { (activePreference?.shouldMeasureImpedance ?? true) ? .allBodyMetrics : .weightOnly }
+    /// Preferred scale for presenting ScaleModes when exactly one scale needs update.
+    private var selectedScale: Device? {
+        heartRateDisabledScales.first ?? ScaleService.shared.scales.first
+    }
 
     var body: some View {
         ScrollView {
@@ -196,15 +200,17 @@ struct MetricDetailView: View {
           isPresented: $isBrowserPresented
       )
         .sheet(isPresented: $showScaleModesSheet) {
-            // Pre-fill from the single disabled scale when available; fallback to activePreference
-            let pref = selectedDisabledPreference ?? activePreference
-            ScaleModesScreen(
-                scale: heartRateDisabledScales.first ?? (ScaleService.shared.scales.first ?? Device(id: "", accountId: "", sku: "", deviceName: "", deviceType: DeviceType.scale.rawValue)),
-                isR4ScaleSetup: false,
-                isPresentedAsSheet: true
-            )
-            .environmentObject(Theme.shared)
-            .environmentObject(Router<SettingsRoute>())
+            if let scale = selectedScale {
+                ScaleModesScreen(
+                    scale: scale,
+                    isR4ScaleSetup: false,
+                    isPresentedAsSheet: true
+                )
+                .environmentObject(Theme.shared)
+                .environmentObject(Router<SettingsRoute>())
+            } else {
+                EmptyView()
+            }
         }
     }
 }
