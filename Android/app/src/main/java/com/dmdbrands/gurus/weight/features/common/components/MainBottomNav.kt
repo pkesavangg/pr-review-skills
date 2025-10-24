@@ -53,16 +53,19 @@ fun MainBottomNav(
   onOpenAppSync: () -> Unit,
   showUnreadFeedIndicator: Boolean = false,
 ) {
-  var selectedItem by remember { mutableStateOf(BOTTOM_NAV_ITEMS[0]) }
   val topBackStack = LocalNavBackStack.current
   val backStack = topBackStack.getStackForTopLevel(AppRoute.Home)
+  var selectedItem by remember {
+    mutableStateOf(BOTTOM_NAV_ITEMS.find { it.route == backStack.lastOrNull() } ?: BOTTOM_NAV_ITEMS[0])
+  }
+
   val coroutineScope = rememberCoroutineScope()
 
   LaunchedEffect(backStack.lastOrNull()) {
     selectedItem =
       BOTTOM_NAV_ITEMS.find { it.route == backStack.lastOrNull() } ?: BOTTOM_NAV_ITEMS[0]
   }
-  val context = LocalContext.current
+  LocalContext.current
 
   NavigationBar(
     modifier = Modifier.topBorder(0.6.dp, MeTheme.colorScheme.utility),
@@ -78,7 +81,7 @@ fun MainBottomNav(
       BOTTOM_NAV_ITEMS.forEachIndexed { index, item ->
         val isSelected = (selectedItem == item)
         val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
-         if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
+        if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
         NavigationBarItem(
           icon = {
             BadgedBox(
@@ -126,16 +129,16 @@ fun MainBottomNav(
             coroutineScope.launch {
               if (item.label === DashboardString.BottomNav.appsync) {
                 onOpenAppSync()
-              }else{
-              topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
-              val requiredItem =
-                BOTTOM_NAV_ITEMS.find {
-                  it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
+              } else {
+                topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+                val requiredItem =
+                  BOTTOM_NAV_ITEMS.find {
+                    it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
+                  }
+                if (requiredItem != null && requiredItem != selectedItem) {
+                  selectedItem = requiredItem
                 }
-              if (requiredItem != null && requiredItem != selectedItem) {
-                selectedItem = requiredItem
               }
-            }
             }
           },
         )
@@ -164,9 +167,11 @@ fun Modifier.topBorder(
 @Composable
 fun MainBottomNavDemoScreenPreview() {
   MeAppTheme {
-    MainBottomNav(badgeVisible = listOf(AppRoute.Main.Dashboard),
-                  showAppsync = false,
-                  showUnreadFeedIndicator = true,
-                  onOpenAppSync = {})
+    MainBottomNav(
+      badgeVisible = listOf(AppRoute.Main.Dashboard),
+      showAppsync = false,
+      showUnreadFeedIndicator = true,
+      onOpenAppSync = {},
+    )
   }
 }

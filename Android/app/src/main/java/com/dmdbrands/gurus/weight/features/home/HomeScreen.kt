@@ -1,8 +1,5 @@
 package com.dmdbrands.gurus.weight.features.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
@@ -69,7 +66,7 @@ fun HomeScreenContent(
   val context = LocalContext.current
   var isScanning by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
-  val keyboardController = LocalSoftwareKeyboardController.current
+  LocalSoftwareKeyboardController.current
   // Observe shouldAskForReview state and launch review when true
   LaunchedEffect(state.shouldAskForReview) {
     if (state.shouldAskForReview) {
@@ -79,42 +76,41 @@ fun HomeScreenContent(
 
   Scaffold(
     bottomBar = {
-      MainBottomNav(
-        showAppsync = state.showAppsync,
-        showUnreadFeedIndicator = showUnreadFeedIndicator,
-        onOpenAppSync = {
-          handleIntent(
-            HomeIntent.CheckAndRequestPermission { isEnabled ->
-              if (isEnabled && !isScanning) {
-                isScanning = true
-                coroutineScope.launch {
-                  try {
-                    val result = startAppSyncScan(
-                      context = context,
-                      zoom = 2,
-                      showManualEntryButton = true,
-                      onBack = {
-                        // Create cancelled result and call intent handler immediately
-                        Log.d("APPSYNC RES", "APPSYNC CANCELLED")
-                        val cancelResult = AppSyncResultFactory.createCancelResult(2)
-                        AppSyncResultHolder.result = cancelResult
-                        handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
-                      },
-                    )
-                    handleIntent(HomeIntent.HandleAppSyncResult(result))
-                  } catch (e: Exception) {
-                    // Handle error
-                  } finally {
-                    isScanning = false
+      if (!isKeyboardOpen())
+        MainBottomNav(
+          showAppsync = state.showAppsync,
+          showUnreadFeedIndicator = showUnreadFeedIndicator,
+          onOpenAppSync = {
+            handleIntent(
+              HomeIntent.CheckAndRequestPermission { isEnabled ->
+                if (isEnabled && !isScanning) {
+                  isScanning = true
+                  coroutineScope.launch {
+                    try {
+                      val result = startAppSyncScan(
+                        context = context,
+                        zoom = 2,
+                        showManualEntryButton = true,
+                        onBack = {
+                          // Create cancelled result and call intent handler immediately
+                          Log.d("APPSYNC RES", "APPSYNC CANCELLED")
+                          val cancelResult = AppSyncResultFactory.createCancelResult(2)
+                          AppSyncResultHolder.result = cancelResult
+                          handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
+                        },
+                      )
+                      handleIntent(HomeIntent.HandleAppSyncResult(result))
+                    } catch (e: Exception) {
+                      // Handle error
+                    } finally {
+                      isScanning = false
+                    }
                   }
-                } else {
-                  // Optional: show alert or log permission not granted
                 }
               },
             )
           },
         )
-      }
     },
     floatingActionButton = {
       if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed && !state.isBodyMetricsEnabled) {
