@@ -22,7 +22,6 @@ object ConversionTools {
   private const val BMI_CALCULATION_FACTOR = 100000
   private const val BLUETOOTH_CONVERSION_FACTOR = 1.1023
 
-
   // ========== Weight Conversions ==========
 
   /**
@@ -31,7 +30,7 @@ object ConversionTools {
    * @return Weight in pounds (1 decimal place)
    */
   fun convertStoredToLbs(stored: Double): Double {
-    return round(stored / STORED_TO_LBS_FACTOR)
+    return stored / STORED_TO_LBS_FACTOR
   }
 
   /**
@@ -40,7 +39,7 @@ object ConversionTools {
    * @return Weight in stored format
    */
   fun convertLbsToStored(lbs: Double): Double {
-    return round(lbs * STORED_TO_LBS_FACTOR)
+    return (lbs * STORED_TO_LBS_FACTOR)
   }
 
   /**
@@ -58,7 +57,7 @@ object ConversionTools {
    * @return Weight in kilograms (1 decimal place)
    */
   fun convertStoredToKg(stored: Double): Double {
-    return round((stored / STORED_TO_KG_FACTOR) * 10) / 10.0
+    return (stored / STORED_TO_KG_FACTOR) * 10 / 10.0
   }
 
   /**
@@ -97,7 +96,8 @@ object ConversionTools {
    */
   fun convertStoredToDisplay(stored: Double, isMetric: Boolean = false): Double {
     if (!isMetric) {
-      return convertStoredToLbs(stored)
+      val lbs = convertStoredToLbs(stored)
+      return lbs
     }
     return convertStoredToKg(stored)
   }
@@ -132,7 +132,7 @@ object ConversionTools {
    * @return Height in centimeters
    */
   fun convertStoredHeightToCm(stored: Int): Int {
-      return round(stored * CM_TO_INCH_FACTOR).toInt()
+    return (stored * CM_TO_INCH_FACTOR).toInt()
   }
 
   /**
@@ -173,7 +173,7 @@ object ConversionTools {
    * @return BMI value rounded to nearest integer
    */
   fun calculateBMI(weight: Double, height: Int): Int {
-    return round((weight / height / height) * BMI_CALCULATION_FACTOR).toInt()
+    return ((weight / height / height) * BMI_CALCULATION_FACTOR).toInt()
   }
 
   /**
@@ -184,7 +184,7 @@ object ConversionTools {
    */
   fun calculateBMIFromMetric(weightKg: Double, heightCm: Int): Double {
     val heightM = heightCm / 100.0
-    return round((weightKg / (heightM * heightM)) * 10) / 10.0
+    return ((weightKg / (heightM * heightM)) * 10) / 10.0
   }
 
   /**
