@@ -819,10 +819,16 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - isDuplicateUserError: Whether this is a duplicate user error (true) or user limit error (false)
      */
     private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async {
+        
         guard let deviceDetails = deviceData as? GGDeviceDetails, !isSetupInProgress else {
             logger.log(level: .error, tag: tag, message: "Invalid device data for event alert")
             return
         }
+        
+        if skipDevices.contains(deviceDetails.broadcastIdString) {
+            return
+        }
+
         
         // Get scale info and create discovered scale
         let scaleInfo = scaleInfoUtils.getScaleInfo(byScaleName: deviceDetails.deviceName)
@@ -1520,6 +1526,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<Void, BluetoothServiceError>
      */
     func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+
         if !skipDevices.contains(broadcastId) {
             skipDevices.append(broadcastId)
         }
