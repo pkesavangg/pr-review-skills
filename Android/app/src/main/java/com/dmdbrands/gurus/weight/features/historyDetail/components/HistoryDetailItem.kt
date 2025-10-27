@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
@@ -42,7 +41,6 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTim
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import android.R.attr.contentDescription
 
 @Composable
 fun SwipeableListItemScope.HistoryDetailItem(
@@ -93,15 +91,23 @@ fun HistoryDetailItemHeader(
         if (isExpanded) MeTheme.colorScheme.primaryBackground else MeTheme.colorScheme.textBody
     val subTextColor =
         if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.textSubheading
-
+  var lastClickTime by remember { mutableStateOf(0L) }
+  val debounceTime = 500L // Prevent multiple clicks within 300ms
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .background(backgroundColor)
-                .clickable(enabled = canExpand) {
-                    onClick()
-                }
+                .combinedClickable(
+                  enabled = canExpand,
+                  onClick = {
+                    val currentTime = android.os.SystemClock.elapsedRealtime()
+                    if (currentTime - lastClickTime >= debounceTime) {
+                      lastClickTime = currentTime
+                      onClick()
+                    }
+                  },
+                  onLongClick = {})
               .padding(MeTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
