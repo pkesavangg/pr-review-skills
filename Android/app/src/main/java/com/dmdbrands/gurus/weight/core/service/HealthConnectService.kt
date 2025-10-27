@@ -33,6 +33,7 @@ import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +67,14 @@ class HealthConnectService @Inject constructor(
   // Core Health Connect components
   private lateinit var healthConnect: HealthConnect
   private lateinit var currentActivity: Activity
+  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+  init {
+    repositoryScope.launch {
+      var account = accountRepository.getActiveAccount().first()
+      currentAccountId = account?.id
+    }
+  }
   // Service state
   private val tag = "HealthConnectService"
   private var isLoaded = false
@@ -418,17 +426,17 @@ class HealthConnectService @Inject constructor(
       val dataToDelete = mutableListOf<HealthConnectData>()
       val timestamp = Instant.parse(summary.entryTimestamp)
 
-      summary.weight?.let {
-        dataToDelete.add(HealthConnectData(DataType.Weight, it, timeStamp = timestamp))
+      summary.weight.let {
+          dataToDelete.add(HealthConnectData(DataType.Weight, it, timeStamp = timestamp))
       }
       summary.bodyFat?.let {
         dataToDelete.add(HealthConnectData(DataType.BodyFat, it, timeStamp = timestamp))
       }
-      if (summary.muscleMass != null && summary.weight != null) {
+      if (summary.muscleMass != null) {
         val leanBodyMass = (summary.muscleMass * summary.weight) / 100
         dataToDelete.add(HealthConnectData(DataType.LeanBodyMass, leanBodyMass, timeStamp = timestamp))
       }
-      if (summary.boneMass != null && summary.weight != null) {
+      if (summary.boneMass != null) {
         val boneMassValue = (summary.boneMass * summary.weight) / 100
         dataToDelete.add(HealthConnectData(DataType.BoneMass, boneMassValue, timeStamp = timestamp))
       }

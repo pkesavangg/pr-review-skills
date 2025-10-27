@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -58,7 +59,7 @@ class EntryService
 @Inject
 constructor(
   private val entryRepository: IEntryRepository,
-  private val goalRepository: IGoalRepository,
+  goalRepository: IGoalRepository,
   private val accountRepository: IAccountRepository,
   private val goalService: IGoalService,
   private val healthConnectService: IHealthConnectService,
@@ -785,16 +786,16 @@ constructor(
         val summary = entry.toPeriodBodyScaleSummary()
         if (summary != null) {
           healthConnectService.syncData(listOf(summary))
-          var latestEntry = HealthConnectSyncEntry(
+          val latestEntry = HealthConnectSyncEntry(
             weight = summary.weight,
-            timestamp = summary.entryTimestamp,
-            type = IntegrationType.HEALTH_CONNECT,
-            sentAt = System.currentTimeMillis().toString(),
+            timestamp = ConversionTools.convertToUTC(summary.entryTimestamp),
+            type = IntegrationType.HEALTH_CONNECT.value,
+            sentAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
             bodyFat = summary.bodyFat,
             muscleMass = summary.muscleMass,
             water = summary.water,
             bmi = summary.bmi,
-            data = emptyList(),
+            data = mapOf(),
           )
           healthConnectRepository.syncEntry(latestEntry)
           AppLog.d("EntryService", "Successfully synced entry to Health Connect")

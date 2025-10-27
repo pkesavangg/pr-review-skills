@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -73,7 +74,7 @@ object DateTimeConverter {
     return try {
       ZonedDateTime.ofInstant(
         Instant.ofEpochMilli(timestamp),
-        defaultZone,
+        ZoneOffset.UTC,
       ).format(formatter)
     } catch (e: Exception) {
       AppLog.e("DateTimeConverter", "Failed to convert timestamp to ISO string", e)
