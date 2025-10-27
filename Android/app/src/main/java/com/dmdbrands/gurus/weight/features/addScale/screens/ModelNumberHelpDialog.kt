@@ -37,8 +37,8 @@ fun ModelNumberHelpDialog(
   Dialog(
     onDismissRequest = onClose,
     properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
+      dismissOnBackPress = false,
+      dismissOnClickOutside = false,
       usePlatformDefaultWidth = false,
       decorFitsSystemWindows = false,
     ),
@@ -49,7 +49,11 @@ fun ModelNumberHelpDialog(
         .background(MeTheme.colorScheme.glow)
         .clickable { onClose() },
     ) {
-      Box(modifier = Modifier.align(Alignment.Center)) {
+      Box(
+        modifier = Modifier
+          .align(Alignment.Center)
+          .clickable(enabled = false) { },  // Prevent clicks from reaching background
+      ) {
         AppPopupModal {
           AppPopup(
             visible = visible,
