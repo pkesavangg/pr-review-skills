@@ -43,7 +43,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.util.Log
 
 @HiltViewModel(
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
@@ -153,9 +152,15 @@ constructor(
   private fun observePermissions() {
     viewModelScope.launch {
       subscribePermissions(true).collect { permissions ->
+        val areRequiredPermissionsEnabled =
+          AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
         handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
-        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
-
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
+        if (!areRequiredPermissionsEnabled && state.value.currentStep != WifiScaleSetupStep.SCALE_INFO
+          && state.value.currentStep != WifiScaleSetupStep.SETUP_FINISHED
+        ) {
+          handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.PERMISSIONS))
+        }
         // Refresh WiFi information when permissions change to ensure WiFi name is current
         updateNetworkStatus()
       }
@@ -191,6 +196,9 @@ constructor(
               val areRequiredPermissionsEnabled = AppPermissionsHelper
                 .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Wifi)
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
+              if (areRequiredPermissionsEnabled) {
+                handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
+              }
               updateNetworkStatus()
             }
 
@@ -544,7 +552,6 @@ constructor(
             if (hex.length == 1) "0$hex" else hex
           }
           mac = formattedHexes.joinToString(":")
-          Log.d("macaddress", mac)
           this.mac = mac
           AppLog.d(TAG, "getMacAddress - MAC address found: $mac")
           return mac
@@ -901,6 +908,14 @@ constructor(
         shouldGetMacAddress = false
       )
    }
+    if (state.value.currentStep == WifiScaleSetupStep.WIFI_PASSWORD) {
+      val areRequiredPermissionsEnabled = AppPermissionsHelper
+        .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Wifi)
+      if (areRequiredPermissionsEnabled) {
+        handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.SCALE_INFO))
+      }
+    }
+
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 

@@ -306,7 +306,7 @@ fun SetupFormPreview() {
         toggleChecked = false,
         onToggleChanged = {},
         isWifiConnected = true,
-        noteMessage = "Your phone should stay connected to the chosen 2GHZ network until setup is complete.",
+        noteMessage = "Your phone should stay connected to the chosen 2.4 GHZ network until setup is complete.",
       )
     }
   }
