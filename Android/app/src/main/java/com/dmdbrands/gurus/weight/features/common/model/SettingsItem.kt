@@ -57,5 +57,6 @@ data class SettingsItem(
     val enabled: Boolean = true,
     val color: SettingColorType = SettingColorType.Default,
     val showUnreadIndicator: Boolean = false,
+    val maxLines: Int = 1,
     val onClick: () -> Unit = {},
 )
