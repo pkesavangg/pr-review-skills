@@ -41,11 +41,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * Goal progress milestone card that shows weight progress with badge support.
  *
  * @param progress Progress data containing weight information
- * @param goal Goal data for weight targets
  * @param inEditMode Whether the dashboard is in edit mode
+ * @param isDragging Whether the card is being dragged
  * @param isVisible Whether the milestone is currently visible
+ * @param latestWeight Latest weight value for display
  * @param modifier Modifier for the composable
  * @param onBadgeClick Callback when the badge is clicked
+ * @param onNavigateToGoal Callback when navigating to goal screen
  */
 @Composable
 fun GoalProgressMilestoneCard(
@@ -55,7 +57,8 @@ fun GoalProgressMilestoneCard(
   isVisible: Boolean = true,
   latestWeight: Double? = null,
   modifier: Modifier = Modifier,
-  onBadgeClick: () -> Unit = {}
+  onBadgeClick: () -> Unit = {},
+  onNavigateToGoal: () -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
   val badgeOffsetX = (-5).dp
@@ -132,7 +135,10 @@ fun GoalProgressMilestoneCard(
         )
       }
       else {
-        EmptyGoal({})
+        EmptyGoal(
+          onSetGoalClick = onNavigateToGoal,
+          inEditMode = inEditMode,
+        )
       }
     }
   }

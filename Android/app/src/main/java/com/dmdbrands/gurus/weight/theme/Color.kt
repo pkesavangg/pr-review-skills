@@ -55,6 +55,8 @@ val LightColorScheme =
     // Status
     goal = LightColorToken.goal,
     success = LightColorToken.success,
+    secondarySuccess = LightColorToken.secondarySuccess,
+    tertiarySuccess = LightColorToken.tertiarySuccess,
     danger = LightColorToken.danger,
     streak = LightColorToken.streak,
     utility = LightColorToken.utility,
@@ -121,6 +123,8 @@ val DarkColorScheme =
     // Status
     goal = DarkColorToken.goal,
     success = DarkColorToken.success,
+    secondarySuccess = DarkColorToken.secondarySuccess,
+    tertiarySuccess = DarkColorToken.tertiarySuccess,
     danger = DarkColorToken.danger,
     streak = DarkColorToken.streak,
     utility = DarkColorToken.utility,

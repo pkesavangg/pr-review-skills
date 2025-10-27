@@ -194,6 +194,11 @@ private fun DashboardScreenContent(
           onMilestonesChanged = { visibleMilestones ->
             currentVisibleMilestones = visibleMilestones
           },
+          onNavigateToGoal = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.Goal)
+            }
+          },
         )
         if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
           Spacer(modifier = Modifier.height(MeTheme.spacing.sm))

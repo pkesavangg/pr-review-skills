@@ -271,6 +271,7 @@ fun CustomizeScaleSettings(
             onMilestonesChanged = {
               dashboardMilestoneKeys = it.filterIsInstance<DashboardKey.Milestone>()
             },
+            onNavigateToGoal = {},
           )
         }
       }

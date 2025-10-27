@@ -33,9 +33,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param progress Progress data containing weight information
  * @param visibleMilestones List of currently visible milestone stats
  * @param hiddenMilestones List of hidden milestone stats
+ * @param hasVisibleMetrics Whether there are visible metrics
  * @param inEditMode Whether the dashboard is in edit mode
+ * @param isFromSetup Whether the item is from setup flow
+ * @param latestWeight Latest weight value for display
  * @param onMilestoneMoved Callback when a milestone is moved between visible and hidden states
  * @param onMilestoneReordered Callback when visible milestones are reordered
+ * @param onNavigateToGoal Callback when navigating to goal screen
  */
 @Composable
 fun DashboardMilestoneGrid(
@@ -48,6 +52,7 @@ fun DashboardMilestoneGrid(
   latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
+  onNavigateToGoal: () -> Unit = {},
 ) {
   val currentDeviceType = getDeviceType()
   val spanCount = if (currentDeviceType == DeviceType.Tablet) 3 else 2
@@ -151,6 +156,7 @@ fun DashboardMilestoneGrid(
           isFromSetup = isFromSetup,
           isVisible = true,
           onMilestoneMoved = handleMilestoneMoved,
+          onNavigateToGoal = onNavigateToGoal,
           reorderableScope = this,
           latestWeight = latestWeight,
         )
@@ -176,6 +182,7 @@ fun DashboardMilestoneGrid(
           isVisible = false,
           isFromSetup = isFromSetup,
           onMilestoneMoved = handleMilestoneMoved,
+          onNavigateToGoal = onNavigateToGoal,
           reorderableScope = null,
           latestWeight = latestWeight,
         )
