@@ -23,14 +23,35 @@ final class UsersViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     var otherDeviceUsersList: [DeviceUser] {
-        return deviceUsers.filter { $0.token != currentDeviceUser?.token }
+        return deviceUsers.filter { user in
+            if let currentToken = currentDeviceUser?.token, !currentToken.isEmpty,
+               let token = user.token, !token.isEmpty {
+                return token != currentToken
+            } else if let currentName = currentDeviceUser?.name, !currentName.isEmpty {
+                return user.name.caseInsensitiveCompare(currentName) != .orderedSame
+            }
+            return true
+        }
     }
     
     init(scale: Device, initialUsersList: [DeviceUser] = []) {
         self.scale = scale
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
-            self.currentDeviceUser = initialUsersList.filter({$0.token == scale.token}).first
+            // Prefer token match; fallback to display name from scale preference if token isn't available
+            if let token = scale.token, !token.isEmpty {
+                self.currentDeviceUser = initialUsersList.first { $0.token == token }
+            }
+            if self.currentDeviceUser == nil, let prefName = scale.r4ScalePreference?.displayName, !prefName.isEmpty {
+                self.currentDeviceUser = initialUsersList.first { $0.name.caseInsensitiveCompare(prefName) == .orderedSame }
+            }
+            // Pre-populate the form with the current user's name and user list
+            let currentName = self.currentDeviceUser?.name ?? ""
+            userNameForm.setDisplayName(currentName)
+            let scaleUsers = otherDeviceUsersList.map { deviceUser in
+                ScaleUser(name: deviceUser.name, token: deviceUser.token)
+            }
+            userNameForm.updateUserList(scaleUsers)
         }
         
         setupFormObservers()
@@ -57,8 +78,13 @@ final class UsersViewModel: ObservableObject {
             switch result {
             case .success(let users):
                 self.deviceUsers = users
-                // Find current user (typically the first one or the one that matches our account)
-                self.currentDeviceUser = users.filter({$0.token == scale.token}).first
+                // Determine current user: token match first, then fallback to display name match
+                if let token = self.scale.token, !token.isEmpty {
+                    self.currentDeviceUser = users.first { $0.token == token }
+                }
+                if self.currentDeviceUser == nil, let prefName = self.scale.r4ScalePreference?.displayName, !prefName.isEmpty {
+                    self.currentDeviceUser = users.first { $0.name.caseInsensitiveCompare(prefName) == .orderedSame }
+                }
                 logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
                 let currentName = currentDeviceUser?.name ?? ""
                 userNameForm.setDisplayName(currentName)
