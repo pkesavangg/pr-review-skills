@@ -56,7 +56,7 @@ private fun IntegrationContent(
         Column(
             modifier = scaffoldModifier
                 .fillMaxSize()
-                .padding(spacing.md),
+                .padding(vertical = spacing.md, horizontal = spacing.sm),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             IntegrationList(state, handleIntent, onHealthConnectIconClick)
