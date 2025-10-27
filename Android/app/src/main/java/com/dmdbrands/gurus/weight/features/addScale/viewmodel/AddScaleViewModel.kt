@@ -72,7 +72,6 @@ constructor(
     viewModelScope.launch {
       // Collect saved scales from DeviceService
       deviceService.pairedScales.collect { devices ->
-
         handleIntent(AddScaleIntent.SetSavedScales(devices))
       }
     }

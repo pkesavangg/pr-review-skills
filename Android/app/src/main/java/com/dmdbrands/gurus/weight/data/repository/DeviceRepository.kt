@@ -56,7 +56,7 @@ constructor(
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
     val existingDevices = deviceDao.getDevices(accountId).first()
-    val isDeviceExists = existingDevices.any() { it.scale?.id == device.id }
+    val isDeviceExists = existingDevices.any { it.scale?.id == device.id }
     if (isDeviceExists) {
       deviceDao.updateDevice(deviceDetails)
     } else {
@@ -149,7 +149,11 @@ constructor(
     val response = deviceApi.saveScale(device.toApiModel())
     if (response.isSuccessful) {
       val apiModel = response.body()
-      return apiModel?.toDomainModel() ?: device
+      return apiModel?.toDomainModel(
+        device.connectionStatus,
+        device.device?.wifiMacAddress,
+        device.device?.isWifiConfigured ?: false,
+      ) ?: device
     } else {
       throw Exception("Failed to save device to API: ${response.code()}")
     }
