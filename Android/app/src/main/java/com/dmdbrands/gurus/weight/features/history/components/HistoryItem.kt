@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.features.history.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +33,10 @@ fun HistoryItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
+                .combinedClickable(
+                  onClick = { onClick() },
+                  onLongClick = { /* Do nothing on long press */ }
+                )
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
