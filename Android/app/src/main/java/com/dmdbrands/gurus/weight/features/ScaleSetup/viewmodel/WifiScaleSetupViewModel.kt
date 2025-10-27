@@ -41,7 +41,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel(
@@ -925,11 +924,13 @@ constructor(
     )
     try {
       viewModelScope.launch {
-        val alreadyPairedScale =
-          deviceService.pairedScales.first().find { it.sku == sku && it.userNumber == state.value.selectedUser }
-        if (alreadyPairedScale != null) {
-          deviceService.deleteScale(alreadyPairedScale.id)
-        }
+        // TODO: Need to verify how they detect the duplicate scales unless the sku with user number
+        //  how will they find out that in the same session scale does not gets saved.
+        // val alreadyPairedScale =
+        //   deviceService.pairedScales.first().find { it.sku == sku && it.userNumber == state.value.selectedUser }
+        // if (alreadyPairedScale != null) {
+        //   deviceService.deleteScale(alreadyPairedScale.id)
+        // }
         val scaleInfo = SCALES.find { it.sku == state.value.sku }
         val wifiDevice = Device(
           device = GGDeviceDetail(
