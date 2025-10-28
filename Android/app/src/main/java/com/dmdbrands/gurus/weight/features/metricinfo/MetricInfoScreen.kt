@@ -23,7 +23,10 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
+import com.dmdbrands.gurus.weight.features.common.components.AppIconType
+import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
@@ -98,6 +101,7 @@ fun MetricInfoScreen(
       source = source,
       selectedIndex = state.selectedMetricIndex,
       handleIntent = viewModel::handleIntent,
+      metricInfoState = state,
     )
   }
 }
@@ -114,6 +118,7 @@ fun MetricInfoScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MetricInfoScreenContent(
+  metricInfoState: MetricInfoState,
   stat: Stat,
   info: DashboardMetric,
   selectedIndex: Int,
@@ -226,6 +231,17 @@ fun MetricInfoScreenContent(
           )
 
           Spacer(modifier = Modifier.height(spacing.xl))
+
+          if (metricInfoState.isHeartRateOff && currentMetricKey == MetricKey.HEART_RATE) {
+            AppNote(
+              message = ScaleMetricsSettingStrings.HeartRateOffNotes.Title,
+              icon = AppIcons.Metrics.Pulse,
+              iconType = AppIconType.Tertiary,
+              buttonText = ScaleMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
+              onButtonClick = { handleIntent(MetricInfoIntent.UpdateScaleMode) },
+            )
+            Spacer(modifier = Modifier.height(spacing.xl))
+          }
 
           MetricInfoInfoSection(metricKey = currentMetricKey)
 
