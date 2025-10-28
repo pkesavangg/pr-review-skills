@@ -14,8 +14,6 @@ struct PasswordStepView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var signupStore: SignupStore
     @State var focusedField: FocusField?
-    @State private var showTerms = false
-    @State private var showPrivacy = false
     let passwordStepLang = SignupStrings.PasswordStep.self
     let labels = InputFieldLabels.self
     let legalUrls = AppConstants.LegalURLs.self
