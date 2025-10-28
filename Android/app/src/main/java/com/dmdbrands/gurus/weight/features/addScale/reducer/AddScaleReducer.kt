@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.addScale.reducer
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
@@ -81,8 +82,8 @@ class AddScaleReducer : IReducer<AddScaleState, AddScaleIntent> {
         savedScales = intent.scales
           .map { it.toScaleInfo() }
           .sortedByDescending { scaleInfo ->
-            scaleInfo.createdAt?.toLongOrNull() ?: 0L
-          }
+            DateTimeConverter.isoToTimestamp(scaleInfo.createdAt)
+          },
       )
       is AddScaleIntent.OpenSelectedScaleSetup -> state.copy(selectedSku = intent.sku)
       is AddScaleIntent.OpenScaleSettings -> state.copy(scaleId = intent.scaleId)
