@@ -111,6 +111,7 @@ object AppPopupStrings {
 
     fun ConfirmButton(permissionType: String) = when (permissionType) {
       GGPermissionType.ALL -> "App Permission"
+      GGPermissionType.BLUETOOTH_SWITCH, GGPermissionType.NOTIFICATION -> "Enable"
       else -> "Allow"
     }
 
