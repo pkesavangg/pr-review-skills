@@ -129,7 +129,7 @@ fun DashboardMilestoneGrid(
       .padding(horizontal = MeTheme.spacing.sm)
       .heightIn(max = 800.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
   ) {
     // Visible milestones (reorderable)
     items(
