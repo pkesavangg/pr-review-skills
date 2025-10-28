@@ -715,21 +715,24 @@ constructor(
   /**
    * Handles password network status toggle by dynamically adding/removing validation.
    * Reads the current status from the wifiPasswordForm.noPasswordNetwork control.
+   * Properly clears form state to avoid validation errors.
    */
   private fun handlePasswordNetworkStatus() {
     val currentState = state.value
     val isNoPasswordNetwork = currentState.wifiPasswordForm.noPasswordNetwork.value
     AppLog.d(TAG, "Handling password network status, isNoPasswordNetwork: $isNoPasswordNetwork")
     if (isNoPasswordNetwork) {
-      // No password network - remove required validation
+      // No password network - remove required validation and reset field completely
       currentState.wifiPasswordForm.password.removeValidator("required")
-      // Clear password value since it's not needed
-      currentState.wifiPasswordForm.password.reset()
+      // Reset clears value, error, touched, dirty, and pending states
+      currentState.wifiPasswordForm.password.reset("")
     } else {
       // Password network - add required validation
       currentState.wifiPasswordForm.password.addValidator(
         com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.required(),
       )
+      // Reset to clear any stale errors, then revalidate if there's a value
+      currentState.wifiPasswordForm.password.reset("")
     }
 
     // Update canProceedToNext based on current form state
