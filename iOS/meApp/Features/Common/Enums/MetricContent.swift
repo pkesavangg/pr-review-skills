@@ -99,8 +99,7 @@ enum MetricContentRepository {
                     "Visceral fat can be reduced through diet and exercise. By reducing calories, cutting sugar, and engaging in regular physical activity, you can reduce your visceral fat and lower your risk of disease."
                 ],
                 resources: [
-                    MetricResource(title: "Cleveland Clinic", link: "https://my.clevelandclinic.org/health/diseases/24147-visceral-fat"),
-                    MetricResource(title: "Johns Hopkins School of Medicine", link: "https://www.hopkinsmedicine.org/gim/_documents/Faculty-Resource/The%20Skinny%20on%20Visceral%20Fat.pdf")
+                    MetricResource(title: "Cleveland Clinic", link: "https://my.clevelandclinic.org/health/diseases/24147-visceral-fat")
                 ])
         case .subcutaneousFatPercent:
             return MetricDetailContent(
