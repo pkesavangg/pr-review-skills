@@ -829,7 +829,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
 
-        
         // Get scale info and create discovered scale
         let scaleInfo = scaleInfoUtils.getScaleInfo(byScaleName: deviceDetails.deviceName)
         guard  let discoveredScale = bluetoothScales.first(where: {$0.broadcastIdString == deviceDetails.broadcastIdString}) else {
