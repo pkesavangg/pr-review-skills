@@ -32,6 +32,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
+import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -69,6 +70,12 @@ constructor(
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
+  private suspend fun updateConnectedDeviceDetailMap(macAddress: String, deviceDetail: GGDeviceDetail) {
+    _connectedDeviceMap.value = _connectedDeviceMap.value.toMutableMap().apply {
+      this[macAddress] = deviceDetail
+    }
+  }
+
   override suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus) {
     _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
       this[macAddress] = connectionStatus
@@ -86,6 +93,7 @@ constructor(
 
     // Update connection status map
     updateConnectionStatus(macAddress, resolvedConnectionStatus)
+    updateConnectedDeviceDetailMap(macAddress, deviceDetail)
 
     // Try to find the device in current paired scales
     val currentDevices = _pairedScales.value.toMutableList()
@@ -94,43 +102,17 @@ constructor(
     if (deviceIndex >= 0) {
       // Device found in current list - update it directly
       val device = currentDevices[deviceIndex]
-      val oldWifiConfigured = device.device?.isWifiConfigured
-
       val updatedDevice = device.copy(
         connectionStatus = resolvedConnectionStatus,
         device = device.device?.copy(
           isWifiConfigured = deviceDetail.isWifiConfigured,
           wifiMacAddress = if (deviceDetail.isWifiConfigured == true) deviceDetail.wifiMacAddress else null,
         ),
-        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
+        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false),
       )
-
       currentDevices[deviceIndex] = updatedDevice
       _pairedScales.value = currentDevices
       _connectedScales.value = currentDevices
-
-      // If WiFi configuration changed, save the updated device to database
-      if (oldWifiConfigured != deviceDetail.isWifiConfigured ||
-        device.device?.wifiMacAddress != deviceDetail.wifiMacAddress
-      ) {
-        AppLog.d(
-          tag,
-          "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}",
-        )
-        try {
-          deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
-        } catch (e: Exception) {
-          AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
-        }
-      }
-    } else {
-      // Device not found in current list - trigger a refresh to get updated data
-      AppLog.d(tag, "Device ${macAddress} not found in current paired scales, triggering refresh")
-      try {
-        fetchScales(currentAccountId)
-      } catch (e: Exception) {
-        AppLog.e(tag, "Error refreshing scales after device update", e)
-      }
     }
   }
 
@@ -155,15 +137,16 @@ constructor(
 
     fetchJob = repositoryScope.launch {
       deviceRepository.getDevices(resolvedAccountId).collect { devices ->
+        Log.d("DeviceService", "Updated devices: ${devices.map { it.isWeighOnlyModeEnabledByOthers }}")
 
         val updatedDevices = devices.map { device ->
           val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
+          val deviceDetail = _connectedDeviceMap.value[device.device?.macAddress] ?: device.device
 
           device.copy(
             connectionStatus = connectionStatus,
-            device = device.device?.copy(
-              isWifiConfigured = device.device.isWifiConfigured,
-            ),
+            device = deviceDetail,
+            isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail?.impedanceSwitchState == false),
           )
         }
         _pairedScales.value = updatedDevices

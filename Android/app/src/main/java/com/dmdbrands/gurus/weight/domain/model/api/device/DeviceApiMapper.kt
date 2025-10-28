@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.model.api.device
 
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
@@ -8,7 +9,11 @@ import java.util.UUID
 /**
  * Extension functions to map API models to domain models.
  */
-fun DeviceApiModel.toDomainModel(): Device {
+fun DeviceApiModel.toDomainModel(
+  connectionStatus: BLEStatus = BLEStatus.DISCONNECTED,
+  wifiMacAddress: String? = null,
+  isWifiConfigured: Boolean = false,
+): Device {
   val scaleId = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id
   return Device(
     id = scaleId,
@@ -20,9 +25,10 @@ fun DeviceApiModel.toDomainModel(): Device {
       broadcastId = convertIntToHex(broadcastId, type),
       broadcastIdString = convertIntToHex(broadcastId, type),
       password = convertIntToHex(password, type),
-      wifiMacAddress = null, // Not in API response
-      isWifiConfigured = false, // Not in API response
+      wifiMacAddress = wifiMacAddress, // Not in API response
+      isWifiConfigured = isWifiConfigured, // Not in API response
     ),
+    connectionStatus = connectionStatus,
     preferences = preference?.toPreferences(scaleId, isSynced = true),
     nickname = nickname ?: name ?: "",
     deviceType = type,
