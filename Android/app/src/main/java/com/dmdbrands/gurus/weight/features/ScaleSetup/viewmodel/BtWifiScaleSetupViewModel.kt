@@ -675,6 +675,7 @@ constructor(
 
     // Only navigation remains in viewModelScope
     viewModelScope.launch {
+      loadPluginData()
       // Ensure WiFi configuration is up to date before final save
       try {
         updateWifiDetails()
@@ -701,6 +702,34 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to navigate back from scale setup", e)
       }
+    }
+  }
+
+  private suspend fun loadPluginData() {
+    try {
+      AppLog.d(TAG, "Resuming scan and syncing devices")
+      ggDeviceService.resumeScan(false)
+      // load skipDevices
+      val device = this@BtWifiScaleSetupViewModel.discoveredScale
+      var connectedDeviceBroadcastID: String? = null
+
+      ggDeviceService.localSkipDevices.first().forEach {
+        if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
+          connectedDeviceBroadcastID = it
+        } else {
+          ggDeviceService.skipDevice(it, considerForSession = true)
+        }
+      }
+      if (connectedDeviceBroadcastID != null) {
+        ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
+      }
+
+      // load paired devices
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
+      ggDeviceService.syncDevices(pairedDevices)
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during Bluetooth cleanup", e)
     }
   }
 
