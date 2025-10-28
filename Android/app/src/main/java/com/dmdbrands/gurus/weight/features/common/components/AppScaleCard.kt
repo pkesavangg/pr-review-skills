@@ -82,7 +82,7 @@ fun AppScaleCard(
       ) {
         AppText(
           text = scale.sku,
-          textType = if (isSavedScale) TextType.ListTitle1 else TextType.ListTitle2,
+          textType = TextType.ListTitle1,
         )
         AppText(
           text = scale.productName.lowercase(),
