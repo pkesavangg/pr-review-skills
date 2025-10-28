@@ -86,13 +86,13 @@ constructor(
     if (isValid) {
       val modelNumber = state.value.form.controls.modelNumber.value
       AppLog.d(TAG, "Model number submitted: $modelNumber")
-      checkAndNavigateToScaleSetup(modelNumber)
+      checkAndNavigateToScaleSetup(modelNumber, replaceLast = false)
     } else {
       AppLog.w(TAG, "Form validation failed")
     }
   }
 
-  private fun checkAndNavigateToScaleSetup(sku: String) {
+  private fun checkAndNavigateToScaleSetup(sku: String, replaceLast: Boolean = true) {
     AppLog.d(TAG, "Checking and navigating to scale setup for SKU: $sku")
     val scaleInfo = SCALES.find { it.sku == sku }
     val setupType = scaleInfo?.setupType
@@ -120,34 +120,34 @@ constructor(
       )
     } else {
       AppLog.d(TAG, "Proceeding to scale setup")
-      navigateToSelectedScaleSetup(sku)
+      navigateToSelectedScaleSetup(sku, replaceLast)
     }
   }
 
-  private fun navigateToSelectedScaleSetup(sku: String) {
+  private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean = true) {
     AppLog.d(TAG, "Navigating to selected scale setup for SKU: $sku")
     val scaleInfo = SCALES.find { it.sku == sku }
     if (scaleInfo != null) {
       AppLog.d(TAG, "Scale info found: ${scaleInfo.productName}, setup type: ${scaleInfo.setupType}")
-      when (scaleInfo.setupType) {
+      val route = when (scaleInfo.setupType) {
         ScaleSetupType.AppSync -> {
           AppLog.d(TAG, "Navigating to AppSync scale setup")
-          replaceLastAndNavigate(AppRoute.ScaleSetup.AppsyncScaleSetup(sku))
+          AppRoute.ScaleSetup.AppsyncScaleSetup(sku)
         }
 
         ScaleSetupType.Bluetooth -> {
           AppLog.d(TAG, "Navigating to Bluetooth scale setup")
-          replaceLastAndNavigate(AppRoute.ScaleSetup.BtScaleSetup(sku, scaleInfo))
+          AppRoute.ScaleSetup.BtScaleSetup(sku, scaleInfo)
         }
 
         ScaleSetupType.Lcbt -> {
           AppLog.d(TAG, "Navigating to Lcbt scale setup")
-          replaceLastAndNavigate(AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo))
+          AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo)
         }
 
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
-          replaceLastAndNavigate(AppRoute.ScaleSetup.BtWifiScaleSetup(sku))
+          AppRoute.ScaleSetup.BtWifiScaleSetup(sku)
         }
 
         ScaleSetupType.Wifi,
@@ -155,10 +155,11 @@ constructor(
           AppLog.d(TAG, "Navigating to WiFi scale setup")
           // Use the ScaleSetupNavigationUtils to determine the correct route with ScaleInfo and wifiSetupType
           val route = ScaleSetupNavigationUtils.createWifiSetupRoute(scaleInfo)
-          replaceLastAndNavigate(route)
+          route
         }
 
       }
+      replaceLastAndNavigate(route, replaceLast)
     } else {
       AppLog.w(TAG, "Scale info not found for SKU: $sku")
     }
@@ -184,11 +185,14 @@ constructor(
     }
   }
 
-  private fun replaceLastAndNavigate(route: AppRoute) {
+  private fun replaceLastAndNavigate(route: AppRoute, replaceLast: Boolean = true) {
     AppLog.d(TAG, "Replacing last route and navigating to: $route")
     viewModelScope.launch {
       try {
-        navigationService.replaceLastAndNavigate(route)
+        if (replaceLast)
+          navigationService.replaceLastAndNavigate(route)
+        else
+          navigationService.navigateTo(route)
         AppLog.d(TAG, "Successfully replaced last route and navigated to: $route")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error replacing last route and navigating to: $route", e)

@@ -1705,6 +1705,7 @@ constructor(
     val device = Device(
       device = ggDeviceDetail,
       token = token,
+      nickname = "Accucheck Verve Smart Scale",
     )
     discoveredScale = device.copy(
       deviceType = ScaleSetupType.BtWifiR4.value,
