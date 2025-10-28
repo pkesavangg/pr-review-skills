@@ -1220,6 +1220,8 @@ class DashboardStore: ObservableObject {
     private func performDashboardResetFlow() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
+        // Ensure loader is visible via global notification system
+        notificationService.showLoader(LoaderModel(text: lang.saving))
         
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
@@ -1232,6 +1234,7 @@ class DashboardStore: ObservableObject {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.state.ui.isLoading = false
                 self.state.ui.loaderOverride = nil
+                self.notificationService.dismissLoader()
                 
                 // Delegate reset operations to managers
                 Task {
