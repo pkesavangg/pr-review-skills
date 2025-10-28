@@ -45,7 +45,7 @@ class GGInAppMessagingService @Inject constructor(
 
   // MARK: - Feed Update Events
   private val _sendUpdateFeed = MutableSharedFlow<FeedUpdateEvent>()
-  val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
+  override val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
 
   /**
    * Get feed settings flow for reactive updates (all accounts)
@@ -175,8 +175,6 @@ class GGInAppMessagingService @Inject constructor(
   override suspend fun emitFeedNotificationChange() {
     _feedNotificationChangedSubject.emit(Unit)
   }
-
-  // MARK: - Methods required by existing FeedService
 
   /**
    * Check if feed modal should be triggered - matches Angular implementation
@@ -329,7 +327,6 @@ class GGInAppMessagingService @Inject constructor(
       if (feedItem != null) {
         // Emit feed update event to trigger API call in main app
         emitFeedUpdate(feedItem, actionType)
-      } else {
       }
     } catch (e: Exception) {
     }

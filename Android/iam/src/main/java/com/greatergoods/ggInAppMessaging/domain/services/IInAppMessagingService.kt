@@ -1,5 +1,6 @@
 package com.greatergoods.ggInAppMessaging.domain.services
 
+import com.greatergoods.ggInAppMessaging.core.service.FeedUpdateEvent
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
  * Provides abstraction for feed management and messaging functionality
  */
 interface IInAppMessagingService {
+
+  val sendUpdateFeed: Flow<FeedUpdateEvent>
     /**
      * Set account ID for user-specific settings
      */

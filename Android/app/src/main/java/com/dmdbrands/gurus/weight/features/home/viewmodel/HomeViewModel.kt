@@ -32,6 +32,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,7 @@ constructor(
   private val feedService: IFeedService,
   private val accountFlagService: AccountFlagService,
   private val appReviewManager: AppReviewManager,
+  private val ggInAppMessagingService: IInAppMessagingService
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   private val TAG = "HomeViewModel"
   override fun provideInitialState(): HomeState = HomeState()
@@ -343,6 +345,7 @@ constructor(
         feedService.feedsChanged.collect {
           updateUnreadFeedIndicator()
         }
+
       } catch (e: Exception) {
         AppLog.e("HomeViewModel", "Failed to observe feed indicator", e.toString())
       }
