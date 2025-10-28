@@ -1184,7 +1184,14 @@ constructor(
           val connectedSSID = suspendCancellableCoroutine<String> { cont ->
             ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) { wifiMac ->
               val ssid = wifiMac.cleanCorruptedChars()
+              this@BtWifiScaleSetupViewModel.wifiSsid = ssid
               cont.resume(ssid)
+            }
+          }
+          suspendCancellableCoroutine { cont ->
+            ggDeviceService.getConnectedWifiMacAddress(discoveredScale!!.toGGBTDevice()) { mac ->
+              this@BtWifiScaleSetupViewModel.wifiMac = mac
+              cont.resume(mac)
             }
           }
           handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
