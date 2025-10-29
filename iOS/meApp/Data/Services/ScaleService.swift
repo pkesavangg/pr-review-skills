@@ -198,6 +198,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // Get devices for the current account
         let localDevices = try await localRepository.listScales(forAccountId: accountId)
         
+        print(localDevices.map({$0.deviceName}), localDevices.map({$0.broadcastIdString}), localDevices.map({$0.broadcastIdString}), "localDevices.map({$0.broadcastIdString})")
+        
         // Filter out deleted devices for the UI
         let activeDevices = localDevices.filter { device in
             device.isSoftDeleted != true
@@ -795,19 +797,19 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     }
                     continue
                 }
-                
-                // Fallback: try match by MAC
+                let accountId = try await getAccountId()
+                //Fallback: try match by MAC (scoped to current account)
                 var matchedDevice: Device? = nil
                 if let mac = dto.mac, !mac.isEmpty {
-                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac })
+                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac && $0.accountId == accountId })
                     if let found = try? localRepository.context.fetch(byMac).first {
                         matchedDevice = found
                     }
                 }
                 
-                // Fallback: try match by broadcastIdString
+                // Fallback: try match by broadcastIdString (scoped to current account)
                 if matchedDevice == nil, let bid = dto.broadcastIdString, !bid.isEmpty {
-                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid })
+                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid && $0.accountId == accountId })
                     if let found = try? localRepository.context.fetch(byBid).first {
                         matchedDevice = found
                     }
@@ -860,6 +862,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 await refreshScalesFromLocal()
                 logger.log(level: .debug, tag: tag, message: "Refreshed scales after pruning \(pruned) orphan device(s)")
             }
+             await refreshScalesFromLocal()
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: \(error.localizedDescription)")
         }
