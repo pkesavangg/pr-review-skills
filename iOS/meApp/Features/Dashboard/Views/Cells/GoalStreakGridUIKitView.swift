@@ -25,6 +25,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Reentrancy guard to avoid SwiftUI AttributeGraph update cycles and console spam
         if coordinator.isUpdating { return }
 
+        // Avoid reloading/invalidating layout while a drag operation is active to prevent mid-drag resizing
+        if coordinator.interactiveMovingIndexPath != nil {
+            coordinator.lastIsEditMode = store.state.ui.isEditMode
+            // Keep system drag disabled; we use interactive movement with strict clamping
+            collectionView.dragInteractionEnabled = false
+            return
+        }
+
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
         let newIsEditMode = store.state.ui.isEditMode
@@ -104,6 +112,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         layout.minimumInteritemSpacing = 16         // gap between columns
         layout.minimumLineSpacing = 32              // gap between rows
         layout.sectionInset = UIEdgeInsets(top: 16, left: 16, bottom: 32, right: 16) // fine-tuned bottom margin for last row
+        layout.estimatedItemSize = .zero            // ensure fixed, non-estimated sizing
         return layout
     }
     
@@ -375,12 +384,14 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         private var isAwaitingDropEnd: Bool = false
         
         // Interactive movement tracking to preserve shape/size and clamp by full frame
-        private var interactiveMovingIndexPath: IndexPath?
+        public var interactiveMovingIndexPath: IndexPath?
         private var interactiveMovingItemSize: CGSize = .zero
         private var lastBoundaryHapticTime: Date?
         // Preserve identity of dragged item so size doesn't morph when index changes
         private var draggedStreakId: String?
         private var isDraggingGoalCard: Bool = false
+        // Track the original index of the moving item so we can simulate the live layout mapping
+        private var originalMovingIndex: Int?
         
         // MARK: - Boundary Detection Properties
         public var boundaryDetector: GridBoundaryDetector
@@ -506,6 +517,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         isDraggingGoalCard = false
                         draggedStreakId = item.id.uuidString
                     }
+                    // Capture the original index for virtual mapping during sizing
+                    originalMovingIndex = indexPath.item
                     collectionView.beginInteractiveMovementForItem(at: indexPath)
                 }
             case .changed:
@@ -542,6 +555,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 boundaryDetector.updateGridBounds(for: collectionView)
                 collectionView.collectionViewLayout.invalidateLayout()
                 collectionView.layoutIfNeeded()
+                // Hard refresh visible items to clear any cached sizes from interactive movement
+                UIView.performWithoutAnimation {
+                    let visible = collectionView.indexPathsForVisibleItems
+                    if !visible.isEmpty { collectionView.reloadItems(at: visible) }
+                    collectionView.layoutIfNeeded()
+                }
                 if let custom = collectionView as? CustomCollectionView {
                     custom.invalidateIntrinsicContentSize()
                 }
@@ -549,13 +568,16 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 interactiveMovingItemSize = .zero
                 isDraggingGoalCard = false
                 draggedStreakId = nil
+                originalMovingIndex = nil
                 // Clear drag state highlight from all visible cells
                 for cell in collectionView.visibleCells {
                     if let streakCell = cell as? StreakCardCell {
                         streakCell.updateDragState(false)
+                        streakCell.setOverlaySuppressed(false)
                         streakCell.clearAllShadowEffects()
                     } else if let goalCell = cell as? GoalCardCell {
                         goalCell.updateDragState(false)
+                        goalCell.setOverlaySuppressed(false)
                         goalCell.clearAllShadowEffects()
                     }
                 }
@@ -563,17 +585,26 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 collectionView.cancelInteractiveMovement()
                 configureBoundaryConstraints(for: collectionView)
                 boundaryDetector.updateGridBounds(for: collectionView)
+                collectionView.collectionViewLayout.invalidateLayout()
+                UIView.performWithoutAnimation {
+                    let visible = collectionView.indexPathsForVisibleItems
+                    if !visible.isEmpty { collectionView.reloadItems(at: visible) }
+                    collectionView.layoutIfNeeded()
+                }
                 interactiveMovingIndexPath = nil
                 interactiveMovingItemSize = .zero
                 isDraggingGoalCard = false
                 draggedStreakId = nil
+                originalMovingIndex = nil
                 // Clear drag state highlight from all visible cells on cancel
                 for cell in collectionView.visibleCells {
                     if let streakCell = cell as? StreakCardCell {
                         streakCell.updateDragState(false)
+                        streakCell.setOverlaySuppressed(false)
                         streakCell.clearAllShadowEffects()
                     } else if let goalCell = cell as? GoalCardCell {
                         goalCell.updateDragState(false)
+                        goalCell.setOverlaySuppressed(false)
                         goalCell.clearAllShadowEffects()
                     }
                 }
@@ -616,6 +647,61 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
             // Preserve shape/size of the dragged item regardless of its index during reordering
             if interactiveMovingItemSize != .zero {
+                // If this cell is the actively moving item, always lock to the captured size
+                if let moving = interactiveMovingIndexPath, moving == indexPath {
+                    return interactiveMovingItemSize
+                }
+                // Never shrink the actual goal card while dragging a streak.
+                // Determine goal card presence using a virtual mapping that simulates the in-flight move
+                if !isDraggingGoalCard {
+                    // Build a virtual array representing the current visual order while dragging
+                    var virtual = gridModel.mileStones
+                    if let from = originalMovingIndex, let to = interactiveMovingIndexPath?.item,
+                       from >= 0, from < virtual.count, to >= 0, to < virtual.count {
+                        let moving = virtual.remove(at: from)
+                        virtual.insert(moving, at: to)
+                    }
+                    if indexPath.item >= 0, indexPath.item < virtual.count {
+                        let candidate = virtual[indexPath.item]
+                        if case .goalCard = candidate {
+                            let contentWidth = collectionView.bounds.width - 32
+                            return CGSize(width: contentWidth, height: 120)
+                        }
+                    }
+                }
+                // While dragging goal card, ensure only the moving item is full-width; others size as streaks
+                if isDraggingGoalCard {
+                    let contentWidth = collectionView.bounds.width - 32
+                    let interItemSpacing: CGFloat = 16
+                    let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
+                    let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
+                    return CGSize(width: itemWidth, height: 70)
+                }
+                // While dragging a streak, keep ONLY the actual goal card full-width; all other non-moving
+                // cells remain streak-sized. This prevents any temporary expansion of streak cells when
+                // interchanging across the goal card's position.
+                if draggedStreakId != nil {
+                    let contentWidth = collectionView.bounds.width - 32
+                    let interItemSpacing: CGFloat = 16
+                    let columns: CGFloat = DevicePlatform.isTablet ? 4 : 2
+                    let itemWidth = (contentWidth - interItemSpacing * (columns - 1)) / columns
+                    // Use the virtual mapping so goal card stays full-width wherever it visually sits
+                    var virtual = gridModel.mileStones
+                    if let from = originalMovingIndex, let to = interactiveMovingIndexPath?.item,
+                       from >= 0, from < virtual.count, to >= 0, to < virtual.count {
+                        let moving = virtual.remove(at: from)
+                        virtual.insert(moving, at: to)
+                    }
+                    if indexPath.item >= 0, indexPath.item < virtual.count {
+                        let candidate = virtual[indexPath.item]
+                        if case .goalCard = candidate {
+                            return CGSize(width: contentWidth, height: 120)
+                        }
+                    }
+                    // All other non-moving cells render as streaks
+                    return CGSize(width: itemWidth, height: 70)
+                }
+
                 let widget = gridModel.mileStones[indexPath.item]
                 switch widget {
                 case .goalCard:
@@ -662,6 +748,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Prevent any moves to/from removed item indices
             if originalIndexPath.item >= firstRemovedIndex || proposedIndexPath.item >= firstRemovedIndex {
+                interactiveMovingIndexPath = originalIndexPath
                 return originalIndexPath // Return original position to cancel the move
             }
             
@@ -687,8 +774,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     let maxValidPosition = remainingStreakCount
                     let clampedPosition = min(proposedIndexPath.item, maxValidPosition)
                     
-                    
-                    return IndexPath(item: clampedPosition, section: proposedIndexPath.section)
+                    let snapped = IndexPath(item: clampedPosition, section: proposedIndexPath.section)
+                    interactiveMovingIndexPath = snapped
+                    return snapped
                 } else {
                     // When all streaks are present, enforce row boundaries and handle adjacent-drop-forward rule
                     let columns: Int = DevicePlatform.isTablet ? 4 : 2
@@ -702,11 +790,15 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     // snap to the start of the NEXT row (e.g., 0->1 => 2, 2->3 => 4, 4->5 => 6)
                     if originalIndexPath.item == sourceRowStart && proposedIndexPath.item == endOfSourceRow {
                         let nextRowStart = min(sourceRowStart + columns, maxValidIndex)
-                        return IndexPath(item: nextRowStart, section: proposedIndexPath.section)
+                        let snapped = IndexPath(item: nextRowStart, section: proposedIndexPath.section)
+                        interactiveMovingIndexPath = snapped
+                        return snapped
                     }
                     
                     // Default: snap to the start of the proposed row
-                    return IndexPath(item: min(rowStartIndex, maxValidIndex), section: proposedIndexPath.section)
+                    let snapped = IndexPath(item: min(rowStartIndex, maxValidIndex), section: proposedIndexPath.section)
+                    interactiveMovingIndexPath = snapped
+                    return snapped
                 }
                 
             case .streak:
@@ -720,21 +812,48 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 if let goalPos = goalCardIndex, proposedIndexPath.item == goalPos {
                     // If moving from before goal card, place before it
                     if originalIndexPath.item < goalPos {
-                        return IndexPath(item: max(0, goalPos - 1), section: proposedIndexPath.section)
+                        let snapped = IndexPath(item: max(0, goalPos - 1), section: proposedIndexPath.section)
+                        interactiveMovingIndexPath = snapped
+                        return snapped
                     } else {
                         // If moving from after goal card, place after it
-                        return IndexPath(item: min(maxValidIndex, goalPos + 1), section: proposedIndexPath.section)
+                        let snapped = IndexPath(item: min(maxValidIndex, goalPos + 1), section: proposedIndexPath.section)
+                        interactiveMovingIndexPath = snapped
+                        return snapped
+                    }
+                }
+
+                // If crossing the goal card row, snap to the nearest valid row start on that side
+                if let goalPos = goalCardIndex {
+                    // Crossing from above to below the goal card
+                    if originalIndexPath.item < goalPos && proposedIndexPath.item > goalPos {
+                        let snapped = IndexPath(item: min(maxValidIndex, goalPos + 1), section: proposedIndexPath.section)
+                        interactiveMovingIndexPath = snapped
+                        return snapped
+                    }
+                    // Crossing from below to above the goal card
+                    if originalIndexPath.item > goalPos && proposedIndexPath.item < goalPos {
+                        let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                        let snappedIndex = max(0, goalPos - columns)
+                        let snapped = IndexPath(item: snappedIndex, section: proposedIndexPath.section)
+                        interactiveMovingIndexPath = snapped
+                        return snapped
                     }
                 }
             }
             
             // Ensure proposed destination is within valid range (0 to maxValidIndex)
             if proposedIndexPath.item < 0 {
-                return IndexPath(item: 0, section: proposedIndexPath.section)
+                let snapped = IndexPath(item: 0, section: proposedIndexPath.section)
+                interactiveMovingIndexPath = snapped
+                return snapped
             } else if proposedIndexPath.item >= firstRemovedIndex {
-                return IndexPath(item: maxValidIndex, section: proposedIndexPath.section)
+                let snapped = IndexPath(item: maxValidIndex, section: proposedIndexPath.section)
+                interactiveMovingIndexPath = snapped
+                return snapped
             }
             
+            interactiveMovingIndexPath = proposedIndexPath
             return proposedIndexPath
         }
         
@@ -838,6 +957,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     gridModel.moveWidget(from: sourceIndex, to: rowStart)
                 }
             } else {
+                // For streak moves, avoid mid-drag type morphing across the goal card by snapping
+                // crossing moves to the nearest row start on the destination side
+                if let goalPos = gridModel.mileStones.firstIndex(where: { $0 == .goalCard }) {
+                    let maxValidIndex = firstRemovedIndex - 1
+                    if sourceIndex < goalPos && destinationIndex > goalPos {
+                        destinationIndex = min(maxValidIndex, goalPos + 1)
+                    } else if sourceIndex > goalPos && destinationIndex < goalPos {
+                        let columns: Int = DevicePlatform.isTablet ? 4 : 2
+                        destinationIndex = max(0, goalPos - columns)
+                    }
+                }
                 gridModel.moveWidget(from: sourceIndex, to: destinationIndex)
             }
             
