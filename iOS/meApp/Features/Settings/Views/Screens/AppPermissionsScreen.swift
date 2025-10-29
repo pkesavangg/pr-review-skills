@@ -21,9 +21,9 @@ struct AppPermissionsScreen: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            NavbarHeaderView<Image, EmptyView>(
+            NavbarHeaderView<AppIconView, EmptyView>(
                 title: lang.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 onLeadingTap: {
                     router.navigateBack()
                 },
