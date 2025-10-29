@@ -68,9 +68,9 @@ constructor(
     deviceDao.deleteDevice(deviceId)
   }
 
-  override fun deviceExistsByBroadcastId(broadcastId: String): Flow<Boolean> =
+  override fun deviceExistsByBroadcastId(broadcastId: String, accountId: String): Flow<Boolean> =
     flow {
-      val device = deviceDao.getDeviceByBroadcastId(broadcastId)
+      val device = deviceDao.getDeviceByBroadcastId(broadcastId, accountId)
       emit(device != null)
     }
 
@@ -86,9 +86,9 @@ constructor(
       emit(device != null)
     }
 
-  override fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?> =
+  override fun getDeviceByBroadcastId(broadcastId: String, accountId: String): Flow<Device?> =
     flow {
-      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId)
+      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId, accountId)
       emit(deviceEntity?.toDeviceDomainModel())
     }
 

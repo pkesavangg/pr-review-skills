@@ -137,12 +137,9 @@ constructor(
 
     fetchJob = repositoryScope.launch {
       deviceRepository.getDevices(resolvedAccountId).collect { devices ->
-        Log.d("DeviceService", "Updated devices: ${devices.map { it.isWeighOnlyModeEnabledByOthers }}")
-
         val updatedDevices = devices.map { device ->
           val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
           val deviceDetail = _connectedDeviceMap.value[device.device?.macAddress] ?: device.device
-
           device.copy(
             connectionStatus = connectionStatus,
             device = deviceDetail,
@@ -339,21 +336,23 @@ constructor(
    */
   override suspend fun saveScale(device: Device): Device? {
     val tag = "DeviceService-saveScale"
-    val current = device
     val scaleID = System.currentTimeMillis().toString()
 
     // If your Preferences has `scaleId`, align it; otherwise keep using `id`.
-    val updatedPrefs = current.preferences?.copy(
+    val updatedPrefs = device.preferences?.copy(
       id = scaleID,
     )
-    val updatedDevice = current.copy(
+    val updatedDevice = device.copy(
       id = scaleID,
       preferences = updatedPrefs,
     )
 
+    Log.d("saveddevice333", "$device")
+
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      Log.d("saveddevice444","$savedDevice")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(
@@ -503,11 +502,12 @@ constructor(
    * Get a scale by broadcast ID.
    *
    * @param broadcastId The broadcast ID to search for
+   * @param accountId The account ID to filter by
    * @return The device if found, null otherwise
    */
-  override suspend fun getScaleByBroadcastId(broadcastId: String): Device? =
+  override suspend fun getScaleByBroadcastId(broadcastId: String, accountId: String): Device? =
     try {
-      deviceRepository.getDeviceByBroadcastId(broadcastId).first()
+      deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale by broadcast ID", e)
       null
