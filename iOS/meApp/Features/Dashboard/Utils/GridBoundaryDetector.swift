@@ -151,7 +151,6 @@ public class GridBoundaryDetector {
             // Check if location is in any exclude zone
             for excludeZone in currentConstraints.excludeZones {
                 if excludeZone.contains(locationInSuperview) {
-                    
                     return false // Location is in an excluded area
                 }
             }

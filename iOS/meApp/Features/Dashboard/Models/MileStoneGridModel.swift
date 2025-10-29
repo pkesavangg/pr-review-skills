@@ -134,18 +134,9 @@ struct MileStoneGridModel {
     private func getItemSpan(for widget: MileStoneType, spanCount: Int) -> Int {
         switch widget {
         case .goalCard:
-            let span = spanCount
-            return span
+            return spanCount
         case .streak:
             return 1
-        }
-    }
-
-    // MARK: - Debug helper
-    private func debugWidget(_ widget: MileStoneType) -> String {
-        switch widget {
-        case .goalCard: return "goalCard"
-        case .streak(let metric): return "streak(\(metric.label))"
         }
     }
 }
