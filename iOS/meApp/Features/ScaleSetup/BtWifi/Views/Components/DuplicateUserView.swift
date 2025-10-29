@@ -63,6 +63,7 @@ struct DuplicateUserView: View {
                                 .scaledToFit()
                                 .frame(width: 223, height: 227)
                                 .padding(.top, .spacingLG)
+                                .themeDropShadow()
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         

@@ -75,6 +75,7 @@ struct ConnectionIndicatorView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 89, height: 89)
+                    .themeDropShadow()
             } else {
                 AppIconView(icon: image, size: IconSize(width: 59, height: 59))
                     .foregroundColor(theme.backgroundPrimary)
