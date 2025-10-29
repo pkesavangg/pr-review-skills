@@ -169,53 +169,36 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
     
     /// Resets the active metrics count to show all metrics (useful for dashboard reset)
-    /// For dashboard type 12: shows all 12 metrics
-    /// For dashboard type 4: shows all configured metrics
     func resetActiveMetricsCountToShowAll() {
-        if state.dashboardType == .dashboard12 {
-            // For dashboard 12, show all 12 metrics
-            state.activeMetricsCount = state.metrics.count
-        } else {
-            // For dashboard 4, all stored metrics are already active
-        }
+        state.activeMetricsCount = state.metrics.count
     }
     
     /// Returns the set of removed metric labels based on the current state
-    /// For dashboard type 12: returns labels of metrics beyond activeMetricsCount (inactive ones)
-    /// For dashboard type 4: returns empty set since all stored metrics are active
+    /// Returns labels of metrics beyond activeMetricsCount (inactive ones)
     func getRemovedMetricLabels() -> Set<String> {
-        if state.dashboardType == .dashboard12 {
-            let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
-            let removedLabels = Set(removedMetrics.map { $0.label })
-            
-            return removedLabels
-        } else {
-            return []
-        }
+        let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
+        let removedLabels = Set(removedMetrics.map { $0.label })
+        return removedLabels
     }
-
+    
     func toggleMetricVisibility(at index: Int) async throws {
         guard index < state.metrics.count else {
             throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
         }
         
-        if state.dashboardType == .dashboard12 {
-            // For dashboard 12, allow toggling between active and inactive
-            let metric = state.metrics[index]
-            let isCurrentlyRemoved = index >= state.activeMetricsCount
-            
-            state.metrics.remove(at: index)
-            if isCurrentlyRemoved {
-                // Adding the metric back - insert at the end of active metrics
-                state.metrics.insert(metric, at: state.activeMetricsCount)
-                state.activeMetricsCount += 1
-            } else {
-                // Removing the metric - move to end (inactive section)
-                state.metrics.append(metric)
-                state.activeMetricsCount -= 1
-            }
+        let metric = state.metrics[index]
+        let isCurrentlyRemoved = index >= state.activeMetricsCount
+        
+        state.metrics.remove(at: index)
+        
+        if isCurrentlyRemoved {
+            // Add back to active section
+            state.metrics.insert(metric, at: state.activeMetricsCount)
+            state.activeMetricsCount += 1
         } else {
-            // For dashboard 4, all metrics are always active
+            
+            state.metrics.append(metric)
+            state.activeMetricsCount -= 1
         }
     }
 
@@ -282,10 +265,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
+            let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
             // In edit mode, show all metrics (both removed and non-removed) so users can manage them
             // Non-removed metrics first, then removed metrics
-            let nonRemovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
-            let removedMetricsArray = state.metrics.filter { removedMetrics.contains($0.label) }
+            let nonRemovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
+            let removedMetricsArray = state.metrics.filter { effectiveRemoved.contains($0.label) }
             return nonRemovedMetrics + removedMetricsArray
         } else {
             // In non-edit mode, only show non-removed metrics
@@ -667,30 +651,29 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
         }
         
-        // For dashboard type 12, also include inactive metrics so they can be managed in edit mode
-        var inactiveMetrics: [MetricItem] = []
-        if state.dashboardType == .dashboard12 {
-            // Add all metrics that are not in the API response as inactive
-            for originalMetric in originalMetrics {
-                if !displayMetrics.contains(originalMetric.label) {
-                    let metricItem = MetricItem(
-                        value: originalMetric.value,
-                        label: originalMetric.label,
-                        unit: originalMetric.unit,
-                        preLabel: originalMetric.preLabel,
-                        icon: originalMetric.icon
-                    )
-                    inactiveMetrics.append(metricItem)
-                }
+        // Include inactive metrics so they can be managed in edit mode
+        let metricsToCheck = state.dashboardType == .dashboard12
+        ? originalMetrics
+        : Array(originalMetrics.prefix(4))
+        
+        let inactiveMetrics: [MetricItem] = metricsToCheck
+            .filter { !displayMetrics.contains($0.label) }
+            .map {
+                MetricItem(
+                    value: $0.value,
+                    label: $0.label,
+                    unit: $0.unit,
+                    preLabel: $0.preLabel,
+                    icon: $0.icon
+                )
             }
-        }
-
+        
         state.metrics = activeMetrics + inactiveMetrics
-
+        
         // Ensure activeMetricsCount doesn't exceed metrics count
         let maxMetricsCount = state.metrics.count
         state.activeMetricsCount = min(activeMetrics.count, maxMetricsCount)
-
+        
     }
 
     // MARK: - Metric Interaction Methods

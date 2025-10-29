@@ -84,6 +84,15 @@ struct MileStoneGridModel {
         if hasRemovedStreaks {
             return // Skip automatic reordering when streaks are removed
         }
+        let totalStreaks = mileStones.reduce(0) { acc, widget in
+            switch widget {
+            case .goalCard: return acc
+            case .streak: return acc + 1
+            }
+        }
+        if totalStreaks % spanCount != 0 {
+            return
+        }
         
         // Count streak items before the goal card
         let streakCountBeforeGoal = (0..<goalCardIndex).reduce(0) { count, index in
