@@ -165,7 +165,13 @@ class MetricCell: UICollectionViewCell {
                 )
         ) : AnyView(metricCardView)
         
+        // Update root view synchronously to prevent visual glitches during cell configuration
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         hostingController?.rootView = finalView
+        hostingController?.view.setNeedsLayout()
+        hostingController?.view.layoutIfNeeded()
+        CATransaction.commit()
         // Remove previous gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         if store.state.ui.isEditMode {
@@ -207,10 +213,10 @@ class MetricCell: UICollectionViewCell {
         onMetricLongPressCallback = nil
         onSelectMetricCallback = nil
         
-        // Reset to placeholder view
+        // Reset to placeholder view with immediate UI update to prevent visual glitches
         let placeholderView = AnyView(
             MetricCardView(
-                value: "0",
+                value: DashboardStrings.placeholder,
                 label: "Placeholder",
                 icon: nil,
                 dashboardType: .dashboard12,
@@ -226,7 +232,13 @@ class MetricCell: UICollectionViewCell {
                 parentView: .dashboard
             )
         )
+        // Update synchronously to prevent visual glitches during cell reuse
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         hostingController?.rootView = placeholderView
+        hostingController?.view.setNeedsLayout()
+        hostingController?.view.layoutIfNeeded()
+        CATransaction.commit()
     }
     
     // MARK: - Drag State Handling
