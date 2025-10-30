@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Activity
+import android.util.Log
 
 @HiltViewModel
 class HomeViewModel
@@ -175,6 +176,8 @@ constructor(
         // Create ScaleEntry directly from AppSyncResult with calculated BMI
         val scaleEntry =
           result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
+        Log.i("CHECKING01", "$scaleEntry")
+        Log.i("CHECKING02", "${scaleEntry.toScaleApiEntry()}")
         appSyncService.setAppSyncData(storedEntry)
         dialogUtility.showEntrySyncPopup(
           entry = scaleEntry,

@@ -73,13 +73,23 @@ fun AppsyncEntryPopup(
             )
             val isMetric = entry.entry.unit.value.lowercase() == "kg"
             val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight, isMetric)
-            val displayBmi = scaleEntry.bmi?.toFloat()
-            val displayBodyFat = scaleEntry.bodyFat?.toFloat()
-            val displayWater = scaleEntry.water?.toFloat()
-            val displayMuscleMass = scaleEntry.muscleMass?.toFloat()
+            val displayBmi = scaleEntry.bmi?.let {
+              String.format("%.1f", it).toFloat()
+            }
+            val displayBodyFat = scaleEntry.bodyFat?.toFloat().let {
+              String.format("%.1f", it).toFloat()
+            }
+            val displayWater = scaleEntry.water?.toFloat().let {
+              String.format("%.1f", it).toFloat()
+            }
+            val displayMuscleMass = scaleEntry.muscleMass?.toFloat().let {
+              String.format("%.1f", it).toFloat()
+            }
 
             AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat(), entry.entry.unit.value),
+              text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat().let {
+                String.format("%.1f", it).toFloat()
+              }, entry.entry.unit.value),
               textType = TextType.Body,
             )
 
