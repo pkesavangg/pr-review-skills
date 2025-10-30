@@ -266,6 +266,49 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    // MARK: - Main Actor Context Fetch Methods
+    
+    /// Refetches entries by their IDs using the main actor's ModelContext.
+    /// This allows safe access to SwiftData properties without cross-context issues.
+    /// - Parameter entryIds: Array of entry UUIDs to refetch.
+    /// - Returns: Dictionary mapping entry IDs to their Entry objects (or nil if not found).
+    func refetchEntriesOnMainActor(entryIds: [UUID]) async throws -> [UUID: Entry] {
+        return try await MainActor.run {
+            let mainContext = PersistenceController.shared.context
+            var result: [UUID: Entry] = [:]
+            
+            for id in entryIds {
+                let descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { entry in entry.id == id })
+                if let entry = try? mainContext.fetch(descriptor).first {
+                    result[id] = entry
+                }
+            }
+            
+            return result
+        }
+    }
+    
+    // MARK: - Data Extraction Helpers
+    
+    /// Extracts SwiftData property values from an Entry immediately after fetching.
+    /// This must be called synchronously within the fetch context to avoid SwiftData access crashes.
+    /// - Parameter entry: The Entry object to extract values from.
+    /// - Returns: A BathScaleOperationDTO with all extracted values, or nil if entry is nil.
+    static func extractDTO(from entry: Entry?) -> BathScaleOperationDTO? {
+        guard let entry = entry else { return nil }
+        // Access SwiftData properties synchronously within the fetch context
+        return entry.toOperationDTO()
+    }
+    
+    /// Extracts weight value from an Entry immediately after fetching.
+    /// This must be called synchronously within the fetch context to avoid SwiftData access crashes.
+    /// - Parameter entry: The Entry object to extract weight from.
+    /// - Returns: The weight value, or 0 if not available.
+    static func extractWeight(from entry: Entry?) -> Int {
+        guard let entry = entry else { return 0 }
+        return entry.scaleEntry?.weight ?? 0
+    }
+
     // MARK: - Sync
 
     /// Syncs new and deleted entries with the local data store.
