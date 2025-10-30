@@ -34,7 +34,7 @@ struct UsersScreen: View {
             VStack(alignment: .center, spacing: 0) {
                 NavbarHeaderView(
                     title: lang.usersTitle,
-                    leadingContent: { Image(AppAssets.chevronLeft) },
+                    leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                     trailingContent: {
                         AnyView(ButtonView(
                             text: CommonStrings.save.uppercased(),
