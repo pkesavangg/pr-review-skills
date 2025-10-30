@@ -1547,7 +1547,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     /// Ensures that currently paired scales are not skipped again.
     func reapplySkipDevicesExcludingPaired() {
         // Build a fast lookup set of paired broadcast IDs
-        let pairedIds = Set(bluetoothScales.compactMap { $0.broadcastIdString?.uppercased() })
         // Re-issue skip calls for any previously skipped device that is not paired
         let pairedIdsUpper = Set(bluetoothScales.compactMap { $0.broadcastIdString?.uppercased() })
 
@@ -1556,9 +1555,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         for id in skipDevices {
             // Normalize case to avoid mismatches
             let normalized = id.uppercased()
-            if !pairedIds.contains(normalized) {
-                ggBleSDK.skipDevice(id, true)
-            }
+            ggBleSDK.skipDevice(id, true)
         }
     }
 }
