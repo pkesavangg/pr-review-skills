@@ -77,7 +77,7 @@ protocol BluetoothServiceProtocol {
     func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
     /// Disconnects the specified device without deleting it from storage.
     /// - Returns: Result<Void, BluetoothServiceError>
-    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError>
+    func disconnectDevice(broadcastId: String, considerForSession: Bool) async -> Result<Void, BluetoothServiceError>
 
     // MARK: - WiFi Configuration
     /// Retrieves the available Wi-Fi networks from the given device.

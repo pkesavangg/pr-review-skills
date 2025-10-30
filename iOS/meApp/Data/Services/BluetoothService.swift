@@ -69,6 +69,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     var skipDevices: [String] = []
+    var reconnectAlertSkippedDevices: [String] = []
     
     
     // MARK: - Navigation Callback
@@ -755,6 +756,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     func clearScaleDiscoveredInfo() {
         skipDevices.removeAll()
+        reconnectAlertSkippedDevices.removeAll()
     }
     
     
@@ -825,7 +827,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
         
-        if skipDevices.contains(deviceDetails.broadcastIdString) {
+        if skipDevices.contains(deviceDetails.broadcastIdString) || reconnectAlertSkippedDevices.contains(deviceDetails.broadcastIdString) {
             return
         }
 
@@ -906,6 +908,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                         // Skip this device
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
+                                self.reconnectAlertSkippedDevices.append(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -925,6 +928,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                         // Skip this device
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
+                                self.reconnectAlertSkippedDevices.append(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -1019,7 +1023,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleSmartScaleData(_ data: GGScanResponse) async {
         guard let responseType = data.type else { return }
         let scanData = data.data
-        
         switch responseType {
         case .NEW_DEVICE:
             await handleNewDevice(scanData)
@@ -1524,7 +1527,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Disconnects the specified device without deleting it from storage.
      - Returns: Result<Void, BluetoothServiceError>
      */
-    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+    func disconnectDevice(broadcastId: String, considerForSession: Bool = true) async -> Result<Void, BluetoothServiceError> {
 
         if !skipDevices.contains(broadcastId) {
             skipDevices.append(broadcastId)
@@ -1536,8 +1539,27 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 self.canShowScaleDiscoveredModal = true
             }
         }
-        ggBleSDK.skipDevice(broadcastId)
+        ggBleSDK.skipDevice(broadcastId, considerForSession)
         return .success(())
+    }
+
+    /// Re-applies all locally tracked `skipDevices` to the SDK after flows that may reset SDK state (e.g., closing setup screens).
+    /// Ensures that currently paired scales are not skipped again.
+    func reapplySkipDevicesExcludingPaired() {
+        // Build a fast lookup set of paired broadcast IDs
+        let pairedIds = Set(bluetoothScales.compactMap { $0.broadcastIdString?.uppercased() })
+        // Re-issue skip calls for any previously skipped device that is not paired
+        let pairedIdsUpper = Set(bluetoothScales.compactMap { $0.broadcastIdString?.uppercased() })
+
+        skipDevices = skipDevices.filter { !pairedIdsUpper.contains($0.uppercased()) }
+        
+        for id in skipDevices {
+            // Normalize case to avoid mismatches
+            let normalized = id.uppercased()
+            if !pairedIds.contains(normalized) {
+                ggBleSDK.skipDevice(id, true)
+            }
+        }
     }
 }
 
