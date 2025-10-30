@@ -275,13 +275,27 @@ final class EntryRepository: EntryRepositoryProtocol {
     func refetchEntriesOnMainActor(entryIds: [UUID]) async throws -> [UUID: Entry] {
         return try await MainActor.run {
             let mainContext = PersistenceController.shared.context
-            var result: [UUID: Entry] = [:]
             
-            for id in entryIds {
-                let descriptor = FetchDescriptor<Entry>(predicate: #Predicate<Entry> { entry in entry.id == id })
-                if let entry = try? mainContext.fetch(descriptor).first {
-                    result[id] = entry
+            // Return empty dictionary if no IDs provided
+            guard !entryIds.isEmpty else { return [:] }
+            
+            // Convert to Set for efficient membership checking
+            let entryIdsSet = Set(entryIds)
+            
+            // Use a single query with Set membership check for better performance
+            // SwiftData Predicate supports checking if a value is in a Set
+            let descriptor = FetchDescriptor<Entry>(
+                predicate: #Predicate<Entry> { entry in
+                    entryIdsSet.contains(entry.id)
                 }
+            )
+            
+            let entries = try mainContext.fetch(descriptor)
+            
+            // Map entries to dictionary by ID
+            var result: [UUID: Entry] = [:]
+            for entry in entries {
+                result[entry.id] = entry
             }
             
             return result

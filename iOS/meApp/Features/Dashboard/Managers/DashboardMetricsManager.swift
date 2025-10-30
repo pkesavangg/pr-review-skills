@@ -758,19 +758,22 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             // Extract all SwiftData values on main actor before doing computation
             let extractedData = await MainActor.run {
                 refetchedEntries.values.map { entry -> (timestamp: String, values: [String: Double?]) in
-                    var values: [String: Double?] = [:]
-                    values["bmi"] = entry.scaleEntry?.bmi.map { Double($0) }
-                    values["bodyFat"] = entry.scaleEntry?.bodyFat.map { Double($0) }
-                    values["muscleMass"] = entry.scaleEntry?.muscleMass.map { Double($0) }
-                    values["water"] = entry.scaleEntry?.water.map { Double($0) }
-                    values["pulse"] = entry.scaleEntryMetric?.pulse.map { Double($0) }
-                    values["boneMass"] = entry.scaleEntryMetric?.boneMass.map { Double($0) }
-                    values["visceralFat"] = entry.scaleEntryMetric?.visceralFatLevel.map { Double($0) }
-                    values["subFat"] = entry.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) }
-                    values["protein"] = entry.scaleEntryMetric?.proteinPercent.map { Double($0) }
-                    values["skelMuscle"] = entry.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) }
-                    values["bmr"] = entry.scaleEntryMetric?.bmr.map { Double($0) }
-                    values["metabolicAge"] = entry.scaleEntryMetric?.metabolicAge.map { Double($0) }
+                    // Use toOperationDTO() to centralize extraction logic and avoid duplication
+                    let dto = entry.toOperationDTO()
+                    let values: [String: Double?] = [
+                        "bmi": dto.bmi,
+                        "bodyFat": dto.bodyFat,
+                        "muscleMass": dto.muscleMass,
+                        "water": dto.water,
+                        "pulse": dto.pulse,
+                        "boneMass": dto.boneMass,
+                        "visceralFat": dto.visceralFatLevel,
+                        "subFat": dto.subcutaneousFatPercent,
+                        "protein": dto.proteinPercent,
+                        "skelMuscle": dto.skeletalMusclePercent,
+                        "bmr": dto.bmr,
+                        "metabolicAge": dto.metabolicAge
+                    ]
                     return (timestamp: entry.entryTimestamp, values: values)
                 }
             }

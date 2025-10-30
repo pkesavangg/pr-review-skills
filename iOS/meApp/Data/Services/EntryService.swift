@@ -216,7 +216,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         ].compactMap { $0 }
         
         // Refetch using repository's main actor context method
-        let refetchedEntries = try await (localRepo as? EntryRepository)?.refetchEntriesOnMainActor(entryIds: entryIdsToRefetch) ?? [:]
+        // Ensure localRepo is of type EntryRepository before calling refetchEntriesOnMainActor
+        guard let entryRepo = localRepo as? EntryRepository else {
+            throw NSError(
+                domain: "EntryService",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "localRepo is not of type EntryRepository"]
+            )
+        }
+        let refetchedEntries = try await entryRepo.refetchEntriesOnMainActor(entryIds: entryIdsToRefetch)
         
         // Extract values from refetched entries synchronously on main actor
         let extractedValues = try await MainActor.run {

@@ -44,6 +44,12 @@ struct RefetchedEntryWrapper: View {
                 self.isLoading = false
             }
         } catch {
+            // Log the error for debugging and user awareness
+            LoggerService.shared.log(
+                level: .error,
+                tag: "RefetchedEntryWrapper",
+                message: "Failed to refetch entry with ID \(entryId): \(error.localizedDescription)"
+            )
             await MainActor.run {
                 self.isLoading = false
             }

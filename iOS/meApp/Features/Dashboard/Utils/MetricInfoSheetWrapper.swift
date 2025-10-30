@@ -30,47 +30,55 @@ struct MetricInfoSheetWrapper: View {
     }
     
     private func extractDTO() async {
-        // Extract DTO on main actor without modifying the Entry's context
-        let dto = await MainActor.run {
-            let mainContext = PersistenceController.shared.context
+        // Try to refetch entry by ID if it exists in the database
+        // This avoids inserting temporary entries without saving
+        let repository = EntryRepository()
+        
+        do {
+            // Attempt to refetch entry by ID if it exists in the database
+            let refetched = try await repository.refetchEntriesOnMainActor(entryIds: [entry.id])
             
-            // Check if entry is already in a context
-            if entry.modelContext == nil {
-                // Insert temporarily to allow property access
-                // Note: We won't save the context, so this won't persist
-                // The Entry will be cleaned up when the view is dismissed
-                mainContext.insert(entry)
+            // Extract DTO on main actor from refetched entry
+            await MainActor.run {
+                if let refetchedEntry = refetched[entry.id] {
+                    // Entry exists in database, use refetched version
+                    self.entryDTO = refetchedEntry.toOperationDTO()
+                } else {
+                    // Entry doesn't exist in database (temporary entry created for display)
+                    // If entry has a modelContext, use it directly
+                    if entry.modelContext != nil {
+                        self.entryDTO = entry.toOperationDTO()
+                    } else {
+                        // Entry doesn't have a context - need to insert temporarily to access relationships
+                        // Insert, extract DTO, then delete immediately to avoid memory leaks
+                        let mainContext = PersistenceController.shared.context
+                        mainContext.insert(entry)
+                        
+                        // Extract DTO while entry is in context
+                        self.entryDTO = entry.toOperationDTO()
+                        
+                        // Delete immediately without saving to ensure cleanup
+                        mainContext.delete(entry)
+                        // Note: We don't save the context, so this deletion won't persist
+                        // The entry will be properly deallocated when the view is dismissed
+                    }
+                }
             }
-            
-            // Access properties and build DTO directly (not using toOperationDTO to avoid double access)
-            let scaleEntry = entry.scaleEntry
-            let scaleEntryMetric = entry.scaleEntryMetric
-            
-            return BathScaleOperationDTO(
-                accountId: entry.accountId,
-                bmr: scaleEntryMetric?.bmr.map { Double($0) },
-                bmi: scaleEntry?.bmi.map { Double($0) },
-                bodyFat: scaleEntry?.bodyFat.map { Double($0) },
-                boneMass: scaleEntryMetric?.boneMass.map { Double($0) },
-                entryTimestamp: entry.entryTimestamp,
-                impedance: scaleEntryMetric?.impedance.map { Double($0) },
-                metabolicAge: scaleEntryMetric?.metabolicAge.map { Double($0) },
-                muscleMass: scaleEntry?.muscleMass.map { Double($0) },
-                operationType: entry.operationType,
-                proteinPercent: scaleEntryMetric?.proteinPercent.map { Double($0) },
-                pulse: scaleEntryMetric?.pulse.map { Double($0) },
-                serverTimestamp: entry.serverTimestamp,
-                skeletalMusclePercent: scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
-                source: scaleEntry?.source,
-                subcutaneousFatPercent: scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
-                unit: scaleEntryMetric?.unit,
-                visceralFatLevel: scaleEntryMetric?.visceralFatLevel.map { Double($0) },
-                water: scaleEntry?.water.map { Double($0) },
-                weight: scaleEntry?.weight.map { Double($0) }
-            )
-        }
-        await MainActor.run {
-            self.entryDTO = dto
+        } catch {
+            // If refetch fails, check if entry has a context
+            await MainActor.run {
+                if entry.modelContext != nil {
+                    // Entry has context, use it directly
+                    self.entryDTO = entry.toOperationDTO()
+                } else {
+                    // Entry doesn't have context and refetch failed
+                    // Insert temporarily, extract, then delete
+                    let mainContext = PersistenceController.shared.context
+                    mainContext.insert(entry)
+                    self.entryDTO = entry.toOperationDTO()
+                    mainContext.delete(entry)
+                }
+            }
         }
     }
 }
