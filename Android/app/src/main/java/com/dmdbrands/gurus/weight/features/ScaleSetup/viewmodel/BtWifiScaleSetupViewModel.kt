@@ -270,19 +270,10 @@ constructor(
           AppLog.e(TAG, "Cannot delete users: broadcastId is null")
           return@launch
         }
-
-        if (userDetails != null) {
-          // Delete specific user
-          deleteUserByBroadcastIdAndToken(broadcastId, userDetails.token)
-        } else {
-          // Delete all duplicate users
           val duplicateList = state.value.duplicateUserList
           for (user in duplicateList) {
             deleteUserByBroadcastIdAndToken(broadcastId, user.token)
-          }
         }
-
-        // After deletion, restart connection
         restartConnection()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error deleting users", e)
@@ -340,10 +331,7 @@ constructor(
         onConfirm = {
           // Delete duplicate users and restore account
           viewModelScope.launch {
-            accountService.activeAccountFlow.first()?.firstName?.take(20)
-            // First check for duplicate users
             checkDuplicateUserList()
-            // Then delete them
             deleteUsers()
           }
         },
@@ -1024,18 +1012,16 @@ constructor(
             stopObservingDevices()
           }
         }
-
         // Store timeout job reference for potential cancellation
         bluetoothConnectionTimeoutJob = timeoutJob
-
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
+
         ggDeviceService.pairDevice(
           device = ggBtDevice,
         ) { it ->
           // Cancel timeout since we got a response
           bluetoothConnectionTimeoutJob?.cancel()
           bluetoothConnectionTimeoutJob = null
-
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
@@ -1070,13 +1056,11 @@ constructor(
             }
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
-              Log.d("discoveredscale", "$discoveredScale")
               viewModelScope.launch {
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
                   ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
-                Log.d("duplicateusername", "$discoveredScale")
                 if (duplicateUserName != null) {
                   AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
                   fetchUserList(duplicateUserName = duplicateUserName)
@@ -1136,7 +1120,6 @@ constructor(
         val duplicateList = state.value.userList.filter { user ->
           user.name.equals(currentUser.name, ignoreCase = true)
         }
-        // Store duplicate list for deletion
         handleIntent(BtWifiScaleSetupIntent.SetDuplicateUserList(duplicateList))
       }
     } catch (e: Exception) {
@@ -1150,7 +1133,6 @@ constructor(
         val userList = suspendCoroutine { continuation ->
           ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
 
-            Log.d("userslist", "$response")
             if (duplicateUserName != null) {
               val user = response.user.first { it.name == duplicateUserName }
               // Don't update discoveredScale token here - keep the original token for proper filtering
@@ -1172,7 +1154,6 @@ constructor(
           ConnectionState.Failed.Error,
         ),
       )
-      // Use BT_002 for general Bluetooth errors (consistent with existing error code)
     }
   }
 
@@ -1725,6 +1706,7 @@ constructor(
   }
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
+    Log.d("savedscale","$ggDeviceDetail -hello$discoveredScale")
     val username =
       discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
       ?: "Default"

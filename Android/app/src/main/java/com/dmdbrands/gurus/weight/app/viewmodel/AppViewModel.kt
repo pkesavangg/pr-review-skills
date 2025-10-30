@@ -67,6 +67,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -600,17 +602,27 @@ constructor(
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
                       val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
-                      ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                        ggDeviceService.addCacheDevice(data.broadcastId, device)
-                        viewModelScope.launch {
-                          navigationService.navigateTo(
-                            AppRoute.ScaleSetup.BtWifiScaleSetup(
-                              data.getSKU(),
-                              BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                              data.broadcastId,
-                            ),
-                          )
+                      val userList = suspendCoroutine { continuation ->
+                        ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                          continuation.resume(response.user)
                         }
+                      }
+                      val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
+                      ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
+                        if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
+
+                          viewModelScope.launch {
+                            ggDeviceService.addCacheDevice(data.broadcastId, device)
+                              navigationService.navigateTo(
+                                AppRoute.ScaleSetup.BtWifiScaleSetup(
+                                  data.getSKU(),
+                                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                                  data.broadcastId,
+                                ),
+                              )
+                          }
+                        }
+                      }
                     }
                   },
                   onCancel = {
