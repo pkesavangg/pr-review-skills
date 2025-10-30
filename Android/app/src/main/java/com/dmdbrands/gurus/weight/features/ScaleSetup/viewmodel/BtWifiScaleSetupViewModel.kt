@@ -713,14 +713,16 @@ constructor(
       val device = this@BtWifiScaleSetupViewModel.discoveredScale
       var connectedDeviceBroadcastID: String? = null
 
-      ggDeviceService.localSkipDevices.first().forEach {
+      ggDeviceService.localSkipDevices.value.forEach {
         if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
           connectedDeviceBroadcastID = it
         } else {
+          // add to skipDevices
           ggDeviceService.skipDevice(it, considerForSession = true)
         }
       }
       if (connectedDeviceBroadcastID != null) {
+        // remove locally saved skip devices
         ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
       }
 

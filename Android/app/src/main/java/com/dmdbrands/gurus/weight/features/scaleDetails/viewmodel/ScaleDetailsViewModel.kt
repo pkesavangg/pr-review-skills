@@ -246,9 +246,9 @@ constructor(
                 dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
                 try {
                   if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
-                    ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
+                    ggDeviceService.deleteAccount(scale.toGGBTDevice()) {
                       if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-                        ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
+                        ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                       } else {
                         dialogQueueService.showToast(
                           Toast(

@@ -119,6 +119,7 @@ class GGDeviceService @Inject constructor(
    */
   fun disconnectDevice(device: GGBTDevice) {
     ggBluetooth.disconnectDevice(device.broadcastId)
+    this.skipDevice(device.broadcastId, true)
   }
 
   fun skipDevice(broadCastId: String, considerForSession: Boolean = false) {
