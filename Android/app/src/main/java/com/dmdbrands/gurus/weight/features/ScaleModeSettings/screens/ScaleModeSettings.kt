@@ -103,7 +103,7 @@ fun ScaleModeSettingsScreen(
         AppIcon(
           id = AppIcons.Metrics.Pulse,
           contentDescription = ScaleModeStrings.HeartRate(isHeartRateOn),
-          type = AppIconType.Default,
+          type = if(isHeartRateOn) AppIconType.Default else AppIconType.Tertiary,
         )
         AppText(
           text = ScaleModeStrings.HeartRate(isHeartRateOn),

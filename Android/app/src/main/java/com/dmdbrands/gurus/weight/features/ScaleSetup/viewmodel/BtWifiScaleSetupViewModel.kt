@@ -262,7 +262,7 @@ constructor(
    * Deletes users from the scale using broadcastId and token, similar to Angular's deleteUsers method.
    * This method deletes either a specific user or all duplicate users.
    */
-  private fun deleteUsers(userDetails: GGBTUser? = null) {
+  private fun deleteUsers() {
     viewModelScope.launch {
       try {
         val broadcastId = discoveredScale?.device?.broadcastId
