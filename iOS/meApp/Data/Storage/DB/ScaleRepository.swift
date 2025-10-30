@@ -299,7 +299,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         return fetchAttachedPreferenceInternal(by: id)
     }
 
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
+    @MainActor func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {
         return fetchAttachedPreferenceInternal(by: id)
     }
 

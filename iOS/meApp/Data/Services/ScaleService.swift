@@ -257,7 +257,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
         
         await MainActor.run {
-            
             // Try to extract device ID from different possible data formats
             var deviceId: String?
             var broadcastId: String?
@@ -347,7 +346,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
         
         await MainActor.run {
-            
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
                 $0.broadcastIdString == broadcastId && $0.accountId == accountId 
             })
@@ -381,7 +379,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
         
         await MainActor.run {
-            
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
                 $0.broadcastIdString == broadcastId && $0.accountId == accountId 
             })
@@ -402,7 +399,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     // MARK: - Preference Fetching
     /// Fetches an attached R4 scale preference by its scale ID from the repository.
-    func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? {
         return localRepository.fetchAttachedPreference(by: id)
     }
 
@@ -872,7 +869,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         }
                     }
                 }
-                //Fallback: try match by MAC (scoped to current account)
+                // Fallback: try match by MAC (scoped to current account)
                 var matchedDevice: Device? = nil
                 if let mac = dto.mac, !mac.isEmpty {
                     let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac && $0.accountId == accountId })
@@ -949,7 +946,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 await refreshScalesFromLocal()
                 logger.log(level: .debug, tag: tag, message: "Refreshed scales after pruning \(pruned) orphan device(s)")
             }
-             await refreshScalesFromLocal()
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: \(error.localizedDescription)")
         }
