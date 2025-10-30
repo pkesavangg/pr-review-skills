@@ -23,7 +23,7 @@ struct WeightlessScreen: View {
         VStack(spacing: 0) {
             NavbarHeaderView(
                 title: strings.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,
