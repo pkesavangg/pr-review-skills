@@ -56,4 +56,3 @@ struct RefetchedEntryWrapper: View {
         }
     }
 }
-
