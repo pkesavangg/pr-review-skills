@@ -1755,9 +1755,24 @@ class DashboardStore: ObservableObject {
         // No selection: compute visible-window averages to mirror tiles and weight label
         let ops = getVisibleOperations()
         if ops.isEmpty {
-            // Leave metrics nil so UI shows placeholders
+            var storedWeightForInfo: Int? = nil
+
+            if state.data.hasAnyEntries {
+                let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
+                    from: continuousOperations,
+                    period: state.graph.selectedPeriod,
+                    isWeightlessMode: isWeightlessModeEnabled,
+                    anchorWeight: weightlessAnchorWeight,
+                    convertWeight: goalManager.convertWeightToDisplay
+                )
+                if let displayAvg = interpolatedAverage {
+                    let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+                    storedWeightForInfo = ConversionTools.convertDisplayToStored(displayAvg, isMetric: unit == .kg)
+                }
+            }
+
             entry.scaleEntry = BathScaleEntry(
-                weight: dataManager.state.latestWeightStored,
+                weight: storedWeightForInfo,
                 bodyFat: nil,
                 muscleMass: nil,
                 water: nil,
