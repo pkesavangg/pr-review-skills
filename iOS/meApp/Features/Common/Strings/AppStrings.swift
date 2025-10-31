@@ -673,6 +673,12 @@ struct AlertStrings {
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
+    
+    struct UpdatesPendingAlert {
+        static let title = "Updates Pending..."
+        static let message = "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+        static let okButton = "OK"
+    }
 }
 
 struct LoaderStrings {

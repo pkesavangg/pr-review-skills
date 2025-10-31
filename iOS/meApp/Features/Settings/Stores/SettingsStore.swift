@@ -448,8 +448,29 @@ class SettingsStore: ObservableObject {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
             do {
                 let _ = try await accountService.updateProfile(profile)
-                // Reset dirty flags so the form becomes pristine again.
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since profile was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                }
+                
                 resetEditProfileForm()
                 router.navigateBack()
                 logger.log(level: .info, tag: tag, message: "Profile updated successfully")
@@ -667,7 +688,29 @@ class SettingsStore: ObservableObject {
                     height: account.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
                     activityLevel: account.weightSettings?.activityLevel ?? .normal)
                 _ = try await accountService.updateBodyComp(bodyComp)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since setting was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
+                }
+                
                 logger.log(level: .info, tag: tag, message: "Weight unit updated to \(unit.rawValue)")
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
@@ -693,7 +736,29 @@ class SettingsStore: ObservableObject {
                     activityLevel: level
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.activitySettingUpdated))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.activitySettingUpdated))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since setting was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.activitySettingUpdated))
+                }
+                
                 logger.log(level: .info, tag: tag, message: "Activity level updated to \(level.rawValue)")
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
@@ -759,7 +824,28 @@ class SettingsStore: ObservableObject {
                     activityLevel: account.weightSettings?.activityLevel ?? .normal
                 )
                 _ = try await accountService.updateProfile(profile, canSaveOffline: true)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                print(profileUpdateResult, "updateUserProfileForR4Scales settingsStore")
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since profile was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                }
                 logger.log(level: .info, tag: tag, message: "Gender updated to \(sex.rawValue)")
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
@@ -768,6 +854,20 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
         }
+    }
+    
+    /// Shows the updates pending alert when scale settings can't be updated
+    private func showUpdatesPendingAlert() {
+        let alert = AlertModel(
+            title: alertLang.UpdatesPendingAlert.title,
+            message: alertLang.UpdatesPendingAlert.message,
+            buttons: [
+                AlertButtonModel(title: alertLang.UpdatesPendingAlert.okButton, type: .primary) { _ in
+                    // Alert dismissed
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
     
     // MARK: - Weightless Exit Helpers
@@ -968,7 +1068,29 @@ class SettingsStore: ObservableObject {
             )
             do {
                 _ = try await accountService.updateBodyComp(bodyComp)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since setting was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.heightUpdated))
+                }
+                
                 logger.log(level: .info, tag: tag, message: "Height updated to stored value: \(storedHeight)")
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
@@ -1110,7 +1232,29 @@ class SettingsStore: ObservableObject {
             notificationService.showLoader(LoaderModel(text: loaderLang.saving))
             do {
                 _ = try await accountService.createGoal(goalPayload)
-                notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                
+                // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
+                let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
+                
+                switch profileUpdateResult {
+                case .success(let statusArray):
+                    // Check if any status contains USER_SELECTION_IN_PROGRESS
+                    let hasUserSelectionInProgress = statusArray.contains { $0.contains(UserCreationResponse.userSelectionInProgress.rawValue) }
+                    
+                    // Suppress success toast during user selection to prevent misleading feedback,
+                    // since the scale profile isn't updated at that time.
+                    if hasUserSelectionInProgress {
+                        // Show updates pending alert instead
+                        showUpdatesPendingAlert()
+                    } else {
+                        notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                    }
+                case .failure:
+                    // If update fails (e.g., already in progress from subscription), 
+                    // still show success toast since goal was saved successfully
+                    notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.goalSaved))
+                }
+                
                 goalAlertService.resetGoalMetFlag()
                 logger.log(level: .info, tag: tag, message: "Goal updated successfully")
                 resetGoalForm()
