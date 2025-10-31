@@ -44,12 +44,14 @@ struct DashboardMetricsSection: View {
         }
         .onAppear {
             if parentView == .R4ScaleSetup {
-                // Force edit mode and show everything with wiggle in Scale Setup context
+                // Force edit mode in Scale Setup context
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                // Ensure all metrics are visible/available for editing if needed
-                store.metricsManager.resetActiveMetricsCountToShowAll()
+                // Note: Do NOT call resetActiveMetricsCountToShowAll() here
+                // Metrics should be enabled/disabled based on current state from API
+                // Only first-time R4 pairing (dashboard4 → dashboard12) will enable all metrics
+                // This is handled in BtWifiScaleSetupStore.setCustomizationPage()
             }
         }
         .onChange(of: parentView) { _, newValue in

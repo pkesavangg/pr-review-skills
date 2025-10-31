@@ -198,10 +198,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var initialHeartRateEnabledSnapshot: Bool?
     private var initialDashboardMetricLabelsSnapshot: [String]? = nil
     private var initialDashboardRemovedMetricsSnapshot: Set<String>? = nil
+    private var initialDashboardRemovedStreaksSnapshot: Set<String>? = nil
     private var initialDashboardStreakOrderSnapshot: [String]? = nil
     private var initialDashboardGoalCardRemovedSnapshot: Bool? = nil
     private var initialDashboardGoalCardPositionSnapshot: Int? = nil
     private var dashboardStoreCancellable: AnyCancellable? = nil
+    /// Subscription to dashboard metrics updated notification to sync changes from main dashboard
+    private var dashboardMetricsUpdatedCancellable: AnyCancellable? = nil
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -840,9 +843,142 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
         case .dashboardMetrics:
-            // Begin edit mode and snapshot current state for change detection
-            dashboardStore.beginEdit()
-            snapshotDashboardState()
+            // Load current dashboard configuration from API to ensure we have the latest state
+            Task { [weak self] in
+                guard let self else { return }
+                
+                // Check if this is first-time R4 pairing with dashboard4 → dashboard12 upgrade
+                let currentDashboardType = self.accountService.activeAccount?.dashboardSettings?.dashboardType
+                let isFirstTimeR4Pairing = currentDashboardType == "dashboard4" && !self.isReconnect
+                
+                if isFirstTimeR4Pairing {
+                    // FIRST-TIME R4 PAIRING: Upgrade from dashboard4 to dashboard12
+                    // Preserve removed state of original 4 metrics, enable 8 new metrics
+                    
+                    // Reload configuration first (this will load with dashboard4, so only 4 metrics)
+                    await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+                    
+                    // CRITICAL: Capture the current state BEFORE upgrading
+                    // This tells us how many of the original 4 metrics are enabled
+                    let originalActiveMetricsCount = self.dashboardStore.metricsManager.state.activeMetricsCount
+                    let originalMetrics = self.dashboardStore.metricsManager.state.metrics
+                    
+                    // Identify which of the original 4 metrics are enabled vs removed
+                    let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+                    let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
+                    let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
+                    let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
+                    let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
+                    
+                    // Now upgrade to dashboard12 and ensure all 12 metrics are present
+                    await MainActor.run {
+                        // Update dashboard type to dashboard12
+                        self.dashboardStore.metricsManager.updateDashboardType(.dashboard12)
+                        
+                        // Define all 12 metric labels in the correct order
+                        let allMetricLabels = [
+                            DashboardStrings.bmi,
+                            DashboardStrings.bodyFat,
+                            DashboardStrings.muscle,
+                            DashboardStrings.water,
+                            DashboardStrings.heartBpm,
+                            DashboardStrings.bone,
+                            DashboardStrings.visceralFat,
+                            DashboardStrings.subFat,
+                            DashboardStrings.protein,
+                            DashboardStrings.skelMuscle,
+                            DashboardStrings.bmrKcal,
+                            DashboardStrings.metAge
+                        ]
+                        
+                        // Define the 8 new metrics (not in original 4)
+                        let newMetricsLabels = [
+                            DashboardStrings.heartBpm,
+                            DashboardStrings.bone,
+                            DashboardStrings.visceralFat,
+                            DashboardStrings.subFat,
+                            DashboardStrings.protein,
+                            DashboardStrings.skelMuscle,
+                            DashboardStrings.bmrKcal,
+                            DashboardStrings.metAge
+                        ]
+                        
+                        // Get the original metrics definition
+                        let originalMetricsDef = [
+                            (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
+                            (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
+                        ]
+                        
+                        // Build metrics array in correct order:
+                        // 1. Enabled original 4 metrics (in their original order)
+                        // 2. 8 new metrics (all enabled)
+                        // 3. Removed original 4 metrics (at the end)
+                        var orderedMetrics: [MetricItem] = []
+                        
+                        // Add enabled original metrics first (preserve their order)
+                        for metric in enabledOriginalMetrics {
+                            orderedMetrics.append(metric)
+                        }
+                        
+                        // Add the 8 new metrics (all enabled)
+                        for newLabel in newMetricsLabels {
+                            if let originalMetric = originalMetricsDef.first(where: { $0.1 == newLabel }) {
+                                let metricItem = MetricItem(
+                                    value: originalMetric.0,
+                                    label: originalMetric.1,
+                                    unit: originalMetric.2,
+                                    preLabel: originalMetric.3,
+                                    icon: originalMetric.4
+                                )
+                                orderedMetrics.append(metricItem)
+                            }
+                        }
+                        
+                        // Add removed original metrics at the end (preserve their order)
+                        for metric in removedOriginalMetrics {
+                            orderedMetrics.append(metric)
+                        }
+                        
+                        // Update metrics array
+                        self.dashboardStore.metricsManager.state.metrics = orderedMetrics
+                        
+                        // CRITICAL: Set activeMetricsCount = enabled original + 8 new metrics
+                        // This preserves removed state of original 4 metrics, enables all 8 new metrics
+                        let newActiveMetricsCount = originalActiveMetricsCount + 8
+                        self.dashboardStore.metricsManager.state.activeMetricsCount = min(newActiveMetricsCount, 12)
+                        
+                        // Sync removal state to ensure UI state is correct
+                        self.dashboardStore.syncRemovalStateFromMetricsManager()
+                        
+                        // Verify metrics are configured correctly
+                        let finalMetricsCount = self.dashboardStore.metricsManager.state.metrics.count
+                        let finalActiveCount = self.dashboardStore.metricsManager.state.activeMetricsCount
+                        let originalRemovedCount = 4 - originalActiveMetricsCount
+                        LoggerService.shared.log(level: .info, tag: self.tag, message: "First-time R4 pairing: \(originalActiveMetricsCount) original metrics enabled (\(enabledOriginalLabels)), \(originalRemovedCount) removed (\(removedOriginalLabels)). Added 8 new metrics. Total: \(finalMetricsCount) metrics, \(finalActiveCount) active")
+                    }
+                } else {
+                    // NORMAL SYNC: Reload configuration and respect current enabled/disabled state
+                    // This ensures customize screen shows same items as dashboard screen
+                    await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+                    LoggerService.shared.log(level: .debug, tag: self.tag, message: "Normal dashboard sync: Respecting current metric state from API")
+                }
+                
+                await MainActor.run {
+                    // Begin edit mode and snapshot current state for change detection
+                    self.dashboardStore.beginEdit()
+                    self.snapshotDashboardState()
+                }
+            }
             // Subscribe to dashboard edits to update Save button enablement live
             dashboardStoreCancellable?.cancel()
             dashboardStoreCancellable = dashboardStore.objectWillChange
@@ -853,6 +989,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         self.updateNextEnabled()
                     }
                 }
+            // Subscribe to dashboard metrics updated notification to sync changes from main dashboard
+            setupDashboardMetricsSync()
         default:
             break
         }
@@ -941,7 +1079,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             // Post notification to refresh dashboard screen when user returns to it
+            // Note: This notification will also trigger a reload in the customize screen,
+            // but that's fine as it ensures both screens stay in sync
             NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            // Cancel sync subscription after saving since we've already synced
+            dashboardMetricsUpdatedCancellable?.cancel()
+            dashboardMetricsUpdatedCancellable = nil
             break
         default:
             break
@@ -959,11 +1102,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.currentCustomizeSetting = .none
         }
         
+        // Cancel dashboard metrics sync subscription when navigating away
+        dashboardMetricsUpdatedCancellable?.cancel()
+        dashboardMetricsUpdatedCancellable = nil
+        
         // Revert unsaved changes for each customize screen
         switch currentCustomizeSetting {
         case .dashboardMetrics:
             // Discard dashboard customization changes
             discardDashboardCustomization()
+            // Reload dashboard configuration from API to ensure we have the latest state
+            Task { [weak self] in
+                guard let self else { return }
+                await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            }
         case .scaleMode:
             if let savedScale = savedScale {
                 // Restore previously snapshotted values
@@ -1948,6 +2100,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func snapshotDashboardState() {
         initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
         initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
+        initialDashboardRemovedStreaksSnapshot = dashboardStore.state.ui.removedStreaks
         initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
         initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
         initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
@@ -1957,12 +2110,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func hasDashboardCustomizationChanged() -> Bool {
         let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
         let removed = dashboardStore.state.ui.removedMetrics
+        let removedStreaks = dashboardStore.state.ui.removedStreaks
         let order = dashboardStore.state.ui.streakGridOrder
         let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
         let goalPos = dashboardStore.state.ui.goalCardPosition
         
         return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
                (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
+               (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
                (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
                (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
                (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
@@ -1987,6 +2142,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
         ))
     }
     
+    // MARK: - Dashboard Synchronization
+    
+    /// Sets up synchronization between customize screen and main dashboard
+    /// When dashboard metrics are updated in the main dashboard, this ensures
+    /// the customize screen reflects those changes immediately
+    private func setupDashboardMetricsSync() {
+        // Cancel existing subscription if any
+        dashboardMetricsUpdatedCancellable?.cancel()
+        
+        // Subscribe to dashboard metrics updated notification
+        dashboardMetricsUpdatedCancellable = NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Only reload if we're currently on the dashboard metrics customization screen
+                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                    Task {
+                        await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+                        // Update snapshot after reload to reflect new base state
+                        await MainActor.run {
+                            self.snapshotDashboardState()
+                            self.updateNextEnabled()
+                        }
+                    }
+                }
+            }
+    }
+    
     // MARK: - Cleanup Methods
     
     /// Cleans up the store and breaks any retain cycles
@@ -2007,6 +2190,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         measurementTimeoutTask = nil
         stepTimerTask?.cancel()
         stepTimerTask = nil
+        dashboardStoreCancellable?.cancel()
+        dashboardStoreCancellable = nil
+        dashboardMetricsUpdatedCancellable?.cancel()
+        dashboardMetricsUpdatedCancellable = nil
         
         // Cancel all cancellables
         cancellables.forEach { $0.cancel() }
