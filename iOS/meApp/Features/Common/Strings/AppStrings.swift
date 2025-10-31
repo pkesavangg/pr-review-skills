@@ -278,8 +278,10 @@ struct InputFieldLabels {
     static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let createNewPassword = "create new Password"
     static let networkName = "network name"
     static let confirmPassword = "confirm password"
+    static let confirmNewPassword = "confirm new Password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
     static let startingWeightLabel: (Bool) -> String = { isKg in
