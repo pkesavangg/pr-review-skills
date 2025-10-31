@@ -147,4 +147,11 @@ object AppPopupStrings {
     const val ConfirmButton = "LET'S DO IT"
     const val CloseContentDescription = "Close"
   }
+
+  object R4ProfileUpdatePending {
+    const val Title = "Updates Pending..."
+    const val Message =
+      "Scale settings can’t be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+    const val ConfirmButton = "Ok"
+  }
 }

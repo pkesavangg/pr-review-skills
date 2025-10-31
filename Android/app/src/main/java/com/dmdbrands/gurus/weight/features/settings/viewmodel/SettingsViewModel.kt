@@ -29,11 +29,17 @@ import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
+import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
+import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -58,6 +64,7 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
+  private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
@@ -364,7 +371,31 @@ constructor(
             zipcode = currentAccount.zipcode,
           )
         // Use offline handler service similar to Angular implementation
-        accountService.updateProfile(updatedCurrentProfile)
+        accountService.updateProfile(updatedCurrentProfile, showToast = false)
+        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+              ),
+            )
+          }
+
+          else -> {}
+        }
+
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating biological sex", e)
@@ -488,7 +519,30 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition, false)
+        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
+        when (res) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+              ),
+            )
+          }
+
+          else -> {}
+        }
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating unit type", e)
@@ -581,7 +635,30 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit?.value ?: "lb",
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition, false)
+        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
+        when (res) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+              ),
+            )
+          }
+
+          else -> {}
+        }
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating height", e)
@@ -1117,6 +1194,23 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
+  }
+
+  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
+    val result = CompletableDeferred<GGUserActionResponseType>()
+    try {
+      ggDeviceService.updateProfile(
+        profile,
+        { responseType ->
+          result.complete(responseType)
+        },
+      )
+    } catch (e: Exception) {
+      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
+      result.complete(GGUserActionResponseType.CREATION_FAILED)
+    }
+
+    return result.await()
   }
 
   /**
