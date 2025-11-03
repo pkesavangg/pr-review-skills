@@ -96,7 +96,7 @@ fun GraphPagerView(
           "%.1f",
           averageWeight,
         )
-        if (averageWeight > 0) {
+        if (averageWeight > 0 && state.weightless?.isWeightlessOn == true) {
           labelData = ("+").plus(labelData)
         }
         weightValue = averageWeight
