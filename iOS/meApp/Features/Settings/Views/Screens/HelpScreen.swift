@@ -17,9 +17,9 @@ struct HelpScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            NavbarHeaderView<Image, EmptyView>(
+            NavbarHeaderView<AppIconView, EmptyView>(
                 title: lang.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 onLeadingTap: { router.navigateBack() },
                 onTitleTap: {
                     helpStore.handleHeaderTap()
