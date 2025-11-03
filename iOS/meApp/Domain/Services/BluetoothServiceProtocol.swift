@@ -103,11 +103,11 @@ protocol BluetoothServiceProtocol {
     /// Clears stored data on the device (e.g., history, user).
     /// - Returns: Result<Void, BluetoothServiceError>
     func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError>
-
+    
     // MARK: - Profile / Account Operations
     /// Updates the user profile (height, weight, age, etc.) on all connected R4 scales.
-    /// - Returns: Result<Bool, BluetoothServiceError>
-    func updateUserProfileForR4Scales() async -> Result<Bool, BluetoothServiceError>
+    /// - Returns: Result<[String], BluetoothServiceError>
+    func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError>
     /// Updates account-specific preferences (display name, metrics, etc.) on the device.
     /// - Returns: Result<UserCreationResponse, BluetoothServiceError>
     func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError>

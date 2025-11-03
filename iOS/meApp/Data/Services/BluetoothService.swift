@@ -93,6 +93,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var connectedGgDevices: [GGBTDevice] = []
     private var isWeightOnlyModeAlertDismissed = false
     private var lastProfileUpdateAccountId: String?
+    private var isUpdatingR4Profile = false
+    private var lastAccountId: String?
     
     // MARK: - Dependencies
     private let accountService: AccountService
@@ -152,8 +154,21 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .sink { [weak self] account in
                 Task {
                     await self?.handleAccountUpdate(account)
-                    if account != nil {
+                    // Only update R4 profile from subscription if:
+                    // 1. Account is not nil
+                    // 2. Not already updating (prevents concurrent calls)
+                    // 3. Account ID changed (account switch) or was nil (new account)
+                    // This prevents conflicts when updateUserProfileForR4Scales is called explicitly
+                    let currentAccountId = account?.accountId
+                    let accountIdChanged = currentAccountId != self?.lastAccountId
+                    if let accountId = currentAccountId,
+                       !(self?.isUpdatingR4Profile ?? false),
+                       accountIdChanged {
+                        self?.lastAccountId = accountId
                         let _ = await self?.updateUserProfileForR4Scales()
+                    } else if currentAccountId != nil {
+                        // Update lastAccountId even if we don't call updateUserProfileForR4Scales
+                        self?.lastAccountId = currentAccountId
                     }
                 }
             }
@@ -613,9 +628,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Profile & Account
     /**
      Updates the user profile (height, weight, age, etc.) on all connected R4 scales.
-     - Returns: Result<Bool, BluetoothServiceError>
+     - Returns: Result<[String], BluetoothServiceError>
      */
-    func updateUserProfileForR4Scales() async -> Result<Bool, BluetoothServiceError> {
+    func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> {
+        // Prevent concurrent calls
+        guard !isUpdatingR4Profile else {
+            logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales already in progress, skipping")
+            return .failure(.updateProfileFailed(BluetoothServiceError.notImplemented))
+        }
+        
+        isUpdatingR4Profile = true
+        defer { isUpdatingR4Profile = false }
+        
         do {
             guard let account = activeAccount else {
                 throw BluetoothServiceError.noActiveAccount
@@ -624,9 +648,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.noProfileInfo
             }
             let success = await ggBleSDK.updateProfile(profile: userProfile)
-            if !success {
-                throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.notImplemented)
-            }
+            logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
             return .success(success)
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -1412,17 +1434,24 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
     
-    /// Helper to calculate age from a date string (YYYY-MM-DD), matching JS logic
+    /// Helper to calculate age from a date string (e.g. "2009-01-01T00:00:00.000Z")
     private func calculateAge(from dateString: String?) -> Int? {
         guard let dateString = dateString else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let birthDate = formatter.date(from: dateString) else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        guard let birthDate = formatter.date(from: dateString) else {
+            return nil
+        }
+
         let today = Date()
         let calendar = Calendar.current
+
         var age = calendar.component(.year, from: today) - calendar.component(.year, from: birthDate)
         let monthDiff = calendar.component(.month, from: today) - calendar.component(.month, from: birthDate)
         let dayDiff = calendar.component(.day, from: today) - calendar.component(.day, from: birthDate)
+
         if monthDiff < 0 || (monthDiff == 0 && dayDiff < 0) {
             age -= 1
         }
