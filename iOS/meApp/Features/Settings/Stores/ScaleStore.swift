@@ -76,7 +76,6 @@ class ScaleStore: ObservableObject {
     func clearScaleDiscoveredInfo() {
         updateSetupInProgressStatus(false)
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-        bluetoothService.clearScaleDiscoveredInfo()
         Task {
             bluetoothService.syncDevices([])
         }

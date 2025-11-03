@@ -206,7 +206,6 @@ struct MyScalesScreen: View {
                         // A setup flow sheet is being presented → start setup tracking
                         scaleStore.updateSetupInProgressStatus(true)
                     default:
-                        scaleStore.clearScaleDiscoveredInfo()
                         break
                     }
                 }
