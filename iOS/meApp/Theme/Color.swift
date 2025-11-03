@@ -78,7 +78,6 @@ enum AppColors {
         let logoPrimary: Color
         let logoSecondary: Color
         
-        // GG Named Colors (asset-backed defaults provided via extension)
         let ggBackground: Color
         let ggPrimary: Color
         let ggSecondary100: Color
@@ -92,7 +91,22 @@ enum AppColors {
         let promoRed100: Color
         let promoRed900: Color
         
-        
+        // GG Named Colors (asset-backed defaults provided via extension)
+        let ggSecondary: Color
+        let ggSecondaryPressed: Color
+        let ggSecondaryDisabled: Color
+
+        let promoRed: Color
+        let promoRedPressed: Color
+        let promoRedDisabled: Color
+
+        let promoBlue: Color
+        let promoBluePressed: Color
+        let promoBlueDisabled: Color
+
+        let promoGreen: Color
+        let promoGreenPressed: Color
+        let promoGreenDisabled: Color
         
         static func forTheme(_ theme: Theme) -> Palette {
             switch theme {

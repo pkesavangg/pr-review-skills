@@ -47,7 +47,7 @@ struct WeightOnlyModeBottomSheet: View {
                 actionButtonsView
             }
         }
-        .padding([.horizontal, .top, .bottom], .spacingLG)
+        .padding([.horizontal, .top], .spacingLG)
         .frame(maxWidth: .infinity)
         .background(theme.backgroundPrimary)
         .onAppear {
@@ -67,17 +67,18 @@ struct WeightOnlyModeBottomSheet: View {
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
 
                 Text(weightOnlyModeAlertLang.enableAllBodyMetrics)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textSubheading)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
             }
         }
     }
-
-
 
     private var actionButtonsView: some View {
         VStack(spacing: .spacingXS) {
@@ -90,9 +91,7 @@ struct WeightOnlyModeBottomSheet: View {
                 action: {
                     // Handle primary action
                   onEnableAllBodyMetrics()
-                  store.enableBodyMetricsForScale(onCancel: {
-                    dismiss()
-                  })
+                  store.handleEnableBodyMetrics()
                 }
             )
 
@@ -111,4 +110,3 @@ struct WeightOnlyModeBottomSheet: View {
         }
     }
 }
-
