@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -20,7 +21,9 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -51,6 +54,17 @@ constructor(
       subscribeProgress()
       subscribeLatestWeight()
       subscribeIsEmpty()
+      subscribeWeightLess()
+    }
+  }
+
+  private fun subscribeWeightLess() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { account ->
+        account?.toWeightless()
+      }.distinctUntilChanged().collect {
+        handleIntent(DashboardIntent.UpdateWeightLess(it))
+      }
     }
   }
 
