@@ -16,6 +16,8 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettings
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -255,6 +257,18 @@ constructor(
       isMFPValid = account.isMFPValid,
     )
     accountDao.insertIntegrationsSettings(integrationEntity)
+    val dashboardMileStones =
+      accountDao.getDashboardSettings(account.id).first()?.dashboardMilestones ?: MilestoneKey.getDefaultMilestones()
+        .map { it.name }
+    val dashboardSettings =
+      DashboardSettingsEntity(
+        accountId = account.id,
+        dashboardMetrics = account.dashboardMetrics ?: MetricKeyConstants.DEFAULT_4_METRICS,
+        dashboardMilestones = dashboardMileStones,
+        dashboardType = account.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.name,
+        isSynced = true,
+      )
+    accountDao.insertDashboardSettings(dashboardSettings)
     AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
     return account
   }
