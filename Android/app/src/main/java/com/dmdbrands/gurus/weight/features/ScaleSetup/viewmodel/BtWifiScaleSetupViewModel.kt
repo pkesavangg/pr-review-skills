@@ -1650,7 +1650,11 @@ constructor(
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
 
-            if (deviceService.pairedScales.first().any { it.device?.macAddress == ggDeviceDetail.macAddress }) {
+            if (deviceService.pairedScales.first()
+                .any { it.device?.macAddress == ggDeviceDetail.macAddress } && !ggDeviceService.localSkipDevices.value.contains(
+                ggDeviceDetail.broadcastIdString,
+              )
+            ) {
               // Cancel timeout since we found a known scale
               pairingTimeoutJob?.cancel()
               pairingTimeoutJob = null
