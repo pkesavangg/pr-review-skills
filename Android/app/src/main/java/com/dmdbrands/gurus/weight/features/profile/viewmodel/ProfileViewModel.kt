@@ -226,10 +226,9 @@ class ProfileViewModel @Inject constructor(
     try {
       ggDeviceService.updateProfile(
         profile,
-        { responseType ->
-          result.complete(responseType)
-        },
-      )
+      ) { responseType ->
+        result.complete(responseType)
+      }
     } catch (e: Exception) {
       AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.CREATION_FAILED)

@@ -37,19 +37,15 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
-import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
@@ -798,33 +794,9 @@ constructor(
             ),
           )
           ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
-          updateR4Profile(ggBTUserProfile)
           handleIntent(AppIntent.SetScanStatus(true))
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")
         }
-      }
-    }
-  }
-
-  private fun updateR4Profile(profile: GGBTUserProfile) {
-    viewModelScope.launch {
-      try {
-        ggDeviceService.updateProfile(
-          profile,
-          { it: GGUserActionResponseType ->
-            if (it == GGUserActionResponseType.USER_SELECTION_IN_PROGRESS) {
-              dialogQueueService.enqueue(
-                DialogModel.Alert(
-                  title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                  message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                  onDismiss = { dialogQueueService.dismissCurrent() },
-                ),
-              )
-            }
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.d(TAG, "updateR4Profile - Error updating profile to scale")
       }
     }
   }
