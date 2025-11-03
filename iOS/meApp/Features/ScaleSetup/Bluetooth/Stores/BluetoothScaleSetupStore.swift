@@ -599,5 +599,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         stepTimerTask = nil
         cleanupEntrySubscription()
         resetDiscoveryState()
+        // Re-apply skipped devices to BLE SDK, excluding paired scales
+        bluetoothService.reapplySkipDevicesExcludingPaired()
     }
 }

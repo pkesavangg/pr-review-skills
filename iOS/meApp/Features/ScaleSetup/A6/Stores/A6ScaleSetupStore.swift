@@ -407,6 +407,8 @@ final class A6ScaleSetupStore: ObservableObject {
         stepTimerTask?.cancel()
         stepTimerTask = nil
         resetDiscoveryState()
+        // Re-apply skipped devices to BLE SDK, excluding paired scales
+        bluetoothService.reapplySkipDevicesExcludingPaired()
     }
     
     // Cancel active Combine subscription before releasing it.
