@@ -420,12 +420,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .error, tag: tag, message: "deleteCurrentUserFromScaleIfPossible - missing broadcastId")
             return .failure(.invalidBroadcastId)
         }
-        print("hello: deleteCurrentUserFromScaleIfPossible start bid=\(broadcastId)")
         
         // Prefer using a known token on the device model
         if let token = device.token, !token.isEmpty {
             logger.log(level: .debug, tag: tag, message: "Deleting scale user using persisted token")
-            print("hello: deleting using persisted token bid=\(broadcastId) token=\(token.prefix(6))...")
             if Task.isCancelled { return .failure(.timeout) }
             return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
         }
@@ -438,16 +436,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             if Task.isCancelled { return .failure(.timeout) }
             if let match = findUserToDelete(userList: users, discoveredScale: device), let token = match.token, !token.isEmpty {
                 logger.log(level: .debug, tag: tag, message: "Deleting matched scale user: \(match.name)")
-                print("hello: deleting matched user bid=\(broadcastId) name=\(match.name) token=\(token.prefix(6))...")
                 return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
             } else {
                 logger.log(level: .error, tag: tag, message: "No matching user found to delete on scale for broadcastId \(broadcastId)")
-                print("hello: no matching user found for deletion bid=\(broadcastId)")
                 return .failure(.deviceNotFound)
             }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to fetch user list before deletion: \(error.localizedDescription)")
-            print("hello: failed to fetch users for deletion bid=\(broadcastId) error=\(error.localizedDescription)")
             return .failure(error)
         }
     }
@@ -1077,7 +1072,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             bid = entry.broadcastIdString
         }
         if let bid = bid, blockedBroadcastIds.contains(bid) {
-            print("hello: blocked device event during deletion bid=\(bid). Skipping")
             ggBleSDK.skipDevice(bid)
             return
         }
