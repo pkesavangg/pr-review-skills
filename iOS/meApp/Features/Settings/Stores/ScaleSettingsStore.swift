@@ -186,7 +186,9 @@ final class ScaleSettingsStore: ObservableObject {
                     _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(scale, disconnect: false)
                 }
                 // Give BLE a brief moment to process deletion; if it hangs, cancel and proceed
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                // Note: Canceling the deletion task does not forcibly stop the underlying async operation.
+                // This is a 'fire-and-forget with timeout' pattern; the operation may still complete after cancellation.
+                try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.scaleDeletionGraceTimeoutNs))
                 deletionTask.cancel()
                 // Then forcefully disconnect and clear plugin cache to avoid reconnect
                 let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
