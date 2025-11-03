@@ -5,7 +5,7 @@ import com.dmdbrands.gurus.weight.BuildConfig
 object LandingString {
   const val Login = "Log In"
   const val SignUp = "Sign Up"
-  const val Version = "version ${BuildConfig.VERSION_NAME}"
+  const val Version = "Version ${BuildConfig.VERSION_NAME}"
 
   object MultiAccountLandingScreenStrings {
     const val LogIntoExistingAccount = "Log Into Existing Account"

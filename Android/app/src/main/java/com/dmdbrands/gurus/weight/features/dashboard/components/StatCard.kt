@@ -136,7 +136,7 @@ internal fun StatCard(
             contentDescription = stat.label,
             modifier = Modifier.size(24.dp),
             type = AppIconType.Secondary,
-            enabled = enabled,
+            enabled = isVisible,
           )
           Spacer(modifier = Modifier.size(MeTheme.spacing.x2s))
         }
