@@ -41,6 +41,7 @@ constructor(
   override suspend fun updateBodyComposition(
     updateType: BodyCompUpdateType,
     bodyComposition: BodyCompUpdateRequest,
+    showToast: Boolean,
   ) {
     try {
       val activeAccount =
@@ -75,10 +76,12 @@ constructor(
       AppLog.e(TAG, "Body composition update failed", e)
       null
     } finally {
-      showSuccessToast(
-        ToastStrings.Success.UpdateProfileSuccess.Header,
-        ToastStrings.Success.UpdateProfileSuccess.Message,
-      )
+      if (showToast) {
+        showSuccessToast(
+          ToastStrings.Success.UpdateProfileSuccess.Header,
+          ToastStrings.Success.UpdateProfileSuccess.Message,
+        )
+      }
     }
   }
 }

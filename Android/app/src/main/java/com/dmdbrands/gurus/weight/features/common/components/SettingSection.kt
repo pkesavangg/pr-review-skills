@@ -168,7 +168,7 @@ private fun SettingsItemRow(
                         style = MeTheme.typography.body2,
                         color = if (item.enabled) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.utility,
                         textAlign = TextAlign.End,
-                        maxLines = 1,
+                        maxLines = item.maxLines,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = maxWidth),
                     )

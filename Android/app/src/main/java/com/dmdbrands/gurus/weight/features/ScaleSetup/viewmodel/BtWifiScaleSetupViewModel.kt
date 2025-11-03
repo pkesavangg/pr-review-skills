@@ -107,13 +107,15 @@ constructor(
   }
 
   private val TAG = "BtWifiScaleSetupViewModel"
-  private var isScaleConnected: Boolean = false
+  private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
   private var accountId: String? = null
   private var pairingTimeoutJob: kotlinx.coroutines.Job? = null
   private var bluetoothConnectionTimeoutJob: kotlinx.coroutines.Job? = null
   private var wifiConnectionTimeoutJob: kotlinx.coroutines.Job? = null
   private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
   private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
+  private var wifiMac: String? = discoveredScale?.device?.wifiMacAddress
+  private var isWifiConfigured: Boolean = discoveredScale?.device?.isWifiConfigured == true
 
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
@@ -670,55 +672,55 @@ constructor(
   private fun onExit() {
     // Clear all timeouts before exiting
     clearAllTimeouts()
-
-    // Create separate coroutines with SupervisorJob for independent execution
-    val supervisorJob = SupervisorJob()
-    val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
-
-    // Database operations in separate coroutine
-    supervisorScope.launch {
-      try {
-        updateWifiDetails()
-        if (discoveredScale != null) {
-          // Save the scale with final configuration
-          if (discoveredScale!!.device != null)
-            deviceService.updateConnectionStatus(discoveredScale!!.device!!.macAddress, BLEStatus.CONNECTED)
-
-          val savedScale = deviceService.saveScale(discoveredScale!!)
-          discoveredScale = savedScale ?: discoveredScale
-          AppLog.i(
-            TAG,
-            "Successfully saved BtWifi scale with final WiFi configuration: isWifiConfigured=${discoveredScale?.device?.isWifiConfigured}",
-          )
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during scale cleanup operations", e)
-      }
-    }
-
-    // Only navigation remains in viewModelScope
     viewModelScope.launch {
-      // Ensure WiFi configuration is up to date before final save
       try {
+        ggDeviceService.resumeScan(false)
         if (discoveredScale != null) {
           ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
-          if (!isScaleConnected) {
+          if (!isScaleConnected && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
+            ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice(), true) {}
             ggDeviceService.disconnectDevice(discoveredScale!!.toGGBTDevice())
           }
         }
+        loadPluginData()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during Bluetooth cleanup", e)
       }
+
       try {
-        ggDeviceService.resumeScan(false)
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error resuming scan", e)
-      }
-      try {
+        updateWifiDetails()
         navigateBack()
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to navigate back from scale setup", e)
       }
+    }
+  }
+
+  private suspend fun loadPluginData() {
+    try {
+      // load skipDevices
+      val device = this@BtWifiScaleSetupViewModel.discoveredScale
+      var connectedDeviceBroadcastID: String? = null
+
+      ggDeviceService.localSkipDevices.value.forEach {
+        if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
+          connectedDeviceBroadcastID = it
+        } else {
+          // add to skipDevices
+          ggDeviceService.skipDevice(it, considerForSession = true)
+        }
+      }
+      if (connectedDeviceBroadcastID != null) {
+        // remove locally saved skip devices
+        ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
+      }
+
+      // load paired devices
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
+      ggDeviceService.syncDevices(pairedDevices)
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during Bluetooth cleanup", e)
     }
   }
 
@@ -733,21 +735,24 @@ constructor(
   /**
    * Handles password network status toggle by dynamically adding/removing validation.
    * Reads the current status from the wifiPasswordForm.noPasswordNetwork control.
+   * Properly clears form state to avoid validation errors.
    */
   private fun handlePasswordNetworkStatus() {
     val currentState = state.value
     val isNoPasswordNetwork = currentState.wifiPasswordForm.noPasswordNetwork.value
     AppLog.d(TAG, "Handling password network status, isNoPasswordNetwork: $isNoPasswordNetwork")
     if (isNoPasswordNetwork) {
-      // No password network - remove required validation
+      // No password network - remove required validation and reset field completely
       currentState.wifiPasswordForm.password.removeValidator("required")
-      // Clear password value since it's not needed
-      currentState.wifiPasswordForm.password.reset()
+      // Reset clears value, error, touched, dirty, and pending states
+      currentState.wifiPasswordForm.password.reset("")
     } else {
       // Password network - add required validation
       currentState.wifiPasswordForm.password.addValidator(
         com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.required(),
       )
+      // Reset to clear any stale errors, then revalidate if there's a value
+      currentState.wifiPasswordForm.password.reset("")
     }
 
     // Update canProceedToNext based on current form state
@@ -780,7 +785,6 @@ constructor(
     currentState.wifiPasswordForm.password.reset()
     currentState.wifiPasswordForm.noPasswordNetwork.onValueChange(false)
   }
-
 
   /**
    * Refreshes the user list after account changes (delete/update) to keep it in sync.
@@ -905,7 +909,6 @@ constructor(
       BtWifiSetupStep.UPDATE_SETTINGS -> {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = null
-        // updateSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -1026,7 +1029,6 @@ constructor(
         bluetoothConnectionTimeoutJob = timeoutJob
 
         val ggBtDevice = discoveredScale!!.toGGBTDevice()
-        Log.d("userdevice", "$ggBtDevice")
         ggDeviceService.pairDevice(
           device = ggBtDevice,
         ) { it ->
@@ -1038,14 +1040,6 @@ constructor(
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
                 fetchUserList()
-                isScaleConnected = true
-                handleIntent(
-                  BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                    ConnectionState.Success,
-                  ),
-                )
-                discoveredScale = deviceService.saveScale(discoveredScale!!)
                 if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
                   accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
                   val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics
@@ -1062,17 +1056,27 @@ constructor(
                   dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
                 }
                 handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
+                handleIntent(
+                  BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                    ConnectionState.Success,
+                  ),
+                )
+                discoveredScale =
+                  deviceService.saveScale(discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED))
+                isScaleConnected = true
                 onNext()
               }
             }
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+              Log.d("discoveredscale", "$discoveredScale")
               viewModelScope.launch {
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
                   ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
-
+                Log.d("duplicateusername", "$discoveredScale")
                 if (duplicateUserName != null) {
                   AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
                   fetchUserList(duplicateUserName = duplicateUserName)
@@ -1146,7 +1150,7 @@ constructor(
         val userList = suspendCoroutine { continuation ->
           ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
 
-            Log.d("userslist","$response")
+            Log.d("userslist", "$response")
             if (duplicateUserName != null) {
               val user = response.user.first { it.name == duplicateUserName }
               // Don't update discoveredScale token here - keep the original token for proper filtering
@@ -1199,15 +1203,24 @@ constructor(
           if (canRequestNotifPermission) {
             requestPermission(GGPermissionType.NOTIFICATION)
           }
-          handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
-          ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) { wifiMac ->
-            viewModelScope.launch {
-              val connectedSSID = wifiMac.cleanCorruptedChars()
-              handleIntent(BtWifiScaleSetupIntent.SetConnectedSSID(connectedSSID))
-              updateWifiDetails()
-              onNext()
+
+          val connectedSSID = suspendCancellableCoroutine<String> { cont ->
+            ggDeviceService.getConnectedWifiSSID(discoveredScale!!.toGGBTDevice()) { wifiMac ->
+              val ssid = wifiMac.cleanCorruptedChars()
+              this@BtWifiScaleSetupViewModel.isWifiConfigured = !ssid.isNullOrBlank()
+              cont.resume(ssid)
             }
           }
+          suspendCancellableCoroutine { cont ->
+            ggDeviceService.getConnectedWifiMacAddress(discoveredScale!!.toGGBTDevice()) { mac ->
+              this@BtWifiScaleSetupViewModel.wifiMac = mac
+              cont.resume(mac)
+            }
+          }
+          handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
+          handleIntent(BtWifiScaleSetupIntent.SetConnectedSSID(connectedSSID))
+          onNext()
+
         }
       }
     } catch (e: Exception) {
@@ -1298,6 +1311,8 @@ constructor(
     try {
       val ssid = _state.value.wifiPasswordForm.ssid.value
       val password = _state.value.wifiPasswordForm.password.value
+      this.isWifiConfigured = false
+      this.wifiMac = null
       ggDeviceService.setupWifi(
         discoveredScale!!.toGGBTDevice(),
         GGBTWifiConfig(ssid, password),
@@ -1316,7 +1331,12 @@ constructor(
               ),
             )
             clearWifiPasswordForm()
-            updateWifiDetails()
+            this@BtWifiScaleSetupViewModel.isWifiConfigured = ssid.isNotBlank()
+            this@BtWifiScaleSetupViewModel.wifiMac = suspendCancellableCoroutine { cont ->
+              ggDeviceService.getConnectedWifiMacAddress(discoveredScale!!.toGGBTDevice()) { mac ->
+                cont.resume(mac)
+              }
+            }
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
               onExitSetup(true)
               return@launch
@@ -1338,7 +1358,8 @@ constructor(
       // Cancel timeout on exception
       wifiConnectionTimeoutJob?.cancel()
       wifiConnectionTimeoutJob = null
-
+      this.isWifiConfigured = false
+      this.wifiMac = null
       AppLog.e(TAG, "Error during wifi setup", e)
       handleIntent(
         BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -1404,17 +1425,11 @@ constructor(
   }
 
   private suspend fun updateWifiDetails() {
-    val device = discoveredScale?.toGGBTDevice() ?: return
-
-    val wifiMac = suspendCancellableCoroutine<String?> { cont ->
-      ggDeviceService.getConnectedWifiMacAddress(device) { mac ->
-        cont.resume(mac)
-      }
-    }
-
+    val supervisorJob = SupervisorJob()
+    val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
     discoveredScale = discoveredScale?.copy(
       device = discoveredScale?.device?.copy(
-        isWifiConfigured = !wifiMac.isNullOrEmpty(),
+        isWifiConfigured = isWifiConfigured,
         wifiMacAddress = wifiMac,
       ),
     )
@@ -1422,17 +1437,17 @@ constructor(
     // Save the scale with updated WiFi configuration to ensure UI updates properly
     discoveredScale?.let { scale ->
       AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
-      val savedScale = deviceService.saveScale(scale)
-
-      // Use the saved scale (which might have updated ID) for onDeviceUpdate
-      val scaleToUpdate = savedScale ?: scale
-      val deviceDetail = scaleToUpdate.device
+      supervisorScope.launch {
+        if (isScaleConnected)
+          deviceService.saveScale(scale)
+      }
+      val deviceDetail = scale.device
       if (deviceDetail != null) {
         AppLog.d(
           TAG,
           "Triggering onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
         )
-        deviceService.onDeviceUpdate(deviceDetail, scaleToUpdate.connectionStatus)
+        deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
         AppLog.d(TAG, "Triggered onDeviceUpdate for WiFi configuration change")
       }
     }
@@ -1707,12 +1722,14 @@ constructor(
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
     val username =
-      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20) ?: "Default"
+      discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
+      ?: "Default"
     _state.value.usernameForm.username.onValueChange(username)
     val token = deviceService.getScaleToken()
     val device = Device(
       device = ggDeviceDetail,
       token = token,
+      nickname = "Accucheck Verve Smart Scale",
     )
     discoveredScale = device.copy(
       deviceType = ScaleSetupType.BtWifiR4.value,

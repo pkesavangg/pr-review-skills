@@ -120,9 +120,10 @@ interface IDeviceService {
    * Get a scale by broadcast ID.
    *
    * @param broadcastId The broadcast ID to search for
+   * @param accountId The account ID to filter by
    * @return The device if found, null otherwise
    */
-  suspend fun getScaleByBroadcastId(broadcastId: String): Device?
+  suspend fun getScaleByBroadcastId(broadcastId: String, accountId: String): Device?
 
   /**
    * Get a scale by MAC address.

@@ -20,7 +20,7 @@ struct ScaleBluetoothScreen: View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: lang.bluetooth,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},

@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -48,7 +50,6 @@ fun WeightOnlyModePopup(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = spacing.x3l,bottom = spacing.x3l, start = spacing.x2l, end = spacing.x2l),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
         AppIcon(
@@ -57,24 +58,25 @@ fun WeightOnlyModePopup(
             modifier = Modifier.size(70.dp),
             type = AppIconType.Primary,
         )
-
+      Spacer(modifier = Modifier.height(spacing.sm))
         AppText(
             text = AppPopupStrings.WeightOnlyModeEnabledPopup.Title,
             textType = TextType.ListTitle2,
             textAlign = TextAlign.Center,
         )
+      Spacer(modifier = Modifier.height(spacing.sm))
         AppText(
             text = AppPopupStrings.WeightOnlyModeEnabledPopup.Message,
             textType = TextType.Body,
             textAlign = TextAlign.Center,
         )
-
+      Spacer(modifier = Modifier.height(spacing.sm))
         AppButton(
             label = AppPopupStrings.WeightOnlyModeEnabledPopup.ConfirmButton,
             type = ButtonType.PrimaryFilled,
             onClick = onEnable,
         )
-
+      Spacer(modifier = Modifier.height(spacing.xs))
         AppButton(
             label = AppPopupStrings.WeightOnlyModeEnabledPopup.CancelButton,
             type = ButtonType.TextPrimary,

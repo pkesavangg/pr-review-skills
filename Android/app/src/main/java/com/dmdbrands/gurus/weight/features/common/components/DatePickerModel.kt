@@ -29,7 +29,7 @@ private fun calculateYearRange(minValue: Long?, maxValue: Long?): IntRange {
     calendar.timeInMillis = minValue
     calendar.get(Calendar.YEAR)
   } else {
-    1992 // Default minimum year
+    1922 // Default minimum year
   }
 
   // Calculate max year
@@ -59,7 +59,7 @@ fun DatePickerDialogContent(
   val datePickerState =
     rememberDatePickerState(
       initialSelectedDateMillis = initialMillis,
-      yearRange = 1992..2100,
+      yearRange = 1922..2100,
       selectableDates =
         object : SelectableDates {
           override fun isSelectableDate(utcTimeMillis: Long): Boolean =

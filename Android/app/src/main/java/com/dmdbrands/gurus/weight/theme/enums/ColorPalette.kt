@@ -14,8 +14,12 @@ object ColorPalette {
   val Blue950 = Color(0x662B8AEB)
   val Blue1000 = Color(0xFF1A3959)
 
-  val Green100 = Color(0xFF63B453)
-  val Green200 = Color(0xFF458239)
+  val Green100 = Color(0xFF79C66A)
+  val Green200 = Color(0xFF458239) // light main color
+  val Green300 = Color(0xFF36682D)
+  val Green400 = Color(0xFFB7C3B0) // light disabled
+  val Green800 = Color(0xFF63B453)
+  val Green850 = Color(0xFF3C6F2F)
 
   val Neutral100 = Color(0xFFFFFFFF)
   val Neutral150 = Color(0xFFF6F4F1)

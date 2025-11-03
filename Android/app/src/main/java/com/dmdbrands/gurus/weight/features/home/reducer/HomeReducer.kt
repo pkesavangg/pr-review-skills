@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.features.home.reducer
 
-import android.app.Activity
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.greatergoods.libs.appsync.model.AppSyncResult
+import android.app.Activity
 
 /**
  * State for HomeScreen.
@@ -58,10 +58,6 @@ sealed interface HomeIntent : IReducer.Intent {
     val show: Boolean
   ) : HomeIntent
 
-  data class SetBodyMetricsEnabled(
-    val isEnabled: Boolean
-  ): HomeIntent
-
   data class SetShouldAskForReview(
     val shouldAsk: Boolean
   ): HomeIntent
@@ -92,7 +88,6 @@ class HomeReducer : IReducer<HomeState, HomeIntent> {
         state.copy(isWeightOnlyModeDismissed = intent.isDismissed)
       is HomeIntent.SetShowUnreadFeedIndicator ->
         state.copy(showUnreadFeedIndicator = intent.show)
-      is HomeIntent.SetBodyMetricsEnabled -> state.copy(isBodyMetricsEnabled = intent.isEnabled)
       is HomeIntent.SetShouldAskForReview -> state.copy(shouldAskForReview = intent.shouldAsk)
 
       else -> state.copy()

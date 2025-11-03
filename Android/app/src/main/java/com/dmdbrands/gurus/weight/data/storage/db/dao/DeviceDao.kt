@@ -80,13 +80,14 @@ interface DeviceDao {
   /**
    * Get device by broadcast ID.
    * @param broadcastId The broadcast ID
+   * @param accountId The account ID to filter by
    * @return The device entity if found, null otherwise
    */
-  @Query("SELECT * FROM device WHERE broadcastId = :broadcastId")
-  suspend fun getDeviceByBroadcastId(broadcastId: String): DeviceDetails?
+  @Query("SELECT * FROM device WHERE broadcastId = :broadcastId AND accountId = :accountId")
+  suspend fun getDeviceByBroadcastId(broadcastId: String, accountId: String): DeviceDetails?
 
-  @Query("SELECT * FROM device WHERE broadcastIdString = :broadcastIdString")
-  suspend fun getDeviceByBroadcastIdString(broadcastIdString: String): DeviceDetails?
+  @Query("SELECT * FROM device WHERE broadcastIdString = :broadcastIdString AND accountId = :accountId")
+  suspend fun getDeviceByBroadcastIdString(broadcastIdString: String, accountId: String): DeviceDetails?
 
   /**
    * Update device nickname.

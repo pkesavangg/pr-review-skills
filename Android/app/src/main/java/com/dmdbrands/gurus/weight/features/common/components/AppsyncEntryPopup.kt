@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,7 +56,7 @@ fun AppsyncEntryPopup(
         .fillMaxSize()
         .background(MeTheme.colorScheme.glow),
     ) {
-      Box(modifier = Modifier.align(Alignment.Center)) {
+      Box(modifier = Modifier.align(Alignment.Center).clickable(enabled = false) { }) {
         BaseModal {
           Column(
             modifier = Modifier

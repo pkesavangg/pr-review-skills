@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens.ScaleMetricsSettingScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
+import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -93,6 +94,18 @@ fun ScaleDisplayMetricsScreenContent(
           )
         }
 
+        // Weight Only Mode Note
+        state.scale?.let { scale ->
+          if (scale.isWeighOnlyModeEnabledByOthers == true && scale.preferences?.shouldMeasureImpedance == true) {
+            AppNote(
+              title = ScaleDisplayMetricsStrings.WeightOnlyModeNotes.Title,
+              message = ScaleDisplayMetricsStrings.WeightOnlyModeNotes.Message,
+              icon = AppIcons.Default.WeightOnlyMode,
+              modifier = Modifier.padding(bottom = spacing.sm)
+            )
+          }
+        }
+
         // Description
         AppText(
           text = ScaleDisplayMetricsStrings.Description,
@@ -131,6 +144,7 @@ fun ScaleDisplayMetricsScreenPreview() {
     connectionStatus = com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED,
     alreadyPaired = true,
     userNumber = 1,
+    isWeighOnlyModeEnabledByOthers = true, // Add this to show the AppNote in preview
     preferences = com.dmdbrands.gurus.weight.domain.model.storage.Preferences(
       displayMetrics = listOf(
         "bmi",

@@ -40,7 +40,6 @@ import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.coroutines.launch
 import android.app.Activity
-import android.util.Log
 
 /**
  * Home screen displaying current user data, logout option, and switch account section.
@@ -93,7 +92,6 @@ fun HomeScreenContent(
                         showManualEntryButton = true,
                         onBack = {
                           // Create cancelled result and call intent handler immediately
-                          Log.d("APPSYNC RES", "APPSYNC CANCELLED")
                           val cancelResult = AppSyncResultFactory.createCancelResult(2)
                           AppSyncResultHolder.result = cancelResult
                           handleIntent(HomeIntent.HandleAppSyncResult(cancelResult))
@@ -113,7 +111,7 @@ fun HomeScreenContent(
         )
     },
     floatingActionButton = {
-      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed && !state.isBodyMetricsEnabled) {
+      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed) {
         AppFab(
           showWeightOnlyModeAlert = true,
           onClick = {
@@ -138,10 +136,8 @@ fun HomeScreenContent(
   // Weight-only mode bottom sheet
   if (state.openWeightOnlyModePopup) {
     OpenWeightOnlyModePopup(
-
       onEnable = {
         handleIntent(HomeIntent.OnWeightOnlyModeEnable)
-        handleIntent(HomeIntent.SetBodyMetricsEnabled(true))
       },
       onClose = {
         handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
@@ -166,6 +162,7 @@ fun OpenWeightOnlyModePopup(
     modifier = Modifier.navigationBarsPadding(),
     onDismissRequest = onClose,
     containerColor = MeTheme.colorScheme.primaryBackground,
+    dragHandle = null
   ) {
     WeightOnlyModePopup(
       onEnable = onEnable,

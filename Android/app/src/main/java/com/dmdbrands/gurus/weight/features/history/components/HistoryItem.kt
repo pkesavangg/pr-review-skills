@@ -1,6 +1,6 @@
 package com.dmdbrands.gurus.weight.features.history.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
@@ -29,11 +33,23 @@ fun HistoryItem(
     item: HistoryMonth,
     onClick: () -> Unit,
 ) {
+    var lastClickTime by remember { mutableStateOf(0L) }
+    val debounceTime = 500L // Prevent multiple clicks within 300ms
+
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
+                .combinedClickable(
+                  onClick = {
+                    val currentTime = android.os.SystemClock.elapsedRealtime()
+                    if (currentTime - lastClickTime >= debounceTime) {
+                      lastClickTime = currentTime
+                      onClick()
+                    }
+                  },
+                  onLongClick = { /* Prevent long press navigation */ }
+                )
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),

@@ -90,7 +90,7 @@ object AppButtonDefaults {
       ButtonType.SecondaryOutlined ->
         if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
       ButtonType.SuccessFilled ->
-        if(enabled)  MeTheme.colorScheme.success else MeTheme.colorScheme.success
+        if(enabled)  MeTheme.colorScheme.success else MeTheme.colorScheme.tertiarySuccess
 
       else -> Color.Transparent
     }
@@ -151,6 +151,7 @@ object AppButtonDefaults {
       ButtonType.SecondaryFilled -> MeTheme.colorScheme.inverseActionSecondary
       ButtonType.PrimaryOutlined -> MeTheme.colorScheme.inverseActionSecondary
       ButtonType.SecondaryOutlined -> MeTheme.colorScheme.primaryFocusedAction
+      ButtonType.SuccessFilled -> MeTheme.colorScheme.success
       else -> Color.Transparent
     }
 

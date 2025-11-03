@@ -65,7 +65,9 @@ class CustomTabManager
                             navigationEvent.value = ChromeTabState.Failed(Throwable("Navigation Failed"))
                         }
 
-                        else -> super.onNavigationEvent(event, extras)
+                        else -> {
+
+                        }
                     }
                 }
             }

@@ -7,6 +7,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGBTSetting
 import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceLogResponse
@@ -18,6 +19,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGWifiResponse
 import com.dmdbrands.library.ggbluetooth.model.GGWifiSetupResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 
 interface GGCacheDevice
@@ -35,6 +37,9 @@ class GGDeviceService @Inject constructor(
   private val _deviceCache: MutableStateFlow<Map<String, GGCacheDevice>> = MutableStateFlow(emptyMap())
   val deviceCache: StateFlow<Map<String, GGCacheDevice>> = _deviceCache
 
+  private val _localSkipDevices: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
+  val localSkipDevices: StateFlow<List<String>> = _localSkipDevices.asStateFlow()
+
   // Function to add a device to the cache
   fun addCacheDevice(broadcastId: String?, device: GGCacheDevice) {
     if (broadcastId == null) return
@@ -42,6 +47,15 @@ class GGDeviceService @Inject constructor(
     val updatedCache = currentCache.toMutableMap()
     updatedCache[broadcastId] = device
     _deviceCache.value = updatedCache
+  }
+
+  fun addSkipDeviceBroadcastID(broadCastId: String) {
+    if (!localSkipDevices.value.contains(broadCastId))
+      _localSkipDevices.value += broadCastId
+  }
+
+  fun removeSkipDeviceBroadcastID(broadCastId: String) {
+    _localSkipDevices.value -= broadCastId
   }
 
   /**
@@ -73,11 +87,9 @@ class GGDeviceService @Inject constructor(
   ) {
     try {
       ggBluetooth.deleteUser(device, disconnect, callback)
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       throw e
     }
-
   }
 
   fun getUsers(
@@ -94,6 +106,13 @@ class GGDeviceService @Inject constructor(
     ggBluetooth.updateAccount(device, callback)
   }
 
+  fun updateProfile(
+    profile: GGBTUserProfile,
+    callback: (GGUserActionResponseType) -> Unit
+  ) {
+    ggBluetooth.updateProfile(profile, callback)
+  }
+
   fun restoreAccount(
     device: GGBTDevice,
     accountName: String,
@@ -108,14 +127,17 @@ class GGDeviceService @Inject constructor(
    */
   fun disconnectDevice(device: GGBTDevice) {
     ggBluetooth.disconnectDevice(device.broadcastId)
+    this.skipDevice(device.broadcastId, true)
   }
 
-  fun skipDevice(broadCastId: String) {
-    ggBluetooth.skipDevice(broadCastId)
+  fun skipDevice(broadCastId: String, considerForSession: Boolean = false) {
+    ggBluetooth.skipDevice(broadCastId, considerForSession)
+    this.addSkipDeviceBroadcastID(broadCastId)
   }
 
   fun clearPairedDevices() {
     ggBluetooth.clearDevices()
+    _localSkipDevices.value = emptyList()
   }
 
   /**

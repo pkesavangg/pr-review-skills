@@ -114,4 +114,13 @@ object ScaleDetailsStrings {
   const val TimeFormat12H = "12H"
   const val TimeFormat24H = "24H"
   const val ClearData = "Clear Data"
+
+  // Enable Body Metrics Alert Dialog
+  const val EnableBodyMetricsAlertTitle = "Enable Body Metrics"
+  const val EnableBodyMetricsAlertMessage = "This will disable Weight Only Mode for one session, and all body metrics will be collected."
+  const val EnableBodyMetricsAlertConfirm = "ENABLE"
+  const val EnableBodyMetricsAlertCancel = "CANCEL"
+  const val EnableBodyMetricsAlertSuccess = "Body metrics enabled successfully"
+  const val EnableBodyMetricsAlertError = "Error enabling body metrics"
+  const val UpdateMode = "Updating Mode..."
 }

@@ -12,12 +12,14 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
  * Single component for milestone items that handles both draggable and static cases.
  *
  * @param progress Progress data containing weight information
- * @param goal Goal data for weight targets
  * @param milestone The milestone stat
  * @param inEditMode Whether the dashboard is in edit mode
+ * @param isFromSetup Whether the item is from setup flow
  * @param isDragging Whether the item is currently being dragged (only for draggable items)
  * @param isVisible Whether the milestone is currently visible
+ * @param latestWeight Latest weight value for display
  * @param onMilestoneMoved Callback when milestone is moved
+ * @param onNavigateToGoal Callback when navigating to goal screen
  * @param reorderableScope The reorderable scope for drag functionality (null for static items)
  */
 @Composable
@@ -30,6 +32,7 @@ fun MilestoneItem(
   isVisible: Boolean = true,
   latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
+  onNavigateToGoal: () -> Unit = {},
   reorderableScope: ReorderableCollectionItemScope? = null
 ) {
   val hapticFeedback = LocalHapticFeedback.current
@@ -61,6 +64,7 @@ fun MilestoneItem(
       onBadgeClick = {
         onMilestoneMoved(!isVisible, milestone)
       },
+      onNavigateToGoal = onNavigateToGoal,
     )
   } else {
     AnimatedStatCard(

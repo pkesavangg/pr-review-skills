@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -70,14 +71,12 @@ constructor(
   init {
     observeAccountChanges()
     provideInitialState()
-    setScaleDetails()
     observePermissions()
-    configureR4ScaleDetails()
     observeScaleConnectionChanges()
   }
 
   override fun provideInitialState(): ScaleDetailsState = ScaleDetailsState(
-    scaleNameForm = FormGroup(ScaleNameDialogFormControls.Companion.create()),
+    scaleNameForm = FormGroup(ScaleNameDialogFormControls.create()),
     enableTestingFeatures = AppStatusService.enableTestingFeatures,
   )
 
@@ -133,11 +132,13 @@ constructor(
       // Dialog Management Handlers
       ScaleDetailsIntent.ShowTimeFormatDialog -> showTimeFormatModal()
       ScaleDetailsIntent.ShowClearDataDialog -> showClearDataModal()
+      ScaleDetailsIntent.ShowEnableBodyMetricsAlert -> showEnableBodyMetricsAlert()
+      ScaleDetailsIntent.EnableBodyMetrics -> enableBodyMetrics()
       else -> {}
     }
   }
 
-  private fun observeAccountChanges(){
+  private fun observeAccountChanges() {
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
         activeAccount = it
@@ -188,35 +189,13 @@ constructor(
   private fun observeScaleConnectionChanges() {
     viewModelScope.launch {
       deviceService.pairedScales.collect { devices ->
-        val currentScale = state.value.scale
-        if (currentScale != null) {
-          val updatedScale = devices.find { it.id == scaleId }
-          updatedScale?.let { scale ->
-            handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
-            val scaleName = scale.nickname
-            handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
-            getDeviceInfo()
-            configureR4ScaleDetails()
-          }
-        }
-      }
-    }
-  }
-
-  private fun setScaleDetails() {
-    viewModelScope.launch {
-
-      // Then observe for changes
-      deviceService.pairedScales.collect { devices ->
-        val device = devices.find { it.id == scaleId }
-        device?.let { scaleDevice ->
-          AppLog.d(TAG, "Updating scale info for: ${scaleDevice.nickname}")
-          handleIntent(ScaleDetailsIntent.SetScaleInfo(scaleDevice))
-          // Initialize form with current scale name after scale data is loaded
-          val scaleName = scaleDevice.nickname
+        val updatedScale = devices.find { it.id == scaleId }
+        updatedScale?.let { scale ->
+          handleIntent(ScaleDetailsIntent.SetScaleInfo(scale))
+          val scaleName = scale.nickname
           handleIntent(ScaleDetailsIntent.SetScaleName(scaleName))
-        } ?: run {
-          AppLog.w(TAG, "No device found for scaleId: $scaleId")
+          getDeviceInfo()
+          configureR4ScaleDetails()
         }
       }
     }
@@ -267,9 +246,9 @@ constructor(
                 dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
                 try {
                   if (scale.deviceType == ScaleSetupType.BtWifiR4.value && scale.connectionStatus == BLEStatus.CONNECTED) {
-                    ggDeviceService.deleteAccount(scale.toGGBTDevice(), false) {
+                    ggDeviceService.deleteAccount(scale.toGGBTDevice()) {
                       if (it == GGUserActionResponseType.DELETE_COMPLETED) {
-                        ggDeviceService.skipDevice(scale.device?.broadcastId ?: "")
+                        ggDeviceService.disconnectDevice(scale.toGGBTDevice())
                       } else {
                         dialogQueueService.showToast(
                           Toast(
@@ -301,16 +280,14 @@ constructor(
               dialogQueueService.dismissCurrent()
             },
 
-          ),
+            ),
 
-        )
+          )
       }
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       dialogQueueService.dismissLoader()
-      AppLog.d(TAG,"Error while deleting an scale")
+      AppLog.d(TAG, "Error while deleting an scale")
     }
-
   }
 
   private fun openScaleUsers() {
@@ -412,7 +389,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           AppLog.d(TAG, "Getting device info for connected scale: ${scale.device?.deviceName}")
           ggDeviceService.getDeviceInfo(scale.toGGBTDevice()) { deviceDetails ->
             if (deviceDetails != null) {
@@ -440,7 +417,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           val isWifiConfigured = scale.device?.isWifiConfigured ?: false
 
           if (!isWifiConfigured) {
@@ -481,7 +458,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           // Update the state immediately for UI feedback
           // Call the actual Bluetooth service to update session impedance
           // Similar to Angular's bluetoothService.updateSetting implementation
@@ -517,7 +494,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.DownloadingLogs)
 // TODO: need to implement download option
           ggDeviceService.getDeviceLogs(scale.toGGBTDevice()) { logResponse ->
@@ -542,7 +519,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast("${ScaleDetailsStrings.ClearingData} $dataType data...")
 
           val clearType = when (dataType) {
@@ -576,7 +553,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.UpdatingTimeFormat)
 
           ggDeviceService.updateSettings(
@@ -587,7 +564,10 @@ constructor(
             ),
           )
 
-          AppLog.d(TAG, "Time format changed to: ${if (is12Hour) ScaleDetailsStrings.TimeFormat12H else ScaleDetailsStrings.TimeFormat24H}")
+          AppLog.d(
+            TAG,
+            "Time format changed to: ${if (is12Hour) ScaleDetailsStrings.TimeFormat12H else ScaleDetailsStrings.TimeFormat24H}",
+          )
           showToast("${ScaleDetailsStrings.TimeFormatUpdated} ${if (is12Hour) ScaleDetailsStrings.TimeFormat12H else ScaleDetailsStrings.TimeFormat24H}")
         } else {
           showToast(ScaleDetailsStrings.ScaleNotConnectedTimeFormat)
@@ -608,8 +588,9 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
-          val animationType = if (isStartAnimation) ScaleDetailsStrings.StartAnimation else ScaleDetailsStrings.EndAnimation
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
+          val animationType =
+            if (isStartAnimation) ScaleDetailsStrings.StartAnimation else ScaleDetailsStrings.EndAnimation
           showToast("${ScaleDetailsStrings.UpdatingAnimation} $animationType animation...")
 
           val settingKey = if (isStartAnimation) {
@@ -626,7 +607,10 @@ constructor(
             ),
           )
 
-          AppLog.d(TAG, "$animationType animation ${if (enabled) ScaleDetailsStrings.AnimationEnabled else ScaleDetailsStrings.AnimationDisabled}")
+          AppLog.d(
+            TAG,
+            "$animationType animation ${if (enabled) ScaleDetailsStrings.AnimationEnabled else ScaleDetailsStrings.AnimationDisabled}",
+          )
           showToast("$animationType ${if (enabled) ScaleDetailsStrings.AnimationEnabled else ScaleDetailsStrings.AnimationDisabled}")
         } else {
           showToast(ScaleDetailsStrings.ScaleNotConnectedAnimation)
@@ -645,7 +629,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.ResettingFirmware)
 
           ggDeviceService.updateSettings(
@@ -675,7 +659,7 @@ constructor(
     viewModelScope.launch {
       try {
         val scale = state.value.scale
-        if (scale != null && scale.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.RestoringFactory)
 
           ggDeviceService.updateSettings(
@@ -738,6 +722,96 @@ constructor(
         handleIntent(ScaleDetailsIntent.ClearScaleData(selectedValue ?: ""))
       },
     )
+  }
+
+  /**
+   * Shows the enable body metrics alert dialog.
+   */
+  private fun showEnableBodyMetricsAlert() {
+    try {
+      viewModelScope.launch {
+        dialogQueueService.showDialog(
+          DialogModel.Confirm(
+            title = ScaleDetailsStrings.EnableBodyMetricsAlertTitle,
+            message = ScaleDetailsStrings.EnableBodyMetricsAlertMessage,
+            confirmText = ScaleDetailsStrings.EnableBodyMetricsAlertConfirm,
+            cancelText = ScaleDetailsStrings.EnableBodyMetricsAlertCancel,
+            onConfirm = {
+              viewModelScope.launch {
+                dialogQueueService.dismissCurrent()
+                handleIntent(ScaleDetailsIntent.EnableBodyMetrics)
+              }
+            },
+            onDismiss = {
+              dialogQueueService.dismissCurrent()
+            },
+          ),
+        )
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error showing enable body metrics alert", e.toString())
+    }
+  }
+
+  /**
+   * Enables body metrics for the scale (temporarily).
+   * This follows the same pattern as onWeightOnlyModeEnable() in HomeViewModel.
+   */
+  private fun enableBodyMetrics() {
+    viewModelScope.launch {
+      try {
+        val scale = state.value.scale
+        if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
+          AppLog.d(TAG, "Enabling body metrics for scale: ${scale.device?.deviceName}")
+
+          // Show loading toast
+          dialogQueueService.showLoader(
+            message = ScaleDetailsStrings.UpdateMode,
+          )
+
+          // Update scale settings to enable body metrics (session impedance)
+          enableSessionImpedence(scale)
+
+          // Show success toast
+          dialogQueueService.showToast(
+            Toast(
+              message = ScaleDetailsStrings.EnableBodyMetricsAlertSuccess,
+            ),
+          )
+
+          AppLog.d(TAG, "Body metrics enabled successfully for scale: ${scale.device?.deviceName}")
+        } else {
+          showToast(ScaleDetailsStrings.ScaleNotConnectedImpedance) // Reuse existing message
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error enabling body metrics", e.toString())
+        showToast(ScaleDetailsStrings.EnableBodyMetricsAlertError)
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  /**
+   * Enables session impedance for the scale to allow body metrics collection.
+   * This follows the same pattern as enableSessionImpedence() in HomeViewModel.
+   */
+  private fun enableSessionImpedence(device: Device) {
+    viewModelScope.launch {
+      try {
+        ggDeviceService.updateSettings(
+          device.toGGBTDevice(),
+          GGBTSetting(
+            key = GGBTSettingType.SESSION_IMPEDANCE,
+            value = GGBTSettingValue.Boolean(true),
+          ),
+        )
+        AppLog.d(TAG, "Session impedance enabled for scale: ${device.device?.deviceName}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to enable session impedance for scale: ${device.device?.deviceName}", e)
+        throw e // Re-throw to be handled by the calling method
+      }
+    }
   }
 
   private fun navigateBack() {

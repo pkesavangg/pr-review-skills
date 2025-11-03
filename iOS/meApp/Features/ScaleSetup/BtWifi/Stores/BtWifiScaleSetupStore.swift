@@ -146,6 +146,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Defaults to all available metrics so that, unless the user removes metrics, everything is sent to the scale.
     var selectedScaleMetrics: [String] = ScaleMetrics.defaultMetricsKeys
     
+    /// Snapshot of scale metrics when entering the customization screen (for change detection and cancellation)
+    private var initialScaleMetricsSnapshot: [String]? = nil
+    
+    /// Snapshot of scale metrics when Save button was last clicked (for preserving saved changes)
+    private var savedScaleMetricsSnapshot: [String]? = nil
+    
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
@@ -316,14 +322,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Scale metrics customization screen.
                 ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics, hasChanged in
                     guard let self else { return }
+                    // Only update the local state, don't persist until Save is clicked
                     self.selectedScaleMetrics = metrics
-                    // Only mark changes when there is a real delta
-                    self.hasCustomizeChanges = hasChanged || self.hasCustomizeChanges
-                    if hasChanged {
-                        self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
-                    } else {
-                        self.selectedCustomizeItems.remove(CustomizeSettingsItem.scaleMetrics.rawValue)
-                    }
                     // Re-evaluate footer button enabled state
                     self.updateNextEnabled()
                 }
@@ -788,7 +788,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                    let attached = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
                     displayName = attached.displayName
                 }
-                await MainActor.run { self.userNameForm.setDisplayName(displayName) }
+                await MainActor.run { self.userNameForm.setDisplayName(displayName)
+                    initialDisplayNameSnapshot = displayName
+                }
             }
             
             // Convert DeviceUser list to ScaleUser list for form validation
@@ -796,8 +798,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 ScaleUser(name: deviceUser.name, token: deviceUser.token)
             }
             userNameForm.updateUserList(scaleUsers)
-            initialDisplayNameSnapshot = displayName
-
+            
         case .scaleMode:
             // Pre-populate scale mode settings from attached preference
             Task { [weak self] in
@@ -817,9 +818,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 guard let self else { return }
                 if let savedScale = self.savedScale,
                    let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
-                    await MainActor.run { self.selectedScaleMetrics = Array(preference.displayMetrics) }
+                    await MainActor.run { 
+                        self.selectedScaleMetrics = Array(preference.displayMetrics)
+                        // Set initial snapshot to current saved state
+                        self.initialScaleMetricsSnapshot = Array(preference.displayMetrics)
+                        // If no saved snapshot exists, set it to current saved state
+                        if self.savedScaleMetricsSnapshot == nil {
+                            self.savedScaleMetricsSnapshot = Array(preference.displayMetrics)
+                        }
+                    }
                 } else {
-                    await MainActor.run { self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys }
+                    await MainActor.run { 
+                        self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
+                        // Set initial snapshot to default state
+                        self.initialScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
+                        // If no saved snapshot exists, set it to default state
+                        if self.savedScaleMetricsSnapshot == nil {
+                            self.savedScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
+                        }
+                    }
                 }
             }
         case .dashboardMetrics:
@@ -902,15 +919,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             break
         case .scaleMetrics:
-            // Persist into attached preference to avoid detached faults
+            // Persist scale metrics changes immediately when Save is clicked
             if let savedScale = savedScale {
                 Task {
                     if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
                         attached.displayMetrics = selectedScaleMetrics
+                        // Update the saved snapshot to reflect the new saved state
+                        await MainActor.run {
+                            self.savedScaleMetricsSnapshot = self.selectedScaleMetrics
+                        }
                     }
                 }
             }
             self.hasCustomizeChanges = true
+            self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
             break
         case .dashboardMetrics:
             // Save dashboard changes immediately when Save is clicked
@@ -955,6 +977,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 userNameForm.setDisplayName(original)
                 // Mark the form as pristine to clear the dirty state and validation errors
                 userNameForm.displayName.markAsPristine()
+            }
+        case .scaleMetrics:
+            // Revert scale metrics to the last saved state (not the initial state)
+            // This preserves previously saved changes and only reverts unsaved changes
+            if let savedState = savedScaleMetricsSnapshot {
+                selectedScaleMetrics = savedState
             }
         default:
             break
@@ -1688,10 +1716,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         do {
             // Check which customize settings pages need to be saved
-            let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
-            // Dashboard metrics are already saved when Save button is clicked, no need to save again
             
             // Get current preference or create default
             let currentPreference: R4ScalePreference = await {
@@ -1718,7 +1744,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
                 displayName: currentPreference.displayName,
-                displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
+                displayMetrics: currentPreference.displayMetrics, // Use current preference metrics (already updated when Save was clicked)
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
                 shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,
@@ -1886,7 +1912,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 let initial = removeWhiteSpace(initialDisplayNameSnapshot ?? (firstName ?? "User"))
                 isNextEnabled = userNameForm.displayName.isValid && current != initial
             case .scaleMetrics:
-                isNextEnabled = hasCustomizeChanges && selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
+                // Check if current state differs from the last saved state
+                let hasScaleMetricsChanged = savedScaleMetricsSnapshot != nil && savedScaleMetricsSnapshot != selectedScaleMetrics
+                isNextEnabled = hasScaleMetricsChanged
             case .scaleMode:
                 let changed = (selectedScaleMode != initialScaleModeSnapshot) || (isHeartRateEnabled != (initialHeartRateEnabledSnapshot ?? false))
                 isNextEnabled = changed

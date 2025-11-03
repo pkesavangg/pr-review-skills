@@ -219,7 +219,7 @@ fun ScaleDetailsScreenContent(
             icon = AppIcons.Default.WeightOnlyMode,
             buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.EnableBodyMetrics,
             onButtonClick = {
-              handleIntent(ScaleDetailsIntent.OpenScaleMode)
+              handleIntent(ScaleDetailsIntent.ShowEnableBodyMetricsAlert)
             },
           )
         }

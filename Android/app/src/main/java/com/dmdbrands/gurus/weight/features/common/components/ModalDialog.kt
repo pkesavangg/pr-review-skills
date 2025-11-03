@@ -2,9 +2,11 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
@@ -13,7 +15,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
  * A reusable modal dialog wrapper that handles backdrop dismiss functionality.
- * 
+ *
  * This component provides a consistent way to create modals with proper backdrop dismiss behavior.
  * It automatically handles the full-screen background with clickable behavior when backdrop dismiss is enabled.
  *
@@ -37,18 +39,36 @@ fun ModalDialog(
         ),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MeTheme.colorScheme.glow)
-                .then(
-                    if (config.dismissOnClickOutside) {
-                        Modifier.clickable { onDismiss() }
-                    } else {
-                        Modifier
-                    }
-                ),
+            modifier = Modifier.fillMaxSize()
         ) {
-            Box(modifier = Modifier.align(Alignment.Center)) {
+            // Background overlay - only clickable on areas not covered by modal
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MeTheme.colorScheme.overlay)
+                    .then(
+                        if (config.dismissOnClickOutside) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onDismiss
+                            )
+                        } else {
+                            Modifier
+                        }
+                    ),
+            )
+
+            // Modal content - positioned on top of overlay with click blocking
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { /* Block clicks from reaching the overlay */ }
+                    )
+            ) {
                 content()
             }
         }
@@ -77,7 +97,7 @@ fun ModalDialog(
 
 /**
  * A specialized modal dialog wrapper for BaseModal components.
- * 
+ *
  * This provides a convenient way to wrap BaseModal with proper backdrop dismiss behavior.
  *
  * @param onDismiss Called when the dialog should be dismissed

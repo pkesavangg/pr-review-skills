@@ -102,11 +102,7 @@ data class EntryForm(
                 val weight = when {
                   new.isBlank() -> 0.0
                   weightUnit == WeightUnit.LB -> ConversionTools.convertStoredToKg(
-                    ConversionTools.convertDisplayToStored(
-                      new.toDouble() / 10,
-                      forceMetric = false,
-                      isMetric = false,
-                    ),
+                    new.toDouble(),
                   )
 
                   else -> new.toDouble() / 10

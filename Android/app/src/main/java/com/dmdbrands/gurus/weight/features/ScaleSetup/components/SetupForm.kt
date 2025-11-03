@@ -141,7 +141,7 @@ fun <T> SetupForm(
     AppText(
       text = subtitle,
       textType = TextType.Body,
-      modifier = Modifier.padding(bottom = spacing.lg),
+      modifier = Modifier.padding(top = spacing.xs,bottom = spacing.lg),
       annotatedText = subtitleAnnotatedText,
       annotationPosition = AnnotationPosition.End,
       spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
@@ -306,7 +306,7 @@ fun SetupFormPreview() {
         toggleChecked = false,
         onToggleChanged = {},
         isWifiConnected = true,
-        noteMessage = "Your phone should stay connected to the chosen 2GHZ network until setup is complete.",
+        noteMessage = "Your phone should stay connected to the chosen 2.4 GHZ network until setup is complete.",
       )
     }
   }
