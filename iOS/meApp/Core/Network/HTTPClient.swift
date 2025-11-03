@@ -63,7 +63,7 @@ final class HTTPClient {
         request: URLRequest,
         needsAuth: Bool,
         accountId: String?,
-        retryCount: Int = 0
+        restartWithNewTokens: Bool = false
     ) async throws -> T {
         // Skip token check for logout and refresh token endpoints
         let skipTokenCheck = request.url?.path.contains("/refresh-token") == true ||
@@ -82,18 +82,19 @@ final class HTTPClient {
         }
         
         do {
-
            return try await performRequest(request)
         } catch {
             if let networkError = error as? HTTPError {
                 switch networkError {
                 case HTTPError.unauthorized:
-                    if  needsAuth && !skipTokenCheck {
+                    // Only retry with refreshed token if we haven't already retried
+                    // This prevents infinite loops when 401 is legitimate (e.g., wrong password)
+                    if needsAuth && !skipTokenCheck && !restartWithNewTokens {
                         let account = try await getAccount(accountId)
                         let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
-                        return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId)
+                        return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)
                     }
                 default:
                     break
@@ -259,6 +260,7 @@ final class HTTPClient {
 // 🔐 Auth Handling:
 // - Automatically adds Bearer token if `needsAuth` is true.
 // - Refreshes expired tokens and retries the request once.
+// - Prevents infinite retry loops by tracking `restartWithNewTokens` flag.
 // - Skips token check for login/logout/refresh-token endpoints.
 //
 // 🔁 Retryable Errors:
