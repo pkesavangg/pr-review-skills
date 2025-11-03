@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.utility.HttpErrorResponse
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
@@ -34,6 +33,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -302,7 +302,7 @@ constructor(
    * @param accountId The account ID
    * @param dashboardType The new dashboard type to set
    */
-  override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType){
+  override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType) {
     // Get existing settings to preserve metrics and milestones
     val existingSettings = accountDao.getDashboardSettings(accountId).first()
 
@@ -311,7 +311,7 @@ constructor(
       dashboardMetrics = existingSettings?.dashboardMetrics ?: emptyList(),
       dashboardMilestones = existingSettings?.dashboardMilestones ?: emptyList(),
       dashboardType = dashboardType.value,
-      isSynced = true
+      isSynced = true,
     )
     accountDao.insertDashboardSettings(settings)
   }
@@ -334,7 +334,7 @@ constructor(
       dashboardMetrics = dashboardMetrics,
       dashboardMilestones = dashboardMilestones,
       dashboardType = dashboardType.value,
-      isSynced = true
+      isSynced = true,
     )
     accountDao.insertDashboardSettings(settings)
   }
@@ -435,7 +435,7 @@ constructor(
     accountId: String,
     accountInfo: AccountInfo,
   ) {
-    try{
+    try {
       // Use updateAccount with only the profile fields from API response
       val partialUpdate =
         PartialAccount(
@@ -448,22 +448,18 @@ constructor(
         )
       updateAccount(accountId, partialUpdate)
       AppLog.d(TAG, "Updated account $accountId with API response data")
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       AppLog.e(TAG, "Failed to update account $accountId with API response data", e)
     }
-
   }
 
   override suspend fun markAccountExpired(accountId: String) {
-    try{
+    try {
       accountDao.markAccountExpired(accountId)
       AppLog.d(TAG, "Marked account $accountId as expired")
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       AppLog.e(TAG, "Failed to mark account $accountId as expired", e)
     }
-
   }
 
   /**
@@ -586,9 +582,8 @@ constructor(
   override suspend fun removeAccount(accountId: String) {
     try {
       userDataStore.clearAccountTokens(accountId)
-    }
-    catch (e: Exception){
-      AppLog.d(TAG,"Failed to clear account tokens")
+    } catch (e: Exception) {
+      AppLog.d(TAG, "Failed to clear account tokens")
     }
   }
 
@@ -677,16 +672,6 @@ constructor(
   // New: Flow for active account's weight unit
   override fun getActiveAccountWeightUnitFlow(): Flow<WeightUnit?> =
     getActiveAccount().map { it?.weightUnit }.distinctUntilChanged()
-
-  private fun Account?.toWeightless(): Weightless {
-    val rawWeightless = this?.weightlessWeight ?: 0f
-    val unit = this?.weightUnit
-    val weightlessInLb = ConversionTools.convertStoredToDisplay(rawWeightless.toDouble(), unit == WeightUnit.KG)
-    return Weightless(
-      isWeightlessOn = this?.isWeightlessOn ?: false,
-      weightlessWeight = weightlessInLb.toFloat(),
-    )
-  }
 
   // New: Flow for active account's Weightless settings
   override fun getActiveAccountWeightlessFlow(): Flow<Weightless> =

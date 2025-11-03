@@ -96,6 +96,9 @@ fun GraphPagerView(
           "%.1f",
           averageWeight,
         )
+        if (averageWeight > 0) {
+          labelData = ("+").plus(labelData)
+        }
         weightValue = averageWeight
         scrollTarget =
           if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
