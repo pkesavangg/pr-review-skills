@@ -980,7 +980,7 @@ constructor(
         val notificationSettings = getNotificationSettingsFromOption(notificationOption)
         val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
         if (updatedAccount != null) {
-          dialogQueueService.showToast(Toast("Success!Notification settings updated"))
+          dialogQueueService.showToast(Toast("Notification settings updated", "Success!"))
           AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
           // The activeAccountFlow will automatically emit the updated account and update the UI
         } else {

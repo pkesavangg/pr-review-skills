@@ -45,5 +45,5 @@ data class SignupData(
   val password: String = "",
   val confirmPassword: String = "",
   val zipcode: String = "",
-  val unitMetric: Boolean = false,
+  val useMetric: Boolean = false,
 )
