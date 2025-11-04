@@ -506,7 +506,21 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
-        let latestWeight = (try? await entryService.getLatestEntry())?.scaleEntry?.weight
+        // Safely extract weight from latest entry by refetching on main actor if needed
+        let latestEntry = try? await entryService.getLatestEntry()
+        guard let entryId = latestEntry?.id else {
+            return buildEntryFromCurrentMetrics(storedWeight: nil)
+        }
+        
+        // Refetch entry on main actor to safely access SwiftData properties
+        let repository = EntryRepository()
+        let refetched = try? await repository.refetchEntriesOnMainActor(entryIds: [entryId])
+        
+        // Access SwiftData properties synchronously on main actor
+        let latestWeight: Int? = await MainActor.run {
+            return refetched?[entryId]?.scaleEntry?.weight
+        }
+        
         return buildEntryFromCurrentMetrics(storedWeight: latestWeight)
     }
     
@@ -702,7 +716,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             guard let latestEntry = try await getLatestEntry() else {
                 return
             }
-            try await updateMetrics(with: latestEntry)
+            // Refetch entry on main actor to safely access SwiftData properties
+            let entryId = latestEntry.id
+            let repository = EntryRepository()
+            let refetched = try await repository.refetchEntriesOnMainActor(entryIds: [entryId])
+            guard let refetchedEntry = refetched[entryId] else {
+                logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to refetch latest entry")
+                return
+            }
+            try await updateMetrics(with: refetchedEntry)
         } catch {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to reset metrics to latest entry: \(error)")
         }
@@ -728,7 +750,35 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
         do {
             let allEntries = try await entryService.getAllEntries()
-            // Offload reduction work to a background task to avoid any main-thread cost
+            // Extract entry IDs and refetch on main actor to safely access SwiftData properties
+            let entryIds = allEntries.map { $0.id }
+            let repository = EntryRepository()
+            let refetchedEntries = try await repository.refetchEntriesOnMainActor(entryIds: entryIds)
+            
+            // Extract all SwiftData values on main actor before doing computation
+            let extractedData = await MainActor.run {
+                refetchedEntries.values.map { entry -> (timestamp: String, values: [String: Double?]) in
+                    // Use toOperationDTO() to centralize extraction logic and avoid duplication
+                    let dto = entry.toOperationDTO()
+                    let values: [String: Double?] = [
+                        "bmi": dto.bmi,
+                        "bodyFat": dto.bodyFat,
+                        "muscleMass": dto.muscleMass,
+                        "water": dto.water,
+                        "pulse": dto.pulse,
+                        "boneMass": dto.boneMass,
+                        "visceralFat": dto.visceralFatLevel,
+                        "subFat": dto.subcutaneousFatPercent,
+                        "protein": dto.proteinPercent,
+                        "skelMuscle": dto.skeletalMusclePercent,
+                        "bmr": dto.bmr,
+                        "metabolicAge": dto.metabolicAge
+                    ]
+                    return (timestamp: entry.entryTimestamp, values: values)
+                }
+            }
+            
+            // Now compute fallback values in background task using extracted plain data
             let computed = await Task.detached(priority: .utility) { () -> FallbackValues in
                 @inline(__always) func isValid(_ value: Double) -> Bool {
                     guard !value.isNaN && !value.isInfinite else { return false }
@@ -739,30 +789,30 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     if value >= 0 && value <= 150 { return true }
                     return value >= 0
                 }
-                func latest(_ extractor: (Entry) -> Any?) -> (Double?, String?) {
+                func latest(_ metricKey: String) -> (Double?, String?) {
                     var bestTs: String? = nil
                     var bestVal: Double? = nil
-                    for e in allEntries {
-                        guard let raw = extractor(e) else { continue }
-                        let d = Double("\(raw)") ?? 0.0
-                        if !isValid(d) { continue }
-                        let ts = e.entryTimestamp
-                        if bestTs == nil || ts > bestTs! { bestTs = ts; bestVal = d }
+                    for data in extractedData {
+                        guard let value = data.values[metricKey] else { continue }
+                        guard let doubleValue = value else { continue }
+                        if !isValid(doubleValue) { continue }
+                        let ts = data.timestamp
+                        if bestTs == nil || ts > bestTs! { bestTs = ts; bestVal = doubleValue }
                     }
                     return (bestVal, bestTs)
                 }
-                let bmi = latest { $0.scaleEntry?.bmi }.0
-                let bodyFat = latest { $0.scaleEntry?.bodyFat }.0
-                let muscleMass = latest { $0.scaleEntry?.muscleMass }.0
-                let water = latest { $0.scaleEntry?.water }.0
-                let pulse = latest { $0.scaleEntryMetric?.pulse }.0
-                let boneMass = latest { $0.scaleEntryMetric?.boneMass }.0
-                let visceralFat = latest { $0.scaleEntryMetric?.visceralFatLevel }.0
-                let subFat = latest { $0.scaleEntryMetric?.subcutaneousFatPercent }.0
-                let protein = latest { $0.scaleEntryMetric?.proteinPercent }.0
-                let skelMuscle = latest { $0.scaleEntryMetric?.skeletalMusclePercent }.0
-                let bmrRaw = latest { $0.scaleEntryMetric?.bmr }.0
-                let metabolicAge = latest { $0.scaleEntryMetric?.metabolicAge }.0
+                let bmi = latest("bmi").0
+                let bodyFat = latest("bodyFat").0
+                let muscleMass = latest("muscleMass").0
+                let water = latest("water").0
+                let pulse = latest("pulse").0
+                let boneMass = latest("boneMass").0
+                let visceralFat = latest("visceralFat").0
+                let subFat = latest("subFat").0
+                let protein = latest("protein").0
+                let skelMuscle = latest("skelMuscle").0
+                let bmrRaw = latest("bmr").0
+                let metabolicAge = latest("metabolicAge").0
                 return FallbackValues(
                     bmi: bmi,
                     bodyFat: bodyFat,

@@ -40,10 +40,10 @@ struct DashboardScreen: View {
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
-            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
+            RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
-            ScaleMetricsView(
+            MetricInfoSheetWrapper(
                 entry: metricInfoEntry ?? store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
                 selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
             )
