@@ -31,11 +31,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  * Shows a call-to-action to set a goal weight.
  *
  * @param onSetGoalClick Callback when the "Set a goal weight" button is clicked
+ * @param inEditMode Whether in edit mode (disables the button)
  * @param modifier Modifier for styling
  */
 @Composable
 fun EmptyGoal(
   onSetGoalClick: () -> Unit,
+  inEditMode: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   Column(
@@ -67,7 +69,8 @@ fun EmptyGoal(
           label = EmptyGoalStrings.ButtonText,
           type = ButtonType.SuccessFilled,
           size = ButtonSize.Small,
-          onClick = onSetGoalClick
+          onClick = onSetGoalClick,
+          enabled = !inEditMode,
         )
       }
     }
@@ -81,6 +84,7 @@ private fun EmptyGoalLightPreview() {
   MeAppTheme {
     EmptyGoal(
       onSetGoalClick = { /* Preview action */ },
+      inEditMode = false,
       modifier = Modifier.padding(16.dp)
     )
   }
@@ -91,6 +95,7 @@ private fun EmptyGoalDarkPreview() {
   MeAppTheme {
     EmptyGoal(
       onSetGoalClick = { /* Preview action */ },
+      inEditMode = true,
       modifier = Modifier.padding(16.dp)
     )
   }

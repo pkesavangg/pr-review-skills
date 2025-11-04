@@ -69,6 +69,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     var skipDevices: [String] = []
+    var reconnectAlertSkippedDevices: [String] = []
     
     
     // MARK: - Navigation Callback
@@ -92,6 +93,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var connectedGgDevices: [GGBTDevice] = []
     private var isWeightOnlyModeAlertDismissed = false
     private var lastProfileUpdateAccountId: String?
+    private var isUpdatingR4Profile = false
+    private var lastAccountId: String?
     
     // MARK: - Dependencies
     private let accountService: AccountService
@@ -151,8 +154,21 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             .sink { [weak self] account in
                 Task {
                     await self?.handleAccountUpdate(account)
-                    if account != nil {
+                    // Only update R4 profile from subscription if:
+                    // 1. Account is not nil
+                    // 2. Not already updating (prevents concurrent calls)
+                    // 3. Account ID changed (account switch) or was nil (new account)
+                    // This prevents conflicts when updateUserProfileForR4Scales is called explicitly
+                    let currentAccountId = account?.accountId
+                    let accountIdChanged = currentAccountId != self?.lastAccountId
+                    if let accountId = currentAccountId,
+                       !(self?.isUpdatingR4Profile ?? false),
+                       accountIdChanged {
+                        self?.lastAccountId = accountId
                         let _ = await self?.updateUserProfileForR4Scales()
+                    } else if currentAccountId != nil {
+                        // Update lastAccountId even if we don't call updateUserProfileForR4Scales
+                        self?.lastAccountId = currentAccountId
                     }
                 }
             }
@@ -613,9 +629,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Profile & Account
     /**
      Updates the user profile (height, weight, age, etc.) on all connected R4 scales.
-     - Returns: Result<Bool, BluetoothServiceError>
+     - Returns: Result<[String], BluetoothServiceError>
      */
-    func updateUserProfileForR4Scales() async -> Result<Bool, BluetoothServiceError> {
+    func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> {
+        // Prevent concurrent calls
+        guard !isUpdatingR4Profile else {
+            logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales already in progress, skipping")
+            return .failure(.updateProfileFailed(BluetoothServiceError.notImplemented))
+        }
+        
+        isUpdatingR4Profile = true
+        defer { isUpdatingR4Profile = false }
+        
         do {
             guard let account = activeAccount else {
                 throw BluetoothServiceError.noActiveAccount
@@ -624,10 +649,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.noProfileInfo
             }
             let success = await ggBleSDK.updateProfile(profile: userProfile)
-            if !success {
-                throw BluetoothServiceError.updateProfileFailed(BluetoothServiceError.notImplemented)
-            }
-            return .success(success)
+            logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
+            // SDK returns Bool; protocol expects [String] status array. Return empty array for now.
+            return .success([])
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -756,6 +780,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     func clearScaleDiscoveredInfo() {
         skipDevices.removeAll()
+        reconnectAlertSkippedDevices.removeAll()
     }
     
     
@@ -823,11 +848,16 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - isDuplicateUserError: Whether this is a duplicate user error (true) or user limit error (false)
      */
     private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async {
+        
         guard let deviceDetails = deviceData as? GGDeviceDetails, !isSetupInProgress else {
             logger.log(level: .error, tag: tag, message: "Invalid device data for event alert")
             return
         }
         
+        if skipDevices.contains(deviceDetails.broadcastIdString) || reconnectAlertSkippedDevices.contains(deviceDetails.broadcastIdString) {
+            return
+        }
+
         // Get scale info and create discovered scale
         let scaleInfo = scaleInfoUtils.getScaleInfo(byScaleName: deviceDetails.deviceName)
         guard  let discoveredScale = bluetoothScales.first(where: {$0.broadcastIdString == deviceDetails.broadcastIdString}) else {
@@ -905,6 +935,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                         // Skip this device
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
+                                self.reconnectAlertSkippedDevices.append(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -924,6 +955,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                         // Skip this device
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
+                                self.reconnectAlertSkippedDevices.append(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -997,11 +1029,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     /// Safely gets the scale type from a Device, handling potential SwiftData detachment issues
     private func getSafeScaleType(for device: Device) -> String? {
-        // Check if the device has a valid persistent identifier
-        guard device.persistentModelID != nil else {
-            logger.log(level: .debug, tag: tag, message: "Device \(device.id) has no persistent model ID")
-            return nil
-        }
+        // Note: `persistentModelID` is non-optional in SwiftData; no need to guard for nil here.
         
         // Try to access the scale type, but be prepared for potential detachment
         // We'll use a safer approach by checking if the bathScale relationship exists
@@ -1039,7 +1067,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleSmartScaleData(_ data: GGScanResponse) async {
         guard let responseType = data.type else { return }
         let scanData = data.data
-        
         switch responseType {
         case .NEW_DEVICE:
             await handleNewDevice(scanData)
@@ -1429,17 +1456,24 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
     
-    /// Helper to calculate age from a date string (YYYY-MM-DD), matching JS logic
+    /// Helper to calculate age from a date string (e.g. "2009-01-01T00:00:00.000Z")
     private func calculateAge(from dateString: String?) -> Int? {
         guard let dateString = dateString else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let birthDate = formatter.date(from: dateString) else { return nil }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        guard let birthDate = formatter.date(from: dateString) else {
+            return nil
+        }
+
         let today = Date()
         let calendar = Calendar.current
+
         var age = calendar.component(.year, from: today) - calendar.component(.year, from: birthDate)
         let monthDiff = calendar.component(.month, from: today) - calendar.component(.month, from: birthDate)
         let dayDiff = calendar.component(.day, from: today) - calendar.component(.day, from: birthDate)
+
         if monthDiff < 0 || (monthDiff == 0 && dayDiff < 0) {
             age -= 1
         }
@@ -1544,7 +1578,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Disconnects the specified device without deleting it from storage.
      - Returns: Result<Void, BluetoothServiceError>
      */
-    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+    func disconnectDevice(broadcastId: String, considerForSession: Bool = true) async -> Result<Void, BluetoothServiceError> {
+
         if !skipDevices.contains(broadcastId) {
             skipDevices.append(broadcastId)
         }
@@ -1557,6 +1592,22 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         ggBleSDK.skipDevice(broadcastId)
         return .success(())
+    }
+
+    /// Re-applies all locally tracked `skipDevices` to the SDK after flows that may reset SDK state (e.g., closing setup screens).
+    /// Ensures that currently paired scales are not skipped again.
+    func reapplySkipDevicesExcludingPaired() {
+        // Build a fast lookup set of paired broadcast IDs
+        // Re-issue skip calls for any previously skipped device that is not paired
+        let pairedIdsUpper = Set(bluetoothScales.compactMap { $0.broadcastIdString?.uppercased() })
+
+        skipDevices = skipDevices.filter { !pairedIdsUpper.contains($0.uppercased()) }
+        
+        for id in skipDevices {
+            // Normalize case to avoid mismatches
+            let normalized = id.uppercased()
+            ggBleSDK.skipDevice(id)
+        }
     }
 }
 

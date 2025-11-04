@@ -21,10 +21,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * Composable for the dashboard milestone section that displays weight progress and milestone stats.
  *
  * @param progress Progress data containing weight information
- * @param goal Goal data for weight targets
+ * @param latestWeight Latest weight value for display
  * @param inEditMode Whether the dashboard is in edit mode
+ * @param isFromSetup Whether the item is from setup flow
+ * @param hasVisibleMetrics Whether there are visible metrics
  * @param visibleKeys List of currently visible dashboard keys
  * @param onMilestonesChanged Callback when visible milestones are changed (for save functionality)
+ * @param onNavigateToGoal Callback when navigating to goal screen
  * @param modifier Modifier for the composable
  */
 @Composable
@@ -36,6 +39,7 @@ fun DashboardMilestone(
   hasVisibleMetrics: Boolean = false,
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
+  onNavigateToGoal: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
 
@@ -98,6 +102,13 @@ fun DashboardMilestone(
       hasVisibleMetrics = hasVisibleMetrics,
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
+      onNavigateToGoal = if (inEditMode) {
+        // Disable navigation to goal screen in edit mode
+        {}
+      } else {
+        // Allow navigation to goal screen when not in edit mode
+        onNavigateToGoal
+      },
       progress = progress,
       latestWeight = latestWeight,
     )

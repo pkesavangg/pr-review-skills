@@ -80,19 +80,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Reset all connection statuses to false on app launch
             // Only Bluetooth events (DEVICE_CONNECTED) should set them to true
             await resetAllConnectionStatusOnLaunch()
+            
+            // Trigger sync on app launch to fetch scales from server
+            if let account = try? await accountService.getActiveAccount() {
+                await syncAllScalesWithRemote()
+            }
         }
         
         // React to active account changes so the scales list reflects the correct account immediately.
         if let concreteAccountService = accountService as? AccountService {
             concreteAccountService.$activeAccount
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] (_: Account?) in
+                .sink { [weak self] (newAccount: Account?) in
                     guard let self else { return }
                     Task { @MainActor in
                         // Clear current list to avoid showing stale devices while switching
                         self.scales = []
                         // Refresh from local storage scoped to the new active account
                         await self.refreshScalesFromLocal()
+                        // Trigger sync to fetch scales from server for the new account
+                        await self.syncAllScalesWithRemote()
                     }
                 }
                 .store(in: &cancellables)
@@ -233,6 +240,22 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     nonisolated func updateConnectedDevices(device: Any, isConnected: Bool) async {
+        // Get current active accountId - CRITICAL: Only update devices for current account
+        // Multiple accounts can have devices with same MAC/BroadcastID
+        let currentAccountId: String?
+        do {
+            currentAccountId = try await getAccountId()
+        } catch {
+            currentAccountId = nil
+        }
+        
+        guard let accountId = currentAccountId else {
+            await MainActor.run {
+                logger.log(level: .debug, tag: tag, message: "No active account for connection update")
+            }
+            return
+        }
+        
         await MainActor.run {
             // Try to extract device ID from different possible data formats
             var deviceId: String?
@@ -250,9 +273,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             
             var devicesUpdated = 0
             
-            // If we have a device ID, try to update by ID first
+            // If we have a device ID, try to update by ID first (scoped to current account)
             if let deviceId = deviceId {
-                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == deviceId })
+                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
+                    $0.id == deviceId && $0.accountId == accountId 
+                })
                 do {
                     let devices = try localRepository.context.fetch(descriptor)
                     for device in devices {
@@ -269,9 +294,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 }
             }
             
-            // Also try to update by broadcast ID (don't return early, update all matching devices)
+            // Also try to update by broadcast ID (scoped to current account)
+            // CRITICAL: Only update devices for current account, not all accounts
             if let broadcastId = broadcastId {
-                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
+                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
+                    $0.broadcastIdString == broadcastId && $0.accountId == accountId 
+                })
                 do {
                     let devices = try localRepository.context.fetch(descriptor)
                     for device in devices {
@@ -296,20 +324,37 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 }
             } else {
                 // If we couldn't find any devices, log the error
-                logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil")")
+                logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)")
             }
         }
     }
     
     nonisolated func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
+        // Get current active accountId - CRITICAL: Only update devices for current account
+        let currentAccountId: String?
+        do {
+            currentAccountId = try await getAccountId()
+        } catch {
+            currentAccountId = nil
+        }
+        
+        guard let accountId = currentAccountId else {
+            await MainActor.run {
+                logger.log(level: .debug, tag: tag, message: "No active account for WiFi status update")
+            }
+            return
+        }
+        
         await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
+                $0.broadcastIdString == broadcastId && $0.accountId == accountId 
+            })
             do {
                 if let device = try localRepository.context.fetch(descriptor).first {
                     device.isWifiConfigured = isConfigured
                     try localRepository.context.save()
                 } else {
-                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId)")
+                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
@@ -318,8 +363,25 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     nonisolated func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
+        // Get current active accountId - CRITICAL: Only update devices for current account
+        let currentAccountId: String?
+        do {
+            currentAccountId = try await getAccountId()
+        } catch {
+            currentAccountId = nil
+        }
+        
+        guard let accountId = currentAccountId else {
+            await MainActor.run {
+                logger.log(level: .debug, tag: tag, message: "No active account for weight-only mode update")
+            }
+            return
+        }
+        
         await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == broadcastId })
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
+                $0.broadcastIdString == broadcastId && $0.accountId == accountId 
+            })
             do {
                 if let device = try localRepository.context.fetch(descriptor).first {
                     device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
@@ -327,7 +389,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     try localRepository.context.save()
                     logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
                 } else {
-                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId)")
+                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
@@ -338,7 +400,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     // MARK: - Preference Fetching
     /// Fetches an attached R4 scale preference by its scale ID from the repository.
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? {
-        return await localRepository.fetchAttachedPreference(by: id)
+        return localRepository.fetchAttachedPreference(by: id)
     }
 
     /// Synchronous variant to fetch an attached R4 scale preference by its scale ID.
@@ -648,6 +710,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
     }
     
+    
     @Sendable
     private func getAccountId() async throws -> String {
         guard let account = try await accountService.getActiveAccount() else {
@@ -785,29 +848,39 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
             var corrected = 0
             for dto in serverScales {
-                // Prefer match by server id
-                if let devId = dto.id, let device = try await localRepository.getDevice(devId) {
-                    if device.accountId != accountId {
-                        device.accountId = accountId
-                        try await localRepository.updateDevice(device)
-                        corrected += 1
-                        logger.log(level: .debug, tag: tag, message: "Corrected device accountId by id: id=\(device.id) -> account=\(accountId)")
+                // Prefer match by server id, but ONLY if it belongs to the current account
+                // Device IDs are globally unique, but we need to verify accountId matches
+                if let devId = dto.id {
+                    // Try to find device by ID AND accountId to ensure we don't match across accounts
+                    let byIdAndAccount = FetchDescriptor<Device>(predicate: #Predicate { 
+                        $0.id == devId && $0.accountId == accountId 
+                    })
+                    if (try? localRepository.context.fetch(byIdAndAccount).first) != nil {
+                        // Device already has correct accountId, continue
+                        continue
                     }
-                    continue
+                    
+                    // If device exists but with wrong accountId, that's an error - don't auto-correct
+                    // because it might belong to a different account legitimately
+                    if let device = try? await localRepository.getDevice(devId) {
+                        if device.accountId != accountId {
+                            logger.log(level: .debug, tag: tag, message: "Device \(devId) belongs to different account, skipping")
+                            continue
+                        }
+                    }
                 }
-                
-                // Fallback: try match by MAC
+                // Fallback: try match by MAC (scoped to current account)
                 var matchedDevice: Device? = nil
                 if let mac = dto.mac, !mac.isEmpty {
-                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac })
+                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac && $0.accountId == accountId })
                     if let found = try? localRepository.context.fetch(byMac).first {
                         matchedDevice = found
                     }
                 }
                 
-                // Fallback: try match by broadcastIdString
+                // Fallback: try match by broadcastIdString (scoped to current account)
                 if matchedDevice == nil, let bid = dto.broadcastIdString, !bid.isEmpty {
-                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid })
+                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid && $0.accountId == accountId })
                     if let found = try? localRepository.context.fetch(byBid).first {
                         matchedDevice = found
                     }
@@ -837,7 +910,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
             
             // Prune orphan purely-local devices that don't exist on server for this account
-            // Build server match keys
+            // CRITICAL: Only prune devices that belong to current accountId
+            // Multiple accounts can have devices with same MAC/SKU, so we must check accountId
             let serverIds = Set(serverScales.compactMap { $0.id })
             let serverMacs = Set(serverScales.compactMap { $0.mac }.filter { !$0.isEmpty })
             let serverBids = Set(serverScales.compactMap { $0.broadcastIdString }.filter { !$0.isEmpty })
@@ -845,12 +919,24 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let localForAccount = try await localRepository.listScales(forAccountId: accountId)
             var pruned = 0
             for dev in localForAccount {
+                // CRITICAL: Verify device belongs to current account before pruning
+                guard dev.accountId == accountId else {
+                    continue
+                }
+                
+                // Only prune synced devices that don't match server
+                // Keep unsynced devices even if they don't match (they might be new local creations)
+                let isSynced = dev.isSynced ?? false
+                if !isSynced {
+                    continue
+                }
+                
                 // If any server device matches by id/mac/broadcastId, keep it
                 let matchesServer = serverIds.contains(dev.id) ||
                     (dev.mac != nil && serverMacs.contains(dev.mac!)) ||
                     (dev.broadcastIdString != nil && serverBids.contains(dev.broadcastIdString!))
                 if !matchesServer {
-                    // Orphan local device -> delete to align with server
+                    // Orphan synced local device -> delete to align with server
                     try await localRepository.deleteScale(dev.id)
                     pruned += 1
                     logger.log(level: .debug, tag: tag, message: "Pruned orphan local device (no server match): id=\(dev.id)")
@@ -870,7 +956,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         var properties: [String: Any] = [:]
         
         // Only include nickname if it's a valid string to prevent type errors
-        if let nickname = dto.nickname, nickname is String {
+        if let nickname = dto.nickname {
             properties["nickname"] = nickname
         }
         //Add Properties here in order to update the device
@@ -897,7 +983,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     ) async throws -> Device {
         
         // Set up device properties (matching BluetoothService.addNewDevice logic)
-        device.id = device.id ?? UUID().uuidString
+        // device.id should already be set, but ensure it's not empty
+        if device.id.isEmpty {
+            device.id = UUID().uuidString
+        }
         device.accountId = accountId
         device.sku = sku
         device.deviceType = DeviceType.scale.rawValue

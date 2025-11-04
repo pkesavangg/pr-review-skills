@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 
 /**
  * UI state for the dashboard, holding loading state and entry summaries.
@@ -29,6 +30,7 @@ data class DashboardState(
   val scrollTarget: Double? = null,
   val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
+  val weightless: Weightless? = null,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
@@ -54,6 +56,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
   object OnConnectScale : DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
+  data class UpdateWeightLess(val weightless: Weightless?) : DashboardIntent
 }
 
 /**
@@ -72,6 +75,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
     is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
     is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
+    is DashboardIntent.UpdateWeightLess -> state.copy(weightless = intent.weightless)
     else -> state
   }
 }

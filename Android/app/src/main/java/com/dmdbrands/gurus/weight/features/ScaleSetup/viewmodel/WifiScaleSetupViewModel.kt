@@ -41,7 +41,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel(
@@ -100,7 +99,6 @@ constructor(
     observeStepChanges()
     getNetworkInfo()
     getScaleToken()
-    monitorNetworkStatus()
     // Observe selectedWifiMode changes and update canProceedToNext in WIFI_MODE step
     viewModelScope.launch {
       state.collect { currentState ->
@@ -204,9 +202,6 @@ constructor(
 
             WifiScaleSetupStep.WIFI_PASSWORD -> {
               updateNetworkStatus()
-              if (state.value.permissionsSkipped) {
-                clearWifiPasswordForm()
-              }
               val canProceed = isWifiPasswordFormValid()
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
             }
@@ -218,11 +213,7 @@ constructor(
 
             WifiScaleSetupStep.ACTIVATE_SCALE -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              if (currentState.isGetMACSetup) {
                 handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
-              } else {
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Pair"))
-              }
               handleIntent(WifiScaleSetupIntent.SetShowError(false))
               handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
             }
@@ -522,20 +513,6 @@ constructor(
   }
 
   /**
-   * Monitors network status continuously.
-   * Equivalent to TypeScript monitorNetworkStatus()
-   */
-  private fun monitorNetworkStatus() {
-    viewModelScope.launch {
-      try {
-        updateNetworkStatus()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "monitorNetworkStatus - Error monitoring network", e)
-      }
-    }
-  }
-
-  /**
    * Gets the MAC address of the connected WiFi network.
    * Equivalent to TypeScript getMacAddress()
    */
@@ -703,18 +680,25 @@ constructor(
    * - If on early steps (index < 3), only fill WiFi password form
    * - If in WiFi switching context (after SWITCH_WIFI step), only fill scale network form
    * - Otherwise, fill both forms as before
+   * - Always populate if permissions are currently enabled (regardless of skip history)
    */
   private fun updateFormValuesWithSsid(ssid: String) {
     val currentState = state.value
     val currentStep = currentState.currentStep
     val currentStepIndex = currentState.currentStepIndex
-    val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup
+
+    // Check if permissions are currently enabled (regardless of skip history)
+    val arePermissionsCurrentlyEnabled = AppPermissionsHelper
+      .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
+
+    val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
+
     if (shouldAutoPopulate) {
       // Check if we're on early steps (index < 3) - equivalent to TypeScript condition
       val isEarlyStep = currentStepIndex < 3
       AppLog.d(
         TAG,
-        "updateFormValuesWithSsid - SSID: $ssid, currentStep: $currentStep, currentStepIndex: $currentStepIndex, isEarlyStep: $isEarlyStep, isWifiSwitchingContext: $isWifiSwitchingContext",
+        "updateFormValuesWithSsid - SSID: $ssid, currentStep: $currentStep, currentStepIndex: $currentStepIndex, isEarlyStep: $isEarlyStep, isWifiSwitchingContext: $isWifiSwitchingContext, arePermissionsCurrentlyEnabled: $arePermissionsCurrentlyEnabled",
       )
       if (isEarlyStep) {
         // On early steps (index < 3), only fill WiFi password form
@@ -732,7 +716,7 @@ constructor(
         }
       }
     } else {
-      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped and not in MAC setup mode")
+      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped, not in MAC setup mode, and permissions not currently enabled")
     }
   }
 
@@ -830,6 +814,8 @@ constructor(
 
       WifiScaleSetupStep.ACTIVATE_SCALE -> {
         handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
+        startSmartConnect()
+        return
       }
 
       WifiScaleSetupStep.WIFI_MODE -> {
@@ -838,6 +824,8 @@ constructor(
             handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
           }
         }
+        startSmartConnect()
+        return
       }
 
       WifiScaleSetupStep.SWITCH_WIFI -> {
@@ -845,6 +833,10 @@ constructor(
           // For normal setup, start AP mode
           startApMode()
         }
+      }
+
+      WifiScaleSetupStep.WIFI_MODE -> {
+
       }
 
       WifiScaleSetupStep.SCALE_COUNTS -> {
@@ -877,11 +869,6 @@ constructor(
       else -> {
         // Handle button text actions for backward compatibility
         when (currentState.nextButtonText) {
-          "Pair" -> {
-            startSmartConnect()
-            return // Don't proceed to next step yet
-          }
-
           "Finish", "close", "exit", "Close" -> {
             startExitSetup(true)
             return
@@ -925,11 +912,9 @@ constructor(
     )
     try {
       viewModelScope.launch {
-        val alreadyPairedScale =
-          deviceService.pairedScales.first().find { it.sku == sku && it.userNumber == state.value.selectedUser }
-        if (alreadyPairedScale != null) {
-          deviceService.deleteScale(alreadyPairedScale.id)
-        }
+        // TODO: Need to verify how they detect the duplicate scales unless the sku with user number
+        //  how will they find out that in the same session scale does not gets saved.
+
         val scaleInfo = SCALES.find { it.sku == state.value.sku }
         val wifiDevice = Device(
           device = GGDeviceDetail(

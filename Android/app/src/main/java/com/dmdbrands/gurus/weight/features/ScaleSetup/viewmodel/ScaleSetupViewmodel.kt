@@ -30,24 +30,6 @@ abstract class ScaleSetupViewmodel<State : IReducer.State, Intent : IReducer.Int
 
   abstract override fun provideInitialState(): State
 
-  override fun onCleared() {
-    viewModelScope.launch {
-      val device = this@ScaleSetupViewmodel.discoveredScale
-      var connectedDeviceBroadcastID: String? = null
-
-      ggDeviceService.localSkipDevices.first().forEach {
-        if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
-          connectedDeviceBroadcastID = it
-        } else {
-          ggDeviceService.skipDevice(it)
-        }
-      }
-      if (connectedDeviceBroadcastID != null) {
-        ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
-      }
-    }
-  }
-
   /**
    * Called when a new device matching the protocol is found during setup.
    * @param device The GGDeviceDetail of the new device found.

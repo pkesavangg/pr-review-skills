@@ -7,6 +7,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGBTSetting
 import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceLogResponse
@@ -105,6 +106,13 @@ class GGDeviceService @Inject constructor(
     ggBluetooth.updateAccount(device, callback)
   }
 
+  fun updateProfile(
+    profile: GGBTUserProfile,
+    callback: (GGUserActionResponseType) -> Unit
+  ) {
+    ggBluetooth.updateProfile(profile, callback)
+  }
+
   fun restoreAccount(
     device: GGBTDevice,
     accountName: String,
@@ -119,6 +127,7 @@ class GGDeviceService @Inject constructor(
    */
   fun disconnectDevice(device: GGBTDevice) {
     ggBluetooth.disconnectDevice(device.broadcastId)
+    this.skipDevice(device.broadcastId, true)
   }
 
   fun skipDevice(broadCastId: String, considerForSession: Boolean = false) {

@@ -141,7 +141,7 @@ fun <T> SetupForm(
     AppText(
       text = subtitle,
       textType = TextType.Body,
-      modifier = Modifier.padding(bottom = spacing.lg),
+      modifier = Modifier.padding(top = spacing.xs,bottom = spacing.lg),
       annotatedText = subtitleAnnotatedText,
       annotationPosition = AnnotationPosition.End,
       spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),

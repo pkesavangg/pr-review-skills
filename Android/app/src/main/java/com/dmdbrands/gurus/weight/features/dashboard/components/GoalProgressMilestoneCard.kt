@@ -36,16 +36,19 @@ import com.dmdbrands.gurus.weight.features.goal.components.EmptyGoal
 import com.dmdbrands.gurus.weight.features.goal.components.GoalMilestoneDisplay
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import android.util.Log
 
 /**
  * Goal progress milestone card that shows weight progress with badge support.
  *
  * @param progress Progress data containing weight information
- * @param goal Goal data for weight targets
  * @param inEditMode Whether the dashboard is in edit mode
+ * @param isDragging Whether the card is being dragged
  * @param isVisible Whether the milestone is currently visible
+ * @param latestWeight Latest weight value for display
  * @param modifier Modifier for the composable
  * @param onBadgeClick Callback when the badge is clicked
+ * @param onNavigateToGoal Callback when navigating to goal screen
  */
 @Composable
 fun GoalProgressMilestoneCard(
@@ -55,7 +58,8 @@ fun GoalProgressMilestoneCard(
   isVisible: Boolean = true,
   latestWeight: Double? = null,
   modifier: Modifier = Modifier,
-  onBadgeClick: () -> Unit = {}
+  onBadgeClick: () -> Unit = {},
+  onNavigateToGoal: () -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
   val badgeOffsetX = (-5).dp
@@ -120,6 +124,7 @@ fun GoalProgressMilestoneCard(
         .alpha(if (isVisible) 1f else 0.5f),
       colors = CardDefaults.cardColors(containerColor = MeTheme.colorScheme.primaryBackground),
     ) {
+      Log.d("goalweight", "$latestWeight")
       // Reuse the shared GoalMilestoneDisplay to ensure consistent look and logic.
       // If we have the required account/goal context, render; otherwise, no-op.
       val account = progress.goal?.account
@@ -132,7 +137,10 @@ fun GoalProgressMilestoneCard(
         )
       }
       else {
-        EmptyGoal({})
+        EmptyGoal(
+          onSetGoalClick = onNavigateToGoal,
+          inEditMode = inEditMode,
+        )
       }
     }
   }

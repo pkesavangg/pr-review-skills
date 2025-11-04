@@ -33,9 +33,9 @@ struct ScaleManualListRowView: View {
             .frame(height: 75)
 
             Spacer()
-            AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 24, height: 24))
+            AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 32, height: 32))
                 .foregroundColor(theme.actionPrimary)
-            Image(AppAssets.chevronRight)
+            AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
                 .foregroundColor(theme.actionPrimary)
         }
         .padding(.vertical, .spacingSM)

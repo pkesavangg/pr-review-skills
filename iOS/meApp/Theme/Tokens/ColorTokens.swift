@@ -135,7 +135,26 @@ struct ColorTokens {
             promoGreen100: promoGreen100,
             promoGreen900: promoGreen900,
             promoRed100: promoRed100,
-            promoRed900: promoRed900
+            promoRed900: promoRed900,
+            
+            ggSecondary: ggSecondary800,
+            ggSecondaryPressed: ggSecondary900,
+            ggSecondaryDisabled: ggSecondary200,
+
+            // Promo Red
+            promoRed: promoRed800,
+            promoRedPressed: promoRed900,
+            promoRedDisabled: promoRed200,
+
+            // Promo Blue
+            promoBlue: promoBlue800,
+            promoBluePressed: promoBlue900,
+            promoBlueDisabled: promoBlue200,
+
+            // Promo Green
+            promoGreen: promoGreen800,
+            promoGreenPressed: promoGreen900,
+            promoGreenDisabled: promoGreen200
         )
     }
 }
