@@ -195,7 +195,7 @@ constructor(
       BtScaleSetupStep.SELECT_USER -> _state.value.user != null
       BtScaleSetupStep.PERMISSIONS ->
         AppPermissionsHelper.areRequiredPermissionsEnabled(
-          permissionService.permissionCallBackFlow.value,
+          state.value.permissions,
           setupType = ScaleSetupType.Bluetooth,
         )
       else -> true

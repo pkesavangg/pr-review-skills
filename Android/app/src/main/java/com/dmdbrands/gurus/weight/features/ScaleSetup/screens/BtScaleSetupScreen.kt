@@ -7,8 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,7 +32,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import kotlinx.coroutines.delay
 
 @Composable
 fun BtScaleSetupScreen(
@@ -65,17 +62,18 @@ fun BtScaleSetupScreenContent(
   val sku = state.scaleSetupState.sku
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
-  val isAnimating = remember { mutableStateOf(false) }
+  val currentStep = state.step
 
   // Sync ViewModel state to Pager state
-  LaunchedEffect(state.scaleSetupState.setupState.step) {
-    if (!isAnimating.value) {
-      isAnimating.value = true
+  LaunchedEffect(currentStep) {
+    val targetPage = currentStep.ordinal
+    // Only scroll if we're not already on the target page
+    if (pagerState.currentPage != targetPage) {
       try {
-        pagerState.animateScrollToPage(state.step.ordinal)
-      } finally {
-        delay(100)
-        isAnimating.value = false
+        pagerState.animateScrollToPage(targetPage)
+      } catch (e: Exception) {
+        // If animation fails, snap to page immediately
+        pagerState.scrollToPage(targetPage)
       }
     }
   }
