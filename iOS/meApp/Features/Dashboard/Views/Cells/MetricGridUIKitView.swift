@@ -309,11 +309,19 @@ extension MetricGridUIKitView {
         
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
+            
+            // Ensure we're using the current metricsToShow array to prevent stale data during reloads
+            guard indexPath.item < store.metricsToShow.count else {
+                // Fallback: return cell with placeholder configuration
+                return cell
+            }
+            
             let item = store.metricsToShow[indexPath.item]
             
             // Check if this cell is currently being dragged
             let isBeingDragged = draggedItemId == item.id.uuidString
             
+            // Configure cell - the configure method handles synchronous updates internally
             cell.configure(
                 with: item,
                 dashboardType: store.state.metrics.dashboardType,

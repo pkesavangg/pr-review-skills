@@ -24,7 +24,7 @@ struct MileStoneGridModel {
         case .goalCard:
             // Goal card moves normally - position validation is handled at UI level
             let goalCard = mileStones.remove(at: source)
-            mileStones.insert(goalCard, at: destination)
+            mileStones.insert(goalCard, at: destination)           
             
         case .streak:
             // Find goal card position if it exists
@@ -49,22 +49,27 @@ struct MileStoneGridModel {
                         let movingStreak = mileStones[source]
                         mileStones[source] = targetWidget
                         mileStones[destination] = movingStreak
+                        
                     } else {
                         // If target is not a streak item, do normal move
                         let streak = mileStones.remove(at: source)
                         mileStones.insert(streak, at: destination)
+                        
                     }
                 } else {
                     // For non-immediate neighbors, do normal move
                     let streak = mileStones.remove(at: source)
                     mileStones.insert(streak, at: destination)
+                    
                 }
             } else {
                 // If no goal card, do normal move
                 let streak = mileStones.remove(at: source)
                 mileStones.insert(streak, at: destination)
+                
             }
         }
+        
     }
     
     /// Reorders the grid so goal cards start on new rows when they wouldn't fit
@@ -78,6 +83,15 @@ struct MileStoneGridModel {
 
         if hasRemovedStreaks {
             return // Skip automatic reordering when streaks are removed
+        }
+        let totalStreaks = mileStones.reduce(0) { acc, widget in
+            switch widget {
+            case .goalCard: return acc
+            case .streak: return acc + 1
+            }
+        }
+        if totalStreaks % spanCount != 0 {
+            return
         }
         
         // Count streak items before the goal card
@@ -104,7 +118,9 @@ struct MileStoneGridModel {
         }
         
         // If goal card fits in current row, keep order
-        if usedBefore == 0 || targetSpan <= remaining { return }
+        if usedBefore == 0 || targetSpan <= remaining {
+            return
+        }
         
         // Otherwise, move goal card to start of next row
         var moveBy = 0

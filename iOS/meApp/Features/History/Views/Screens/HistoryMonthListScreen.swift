@@ -84,7 +84,7 @@ struct HistoryMonthListScreen: View {
             await historyStore.refreshAllEntries()
         }
         .sheet(item: $selectedEntry) { entry in
-            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
+            RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
         }
     }
     
