@@ -196,6 +196,9 @@ constructor(
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
               if (areRequiredPermissionsEnabled) {
                 handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
+              } else {
+                // Automatically request disabled permissions when entering PERMISSIONS step
+                permissionAccess()
               }
               updateNetworkStatus()
             }
@@ -311,6 +314,33 @@ constructor(
       AppLog.d(TAG, "WiFi settings opened successfully")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to open WiFi settings", e)
+    }
+  }
+
+  /**
+   * Handles permission access for WiFi scale setup.
+   * Gets all disabled permissions and requests them one by one.
+   */
+  private fun permissionAccess() {
+    val currentPermissions = state.value.permissions
+    val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+      permissionMap = currentPermissions,
+      setupType = ScaleSetupType.Wifi,
+    )
+
+    if (disabledPermissions.isEmpty()) {
+      AppLog.d(TAG, "All required permissions are enabled")
+      return
+    }
+
+    AppLog.d(TAG, "Found ${disabledPermissions.size} disabled permissions: $disabledPermissions")
+
+    // Request permissions one by one
+    disabledPermissions.forEach { permissionType ->
+      if (permissionType != CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
+        AppLog.d(TAG, "Requesting permission: $permissionType")
+        requestPermission(permissionType)
+      }
     }
   }
 
