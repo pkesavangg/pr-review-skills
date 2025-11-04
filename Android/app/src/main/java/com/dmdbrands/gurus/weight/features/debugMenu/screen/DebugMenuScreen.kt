@@ -97,18 +97,16 @@ private fun DebugMenuContent(
       Spacer(modifier = Modifier.height(spacing.lg))
       // App Information Section
       AppInformationSection(state)
-      Spacer(modifier = Modifier.height(spacing.lg))
       // App Troubleshooting Section
       AppTroubleshootingSection(handleIntent)
       // Scale Troubleshooting Section (only show if scales are available)
       if (state.hasScales) {
-        Spacer(modifier = Modifier.height(spacing.lg))
         ScaleTroubleshootingSection(
           isSendScaleLogEnabled = state.isSendScaleLogEnabled,
           handleIntent = handleIntent,
         )
       }
-      Spacer(modifier = Modifier.height(spacing.xl))
+      Spacer(modifier = Modifier.height(spacing.lg))
     }
   }
 }
