@@ -18,9 +18,7 @@ class DashboardStore: ObservableObject {
     
     // MARK: - Centralized State
     @Published var state: DashboardState = DashboardState()
-    
-    
-    
+
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?

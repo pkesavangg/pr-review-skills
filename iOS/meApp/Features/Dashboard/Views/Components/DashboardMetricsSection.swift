@@ -48,10 +48,6 @@ struct DashboardMetricsSection: View {
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                // Note: Do NOT call resetActiveMetricsCountToShowAll() here
-                // Metrics should be enabled/disabled based on current state from API
-                // Only first-time R4 pairing (dashboard4 → dashboard12) will enable all metrics
-                // This is handled in BtWifiScaleSetupStore.setCustomizationPage()
             }
         }
         .onChange(of: parentView) { _, newValue in
