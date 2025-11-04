@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
@@ -61,8 +62,19 @@ enum class MetricInfoSource {
   TOTAL
 }
 
-fun getFilteredMetricKeys(): List<MetricKey> {
-  return MetricKey.entries
+/**
+ * Gets filtered metric keys based on dashboard type.
+ * For 4-metric dashboard, returns only BMI, BODY_FAT, MUSCLE_MASS, BODY_WATER.
+ * For 12-metric dashboard, returns all available metrics.
+ *
+ * @param dashboardType The dashboard type to determine which metrics to show.
+ * @return List of filtered MetricKey values.
+ */
+fun getFilteredMetricKeys(dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS): List<MetricKey> {
+  return when (dashboardType) {
+    DashboardType.DASHBOARD_4_METRICS -> MetricKey.getDefault4Metrics()
+    DashboardType.DASHBOARD_12_METRICS -> MetricKey.getAllMetrics()
+  }
 }
 
 fun getFormattedDate(timestamp: Long, source: MetricInfoSource): String {
@@ -128,7 +140,10 @@ fun MetricInfoScreenContent(
   val scope = rememberCoroutineScope()
   val backStack = LocalNavBackStack.current
 
-  val metricKeys = MetricKey.entries.map {
+  val dashboardType = metricInfoState.dashboardType ?: DashboardType.DASHBOARD_12_METRICS
+  val filteredMetricKeys = getFilteredMetricKeys(dashboardType)
+
+  val metricKeys = filteredMetricKeys.map {
     MetricInfoKey(
       key = it,
       label = it.name.replace("_", " "),
