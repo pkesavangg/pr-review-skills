@@ -84,7 +84,7 @@ struct AddMultipleAccountsModalView: View {
             )
             .overlay {
                 Circle()
-                    .stroke(theme.backgroundPrimary, lineWidth: 3)
+                    .stroke(theme.backgroundSecondary, lineWidth: 3)
                     .frame(width: 54, height: 54)
             }
             .padding(.trailing, 40)

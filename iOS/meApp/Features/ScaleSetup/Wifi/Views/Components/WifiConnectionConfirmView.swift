@@ -67,6 +67,7 @@ struct WifiConnectionConfirmView: View {
     private var apModeOnlyView: some View {
         VStack(alignment: .center) {
             apModeImage
+                .padding(.vertical, .spacingLG)
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
