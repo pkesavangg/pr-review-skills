@@ -52,22 +52,19 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Setup Methods
-    private func setupInitialMetrics() {
-        if state.dashboardType == .dashboard12 {
-      
+    public func setupInitialMetrics(forceShowAll: Bool = false) {
+        if state.dashboardType == .dashboard12 || forceShowAll {
+            // In dashboard12 mode or if forced (e.g. during R4 setup), show all 12
             state.metrics = originalMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
             }
-            // Don't set activeMetricsCount here - it will be set correctly when loading from API
-            // If API data is not available, it will default to showing all metrics
             state.activeMetricsCount = state.metrics.count
         } else {
+            // Regular dashboard4
             let basicMetrics = Array(originalMetrics.prefix(4))
             state.metrics = basicMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
             }
-            // Don't set activeMetricsCount here - it will be set correctly when loading from API
-            // If API data is not available, it will default to showing all metrics
             state.activeMetricsCount = state.metrics.count
         }
     }
