@@ -843,186 +843,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
         case .dashboardMetrics:
-            // Load current dashboard configuration from API to ensure we have the latest state
             Task { [weak self] in
                 guard let self else { return }
-                
-                // If current dashboard type is 4, always upgrade to 12 and enable all metrics in R4 setup
-                // Note: This may have already been done during scale save, but we ensure it's done here too
-                let currentDashboardType = self.accountService.activeAccount?.dashboardSettings?.dashboardType
-                let isDashboardFour = (currentDashboardType == "dashboard_4_metrics" || 
-                                     currentDashboardType == "dashboard4") &&
-                                     self.dashboardStore.effectiveDashboardType == .dashboard4
-                
-                if isDashboardFour {
-                    // FIRST-TIME R4 PAIRING: If account is on dashboard4, upgrade to dashboard12
-                    // Preserve removal state of original 4 metrics (BMI, body fat, muscle, water)
-                    
-                    // CRITICAL: Capture the current state BEFORE upgrading (preserve removal state of original 4)
-                    await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                    
-                    // Capture which of the original 4 metrics are enabled vs removed
-                    let originalActiveMetricsCount = self.dashboardStore.metricsManager.state.activeMetricsCount
-                    let originalMetrics = self.dashboardStore.metricsManager.state.metrics
-                    
-                    // Identify which of the original 4 metrics are enabled vs removed
-                    let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                    let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
-                    let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
-                    let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
-                    let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
-                    
-                    LoggerService.shared.log(level: .info, tag: self.tag, message: "R4 setup customize: Original 4 metrics state - Enabled: \(enabledOriginalLabels), Removed: \(removedOriginalLabels)")
-                    
-                    // Step 1: Update dashboard type on server FIRST (before reload) - call API directly
-                    do {
-                        // Call API directly to update dashboard type on server
-                        let apiRepo = AccountRepositoryAPI()
-                        _ = try await apiRepo.patchDashboardType(.dashboard12)
-                        // Refresh account to get updated dashboard type from server
-                        try await self.accountService.refreshAccount(accountId: self.accountService.activeAccount?.accountId)
-                        LoggerService.shared.log(level: .info, tag: self.tag, message: "R4 setup: updated dashboard type to 12 on server and refreshed account")
-                    } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "R4 setup: failed to update dashboard type on server: \(error.localizedDescription)")
-                    }
-                    
-                    // Step 2: Reload configuration (now it will load with type 12 from server)
-                    await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                    
-                    // Step 3: Build metrics array preserving removal state of original 4
-                    await MainActor.run {
-                        // Ensure dashboard type is 12
-                        self.dashboardStore.metricsManager.updateDashboardType(.dashboard12)
-                        self.dashboardStore.state.metrics.dashboardType = .dashboard12
-                        
-                        // Define the 8 new metrics (not in original 4)
-                        let newMetricsLabels = [
-                            DashboardStrings.heartBpm,
-                            DashboardStrings.bone,
-                            DashboardStrings.visceralFat,
-                            DashboardStrings.subFat,
-                            DashboardStrings.protein,
-                            DashboardStrings.skelMuscle,
-                            DashboardStrings.bmrKcal,
-                            DashboardStrings.metAge
-                        ]
-                        
-                        // Get the original metrics definition
-                        let originalMetricsDef = [
-                            (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
-                            (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
-                        ]
-                        
-                        // Build metrics array in correct order:
-                        // 1. Enabled original 4 metrics (in their original order)
-                        // 2. 8 new metrics (all enabled)
-                        // 3. Removed original 4 metrics (at the end)
-                        var orderedMetrics: [MetricItem] = []
-                        
-                        // Add enabled original metrics first (preserve their order)
-                        for label in originalFourLabels {
-                            if enabledOriginalLabels.contains(label) {
-                                if let originalMetric = originalMetricsDef.first(where: { $0.1 == label }) {
-                                    let metricItem = MetricItem(
-                                        value: originalMetric.0,
-                                        label: originalMetric.1,
-                                        unit: originalMetric.2,
-                                        preLabel: originalMetric.3,
-                                        icon: originalMetric.4
-                                    )
-                                    orderedMetrics.append(metricItem)
-                                }
-                            }
-                        }
-                        
-                        // Add the 8 new metrics (all enabled)
-                        for newLabel in newMetricsLabels {
-                            if let originalMetric = originalMetricsDef.first(where: { $0.1 == newLabel }) {
-                                let metricItem = MetricItem(
-                                    value: originalMetric.0,
-                                    label: originalMetric.1,
-                                    unit: originalMetric.2,
-                                    preLabel: originalMetric.3,
-                                    icon: originalMetric.4
-                                )
-                                orderedMetrics.append(metricItem)
-                            }
-                        }
-                        
-                        // Add removed original metrics at the end (preserve their order)
-                        for label in originalFourLabels {
-                            if removedOriginalLabels.contains(label) {
-                                if let originalMetric = originalMetricsDef.first(where: { $0.1 == label }) {
-                                    let metricItem = MetricItem(
-                                        value: originalMetric.0,
-                                        label: originalMetric.1,
-                                        unit: originalMetric.2,
-                                        preLabel: originalMetric.3,
-                                        icon: originalMetric.4
-                                    )
-                                    orderedMetrics.append(metricItem)
-                                }
-                            }
-                        }
-                        
-                        // Update metrics array
-                        self.dashboardStore.metricsManager.state.metrics = orderedMetrics
-                        
-                        // CRITICAL: Set activeMetricsCount = enabled original + 8 new metrics
-                        // This preserves removed state of original 4 metrics, enables all 8 new metrics
-                        let newActiveMetricsCount = enabledOriginalLabels.count + 8
-                        self.dashboardStore.metricsManager.state.activeMetricsCount = newActiveMetricsCount
-                        
-                        // Sync removal state to ensure UI state is correct
-                        self.dashboardStore.syncRemovalStateFromMetricsManager()
-                        
-                        LoggerService.shared.log(level: .info, tag: self.tag, message: "R4 setup customize: upgraded to dashboard12 preserving removal state. Enabled original: \(enabledOriginalLabels.count) (\(enabledOriginalLabels)), Removed original: \(removedOriginalLabels.count) (\(removedOriginalLabels)), New metrics: 8, Total metrics: \(orderedMetrics.count), Active count: \(newActiveMetricsCount)")
-                    }
-                    
-                    // Step 4: Persist metrics to API (preserves removal state)
-                    do {
-                        try await self.dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
-                        LoggerService.shared.log(level: .info, tag: self.tag, message: "R4 setup: saved metrics to API preserving removal state")
-                    } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "R4 setup: failed to save metrics to API: \(error.localizedDescription)")
-                    }
-                } else {
-                    // NORMAL SYNC: Reload configuration and respect current enabled/disabled state
-                    // This ensures customize screen shows same items as dashboard screen
-                    await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                    LoggerService.shared.log(level: .debug, tag: self.tag, message: "Normal dashboard sync: Respecting current metric state from API")
-                }
-                
-                await MainActor.run {
-                    // Begin edit mode and snapshot current state for change detection
-                    self.dashboardStore.beginEdit()
-                    // Enter edit mode so customize screen shows all (non-removed + removed) metrics
-                    self.dashboardStore.state.ui.isEditMode = true
-                    self.snapshotDashboardState()
-                }
+                await self.setupDashboardMetricsCustomization()
             }
-            // Subscribe to dashboard edits to update Save button enablement live
-            dashboardStoreCancellable?.cancel()
-            dashboardStoreCancellable = dashboardStore.objectWillChange
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] _ in
-                    guard let self else { return }
-                    if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
-                        self.updateNextEnabled()
-                    }
-                }
-            // Subscribe to dashboard metrics updated notification to sync changes from main dashboard
-            setupDashboardMetricsSync()
         default:
             break
         }
@@ -1564,29 +1388,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
             }
             
-            // Check if account is on dashboard type 4 and upgrade to 12 immediately when scale is saved
             let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
             let isDashboardFour = currentDashboardType == "dashboard_4_metrics" || 
                                  currentDashboardType == "dashboard4" ||
                                  dashboardStore.effectiveDashboardType == .dashboard4
             
-            if isDashboardFour {
-                // Upgrade dashboard type to 12 on server FIRST (before scale save)
-                do {
-                    let apiRepo = AccountRepositoryAPI()
-                    _ = try await apiRepo.patchDashboardType(.dashboard12)
-                    // Refresh account to get updated dashboard type from server
-                    try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
-                    LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: upgraded dashboard type to 12 on server before scale save")
-                } catch {
-                    LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: failed to update dashboard type on server: \(error.localizedDescription)")
-                }
-            }
-            
-            // Update dashboard type locally as well
-            try await accountService.updateDashboardType(type: .dashboard12)
-            
-            // Create the R4 scale using the proper service method
             let savedScale = try await scaleService.createR4Scale(
                 scaleId: scaleID,
                 accountId: accountId,
@@ -1606,163 +1412,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             self.savedScale = savedScale
             await self.scaleService.syncAllScalesWithRemote()
-            // Setup push notifications
+            
             Task {
                 await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
             }
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
-            
-            // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             
-            // If account was on dashboard type 4, upgrade to 12 metrics immediately after scale save
-            // Preserve removal state of original 4 metrics (BMI, body fat, muscle, water)
             if isDashboardFour {
-                // CRITICAL: Capture the current state BEFORE upgrading (preserve removal state of original 4)
-                await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                
-                // Capture which of the original 4 metrics are enabled vs removed
-                let originalActiveMetricsCount = dashboardStore.metricsManager.state.activeMetricsCount
-                let originalMetrics = dashboardStore.metricsManager.state.metrics
-                
-                // Identify which of the original 4 metrics are enabled vs removed
-                let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-                let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
-                let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
-                let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
-                let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
-                
-                LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Original 4 metrics state - Enabled: \(enabledOriginalLabels), Removed: \(removedOriginalLabels)")
-                
-                // Now upgrade dashboard type to 12 on server (already done above, but ensure local state is updated)
-                await MainActor.run {
-                    dashboardStore.metricsManager.updateDashboardType(.dashboard12)
-                    dashboardStore.state.metrics.dashboardType = .dashboard12
-                }
-                
-                // Reload after upgrade to get dashboard type 12 from server
-                await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                
-                // Build metrics array preserving removal state of original 4
-                await MainActor.run {
-                    // Define all 12 metric labels in the correct order
-                    let allMetricLabels = [
-                        DashboardStrings.bmi,
-                        DashboardStrings.bodyFat,
-                        DashboardStrings.muscle,
-                        DashboardStrings.water,
-                        DashboardStrings.heartBpm,
-                        DashboardStrings.bone,
-                        DashboardStrings.visceralFat,
-                        DashboardStrings.subFat,
-                        DashboardStrings.protein,
-                        DashboardStrings.skelMuscle,
-                        DashboardStrings.bmrKcal,
-                        DashboardStrings.metAge
-                    ]
-                    
-                    // Define the 8 new metrics (not in original 4)
-                    let newMetricsLabels = [
-                        DashboardStrings.heartBpm,
-                        DashboardStrings.bone,
-                        DashboardStrings.visceralFat,
-                        DashboardStrings.subFat,
-                        DashboardStrings.protein,
-                        DashboardStrings.skelMuscle,
-                        DashboardStrings.bmrKcal,
-                        DashboardStrings.metAge
-                    ]
-                    
-                    // Get the original metrics definition
-                    let originalMetricsDef = [
-                        (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
-                        (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
-                    ]
-                    
-                    // Build metrics array in correct order:
-                    // 1. Enabled original 4 metrics (in their original order)
-                    // 2. 8 new metrics (all enabled)
-                    // 3. Removed original 4 metrics (at the end)
-                    var orderedMetrics: [MetricItem] = []
-                    
-                    // Add enabled original metrics first (preserve their order)
-                    for label in originalFourLabels {
-                        if enabledOriginalLabels.contains(label) {
-                            if let originalMetric = originalMetricsDef.first(where: { $0.1 == label }) {
-                                let metricItem = MetricItem(
-                                    value: originalMetric.0,
-                                    label: originalMetric.1,
-                                    unit: originalMetric.2,
-                                    preLabel: originalMetric.3,
-                                    icon: originalMetric.4
-                                )
-                                orderedMetrics.append(metricItem)
-                            }
-                        }
-                    }
-                    
-                    // Add the 8 new metrics (all enabled)
-                    for newLabel in newMetricsLabels {
-                        if let originalMetric = originalMetricsDef.first(where: { $0.1 == newLabel }) {
-                            let metricItem = MetricItem(
-                                value: originalMetric.0,
-                                label: originalMetric.1,
-                                unit: originalMetric.2,
-                                preLabel: originalMetric.3,
-                                icon: originalMetric.4
-                            )
-                            orderedMetrics.append(metricItem)
-                        }
-                    }
-                    
-                    // Add removed original metrics at the end (preserve their order)
-                    for label in originalFourLabels {
-                        if removedOriginalLabels.contains(label) {
-                            if let originalMetric = originalMetricsDef.first(where: { $0.1 == label }) {
-                                let metricItem = MetricItem(
-                                    value: originalMetric.0,
-                                    label: originalMetric.1,
-                                    unit: originalMetric.2,
-                                    preLabel: originalMetric.3,
-                                    icon: originalMetric.4
-                                )
-                                orderedMetrics.append(metricItem)
-                            }
-                        }
-                    }
-                    
-                    // Update metrics array
-                    dashboardStore.metricsManager.state.metrics = orderedMetrics
-                    
-                    // CRITICAL: Set activeMetricsCount = enabled original + 8 new metrics
-                    // This preserves removed state of original 4 metrics, enables all 8 new metrics
-                    let newActiveMetricsCount = enabledOriginalLabels.count + 8
-                    dashboardStore.metricsManager.state.activeMetricsCount = newActiveMetricsCount
-                    
-                    // Sync removal state to ensure UI state is correct
-                    dashboardStore.syncRemovalStateFromMetricsManager()
-                    
-                    LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: upgraded to dashboard12 preserving removal state. Enabled original: \(enabledOriginalLabels.count) (\(enabledOriginalLabels)), Removed original: \(removedOriginalLabels.count) (\(removedOriginalLabels)), New metrics: 8, Total metrics: \(orderedMetrics.count), Active count: \(newActiveMetricsCount)")
-                }
-                
-                // Persist metrics to API (preserves removal state)
-                do {
-                    try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
-                    LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: saved metrics to API preserving removal state after scale save")
-                } catch {
-                    LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: failed to save metrics to API: \(error.localizedDescription)")
-                }
+                await upgradeDashboardTypeFrom4To12PreservingRemovalState()
             }
             
         } catch {
@@ -2340,6 +1999,139 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }),
             backdropDismiss: true
         ))
+    }
+    
+    // MARK: - Dashboard Metrics Upgrade
+    
+    /// Upgrades dashboard type from 4 to 12 while preserving removal state of original 4 metrics.
+    /// This ensures that if user had removed some of the original 4 metrics (BMI, body fat, muscle, water),
+    /// those remain removed after the upgrade, while the 8 new metrics are all enabled.
+    private func upgradeDashboardTypeFrom4To12PreservingRemovalState() async {
+        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        
+        let originalActiveMetricsCount = dashboardStore.metricsManager.state.activeMetricsCount
+        let originalMetrics = dashboardStore.metricsManager.state.metrics
+        let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+        
+        let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
+        let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
+        let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
+        let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
+        
+        LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Original 4 metrics - Enabled: \(enabledOriginalLabels), Removed: \(removedOriginalLabels)")
+        
+        do {
+            let apiRepo = AccountRepositoryAPI()
+            _ = try await apiRepo.patchDashboardType(.dashboard12)
+            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
+        }
+        
+        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        
+        await MainActor.run {
+            dashboardStore.metricsManager.updateDashboardType(.dashboard12)
+            dashboardStore.state.metrics.dashboardType = .dashboard12
+            
+            let newMetricsLabels = [
+                DashboardStrings.heartBpm, DashboardStrings.bone, DashboardStrings.visceralFat,
+                DashboardStrings.subFat, DashboardStrings.protein, DashboardStrings.skelMuscle,
+                DashboardStrings.bmrKcal, DashboardStrings.metAge
+            ]
+            
+            let originalMetricsDef = [
+                (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
+                (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
+                (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
+                (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
+                (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
+                (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
+            ]
+            
+            var orderedMetrics: [MetricItem] = []
+            
+            for label in originalFourLabels where enabledOriginalLabels.contains(label) {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            for newLabel in newMetricsLabels {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == newLabel }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            for label in originalFourLabels where removedOriginalLabels.contains(label) {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            dashboardStore.metricsManager.state.metrics = orderedMetrics
+            dashboardStore.metricsManager.state.activeMetricsCount = enabledOriginalLabels.count + 8
+            dashboardStore.syncRemovalStateFromMetricsManager()
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12. Enabled original: \(enabledOriginalLabels.count), Removed: \(removedOriginalLabels.count), Active count: \(enabledOriginalLabels.count + 8)")
+        }
+        
+        do {
+            try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Sets up dashboard metrics customization screen with proper state management
+    private func setupDashboardMetricsCustomization() async {
+        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
+        let isDashboardFour = (currentDashboardType == "dashboard_4_metrics" || 
+                             currentDashboardType == "dashboard4") &&
+                             dashboardStore.effectiveDashboardType == .dashboard4
+        
+        if isDashboardFour {
+            await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+        } else {
+            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        }
+        
+        await MainActor.run {
+            dashboardStore.beginEdit()
+            dashboardStore.state.ui.isEditMode = true
+            snapshotDashboardState()
+        }
+        
+        setupDashboardMetricsSubscriptions()
+    }
+    
+    /// Sets up subscriptions for dashboard metrics customization screen
+    private func setupDashboardMetricsSubscriptions() {
+        dashboardStoreCancellable?.cancel()
+        dashboardStoreCancellable = dashboardStore.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                    self.updateNextEnabled()
+                }
+            }
+        setupDashboardMetricsSync()
     }
     
     // MARK: - Dashboard Synchronization
