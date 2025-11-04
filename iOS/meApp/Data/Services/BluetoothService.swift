@@ -1754,6 +1754,9 @@ private extension BluetoothService {
     /// - Returns: The result of the operation
     /// - Throws: BluetoothServiceError.timeout if the operation exceeds the timeout
     private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T) async throws -> T {
+        // Nanoseconds per second for Task.sleep conversion
+        let nanosecondsPerSecond: UInt64 = 1_000_000_000
+        
         return try await withThrowingTaskGroup(of: T.self) { group in
             // Add the actual operation
             group.addTask {
@@ -1762,12 +1765,15 @@ private extension BluetoothService {
             
             // Add timeout task
             group.addTask {
-                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try await Task.sleep(nanoseconds: UInt64(seconds) * nanosecondsPerSecond)
                 throw BluetoothServiceError.timeout
             }
             
             // Return the first result (operation or timeout)
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                throw BluetoothServiceError.timeout
+            }
             group.cancelAll()
             return result
         }

@@ -23,6 +23,9 @@ final class UsersViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let initialUsersList: [DeviceUser]
     
+    // Delay after user deletion to ensure scale processes the deletion before reloading
+    private let userDeletionDelayNanoseconds: UInt64 = 500_000_000 // 0.5 seconds
+    
     var otherDeviceUsersList: [DeviceUser] {
         return deviceUsers.filter { user in
             if let currentToken = currentDeviceUser?.token, !currentToken.isEmpty,
@@ -64,10 +67,8 @@ final class UsersViewModel: ObservableObject {
             await MainActor.run {
                 // Ensure loading state is reset even if device is not connected
                 isLoadingUsers = false
-            }
-            // If we don't have initial users, ensure we clear the state
-            if initialUsersList.isEmpty && deviceUsers.isEmpty {
-                await MainActor.run {
+                // If we don't have initial users, ensure we clear the state
+                if initialUsersList.isEmpty {
                     self.deviceUsers = []
                     self.currentDeviceUser = nil
                 }
@@ -194,7 +195,7 @@ final class UsersViewModel: ObservableObject {
             
             // Add a small delay to ensure the scale has processed the deletion
             // This prevents race conditions where the user list might be fetched before the scale updates
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            try? await Task.sleep(nanoseconds: userDeletionDelayNanoseconds)
             
             // Reload users from the scale to get the updated list
             // This ensures we have the most up-to-date data including correct isBodyMetricsEnabled values
