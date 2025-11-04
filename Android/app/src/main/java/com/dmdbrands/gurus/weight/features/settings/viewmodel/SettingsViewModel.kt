@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -399,8 +400,8 @@ constructor(
             zipcode = currentAccount.zipcode,
           )
         // Use offline handler service similar to Angular implementation
-        accountService.updateProfile(updatedCurrentProfile, showToast = false)
-        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
+         val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -412,18 +413,17 @@ constructor(
             )
           }
 
-          GGUserActionResponseType.CREATION_COMPLETED -> {
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
             dialogQueueService.showToast(
               Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
                 ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
               ),
             )
           }
 
           else -> {}
         }
-
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating biological sex", e)
@@ -432,6 +432,23 @@ constructor(
       }
     }
   }
+
+  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
+    val result = CompletableDeferred<GGUserActionResponseType>()
+    try {
+      ggDeviceService.updateProfile(
+        profile,
+      ) { responseType ->
+        result.complete(responseType)
+      }
+    } catch (e: Exception) {
+      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
+      result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
+    }
+
+    return result.await()
+  }
+
 
   /**
    * Shows the activity level selection modal.
@@ -547,30 +564,7 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition, false)
-        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
-        when (res) {
-          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
-            dialogQueueService.enqueue(
-              DialogModel.Alert(
-                title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                onDismiss = { dialogQueueService.dismissCurrent() },
-              ),
-            )
-          }
-
-          GGUserActionResponseType.CREATION_COMPLETED -> {
-            dialogQueueService.showToast(
-              Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
-                ToastStrings.Success.UpdateProfileSuccess.Message,
-              ),
-            )
-          }
-
-          else -> {}
-        }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating unit type", e)
@@ -663,30 +657,7 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit?.value ?: "lb",
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition, false)
-        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
-        when (res) {
-          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
-            dialogQueueService.enqueue(
-              DialogModel.Alert(
-                title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                onDismiss = { dialogQueueService.dismissCurrent() },
-              ),
-            )
-          }
-
-          GGUserActionResponseType.CREATION_COMPLETED -> {
-            dialogQueueService.showToast(
-              Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
-                ToastStrings.Success.UpdateProfileSuccess.Message,
-              ),
-            )
-          }
-
-          else -> {}
-        }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating height", e)
@@ -1179,6 +1150,7 @@ constructor(
       title = "MAC Address Filter (0412 Scales)",
       options = macAddressOptions,
       selectedItem = state.value.selectedMacAddress,
+      maxHeight = 400.dp, // Enable scrolling for large lists
       onConfirm = { selectedMacAddress ->
         selectedMacAddress?.let { macAddress ->
           onMacAddressSelectionChange(macAddress)
