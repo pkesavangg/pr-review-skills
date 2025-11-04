@@ -21,6 +21,7 @@ final class UsersViewModel: ObservableObject {
     private let scale: Device
     private let tag = "UsersViewModel"
     private var cancellables = Set<AnyCancellable>()
+    private let initialUsersList: [DeviceUser]
     
     var otherDeviceUsersList: [DeviceUser] {
         return deviceUsers.filter { user in
@@ -36,6 +37,7 @@ final class UsersViewModel: ObservableObject {
     
     init(scale: Device, initialUsersList: [DeviceUser] = []) {
         self.scale = scale
+        self.initialUsersList = initialUsersList
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
             self.currentDeviceUser = findCurrentUser(in: initialUsersList)
@@ -56,9 +58,20 @@ final class UsersViewModel: ObservableObject {
     }
     
     func loadUsers() async {
-        // If users were already provided during initialization, don't fetch again
+        // Check device connection status before attempting to load users
         guard scale.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Scale is not connected, cannot load users")
+            await MainActor.run {
+                // Ensure loading state is reset even if device is not connected
+                isLoadingUsers = false
+            }
+            // If we don't have initial users, ensure we clear the state
+            if initialUsersList.isEmpty && deviceUsers.isEmpty {
+                await MainActor.run {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                }
+            }
             return
         }
         
@@ -83,12 +96,13 @@ final class UsersViewModel: ObservableObject {
                 userNameForm.updateUserList(scaleUsers)
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")
-                self.deviceUsers = []
-                self.currentDeviceUser = nil
+                // Only clear users if we don't have initial users from navigation
+                if initialUsersList.isEmpty {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                }
             }
             isLoadingUsers = false
-            
-
         }
     }
     
@@ -173,18 +187,25 @@ final class UsersViewModel: ObservableObject {
         let result = await bluetoothService.deleteDevice(scale, disconnect: false)
         // Restore the original token to avoid side-effects elsewhere in the app
         scale.token = originalToken
+        
         switch result {
         case .success(_):
-            deviceUsers.removeAll { $0.token == user.token }
+            logger.log(level: .info, tag: tag, message: "User deleted successfully, reloading user list", data: ["userName": user.name])
+            
+            // Add a small delay to ensure the scale has processed the deletion
+            // This prevents race conditions where the user list might be fetched before the scale updates
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Reload users from the scale to get the updated list
+            // This ensures we have the most up-to-date data including correct isBodyMetricsEnabled values
+            await loadUsers()
+            
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
-            logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
-            Task {
-                await loadUsers()
-            }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
         }
+        
         notificationService.dismissLoader()
     }
     
