@@ -22,8 +22,10 @@ internal object LightColorToken {
   val tertiary = ColorPalette.Neutral230
 
   // Status
-  val goal = ColorPalette.Green200 // #458239
-  val success = ColorPalette.Green200 // #458239
+  val goal = ColorPalette.Green300 // #458239
+  val success = ColorPalette.Green300 // #458239
+  val secondarySuccess = ColorPalette.Green200
+  val tertiarySuccess = ColorPalette.Green400
   val danger = ColorPalette.Red900 // #B3261E
   val streak = ColorPalette.Yellow200 // #EDB53A
   val utility = ColorPalette.Neutral400 // #D0CCCA
@@ -91,8 +93,10 @@ internal object DarkColorToken {
   val tertiary = ColorPalette.Neutral270
 
   // Status
-  val goal = ColorPalette.Green100 // #63B453
-  val success = ColorPalette.Green100 // #63B453
+  val goal = ColorPalette.Green800
+  val success = ColorPalette.Green800
+  val secondarySuccess = ColorPalette.Green100
+  val tertiarySuccess = ColorPalette.Green850
   val danger = ColorPalette.Red500 // #F28B82
   val streak = ColorPalette.Yellow100 // #FDD663
   val utility = ColorPalette.Neutral800 // #565F68

@@ -3,12 +3,14 @@ package com.greatergoods.ggInAppMessaging.core.service
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
 
 /**
  * Main GG In-App Messaging service
@@ -16,7 +18,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class GGInAppMessagingService @Inject constructor(
-  private val feedStorageService: FeedStorageService
+  private val feedStorageService: FeedStorageService,
+  @ApplicationContext private val context: Context
 ) : IInAppMessagingService {
 
   private val tag = "GGInAppMessagingService"
@@ -243,6 +246,28 @@ class GGInAppMessagingService @Inject constructor(
    */
   private suspend fun showFeedModalPopup(feedItem: FeedItem, triggerTime: Long) {
     try {
+      // Preload image before showing modal - wait for it to complete
+      feedItem.titleImage?.let { imageUrl ->
+        try {
+          // Use Coil to preload the image and wait for it to complete
+          val imageLoader = coil.ImageLoader(context)
+          val request = coil.request.ImageRequest.Builder(context)
+            .data(imageUrl)
+            .target(
+              onStart = {},
+              onSuccess = {},
+              onError = {}
+            )
+            .build()
+
+          // Execute and wait for the result
+          imageLoader.execute(request)
+        } catch (e: Exception) {
+          // If image fails to load, don't show modal
+          return
+        }
+      }
+
       // Store the trigger time
       storeFeedLastTriggeredAt(triggerTime)
       // Emit dialog event to MeApp

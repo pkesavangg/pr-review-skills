@@ -5,7 +5,7 @@ object WifiScaleSetupStrings {
   object NetworkFormSlide {
     const val Title = "What network should your scale connect to?"
     const val Subtitle =
-      "If you have multiple Wi-Fi networks, use the 2GHZ network closest to your scale."
+      "If you have multiple Wi-Fi networks, use the 2.4 GHZ network closest to your scale."
     const val NetworkName = "network name"
     const val Password = "password"
   }
@@ -38,7 +38,7 @@ object WifiScaleSetupStrings {
   object Note {
     const val label = "network name"
     const val NetworkMessage =
-      "Your phone should stay connected to the chosen 2GHZ network until setup is complete."
+      "Your phone should stay connected to the chosen 2.4 GHZ network until setup is complete."
     const val NavigateToErrorSlide = "I see something else?"
   }
 

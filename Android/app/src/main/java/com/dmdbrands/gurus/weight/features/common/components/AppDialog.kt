@@ -1,9 +1,12 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
@@ -33,10 +36,21 @@ fun AppDialog(
     ),
   ) {
     Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.overlay),
+      modifier = Modifier.fillMaxSize()
     ) {
+      // Background overlay - only clickable on areas not covered by modal
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .background(MeTheme.colorScheme.overlay)
+          .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = dismissActionEvent
+          ),
+      )
+
+      // Modal content - positioned on top of overlay
       Box(modifier = Modifier.align(Alignment.Center)) {
         BaseModal(
           modifier,

@@ -2,8 +2,10 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -132,7 +134,10 @@ private fun DashboardScreenContent(
     },
     isRefreshing = state.isRefreshing,
   ) {
-    Column(modifier = Modifier.verticalScroll(scrollState)) {
+    Column(
+      modifier = if (state.isEmpty) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState),
+      verticalArrangement = if (state.isEmpty) Arrangement.SpaceBetween else Arrangement.Top,
+    ) {
 
       GraphPagerView(
         state = state,
@@ -158,7 +163,6 @@ private fun DashboardScreenContent(
 
 
       if (state.isEmpty) {
-        Spacer(modifier = Modifier.height(MeTheme.spacing.x4l))
         EmptyMetric(
           onConnectScaleClick = {
             handleIntent(DashboardIntent.OnConnectScale)
@@ -193,6 +197,11 @@ private fun DashboardScreenContent(
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->
             currentVisibleMilestones = visibleMilestones
+          },
+          onNavigateToGoal = {
+            scope.launch {
+              navBackStack.addRoute(AppRoute.AccountSettings.Goal)
+            }
           },
         )
         if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {

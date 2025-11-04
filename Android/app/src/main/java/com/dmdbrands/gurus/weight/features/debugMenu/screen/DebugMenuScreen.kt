@@ -166,11 +166,12 @@ private fun AppInformationSection(state: com.dmdbrands.gurus.weight.features.deb
         title = DebugMenuStrings.AppInfo.Timezone,
         type = SettingsItemType.TextOnly(
           if (state.timezone.isNotEmpty()) {
-            " ${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes} ${state.timezone}"
+            "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes}\n${state.timezone}"
           } else {
             "${state.timezoneOffset} ${DebugMenuStrings.AppInfo.Minutes}"
           }
         ),
+        maxLines = 2,
         onClick = {},
       ),
     ),
@@ -255,7 +256,7 @@ private fun DebugMenuScreenPreview() {
       isNative = true,
       isAndroid = true,
       apiUrl = "https://api.weightgurus.com/v3/",
-      currentDateTime = "Dec 15, 2024 at 2:30 PM",
+      currentDateTime = "Dec 15, 2:30 PM",
       timezone = "Asia/Calcutta",
       timezoneOffset = "330",
       hasScales = true,

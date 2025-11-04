@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -20,7 +21,10 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -45,12 +49,35 @@ constructor(
 
 
   init {
+    initLoadData()
     viewModelScope.launch {
       subscribeMetrics()
       subscribeDashboardType()
       subscribeProgress()
       subscribeLatestWeight()
       subscribeIsEmpty()
+      subscribeWeightLess()
+    }
+  }
+
+  private fun initLoadData() {
+    val activeAccount = accountService.activeAccount.value
+    val dashboardType = if (activeAccount?.dashboardType == DashboardType.DASHBOARD_12_METRICS.value)
+      DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS
+    val weightLess = activeAccount.toWeightless()
+    val metrics = dashboardService.visibleKeys.value
+    super.handleIntent(DashboardIntent.SetDashboardType(dashboardType))
+    super.handleIntent(DashboardIntent.SetVisibleKeys(metrics))
+    super.handleIntent(DashboardIntent.UpdateWeightLess(weightLess))
+  }
+
+  private fun subscribeWeightLess() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { account ->
+        account?.toWeightless()
+      }.distinctUntilChanged().collect {
+        handleIntent(DashboardIntent.UpdateWeightLess(it))
+      }
     }
   }
 
@@ -127,7 +154,7 @@ constructor(
   private fun subscribeMetrics() {
     viewModelScope.launch {
       // Combine both metric and milestone keys into a single DashboardKey list
-      dashboardService.visibleKeys.collect {
+      dashboardService.visibleKeys.drop(1).collect {
         handleIntent(DashboardIntent.SetVisibleKeys(it))
       }
     }
@@ -135,7 +162,7 @@ constructor(
 
   private fun subscribeDashboardType() {
     viewModelScope.launch {
-      accountService.activeAccountFlow.collect { account ->
+      accountService.activeAccountFlow.drop(1).collect { account ->
         if (account != null) {
           val dashboardType = if (account.dashboardType == DashboardType.DASHBOARD_12_METRICS.value)
             DashboardType.DASHBOARD_12_METRICS else DashboardType.DASHBOARD_4_METRICS

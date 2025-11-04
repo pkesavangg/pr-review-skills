@@ -102,7 +102,7 @@ struct MyScalesScreen: View {
         VStack(alignment: .leading, spacing:0){
             NavbarHeaderView(
                 title: lang.addEditScales,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
@@ -206,7 +206,6 @@ struct MyScalesScreen: View {
                         // A setup flow sheet is being presented → start setup tracking
                         scaleStore.updateSetupInProgressStatus(true)
                     default:
-                        scaleStore.clearScaleDiscoveredInfo()
                         break
                     }
                 }

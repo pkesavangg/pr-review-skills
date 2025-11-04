@@ -87,9 +87,10 @@ constructor(
     try {
       if (discoveredScale != null) {
         discoveredScale = discoveredScale!!.copy(
-          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale"
+          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale",
         )
-        deviceService.saveScale(discoveredScale!!)
+        if (discoveredScale?.connectionStatus == BLEStatus.CONNECTED)
+          deviceService.saveScale(discoveredScale!!)
         AppLog.i(TAG, "Successfully saved LCBT scale")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")
@@ -211,7 +212,7 @@ constructor(
 
   private fun connectToBluetooth() {
     // Always set loading state to ensure UI updates
-    if (setupInit.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH){
+    if (setupInit.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH) {
       ggDeviceService.scanForPairing()
     }
     AppLog.d(TAG, "Starting Bluetooth connection process")

@@ -37,15 +37,19 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
@@ -101,20 +105,10 @@ constructor(
     // Delay constants for Health Connect permission check
     private const val INITIAL_DELAY = 1L // 1 second
     private const val DELAYED_ALERT = 3000L // 3 seconds
-    private var currentAccountId: String? = null
-  }
-
-  init {
-    viewModelScope.launch {
-      accountService.activeAccountFlow.collect {
-        if (it != null) {
-          currentAccountId = it.id
-        }
-      }
-    }
   }
 
   override fun provideInitialState(): AppState = AppState()
+  private var currentAccountId: String? = null
   private var canShowPopUp = true
   private var sku: String? = null
   private var discoveredBroadcastId: String? = null
@@ -123,6 +117,15 @@ constructor(
   private var deviceSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
+
+  init {
+    // Initialize and maintain currentAccountId globally
+    viewModelScope.launch {
+      accountService.activeAccountFlow.collect {
+        currentAccountId = it?.id
+      }
+    }
+  }
 
   init {
     viewModelScope.launch {
@@ -558,11 +561,9 @@ constructor(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
+                    val accountId = currentAccountId ?: return@launch
                     dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
-                    if (device == null) {
-                      return@launch
-                    }
+                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
                     ggDeviceService.addCacheDevice(data.broadcastId, device)
                     ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                       viewModelScope.launch {
@@ -597,19 +598,19 @@ constructor(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
                     viewModelScope.launch {
-                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!)
-                      if (device == null) {
-                        return@launch
-                      }
+                      val accountId = currentAccountId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
                       ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                      ggDeviceService.addCacheDevice(data.broadcastId, device)
-                      navigationService.navigateTo(
-                        AppRoute.ScaleSetup.BtWifiScaleSetup(
-                          data.getSKU(),
-                          BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                          data.broadcastId,
-                        ),
-                      )
+                        ggDeviceService.addCacheDevice(data.broadcastId, device)
+                        viewModelScope.launch {
+                          navigationService.navigateTo(
+                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              data.getSKU(),
+                              BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                              data.broadcastId,
+                            ),
+                          )
+                        }
                     }
                   },
                   onCancel = {
@@ -649,19 +650,19 @@ constructor(
       if (ggEntry.isEmpty()) {
         return@launch
       }
-      val accountId = accountService.activeAccountFlow.first()?.id
-      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId)
+      val accountId = currentAccountId ?: return@launch
+      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
       if (device == null) {
         return@launch
       }
-      
+
       // Get user height for BMI calculation
       val activeAccount = accountService.activeAccountFlow.first()
       val userHeight = activeAccount?.height
-      
+
       val entry = ggEntry.map { ggScaleEntry ->
-        val scaleEntry = ggScaleEntry.toScaleEntry(accountId ?: "", device.id)
-        
+        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device.id)
+
         // Check if BMI is 0.0 or null and calculate it if user height is available
         if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) && userHeight != null) {
           val calculatedBmi = EntryHelper.getCalculatedBMI(
@@ -669,19 +670,19 @@ constructor(
             unit = scaleEntry.entry.unit,
             height = userHeight
           )
-          
+
           // Update the BMI in the scale entry
           val updatedScaleEntry = scaleEntry.scale.scaleEntry.copy(bmi = calculatedBmi)
           val updatedScaleEntryWithMetrics = scaleEntry.scale.copy(scaleEntry = updatedScaleEntry)
-          
+
           AppLog.d(TAG, "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight")
-          
+
           scaleEntry.copy(scale = updatedScaleEntryWithMetrics)
         } else {
           scaleEntry
         }
       }
-      
+
       try {
         entryService.addEntry(entry)
         dialogQueueService.showToast(
@@ -785,9 +786,33 @@ constructor(
             ),
           )
           ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+          updateR4Profile(ggBTUserProfile)
           handleIntent(AppIntent.SetScanStatus(true))
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")
         }
+      }
+    }
+  }
+
+  private fun updateR4Profile(profile: GGBTUserProfile) {
+    viewModelScope.launch {
+      try {
+        ggDeviceService.updateProfile(
+          profile,
+          { it: GGUserActionResponseType ->
+            if (it == GGUserActionResponseType.USER_SELECTION_IN_PROGRESS) {
+              dialogQueueService.enqueue(
+                DialogModel.Alert(
+                  title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                  message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                  onDismiss = { dialogQueueService.dismissCurrent() },
+                ),
+              )
+            }
+          },
+        )
+      } catch (e: Exception) {
+        AppLog.d(TAG, "updateR4Profile - Error updating profile to scale")
       }
     }
   }

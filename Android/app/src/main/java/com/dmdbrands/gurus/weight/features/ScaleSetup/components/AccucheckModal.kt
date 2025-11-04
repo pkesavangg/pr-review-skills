@@ -43,7 +43,7 @@ fun AccucheckModal(
         .background(MeTheme.colorScheme.glow)
         .clickable { onClose() },
     ) {
-      Box(modifier = Modifier.align(Alignment.Center)) {
+      Box(modifier = Modifier.align(Alignment.Center).clickable(enabled = false) { }) {
         AppPopupModal {
           AppPopup(
             visible = true,

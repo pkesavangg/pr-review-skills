@@ -162,25 +162,13 @@ struct LoginScreen: View {
                             Text(lang.byLoggingIn)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.actionSecondary)
-                            HStack {
-                                ButtonView(
-                                    text: legalStrings.termsOfService,
-                                    type: .textPrimary,
-                                    size: .small,
-                                    isDisabled: false,
-                                    action: { store.openTerms() }
-                                )
-                                Text(legalStrings.andText)
-                                    .fontOpenSans(.subHeading2)
-                                    .foregroundColor(theme.actionSecondary)
-                                ButtonView(
-                                    text: legalStrings.privacyPolicy,
-                                    type: .textPrimary,
-                                    size: .small,
-                                    isDisabled: false,
-                                    action: { store.openPrivacy() }
-                                )
-                            }
+                            LegalLinksRow(
+                                termsLabel: legalStrings.termsOfService,
+                                andLabel: legalStrings.andText,
+                                privacyLabel: legalStrings.privacyPolicy,
+                                termsURL: AppConstants.LegalURLs.termsOfService,
+                                privacyURL: AppConstants.LegalURLs.privacyPolicy
+                            )
                         }
                         .padding(.bottom, .spacingSM)
                     }

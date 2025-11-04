@@ -17,7 +17,7 @@ struct IntegrationsScreen: View {
             // Header
             NavbarHeaderView(
                 title: IntegrationsStrings.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 canShowBorder: true

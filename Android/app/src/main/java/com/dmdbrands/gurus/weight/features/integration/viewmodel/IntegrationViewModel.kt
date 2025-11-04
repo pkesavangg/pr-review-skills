@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationString
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -145,18 +146,23 @@ class IntegrationViewModel @Inject constructor(
   }
 
   private fun subscribeBrowserState() {
-
     viewModelScope.launch {
       try {
-        customTabManager.subscribeChromeState().collect { state ->
+        customTabManager.subscribeChromeState().distinctUntilChanged().collect { state ->
+          // Only process Chrome tab events if OAuth flow is active
+          if (currentOAuthProvider == null) {
+            AppLog.d(TAG, "Chrome tab state changed but no OAuth flow active - ignoring")
+            return@collect
+          }
+
           when (state) {
             ChromeTabState.TabHidden -> {
               AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed")
-              if(!isTabHidden){
+              if (!isTabHidden) {
                 isTabHidden = true
                 checkOAuthFlowCompletion()
               }
-                AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed hello")
+              AppLog.d(TAG, "Custom tab hidden - OAuth flow may be completed hello")
             }
 
             ChromeTabState.TabShown -> {
@@ -177,8 +183,11 @@ class IntegrationViewModel @Inject constructor(
           "Failed to setup custom tab monitoring",
           e,
         )
+      } finally {
+        isTabHidden = false
+        // Reset OAuth provider after flow completes
+        currentOAuthProvider = null
       }
-      isTabHidden = false
     }
   }
 
@@ -579,7 +588,6 @@ class IntegrationViewModel @Inject constructor(
             currentAccount?.let { account ->
               startOAuthFlow(provider = provider, accountId = account.id)
             }
-
           }
           dialogQueueService.dismissCurrent()
           isTabHidden = false
@@ -587,10 +595,12 @@ class IntegrationViewModel @Inject constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isTabHidden = false
+          currentOAuthProvider = null // Clear OAuth provider
         },
         onDismiss = {
           dialogQueueService.dismissCurrent()
           isTabHidden = false
+          currentOAuthProvider = null // Clear OAuth provider
         },
       ),
     )
@@ -605,6 +615,7 @@ class IntegrationViewModel @Inject constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
           isTabHidden = false
+          currentOAuthProvider = null // Clear OAuth provider
         },
         ),
     )

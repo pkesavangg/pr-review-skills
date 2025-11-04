@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,3 +39,47 @@ fun Modifier.debounceClick(
     }
   }
 }
+
+fun Modifier.debounceCombinedClick(
+  debounceTime: Long = 300L,
+  enabled: Boolean = true,
+  onClick: (() -> Unit)? = null,
+  onLongClick: (() -> Unit)? = null,
+  onDoubleClick: (() -> Unit)? = null
+): Modifier = composed(
+  inspectorInfo = debugInspectorInfo {
+    name = "debounceCombinedClick"
+    value = debounceTime
+  }
+) {
+  var lastClickTime by rememberSaveable { mutableStateOf(0L) }
+  var lastLongClickTime by rememberSaveable { mutableStateOf(0L) }
+  var lastDoubleClickTime by rememberSaveable { mutableStateOf(0L) }
+
+  val onClickState = rememberUpdatedState(onClick)
+  val onLongClickState = rememberUpdatedState(onLongClick)
+  val onDoubleClickState = rememberUpdatedState(onDoubleClick)
+
+  val interactionSource = remember { MutableInteractionSource() }
+
+  combinedClickable(
+    enabled = enabled,
+    indication =  null,
+    interactionSource = interactionSource,
+    onClick = {
+      onClickState.value?.invoke()
+      val now = android.os.SystemClock.elapsedRealtime()
+      if (now - lastClickTime >= debounceTime) {
+        lastClickTime = now
+
+      }
+    },
+    onLongClick = {
+        onLongClickState.value?.invoke()
+    },
+    onDoubleClick = {
+        onDoubleClickState.value?.invoke()
+    }
+  )
+}
+

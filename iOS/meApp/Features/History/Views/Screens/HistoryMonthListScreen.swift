@@ -48,9 +48,9 @@ struct HistoryMonthListScreen: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            NavbarHeaderView<AnyView, AnyView>(
+            NavbarHeaderView<AppIconView, AnyView>(
                 title: title,
-                leadingContent: { AnyView(Image(AppAssets.chevronLeft)) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 onLeadingTap: { router.navigateBack() }
             )
             .background(theme.backgroundPrimary)
