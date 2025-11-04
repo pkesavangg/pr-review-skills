@@ -145,11 +145,9 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func updateDashboardType(_ dashboardType: DashboardType) {
         state.dashboardType = dashboardType
         
-        // Only set activeMetricsCount if metrics haven't been loaded from API yet
-        // (i.e., if metrics array is empty or was just initialized)
-        // Once metrics are loaded from API, activeMetricsCount should come from API data
+        // Only set activeMetricsCount if metrics haven't been loaded from API yet (i.e., if the metrics array is empty).
+        // Once metrics are loaded from API, activeMetricsCount should come from API data.
         if state.metrics.isEmpty {
-            // Metrics haven't been loaded yet, set default activeMetricsCount based on dashboard type
             switch dashboardType {
             case .dashboard4:
                 state.activeMetricsCount = 4
@@ -157,8 +155,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 state.activeMetricsCount = 12
             }
         } else {
-            // Metrics have been loaded, don't override activeMetricsCount
-            // Just ensure it doesn't exceed the maximum allowed for this dashboard type
+            // Metrics have been loaded, don't override activeMetricsCount.
+            // Just ensure it doesn't exceed the maximum allowed for this dashboard type.
             let maxAllowedForType = dashboardType == .dashboard4 ? 4 : 12
             state.activeMetricsCount = min(state.activeMetricsCount, maxAllowedForType)
         }

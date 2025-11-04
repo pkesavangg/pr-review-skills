@@ -1388,10 +1388,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
             }
             
-            let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-            let isDashboardFour = currentDashboardType == "dashboard_4_metrics" || 
-                                 currentDashboardType == "dashboard4" ||
-                                 dashboardStore.effectiveDashboardType == .dashboard4
+            let isDashboardFour = isDashboardTypeFour
             
             let savedScale = try await scaleService.createR4Scale(
                 scaleId: scaleID,
@@ -2092,18 +2089,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
+            // The removal state is managed by the metricsManager's activeMetricsCount and the ordering of metrics.
+            // We intentionally pass an empty array for removedMetrics here, as the actual removal state is derived from metric ordering.
             try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
         }
     }
     
+    /// Checks if the current dashboard type is dashboard4
+    private var isDashboardTypeFour: Bool {
+        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
+        return (currentDashboardType == "dashboard_4_metrics" || 
+                currentDashboardType == "dashboard4") &&
+                dashboardStore.effectiveDashboardType == .dashboard4
+    }
+    
     /// Sets up dashboard metrics customization screen with proper state management
     private func setupDashboardMetricsCustomization() async {
-        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-        let isDashboardFour = (currentDashboardType == "dashboard_4_metrics" || 
-                             currentDashboardType == "dashboard4") &&
-                             dashboardStore.effectiveDashboardType == .dashboard4
+        let isDashboardFour = isDashboardTypeFour
         
         if isDashboardFour {
             await upgradeDashboardTypeFrom4To12PreservingRemovalState()
