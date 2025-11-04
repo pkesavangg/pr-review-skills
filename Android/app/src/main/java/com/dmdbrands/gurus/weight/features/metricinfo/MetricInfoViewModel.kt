@@ -1,20 +1,28 @@
 package com.dmdbrands.gurus.weight.features.metricinfo
 
+import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @HiltViewModel(
   assistedFactory = MetricInfoViewModel.Factory::class,
 )
 class MetricInfoViewModel @AssistedInject constructor(
   @Assisted val info: DashboardMetric,
-  @Assisted val key: MetricKey
+  @Assisted val key: MetricKey,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<MetricInfoState, MetricInfoIntent>(
   reducer = MetricInfoReducer(),
 ) {
@@ -27,6 +35,7 @@ class MetricInfoViewModel @AssistedInject constructor(
   init {
     handleIntent(MetricInfoIntent.SetMetricInfo(info))
     handleIntent(MetricInfoIntent.SelectSegment(key))
+    updateHeartRateStatus()
   }
 
   override fun provideInitialState(): MetricInfoState = MetricInfoState()
@@ -57,8 +66,40 @@ class MetricInfoViewModel @AssistedInject constructor(
         openInAppBrowser(intent.resource)
       }
 
+      is MetricInfoIntent.UpdateScaleMode -> {
+        updateHeartRateStatus()
+      }
+
       else -> Unit
     }
     super.handleIntent(intent)
+  }
+
+  private fun updateHeartRateStatus() {
+    viewModelScope.launch {
+      // Collect saved scales from DeviceService
+      deviceService.pairedScales.collect { devices ->
+        val heartRateEnabled = devices.any {
+          it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
+            && it.preferences?.shouldMeasurePulse == false && it.preferences.shouldMeasureImpedance == true
+            && !it.isWeighOnlyModeEnabledByOthers
+        }
+        handleIntent(MetricInfoIntent.SetHeartRateStatus(heartRateEnabled))
+      }
+    }
+  }
+
+  private fun onUpdateScaleMode() {
+    viewModelScope.launch {
+      val scales = deviceService.pairedScales.first()
+      val scale = scales.firstOrNull { it ->
+        it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
+          && it.preferences?.shouldMeasurePulse == false && it.preferences.shouldMeasureImpedance == true
+          && !it.isWeighOnlyModeEnabledByOthers
+      }
+      scale?.id?.let { scaleId ->
+        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+      }
+    }
   }
 }

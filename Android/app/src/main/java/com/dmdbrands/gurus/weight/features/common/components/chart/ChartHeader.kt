@@ -22,7 +22,7 @@ fun ChartHeader(
   segment: GraphSegment,
   weightData: String,
   rangeData: String,
-  weightValue: Double
+  weightValue: Double,
 ) {
   val headerText =
     if (state.markerIndex != null) {

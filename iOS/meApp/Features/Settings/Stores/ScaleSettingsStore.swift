@@ -169,10 +169,30 @@ final class ScaleSettingsStore: ObservableObject {
     private func deleteScale(scaleId: String) async -> Bool {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.deletingScale))
         var isSuccess = false
+        defer {
+            Task { @MainActor in
+                _ = await bluetoothService.resyncAndScan()
+                bluetoothService.isSetupInProgress = false
+            }
+        }
         do {
-            if scale.isConnected == true && getScaleType() == .btWifiR4, let broadcastId = scale.broadcastIdString {
-                let _ = await bluetoothService.deleteDevice(scale, disconnect: false)
+            // Pause scans and mark setup in progress to avoid race with ongoing reconnect/pairing
+            bluetoothService.isSetupInProgress = true
+            bluetoothService.pauseSmartScan()
+            bluetoothService.stopScan()
+            if getScaleType() == .btWifiR4, let broadcastId = scale.broadcastIdString {
+                // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
+                let deletionTask = Task { @MainActor in
+                    _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(scale, disconnect: false)
+                }
+                // Give BLE a brief moment to process deletion; if it hangs, cancel and proceed
+                // Note: Canceling the deletion task does not forcibly stop the underlying async operation.
+                // This is a 'fire-and-forget with timeout' pattern; the operation may still complete after cancellation.
+                try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.scaleDeletionGraceTimeoutNs))
+                deletionTask.cancel()
+                // Then forcefully disconnect and clear plugin cache to avoid reconnect
                 let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
+                bluetoothService.clearDevices()
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
             await scaleService.pushLocalChangesToServer()

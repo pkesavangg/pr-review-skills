@@ -25,5 +25,9 @@ interface IBodyCompositionService {
      * @param bodyComposition The new value (String for activity level, WeightUnit for weight unit, Int for height)
      * @return The updated account or null if update fails
      */
-    suspend fun updateBodyComposition(updateType: BodyCompUpdateType, bodyComposition: BodyCompUpdateRequest): Unit
+    suspend fun updateBodyComposition(
+      updateType: BodyCompUpdateType,
+      bodyComposition: BodyCompUpdateRequest,
+      showToast: Boolean = true
+    ): Unit
 }

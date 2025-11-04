@@ -143,7 +143,9 @@ class GoalCardCell: UICollectionViewCell {
                         isBeingDragged: isDragging, // Let overlay handle icon visibility during drag
                         isDropTarget: store.state.ui.dropHoverId == "goalCard",
                         rowIndex: rowIndex,
-                        disableWiggle: false
+                        disableWiggle: false,
+                        iconOffset: CGSize(width: 5, height: -5),
+                        dimWhenRemoved: false
                     )
             )
         } else {

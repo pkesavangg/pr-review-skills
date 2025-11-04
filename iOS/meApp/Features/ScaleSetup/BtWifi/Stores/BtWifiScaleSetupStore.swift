@@ -2203,6 +2203,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         discoveredScale = nil
         discoveryEvent = nil
         savedScale = nil
+        // Re-apply skipped devices to BLE SDK, excluding paired scales
+        bluetoothService.reapplySkipDevicesExcludingPaired()
     }
     
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.

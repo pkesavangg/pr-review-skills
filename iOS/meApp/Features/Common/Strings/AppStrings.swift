@@ -278,8 +278,10 @@ struct InputFieldLabels {
     static let userName = "user name"
     static let email = "email"
     static let password = "password"
+    static let createNewPassword = "create new password"
     static let networkName = "network name"
     static let confirmPassword = "confirm password"
+    static let confirmNewPassword = "confirm new password"
     static let currentPassword = "current password"
     static let startingWeight = "starting weight"
     static let startingWeightLabel: (Bool) -> String = { isKg in
@@ -670,6 +672,12 @@ struct AlertStrings {
         static let message = "Reconnect the scale with a new user name."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
+    }
+    
+    struct UpdatesPendingAlert {
+        static let title = "Updates Pending..."
+        static let message = "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+        static let okButton = "OK"
     }
 }
 

@@ -32,6 +32,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
+import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -69,6 +70,12 @@ constructor(
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
 
+  private suspend fun updateConnectedDeviceDetailMap(macAddress: String, deviceDetail: GGDeviceDetail) {
+    _connectedDeviceMap.value = _connectedDeviceMap.value.toMutableMap().apply {
+      this[macAddress] = deviceDetail
+    }
+  }
+
   override suspend fun updateConnectionStatus(macAddress: String, connectionStatus: BLEStatus) {
     _connectionStatusMap.value = _connectionStatusMap.value.toMutableMap().apply {
       this[macAddress] = connectionStatus
@@ -86,6 +93,7 @@ constructor(
 
     // Update connection status map
     updateConnectionStatus(macAddress, resolvedConnectionStatus)
+    updateConnectedDeviceDetailMap(macAddress, deviceDetail)
 
     // Try to find the device in current paired scales
     val currentDevices = _pairedScales.value.toMutableList()
@@ -94,43 +102,17 @@ constructor(
     if (deviceIndex >= 0) {
       // Device found in current list - update it directly
       val device = currentDevices[deviceIndex]
-      val oldWifiConfigured = device.device?.isWifiConfigured
-
       val updatedDevice = device.copy(
         connectionStatus = resolvedConnectionStatus,
         device = device.device?.copy(
           isWifiConfigured = deviceDetail.isWifiConfigured,
           wifiMacAddress = if (deviceDetail.isWifiConfigured == true) deviceDetail.wifiMacAddress else null,
         ),
-        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false || deviceDetail.impedanceSwitchState == null),
+        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false),
       )
-
       currentDevices[deviceIndex] = updatedDevice
       _pairedScales.value = currentDevices
       _connectedScales.value = currentDevices
-
-      // If WiFi configuration changed, save the updated device to database
-      if (oldWifiConfigured != deviceDetail.isWifiConfigured ||
-        device.device?.wifiMacAddress != deviceDetail.wifiMacAddress
-      ) {
-        AppLog.d(
-          tag,
-          "WiFi configuration changed for device ${macAddress}: ${oldWifiConfigured} -> ${deviceDetail.isWifiConfigured}",
-        )
-        try {
-          deviceRepository.saveDeviceToDb(updatedDevice, currentAccountId ?: "")
-        } catch (e: Exception) {
-          AppLog.e(tag, "Error saving device with updated WiFi configuration", e)
-        }
-      }
-    } else {
-      // Device not found in current list - trigger a refresh to get updated data
-      AppLog.d(tag, "Device ${macAddress} not found in current paired scales, triggering refresh")
-      try {
-        fetchScales(currentAccountId)
-      } catch (e: Exception) {
-        AppLog.e(tag, "Error refreshing scales after device update", e)
-      }
     }
   }
 
@@ -155,15 +137,13 @@ constructor(
 
     fetchJob = repositoryScope.launch {
       deviceRepository.getDevices(resolvedAccountId).collect { devices ->
-
         val updatedDevices = devices.map { device ->
           val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED
-
+          val deviceDetail = _connectedDeviceMap.value[device.device?.macAddress] ?: device.device
           device.copy(
             connectionStatus = connectionStatus,
-            device = device.device?.copy(
-              isWifiConfigured = device.device.isWifiConfigured,
-            ),
+            device = deviceDetail,
+            isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail?.impedanceSwitchState == false),
           )
         }
         _pairedScales.value = updatedDevices
@@ -356,21 +336,23 @@ constructor(
    */
   override suspend fun saveScale(device: Device): Device? {
     val tag = "DeviceService-saveScale"
-    val current = device
     val scaleID = System.currentTimeMillis().toString()
 
     // If your Preferences has `scaleId`, align it; otherwise keep using `id`.
-    val updatedPrefs = current.preferences?.copy(
+    val updatedPrefs = device.preferences?.copy(
       id = scaleID,
     )
-    val updatedDevice = current.copy(
+    val updatedDevice = device.copy(
       id = scaleID,
       preferences = updatedPrefs,
     )
 
+    Log.d("saveddevice333", "$device")
+
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      Log.d("saveddevice444","$savedDevice")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(
@@ -520,11 +502,12 @@ constructor(
    * Get a scale by broadcast ID.
    *
    * @param broadcastId The broadcast ID to search for
+   * @param accountId The account ID to filter by
    * @return The device if found, null otherwise
    */
-  override suspend fun getScaleByBroadcastId(broadcastId: String): Device? =
+  override suspend fun getScaleByBroadcastId(broadcastId: String, accountId: String): Device? =
     try {
-      deviceRepository.getDeviceByBroadcastId(broadcastId).first()
+      deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
     } catch (e: Exception) {
       AppLog.e(tag, "Error getting scale by broadcast ID", e)
       null

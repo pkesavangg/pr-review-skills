@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
@@ -127,10 +128,10 @@ data class WifiScaleSetupState(
       WifiScaleSetupStep.PERMISSIONS -> {
         if (isGetMACSetup) {
           // MAC setup flow - check permissions only
-          AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
+          AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
         } else {
           // Normal flow - check permissions
-          AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, sku)
+          AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
         }
       }
 

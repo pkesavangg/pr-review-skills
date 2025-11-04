@@ -15,6 +15,8 @@ data class ColorTokens(
   // Status
   val goal: Color,
   val success: Color,
+  val secondarySuccess: Color,
+  val tertiarySuccess: Color,
   val danger: Color,
   val streak: Color,
   val utility: Color,

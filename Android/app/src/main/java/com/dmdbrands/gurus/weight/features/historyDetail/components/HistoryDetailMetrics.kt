@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,8 +16,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -45,13 +48,20 @@ internal fun MetricItem(
   onMetricClick: () -> Unit = {},
 ) {
   val bgColor = StatHelper.getBgColor(index, size)
+  var lastClickTime by remember { mutableStateOf(0L) }
+  val debounceTime = 500L
   Row(
     modifier =
       modifier
         .fillMaxWidth()
-        .clickable {
-          onMetricClick()
-        }
+        .combinedClickable(
+          onClick = {  val currentTime = android.os.SystemClock.elapsedRealtime()
+            if (currentTime - lastClickTime >= debounceTime) {
+              lastClickTime = currentTime
+              onMetricClick()
+            } },
+          onLongClick = { },
+        )
         .background(bgColor)
         .padding(all = MeTheme.spacing.sm),
     verticalAlignment = Alignment.CenterVertically,

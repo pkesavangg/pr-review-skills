@@ -32,7 +32,7 @@ object AppStatusService {
   val canShowRateAppItem: Boolean = true
 
   fun getCurrentDateTime(): String {
-    val formatter = SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
+    val formatter = SimpleDateFormat("MMM dd, h:mm a", Locale.getDefault())
     return formatter.format(Date())
   }
 

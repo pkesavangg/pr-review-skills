@@ -267,16 +267,22 @@ constructor(
    * @param profileUpdateRequest The profile data to update
    * @return The updated account or null if update fails
    */
-  override suspend fun updateProfile(profileUpdateRequest: ProfileUpdateRequest, isFromProfile: Boolean) {
+  override suspend fun updateProfile(
+    profileUpdateRequest: ProfileUpdateRequest,
+    isFromProfile: Boolean,
+    showToast: Boolean
+  ) {
     try {
       if (isFromProfile) {
         requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       }
       accountRepository.updateProfile(profileUpdateRequest)
-      showSuccessToast(
-        ToastStrings.Success.UpdateProfileSuccess.Header,
-        ToastStrings.Success.UpdateProfileSuccess.Message,
-      )
+      if (showToast) {
+        showSuccessToast(
+          ToastStrings.Success.UpdateProfileSuccess.Header,
+          ToastStrings.Success.UpdateProfileSuccess.Message,
+        )
+      }
     } catch (e: HttpException) {
       when (e.code()) {
         HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> {

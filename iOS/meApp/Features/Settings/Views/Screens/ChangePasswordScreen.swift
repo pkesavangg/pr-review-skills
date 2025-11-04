@@ -29,7 +29,7 @@ struct ChangePasswordScreen: View {
             // Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,
@@ -65,7 +65,7 @@ struct ChangePasswordScreen: View {
                     // New password
                     AppInputField(
                         config: TextInputConfig(
-                            label: labels.password, // Reuse existing label "password"
+                            label: labels.createNewPassword,
                             inputType: .password,
                             errorMessage: settingsStore.changePasswordForm.getError(for: settingsStore.changePasswordForm.newPassword),
                             focusField: .newPassword
@@ -79,7 +79,7 @@ struct ChangePasswordScreen: View {
                     // Confirm new password
                     AppInputField(
                         config: TextInputConfig(
-                            label: labels.confirmPassword,
+                            label: labels.confirmNewPassword,
                             inputType: .password,
                             errorMessage: settingsStore.changePasswordForm.getError(for: settingsStore.changePasswordForm.confirmNewPassword),
                             focusField: .confirmNewPassword

@@ -101,12 +101,7 @@ constructor(
       accountRepository.updateDashboardSettings(
         accountId = accountId,
         dashboardMetrics = serverMetrics,
-        dashboardMilestones = if (currentMilestones.isNotEmpty()) {
-          currentMilestones.map { it.name.lowercase() }
-        } else {
-          // Use default milestones if none are set
-          MilestoneKey.getDefaultMilestones().map { it.name.lowercase() }
-        },
+        dashboardMilestones = currentMilestones.map { it.name.lowercase() },
         dashboardType = dashboardType,
       )
 

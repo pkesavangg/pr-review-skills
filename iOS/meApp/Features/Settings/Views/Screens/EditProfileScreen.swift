@@ -30,7 +30,7 @@ struct EditProfileScreen: View {
             // MARK: Header
             NavbarHeaderView(
                 title: screenLang.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: commonLang.save,

@@ -255,7 +255,8 @@ extension View {
         isDropTarget: Bool = false,
         rowIndex: Int = 0,
         disableWiggle: Bool = false,
-        iconOffset: CGSize = CGSize(width: 5, height: -5)
+        iconOffset: CGSize = CGSize(width: 5, height: -5),
+        dimWhenRemoved: Bool = true
     ) -> some View {
         modifier(EditModeOverlay(
             isEditMode: isEditMode,
@@ -265,7 +266,8 @@ extension View {
             isDropTarget: isDropTarget,
             rowIndex: rowIndex,
             disableWiggle: disableWiggle,
-            iconOffset: iconOffset
+            iconOffset: iconOffset,
+            dimWhenRemoved: dimWhenRemoved
         ))
     }
     

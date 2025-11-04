@@ -39,7 +39,7 @@ struct WifiMacAddressScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             NavbarHeaderView(
                 title: lang.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
