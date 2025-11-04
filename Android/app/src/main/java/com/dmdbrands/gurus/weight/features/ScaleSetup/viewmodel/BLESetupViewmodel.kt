@@ -279,7 +279,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
     }
   }
 
-  protected fun stopPairingDevices(){
+  protected fun stopPairingDevices() {
     viewModelScope.launch {
       AppLog.d(TAG, "Stopping pairing devices")
       deviceObservationJob?.cancel()
@@ -336,7 +336,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             AppLog.d(TAG, "User dismissed permission request for: $permissionType")
             permissionTimeoutJob?.cancel()
             isProcessingPermissions = false
-          }
+          },
         )
       } catch (e: Exception) {
         AppLog.e(TAG, "Error requesting permission $permissionType", e)
@@ -493,16 +493,40 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           AppLog.d(TAG, "Setup finished, calling onSetupFinished")
           onSetupFinished()
         }
-        AppLog.d(TAG, "Resuming scan and syncing devices")
-        ggDeviceService.resumeScan(false)
-        val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-        AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
-        ggDeviceService.syncDevices(pairedDevices)
+        loadPluginData()
         navigateBack()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during exit process", e)
         navigateBack()
       }
+    }
+  }
+
+  private suspend fun loadPluginData() {
+    try {
+      // load skipDevices
+      val device = this@BLESetupViewmodel.discoveredScale
+      var connectedDeviceBroadcastID: String? = null
+
+      ggDeviceService.localSkipDevices.first().forEach {
+        if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
+          connectedDeviceBroadcastID = it
+        } else {
+          ggDeviceService.skipDevice(it, considerForSession = true)
+        }
+      }
+      if (connectedDeviceBroadcastID != null) {
+        ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
+      }
+
+      // load paired devices
+      AppLog.d(TAG, "Resuming scan and syncing devices")
+      ggDeviceService.resumeScan(false)
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
+      ggDeviceService.syncDevices(pairedDevices)
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during Bluetooth cleanup", e)
     }
   }
 
@@ -524,7 +548,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
 
     // For Bluetooth and LCBT scales, skip network connectivity check since they don't require WiFi
     val isBluetoothScale = protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A3.value ||
-                          protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
+      protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
 
     return if (isBluetoothScale) {
       AppLog.d(TAG, "Bluetooth/LCBT scale detected, skipping network connectivity check")

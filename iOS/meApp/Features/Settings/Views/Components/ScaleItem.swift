@@ -73,7 +73,7 @@ struct ScaleItemView: View {
                     HStack(spacing: .spacingXS) {
                         AppIconView(
                             icon: statusIconDetails.icon,
-                            size: IconSize(width: 24, height: 24)
+                            size: IconSize(width: 22, height: 22)
                         )
                         .foregroundColor(statusIconDetails.color)
                         .opacity((status == .notConnected || isDisabled) ? 0.5 : 1)
@@ -97,6 +97,7 @@ struct ScaleItemView: View {
                 }
             }
         }
+        .frame(height: 75)
         .padding(.horizontal, .spacingSM)
         .padding(.vertical, .spacingSM)
         .contentShape(Rectangle())

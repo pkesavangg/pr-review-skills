@@ -6,13 +6,21 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
+import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileFormControls
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileIntent
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileReducer
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileState
 import com.dmdbrands.gurus.weight.features.profile.strings.ProfileStrings
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
+import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,6 +31,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
   private val accountService: IAccountService,
+  private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
   reducer = ProfileReducer(),
 ) {
@@ -117,7 +126,36 @@ class ProfileViewModel @Inject constructor(
         dob = DateTimeValue.getDateFormatFromMilliseconds(formControls.birthday.value.getTimestamp()),
       )
       try {
-        accountService.updateProfile(profileUpdateRequest, true)
+        var scaleResult: GGUserActionResponseType? = null
+        // Use offline handler service similar to Angular implementation
+        accountService.updateProfile(profileUpdateRequest, true, showToast = false)
+        if (profileUpdateRequest.dob != currentAccount.dob || profileUpdateRequest.firstName != currentAccount.firstName) {
+          scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        }
+        if (scaleResult != null) {
+          when (scaleResult) {
+            GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+              dialogQueueService.enqueue(
+                DialogModel.Alert(
+                  title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                  message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                  onDismiss = { dialogQueueService.dismissCurrent() },
+                ),
+              )
+            }
+
+            GGUserActionResponseType.CREATION_COMPLETED -> {
+              dialogQueueService.showToast(
+                Toast(
+                  ToastStrings.Success.UpdateProfileSuccess.Header,
+                  ToastStrings.Success.UpdateProfileSuccess.Message,
+                ),
+              )
+            }
+
+            else -> {}
+          }
+        }
         handleIntent(ProfileIntent.Success)
         navigateBack()
         AppLog.i(TAG, "Profile updated successfully")
@@ -181,5 +219,22 @@ class ProfileViewModel @Inject constructor(
         AppLog.e(TAG, "Failed to navigate back from profile", e)
       }
     }
+  }
+
+  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
+    val result = CompletableDeferred<GGUserActionResponseType>()
+    try {
+      ggDeviceService.updateProfile(
+        profile,
+        { responseType ->
+          result.complete(responseType)
+        },
+      )
+    } catch (e: Exception) {
+      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
+      result.complete(GGUserActionResponseType.CREATION_FAILED)
+    }
+
+    return result.await()
   }
 }

@@ -153,7 +153,6 @@ fun ScaleModeSettingsScreen(
       }
       Column(
         modifier = Modifier.align(Alignment.CenterHorizontally),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
       ) {
         Image(
           painter =
@@ -161,7 +160,7 @@ fun ScaleModeSettingsScreen(
               id = AppIcons.Default.WeightOnlyModeScale,
             ),
           contentDescription = null,
-          modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally),
+          modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally).padding(top = spacing.md, bottom = spacing.lg),
         )
 
         AppNote(

@@ -20,9 +20,9 @@ struct MyAccountsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             // MARK: Header
-            NavbarHeaderView<Image, EmptyView>(
+            NavbarHeaderView<AppIconView, EmptyView>(
                 title: strings.title,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 onLeadingTap: { router.navigateBack() },
                 canShowBorder: true
             )

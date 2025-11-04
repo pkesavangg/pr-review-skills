@@ -56,7 +56,7 @@ constructor(
   override suspend fun saveDeviceToDb(device: Device, accountId: String) {
     val deviceDetails = device.toDeviceDetails(accountId)
     val existingDevices = deviceDao.getDevices(accountId).first()
-    val isDeviceExists = existingDevices.any() { it.scale?.id == device.id }
+    val isDeviceExists = existingDevices.any { it.scale?.id == device.id }
     if (isDeviceExists) {
       deviceDao.updateDevice(deviceDetails)
     } else {
@@ -68,9 +68,9 @@ constructor(
     deviceDao.deleteDevice(deviceId)
   }
 
-  override fun deviceExistsByBroadcastId(broadcastId: String): Flow<Boolean> =
+  override fun deviceExistsByBroadcastId(broadcastId: String, accountId: String): Flow<Boolean> =
     flow {
-      val device = deviceDao.getDeviceByBroadcastId(broadcastId)
+      val device = deviceDao.getDeviceByBroadcastId(broadcastId, accountId)
       emit(device != null)
     }
 
@@ -86,9 +86,9 @@ constructor(
       emit(device != null)
     }
 
-  override fun getDeviceByBroadcastId(broadcastId: String): Flow<Device?> =
+  override fun getDeviceByBroadcastId(broadcastId: String, accountId: String): Flow<Device?> =
     flow {
-      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId)
+      val deviceEntity = deviceDao.getDeviceByBroadcastIdString(broadcastId, accountId)
       emit(deviceEntity?.toDeviceDomainModel())
     }
 
@@ -149,7 +149,11 @@ constructor(
     val response = deviceApi.saveScale(device.toApiModel())
     if (response.isSuccessful) {
       val apiModel = response.body()
-      return apiModel?.toDomainModel() ?: device
+      return apiModel?.toDomainModel(
+        device.connectionStatus,
+        device.device?.wifiMacAddress,
+        device.device?.isWifiConfigured ?: false,
+      ) ?: device
     } else {
       throw Exception("Failed to save device to API: ${response.code()}")
     }

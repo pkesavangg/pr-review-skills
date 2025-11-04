@@ -26,7 +26,7 @@ struct DisplayMetricsScreen: View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: DisplayMetricStrings.displayMetricsTitle,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: {
                     ButtonView(
                         text: CommonStrings.save.uppercased(),

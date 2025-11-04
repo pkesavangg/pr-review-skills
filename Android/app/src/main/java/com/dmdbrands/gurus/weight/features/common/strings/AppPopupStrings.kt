@@ -111,6 +111,7 @@ object AppPopupStrings {
 
     fun ConfirmButton(permissionType: String) = when (permissionType) {
       GGPermissionType.ALL -> "App Permission"
+      GGPermissionType.BLUETOOTH_SWITCH, GGPermissionType.NOTIFICATION -> "Enable"
       else -> "Allow"
     }
 
@@ -145,5 +146,12 @@ object AppPopupStrings {
     const val Message = "A great tool for tracking your journey that can always be changed in the app settings."
     const val ConfirmButton = "LET'S DO IT"
     const val CloseContentDescription = "Close"
+  }
+
+  object R4ProfileUpdatePending {
+    const val Title = "Updates Pending..."
+    const val Message =
+      "Scale settings can’t be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+    const val ConfirmButton = "Ok"
   }
 }

@@ -82,10 +82,6 @@ private val metricInfoResources: Map<MetricKey, List<MetricInfoResource>> = mapO
   ),
   MetricKey.VISCERAL_FAT to listOf(
     MetricInfoResource("Cleveland Clinic", "https://my.clevelandclinic.org/health/diseases/24147-visceral-fat"),
-    MetricInfoResource(
-      "Johns Hopkins School of Medicine",
-      "https://www.hopkinsmedicine.org/gim/_documents/Faculty-Resource/The%20Skinny%20on%20Visceral%20Fat.pdf",
-    ),
   ),
   MetricKey.SUBCUTANEOUS_FAT to listOf(
     MetricInfoResource("Cleveland Clinic", "https://my.clevelandclinic.org/health/diseases/23968-subcutaneous-fat"),

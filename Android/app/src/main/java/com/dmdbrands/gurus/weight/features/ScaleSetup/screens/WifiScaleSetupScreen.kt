@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +39,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.WifiMacAddress
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.SelectButtonHelper
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonDisplayValue
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
@@ -47,7 +47,6 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
-import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -205,9 +204,20 @@ fun WifiScaleSetupScreenContent(
                 hasToggle = true,
                 toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
                 toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
-                onToggleChanged = {
-                  state.wifiPasswordForm.noPasswordNetwork.onValueChange(it)
-                  state.wifiPasswordForm.password.reset()
+                onToggleChanged = { isChecked ->
+                  state.wifiPasswordForm.noPasswordNetwork.onValueChange(isChecked)
+                  // Update validation based on toggle state
+                  if (isChecked) {
+                    // No password network - remove required validation and reset field
+                    state.wifiPasswordForm.password.removeValidator("required")
+                    // Reset clears value, error, touched, dirty, and pending states
+                    state.wifiPasswordForm.password.reset("")
+                  } else {
+                    // Password network - add required validation and reset field
+                    state.wifiPasswordForm.password.addValidator(FormValidations.required())
+                    // Reset to clear any stale errors
+                    state.wifiPasswordForm.password.reset("")
+                  }
                 },
                 noteMessage = WifiScaleSetupStrings.Note.NetworkMessage,
                 inputType = AppInputType.PASSWORD,
@@ -300,7 +310,6 @@ fun WifiScaleSetupScreenContent(
                   // Navigate to error guide step
                   onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
                 },
-                modifier = Modifier.padding(horizontal = spacing.sm),
               )
             }
 

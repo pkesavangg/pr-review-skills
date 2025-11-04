@@ -33,7 +33,7 @@ struct ScaleSettingsScreen: View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
                 title: truncatedTitle,
-                leadingContent: { Image(AppAssets.chevronLeft) },
+                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},

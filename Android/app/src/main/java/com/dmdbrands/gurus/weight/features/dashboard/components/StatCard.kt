@@ -105,9 +105,8 @@ internal fun StatCard(
       modifier = modifier
         .fillMaxSize()
         .padding(vertical = MeTheme.spacing.sm)
-        .then(
-          if (isFromSetup) Modifier.height(55.dp) else Modifier,
-        ),
+        .then(if (isFromSetup) Modifier.height(55.dp) else Modifier)
+        .then(if (isStreakMilestone(stat)) Modifier.padding(horizontal = MeTheme.spacing.sm) else Modifier),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center,
     ) {
@@ -122,7 +121,6 @@ internal fun StatCard(
             contentDescription = stat.label,
             tintColor = if (isVisible) MeTheme.colorScheme.streak else MeTheme.colorScheme.iconSecondary,
           )
-          Spacer(modifier = Modifier.size(MeTheme.spacing.xs))
         }
       }
       Column(

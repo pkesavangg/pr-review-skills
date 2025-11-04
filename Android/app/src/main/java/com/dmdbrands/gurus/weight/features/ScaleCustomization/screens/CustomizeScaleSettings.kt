@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationLayout
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.components.CustomizationSettingsItem
 import com.dmdbrands.gurus.weight.features.ScaleCustomization.strings.CustomizeSettingsStrings
@@ -265,6 +266,14 @@ fun CustomizeScaleSettings(
           )
           DashboardMilestone(
             progress = state.goalProgress,
+            latestWeight = state.goalProgress.latest?.let { latestEntry ->
+              when (latestEntry) {
+                is ScaleEntry -> {
+                  latestEntry.scale.scaleEntry.weight
+                }
+                else -> null
+              }
+            },
             inEditMode = true,
             visibleKeys = keys,
             isFromSetup = true,

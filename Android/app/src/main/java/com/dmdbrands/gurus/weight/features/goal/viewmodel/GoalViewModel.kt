@@ -18,13 +18,18 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper.toGoal
 import com.dmdbrands.gurus.weight.features.goal.model.GoalFormControls
 import com.dmdbrands.gurus.weight.features.goal.model.GoalIntent
 import com.dmdbrands.gurus.weight.features.goal.model.GoalReducer
 import com.dmdbrands.gurus.weight.features.goal.model.GoalState
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
+import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
+import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -42,6 +47,7 @@ constructor(
   private val accountService: IAccountService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
+  private val ggDeviceService: GGDeviceService
 ) : BaseIntentViewModel<GoalState, GoalIntent>(
   reducer = GoalReducer(),
 ) {
@@ -182,8 +188,24 @@ constructor(
           goalType = goal.type,
           wasMet = account.metPreviousGoal ?: false,
         )
+        val scaleResult = updateR4Profile(account.toGGBTUserProfile())
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
 
-        handleIntent(GoalIntent.Success)
+          GGUserActionResponseType.CREATION_COMPLETED -> {
+            handleIntent(GoalIntent.Success)
+          }
+
+          else -> {}
+        }
         AppLog.i(tag, "Goal settings saved successfully")
       } catch (e: Exception) {
         handleIntent(GoalIntent.Error(GoalStrings.SaveErrorMessage))
@@ -307,5 +329,22 @@ constructor(
         AppLog.e(tag, "Failed to navigate back from goal screen", e)
       }
     }
+  }
+
+  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
+    val result = CompletableDeferred<GGUserActionResponseType>()
+    try {
+      ggDeviceService.updateProfile(
+        profile,
+        { responseType ->
+          result.complete(responseType)
+        },
+      )
+    } catch (e: Exception) {
+      AppLog.d(tag, "updateR4Profile - Error updating profile to scale: ${e.message}")
+      result.complete(GGUserActionResponseType.CREATION_FAILED)
+    }
+
+    return result.await()
   }
 }
