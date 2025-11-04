@@ -180,24 +180,99 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
+        
+        // Fetch entries and immediately extract values before leaving fetch context
+        // We need to extract SwiftData properties synchronously within the fetch context
         let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-            .sorted { $0.entryTimestamp < $1.entryTimestamp }
-
-        guard let latestEntry = allEntries.last else {
+        let sortedEntries = allEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        
+        // Extract values immediately after fetching, before any async continuation
+        guard let latestEntry = sortedEntries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
 
-        let latestWeight = latestEntry.scaleEntry?.weight ?? 0
-
         // Get entries for the last 7 and 30 days
-        let last7Days = try await localRepo.fetchEntries(lastNDays: 7, userId: accountId)
-            .sorted { $0.entryTimestamp < $1.entryTimestamp }
-        let last30Days = try await localRepo.fetchEntries(lastNDays: 30, userId: accountId)
-            .sorted { $0.entryTimestamp < $1.entryTimestamp }
-
-        let weekStartEntry = last7Days.first
-        let monthStartEntry = last30Days.first
-        let monthKey = monthStartEntry.map { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) } ?? ""
+        let last7DaysRaw = try await localRepo.fetchEntries(lastNDays: 7, userId: accountId)
+        let last30DaysRaw = try await localRepo.fetchEntries(lastNDays: 30, userId: accountId)
+        
+        let sorted7Days = last7DaysRaw.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let sorted30Days = last30DaysRaw.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let weekStartEntry = sorted7Days.first
+        let monthStartEntry = sorted30Days.first
+        let firstEntry = sortedEntries.first
+        
+        // Refetch entries using main actor's ModelContext to safely access SwiftData properties
+        // Extract entry IDs that we need to refetch
+        let latestEntryId = latestEntry.id
+        let weekStartEntryId = weekStartEntry?.id
+        let monthStartEntryId = monthStartEntry?.id
+        let firstEntryId = firstEntry?.id
+        
+        let entryIdsToRefetch = [
+            latestEntryId,
+            weekStartEntryId,
+            monthStartEntryId,
+            firstEntryId
+        ].compactMap { $0 }
+        
+        // Refetch using repository's main actor context method
+        // Ensure localRepo is of type EntryRepository before calling refetchEntriesOnMainActor
+        guard let entryRepo = localRepo as? EntryRepository else {
+            throw NSError(
+                domain: "EntryService",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "localRepo is not of type EntryRepository"]
+            )
+        }
+        let refetchedEntries = try await entryRepo.refetchEntriesOnMainActor(entryIds: entryIdsToRefetch)
+        
+        // Extract values from refetched entries synchronously on main actor
+        let extractedValues = try await MainActor.run {
+            guard let latestEntryMain = refetchedEntries[latestEntryId] else {
+                throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Latest entry not found in main context"])
+            }
+            
+            // Access all SwiftData properties synchronously within MainActor.run
+            let latestWeight = latestEntryMain.scaleEntry?.weight ?? 0
+            let latestDTO = latestEntryMain.toOperationDTO()
+            
+            let weekStartEntryMain = weekStartEntryId.flatMap { refetchedEntries[$0] }
+            let monthStartEntryMain = monthStartEntryId.flatMap { refetchedEntries[$0] }
+            let firstEntryMain = firstEntryId.flatMap { refetchedEntries[$0] }
+            
+            let weekStartWeight = weekStartEntryMain?.scaleEntry?.weight
+            let monthStartWeight = monthStartEntryMain?.scaleEntry?.weight
+            let firstEntryWeight = firstEntryMain?.scaleEntry?.weight
+            
+            let weekDTO = weekStartEntryMain?.toOperationDTO()
+            let monthDTO = monthStartEntryMain?.toOperationDTO()
+            let firstDTO = firstEntryMain?.toOperationDTO()
+            
+            let monthKey = monthStartEntryMain.map { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) } ?? ""
+            
+            return (
+                latestWeight: latestWeight,
+                latestDTO: latestDTO,
+                weekStartWeight: weekStartWeight,
+                monthStartWeight: monthStartWeight,
+                firstEntryWeight: firstEntryWeight,
+                weekDTO: weekDTO,
+                monthDTO: monthDTO,
+                firstDTO: firstDTO,
+                monthKey: monthKey
+            )
+        }
+        
+        // Use extracted values
+        let latestWeight = extractedValues.latestWeight
+        let latestDTO = extractedValues.latestDTO
+        let weekStartWeight = extractedValues.weekStartWeight
+        let monthStartWeight = extractedValues.monthStartWeight
+        let firstEntryWeight = extractedValues.firstEntryWeight
+        let weekDTO = extractedValues.weekDTO
+        let monthDTO = extractedValues.monthDTO
+        let firstDTO = extractedValues.firstDTO
+        let monthKey = extractedValues.monthKey
 
         // Build 12-month data for yearly baseline
         let monthSeries = try await getMonthYear()
@@ -206,36 +281,47 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let yearAvgWeight = oldestMonth?.weight.map(Int.init)
 
         // Construct a synthetic entry for the year start
-        let yearStartEntry: Entry? = {
+        let yearStartDTO: BathScaleOperationDTO? = {
             guard !yearKey.isEmpty else { return nil }
             let date = DateTimeTools.formatter("yyyy-MM").date(from: yearKey) ?? Date()
-            var entry = Entry(
-                id: UUID(),
-                entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
+            return BathScaleOperationDTO(
                 accountId: accountId,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
+                entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: OperationType.create.rawValue,
-                deviceType: "synthetic",
-                isSynced: true
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: "monthly",
+                subcutaneousFatPercent: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
+                weight: yearAvgWeight.map { Double($0) }
             )
-            entry.scaleEntry = BathScaleEntry(weight: yearAvgWeight ?? 0, source: "monthly")
-            return entry
         }()
-
-        // Calculate deltas
-        let weekDelta = latestWeight - (weekStartEntry?.scaleEntry?.weight ?? latestWeight)
-        let monthDelta = latestWeight - (monthStartEntry?.scaleEntry?.weight ?? latestWeight)
+        
+        // Continue with calculations (can be off main actor)
+        let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
+        let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)
 
         // Year delta adjustment
         let now = Date()
-        let initYearDate = yearStartEntry.flatMap { DateTimeTools.parse($0.entryTimestamp) }
+        let initYearDate = yearStartDTO?.entryTimestamp.flatMap { DateTimeTools.parse($0) }
         let useMonthAsYearAnchor = initYearDate.map { $0 >= Calendar.current.date(byAdding: .day, value: -30, to: now)! } ?? false
-        let yearAnchorWeight = useMonthAsYearAnchor ? monthStartEntry?.scaleEntry?.weight : yearAvgWeight
+        let yearAnchorWeight = useMonthAsYearAnchor ? monthStartWeight : yearAvgWeight
         let yearDelta = latestWeight - (yearAnchorWeight ?? latestWeight)
 
         // Total progress since start
         let account = try await accountService.getActiveAccount()
-        let initialWeight = account?.goalSettings?.initialWeight.map(Int.init)
-            ?? allEntries.first?.scaleEntry?.weight
+        let initialWeight = account?.goalSettings?.initialWeight.map(Int.init) ?? firstEntryWeight
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
 
         let streak = try await getStreak()
@@ -247,13 +333,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
 
         return Progress(
-            count: allEntries.count,
+            count: sortedEntries.count,
             currentStreak: streak.current,
-            initYear: yearStartEntry?.toOperationDTO(),
-            initMonth: monthStartEntry?.toOperationDTO(),
-            initWeek: weekStartEntry?.toOperationDTO(),
-            initWt: Double(allEntries.first?.scaleEntry?.weight ?? 0),
-            latest: latestEntry.toOperationDTO(),
+            initYear: yearStartDTO,
+            initMonth: monthDTO,
+            initWeek: weekDTO,
+            initWt: Double(firstEntryWeight ?? 0),
+            latest: latestDTO,
             longestStreak: streak.max,
             month: monthDelta,
             percent: nil,

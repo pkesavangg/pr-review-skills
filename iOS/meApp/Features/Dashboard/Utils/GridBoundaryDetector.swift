@@ -105,7 +105,8 @@ public class GridBoundaryDetector {
         if collectionViewFrame == lastCollectionViewFrame && 
            contentSize == lastContentSize && 
            constraintsHash == lastConstraintsHash {
-            return // No need to recalculate, use cached values
+            // No need to recalculate, use cached values
+            return
         }
         
         // Update cache
@@ -129,8 +130,6 @@ public class GridBoundaryDetector {
             width: constrainedWidth,
             height: constrainedHeight
         )
-        
-        
     }
     
     /// Checks if a drag location is within the precise grid boundaries
@@ -205,7 +204,8 @@ public class GridBoundaryDetector {
         }
         
         // Convert back to collection view coordinates
-        return superview.convert(constrainedLocation, to: collectionView)
+        let finalPoint = superview.convert(constrainedLocation, to: collectionView)
+        return finalPoint
     }
     
     /// Calculates a strictly constrained frame for a dragged item
@@ -263,7 +263,8 @@ public class GridBoundaryDetector {
         }
         
         // Convert back to collection view coordinates
-        return superview.convert(constrainedFrame, to: collectionView)
+        let finalFrame = superview.convert(constrainedFrame, to: collectionView)
+        return finalFrame
     }
     
     /// Provides haptic feedback when drag crosses boundary

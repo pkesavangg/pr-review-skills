@@ -17,29 +17,29 @@ struct MetricDetailView: View {
     @State private var isBrowserPresented: Bool = false
     @State private var showScaleModesSheet: Bool = false
 
-    let entry: Entry
+    let entryDTO: BathScaleOperationDTO
     let metric: BodyMetric
     
     private let placeholder = "--"
 
     private var config: MetricData { BodyMetrics.config[metric]! }
 
-    // Extract raw metric value from Entry → BathScaleEntry/BathScaleMetric
+    // Extract raw metric value from DTO (no SwiftData access needed)
     private var rawValue: Double? {
         switch metric {
-        case .weight:                 return entry.scaleEntry?.weight.map(Double.init)
-        case .bmi:                    return entry.scaleEntry?.bmi.map(Double.init)
-        case .bodyFat:                return entry.scaleEntry?.bodyFat.map(Double.init)
-        case .muscleMass:             return entry.scaleEntry?.muscleMass.map(Double.init)
-        case .water:                  return entry.scaleEntry?.water.map(Double.init)
-        case .pulse:                  return entry.scaleEntryMetric?.pulse.map(Double.init)
-        case .boneMass:               return entry.scaleEntryMetric?.boneMass.map(Double.init)
-        case .visceralFatLevel:       return entry.scaleEntryMetric?.visceralFatLevel.map(Double.init)
-        case .subcutaneousFatPercent: return entry.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init)
-        case .proteinPercent:         return entry.scaleEntryMetric?.proteinPercent.map(Double.init)
-        case .skeletalMusclePercent:  return entry.scaleEntryMetric?.skeletalMusclePercent.map(Double.init)
-        case .bmr:                    return entry.scaleEntryMetric?.bmr.map(Double.init)
-        case .metabolicAge:           return entry.scaleEntryMetric?.metabolicAge.map(Double.init)
+        case .weight:                 return entryDTO.weight
+        case .bmi:                    return entryDTO.bmi
+        case .bodyFat:                return entryDTO.bodyFat
+        case .muscleMass:             return entryDTO.muscleMass
+        case .water:                  return entryDTO.water
+        case .pulse:                  return entryDTO.pulse
+        case .boneMass:               return entryDTO.boneMass
+        case .visceralFatLevel:       return entryDTO.visceralFatLevel
+        case .subcutaneousFatPercent: return entryDTO.subcutaneousFatPercent
+        case .proteinPercent:         return entryDTO.proteinPercent
+        case .skeletalMusclePercent:  return entryDTO.skeletalMusclePercent
+        case .bmr:                    return entryDTO.bmr
+        case .metabolicAge:           return entryDTO.metabolicAge
         }
     }
 
@@ -65,7 +65,7 @@ struct MetricDetailView: View {
 
     private var measurementDescription: String {
         guard rawValue != nil else { return MetricStrings.noMeasurementAvailable }
-        let date = DateTimeTools.getMonthDayYear(entry.entryTimestamp)
+        let date = DateTimeTools.getMonthDayYear(entryDTO.entryTimestamp ?? "")
         return MetricStrings.measurementTaken + " \(date)"
     }
 

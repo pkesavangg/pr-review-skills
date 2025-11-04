@@ -20,8 +20,8 @@ struct ScaleMetricsView: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
 
-    // Input
-    let entry: Entry
+    // Input - can accept either Entry or DTO
+    let entryDTO: BathScaleOperationDTO
     let selectedMetric: BodyMetric
 
     // Ordering used throughout the app (mirrors BODY_METRICS_ARRAY)
@@ -37,8 +37,16 @@ struct ScaleMetricsView: View {
     @State private var selectedMetricState: BodyMetric = .bmi
 
     // Initialiser to set initial selection
+    init(entryDTO: BathScaleOperationDTO, selectedMetric: BodyMetric = .bmi) {
+        self.entryDTO = entryDTO
+        self.selectedMetric = selectedMetric
+        _selectedMetricState = State(initialValue: selectedMetric)
+    }
+    
+    // Convenience initializer that accepts Entry and extracts DTO
     init(entry: Entry, selectedMetric: BodyMetric = .bmi) {
-        self.entry = entry
+        // Extract DTO synchronously on main actor
+        self.entryDTO = entry.toOperationDTO()
         self.selectedMetric = selectedMetric
         _selectedMetricState = State(initialValue: selectedMetric)
     }
@@ -77,7 +85,7 @@ struct ScaleMetricsView: View {
             // Pager with metric-specific details
             TabView(selection: $selectedMetricState) {
                 ForEach(metricOrder, id: \.self) { metric in
-                    MetricDetailView(entry: entry, metric: metric)
+                    MetricDetailView(entryDTO: entryDTO, metric: metric)
                         .tag(metric)
                 }
             }
