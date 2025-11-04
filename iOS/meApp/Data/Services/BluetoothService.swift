@@ -650,7 +650,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             let success = await ggBleSDK.updateProfile(profile: userProfile)
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
-            return .success(success)
+            // SDK returns Bool; protocol expects [String] status array. Return empty array for now.
+            return .success([])
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -1028,11 +1029,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     /// Safely gets the scale type from a Device, handling potential SwiftData detachment issues
     private func getSafeScaleType(for device: Device) -> String? {
-        // Check if the device has a valid persistent identifier
-        guard device.persistentModelID != nil else {
-            logger.log(level: .debug, tag: tag, message: "Device \(device.id) has no persistent model ID")
-            return nil
-        }
+        // Note: `persistentModelID` is non-optional in SwiftData; no need to guard for nil here.
         
         // Try to access the scale type, but be prepared for potential detachment
         // We'll use a safer approach by checking if the bathScale relationship exists
@@ -1593,7 +1590,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 self.canShowScaleDiscoveredModal = true
             }
         }
-        ggBleSDK.skipDevice(broadcastId, considerForSession)
+        ggBleSDK.skipDevice(broadcastId)
         return .success(())
     }
 
@@ -1609,7 +1606,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         for id in skipDevices {
             // Normalize case to avoid mismatches
             let normalized = id.uppercased()
-            ggBleSDK.skipDevice(id, true)
+            ggBleSDK.skipDevice(id)
         }
     }
 }
