@@ -69,6 +69,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     var skipDevices: [String] = []
+    private var blockedBroadcastIds: Set<String> = []
+    private var unblockTasks: [String: Task<Void, Never>] = [:]
     var reconnectAlertSkippedDevices: [String] = []
     
     
@@ -423,6 +425,41 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return .failure(error)
         } catch {
             return .failure(.updateProfileFailed(error))
+        }
+    }
+    
+    /// Deletes the current app user's slot on the BT WiFi (R4) scale when possible.
+    /// Attempts to use the device token if available; otherwise fetches users and matches by preference/display name.
+    /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
+    func deleteCurrentUserFromScaleIfPossible(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        guard let broadcastId = device.broadcastIdString else {
+            logger.log(level: .error, tag: tag, message: "deleteCurrentUserFromScaleIfPossible - missing broadcastId")
+            return .failure(.invalidBroadcastId)
+        }
+        
+        // Prefer using a known token on the device model
+        if let token = device.token, !token.isEmpty {
+            logger.log(level: .debug, tag: tag, message: "Deleting scale user using persisted token")
+            if Task.isCancelled { return .failure(.timeout) }
+            return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+        }
+        
+        // Fallback: fetch users from the scale and try to match by display name and id
+        if Task.isCancelled { return .failure(.timeout) }
+        let listResult = await getScaleUserList(for: device)
+        switch listResult {
+        case .success(let users):
+            if Task.isCancelled { return .failure(.timeout) }
+            if let match = findUserToDelete(userList: users, discoveredScale: device), let token = match.token, !token.isEmpty {
+                logger.log(level: .debug, tag: tag, message: "Deleting matched scale user: \(match.name)")
+                return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+            } else {
+                logger.log(level: .error, tag: tag, message: "No matching user found to delete on scale for broadcastId \(broadcastId)")
+                return .failure(.deviceNotFound)
+            }
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to fetch user list before deletion: \(error.localizedDescription)")
+            return .failure(error)
         }
     }
     
@@ -1036,8 +1073,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         guard let bathScale = device.bathScale else {
             return nil
         }
-        
-        // Access the scaleType property
         return bathScale.scaleType
     }
     
@@ -1065,6 +1100,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     
     private func handleSmartScaleData(_ data: GGScanResponse) async {
+        // Broad blocked-broadcast check for all event data types we can identify
+        var bid: String? = nil
+        if let details = data.data as? GGDeviceDetails {
+            bid = details.broadcastIdString
+        } else if let entry = data.data as? GGWeightEntry {
+            bid = entry.broadcastIdString
+        }
+        if let bid = bid, blockedBroadcastIds.contains(bid) {
+            ggBleSDK.skipDevice(bid)
+            return
+        }
         guard let responseType = data.type else { return }
         let scanData = data.data
         switch responseType {
@@ -1583,6 +1629,20 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if !skipDevices.contains(broadcastId) {
             skipDevices.append(broadcastId)
         }
+        // Temporarily block device events to avoid reconnect race during deletion/unlink
+        blockedBroadcastIds.insert(broadcastId)
+        // Cancel any existing unblock task for this broadcastId to avoid duplicates
+        if let existing = unblockTasks[broadcastId] {
+            existing.cancel()
+        }
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.broadcastBlockDurationNs))
+            await MainActor.run { [weak self] in
+                _ = self?.blockedBroadcastIds.remove(broadcastId)
+                self?.unblockTasks.removeValue(forKey: broadcastId)
+            }
+        }
+        unblockTasks[broadcastId] = task
         canShowScaleDiscoveredModal = false
         Task {
             try await Task.sleep(nanoseconds: UInt64(timeoutConstants.discoveredScaleModalTimeout))

@@ -75,6 +75,10 @@ protocol BluetoothServiceProtocol {
     /// Deletes a scale from storage (and optionally from the physical device).
     /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
     func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
+    /// Deletes the current app user's slot on the BT WiFi (R4) scale when possible.
+    /// Attempts to use the device token if available; otherwise fetches users and matches by preference/display name.
+    /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
+    func deleteCurrentUserFromScaleIfPossible(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
     /// Disconnects the specified device without deleting it from storage.
     /// - Returns: Result<Void, BluetoothServiceError>
     func disconnectDevice(broadcastId: String, considerForSession: Bool) async -> Result<Void, BluetoothServiceError>
