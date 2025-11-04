@@ -14,8 +14,6 @@ struct PasswordStepView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var signupStore: SignupStore
     @State var focusedField: FocusField?
-    @State private var showTerms = false
-    @State private var showPrivacy = false
     let passwordStepLang = SignupStrings.PasswordStep.self
     let labels = InputFieldLabels.self
     let legalUrls = AppConstants.LegalURLs.self
@@ -81,29 +79,13 @@ struct PasswordStepView: View {
                         .foregroundColor(theme.textBody)
                     Spacer()
                 }
-                HStack {
-                    Button {
-                        showTerms = true
-                    } label: {
-                        Text(passwordStepLang.termsOfService.uppercased())
-                            .fontOpenSans(.link2)
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                    .inAppBrowser(url: legalUrls.termsOfService, isPresented: $showTerms)
-                    
-                    Text(passwordStepLang.andText)
-                        .fontOpenSans(.link2)
-                        .foregroundColor(theme.textBody)
-                    
-                    Button {
-                        showPrivacy = true
-                    } label: {
-                        Text(passwordStepLang.privacyPolicy.uppercased())
-                            .fontOpenSans(.link2)
-                            .foregroundColor(theme.actionPrimary)
-                    }
-                    .inAppBrowser(url: legalUrls.privacyPolicy, isPresented: $showPrivacy)
-                }
+                LegalLinksRow(
+                    termsLabel: passwordStepLang.termsOfService,
+                    andLabel: passwordStepLang.andText,
+                    privacyLabel: passwordStepLang.privacyPolicy,
+                    termsURL: legalUrls.termsOfService,
+                    privacyURL: legalUrls.privacyPolicy
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, .spacing3XL)
