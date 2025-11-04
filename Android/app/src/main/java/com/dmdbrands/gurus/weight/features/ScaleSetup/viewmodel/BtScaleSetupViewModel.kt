@@ -121,7 +121,7 @@ constructor(
     if (currentState.isLastStep) {
       AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
-    } else if (currentState.step == BtScaleSetupStep.SCALE_INFO) {
+    } else if (currentState.isFirstStep) {
       val areRequiredPermissionsEnabled = AppPermissionsHelper
         .areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.Bluetooth)
       if (areRequiredPermissionsEnabled) {
@@ -193,6 +193,11 @@ constructor(
     val nextEnabled = when (step) {
       BtScaleSetupStep.PAIRING_MODE, BtScaleSetupStep.STEP_ON -> false
       BtScaleSetupStep.SELECT_USER -> _state.value.user != null
+      BtScaleSetupStep.PERMISSIONS ->
+        AppPermissionsHelper.areRequiredPermissionsEnabled(
+          permissionService.permissionCallBackFlow.value,
+          setupType = ScaleSetupType.Bluetooth,
+        )
       else -> true
     }
     AppLog.d(TAG, "Button states - Back: $backEnabled, Next: $nextEnabled")

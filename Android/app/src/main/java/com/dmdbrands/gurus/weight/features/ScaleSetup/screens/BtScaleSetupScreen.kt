@@ -105,7 +105,7 @@ fun BtScaleSetupScreenContent(
           type = ButtonType.PrimaryFilled,
           label = if (state.isLastStep) ScaleSetupStrings.FinishButton else ScaleSetupStrings.nextButton,
           size = ButtonSize.Small,
-          enabled = state.nextEnabled,
+          enabled = state.nextEnabled || state.isFirstStep || state.isLastStep,
           onClick = {
             focusManager.clearFocus()
             onIntent(ScaleSetupIntent.Next)
