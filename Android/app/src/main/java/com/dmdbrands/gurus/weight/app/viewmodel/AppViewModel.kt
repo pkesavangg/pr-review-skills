@@ -916,6 +916,14 @@ constructor(
         feedService.showIAMFeedModal(event.feedItem)
       }
 
+      is IAMDialogEvent.PromoCodeCopied -> {
+        dialogQueueService.showToast(
+          Toast(
+            message = ToastStrings.Success.PromoCodeCopied.Message,
+          ),
+        )
+      }
+
       else -> {}
     }
   }

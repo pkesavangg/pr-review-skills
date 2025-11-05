@@ -23,6 +23,10 @@ object ToastStrings {
     object AccountSwitchSuccess {
       fun Message(accountName: String) = "Switched to $accountName"
     }
+
+    object PromoCodeCopied {
+      const val Message = "Promo code copied!"
+    }
   }
 
   object Error {

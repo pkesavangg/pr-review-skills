@@ -106,4 +106,10 @@ interface IInAppMessagingService {
      * @param variationId Optional variation ID
      */
     suspend fun emitFeedUpdate(feedItem: FeedItem, actionType: String, variationId: Int? = null)
+
+    /**
+     * Emit promo code copied event to notify main app
+     * @param promoCode The promo code that was copied
+     */
+    suspend fun emitPromoCodeCopied(promoCode: String)
 }

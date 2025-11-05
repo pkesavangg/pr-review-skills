@@ -347,6 +347,20 @@ class GGInAppMessagingService @Inject constructor(
     } catch (e: Exception) {
     }
   }
+
+  /**
+   * Emit promo code copied event to notify main app
+   * @param promoCode The promo code that was copied
+   */
+  override suspend fun emitPromoCodeCopied(promoCode: String) {
+    try {
+      _dialogEvents.emit(
+        IAMDialogEvent.PromoCodeCopied(promoCode = promoCode),
+      )
+    } catch (e: Exception) {
+      // Log error but don't throw to avoid breaking the copy flow
+    }
+  }
 }
 
 /**
@@ -360,6 +374,14 @@ sealed class IAMDialogEvent {
 
   data class ShowPromoModal(
     val promoData: Any // You can define a proper PromoData class later
+  ) : IAMDialogEvent()
+
+  /**
+   * Event emitted when promo code is copied to clipboard
+   * @param promoCode The promo code that was copied
+   */
+  data class PromoCodeCopied(
+    val promoCode: String
   ) : IAMDialogEvent()
 }
 
