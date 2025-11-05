@@ -10,6 +10,7 @@
 import Foundation
 import Combine
 import GGBluetoothSwiftPackage
+import CoreBluetooth
 // For mapping device metadata
 import SwiftData
 
@@ -27,7 +28,7 @@ import SwiftData
  * - NOTE: The static `shared` property is retained for legacy compatibility, but should be phased out in favor of DI.
  */
 @MainActor
-final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
+final class BluetoothService: NSObject, ObservableObject, BluetoothServiceProtocol {
     // MARK: - Singleton (Legacy Only)
     /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
@@ -104,6 +105,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let entryService: EntryServiceProtocol
     private let logger: LoggerService
     private let ggBleSDK = GGBluetoothSwiftPackage.shared
+    private var centralManager: CBCentralManager?
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let tag = "BluetoothService"
     
@@ -131,8 +133,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         self.scaleService = scaleService
         self.entryService = entryService
         self.logger = logger
+        super.init()
         setupSubscriptions()
         initialize()
+        // Observe system Bluetooth adapter state so permission UI reacts instantly
+        self.centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: false])
     }
     
     // MARK: - Setup
@@ -1666,7 +1671,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         for id in skipDevices {
             // Normalize case to avoid mismatches
             let normalized = id.uppercased()
-            ggBleSDK.skipDevice(id)
+            ggBleSDK.skipDevice(normalized)
         }
     }
 }
@@ -1725,3 +1730,24 @@ private extension BluetoothService {
 }
 
 
+// MARK: - CoreBluetooth Delegate
+extension BluetoothService: CBCentralManagerDelegate {
+    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        Task { @MainActor in
+            switch central.state {
+            case .poweredOn:
+                self.logger.log(level: .info, tag: self.tag, message: "Ble adapter state changed - GG_BLUETOOTH_ADAPTER_ON")
+                PermissionsService.shared.updatePermission(.BLUETOOTH_SWITCH, to: .ENABLED)
+            case .poweredOff:
+                self.logger.log(level: .info, tag: self.tag, message: "Ble adapter state changed - GG_BLUETOOTH_ADAPTER_OFF")
+                PermissionsService.shared.updatePermission(.BLUETOOTH_SWITCH, to: .DISABLED)
+            case .unauthorized:
+                self.logger.log(level: .error, tag: self.tag, message: "Ble adapter unauthorized")
+                PermissionsService.shared.updatePermission(.BLUETOOTH, to: .DISABLED)
+                PermissionsService.shared.updatePermission(.BLUETOOTH_SWITCH, to: .DISABLED)
+            default:
+                break
+            }
+        }
+    }
+}
