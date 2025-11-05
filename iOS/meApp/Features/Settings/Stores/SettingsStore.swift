@@ -1373,7 +1373,7 @@ class SettingsStore: ObservableObject {
         // Set the flag immediately to avoid repeated triggers
         kvStore.setValue(true, forKey: flagKey)
         
-        // Delay presentation by 2 seconds
+        // Delay presentation by 1 second
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,
@@ -1386,8 +1386,8 @@ class SettingsStore: ObservableObject {
                 }
             )
             
-            if let account = accountService.activeAccount {
-                if account.isLoggedIn {
+            if let account = self.accountService.activeAccount {
+                if account.isLoggedIn ?? false {
                     self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
                 } else {
                     self.notificationService.dismissModal()
