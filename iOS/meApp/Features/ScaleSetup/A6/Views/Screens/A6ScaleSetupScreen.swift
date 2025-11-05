@@ -111,7 +111,6 @@ struct A6ScaleSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    
                 }
                 setupStore.moveToNextStep()
             })

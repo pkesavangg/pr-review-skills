@@ -99,7 +99,7 @@ struct BluetoothScaleSetupScreen: View {
                        isDisabled: !setupStore.isNextEnabled,
                        action: {
                 withAnimation {
-                    hideKeyboard()                    
+                    hideKeyboard()
                 }
                 setupStore.moveToNextStep()
             })
