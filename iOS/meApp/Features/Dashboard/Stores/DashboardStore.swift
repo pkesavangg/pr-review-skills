@@ -66,6 +66,26 @@ class DashboardStore: ObservableObject {
             await initializeDashboard()
         }
     }
+
+    /// Lightweight initializer that avoids subscriptions and heavy async initialization.
+    /// Use this for ephemeral contexts (e.g., Metric Info sheet without full dashboard state).
+    init(lightweight: Bool) {
+        // Initialize managers
+        self.metricsManager = DashboardMetricsManager()
+        self.graphManager = DashboardGraphManager()
+        self.streakManager = DashboardStreakManager()
+        self.dataManager = DashboardDataManager()
+        self.goalManager = DashboardGoalManager()
+
+        // Bind state so basic computed properties can work
+        setupBindings()
+
+        // Skip subscriptions and async initialization to avoid network/processing
+        if !lightweight {
+            setupSubscriptions()
+            Task { await initializeDashboard() }
+        }
+    }
     
     func syncEntries() async {
         await entryService.syncAllEntriesWithRemote()

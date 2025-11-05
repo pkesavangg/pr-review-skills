@@ -65,7 +65,7 @@ extension RefetchedEntryWrapper {
     init(entryId: UUID, selectedMetric: BodyMetric) {
         self.entryId = entryId
         self.selectedMetric = selectedMetric
-        self._dashboardStore = ObservedObject(wrappedValue: DashboardStore())
+        self._dashboardStore = ObservedObject(wrappedValue: DashboardStore(lightweight: true))
         self._entryDTO = State(initialValue: nil)
         self._isLoading = State(initialValue: true)
     }
