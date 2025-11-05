@@ -67,7 +67,7 @@ fun LoginScreen(email: String? = null) {
     )
   val state by viewmodel.state.collectAsState()
   BackHandler {
-    viewmodel.handleIntent(LoginIntent.OnBack)
+    viewmodel.handleIntent(LoginIntent.OnRequestBack)
   }
   LoginContent(state, viewmodel::handleIntent)
 }
@@ -86,7 +86,7 @@ private fun LoginContent(
   AppScaffold(
     title = null,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) { handleIntent(LoginIntent.OnBack) }
+      AppIconButton(AppIcons.Default.Close) { handleIntent(LoginIntent.OnRequestBack) }
     },
     actions = {
       AppIconButton(AppIcons.Outlined.Help) { handleIntent(LoginIntent.OpenHelpModal) }

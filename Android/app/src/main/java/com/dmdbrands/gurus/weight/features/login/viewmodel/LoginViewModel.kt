@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.login.model.LoginFormControls
 import com.dmdbrands.gurus.weight.features.login.model.LoginIntent
 import com.dmdbrands.gurus.weight.features.login.model.LoginReducer
@@ -68,6 +69,7 @@ constructor(
       is LoginIntent.Success -> navigateToDashboard()
       is LoginIntent.OpenHelpModal -> openHelpModal()
       is LoginIntent.OnBack -> navigateBack()
+      is LoginIntent.OnRequestBack -> onRequestBack()
       is LoginIntent.ShowMaxAccountAlert -> showMaxLimitReachedAlert()
       else -> null
     }
@@ -104,6 +106,30 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
+  }
+
+  private fun onRequestBack() {
+    if(state.value.form.isDirty){
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = AppPopupStrings.UnsavedChanges.Title,
+          message = AppPopupStrings.UnsavedChanges.Message,
+          confirmText = AppPopupStrings.UnsavedChanges.Exit,
+          cancelText = AppPopupStrings.UnsavedChanges.Return,
+          onConfirm = {
+            navigateBack()
+            dialogQueueService.dismissCurrent()
+          },
+          onCancel = {
+            dialogQueueService.dismissCurrent()
+          },
+        ),
+      )
+    }
+    else {
+      navigateBack()
+    }
+
   }
 
   /**
