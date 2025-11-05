@@ -489,16 +489,12 @@ class SettingsStore: ObservableObject {
                 var toastMessage: String?
                 let toastTitle: String = toastLang.errorUpdatingProfile
                 switch error {
-                case HTTPError.apiError(let message, _):
-                    if message == commonLang.emailAlreadyInUse {
-                        toastMessage = toastLang.emailInUse
-                    } else {
-                        toastMessage = toastLang.somethingWentWrong
-                    }
-                case HTTPError.badRequest:
+                case HTTPError.apiError(let message, _) where message == commonLang.emailAlreadyInUse:
                     toastMessage = toastLang.emailInUse
-                case HTTPError.statusCode(409):
+                case HTTPError.badRequest, HTTPError.statusCode(409):
                     toastMessage = toastLang.emailInUse
+                case HTTPError.apiError:
+                    toastMessage = toastLang.somethingWentWrong
                 case HTTPError.noInternet:
                     break
                 case HTTPError.serverError:

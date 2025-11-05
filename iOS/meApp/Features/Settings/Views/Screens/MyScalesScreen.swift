@@ -260,7 +260,6 @@ struct MyScalesScreen: View {
         }
     }
     
-    // MARK: - Private Methods
     
 }
 
