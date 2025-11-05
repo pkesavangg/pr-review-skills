@@ -1224,11 +1224,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         guard missingPermissions else { return }
         
         switch currentStep {
-        case .wakeup:
-            resetDiscoveryState()
-            navigateToStep(.permissions)
-            
-        case .connectingBluetooth:
+        case .wakeup, .connectingBluetooth:
             resetDiscoveryState()
             navigateToStep(.permissions)
 

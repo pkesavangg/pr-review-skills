@@ -1666,7 +1666,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         for id in skipDevices {
             // Normalize case to avoid mismatches
             let normalized = id.uppercased()
-            ggBleSDK.skipDevice(normalized)
+            ggBleSDK.skipDevice(id)
         }
     }
 }
