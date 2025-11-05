@@ -52,14 +52,7 @@ struct ScaleMetricsView: View {
         _selectedMetricState = State(initialValue: selectedMetric)
     }
     
-    // Convenience initializer that accepts Entry and extracts DTO
-    init(entry: Entry, selectedMetric: BodyMetric = .bmi, dashboardStore: DashboardStore) {
-        // Extract DTO synchronously on main actor
-        self.entryDTO = entry.toOperationDTO()
-        self.selectedMetric = selectedMetric
-        self.dashboardStore = dashboardStore
-        _selectedMetricState = State(initialValue: selectedMetric)
-    }
+    
 
     var body: some View {
         VStack(spacing: 0) {
@@ -101,14 +94,10 @@ struct ScaleMetricsView: View {
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .onAppear {
-                if !metricOrder.contains(selectedMetricState) {
-                    selectedMetricState = metricOrder.first ?? .bmi
-                }
+                selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
             .onChange(of: dashboardStore.state.metrics.dashboardType) { _, _ in
-                if !metricOrder.contains(selectedMetricState) {
-                    selectedMetricState = metricOrder.first ?? .bmi
-                }
+                selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
             }
         }
         .background(theme.backgroundSecondary)
