@@ -1096,16 +1096,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Determine which step to navigate to based on the error type
         let targetStep: BtWifiScaleSetupStep
         if isFromBtConnection {
+          if discoveredScale != nil {
+            targetStep = .connectingBluetooth
+          } else {
             targetStep = .wakeup
+          }
         } else if scaleSetupError == .collectMeasurementFailed {
-            targetStep = .stepOn
+          targetStep = .stepOn
         } else if scaleSetupError == .updateSettingsFailed {
-            targetStep = .customizeSettings
+          targetStep = .customizeSettings
         } else {
-            targetStep = .gatheringNetwork
+          if !hasAllBtPermissions() {
+            return
+          }
+          targetStep = .gatheringNetwork
         }
         navigateToStep(targetStep)
-    }
+      }
     
     // MARK: - Step Change Handling
     private func handleStepChange() {
