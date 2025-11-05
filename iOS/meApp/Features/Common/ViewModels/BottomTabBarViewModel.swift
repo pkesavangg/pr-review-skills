@@ -352,8 +352,8 @@ class BottomTabBarViewModel: ObservableObject {
         do {
             if let modalState = try await healthKitService.shouldShowHKIntegrationModal() {
                 await MainActor.run { [weak self] in
-                    // Double-check account still exists before showing modal
-                    guard let self, self.accountService.activeAccount != nil else { return }
+                    // Ensure self exists before proceeding
+                    guard let self else { return }
                     switch modalState {
                     case .addIntegration, .finishAdding:
                         self.presentHKIntegrationModal(for: modalState)
@@ -478,8 +478,8 @@ class BottomTabBarViewModel: ObservableObject {
         hasShownSetGoalCardThisSession = true
         
         await MainActor.run { [weak self] in
-            // Double-check account still exists before showing modal
-            guard let self, self.accountService.activeAccount != nil else { return }
+            // Only check self; presentSetGoalCard will check account existence
+            guard let self else { return }
             self.presentSetGoalCard()
         }
     }

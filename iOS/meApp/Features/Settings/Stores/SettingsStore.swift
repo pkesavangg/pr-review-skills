@@ -1387,11 +1387,7 @@ class SettingsStore: ObservableObject {
             )
             
             if let account = self.accountService.activeAccount {
-                if account.isLoggedIn ?? false {
-                    self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
-                } else {
-                    self.notificationService.dismissModal()
-                }
+                self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
             }
         }
     }
