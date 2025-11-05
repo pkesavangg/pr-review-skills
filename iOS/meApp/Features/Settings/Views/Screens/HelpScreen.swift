@@ -26,6 +26,10 @@ struct HelpScreen: View {
                 },
                 canShowBorder: true
             )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                helpStore.handleHeaderTap()
+            }
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingLG) {
