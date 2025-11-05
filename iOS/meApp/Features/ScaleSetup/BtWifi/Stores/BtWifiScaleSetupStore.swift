@@ -1221,6 +1221,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             resetDiscoveryState()
             navigateToStep(.permissions)
             
+        case .connectingBluetooth:
+            resetDiscoveryState()
+            navigateToStep(.permissions)
+
         case .gatheringNetwork:
             scaleSetupError = .wifiConnectionFailed
             navigateToStep(.availableWifiList)
