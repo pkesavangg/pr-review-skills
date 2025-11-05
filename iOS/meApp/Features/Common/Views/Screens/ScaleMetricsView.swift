@@ -32,7 +32,14 @@ struct ScaleMetricsView: View {
         .skeletalMusclePercent, .bmr, .metabolicAge
     ]
 
-    private var metricOrder: [BodyMetric] { Self.metricSequence }
+    private var metricOrder: [BodyMetric] {
+        switch dashboardStore.state.metrics.dashboardType {
+        case .dashboard4:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water]
+        case .dashboard12:
+            return Self.metricSequence
+        }
+    }
 
     // State
     @State private var selectedMetricState: BodyMetric = .bmi
@@ -93,6 +100,16 @@ struct ScaleMetricsView: View {
                 }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            .onAppear {
+                if !metricOrder.contains(selectedMetricState) {
+                    selectedMetricState = metricOrder.first ?? .bmi
+                }
+            }
+            .onChange(of: dashboardStore.state.metrics.dashboardType) { _, _ in
+                if !metricOrder.contains(selectedMetricState) {
+                    selectedMetricState = metricOrder.first ?? .bmi
+                }
+            }
         }
         .background(theme.backgroundSecondary)
     }
