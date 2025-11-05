@@ -1386,10 +1386,13 @@ class SettingsStore: ObservableObject {
                 }
             )
             
-            // Present the modal – disable tap-to-dismiss backdrop to force explicit action
-            self.notificationService.showModal(
-                ModalData(presentedView: AnyView(modalView), backdropDismiss: false)
-            )
+            if let account = accountService.activeAccount {
+                if account.isLoggedIn {
+                    self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
+                } else {
+                    self.notificationService.dismissModal()
+                }
+            }
         }
     }
     
