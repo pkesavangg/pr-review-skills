@@ -19,6 +19,7 @@ struct MetricDetailView: View {
 
     let entryDTO: BathScaleOperationDTO
     let metric: BodyMetric
+    let measurementLabel: String?
     
     private let placeholder = "--"
 
@@ -65,6 +66,7 @@ struct MetricDetailView: View {
 
     private var measurementDescription: String {
         guard rawValue != nil else { return MetricStrings.noMeasurementAvailable }
+        if let provided = measurementLabel, !provided.isEmpty { return provided }
         let date = DateTimeTools.getMonthDayYear(entryDTO.entryTimestamp ?? "")
         return MetricStrings.measurementTaken + " \(date)"
     }

@@ -1639,6 +1639,51 @@ class DashboardStore: ObservableObject {
         }
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
+
+    // MARK: - Metric Info Date Label (for Metric Info Sheet)
+    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
+    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
+    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
+    func metricInfoDateLabel() -> String {
+        let period = state.graph.selectedPeriod
+
+        if let selectedPoint = state.graph.selectedPoint {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+        if let crosshairDate = state.graph.selectedXValue {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+
+        let prefix = "\(period.rawValue) average"
+        let dateText = weightLabel // already computed from visible region
+        return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+
+    private func selectionPrefix(for period: TimePeriod) -> String {
+        switch period {
+        case .week, .month: return "day average"
+        case .year, .total: return "month average"
+        }
+    }
+
+    private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
+        let formatter = DateFormatter()
+        switch period {
+        case .week, .month:
+            formatter.dateFormat = "MMM d, yyyy"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
+    }
+
+    private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
+        return "\(prefix) \(dateText)".lowercased()
+    }
     
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
