@@ -15,7 +15,7 @@ class LoginForm: ObservableForm {
     
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
-        if control.errors[.required] { return lang.required }
+        if control.errors[.required] { return lang.leaveBlank }
         if control.errors[.email] { return lang.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
             return lang.minLength(minLength)
