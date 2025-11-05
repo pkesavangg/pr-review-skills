@@ -98,8 +98,8 @@ struct A6ScaleSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.moveToPreviousStep()
                 }
+                setupStore.moveToPreviousStep()
             })
             
             Spacer()
@@ -111,8 +111,9 @@ struct A6ScaleSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.moveToNextStep()
+                    
                 }
+                setupStore.moveToNextStep()
             })
         }
     }

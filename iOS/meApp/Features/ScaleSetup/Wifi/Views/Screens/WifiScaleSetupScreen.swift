@@ -87,8 +87,8 @@ struct WifiScaleSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.handleBackButtonClick()
                 }
+                setupStore.handleBackButtonClick()
             })
             Spacer()
             ButtonView(text: setupStore.nextButtonText,
@@ -98,8 +98,8 @@ struct WifiScaleSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.handleNextButtonClick()
                 }
+                setupStore.handleNextButtonClick()
             })
         }
         .overlay {
@@ -107,6 +107,9 @@ struct WifiScaleSetupScreen: View {
                 if setupStore.currentStep == .permissions && !setupStore.isForGetMac {
                     ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .
                                large, isDisabled: false, action: {
+                        withAnimation {
+                            hideKeyboard()
+                        }
                         setupStore.handleSkipWifiStep()
                     })
                 }
