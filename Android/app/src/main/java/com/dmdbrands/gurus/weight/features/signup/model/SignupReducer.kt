@@ -11,6 +11,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 /**
  * All form controls for the signup process in a single FormGroup.
@@ -213,6 +215,7 @@ data class SignupFormControls(
         }
 
         // Update height input based on metric setting
+        // Use proper rounding to preserve precision and prevent accumulation errors
         val currentHeight = controls.height.value
         val newHeight =
           if (isMetric) {
@@ -220,7 +223,8 @@ data class SignupFormControls(
             when (currentHeight) {
               is HeightInput.FtIn -> {
                 val totalInches = (currentHeight.feet * 12) + currentHeight.inches
-                val cm = (totalInches * 2.54).toInt()
+                // Use roundToInt() instead of toInt() to round to nearest instead of truncating
+                val cm = (totalInches * 2.54).roundToInt()
                 HeightInput.Cm(cm)
               }
 
@@ -230,7 +234,8 @@ data class SignupFormControls(
             // Convert to imperial (ft/in)
             when (currentHeight) {
               is HeightInput.Cm -> {
-                val totalInches = (currentHeight.value / 2.54).toInt()
+                // Use roundToInt() for proper rounding
+                val totalInches = (currentHeight.value / 2.54).roundToInt()
                 val feet = totalInches / 12
                 val inches = totalInches % 12
                 HeightInput.FtIn(feet, inches)
@@ -446,33 +451,8 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
       }
 
       is SignupIntent.ToggleMetric -> {
-        // Convert weight values when switching units, but only if they've been touched
+        // Update the metric setting - this will trigger the listener which handles all conversions
         val controls = state.form.controls
-        val currentWeightValue = controls.currentWeight.value
-        val goalWeightValue = controls.goalWeight.value
-
-        // Only convert values if fields have been touched by user
-        if (controls.currentWeight.touched && currentWeightValue.isNotEmpty()) {
-          val convertedCurrentWeight =
-            convertWeightValue(
-              value = currentWeightValue,
-              fromMetric = controls.useMetric.value,
-              toMetric = intent.useMetric,
-            )
-          controls.currentWeight.onValueChange(convertedCurrentWeight)
-        }
-
-        if (controls.goalWeight.touched && goalWeightValue.isNotEmpty()) {
-          val convertedGoalWeight =
-            convertWeightValue(
-              value = goalWeightValue,
-              fromMetric = controls.useMetric.value,
-              toMetric = intent.useMetric,
-            )
-          controls.goalWeight.onValueChange(convertedGoalWeight)
-        }
-
-        // Update the metric setting in the form controls
         controls.useMetric.onValueChange(intent.useMetric)
 
         state.copy(error = null)
@@ -492,7 +472,11 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
 fun SignupFormControls.getCurrentWeightUnit(): WeightUnit = if (useMetric.value) WeightUnit.KG else WeightUnit.LB
 
 /**
- * Converts weight value between units when metric setting changes
+ * Converts weight value between units when metric setting changes.
+ * Preserves one decimal place precision to prevent accumulation errors.
+ * 
+ * Note: Weight values are stored as integers where the last digit represents the decimal place.
+ * For example, "605" represents 60.5, "550" represents 55.0.
  */
 fun convertWeightValue(
   value: String,
@@ -502,17 +486,33 @@ fun convertWeightValue(
   if (value.isBlank() || fromMetric == toMetric) return value
 
   return try {
-    val numericValue = value.toDoubleOrNull() ?: return value
-
-    if (fromMetric && !toMetric) {
-      // Convert kg to lbs
-      (numericValue * 2.20462).toInt().toString()
-    } else if (!fromMetric && toMetric) {
-      // Convert lbs to kg
-      (numericValue / 2.20462).toInt().toString()
+    // Convert integer format (e.g., "605") to decimal format (e.g., "60.5")
+    val decimalValue = if (value.length > 1) {
+      value.dropLast(1) + "." + value.takeLast(1)
     } else {
-      value
+      "0." + value
     }
+    
+    val numericValue = decimalValue.toDoubleOrNull() ?: return value
+
+    val convertedValue =
+      when {
+        // Converting FROM kg TO lbs: multiply by conversion factor
+        fromMetric && !toMetric -> numericValue * 2.20462
+        // Converting FROM lbs TO kg: divide by conversion factor
+        !fromMetric && toMetric -> numericValue / 2.20462
+        // No conversion needed
+        else -> numericValue
+      }
+
+    // Round to one decimal place to preserve precision and prevent accumulation errors
+    val roundedValue = round(convertedValue * 10) / 10.0
+
+    // Convert back to integer format (e.g., 60.5 -> "605", 133.4 -> "1334")
+    // Format as string with one decimal place first
+    val formatted = String.format("%.1f", roundedValue)
+    // Remove decimal point to get integer format (e.g., "60.5" -> "605")
+    formatted.replace(".", "")
   } catch (e: Exception) {
     value
   }
