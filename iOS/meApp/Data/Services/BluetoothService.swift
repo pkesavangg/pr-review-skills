@@ -1723,5 +1723,3 @@ private extension BluetoothService {
         )
     }
 }
-
-
