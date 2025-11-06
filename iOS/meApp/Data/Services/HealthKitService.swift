@@ -176,8 +176,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     /// Normalizes timestamp to include fractional seconds if missing
     private func normalizeTimestamp(_ timestamp: String) -> String {
-        // If timestamp ends with just 'Z' and has no fractional seconds, add '.000' before it
-        if timestamp.hasSuffix("Z") && !timestamp.hasSuffix(".Z") {
+        // If timestamp ends with 'Z' and does NOT already contain fractional seconds
+        if timestamp.hasSuffix("Z") && !timestamp.contains(".") {
             return timestamp.replacingOccurrences(of: "Z", with: ".000Z")
         }
         return timestamp
