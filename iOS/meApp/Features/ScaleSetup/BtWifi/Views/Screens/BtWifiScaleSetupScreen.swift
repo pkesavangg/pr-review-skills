@@ -151,8 +151,8 @@ struct BtWifiScaleSetupScreen: View {
                                action: {
                         withAnimation {
                             hideKeyboard()
-                            setupStore.handleBackButtonClick()
                         }
+                        setupStore.handleBackButtonClick()
                     })
                     Spacer()
                     ButtonView(text: setupStore.nextButtonText,
@@ -162,8 +162,8 @@ struct BtWifiScaleSetupScreen: View {
                                action: {
                         withAnimation {
                             hideKeyboard()
-                            setupStore.handleNextButtonClick()
                         }
+                        setupStore.handleNextButtonClick()
                     })
                 }
             } else if setupStore.currentStep == .scaleConnected {
@@ -176,8 +176,8 @@ struct BtWifiScaleSetupScreen: View {
                            action: {
                     withAnimation {
                         hideKeyboard()
-                        setupStore.handleNextButtonClick()
                     }
+                    setupStore.handleNextButtonClick()
                 })
                 Spacer()
             } else {
@@ -188,8 +188,8 @@ struct BtWifiScaleSetupScreen: View {
                            action: {
                     withAnimation {
                         hideKeyboard()
-                        setupStore.handleBackButtonClick()
                     }
+                    setupStore.handleBackButtonClick()
                 })
                 Spacer()
                 ButtonView(text: setupStore.nextButtonText,
@@ -199,8 +199,8 @@ struct BtWifiScaleSetupScreen: View {
                            action: {
                     withAnimation {
                         hideKeyboard()
-                        setupStore.handleNextButtonClick()
                     }
+                    setupStore.handleNextButtonClick()
                 })
             }
         }
