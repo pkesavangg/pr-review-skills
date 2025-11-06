@@ -49,32 +49,23 @@ struct GoalProgressView: View {
     
     // MARK: No Goal Set UI
     private var noGoalSetView: some View {
-        HStack {
-            Spacer()
+        VStack(alignment: .center, spacing: .spacingXS) {
+            Text(lang.reachYourGoals)
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
             
-            VStack(alignment: .center, spacing: .spacingXS){
-                Text(lang.reachYourGoals)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
-                    .padding(.top, .spacingMD)
-                
-                ButtonView(
-                    text: lang.setGoalWeight,
-                    type: .filledSuccess,
-                    size: .large,
-                    isDisabled: isSetGoalButtonDisabled ?? false,
-                    action: {
-                        tabViewModel.navigateToGoalSetting()
-                    }
-                )
-                .padding(.bottom, .spacingMD)
-
-            }
-                        
-            Spacer()
+            ButtonView(
+                text: lang.setGoalWeight,
+                type: .filledSuccess,
+                size: .large,
+                isDisabled: isSetGoalButtonDisabled ?? false,
+                action: {
+                    tabViewModel.navigateToGoalSetting()
+                }
+            )
+            .padding(.bottom,.spacingXS)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-       
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Lose / Gain goal UI
