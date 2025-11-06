@@ -145,7 +145,7 @@ class GoalCardCell: UICollectionViewCell {
                         rowIndex: rowIndex,
                         disableWiggle: false,
                         iconOffset: CGSize(width: 5, height: -5),
-                        dimWhenRemoved: false
+                        dimWhenRemoved: true
                     )
             )
         } else {
