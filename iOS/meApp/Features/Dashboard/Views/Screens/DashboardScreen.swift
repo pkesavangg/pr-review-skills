@@ -177,7 +177,7 @@ store.restartWiggleAnimations()
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.toggleEditMode()
                 })
-                if store.hasGoalSet {
+                if store.state.goal.goalType != .none {
                     ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                         tabViewModel.navigateToGoalSetting()
                     })

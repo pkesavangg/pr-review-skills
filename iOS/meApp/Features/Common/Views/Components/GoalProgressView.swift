@@ -55,7 +55,7 @@ struct GoalProgressView: View {
         HStack {
             Spacer()
             
-            VStack(alignment: .center, spacing: 6){
+            VStack(alignment: .center, spacing: .spacingXS){
                 Text(lang.reachYourGoals)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
