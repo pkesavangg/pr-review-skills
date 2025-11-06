@@ -245,6 +245,7 @@ struct HKIntegrationModalStrings {
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "must not be left blank"
+    static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
     static let passwordMaxLength = "password must not exceed 50 characters"
     static let minLength = { (length: Int) in "minimum of \(length) characters needed" }
