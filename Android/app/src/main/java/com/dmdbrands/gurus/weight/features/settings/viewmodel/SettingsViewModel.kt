@@ -1195,21 +1195,4 @@ constructor(
       }
     }
   }
-
-  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
-    val result = CompletableDeferred<GGUserActionResponseType>()
-    try {
-      ggDeviceService.updateProfile(
-        profile,
-      ) { responseType ->
-        result.complete(responseType)
-      }
-    } catch (e: Exception) {
-      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
-      result.complete(GGUserActionResponseType.CREATION_FAILED)
-    }
-
-    return result.await()
-  }
-
 }
