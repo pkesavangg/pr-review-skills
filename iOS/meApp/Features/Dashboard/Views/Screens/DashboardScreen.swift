@@ -40,12 +40,13 @@ struct DashboardScreen: View {
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
-            RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
+            RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
             MetricInfoSheetWrapper(
                 entry: metricInfoEntry ?? store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
-                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
+                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel),
+                dashboardStore: store
             )
         }
         .task(id: selectedMetricInfo) {

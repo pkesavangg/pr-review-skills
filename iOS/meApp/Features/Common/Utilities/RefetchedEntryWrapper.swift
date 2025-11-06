@@ -13,6 +13,7 @@ import SwiftData
 struct RefetchedEntryWrapper: View {
     let entryId: UUID
     let selectedMetric: BodyMetric
+    @ObservedObject var dashboardStore: DashboardStore
     @State private var entryDTO: BathScaleOperationDTO?
     @State private var isLoading = true
     
@@ -22,7 +23,7 @@ struct RefetchedEntryWrapper: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let dto = entryDTO {
-                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric)
+                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
             } else {
                 EmptyView()
             }
@@ -54,5 +55,18 @@ struct RefetchedEntryWrapper: View {
                 self.isLoading = false
             }
         }
+    }
+}
+
+// MARK: - Convenience Initializers
+extension RefetchedEntryWrapper {
+    /// Backward-compatible initializer used by existing call sites that do not provide a DashboardStore.
+    /// Creates a temporary DashboardStore instance for the Metric Info sheet context.
+    init(entryId: UUID, selectedMetric: BodyMetric) {
+        self.entryId = entryId
+        self.selectedMetric = selectedMetric
+        self._dashboardStore = ObservedObject(wrappedValue: DashboardStore(lightweight: true))
+        self._entryDTO = State(initialValue: nil)
+        self._isLoading = State(initialValue: true)
     }
 }

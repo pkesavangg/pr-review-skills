@@ -35,6 +35,7 @@ struct UserNumberSelectionView: View {
                         .multilineTextAlignment(.leading)
                         .lineLimit(nil)
                 }
+                .padding(.horizontal, .spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 UserNumberButtonGrid(
                     numbers: numbers,

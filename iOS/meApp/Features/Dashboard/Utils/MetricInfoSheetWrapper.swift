@@ -13,12 +13,13 @@ import SwiftData
 struct MetricInfoSheetWrapper: View {
     let entry: Entry
     let selectedMetric: BodyMetric
+    @ObservedObject var dashboardStore: DashboardStore
     @State private var entryDTO: BathScaleOperationDTO?
     
     var body: some View {
         Group {
             if let dto = entryDTO {
-                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric)
+                ScaleMetricsView(entryDTO: dto, selectedMetric: selectedMetric, dashboardStore: dashboardStore)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

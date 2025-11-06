@@ -1104,12 +1104,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Determine which step to navigate to based on the error type
         let targetStep: BtWifiScaleSetupStep
         if isFromBtConnection {
-            targetStep = .wakeup
+            if discoveredScale != nil {
+                targetStep = .connectingBluetooth
+            } else {
+                targetStep = .wakeup
+            }
         } else if scaleSetupError == .collectMeasurementFailed {
             targetStep = .stepOn
         } else if scaleSetupError == .updateSettingsFailed {
             targetStep = .customizeSettings
         } else {
+            if !hasAllBtPermissions() {
+                return
+            }
             targetStep = .gatheringNetwork
         }
         navigateToStep(targetStep)
@@ -1225,10 +1232,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         guard missingPermissions else { return }
         
         switch currentStep {
-        case .wakeup:
+        case .wakeup, .connectingBluetooth:
             resetDiscoveryState()
             navigateToStep(.permissions)
-            
+
         case .gatheringNetwork:
             scaleSetupError = .wifiConnectionFailed
             navigateToStep(.availableWifiList)

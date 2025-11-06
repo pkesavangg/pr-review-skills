@@ -64,6 +64,26 @@ class DashboardStore: ObservableObject {
             await initializeDashboard()
         }
     }
+
+    /// Lightweight initializer that avoids subscriptions and heavy async initialization.
+    /// Use this for ephemeral contexts (e.g., Metric Info sheet without full dashboard state).
+    init(lightweight: Bool) {
+        // Initialize managers
+        self.metricsManager = DashboardMetricsManager()
+        self.graphManager = DashboardGraphManager()
+        self.streakManager = DashboardStreakManager()
+        self.dataManager = DashboardDataManager()
+        self.goalManager = DashboardGoalManager()
+
+        // Bind state so basic computed properties can work
+        setupBindings()
+
+        // Skip subscriptions and async initialization to avoid network/processing
+        if !lightweight {
+            setupSubscriptions()
+            Task { await initializeDashboard() }
+        }
+    }
     
     func syncEntries() async {
         await entryService.syncAllEntriesWithRemote()
@@ -1651,6 +1671,68 @@ class DashboardStore: ObservableObject {
             return DashboardStrings.placeholder
         }
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+    }
+
+    // MARK: - Metric Info Date Label (for Metric Info Sheet)
+    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
+    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
+    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
+    func metricInfoDateLabel() -> String {
+        let period = state.graph.selectedPeriod
+
+        if let selectedPoint = state.graph.selectedPoint {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+        if let crosshairDate = state.graph.selectedXValue {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+
+        let prefix = "\(period.rawValue) average"
+        let dateText = weightLabel // already computed from visible region
+        return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+
+    private func selectionPrefix(for period: TimePeriod) -> String {
+        switch period {
+        case .week, .month: return "day average"
+        case .year, .total: return "month average"
+        }
+    }
+
+    private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
+        let formatter = DateFormatter()
+        switch period {
+        case .week, .month:
+            formatter.dateFormat = "MMM d, yyyy"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
+    }
+
+    private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
+        return "\(prefix) \(dateText)".lowercased()
+    }
+
+    // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
+    /// Returns the allowed metrics for the Metric Info sheet based on dashboard type.
+    func allowedMetricsForMetricInfo() -> [BodyMetric] {
+        switch state.metrics.dashboardType {
+        case .dashboard4:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water]
+        case .dashboard12:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water, .pulse, .boneMass, .visceralFatLevel, .subcutaneousFatPercent, .proteinPercent, .skeletalMusclePercent, .bmr, .metabolicAge]
+        }
+    }
+
+    /// Ensures the selected metric is valid for the current dashboard type; if not, returns the first allowed metric.
+    func validateMetricInfoSelection(_ current: BodyMetric) -> BodyMetric {
+        let allowed = allowedMetricsForMetricInfo()
+        return allowed.contains(current) ? current : (allowed.first ?? .bmi)
     }
     
     // Delegate entry creation to MetricsManager
