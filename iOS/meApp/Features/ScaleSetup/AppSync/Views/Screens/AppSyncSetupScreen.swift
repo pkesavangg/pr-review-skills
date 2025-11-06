@@ -91,8 +91,8 @@ struct AppSyncSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.moveToPreviousStep()
                 }
+                setupStore.moveToPreviousStep()
             })
             
             Spacer()
@@ -104,8 +104,8 @@ struct AppSyncSetupScreen: View {
                        action: {
                 withAnimation {
                     hideKeyboard()
-                    setupStore.moveToNextStep()
                 }
+                setupStore.moveToNextStep()
             })
         }
     }

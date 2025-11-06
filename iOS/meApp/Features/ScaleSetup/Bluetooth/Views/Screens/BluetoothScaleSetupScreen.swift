@@ -85,7 +85,10 @@ struct BluetoothScaleSetupScreen: View {
                        size: .small,
                        isDisabled: setupStore.isBackDisabled,
                        action: {
-                withAnimation { setupStore.moveToPreviousStep() }
+                withAnimation {
+                    hideKeyboard()
+                }
+                setupStore.moveToPreviousStep()
             })
             
             Spacer()
@@ -95,7 +98,10 @@ struct BluetoothScaleSetupScreen: View {
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        action: {
-                withAnimation { setupStore.moveToNextStep() }
+                withAnimation {
+                    hideKeyboard()
+                }
+                setupStore.moveToNextStep()
             })
         }
     }
