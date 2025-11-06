@@ -1582,6 +1582,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Check if this is a known scale (isNew = false means it's known)
         if !event.isNew {
+            // Add device to skip list and stop scanning to prevent rediscovery loop
+            if let broadcastId = event.device.broadcastIdString, !broadcastId.isEmpty {
+                Task {
+                    // Skip this device to prevent rediscovery loop
+                    _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId, considerForSession: false)
+                }
+            }
+            bluetoothService.stopScan()
             showKnownScaleAlert()
         } else {
             // New scale discovered - move to next step
@@ -1597,7 +1605,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             message: alertStrings.message,
             buttons: [
                 AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
-                    self?.dismissAction?()
+                    guard let self = self else { return }
+                    // Perform proper cleanup before dismissing
+                    self.performExitCleanup()
                 }
             ]
         )

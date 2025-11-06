@@ -50,6 +50,7 @@ enum BluetoothServiceError: Error, LocalizedError {
     case permissionDenied
     case scanInProgress
     case deviceAlreadyConnected
+    case deviceNotConnected
 
     var errorDescription: String? {
         switch self {
@@ -131,6 +132,8 @@ enum BluetoothServiceError: Error, LocalizedError {
             return "Cannot perform operation while scan is in progress"
         case .deviceAlreadyConnected:
             return "Device is already connected"
+        case .deviceNotConnected:
+            return "Device is not connected"
         case .getDeviceLogsFailed(_):
             return "Get device logs failed"
         case .startLiveMeasurementFailed(let error):
