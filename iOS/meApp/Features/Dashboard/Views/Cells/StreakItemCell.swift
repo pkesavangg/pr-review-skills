@@ -133,7 +133,13 @@ class StreakCardCell: UICollectionViewCell {
             ])
             hostingController = hc
         } else {
+            // Update root view with animation disabled to prevent visual glitches during cell configuration
+            // This prevents icon flickering when configure is called multiple times
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
             hostingController?.rootView = swiftUIView
+            hostingController?.view.setNeedsLayout()
+            CATransaction.commit()
         }
 
         // Set up gesture recognizers based on edit mode
@@ -208,7 +214,12 @@ class StreakCardCell: UICollectionViewCell {
                 parentView: parentView
             )
         )
+        // Update with animation disabled to prevent visual glitches during cell reuse
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         hostingController?.rootView = placeholderView
+        hostingController?.view.setNeedsLayout()
+        CATransaction.commit()
     }
     
     // MARK: - Drag State Handling
