@@ -46,6 +46,16 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         self.permissions = permissions
     }
 
+    /// Updates a single permission entry and publishes the new dictionary.
+    /// - Parameters:
+    ///   - type: The permission type to update.
+    ///   - state: The new state for the permission.
+    func updatePermission(_ type: GGPermissionType, to state: GGPermissionState) {
+        var current = self.permissions ?? [:]
+        current[type] = state
+        self.permissions = current
+    }
+
     // MARK: - Permission Helper
     /// Requests or toggles the permission represented by `type` via the GG SDK and converts the raw result to `GGPermissionState`.
     /// Call this for any permission-related operation instead of the previous specialised helpers.
