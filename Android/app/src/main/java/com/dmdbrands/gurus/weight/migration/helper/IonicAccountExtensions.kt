@@ -34,11 +34,11 @@ import java.util.UUID
 fun IonicAccount.toGoalSettings(): GoalSettingsEntity {
   return GoalSettingsEntity(
     accountId = this.id ?: "",
-    goalType = this.goalType?.name ?: "",
+    goalType = this.goalType?.name?.lowercase() ?: "",
     weight = this.initialWeight?.toFloat() ?: 0.0f,
     goalWeight = this.goalWeight?.toString() ?: "0.0",
     goalPercent = this.percent?.toFloat() ?: 0.0f,
-    isSynced = true,
+    isSynced = false,
   )
 }
 
@@ -51,7 +51,7 @@ fun IonicAccount.toWeightlessSettings(): WeightlessSettingsEntity {
     isWeightlessOn = this.isWeightlessOn ?: false,
     weightlessTimestamp = this.weightlessTimestamp ?: "",
     weightlessWeight = this.weightlessWeight?.toFloat() ?: 0.0f,
-    isSynced = true,
+    isSynced = false,
   )
 }
 
@@ -61,7 +61,7 @@ fun IonicAccount.toWeightlessSettings(): WeightlessSettingsEntity {
 fun IonicAccount.toIntegrationsSettings(): IntegrationsSettingsEntity {
   return IntegrationsSettingsEntity(
     accountId = this.id ?: "",
-    isSynced = true,
+    isSynced = false,
     isMFPOn = this.isMFPOn ?: false,
     isMFPValid = this.isMFPValid ?: false,
     isFitbitOn = this.isFitbitOn ?: false,
@@ -77,7 +77,7 @@ fun IonicAccount.toIntegrationsSettings(): IntegrationsSettingsEntity {
 fun IonicAccount.toWeightCompSettings(): WeightCompSettingsEntity {
   return WeightCompSettingsEntity(
     accountId = this.id ?: "",
-    isSynced = true,
+    isSynced = false,
     height = this.height?.toInt() ?: 1700, // Default height if not set
     activityLevel = this.activityLevel ?: "normal", // Default activity level
     weightUnit = this.weightUnit ?: "lb", // Default weight unit
@@ -90,7 +90,7 @@ fun IonicAccount.toWeightCompSettings(): WeightCompSettingsEntity {
 fun IonicAccount.toNotificationSettings(): NotificationSettingsEntity {
   return NotificationSettingsEntity(
     accountId = this.id ?: "",
-    isSynced = true,
+    isSynced = false,
     shouldSendEntryNotifications = this.shouldSendEntryNotifications ?: false,
     shouldSendWeightInEntryNotifications = this.shouldSendWeightInEntryNotifications ?: false,
   )
@@ -100,12 +100,13 @@ fun IonicAccount.toNotificationSettings(): NotificationSettingsEntity {
  * Converts IonicAccount to DashboardSettingsEntity using direct field access.
  */
 fun IonicAccount.toDashboardSettings(): DashboardSettingsEntity {
+
   return DashboardSettingsEntity(
     accountId = this.id ?: "",
     dashboardMetrics = this.dashboardMetrics ?: emptyList(),
     dashboardMilestones = MilestoneKey.getDefaultMilestones().map { it.name.lowercase() },
-    dashboardType = this.dashboardType?.name ?: DashboardType.DASHBOARD_4_METRICS.value,
-    isSynced = true,
+    dashboardType = this.dashboardType?.value ?: DashboardType.DASHBOARD_4_METRICS.value,
+    isSynced = false,
   )
 }
 
@@ -195,7 +196,7 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
     userNumber = this.userNumber?.toString(),
     protocolType = this.type, // Using type as protocol type
     createdAt = this.createdAt,
-    isSynced = true,
+    isSynced = this.isTemporary ?: false,
     hasServerID = !this.id.isNullOrBlank(),
     token = this.scaleToken,
   )
@@ -251,6 +252,6 @@ private fun IonicScale.toR4ScalePreferenceEntity(): R4ScalePreferenceEntity? {
     timeFormat = preference.timeFormat,
     tzOffset = preference.tzOffset?.toInt(),
     wifiFotaScheduleTime = preference.wifiFotaScheduleTime?.toInt(),
-    isSynced = true,
+    isSynced = false,
   )
 }

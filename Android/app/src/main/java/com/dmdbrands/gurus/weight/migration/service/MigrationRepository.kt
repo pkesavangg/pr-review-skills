@@ -66,6 +66,7 @@ class MigrationRepository @Inject constructor(
       appDatabase.accountDao().insertIntegrationsSettings(integrationsSettings)
       appDatabase.accountDao().insertWeightCompSettings(weightCompSettings)
       appDatabase.accountDao().insertNotificationSettings(notificationSettings)
+      appDatabase.accountDao().insertDashboardSettings(dashboardSettings)
 
       Log.d(TAG, "Account and settings inserted successfully for ${accountEntity.email}")
     } catch (e: Exception) {

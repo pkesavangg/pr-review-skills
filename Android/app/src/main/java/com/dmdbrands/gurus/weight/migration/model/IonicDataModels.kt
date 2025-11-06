@@ -55,12 +55,12 @@ enum class WeightUnitType {
   LB
 }
 
-enum class DashboardType {
+enum class DashboardType(val value: String) {
   @SerializedName("dashboard_4_metrics")
-  DASHBOARD_4,
+  DASHBOARD_4("dashboard_4_metrics"),
 
   @SerializedName("dashboard_12_metrics")
-  DASHBOARD_12
+  DASHBOARD_12("dashboard_12_metrics")
 }
 
 enum class BodyMetric {
