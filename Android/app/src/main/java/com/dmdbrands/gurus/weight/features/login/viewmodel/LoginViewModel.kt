@@ -85,8 +85,8 @@ constructor(
       dialogQueueService.dismissLoader()
       return
     }
-    val email = state.value.form.controls.email.value
-    val password = state.value.form.controls.password.value
+    val email = state.value.form.controls.email.value.trim()
+    val password = state.value.form.controls.password.value.trim()
     viewModelScope.launch {
       try {
         val account = accountService.login(email, password)
@@ -110,7 +110,7 @@ constructor(
    * Opens the Forgot Password modal.
    */
   private fun openForgotPasswordModal() {
-    val loginEmail = state.value.form.controls.email.value
+    val loginEmail = state.value.form.controls.email.value.trim()
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.PasswordReset,

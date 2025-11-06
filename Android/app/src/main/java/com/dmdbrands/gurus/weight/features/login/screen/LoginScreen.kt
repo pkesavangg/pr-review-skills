@@ -97,7 +97,7 @@ private fun LoginContent(
   ) { scaffoldModifier ->
     Column(
       modifier = scaffoldModifier
-        .fillMaxSize()
+        .fillMaxSize().padding(horizontal = spacing.xs)
         .verticalScroll(rememberScrollState()),
     ) {
       Spacer(Modifier.weight(1f))
@@ -133,6 +133,7 @@ private fun LoginContent(
               .semantics { contentType = ContentType.Username }
               .focusRequester(emailFocusRequester),
         )
+        Spacer(Modifier.height(spacing.sm))
         AppInput(
           formControl = state.form.controls.password,
           label = LoginStrings.PasswordLabel,
