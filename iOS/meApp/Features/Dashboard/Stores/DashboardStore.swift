@@ -1704,6 +1704,23 @@ class DashboardStore: ObservableObject {
     private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
         return "\(prefix) \(dateText)".lowercased()
     }
+
+    // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
+    /// Returns the allowed metrics for the Metric Info sheet based on dashboard type.
+    func allowedMetricsForMetricInfo() -> [BodyMetric] {
+        switch state.metrics.dashboardType {
+        case .dashboard4:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water]
+        case .dashboard12:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water, .pulse, .boneMass, .visceralFatLevel, .subcutaneousFatPercent, .proteinPercent, .skeletalMusclePercent, .bmr, .metabolicAge]
+        }
+    }
+
+    /// Ensures the selected metric is valid for the current dashboard type; if not, returns the first allowed metric.
+    func validateMetricInfoSelection(_ current: BodyMetric) -> BodyMetric {
+        let allowed = allowedMetricsForMetricInfo()
+        return allowed.contains(current) ? current : (allowed.first ?? .bmi)
+    }
     
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
