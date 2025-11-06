@@ -130,6 +130,19 @@ class BottomTabBarViewModel: ObservableObject {
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
 
+        // Observe activeAccount changes to dismiss modals when user logs out
+        accountService.$activeAccount
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] account in
+                guard let self else { return }
+                if account == nil {
+                    // User logged out - dismiss all modals
+                    self.notificationService.dismissAllModals()
+                    self.notificationService.dismissAlert()
+                    self.notificationService.dismissLoader()
+                }
+            }
+            .store(in: &cancellables)
         
         // Connect GoalAlertService navigation callback
         goalAlertService.onNavigateToGoalSetting = { [weak self] in
@@ -145,6 +158,8 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Permission Disabled Alert Helpers
     /// Evaluates whether the *Permission Disabled* alert should be shown and presents it if needed.
     private func evaluateAndShowPermissionAlert() {
+        // Ensure active account exists before showing alert
+        guard accountService.activeAccount != nil else { return }
         guard !hasShownPermissionAlert else { return }
         
         let required = permissionsService.requiredCategories
@@ -174,6 +189,9 @@ class BottomTabBarViewModel: ObservableObject {
     
     /// Presents the *Permission Disabled* alert and handles navigation when the user taps **APP PERMISSION**.
     private func showPermissionDisabledAlert(isNotificationOnlyMissing: Bool) {
+        // Ensure active account exists before showing alert
+        guard accountService.activeAccount != nil else { return }
+        
         let lang = AlertStrings.PermissionDisabledAlert.self
         let alert = AlertModel(
             title: lang.title,
@@ -328,14 +346,19 @@ class BottomTabBarViewModel: ObservableObject {
     /// Checks whether the user should be prompted to add Apple Health integration
     /// and shows the modal if needed.
     private func checkAppleHealthIntegrationStatus() async {
+        // Ensure active account exists before checking
+        guard accountService.activeAccount != nil else { return }
+        
         do {
             if let modalState = try await healthKitService.shouldShowHKIntegrationModal() {
                 await MainActor.run { [weak self] in
+                    // Ensure self exists before proceeding
+                    guard let self else { return }
                     switch modalState {
                     case .addIntegration, .finishAdding:
-                        self?.presentHKIntegrationModal(for: modalState)
+                        self.presentHKIntegrationModal(for: modalState)
                     case .outOfSync:
-                        self?.presentHKIntegrationModal(for: .outOfSync)
+                        self.presentHKIntegrationModal(for: .outOfSync)
                     }
                 }
             }
@@ -346,6 +369,9 @@ class BottomTabBarViewModel: ObservableObject {
     
     /// Presents the Apple Health Integration modal based on the given state.
     private func presentHKIntegrationModal(for state: HKIntegrationModalState) {
+        // Ensure active account exists before showing modal
+        guard accountService.activeAccount != nil else { return }
+        
         // Configure actions based on modal state
         let onPrimary: () -> Void
         let onSecondary: (() -> Void)?
@@ -452,12 +478,17 @@ class BottomTabBarViewModel: ObservableObject {
         hasShownSetGoalCardThisSession = true
         
         await MainActor.run { [weak self] in
-            self?.presentSetGoalCard()
+            // Only check self; presentSetGoalCard will check account existence
+            guard let self else { return }
+            self.presentSetGoalCard()
         }
     }
     
     /// Presents the Set a Goal card modal.
     private func presentSetGoalCard() {
+        // Ensure active account exists before showing modal
+        guard accountService.activeAccount != nil else { return }
+        
         let modalView = SetAGoalCardView(
             onClose: { [weak notificationService] in
                 notificationService?.dismissModal()
