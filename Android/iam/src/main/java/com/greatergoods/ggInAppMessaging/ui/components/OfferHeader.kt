@@ -106,7 +106,7 @@ private fun PromoCodeSection(
       textType = TextType.SubHeading,
       annotatedText = FeedLandingScreenStrings.PromoCode,
       annotationPosition = AnnotationPosition.Middle,
-      spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
+      spanStyle = SpanStyle(fontWeight = FontWeight.Bold, color = marketingColors.primaryAction ),
       // color = marketingColors.primary
     )
 

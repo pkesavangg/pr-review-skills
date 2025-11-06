@@ -71,8 +71,9 @@ class HealthConnectService @Inject constructor(
 
   init {
     repositoryScope.launch {
-      var account = accountRepository.getActiveAccount().first()
-      currentAccountId = account?.id
+      var account = accountRepository.getActiveAccount().collect { it ->
+        currentAccountId = it?.id
+      }
     }
   }
   // Service state

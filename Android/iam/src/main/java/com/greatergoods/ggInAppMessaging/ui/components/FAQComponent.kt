@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -67,7 +68,7 @@ fun FAQComponent(
     ),
   )
 
-  var expandedFaqId by remember { mutableStateOf<String?>("faq1") }
+  var expandedFaqIds by remember { mutableStateOf(setOf("faq1")) }
 
   LazyColumn(
     modifier = modifier
@@ -79,9 +80,13 @@ fun FAQComponent(
     items(faqItems) { faqItem ->
       FAQItemCard(
         faqItem = faqItem,
-        isExpanded = expandedFaqId == faqItem.id,
+        isExpanded = expandedFaqIds.contains(faqItem.id),
         onToggle = {
-          expandedFaqId = if (expandedFaqId == faqItem.id) null else faqItem.id
+          expandedFaqIds = if (expandedFaqIds.contains(faqItem.id)) {
+            expandedFaqIds - faqItem.id
+          } else {
+            expandedFaqIds + faqItem.id
+          }
         },
       )
     }
@@ -164,8 +169,7 @@ private fun FAQItemCard(
                 model = faqItem.imageUrl,
                 contentDescription = "FAQ illustration",
                 modifier = Modifier
-                  .fillMaxWidth()
-                  .height(147.dp)
+                  .fillMaxSize()
                   .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop,
               )

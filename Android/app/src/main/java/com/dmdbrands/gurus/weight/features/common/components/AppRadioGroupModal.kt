@@ -1,20 +1,29 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
@@ -22,6 +31,83 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.delay
+
+/**
+ * Custom scrollbar composable for radio group modal.
+ * Shows only the thumb (no track) and fades in/out based on scroll activity.
+ */
+@Composable
+private fun CustomScrollbar(
+    scrollState: androidx.compose.foundation.ScrollState,
+    contentHeight: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val scrollbarWidth = 6.dp
+    val thumbMinHeight = 20.dp
+    val fadeOutDelay = 1000L // Hide after 1 second of no scrolling
+
+    var isScrolling by remember { mutableStateOf(false) }
+    var showScrollbar by remember { mutableStateOf(false) }
+
+    // Monitor scroll state changes
+    LaunchedEffect(scrollState.isScrollInProgress) {
+        if (scrollState.isScrollInProgress) {
+            isScrolling = true
+            showScrollbar = true
+        } else {
+            isScrolling = false
+            // Delay before hiding scrollbar
+            delay(fadeOutDelay)
+            if (!isScrolling) {
+                showScrollbar = false
+            }
+        }
+    }
+
+    // Animate scrollbar visibility
+    val scrollbarAlpha by animateFloatAsState(
+        targetValue = if (showScrollbar) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "scrollbar_alpha"
+    )
+
+    // Calculate scrollbar thumb position and size
+    val maxScroll = scrollState.maxValue.toFloat()
+    val currentScroll = scrollState.value.toFloat()
+
+    if (maxScroll > 0 && scrollbarAlpha > 0f) {
+        val thumbHeight = kotlin.math.max(
+            thumbMinHeight.value,
+            (contentHeight.value * contentHeight.value / (contentHeight.value + maxScroll))
+        ).dp
+
+        val thumbOffset = if (maxScroll > 0) {
+            ((contentHeight.value - thumbHeight.value) * currentScroll / maxScroll).dp
+        } else {
+            0.dp
+        }
+
+        // Only show the thumb, no track background
+        Box(
+            modifier = modifier
+                .width(scrollbarWidth)
+                .height(contentHeight)
+                .alpha(scrollbarAlpha)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(scrollbarWidth)
+                    .height(thumbHeight)
+                    .offset(y = thumbOffset)
+                    .background(
+                        color = MeTheme.colorScheme.secondaryAction.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(3.dp)
+                    )
+            )
+        }
+    }
+}
 
 /**
  * Data class representing the configuration for a radio group modal.
@@ -108,24 +194,36 @@ fun <T> AppRadioGroupModal(
                     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
                     // Radio Group Section - auto-sized with optional max height and scrolling
-                    val radioGroupModifier =
-                        if (maxHeight != null) {
-                            Modifier
-                                .fillMaxWidth()
-                                .height(maxHeight)
-                                .verticalScroll(rememberScrollState())
-                        } else {
-                            Modifier.fillMaxWidth()
+                    if (maxHeight != null) {
+                        val scrollState = rememberScrollState()
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            AppRadioGroup(
+                                options = options,
+                                selectedItem = currentSelection,
+                                onOptionSelected = { selectedId ->
+                                    currentSelection = selectedId
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(maxHeight)
+                                    .verticalScroll(scrollState),
+                            )
+                            CustomScrollbar(
+                                scrollState = scrollState,
+                                contentHeight = maxHeight,
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            )
                         }
-
-                    AppRadioGroup(
-                        options = options,
-                        selectedItem = currentSelection,
-                        onOptionSelected = { selectedId ->
-                            currentSelection = selectedId
-                        },
-                        modifier = radioGroupModifier,
-                    )
+                    } else {
+                        AppRadioGroup(
+                            options = options,
+                            selectedItem = currentSelection,
+                            onOptionSelected = { selectedId ->
+                                currentSelection = selectedId
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -203,6 +301,7 @@ fun <T> showRadioGroupModal(
     subtitle: String? = null,
     confirmText: String = RadioGroupModalStrings.Button.Save,
     cancelText: String = RadioGroupModalStrings.Button.Cancel,
+    maxHeight: Dp? = null
 ) {
     val config =
         RadioGroupModalConfig(
@@ -212,6 +311,7 @@ fun <T> showRadioGroupModal(
             selectedItem = selectedItem,
             confirmText = confirmText,
             cancelText = cancelText,
+            maxHeight = maxHeight
         )
 
     val dialog =

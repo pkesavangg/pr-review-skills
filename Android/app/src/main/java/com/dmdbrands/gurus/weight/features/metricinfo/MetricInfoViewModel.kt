@@ -2,8 +2,11 @@ package com.dmdbrands.gurus.weight.features.metricinfo
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
@@ -23,6 +26,7 @@ class MetricInfoViewModel @AssistedInject constructor(
   @Assisted val info: DashboardMetric,
   @Assisted val key: MetricKey,
   private val deviceService: IDeviceService,
+  private val accountRepository: IAccountRepository,
 ) : BaseIntentViewModel<MetricInfoState, MetricInfoIntent>(
   reducer = MetricInfoReducer(),
 ) {
@@ -34,8 +38,8 @@ class MetricInfoViewModel @AssistedInject constructor(
 
   init {
     handleIntent(MetricInfoIntent.SetMetricInfo(info))
-    handleIntent(MetricInfoIntent.SelectSegment(key))
     updateHeartRateStatus()
+    loadDashboardTypeAndSelectSegment()
   }
 
   override fun provideInitialState(): MetricInfoState = MetricInfoState()
@@ -43,23 +47,39 @@ class MetricInfoViewModel @AssistedInject constructor(
   override fun handleIntent(intent: MetricInfoIntent) {
     when (intent) {
       is MetricInfoIntent.SelectSegment -> {
-        val stat = StatHelper.getMetricValue(info, intent.key)
-        handleIntent(MetricInfoIntent.SetStat(stat))
-        // Update selected index based on the key
-        val metricKeys = getFilteredMetricKeys()
+        val dashboardType = state.value.dashboardType ?: DashboardType.DASHBOARD_12_METRICS
+        val metricKeys = getFilteredMetricKeys(dashboardType)
         val index = metricKeys.indexOfFirst { it == intent.key }
+
         if (index >= 0) {
+          // Key is in filtered list, use it
+          val stat = StatHelper.getMetricValue(info, intent.key)
+          handleIntent(MetricInfoIntent.SetStat(stat))
           handleIntent(MetricInfoIntent.SetSelectedIndex(index))
+        } else {
+          // Key is not in filtered list, fallback to first metric in filtered list
+          val firstMetricKey = metricKeys.firstOrNull()
+          if (firstMetricKey != null) {
+            val stat = StatHelper.getMetricValue(info, firstMetricKey)
+            handleIntent(MetricInfoIntent.SetStat(stat))
+            handleIntent(MetricInfoIntent.SetSelectedIndex(0))
+            AppLog.d("MetricInfoViewModel", "Key ${intent.key} not in filtered list, using first metric: $firstMetricKey")
+          }
         }
       }
 
       is MetricInfoIntent.SetSelectedIndex -> {
-        val metricKeys = MetricKey.getAllMetrics()
+        val dashboardType = state.value.dashboardType ?: DashboardType.DASHBOARD_12_METRICS
+        val metricKeys = getFilteredMetricKeys(dashboardType)
         if (intent.index in metricKeys.indices) {
           val selectedKey = metricKeys[intent.index]
           val selectedStat = StatHelper.getMetricValue(info, selectedKey)
           handleIntent(MetricInfoIntent.SetStat(selectedStat))
         }
+      }
+
+      is MetricInfoIntent.SetDashboardType -> {
+        // No-op, handled in reducer
       }
 
       is MetricInfoIntent.OpenResource -> {
@@ -99,6 +119,31 @@ class MetricInfoViewModel @AssistedInject constructor(
       }
       scale?.id?.let { scaleId ->
         navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+      }
+    }
+  }
+
+  /**
+   * Loads the dashboard type from the active account and selects the initial segment.
+   */
+  private fun loadDashboardTypeAndSelectSegment() {
+    viewModelScope.launch {
+      try {
+        val activeAccount = accountRepository.getActiveAccount().first()
+        val dashboardType = activeAccount?.dashboardType?.let { type ->
+          DashboardType.entries.find { it.value == type }
+        } ?: DashboardType.DASHBOARD_12_METRICS
+
+        AppLog.d("MetricInfoViewModel", "Loaded dashboard type: ${dashboardType.value}")
+        handleIntent(MetricInfoIntent.SetDashboardType(dashboardType))
+
+        // Now select the segment with the correct dashboard type
+        handleIntent(MetricInfoIntent.SelectSegment(key))
+      } catch (e: Exception) {
+        AppLog.e("MetricInfoViewModel", "Failed to load dashboard type", e.toString())
+        // Default to 12 metrics on error
+        handleIntent(MetricInfoIntent.SetDashboardType(DashboardType.DASHBOARD_12_METRICS))
+        handleIntent(MetricInfoIntent.SelectSegment(key))
       }
     }
   }

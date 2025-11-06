@@ -112,10 +112,7 @@ class ProfileViewModel @Inject constructor(
     val formControls = state.value.form.controls
     viewModelScope.launch {
       // its an flow
-      val currentAccount = accountService.getCurrentAccount()
-      if (currentAccount == null) {
-        return@launch
-      }
+      val currentAccount = accountService.getCurrentAccount() ?: return@launch
       val profileUpdateRequest = ProfileUpdateRequest(
         id = currentAccount.id,
         firstName = formControls.firstName.value.trim(),
@@ -144,11 +141,11 @@ class ProfileViewModel @Inject constructor(
               )
             }
 
-            GGUserActionResponseType.CREATION_COMPLETED -> {
+            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
               dialogQueueService.showToast(
                 Toast(
-                  ToastStrings.Success.UpdateProfileSuccess.Header,
                   ToastStrings.Success.UpdateProfileSuccess.Message,
+                  ToastStrings.Success.UpdateProfileSuccess.Header,
                 ),
               )
             }
@@ -231,7 +228,7 @@ class ProfileViewModel @Inject constructor(
       }
     } catch (e: Exception) {
       AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
-      result.complete(GGUserActionResponseType.CREATION_FAILED)
+      result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
 
     return result.await()

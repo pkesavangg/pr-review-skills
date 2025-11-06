@@ -22,20 +22,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
 
-/**
- * Android equivalent of Angular FeedService
- * Service for managing feed items, including fetching, updating, and managing feed settings.
- */
+
 @Singleton
 class FeedService @Inject constructor(
   private val feedRepository: IFeedRepository,
@@ -53,9 +51,6 @@ class FeedService @Inject constructor(
 
   private val TAG = "FeedService"
 
-  /**
-   * Emits whenever feedItems changes. Consumers can subscribe without needing GG IAM package.
-   */
   private val _feedsChanged = MutableSharedFlow<List<FeedItem>>()
   override val feedsChanged: Flow<List<FeedItem>> = _feedsChanged.asSharedFlow()
 
@@ -65,17 +60,19 @@ class FeedService @Inject constructor(
   private val _notificationBadgeUpdated = MutableSharedFlow<Boolean>()
   override val notificationBadgeUpdated: Flow<Boolean> = _notificationBadgeUpdated.asSharedFlow()
 
-  // MARK: - Computed Properties (matching Angular service)
+  /**
+   * Local storage for feed items maintained by FeedService.
+   * This is the single source of truth for feed items in this service.
+   */
+  private val _localFeedItems = MutableStateFlow<List<FeedItem>>(emptyList())
+  private val localFeedItems: Flow<List<FeedItem>> = _localFeedItems.asStateFlow()
+
   private suspend fun accountId() = accountService.activeAccountFlow.first()?.id
 
   init {
-    // Initialize feed settings in a coroutine
-    serviceScope.launch {
-     getFeedSettings()
-    }
 
-    // Listen for feed notification changes from the GG IAM service
     serviceScope.launch {
+      getFeedSettings()
       ggIAMService.feedNotificationChangedSubject.collect {
         launch {
           val result = getFeedSettings()
@@ -85,11 +82,9 @@ class FeedService @Inject constructor(
       }
     }
 
-    // Listen for feed update events from the GG IAM service
     serviceScope.launch {
       ggIAMService.sendUpdateFeed.collect { updateEvent ->
         launch {
-          AppLog.d(TAG, "Received feed update event: ${updateEvent.actionType} for ${updateEvent.feedItem.elementId}")
           val feedActionType = convertStringToFeedActionType(updateEvent.actionType)
           updateFeedItem(updateEvent.feedItem, feedActionType, updateEvent.variationId)
         }
@@ -97,35 +92,85 @@ class FeedService @Inject constructor(
     }
   }
 
-  // MARK: - Feed Items Management
-
   override suspend fun fetchFeedItems() {
     try {
       // Check internet connectivity first - follow AccountService pattern
       if (!isNetworkAvailable()) {
-        AppLog.w(TAG, "No internet connection available, returning empty feed items")
-        _feedsChanged.emit(emptyList())
+        AppLog.w(TAG, "No internet connection available, using local feed items")
+        // Use local items when offline
+        val localItems = _localFeedItems.value
+        _feedsChanged.emit(localItems)
         updateNotificationBadge()
         return
       }
 
-      AppLog.d(TAG, "Internet connection available, fetching feed items")
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
-      val items = feedRepository.fetchFeedItems()
-      // TODO: Need to uncomment the setfeeditems
-      ggIAMService.setFeedItems(items)
+      val backendItems = feedRepository.fetchFeedItems()
+
+      // Merge backend items with local storage, preserving read/unread status
+      val mergedItems = mergeFeedItemsWithLocalStorage(backendItems)
+
+      // Update local storage
+      _localFeedItems.value = mergedItems
+
+      // Sync with IAM service
+      ggIAMService.setFeedItems(mergedItems)
+
+      // Emit updated items
+      _feedsChanged.emit(mergedItems)
+
+      // Set dynamic mock items if needed
       setMockFeedItems()
-      _feedsChanged.emit(items)
       updateNotificationBadge()
-      AppLog.i(TAG, "Successfully fetched feed items")
+      AppLog.i(TAG, "Successfully fetched and merged ${mergedItems.size} feed items")
     } catch (error: Exception) {
       AppLog.e(TAG, "Failed to fetch feed items", error.toString())
-      // Emit empty list on error to ensure UI shows no items
-      _feedsChanged.emit(emptyList())
+      // On error, use local items if available
+      val localItems = _localFeedItems.value
+      _feedsChanged.emit(localItems)
       updateNotificationBadge()
     }
   }
 
+  /**
+   * Merges backend feed items with local storage, preserving read/unread status from backend.
+   * Backend response takes precedence for read/unread status, but local items are preserved if not in backend.
+   */
+  private fun mergeFeedItemsWithLocalStorage(backendItems: List<FeedItem>): List<FeedItem> {
+    val currentLocalItems = _localFeedItems.value
+    val backendItemsMap = backendItems.associateBy { it.elementId }
+
+    // Update existing local items with backend data (especially read/unread status)
+    val updatedLocalItems = currentLocalItems.map { localItem ->
+      backendItemsMap[localItem.elementId]?.let { backendItem ->
+        // Backend response has the source of truth for read/unread status
+        localItem.copy(
+          isUnread = backendItem.isUnread,
+          trigger = backendItem.trigger,
+          expiresAt = backendItem.expiresAt,
+          // Update other fields from backend if they changed
+          titleText = backendItem.titleText,
+          subtitleFeedText = backendItem.subtitleFeedText,
+          subtitleModalText = backendItem.subtitleModalText,
+          messageTypeText = backendItem.messageTypeText,
+          linkTarget = backendItem.linkTarget,
+          linkText = backendItem.linkText,
+          feedType = backendItem.feedType,
+          landingPage = backendItem.landingPage,
+          promoCode = backendItem.promoCode,
+        )
+      } ?: localItem // Keep local item if not in backend response
+    }
+
+    // Add new items from backend that don't exist locally
+    val newBackendItems = backendItems.filter { it.elementId !in currentLocalItems.map { item -> item.elementId } }
+
+    return (updatedLocalItems + newBackendItems).distinctBy { it.elementId }
+  }
+  /**
+   * Updates a feed item's state and syncs with backend and local storage.
+   * Updates the local storage maintained by FeedService.
+   */
   override suspend fun updateFeedItem(
     feedItem: FeedItem,
     actionType: FeedActionType,
@@ -134,42 +179,50 @@ class FeedService @Inject constructor(
     val action = buildFeedAction(actionType, variationId)
 
     try {
+      // Update backend first
       feedRepository.updateFeedItem(feedItem.feedPostId, action)
-      val feedItemToUpdate = ggIAMService.getFeedItems().find { item ->
-        item.elementId == feedItem.elementId
-      }
-      if (feedItemToUpdate != null) {
-        when (actionType) {
+
+      // Update local storage
+      val currentItems = _localFeedItems.value
+      val itemIndex = currentItems.indexOfFirst { it.elementId == feedItem.elementId }
+
+      if (itemIndex != -1) {
+        val itemToUpdate = currentItems[itemIndex]
+        val updatedItem = when (actionType) {
           FeedActionType.READ -> {
-            // Update the local copy to mark as read
-            feedItemToUpdate.copy(
+            // Mark as read and clear trigger
+            itemToUpdate.copy(
               isUnread = false,
               trigger = null,
             )
-            // Update the IAM service's stored items
-            // Notify that feed notification changed
-            ggIAMService.emitFeedNotificationChange()
-            AppLog.d(TAG, "Marked feed item as read: ${feedItem.elementId}")
           }
-
           FeedActionType.TRIGGER -> {
-            // Update the local copy to clear trigger
-            feedItemToUpdate.copy(trigger = null)
-            AppLog.d(TAG, "Cleared trigger for feed item: ${feedItem.elementId}")
+            // Clear trigger only
+            itemToUpdate.copy(trigger = null)
           }
-
-          else -> {
-            AppLog.d(
-              TAG,
-              "Updated feed item: ${feedItem.elementId} with action: $actionType",
-            )
-          }
+          else -> itemToUpdate
         }
+
+        // Update local storage
+        val updatedItems = currentItems.toMutableList()
+        updatedItems[itemIndex] = updatedItem
+        _localFeedItems.value = updatedItems
+
+        // Sync with IAM service
+        ggIAMService.setFeedItems(updatedItems)
+
+        // Notify that feed notification changed
+        if (actionType == FeedActionType.READ) {
+          ggIAMService.emitFeedNotificationChange()
+        }
+
+        // Emit updated items
+        _feedsChanged.emit(updatedItems)
+        AppLog.d(TAG, "Updated feed item in local storage: ${feedItem.elementId}, action: $actionType")
       } else {
         AppLog.w(TAG, "Feed item not found in local storage: ${feedItem.elementId}")
       }
 
-      AppLog.i(TAG, "Successfully updated feed item: ${feedItem.elementId}")
     } catch (error: Exception) {
       AppLog.e(TAG, "Failed to update feed item: ${feedItem.elementId}", error.toString())
     }
@@ -196,7 +249,8 @@ class FeedService @Inject constructor(
   }
 
   override suspend fun getUnreadFeedCount(): Int {
-    return ggIAMService.getUnreadFeedCount()
+    // Use local storage as the source of truth
+    return _localFeedItems.value.count { it.isUnread }
   }
 
   override suspend fun getFeedSettings(): FeedSetting? {
@@ -214,7 +268,6 @@ class FeedService @Inject constructor(
     }
   }
 
-  // MARK: - Notification Badge Helper
   private suspend fun updateNotificationBadge() {
     val feedSettings = getFeedSettings()
     val badgeShouldShow =
@@ -236,7 +289,7 @@ class FeedService @Inject constructor(
         customPriority = 3, // Medium priority for IAM dialogs
         customDelayMillis = 0L,
         onDismiss = {
-          handleFeedModalDismissal(feedItem)
+          dialogQueueService.dismissCurrent()
         },
         onConfirm = { actionType: Any ->
           serviceScope.launch {
@@ -249,19 +302,6 @@ class FeedService @Inject constructor(
       AppLog.d(TAG, "Enqueued IAM feed modal for item: ${feedItem.elementId}")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to show IAM feed modal", e.toString())
-    }
-  }
-
-  /**
-   * Handles feed modal dismissal
-   */
-  private fun handleFeedModalDismissal(feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem) {
-    try {
-      // Mark as read, update analytics, etc.
-      AppLog.d(TAG, "Feed modal dismissed for: ${feedItem.titleText}")
-      // TODO: Add any additional dismissal logic here
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to handle feed modal dismissal", e.toString())
     }
   }
 
@@ -344,249 +384,6 @@ class FeedService @Inject constructor(
   }
 
   /**
-   * Set mock feed items for testing purposes
-   * This method can be called to provide mock data to the IAM service
-   */
-  fun setMockFeedItems() {
-    serviceScope.launch {
-      try {
-        // Create mock feed items (you can customize this data)
-        val mockItems = listOf(
-          FeedItem(
-            elementId = "mockFromFeedService001",
-            titleText = "Special Offer from FeedService!",
-            messageTypeText = "LIGHTENING DEAL",
-            subtitleFeedText = "Ends in 48 hours",
-            subtitleModalText = "This feed item came from the main app's FeedService",
-            linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-            feedType = FeedTypes.LINK,
-            linkText = "Shop now",
-            feedPostId = "mockPost001",
-            accountId = "testAccount",
-            titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-            trigger = "login",
-            isUnread = true,
-            landingPage = LandingPage(
-              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-              feedPostId = "TvCN6AV5b781rXLSldOziI",
-              titleText = "Vacuum Sealers",
-              promoCode = "5ZHTL9M8",
-              featuredImage = null,
-              supportingTitleText = "One Machine, a Million Uses",
-              supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
-              supportingImage = listOf(
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-              ),
-              featuredTitleText = "Three Colors",
-              themeColor = "red",
-              featuredProduct = listOf(
-                FeaturedProduct(
-                  variationId = 10001,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-                FeaturedProduct(
-                  variationId = 10002,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-                FeaturedProduct(
-                  variationId = 10003,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-              ),
-            ),
-          ),
-          FeedItem(
-            elementId = "mockFromFeedService002",
-            titleText = "For a Limited Time: Get 50% OFF our Coffee Grinder",
-            titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-            messageTypeText = "LIGHTENING DEAL",
-            subtitleFeedText = "Ends in 48 hours",
-            subtitleModalText = "This is another mock item from FeedService",
-            feedType = FeedTypes.LANDING,
-            linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-            linkText = "shop now",
-            feedPostId = "mockPost002",
-            accountId = "testAccount",
-            landingPage = LandingPage(
-              feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-              feedPostId = "TvCN6AV5b781rXLSldOziI",
-              titleText = "Vacuum Sealers",
-              promoCode = "5ZHTL9M8",
-              featuredImage = null,
-              supportingTitleText = "One Machine, a Million Uses",
-              supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
-              supportingImage = listOf(
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-              ),
-              featuredTitleText = "Three Colors",
-              themeColor = "red",
-              featuredProduct = listOf(
-                FeaturedProduct(
-                  variationId = 10001,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-                FeaturedProduct(
-                  variationId = 10002,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-                FeaturedProduct(
-                  variationId = 10003,
-                  titleText = "Stone Blue",
-                  feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
-                  linkText = "Shop",
-                  linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
-                  productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
-                ),
-              ),
-            ),
-          ),
-        )
-
-        // Set the mock items in the IAM service
-        ggIAMService.setFeedItems(mockItems)
-        AppLog.d(TAG, "Set ${mockItems.size} mock feed items in IAM service")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to set mock feed items", e.toString())
-      }
-    }
-  }
-
-  override suspend fun handleFeedItemClick(
-    feedItem: FeedItem,
-    onNavigateToFeedLanding: (FeedItem) -> Unit,
-    onOpenExternalLink: (String) -> Unit
-  ) {
-    try {
-      AppLog.d(TAG, "Handling feed item click: ${feedItem.titleText} (${feedItem.feedType})")
-
-      when (feedItem.feedType) {
-        FeedTypes.LANDING -> {
-          AppLog.d(TAG, "Landing feed item clicked: ${feedItem.titleText}")
-          onNavigateToFeedLanding(feedItem)
-        }
-
-        FeedTypes.LINK -> {
-          AppLog.d(TAG, "Link feed item clicked: ${feedItem.titleText}")
-          feedItem.linkTarget?.let { link ->
-            onOpenExternalLink(link)
-          }
-        }
-
-        else -> {
-          AppLog.w(TAG, "Unknown feed type: ${feedItem.feedType}")
-        }
-      }
-
-      // Mark feed as read regardless of type
-      markFeedAsRead(feedItem.elementId, "clicked")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to handle feed item click", e.toString())
-    }
-  }
-
-  /**
-   * Handles shop now button click - checks feed type and navigates accordingly
-   */
-  override suspend fun handleShopNowClick(
-    feedItem: FeedItem,
-    onNavigateToFeedLanding: (FeedItem) -> Unit,
-    onOpenExternalLink: (String) -> Unit
-  ) {
-    try {
-      AppLog.d(TAG, "Handling shop now click: ${feedItem.titleText} (${feedItem.feedType})")
-
-      when (feedItem.feedType) {
-        FeedTypes.LANDING -> {
-          AppLog.d(TAG, "Shop now clicked for landing feed item: ${feedItem.titleText}")
-          onNavigateToFeedLanding(feedItem)
-        }
-
-        FeedTypes.LINK -> {
-          AppLog.d(TAG, "Shop now clicked for link feed item: ${feedItem.titleText}")
-          // Open external link
-          feedItem.linkTarget?.let { link ->
-            onOpenExternalLink(link)
-          }
-        }
-
-        else -> {
-          AppLog.w(TAG, "Unknown feed type for shop now click: ${feedItem.feedType}")
-        }
-      }
-
-      // Mark feed as read
-      markFeedAsRead(feedItem.elementId, "shop_now_clicked")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to handle shop now click", e.toString())
-    }
-  }
-
-  override suspend fun markFeedAsRead(elementId: String, actionType: String) {
-    try {
-      AppLog.d(TAG, "Marking feed as read: $elementId, action: $actionType")
-
-      // Get the feed item to update
-      val feedItems = feedsChanged.first()
-      val feedItem = feedItems.find { it.elementId == elementId }
-
-      if (feedItem != null) {
-        // Update the feed item with the appropriate action type
-        val actionTypeEnum = convertStringToFeedActionType(actionType)
-        updateFeedItem(feedItem, actionTypeEnum, null)
-      } else {
-        AppLog.w(TAG, "Feed item not found for elementId: $elementId")
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to mark feed as read", e.toString())
-    }
-  }
-
-  override fun clearFeedData() {
-    serviceScope.launch {
-      try {
-        AppLog.d(TAG, "Clearing feed data")
-        ggIAMService.clearFeedData()
-        _feedsChanged.emit(emptyList())
-        _feedSettingsChanged.emit(null)
-        _notificationBadgeUpdated.emit(false)
-        AppLog.d(TAG, "Feed data cleared successfully")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to clear feed data", e.toString())
-      }
-    }
-  }
-
-  fun cleanup() {
-    serviceScope.cancel()
-  }
-
-  /**
    * Convert string action type to FeedActionType enum
    * Maps common action types from IAM service to FeedActionType
    */
@@ -602,5 +399,155 @@ class FeedService @Inject constructor(
         FeedActionType.READ
       }
     }
+  }
+
+  /**
+   * Generates dynamic mock feed items for testing purposes.
+   * Creates feed items with varying content, IDs, and read/unread statuses.
+   * If local items already exist, this adds mock items only if local storage is empty.
+   */
+  fun setMockFeedItems() {
+    serviceScope.launch {
+      try {
+        val currentLocalItems = _localFeedItems.value
+
+        // Only generate mock items if local storage is empty
+        if (currentLocalItems.isNotEmpty()) {
+          AppLog.d(TAG, "Local feed items already exist (${currentLocalItems.size} items), skipping mock generation")
+          return@launch
+        }
+
+        // Generate dynamic mock feed items with varying content
+        val mockItems = generateDynamicMockFeedItems()
+
+        // Update local storage
+        _localFeedItems.value = mockItems
+
+        // Set the mock items in the IAM service
+        ggIAMService.setFeedItems(mockItems)
+        _feedsChanged.emit(mockItems)
+        AppLog.d(TAG, "Generated and set ${mockItems.size} dynamic mock feed items")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to set mock feed items", e.toString())
+      }
+    }
+  }
+
+  /**
+   * Generates dynamic mock feed items with varying content, read/unread statuses, and IDs.
+   */
+  private suspend fun generateDynamicMockFeedItems(): List<FeedItem> {
+    val currentTime = System.currentTimeMillis()
+    val accountId = accountService.getCurrentAccount()?.id ?: "testAccount"
+
+    // Dynamic product titles and variations
+    val productTitles = listOf(
+      "Special Offer from FeedService!",
+      "For a Limited Time: Get 50% OFF our Coffee Grinder",
+      "Exclusive Deal: Digital Kitchen Scale",
+      "Flash Sale: Vacuum Sealer Bundle",
+      "Weekend Special: Food Scale Pro"
+    )
+
+    val messageTypes = listOf("LIGHTENING DEAL", "SPECIAL OFFER", "FLASH SALE", "EXCLUSIVE DEAL")
+    val feedTypes = listOf(FeedTypes.LINK, FeedTypes.LANDING)
+    val linkTexts = listOf("Shop now", "shop now", "Buy Now", "Learn More", "Shop Today")
+
+    // Generate 2-3 dynamic mock items
+    val mockItemsCount = (2..3).random()
+    val mockItems = mutableListOf<FeedItem>()
+
+    for (i in 0 until mockItemsCount) {
+      val titleIndex = i % productTitles.size
+      val messageType = messageTypes[i % messageTypes.size]
+      val feedType = feedTypes[i % feedTypes.size]
+      val linkText = linkTexts[i % linkTexts.size]
+
+      // Vary read/unread status dynamically
+      val isUnread = i % 2 == 0 // Alternate between read/unread
+
+      // Generate unique IDs based on timestamp
+      val uniqueId = "${currentTime}_${i}_${(1000..9999).random()}"
+      val elementId = "mockFromFeedService_$uniqueId"
+      val feedPostId = "mockPost_$uniqueId"
+
+      // Generate dynamic subtitle based on time
+      val hoursRemaining = (24..72).random()
+      val subtitleFeedText = "Ends in $hoursRemaining hours"
+      val subtitleModalText = "This feed item was dynamically generated by FeedService (Item ${i + 1})"
+
+      // Create landing page only for LANDING type
+      val landingPage = if (feedType == FeedTypes.LANDING) {
+        createDynamicLandingPage(feedPostId, i)
+      } else null
+
+      val mockItem = FeedItem(
+        elementId = elementId,
+        titleText = productTitles[titleIndex],
+        messageTypeText = messageType,
+        subtitleFeedText = subtitleFeedText,
+        subtitleModalText = subtitleModalText,
+        linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+        feedType = feedType,
+        linkText = linkText,
+        feedPostId = feedPostId,
+        accountId = accountId,
+        titleImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+        trigger = if (i == 0) "login" else null,
+        isUnread = isUnread,
+        landingPage = landingPage,
+      )
+
+      mockItems.add(mockItem)
+    }
+
+    return mockItems
+  }
+
+  /**
+   * Creates a dynamic landing page for mock feed items.
+   */
+  private fun createDynamicLandingPage(feedPostId: String, index: Int): LandingPage {
+    val productColors = listOf("Stone Blue", "Charcoal Gray", "Ivory White", "Cherry Red")
+    val themeColors = listOf("red", "blue", "green", "purple")
+
+    val color = productColors[index % productColors.size]
+    val themeColor = themeColors[index % themeColors.size]
+
+    // Generate dynamic variation IDs
+    val variationIds = (1..3).map { (10000 + index * 10 + it) }
+
+    return LandingPage(
+      feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+      feedPostId = feedPostId,
+      titleText = "Vacuum Sealers",
+      promoCode = generateRandomPromoCode(),
+      featuredImage = null,
+      supportingTitleText = "One Machine, a Million Uses",
+      supportingDescriptionText = "The Greater Goods {{bold[All-in-One Vacuum Sealer]}} has built-in bag storage and a slicer for hassle-free meal prep!",
+      supportingImage = (1..(2..6).random()).map {
+        "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg"
+      },
+      featuredTitleText = "Three Colors",
+      themeColor = themeColor,
+      featuredProduct = variationIds.map { variationId ->
+        FeaturedProduct(
+          variationId = variationId,
+          titleText = color,
+          feedLandingPageId = "ZjsgSDU56trZrcrRnGgaHr",
+          linkText = "Shop",
+          linkTarget = "https://shop.greatergoods.com/collections/food-scales/products/greatergoods-digital-food-kitchen-scale",
+          productImage = "https://s3.amazonaws.com/gg-mark/wms/image/6rWSd7o0agFUzr3ZIqiXJP.jpg",
+        )
+      },
+    )
+  }
+
+  /**
+   * Generates a random promo code for mock feed items.
+   */
+  private fun generateRandomPromoCode(): String {
+    val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return (1..8).map { chars.random() }.joinToString("")
   }
 }

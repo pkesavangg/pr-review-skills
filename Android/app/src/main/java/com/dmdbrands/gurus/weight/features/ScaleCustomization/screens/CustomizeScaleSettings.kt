@@ -70,7 +70,6 @@ fun CustomizeScaleSettings(
   var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
   var isAllBodyMetrics by remember { mutableStateOf(state.isAllBodyMetrics) }
   var isHeartRateOn by remember { mutableStateOf(state.isHeartRateOn) }
-  var scaleUsername by remember { mutableStateOf(state.usernameForm.username.value) }
   var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
   val hasSavedSettings = remember { mutableStateOf(false) }
   val customizeSettings = remember(visitedSteps) {
@@ -83,9 +82,6 @@ fun CustomizeScaleSettings(
   var dashboardMilestoneKeys: List<DashboardKey.Milestone> by remember(state.dashboardKeys) {
     mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>())
   }
-  var combinedDashboardKeys: List<DashboardKey>? by remember(state.dashboardKeys) { mutableStateOf(null) }
-
-  // Local state for username form
   var localUsername by remember { mutableStateOf(state.usernameForm.username.value) }
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
@@ -101,7 +97,7 @@ fun CustomizeScaleSettings(
   }
 
   // Use discovered scale preferences if available, otherwise fall back to default
-  val initialPreference =  ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
+  val initialPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
   var updatedPreference by remember { mutableStateOf(initialPreference) }
 
   HorizontalPagerWithBottomNavigation(
@@ -147,7 +143,6 @@ fun CustomizeScaleSettings(
                   // Reset dashboard metrics to last saved state
                   dashboardMetricKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Metric>()
                   dashboardMilestoneKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>()
-                  combinedDashboardKeys = null
                 }
               }
               pagerState.scrollToPage(0)
@@ -165,12 +160,13 @@ fun CustomizeScaleSettings(
             enabled = !(pagerState.currentPage == CustomizeSettings.SCALE_USERNAME.ordinal && !localUsernameFormControl.isValueValid()),
             onClick = {
               if (visitedSteps.isNotEmpty() && hasSavedSettings.value) {
+                val combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys).distinct()
                 onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = combinedDashboardKeys,
                     preferences = updatedPreference.copy(
-                      id = state.scaleId
+                      id = state.scaleId,
                     ),
                   ),
                 )
@@ -196,10 +192,8 @@ fun CustomizeScaleSettings(
                   }
 
                   CustomizeSettings.DASHBOARD_METRICS.ordinal -> {
-                    combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys)
-                    combinedDashboardKeys?.let {
-                      onIntent(BtWifiScaleSetupIntent.SetDashboardKeys(combinedDashboardKeys!!))
-                    }
+                    val combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys)
+                    onIntent(BtWifiScaleSetupIntent.SetDashboardKeys(combinedDashboardKeys))
                   }
 
                   CustomizeSettings.SCALE_MODE.ordinal -> {
@@ -250,7 +244,7 @@ fun CustomizeScaleSettings(
           title = CustomizeSettingsStrings.DashboardMetrics.Title,
           subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
         ) {
-          val keys = (combinedDashboardKeys ?: (dashboardMetricKeys + dashboardMilestoneKeys)).distinct()
+          val keys = (dashboardMetricKeys + dashboardMilestoneKeys).distinct()
           DashboardMetrics(
             metricData = emptyList(),
             visibleKeys = keys,
@@ -271,6 +265,7 @@ fun CustomizeScaleSettings(
                 is ScaleEntry -> {
                   latestEntry.scale.scaleEntry.weight
                 }
+
                 else -> null
               }
             },

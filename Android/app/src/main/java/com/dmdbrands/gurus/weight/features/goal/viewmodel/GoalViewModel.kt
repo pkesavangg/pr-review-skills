@@ -200,7 +200,7 @@ constructor(
             )
           }
 
-          GGUserActionResponseType.CREATION_COMPLETED -> {
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.CREATION_FAILED, GGUserActionResponseType.UPDATE_COMPLETED -> {
             handleIntent(GoalIntent.Success)
           }
 
@@ -341,7 +341,7 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.d(tag, "updateR4Profile - Error updating profile to scale: ${e.message}")
-      result.complete(GGUserActionResponseType.CREATION_FAILED)
+      result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
 
     return result.await()

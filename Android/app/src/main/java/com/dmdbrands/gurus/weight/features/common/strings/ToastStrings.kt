@@ -12,7 +12,7 @@ object ToastStrings {
 
     object UpdateProfileSuccess {
       const val Header = "Success!"
-      const val Message = "Your profile saved successfully"
+      const val Message = "Your profile saved successfully."
     }
 
     object ChangePasswordSuccess {
@@ -22,6 +22,10 @@ object ToastStrings {
 
     object AccountSwitchSuccess {
       fun Message(accountName: String) = "Switched to $accountName"
+    }
+
+    object PromoCodeCopied {
+      const val Message = "Promo code copied!"
     }
   }
 
@@ -46,16 +50,15 @@ object ToastStrings {
       const val Header = "Error updating profile"
       const val updatePasswordHeader = "Error updating password."
       const val updatePasswordFailedMessage = "Restart the app and try again."
-      const val HeaderGeneric = "Error saving profile!"
-      const val MessageGeneric = "Please try again. " +
-        "If the problem continues, contact customer service."
+      const val HeaderGeneric = "Error updating profile"
+      const val MessageGeneric = "Something went wrong. Please try again. If the problem continues, contact customer service."
       const val MessageNotAuth = ""
       const val MessageNoConn = "No connection detected. Please make sure you have internet access and try again."
       const val MessageServError =
         "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
           "Try again later, but if the problem continues, contact customer service."
-      const val errorUpdatingProfile ="Error saving profile!Please try again."
-      const val ErrorUpdatingEmail ="Error updating profile.Email address is already in use"
+      const val errorUpdatingProfile ="Error saving profile! Please try again."
+      const val ErrorUpdatingEmail ="Error updating profile. Email address is already in use"
 
     }
 

@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -38,15 +37,9 @@ fun AppFeedMessagesScreen(
     viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
   }
 
-  // Initialize the screen
-  LaunchedEffect(Unit) {
-    viewModel.handleIntent(FeedMessagesIntent.Initialize)
-  }
-
   AppFeedMessagesScreenContent(
     state = state,
     onRefresh = {
-      android.util.Log.d("AppFeedMessagesScreen", "onRefresh callback triggered!")
       viewModel.handleIntent(FeedMessagesIntent.Refresh)
     },
     handleIntent = viewModel::handleIntent,

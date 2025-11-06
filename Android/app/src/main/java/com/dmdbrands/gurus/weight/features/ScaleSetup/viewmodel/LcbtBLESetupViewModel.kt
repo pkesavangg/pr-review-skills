@@ -89,8 +89,7 @@ constructor(
         discoveredScale = discoveredScale!!.copy(
           nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale",
         )
-        if (discoveredScale?.connectionStatus == BLEStatus.CONNECTED)
-          deviceService.saveScale(discoveredScale!!)
+        deviceService.saveScale(discoveredScale!!)
         AppLog.i(TAG, "Successfully saved LCBT scale")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")

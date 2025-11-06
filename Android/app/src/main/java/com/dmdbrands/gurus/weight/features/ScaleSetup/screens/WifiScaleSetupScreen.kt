@@ -43,6 +43,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonDisplayValue
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -208,14 +209,18 @@ fun WifiScaleSetupScreenContent(
                   state.wifiPasswordForm.noPasswordNetwork.onValueChange(isChecked)
                   // Update validation based on toggle state
                   if (isChecked) {
-                    // No password network - remove required validation and reset field
+                    // No password network - remove all password validators
+                    // Remove validators first (they check against current value)
                     state.wifiPasswordForm.password.removeValidator("required")
-                    // Reset clears value, error, touched, dirty, and pending states
+                    state.wifiPasswordForm.password.removeValidator("Invalid")
+                    // Then reset to clear value, error, touched, dirty, and pending states
+                    // Reset already clears errors, and validators are removed so no errors will be set
                     state.wifiPasswordForm.password.reset("")
                   } else {
-                    // Password network - add required validation and reset field
+                    // Password network - add validators back
                     state.wifiPasswordForm.password.addValidator(FormValidations.required())
-                    // Reset to clear any stale errors
+                    state.wifiPasswordForm.password.addValidator(FormValidations.minLength(1, LoginStrings.PasswordLabel))
+                    // Reset to clear any stale errors before validation runs
                     state.wifiPasswordForm.password.reset("")
                   }
                 },

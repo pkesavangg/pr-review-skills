@@ -45,7 +45,7 @@ class GGInAppMessagingService @Inject constructor(
 
   // MARK: - Feed Update Events
   private val _sendUpdateFeed = MutableSharedFlow<FeedUpdateEvent>()
-  val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
+  override val sendUpdateFeed: SharedFlow<FeedUpdateEvent> = _sendUpdateFeed.asSharedFlow()
 
   /**
    * Get feed settings flow for reactive updates (all accounts)
@@ -175,8 +175,6 @@ class GGInAppMessagingService @Inject constructor(
   override suspend fun emitFeedNotificationChange() {
     _feedNotificationChangedSubject.emit(Unit)
   }
-
-  // MARK: - Methods required by existing FeedService
 
   /**
    * Check if feed modal should be triggered - matches Angular implementation
@@ -329,7 +327,6 @@ class GGInAppMessagingService @Inject constructor(
       if (feedItem != null) {
         // Emit feed update event to trigger API call in main app
         emitFeedUpdate(feedItem, actionType)
-      } else {
       }
     } catch (e: Exception) {
     }
@@ -350,6 +347,20 @@ class GGInAppMessagingService @Inject constructor(
     } catch (e: Exception) {
     }
   }
+
+  /**
+   * Emit promo code copied event to notify main app
+   * @param promoCode The promo code that was copied
+   */
+  override suspend fun emitPromoCodeCopied(promoCode: String) {
+    try {
+      _dialogEvents.emit(
+        IAMDialogEvent.PromoCodeCopied(promoCode = promoCode),
+      )
+    } catch (e: Exception) {
+      // Log error but don't throw to avoid breaking the copy flow
+    }
+  }
 }
 
 /**
@@ -363,6 +374,14 @@ sealed class IAMDialogEvent {
 
   data class ShowPromoModal(
     val promoData: Any // You can define a proper PromoData class later
+  ) : IAMDialogEvent()
+
+  /**
+   * Event emitted when promo code is copied to clipboard
+   * @param promoCode The promo code that was copied
+   */
+  data class PromoCodeCopied(
+    val promoCode: String
   ) : IAMDialogEvent()
 }
 

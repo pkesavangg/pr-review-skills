@@ -3,6 +3,7 @@ package com.greatergoods.ggInAppMessaging.ui.viewmodel
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.core.viewmodel.BaseIntentViewModel
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import com.greatergoods.ggInAppMessaging.domain.services.ILinkService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,6 +20,7 @@ import android.content.Context
 @HiltViewModel
 class FeedLandingViewModel @Inject constructor(
     private val linkService: ILinkService,
+    private val inAppMessagingService: IInAppMessagingService,
     @ApplicationContext private val context: Context
 ) : BaseIntentViewModel<FeedLandingState, FeedLandingIntent>() {
 
@@ -64,13 +66,6 @@ class FeedLandingViewModel @Inject constructor(
         handleIntent(FeedLandingIntent.SetFeedItem(feedItem))
     }
 
-    /**
-     * Handle offer header shop now button click
-     */
-    fun onOfferHeaderShopNowClick() {
-        handleIntent(FeedLandingIntent.OnOfferHeaderShopNowClick)
-    }
-
     private fun handleOfferHeaderShopNowClick() {
         launch {
             try {
@@ -99,12 +94,6 @@ class FeedLandingViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Handle promo code copy click
-     */
-    fun onPromoCodeCopyClick() {
-        handleIntent(FeedLandingIntent.OnPromoCodeCopyClick)
-    }
 
     private fun handlePromoCodeCopyClick() {
         launch {
@@ -119,8 +108,10 @@ class FeedLandingViewModel @Inject constructor(
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Promo Code", promoCode)
                         clipboard.setPrimaryClip(clip)
-
                         IAMLogger.d(tag, "Promo code copied to clipboard: $promoCode")
+
+                        // Emit event to notify main app to show toast
+                        inAppMessagingService.emitPromoCodeCopied(promoCode)
                     } else {
                         IAMLogger.w(tag, "No promo code found in feed item")
                         updateState(FeedLandingReducer.onError("No promo code available")(currentState))

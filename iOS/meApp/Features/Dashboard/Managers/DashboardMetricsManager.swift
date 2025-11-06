@@ -52,14 +52,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Setup Methods
-    private func setupInitialMetrics() {
-        if state.dashboardType == .dashboard12 {
-      
+    public func setupInitialMetrics(forceShowAll: Bool = false) {
+        if state.dashboardType == .dashboard12 || forceShowAll {
+            // In dashboard12 mode or if forced (e.g. during R4 setup), show all 12
             state.metrics = originalMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
             }
             state.activeMetricsCount = state.metrics.count
         } else {
+            // Regular dashboard4
             let basicMetrics = Array(originalMetrics.prefix(4))
             state.metrics = basicMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
@@ -144,14 +145,20 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func updateDashboardType(_ dashboardType: DashboardType) {
         state.dashboardType = dashboardType
         
-        // Ensure activeMetricsCount doesn't exceed current metrics count
-        let maxMetricsCount = state.metrics.count
-        
-        switch dashboardType {
-        case .dashboard4:
-            state.activeMetricsCount = min(4, maxMetricsCount)
-        case .dashboard12:
-            state.activeMetricsCount = min(12, maxMetricsCount)
+        // Only set activeMetricsCount if metrics haven't been loaded from API yet (i.e., if the metrics array is empty).
+        // Once metrics are loaded from API, activeMetricsCount should come from API data.
+        if state.metrics.isEmpty {
+            switch dashboardType {
+            case .dashboard4:
+                state.activeMetricsCount = 4
+            case .dashboard12:
+                state.activeMetricsCount = 12
+            }
+        } else {
+            // Metrics have been loaded, don't override activeMetricsCount.
+            // Just ensure it doesn't exceed the maximum allowed for this dashboard type.
+            let maxAllowedForType = dashboardType == .dashboard4 ? 4 : 12
+            state.activeMetricsCount = min(state.activeMetricsCount, maxAllowedForType)
         }
     }
 
@@ -684,9 +691,13 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         
         state.metrics = activeMetrics + inactiveMetrics
         
-        // Ensure activeMetricsCount doesn't exceed metrics count
-        let maxMetricsCount = state.metrics.count
-        state.activeMetricsCount = min(activeMetrics.count, maxMetricsCount)
+        // CRITICAL: Set activeMetricsCount to the number of active metrics from API
+        // This ensures removed metrics are correctly identified
+        // activeMetrics contains only the metrics that are enabled/visible in the API
+        state.activeMetricsCount = activeMetrics.count
+        
+        logger.log(level: .debug, tag: "DashboardMetricsManager", 
+                  message: "Loaded metrics from API: \(activeMetrics.count) active, \(inactiveMetrics.count) inactive, total: \(state.metrics.count)")
         
     }
 

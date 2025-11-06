@@ -48,11 +48,8 @@ class FeedMessagesViewModel @Inject constructor(
    */
   override fun handleIntent(intent: FeedMessagesIntent) {
     super.handleIntent(intent)
-    AppLog.d("FeedMessagesViewModel", "Received intent: ${intent::class.simpleName}")
     when (intent) {
-      is FeedMessagesIntent.Initialize -> initialize()
       is FeedMessagesIntent.Refresh -> {
-        AppLog.d("FeedMessagesViewModel", "Refresh intent received - calling refresh()")
         refresh()
       }
       is FeedMessagesIntent.OnBackPress -> navigateBack()
@@ -63,40 +60,15 @@ class FeedMessagesViewModel @Inject constructor(
   }
 
   /**
-   * Initializes the screen and loads feed messages
-   */
-  private fun initialize() {
-    viewModelScope.launch {
-      try {
-        AppLog.d("FeedMessagesViewModel", "Initializing feed messages")
-        loadFeedMessages()
-      } catch (e: Exception) {
-        AppLog.e("FeedMessagesViewModel", "Failed to initialize", e.toString())
-        handleIntent(FeedMessagesIntent.SetError("Failed to load feed messages"))
-      }
-    }
-  }
-
-  /**
    * Refreshes the feed messages
    */
   private fun refresh() {
-    AppLog.d("FeedMessagesViewModel", "Refresh method called - starting refresh process")
     viewModelScope.launch {
       try {
-        AppLog.d("FeedMessagesViewModel", "Refreshing feed messages")
-        // Set refreshing state to true
-        AppLog.d("FeedMessagesViewModel", "Setting isRefreshing to true")
         handleIntent(FeedMessagesIntent.SetRefreshing(true))
-        // Load feed messages
-        AppLog.d("FeedMessagesViewModel", "Loading feed messages")
         loadFeedMessages()
       } catch (e: Exception) {
-        AppLog.e("FeedMessagesViewModel", "Failed to refresh", e.toString())
-        handleIntent(FeedMessagesIntent.SetError("Failed to refresh feed messages"))
       } finally {
-        // Set refreshing state to false
-        AppLog.d("FeedMessagesViewModel", "Setting isRefreshing to false")
         handleIntent(FeedMessagesIntent.SetRefreshing(false))
       }
     }
@@ -107,11 +79,8 @@ class FeedMessagesViewModel @Inject constructor(
    */
   private suspend fun loadFeedMessages() {
     try {
-      // Fetch feed items from the service
       feedService.fetchFeedItems()
-      AppLog.d("FeedMessagesViewModel", "Fetching feed messages")
     } catch (e: Exception) {
-      AppLog.e("FeedMessagesViewModel", "Failed to load feed messages", e.toString())
       handleIntent(FeedMessagesIntent.SetError("Failed to load feed messages"))
     }
   }
@@ -124,7 +93,6 @@ class FeedMessagesViewModel @Inject constructor(
       try {
         navigationService.navigateBack()
       } catch (e: Exception) {
-        AppLog.e("FeedMessagesViewModel", "Failed to navigate back from feed messages", e.toString())
       }
     }
   }

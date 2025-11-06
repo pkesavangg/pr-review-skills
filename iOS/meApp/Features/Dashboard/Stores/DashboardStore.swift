@@ -18,9 +18,7 @@ class DashboardStore: ObservableObject {
     
     // MARK: - Centralized State
     @Published var state: DashboardState = DashboardState()
-    
-    
-    
+
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
@@ -946,6 +944,8 @@ class DashboardStore: ObservableObject {
             // Sync the UI state with the streak manager after the change
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.objectWillChange.send()
             }
         }
         
@@ -958,6 +958,9 @@ class DashboardStore: ObservableObject {
             // Streak is being removed - add to removed set
             state.ui.removedStreaks.insert(streak.label)
         }
+        
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        objectWillChange.send()
     }
     
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -1020,11 +1023,13 @@ class DashboardStore: ObservableObject {
                     self.syncRemovalStateFromStreakManager()
                     // Validate goal card position after streak removal
                     self.validateGoalCardPosition()
+                    // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                    self.objectWillChange.send()
                 }
             }
         }
         
-        // Update the UI state
+        // Update the UI state immediately (synchronously) to provide instant feedback
         if state.ui.removedStreaks.contains(streakLabel) {
             state.ui.removedStreaks.remove(streakLabel)
         } else {
@@ -1033,10 +1038,16 @@ class DashboardStore: ObservableObject {
         
         // Validate goal card position immediately
         validateGoalCardPosition()
+        
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        // This ensures the Save button gets enabled when streak items are toggled
+        objectWillChange.send()
     }
     
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        objectWillChange.send()
     }
     
     /// Updates the goal card position in the grid (like a large widget)
@@ -1052,6 +1063,8 @@ class DashboardStore: ObservableObject {
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
+            // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+            objectWillChange.send()
         }
     }
     
