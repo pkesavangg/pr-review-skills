@@ -270,9 +270,9 @@ constructor(
           AppLog.e(TAG, "Cannot delete users: broadcastId is null")
           return@launch
         }
-          val duplicateList = state.value.duplicateUserList
-          for (user in duplicateList) {
-            deleteUserByBroadcastIdAndToken(broadcastId, user.token)
+        val duplicateList = state.value.duplicateUserList
+        for (user in duplicateList) {
+          deleteUserByBroadcastIdAndToken(broadcastId, user.token)
         }
         restartConnection()
       } catch (e: Exception) {
@@ -1541,7 +1541,12 @@ constructor(
         if (preferences != null) {
           val newName = _state.value.usernameForm.username.value
           val updatedDevice =
-            discoveredScale!!.copy(preferences = preferences.copy(displayName = newName.ifEmpty { preferences.displayName }))
+            discoveredScale!!.copy(
+              preferences = preferences.copy(
+                displayName = newName.ifEmpty { preferences.displayName },
+                id = discoveredScale?.id ?: preferences.id,
+              ),
+            )
           discoveredScale = updatedDevice
           ggDeviceService.updateAccount(
             updatedDevice.toGGBTDevice(),
@@ -1550,8 +1555,8 @@ constructor(
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
                 viewModelScope.launch {
                   timeoutJob.cancel()
-                  deviceService.updateScalePreferencesByMac(
-                    discoveredScale?.device?.macAddress ?: "",
+                  deviceService.updateScalePreferences(
+                    discoveredScale?.id ?: "",
                     discoveredScale?.preferences!!.toR4ScalePreferenceApiModel(),
                   )
                   handleIntent(
@@ -1706,7 +1711,7 @@ constructor(
   }
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
-    Log.d("savedscale","$ggDeviceDetail -hello$discoveredScale")
+    Log.d("savedscale", "$ggDeviceDetail -hello$discoveredScale")
     val username =
       discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
       ?: "Default"

@@ -88,7 +88,7 @@ constructor(
 
     AppLog.d(
       tag,
-      "onDeviceUpdate called for device ${macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
+      "onDeviceUpdate called for device ${macAddress}  with WiFi configured: ${deviceDetail.isWifiConfigured}",
     )
 
     // Update connection status map
@@ -352,7 +352,7 @@ constructor(
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
-      Log.d("saveddevice444","$savedDevice")
+      Log.d("saveddevice444", "$savedDevice")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(
