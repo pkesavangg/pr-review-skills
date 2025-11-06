@@ -42,7 +42,6 @@ fun DashboardMilestone(
   onNavigateToGoal: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
-
   val currentDeviceType = getDeviceType()
   val spanCount = if (currentDeviceType == DeviceType.Tablet) {
     3

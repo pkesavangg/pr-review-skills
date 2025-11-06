@@ -504,18 +504,6 @@ constructor(
           .filter { it.entry.operationType == OperationType.CREATE.name }
           .maxByOrNull { it.entry.entryTimestamp }
 
-      lastValidOperation?.let {
-        // Get weight from the latest entry if it's a ScaleEntry
-        val latestWeight = when (val latest = _latestEntry.value) {
-          is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
-          else -> null
-        }
-        // Trigger goal alert if needed
-        latestWeight?.let { weight ->
-          goalService.showGoalCompletionAlert(weight * 10)
-        }
-      }
-
       // 5. Get operations from API
       val operationCount = entryRepository.getOperationCount(accountId!!)
       val operationsFromApi = mutableListOf<ScaleEntry>()
@@ -553,6 +541,20 @@ constructor(
         )
       }
 
+      lastValidOperation?.let {
+        // Get weight from the latest entry if it's a ScaleEntry
+        val latestWeight = when (val latest = _latestEntry.value ) {
+          is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
+          else -> null
+        }
+        // Trigger goal alert if needed
+        latestWeight?.let { weight ->
+          goalService.showGoalCompletionAlert(weight * 10)
+        }
+
+      }
+
+
       // 7. Update last updated timestamp
       _lastUpdated.value = System.currentTimeMillis()
     } catch (e: Exception) {
@@ -566,6 +568,7 @@ constructor(
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
         _latestEntry.value = latest
+
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating latest entry", e)
