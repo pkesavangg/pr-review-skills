@@ -720,11 +720,22 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<[DeviceUser], BluetoothServiceError>
      */
     func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+        // Check device connection status before attempting to fetch users
+        guard device.isConnected == true else {
+            logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(device.id)")
+            return .failure(.deviceNotConnected)
+        }
+        
         do {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let users = await ggBleSDK.getUsers(ggDevice)
+            
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let users = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getUsers(ggDevice)
+            }
+            
             let deviceUsers = users.user.map { user in
                 DeviceUser(
                     name: user.name,
@@ -737,6 +748,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to get user list: \(error.localizedDescription)")
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -747,15 +759,27 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<DeviceInfo, BluetoothServiceError>
      */
     func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
+        // Check device connection status before attempting to fetch device info
+        guard device.isConnected == true else {
+            logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(device.id)")
+            return .failure(.deviceNotConnected)
+        }
+        
         do {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let details = await ggBleSDK.getDeviceInfo(ggDevice)
+            
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let details = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getDeviceInfo(ggDevice)
+            }
+            
             return .success(DeviceInfo(sdk: details))
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -1664,8 +1688,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         skipDevices = skipDevices.filter { !pairedIdsUpper.contains($0.uppercased()) }
         
         for id in skipDevices {
-            // Normalize case to avoid mismatches
-            let normalized = id.uppercased()
             ggBleSDK.skipDevice(id)
         }
     }
@@ -1721,6 +1743,40 @@ private extension BluetoothService {
             shouldMeasurePulse: attached.shouldMeasurePulse,
             timeFormat: attached.timeFormat
         )
+    }
+    
+    // MARK: - Timeout Helper
+    
+    /// Adds a timeout to an async operation to prevent continuation leaks
+    /// - Parameters:
+    ///   - seconds: Timeout duration in seconds
+    ///   - operation: The async operation to execute (can be non-throwing)
+    /// - Returns: The result of the operation
+    /// - Throws: BluetoothServiceError.timeout if the operation exceeds the timeout
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T) async throws -> T {
+        // Nanoseconds per second for Task.sleep conversion
+        let nanosecondsPerSecond: UInt64 = 1_000_000_000
+        
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            // Add the actual operation
+            group.addTask {
+                await operation()
+            }
+            
+            // Add timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds) * nanosecondsPerSecond)
+                throw BluetoothServiceError.timeout
+            }
+            
+            // Return the first result (operation or timeout)
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                throw BluetoothServiceError.timeout
+            }
+            group.cancelAll()
+            return result
+        }
     }
 }
 

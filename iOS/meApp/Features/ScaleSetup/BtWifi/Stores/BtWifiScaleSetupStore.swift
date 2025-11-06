@@ -198,10 +198,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var initialHeartRateEnabledSnapshot: Bool?
     private var initialDashboardMetricLabelsSnapshot: [String]? = nil
     private var initialDashboardRemovedMetricsSnapshot: Set<String>? = nil
+    private var initialDashboardRemovedStreaksSnapshot: Set<String>? = nil
     private var initialDashboardStreakOrderSnapshot: [String]? = nil
     private var initialDashboardGoalCardRemovedSnapshot: Bool? = nil
     private var initialDashboardGoalCardPositionSnapshot: Int? = nil
     private var dashboardStoreCancellable: AnyCancellable? = nil
+    /// Subscription to dashboard metrics updated notification to sync changes from main dashboard
+    private var dashboardMetricsUpdatedCancellable: AnyCancellable? = nil
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -840,19 +843,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
         case .dashboardMetrics:
-            // Begin edit mode and snapshot current state for change detection
-            dashboardStore.beginEdit()
-            snapshotDashboardState()
-            // Subscribe to dashboard edits to update Save button enablement live
-            dashboardStoreCancellable?.cancel()
-            dashboardStoreCancellable = dashboardStore.objectWillChange
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] _ in
-                    guard let self else { return }
-                    if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
-                        self.updateNextEnabled()
-                    }
-                }
+            Task { [weak self] in
+                guard let self else { return }
+                await self.setupDashboardMetricsCustomization()
+            }
         default:
             break
         }
@@ -941,7 +935,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             // Post notification to refresh dashboard screen when user returns to it
+            // Note: This notification will also trigger a reload in the customize screen,
+            // but that's fine as it ensures both screens stay in sync
             NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+            // Cancel sync subscription after saving since we've already synced
+            dashboardMetricsUpdatedCancellable?.cancel()
+            dashboardMetricsUpdatedCancellable = nil
             break
         default:
             break
@@ -959,11 +958,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.currentCustomizeSetting = .none
         }
         
+        // Cancel dashboard metrics sync subscription when navigating away
+        dashboardMetricsUpdatedCancellable?.cancel()
+        dashboardMetricsUpdatedCancellable = nil
+        
         // Revert unsaved changes for each customize screen
         switch currentCustomizeSetting {
         case .dashboardMetrics:
             // Discard dashboard customization changes
             discardDashboardCustomization()
+            // Reload dashboard configuration from API to ensure we have the latest state
+            Task { [weak self] in
+                guard let self else { return }
+                await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            }
         case .scaleMode:
             if let savedScale = savedScale {
                 // Restore previously snapshotted values
@@ -1380,10 +1388,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
             }
             
-            // Update dashboard type first
-            try await accountService.updateDashboardType(type: .dashboard12)
+            let isDashboardFour = isDashboardTypeFour
             
-            // Create the R4 scale using the proper service method
             let savedScale = try await scaleService.createR4Scale(
                 scaleId: scaleID,
                 accountId: accountId,
@@ -1403,15 +1409,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             self.savedScale = savedScale
             await self.scaleService.syncAllScalesWithRemote()
-            // Setup push notifications
+            
             Task {
                 await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
             }
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
-            
-            // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            
+            if isDashboardFour {
+                await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+            }
             
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
@@ -1574,6 +1582,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Check if this is a known scale (isNew = false means it's known)
         if !event.isNew {
+            // Add device to skip list and stop scanning to prevent rediscovery loop
+            if let broadcastId = event.device.broadcastIdString, !broadcastId.isEmpty {
+                Task {
+                    // Skip this device to prevent rediscovery loop
+                    _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId, considerForSession: false)
+                }
+            }
+            bluetoothService.stopScan()
             showKnownScaleAlert()
         } else {
             // New scale discovered - move to next step
@@ -1589,7 +1605,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             message: alertStrings.message,
             buttons: [
                 AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
-                    self?.dismissAction?()
+                    guard let self = self else { return }
+                    // Perform proper cleanup before dismissing
+                    self.performExitCleanup()
                 }
             ]
         )
@@ -1948,6 +1966,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func snapshotDashboardState() {
         initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
         initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
+        initialDashboardRemovedStreaksSnapshot = dashboardStore.state.ui.removedStreaks
         initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
         initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
         initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
@@ -1957,12 +1976,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func hasDashboardCustomizationChanged() -> Bool {
         let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
         let removed = dashboardStore.state.ui.removedMetrics
+        let removedStreaks = dashboardStore.state.ui.removedStreaks
         let order = dashboardStore.state.ui.streakGridOrder
         let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
         let goalPos = dashboardStore.state.ui.goalCardPosition
         
         return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
                (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
+               (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
                (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
                (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
                (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
@@ -1987,6 +2008,174 @@ final class BtWifiScaleSetupStore: ObservableObject {
         ))
     }
     
+    // MARK: - Dashboard Metrics Upgrade
+    
+    /// Upgrades dashboard type from 4 to 12 while preserving removal state of original 4 metrics.
+    /// This ensures that if user had removed some of the original 4 metrics (BMI, body fat, muscle, water),
+    /// those remain removed after the upgrade, while the 8 new metrics are all enabled.
+    private func upgradeDashboardTypeFrom4To12PreservingRemovalState() async {
+        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        
+        let originalActiveMetricsCount = dashboardStore.metricsManager.state.activeMetricsCount
+        let originalMetrics = dashboardStore.metricsManager.state.metrics
+        let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
+        
+        let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
+        let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
+        let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
+        let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
+        
+        LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Original 4 metrics - Enabled: \(enabledOriginalLabels), Removed: \(removedOriginalLabels)")
+        
+        do {
+            let apiRepo = AccountRepositoryAPI()
+            _ = try await apiRepo.patchDashboardType(.dashboard12)
+            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
+        }
+        
+        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        
+        await MainActor.run {
+            dashboardStore.metricsManager.updateDashboardType(.dashboard12)
+            dashboardStore.state.metrics.dashboardType = .dashboard12
+            
+            let newMetricsLabels = [
+                DashboardStrings.heartBpm, DashboardStrings.bone, DashboardStrings.visceralFat,
+                DashboardStrings.subFat, DashboardStrings.protein, DashboardStrings.skelMuscle,
+                DashboardStrings.bmrKcal, DashboardStrings.metAge
+            ]
+            
+            let originalMetricsDef = [
+                (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
+                (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
+                (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
+                (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
+                (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
+                (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
+                (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
+                (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
+            ]
+            
+            var orderedMetrics: [MetricItem] = []
+            
+            for label in originalFourLabels where enabledOriginalLabels.contains(label) {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            for newLabel in newMetricsLabels {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == newLabel }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            for label in originalFourLabels where removedOriginalLabels.contains(label) {
+                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
+                    orderedMetrics.append(MetricItem(
+                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
+                        preLabel: metricDef.3, icon: metricDef.4
+                    ))
+                }
+            }
+            
+            dashboardStore.metricsManager.state.metrics = orderedMetrics
+            dashboardStore.metricsManager.state.activeMetricsCount = enabledOriginalLabels.count + 8
+            dashboardStore.syncRemovalStateFromMetricsManager()
+            
+            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12. Enabled original: \(enabledOriginalLabels.count), Removed: \(removedOriginalLabels.count), Active count: \(enabledOriginalLabels.count + 8)")
+        }
+        
+        do {
+            // The removal state is managed by the metricsManager's activeMetricsCount and the ordering of metrics.
+            // We intentionally pass an empty array for removedMetrics here, as the actual removal state is derived from metric ordering.
+            try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Checks if the current dashboard type is dashboard4
+    private var isDashboardTypeFour: Bool {
+        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
+        return (currentDashboardType == "dashboard_4_metrics" || 
+                currentDashboardType == "dashboard4") &&
+                dashboardStore.effectiveDashboardType == .dashboard4
+    }
+    
+    /// Sets up dashboard metrics customization screen with proper state management
+    private func setupDashboardMetricsCustomization() async {
+        let isDashboardFour = isDashboardTypeFour
+        
+        if isDashboardFour {
+            await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+        } else {
+            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+        }
+        
+        await MainActor.run {
+            dashboardStore.beginEdit()
+            dashboardStore.state.ui.isEditMode = true
+            snapshotDashboardState()
+        }
+        
+        setupDashboardMetricsSubscriptions()
+    }
+    
+    /// Sets up subscriptions for dashboard metrics customization screen
+    private func setupDashboardMetricsSubscriptions() {
+        dashboardStoreCancellable?.cancel()
+        dashboardStoreCancellable = dashboardStore.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                    self.updateNextEnabled()
+                }
+            }
+        setupDashboardMetricsSync()
+    }
+    
+    // MARK: - Dashboard Synchronization
+    
+    /// Sets up synchronization between customize screen and main dashboard
+    /// When dashboard metrics are updated in the main dashboard, this ensures
+    /// the customize screen reflects those changes immediately
+    private func setupDashboardMetricsSync() {
+        // Cancel existing subscription if any
+        dashboardMetricsUpdatedCancellable?.cancel()
+        
+        // Subscribe to dashboard metrics updated notification
+        dashboardMetricsUpdatedCancellable = NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Only reload if we're currently on the dashboard metrics customization screen
+                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                    Task {
+                        await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+                        // Update snapshot after reload to reflect new base state
+                        await MainActor.run {
+                            self.snapshotDashboardState()
+                            self.updateNextEnabled()
+                        }
+                    }
+                }
+            }
+    }
+    
     // MARK: - Cleanup Methods
     
     /// Cleans up the store and breaks any retain cycles
@@ -2007,6 +2196,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         measurementTimeoutTask = nil
         stepTimerTask?.cancel()
         stepTimerTask = nil
+        dashboardStoreCancellable?.cancel()
+        dashboardStoreCancellable = nil
+        dashboardMetricsUpdatedCancellable?.cancel()
+        dashboardMetricsUpdatedCancellable = nil
         
         // Cancel all cancellables
         cancellables.forEach { $0.cancel() }
