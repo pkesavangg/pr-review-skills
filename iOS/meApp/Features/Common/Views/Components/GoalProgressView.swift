@@ -44,10 +44,7 @@ struct GoalProgressView: View {
                 }
             }
         }
-        .padding(.horizontal, .spacingXS)
         .frame(height: 120)
-        .background(theme.backgroundPrimary)
-        .cornerRadius(.radiusSM)
     }
     
     // MARK: No Goal Set UI
