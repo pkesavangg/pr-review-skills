@@ -111,13 +111,41 @@ constructor(
   /**
    * Initializes the feed notification listener for settings screen
    * Listens to feed notification changes and updates unread count and indicator visibility
+   * Observes both feedsChanged and notificationBadgeUpdated flows for real-time updates
    */
   private fun initFeedNotificationListener() {
+    // Observe feed items changes to update unread count
+    viewModelScope.launch {
+      try {
+        feedService.feedsChanged.collect {
+          AppLog.d(TAG, "Feed items changed, updating unread count")
+          updateUnreadFeedCount()
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing feedsChanged flow", e.toString())
+      }
+    }
+
+    // Observe notification badge updates for immediate indicator visibility updates
+    viewModelScope.launch {
+      try {
+        feedService.notificationBadgeUpdated.collect { shouldShow ->
+          AppLog.d(TAG, "Notification badge updated: $shouldShow")
+          val count = feedService.getUnreadFeedCount()
+          handleIntent(SettingsIntent.SetUnreadFeedCount(count))
+          handleIntent(SettingsIntent.SetShowUnreadFeedIndication(shouldShow))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing notificationBadgeUpdated flow", e.toString())
+      }
+    }
+
+    // Initial update on init
     viewModelScope.launch {
       try {
         updateUnreadFeedCount()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error in feed notification listener", e.toString())
+        AppLog.e(TAG, "Error in initial feed notification update", e.toString())
       }
     }
   }
@@ -1212,19 +1240,4 @@ constructor(
     return result.await()
   }
 
-  /**
-   * Gets the current MAC address filter display text.
-   * @return Current selected MAC address or "All" if not set
-   */
-  fun getMacAddressFilterDisplayText(): String {
-    return state.value.selectedMacAddress
-  }
-
-  /**
-   * Checks if MAC address filter is available (testing features enabled).
-   * @return True if MAC address filter should be shown in settings
-   */
-  fun isMacAddressFilterAvailable(): Boolean {
-    return state.value.enableTestingFeatures
-  }
 }
