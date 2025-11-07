@@ -712,12 +712,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 scale.isConnected = false
                 scale.isWifiConfigured = false
             }
-            
             try localRepository.context.save()
-            
             // Build scale info string
             let scaleInfo = allScales.map { formatScaleInfo($0) }.joined(separator: " ")
-            
             logger.log(level: .info, tag: tag, message: "Reset connection status for \(allScales.count) scales on app launch, scales=[\(scaleInfo)]")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to reset connection statuses on launch: \(error.localizedDescription)")
@@ -734,7 +731,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let scaleInfo = activeScales.map { formatScaleInfo($0) }.joined(separator: " ")
             
             logger.log(level: .debug, tag: tag, message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId), scales=[\(scaleInfo)]")
-
             self.scales = activeScales
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")

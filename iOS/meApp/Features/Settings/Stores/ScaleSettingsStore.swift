@@ -197,7 +197,6 @@ final class ScaleSettingsStore: ObservableObject {
             await scaleService.syncAllScalesWithRemote()
             let _ = await self.bluetoothService.resyncAndScan()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
-            
             isSuccess = true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete scale: \(error.localizedDescription)", data: error)
