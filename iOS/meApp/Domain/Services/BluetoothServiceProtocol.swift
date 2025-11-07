@@ -119,7 +119,7 @@ protocol BluetoothServiceProtocol {
     // MARK: - Device Information
     /// Retrieves generic device information (model, serial, firmware, …).
     /// - Returns: Result<DeviceInfo, BluetoothServiceError>
-    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError>
+    func getDeviceInfo(for device: Device, skipConnectionCheck: Bool) async -> Result<DeviceInfo, BluetoothServiceError>
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
     /// - Returns: Result<String, BluetoothServiceError>
     func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError>
@@ -137,7 +137,7 @@ protocol BluetoothServiceProtocol {
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>
     /// Retrieves the list of users stored on the scale (R4 only).
     /// - Returns: Result<[DeviceUser], BluetoothServiceError>
-    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError>
+    func getScaleUserList(for device: Device, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError>
     /// Retrieves device logs from the scale.
     /// - Returns: Result<DeviceLogs, BluetoothServiceError>
     func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError>

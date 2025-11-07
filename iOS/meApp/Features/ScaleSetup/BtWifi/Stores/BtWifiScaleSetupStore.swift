@@ -1364,7 +1364,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             // Get device metadata for R4 scales
             var deviceMetadata: DeviceMetaData? = nil
-            let deviceInfoResult = await bluetoothService.getDeviceInfo(for: scale)
+            let deviceInfoResult = await bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
             switch deviceInfoResult {
             case .success(let deviceInfo):
                 let dto = ScaleMetaDataDTO(
@@ -1564,7 +1564,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Checks device info and WiFi configuration after WiFi setup for scale SKU 0412
     private func checkDeviceInfoAfterWifiSetup(scale: Device) async -> Bool {
         var isWifiConfigured = false
-        let result = await bluetoothService.getDeviceInfo(for: scale)
+        let result = await bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
         switch result {
         case .success(let deviceInfo):
             isWifiConfigured = deviceInfo.isWifiConfigured ?? false// Assuming this property exists in the DeviceInfo model
@@ -1699,7 +1699,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        let result = await bluetoothService.getScaleUserList(for: scale)
+        let result = await bluetoothService.getScaleUserList(for: scale, skipConnectionCheck: true)
         switch result {
         case .success(let users):
             // Filter out the current scale token

@@ -262,7 +262,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .success(let response):
             switch response {
             case .creationCompleted:
-                let response = await self.bluetoothService.getDeviceInfo(for: scale)
+                let response = await self.bluetoothService.getDeviceInfo(for: scale, skipConnectionCheck: true)
                 switch response {
                 case .success(let deviceInfo):
                     discoveredScale?.broadcastId = bluetoothService.convertHexToInt(deviceInfo.broadcastId ?? "")
@@ -451,7 +451,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         // Get device metadata for Bluetooth scales (matching BluetoothService.addNewDevice logic)
         var deviceMetadata: DeviceMetaData? = nil
-        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave)
+        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
             let dto = ScaleMetaDataDTO(

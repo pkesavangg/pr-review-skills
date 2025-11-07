@@ -349,7 +349,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             var metaData = deviceDetails
             let scaleType = getSafeScaleType(for: scale) ?? ""
             if metaData == nil && (scaleType == ScaleSourceType.btWifiR4.rawValue || scaleType == ScaleSourceType.bluetooth.rawValue) {
-                let deviceInfoResult = await getDeviceInfo(for: scale)
+                let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
                 switch deviceInfoResult {
                 case .success(let deviceInfo):
                     let dto = ScaleMetaDataDTO(
@@ -719,9 +719,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Retrieves the list of users stored on the scale (R4 only).
      - Returns: Result<[DeviceUser], BluetoothServiceError>
      */
-    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(for device: Device, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
         // Check device connection status before attempting to fetch users
-        guard device.isConnected == true else {
+        guard skipConnectionCheck || device.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(device.id)")
             return .failure(.deviceNotConnected)
         }
@@ -758,9 +758,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Retrieves generic device information (model, serial, firmware, …).
      - Returns: Result<DeviceInfo, BluetoothServiceError>
      */
-    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
+    func getDeviceInfo(for device: Device, skipConnectionCheck: Bool = false) async -> Result<DeviceInfo, BluetoothServiceError> {
         // Check device connection status before attempting to fetch device info
-        guard device.isConnected == true else {
+        guard skipConnectionCheck || device.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(device.id)")
             return .failure(.deviceNotConnected)
         }
@@ -927,7 +927,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         
         // Get user list from the scale
-        let userListResult = await getScaleUserList(for: discoveredScale)
+        let userListResult = await getScaleUserList(for: discoveredScale, skipConnectionCheck: true)
         guard case .success(let userList) = userListResult else {
             logger.log(level: .error, tag: tag, message: "Failed to get scale user list for device event alert")
             return
@@ -1283,7 +1283,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // For connection events, we need to get device info to calculate weight-only mode status
         // Since we don't have full DeviceInfo here, we'll get it from the scale
-        let deviceInfoResult = await getDeviceInfo(for: scale)
+        let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
             await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)

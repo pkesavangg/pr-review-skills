@@ -918,7 +918,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             dailySummaries = dailyData.compactMap { $0 }.sorted { $0.period < $1.period }
             monthlySummaries = monthlyData.compactMap { $0 }.sorted { $0.period < $1.period }
             
-            await logger.log(level: .debug, tag: tag, message: "Dashboard data loaded - Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
+            // Log entry count with synced/unsynced breakdown (reuse entries already fetched)
+            let totalCount = entries.count
+            let unsyncedCount = entries.filter { $0.isSynced == false }.count
+            let syncedCount = totalCount - unsyncedCount
+            await logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Entries count=\(totalCount) (synced=\(syncedCount), unsynced=\(unsyncedCount)), Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
         }
