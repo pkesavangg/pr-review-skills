@@ -67,16 +67,16 @@ fun GoalMilestoneDisplay(
     type = goalType.value,
   ).process(targetUnit, null)
   val weightlessWeight = account.weightlessWeight
+  // we are sending goal weight and initial weight from account which is coming as stored weight
   // Calculate goal percentage using the same logic as GoalViewModel and GoalService
   val goalPercent =
-    calculateGoalPercentage(
-      goalType = goalType,
-      initialWeight = goal.initialWeight,
-      goalWeight = goal.goalWeight,
-      latestWeight = currentWeight * 10,
-    )
+  calculateGoalPercentage(
+    goalType = goalType,
+    initialWeight = goal.initialWeight,
+    goalWeight = goal.goalWeight,
+    latestWeight = AccountHelper.processStoredWeightToDisplay(currentWeight * 10, account.weightUnit) * 10,
+  )
   val displayProgressPercentage = GoalDisplayHelper.computeDisplayProgressPercentage(goalType, goalPercent)
-
   Column(
     modifier = modifier
       .fillMaxWidth(),
@@ -268,13 +268,7 @@ private fun LoseGainGoalDisplay(
             if (progressPercentage >= 100) {
               toGoal = 0.toString()
               toGoal
-            } else if (toGoal
-                .startsWith('-')
-            ) {
-              toGoal
-            } else {
-              "+$toGoal"
-            },
+            } else toGoal,
           textType = TextType.CardTitle,
           // Always show negative for lose goal
           color = colorScheme.textHeading,

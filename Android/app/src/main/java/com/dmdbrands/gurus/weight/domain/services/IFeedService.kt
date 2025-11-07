@@ -5,13 +5,7 @@ import com.greatergoods.ggInAppMessaging.domain.models.FeedActionType
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Protocol defining the service interface for managing feed items, including fetching, updating, and managing feed settings.
- * Android equivalent of iOS FeedServiceProtocol
- */
 interface IFeedService {
-
-    // MARK: - Publishers
 
     /**
      * Emits whenever feed items are changed
@@ -27,8 +21,6 @@ interface IFeedService {
      * Emits when the notification badge should be updated
      */
     val notificationBadgeUpdated: Flow<Boolean>
-
-    // MARK: - Feed Items Management
 
     /**
      * Fetches all feed items from the backend and updates local state.
@@ -49,60 +41,16 @@ interface IFeedService {
      */
     suspend fun getUnreadFeedCount(): Int
 
-    // MARK: - Feed Settings Management
-
     /**
      * Gets the stored feed notification settings.
      * @return FeedSetting if exists, null otherwise
      */
     suspend fun getFeedSettings(): FeedSetting?
 
-    // MARK: - Feed Modal Management
-
     /**
      * Checks and displays the feed modal if trigger conditions are met.
      */
     suspend fun checkAndTriggerFeedModal(): Boolean
 
-    // MARK: - Feed Item Actions
-
-    /**
-     * Handles feed item click based on feed type
-     * @param feedItem The feed item that was clicked
-     * @param onNavigateToFeedLanding Callback for navigating to feed landing screen
-     * @param onOpenExternalLink Callback for opening external links
-     */
-    suspend fun handleFeedItemClick(
-        feedItem: FeedItem,
-        onNavigateToFeedLanding: (FeedItem) -> Unit = { _ -> },
-        onOpenExternalLink: (String) -> Unit = { _ -> }
-    )
-
-    /**
-     * Handles shop now button click - checks feed type and navigates accordingly
-     * @param feedItem The feed item that was clicked
-     * @param onNavigateToFeedLanding Callback for navigating to feed landing screen
-     * @param onOpenExternalLink Callback for opening external links
-     */
-    suspend fun handleShopNowClick(
-        feedItem: FeedItem,
-        onNavigateToFeedLanding: (FeedItem) -> Unit = { _ -> },
-        onOpenExternalLink: (String) -> Unit = { _ -> }
-    )
-
-    /**
-     * Marks a feed item as read with a specific action
-     * @param elementId The element ID of the feed item
-     * @param actionType The action type (e.g., "clicked", "viewed", "dismissed")
-     */
-    suspend fun markFeedAsRead(elementId: String, actionType: String)
-
     fun showIAMFeedModal(feedItem: FeedItem)
-
-    // MARK: - Cleanup
-
-    /**
-     * Clears all feed data for the current user.
-     */
-    fun clearFeedData()
 }

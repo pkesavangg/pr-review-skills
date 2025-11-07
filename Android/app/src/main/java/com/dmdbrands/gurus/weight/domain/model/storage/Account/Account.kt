@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
+import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.library.ggbluetooth.model.GGBTMetricConfig
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 
@@ -109,5 +110,15 @@ fun Account?.toGoal(): Goal? {
     type = activeAccount.goalType ?: "",
     percent = activeAccount.goalPercent,
     metPreviousGoal = activeAccount.metPreviousGoal ?: false,
+  )
+}
+
+fun Account?.toWeightless(): Weightless {
+  val rawWeightless = this?.weightlessWeight ?: 0f
+  val unit = this?.weightUnit
+  val weightlessInLb = ConversionTools.convertStoredToDisplay(rawWeightless.toDouble(), unit == WeightUnit.KG)
+  return Weightless(
+    isWeightlessOn = this?.isWeightlessOn ?: false,
+    weightlessWeight = weightlessInLb.toFloat(),
   )
 }

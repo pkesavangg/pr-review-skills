@@ -1,5 +1,6 @@
 package com.greatergoods.ggInAppMessaging.domain.services
 
+import com.greatergoods.ggInAppMessaging.core.service.FeedUpdateEvent
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import kotlinx.coroutines.flow.Flow
@@ -9,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
  * Provides abstraction for feed management and messaging functionality
  */
 interface IInAppMessagingService {
+
+  val sendUpdateFeed: Flow<FeedUpdateEvent>
     /**
      * Set account ID for user-specific settings
      */
@@ -103,4 +106,10 @@ interface IInAppMessagingService {
      * @param variationId Optional variation ID
      */
     suspend fun emitFeedUpdate(feedItem: FeedItem, actionType: String, variationId: Int? = null)
+
+    /**
+     * Emit promo code copied event to notify main app
+     * @param promoCode The promo code that was copied
+     */
+    suspend fun emitPromoCodeCopied(promoCode: String)
 }

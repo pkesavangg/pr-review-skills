@@ -44,12 +44,17 @@ struct DashboardMetricsSection: View {
         }
         .onAppear {
             if parentView == .R4ScaleSetup {
-                // Force edit mode and show everything with wiggle in Scale Setup context
+                // Force edit mode in Scale Setup context
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                // Ensure all metrics are visible/available for editing if needed
+                // In R4 setup, ensure all 12 metrics are visible and active regardless of current dashboard type or API state
+                if store.metricsManager.state.metrics.count < 12 || store.effectiveDashboardType == .dashboard4 {
+                    store.metricsManager.setupInitialMetrics(forceShowAll: true)
+                }
                 store.metricsManager.resetActiveMetricsCountToShowAll()
+                store.syncRemovalStateFromMetricsManager()
+                store.objectWillChange.send()
             }
         }
         .onChange(of: parentView) { _, newValue in

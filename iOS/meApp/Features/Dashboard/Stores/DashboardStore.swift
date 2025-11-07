@@ -18,9 +18,7 @@ class DashboardStore: ObservableObject {
     
     // MARK: - Centralized State
     @Published var state: DashboardState = DashboardState()
-    
-    
-    
+
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
@@ -64,6 +62,26 @@ class DashboardStore: ObservableObject {
         // Initialize dashboard
         Task {
             await initializeDashboard()
+        }
+    }
+
+    /// Lightweight initializer that avoids subscriptions and heavy async initialization.
+    /// Use this for ephemeral contexts (e.g., Metric Info sheet without full dashboard state).
+    init(lightweight: Bool) {
+        // Initialize managers
+        self.metricsManager = DashboardMetricsManager()
+        self.graphManager = DashboardGraphManager()
+        self.streakManager = DashboardStreakManager()
+        self.dataManager = DashboardDataManager()
+        self.goalManager = DashboardGoalManager()
+
+        // Bind state so basic computed properties can work
+        setupBindings()
+
+        // Skip subscriptions and async initialization to avoid network/processing
+        if !lightweight {
+            setupSubscriptions()
+            Task { await initializeDashboard() }
         }
     }
     
@@ -926,6 +944,8 @@ class DashboardStore: ObservableObject {
             // Sync the UI state with the streak manager after the change
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.objectWillChange.send()
             }
         }
         
@@ -938,6 +958,9 @@ class DashboardStore: ObservableObject {
             // Streak is being removed - add to removed set
             state.ui.removedStreaks.insert(streak.label)
         }
+        
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        objectWillChange.send()
     }
     
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -1000,11 +1023,13 @@ class DashboardStore: ObservableObject {
                     self.syncRemovalStateFromStreakManager()
                     // Validate goal card position after streak removal
                     self.validateGoalCardPosition()
+                    // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                    self.objectWillChange.send()
                 }
             }
         }
         
-        // Update the UI state
+        // Update the UI state immediately (synchronously) to provide instant feedback
         if state.ui.removedStreaks.contains(streakLabel) {
             state.ui.removedStreaks.remove(streakLabel)
         } else {
@@ -1013,10 +1038,16 @@ class DashboardStore: ObservableObject {
         
         // Validate goal card position immediately
         validateGoalCardPosition()
+        
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        // This ensures the Save button gets enabled when streak items are toggled
+        objectWillChange.send()
     }
     
     func toggleGoalCardRemoval() {
         state.ui.isGoalCardRemoved.toggle()
+        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+        objectWillChange.send()
     }
     
     /// Updates the goal card position in the grid (like a large widget)
@@ -1032,6 +1063,8 @@ class DashboardStore: ObservableObject {
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
             logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
+            // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+            objectWillChange.send()
         }
     }
     
@@ -1220,6 +1253,8 @@ class DashboardStore: ObservableObject {
     private func performDashboardResetFlow() {
         state.ui.isLoading = true
         state.ui.loaderOverride = LoaderModel(text: lang.saving)
+        // Ensure loader is visible via global notification system
+        notificationService.showLoader(LoaderModel(text: lang.saving))
         
         state.ui.selectedMetricLabel = nil
         state.ui.isEditMode = false
@@ -1232,6 +1267,7 @@ class DashboardStore: ObservableObject {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.state.ui.isLoading = false
                 self.state.ui.loaderOverride = nil
+                self.notificationService.dismissLoader()
                 
                 // Delegate reset operations to managers
                 Task {
@@ -1636,6 +1672,68 @@ class DashboardStore: ObservableObject {
         }
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
+
+    // MARK: - Metric Info Date Label (for Metric Info Sheet)
+    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
+    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
+    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
+    func metricInfoDateLabel() -> String {
+        let period = state.graph.selectedPeriod
+
+        if let selectedPoint = state.graph.selectedPoint {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+        if let crosshairDate = state.graph.selectedXValue {
+            let prefix = selectionPrefix(for: period)
+            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
+            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
+
+        let prefix = "\(period.rawValue) average"
+        let dateText = weightLabel // already computed from visible region
+        return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+
+    private func selectionPrefix(for period: TimePeriod) -> String {
+        switch period {
+        case .week, .month: return "day average"
+        case .year, .total: return "month average"
+        }
+    }
+
+    private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
+        let formatter = DateFormatter()
+        switch period {
+        case .week, .month:
+            formatter.dateFormat = "MMM d, yyyy"
+        case .year, .total:
+            formatter.dateFormat = "MMM yyyy"
+        }
+        return formatter.string(from: date)
+    }
+
+    private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
+        return "\(prefix) \(dateText)".lowercased()
+    }
+
+    // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
+    /// Returns the allowed metrics for the Metric Info sheet based on dashboard type.
+    func allowedMetricsForMetricInfo() -> [BodyMetric] {
+        switch state.metrics.dashboardType {
+        case .dashboard4:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water]
+        case .dashboard12:
+            return [.weight, .bmi, .bodyFat, .muscleMass, .water, .pulse, .boneMass, .visceralFatLevel, .subcutaneousFatPercent, .proteinPercent, .skeletalMusclePercent, .bmr, .metabolicAge]
+        }
+    }
+
+    /// Ensures the selected metric is valid for the current dashboard type; if not, returns the first allowed metric.
+    func validateMetricInfoSelection(_ current: BodyMetric) -> BodyMetric {
+        let allowed = allowedMetricsForMetricInfo()
+        return allowed.contains(current) ? current : (allowed.first ?? .bmi)
+    }
     
     // Delegate entry creation to MetricsManager
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
@@ -1752,9 +1850,24 @@ class DashboardStore: ObservableObject {
         // No selection: compute visible-window averages to mirror tiles and weight label
         let ops = getVisibleOperations()
         if ops.isEmpty {
-            // Leave metrics nil so UI shows placeholders
+            var storedWeightForInfo: Int? = nil
+
+            if state.data.hasAnyEntries {
+                let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
+                    from: continuousOperations,
+                    period: state.graph.selectedPeriod,
+                    isWeightlessMode: isWeightlessModeEnabled,
+                    anchorWeight: weightlessAnchorWeight,
+                    convertWeight: goalManager.convertWeightToDisplay
+                )
+                if let displayAvg = interpolatedAverage {
+                    let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+                    storedWeightForInfo = ConversionTools.convertDisplayToStored(displayAvg, isMetric: unit == .kg)
+                }
+            }
+
             entry.scaleEntry = BathScaleEntry(
-                weight: dataManager.state.latestWeightStored,
+                weight: storedWeightForInfo,
                 bodyFat: nil,
                 muscleMass: nil,
                 water: nil,

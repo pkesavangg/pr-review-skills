@@ -8,9 +8,6 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 class FeedMessagesReducer : IReducer<FeedMessagesState, FeedMessagesIntent> {
   override fun reduce(state: FeedMessagesState, intent: FeedMessagesIntent): FeedMessagesState {
     return when (intent) {
-      is FeedMessagesIntent.Initialize -> {
-        state.copy(isLoading = true)
-      }
       is FeedMessagesIntent.Refresh -> {
         state.copy(isRefreshing = true)
       }

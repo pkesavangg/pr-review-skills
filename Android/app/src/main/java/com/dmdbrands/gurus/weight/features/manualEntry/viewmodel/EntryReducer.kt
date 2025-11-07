@@ -54,6 +54,20 @@ data class EntryForm(
 ) {
 
   companion object {
+    /**
+     * Formats a Double value to a String representation for form controls.
+     * Formats to 1 decimal place, then multiplies by 10 and converts to int.
+     * Example: 35.5 -> "355", 28.2 -> "282"
+     *
+     * @param value The Double value to format, can be null
+     * @return Formatted string representation, or empty string if value is null
+     */
+    private fun formatScaleEntryValue(value: Double?): String {
+      return value?.let {
+        String.format("%.1f", it).toFloat().times(10).toInt().toString()
+      } ?: ""
+    }
+
     fun create(
       includeR4ScaleMetrics: Boolean = false,
       weightUnit: WeightUnit? = null,
@@ -68,19 +82,19 @@ data class EntryForm(
       val generalMetrics =
         GeneralMetricsFormControls(
           bodyMassIndex = FormControl.create(
-            scaleEntry?.scale?.scaleEntry?.bmi?.times(10)?.toInt()?.toString() ?: "",
+            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bmi),
             listOf(FormValidations.bodyCompValidator()),
           ),
           bodyFat = FormControl.create(
-            (scaleEntry?.scale?.scaleEntry?.bodyFat?.times(10)?.toInt()?.toString()) ?: "",
+            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bodyFat),
             listOf(FormValidations.bodyCompValidator()),
           ),
           muscleMass = FormControl.create(
-            (scaleEntry?.scale?.scaleEntry?.muscleMass?.times(10)?.toInt()?.toString()) ?: "",
+            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.muscleMass),
             listOf(FormValidations.bodyCompValidator()),
           ),
           bodyWater = FormControl.create(
-            (scaleEntry?.scale?.scaleEntry?.water?.times(10)?.toInt()?.toString()) ?: "",
+            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.water),
             listOf(FormValidations.bodyCompValidator()),
           ),
           // Add more general metrics here if needed
@@ -91,7 +105,7 @@ data class EntryForm(
             if (scaleEntry != null) {
               val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
               val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
-              displayWeight.times(10).toInt().toString()
+              formatScaleEntryValue(displayWeight)
             } else "",
             listOf(
               FormValidations.weightValidator(weightUnit),

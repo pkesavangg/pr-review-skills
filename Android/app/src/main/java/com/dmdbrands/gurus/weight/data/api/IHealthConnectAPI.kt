@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.data.api
 
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationPreferences
-import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.POST
@@ -13,10 +12,8 @@ import retrofit2.http.Path
 interface IHealthConnectAPI {
   companion object {
     private const val HEALTH_CONNECT = "health"
-    private const val LOG = "health/log"
+    private const val LOG = "integrations/health/log"
     private const val INTEGRATION = "integrations/"
-    private const val ENTRIES = "entries/"
-    private const val SYNC = "sync/"
   }
 
   /**
@@ -73,7 +70,7 @@ data class HealthConnectIntegrationRequest(
  * Health Connect sync entry data.
  */
 data class HealthConnectSyncEntry(
-  val type: IntegrationType,
+  val type: String,
   val sentAt: String,
   val timestamp: String,
   val weight: Double?,
@@ -81,5 +78,5 @@ data class HealthConnectSyncEntry(
   val muscleMass: Double?,
   val water: Double?,
   val bmi: Double?,
-  val data: List<String>?
+  val data: Map<String, String>?
 )

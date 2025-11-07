@@ -89,6 +89,9 @@ class SignupForm: ObservableForm {
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
         }
+        if (control === email || control === password || control === confirmPassword || control === zipcode) && control.errors[.required] {
+            return FormErrorMessages.leaveBlank
+        }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {

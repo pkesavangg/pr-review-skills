@@ -52,14 +52,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Setup Methods
-    private func setupInitialMetrics() {
-        if state.dashboardType == .dashboard12 {
-      
+    public func setupInitialMetrics(forceShowAll: Bool = false) {
+        if state.dashboardType == .dashboard12 || forceShowAll {
+            // In dashboard12 mode or if forced (e.g. during R4 setup), show all 12
             state.metrics = originalMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
             }
             state.activeMetricsCount = state.metrics.count
         } else {
+            // Regular dashboard4
             let basicMetrics = Array(originalMetrics.prefix(4))
             state.metrics = basicMetrics.map {
                 MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
@@ -144,14 +145,20 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     func updateDashboardType(_ dashboardType: DashboardType) {
         state.dashboardType = dashboardType
         
-        // Ensure activeMetricsCount doesn't exceed current metrics count
-        let maxMetricsCount = state.metrics.count
-        
-        switch dashboardType {
-        case .dashboard4:
-            state.activeMetricsCount = min(4, maxMetricsCount)
-        case .dashboard12:
-            state.activeMetricsCount = min(12, maxMetricsCount)
+        // Only set activeMetricsCount if metrics haven't been loaded from API yet (i.e., if the metrics array is empty).
+        // Once metrics are loaded from API, activeMetricsCount should come from API data.
+        if state.metrics.isEmpty {
+            switch dashboardType {
+            case .dashboard4:
+                state.activeMetricsCount = 4
+            case .dashboard12:
+                state.activeMetricsCount = 12
+            }
+        } else {
+            // Metrics have been loaded, don't override activeMetricsCount.
+            // Just ensure it doesn't exceed the maximum allowed for this dashboard type.
+            let maxAllowedForType = dashboardType == .dashboard4 ? 4 : 12
+            state.activeMetricsCount = min(state.activeMetricsCount, maxAllowedForType)
         }
     }
 
@@ -169,53 +176,36 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
     
     /// Resets the active metrics count to show all metrics (useful for dashboard reset)
-    /// For dashboard type 12: shows all 12 metrics
-    /// For dashboard type 4: shows all configured metrics
     func resetActiveMetricsCountToShowAll() {
-        if state.dashboardType == .dashboard12 {
-            // For dashboard 12, show all 12 metrics
-            state.activeMetricsCount = state.metrics.count
-        } else {
-            // For dashboard 4, all stored metrics are already active
-        }
+        state.activeMetricsCount = state.metrics.count
     }
     
     /// Returns the set of removed metric labels based on the current state
-    /// For dashboard type 12: returns labels of metrics beyond activeMetricsCount (inactive ones)
-    /// For dashboard type 4: returns empty set since all stored metrics are active
+    /// Returns labels of metrics beyond activeMetricsCount (inactive ones)
     func getRemovedMetricLabels() -> Set<String> {
-        if state.dashboardType == .dashboard12 {
-            let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
-            let removedLabels = Set(removedMetrics.map { $0.label })
-            
-            return removedLabels
-        } else {
-            return []
-        }
+        let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
+        let removedLabels = Set(removedMetrics.map { $0.label })
+        return removedLabels
     }
-
+    
     func toggleMetricVisibility(at index: Int) async throws {
         guard index < state.metrics.count else {
             throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
         }
         
-        if state.dashboardType == .dashboard12 {
-            // For dashboard 12, allow toggling between active and inactive
-            let metric = state.metrics[index]
-            let isCurrentlyRemoved = index >= state.activeMetricsCount
-            
-            state.metrics.remove(at: index)
-            if isCurrentlyRemoved {
-                // Adding the metric back - insert at the end of active metrics
-                state.metrics.insert(metric, at: state.activeMetricsCount)
-                state.activeMetricsCount += 1
-            } else {
-                // Removing the metric - move to end (inactive section)
-                state.metrics.append(metric)
-                state.activeMetricsCount -= 1
-            }
+        let metric = state.metrics[index]
+        let isCurrentlyRemoved = index >= state.activeMetricsCount
+        
+        state.metrics.remove(at: index)
+        
+        if isCurrentlyRemoved {
+            // Add back to active section
+            state.metrics.insert(metric, at: state.activeMetricsCount)
+            state.activeMetricsCount += 1
         } else {
-            // For dashboard 4, all metrics are always active
+            
+            state.metrics.append(metric)
+            state.activeMetricsCount -= 1
         }
     }
 
@@ -282,10 +272,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         ]
 
         if isEditMode {
+            let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
             // In edit mode, show all metrics (both removed and non-removed) so users can manage them
             // Non-removed metrics first, then removed metrics
-            let nonRemovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
-            let removedMetricsArray = state.metrics.filter { removedMetrics.contains($0.label) }
+            let nonRemovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
+            let removedMetricsArray = state.metrics.filter { effectiveRemoved.contains($0.label) }
             return nonRemovedMetrics + removedMetricsArray
         } else {
             // In non-edit mode, only show non-removed metrics
@@ -522,7 +513,21 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     func createEntryForMetricInfo(metricLabel: String? = nil) async -> Entry {
-        let latestWeight = (try? await entryService.getLatestEntry())?.scaleEntry?.weight
+        // Safely extract weight from latest entry by refetching on main actor if needed
+        let latestEntry = try? await entryService.getLatestEntry()
+        guard let entryId = latestEntry?.id else {
+            return buildEntryFromCurrentMetrics(storedWeight: nil)
+        }
+        
+        // Refetch entry on main actor to safely access SwiftData properties
+        let repository = EntryRepository()
+        let refetched = try? await repository.refetchEntriesOnMainActor(entryIds: [entryId])
+        
+        // Access SwiftData properties synchronously on main actor
+        let latestWeight: Int? = await MainActor.run {
+            return refetched?[entryId]?.scaleEntry?.weight
+        }
+        
         return buildEntryFromCurrentMetrics(storedWeight: latestWeight)
     }
     
@@ -667,30 +672,33 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
         }
         
-        // For dashboard type 12, also include inactive metrics so they can be managed in edit mode
-        var inactiveMetrics: [MetricItem] = []
-        if state.dashboardType == .dashboard12 {
-            // Add all metrics that are not in the API response as inactive
-            for originalMetric in originalMetrics {
-                if !displayMetrics.contains(originalMetric.label) {
-                    let metricItem = MetricItem(
-                        value: originalMetric.value,
-                        label: originalMetric.label,
-                        unit: originalMetric.unit,
-                        preLabel: originalMetric.preLabel,
-                        icon: originalMetric.icon
-                    )
-                    inactiveMetrics.append(metricItem)
-                }
+        // Include inactive metrics so they can be managed in edit mode
+        let metricsToCheck = state.dashboardType == .dashboard12
+        ? originalMetrics
+        : Array(originalMetrics.prefix(4))
+        
+        let inactiveMetrics: [MetricItem] = metricsToCheck
+            .filter { !displayMetrics.contains($0.label) }
+            .map {
+                MetricItem(
+                    value: $0.value,
+                    label: $0.label,
+                    unit: $0.unit,
+                    preLabel: $0.preLabel,
+                    icon: $0.icon
+                )
             }
-        }
-
+        
         state.metrics = activeMetrics + inactiveMetrics
-
-        // Ensure activeMetricsCount doesn't exceed metrics count
-        let maxMetricsCount = state.metrics.count
-        state.activeMetricsCount = min(activeMetrics.count, maxMetricsCount)
-
+        
+        // CRITICAL: Set activeMetricsCount to the number of active metrics from API
+        // This ensures removed metrics are correctly identified
+        // activeMetrics contains only the metrics that are enabled/visible in the API
+        state.activeMetricsCount = activeMetrics.count
+        
+        logger.log(level: .debug, tag: "DashboardMetricsManager", 
+                  message: "Loaded metrics from API: \(activeMetrics.count) active, \(inactiveMetrics.count) inactive, total: \(state.metrics.count)")
+        
     }
 
     // MARK: - Metric Interaction Methods
@@ -719,7 +727,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             guard let latestEntry = try await getLatestEntry() else {
                 return
             }
-            try await updateMetrics(with: latestEntry)
+            // Refetch entry on main actor to safely access SwiftData properties
+            let entryId = latestEntry.id
+            let repository = EntryRepository()
+            let refetched = try await repository.refetchEntriesOnMainActor(entryIds: [entryId])
+            guard let refetchedEntry = refetched[entryId] else {
+                logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to refetch latest entry")
+                return
+            }
+            try await updateMetrics(with: refetchedEntry)
         } catch {
             logger.log(level: .error, tag: "DashboardMetricsManager", message: "Failed to reset metrics to latest entry: \(error)")
         }
@@ -745,7 +761,35 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
         do {
             let allEntries = try await entryService.getAllEntries()
-            // Offload reduction work to a background task to avoid any main-thread cost
+            // Extract entry IDs and refetch on main actor to safely access SwiftData properties
+            let entryIds = allEntries.map { $0.id }
+            let repository = EntryRepository()
+            let refetchedEntries = try await repository.refetchEntriesOnMainActor(entryIds: entryIds)
+            
+            // Extract all SwiftData values on main actor before doing computation
+            let extractedData = await MainActor.run {
+                refetchedEntries.values.map { entry -> (timestamp: String, values: [String: Double?]) in
+                    // Use toOperationDTO() to centralize extraction logic and avoid duplication
+                    let dto = entry.toOperationDTO()
+                    let values: [String: Double?] = [
+                        "bmi": dto.bmi,
+                        "bodyFat": dto.bodyFat,
+                        "muscleMass": dto.muscleMass,
+                        "water": dto.water,
+                        "pulse": dto.pulse,
+                        "boneMass": dto.boneMass,
+                        "visceralFat": dto.visceralFatLevel,
+                        "subFat": dto.subcutaneousFatPercent,
+                        "protein": dto.proteinPercent,
+                        "skelMuscle": dto.skeletalMusclePercent,
+                        "bmr": dto.bmr,
+                        "metabolicAge": dto.metabolicAge
+                    ]
+                    return (timestamp: entry.entryTimestamp, values: values)
+                }
+            }
+            
+            // Now compute fallback values in background task using extracted plain data
             let computed = await Task.detached(priority: .utility) { () -> FallbackValues in
                 @inline(__always) func isValid(_ value: Double) -> Bool {
                     guard !value.isNaN && !value.isInfinite else { return false }
@@ -756,30 +800,30 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     if value >= 0 && value <= 150 { return true }
                     return value >= 0
                 }
-                func latest(_ extractor: (Entry) -> Any?) -> (Double?, String?) {
+                func latest(_ metricKey: String) -> (Double?, String?) {
                     var bestTs: String? = nil
                     var bestVal: Double? = nil
-                    for e in allEntries {
-                        guard let raw = extractor(e) else { continue }
-                        let d = Double("\(raw)") ?? 0.0
-                        if !isValid(d) { continue }
-                        let ts = e.entryTimestamp
-                        if bestTs == nil || ts > bestTs! { bestTs = ts; bestVal = d }
+                    for data in extractedData {
+                        guard let value = data.values[metricKey] else { continue }
+                        guard let doubleValue = value else { continue }
+                        if !isValid(doubleValue) { continue }
+                        let ts = data.timestamp
+                        if bestTs == nil || ts > bestTs! { bestTs = ts; bestVal = doubleValue }
                     }
                     return (bestVal, bestTs)
                 }
-                let bmi = latest { $0.scaleEntry?.bmi }.0
-                let bodyFat = latest { $0.scaleEntry?.bodyFat }.0
-                let muscleMass = latest { $0.scaleEntry?.muscleMass }.0
-                let water = latest { $0.scaleEntry?.water }.0
-                let pulse = latest { $0.scaleEntryMetric?.pulse }.0
-                let boneMass = latest { $0.scaleEntryMetric?.boneMass }.0
-                let visceralFat = latest { $0.scaleEntryMetric?.visceralFatLevel }.0
-                let subFat = latest { $0.scaleEntryMetric?.subcutaneousFatPercent }.0
-                let protein = latest { $0.scaleEntryMetric?.proteinPercent }.0
-                let skelMuscle = latest { $0.scaleEntryMetric?.skeletalMusclePercent }.0
-                let bmrRaw = latest { $0.scaleEntryMetric?.bmr }.0
-                let metabolicAge = latest { $0.scaleEntryMetric?.metabolicAge }.0
+                let bmi = latest("bmi").0
+                let bodyFat = latest("bodyFat").0
+                let muscleMass = latest("muscleMass").0
+                let water = latest("water").0
+                let pulse = latest("pulse").0
+                let boneMass = latest("boneMass").0
+                let visceralFat = latest("visceralFat").0
+                let subFat = latest("subFat").0
+                let protein = latest("protein").0
+                let skelMuscle = latest("skelMuscle").0
+                let bmrRaw = latest("bmr").0
+                let metabolicAge = latest("metabolicAge").0
                 return FallbackValues(
                     bmi: bmi,
                     bodyFat: bodyFat,

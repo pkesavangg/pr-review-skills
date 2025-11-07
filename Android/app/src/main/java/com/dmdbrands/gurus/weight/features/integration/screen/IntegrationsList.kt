@@ -45,10 +45,8 @@ fun IntegrationList(
       IntegrationListItem(
         integration = integration,
         onToggle = {
-          if (integration.provider == IntegrationProvider.HealthConnect && integration.isConnected) {
-            handleIntent.invoke(IntegrationIntent.RemoveHealthConnectIntegration)
-          } else if (integration.provider == IntegrationProvider.HealthConnect) {
-            handleIntent.invoke(IntegrationIntent.NavigateToHealthConnect)
+          if (integration.provider == IntegrationProvider.HealthConnect) {
+            handleIntent.invoke(IntegrationIntent.ToggleHealthConnectIntegration(integration))
           } else {
             handleIntent.invoke(IntegrationIntent.OpenIntegration(integration))
           }

@@ -10,6 +10,10 @@ struct AppConstants {
         static let discoveredAlertTimeout = 15 * 1_000_000_000 // Timeout for discovered alert in nanoseconds (15 seconds)
         static let updateSettingsTimeout = 2 * 60 * 1_000_000_000 // 2 minutes timeout for updating settings in milliseconds
         static let appReviewTriggerTimeout = 2 * 1_000_000_000 // 2 seconds delay for app review triggers in nanoseconds
+        /// Duration to wait for scale user deletion before proceeding with forced disconnect
+        static let scaleDeletionGraceTimeoutNs = 1_200_000_000 // 1.2 seconds
+        /// Duration to block broadcastId events after disconnect to avoid reconnect race
+        static let broadcastBlockDurationNs = 3_000_000_000 // 3 seconds
     }
     
     /// Numeric precision/tolerance constants

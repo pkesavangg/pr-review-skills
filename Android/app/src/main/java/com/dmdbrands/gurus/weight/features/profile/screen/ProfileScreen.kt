@@ -106,30 +106,30 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
-                    // First Name Input
-                    AppInput(
-                        formControl = state.form.controls.firstName,
-                        label = ProfileStrings.FirstNameLabel,
-                        type = AppInputType.TEXT,
-                        showTrailingIcon = true,
-                        imeAction = ImeAction.Next,
-                        nextFocusRequester = lastNameFocusRequester,
-                        modifier = Modifier
-                            .semantics { contentType = ContentType.PersonFirstName }
-                            .focusRequester(firstNameFocusRequester),
-                    )
-                    // Last Name Input
-                    AppInput(
-                        formControl = state.form.controls.lastName,
-                        label = ProfileStrings.LastNameLabel,
-                        type = AppInputType.TEXT,
-                        showTrailingIcon = true,
-                        imeAction = ImeAction.Next,
-                        nextFocusRequester = emailFocusRequester,
-                        modifier = Modifier
-                            .semantics { contentType = ContentType.PersonLastName }
-                            .focusRequester(lastNameFocusRequester),
-                    )
+                  // First Name Input
+                  AppInput(
+                    formControl = state.form.controls.firstName,
+                    label = ProfileStrings.FirstNameLabel,
+                    type = AppInputType.TEXT,
+                    showTrailingIcon = true,
+                    imeAction = ImeAction.Next,
+                    nextFocusRequester = lastNameFocusRequester,
+                    modifier = Modifier
+                      .semantics { contentType = ContentType.PersonFirstName }
+                      .focusRequester(firstNameFocusRequester),
+                  )
+                  // Last Name Input
+                  AppInput(
+                    formControl = state.form.controls.lastName,
+                    label = ProfileStrings.LastNameLabel,
+                    type = AppInputType.TEXT,
+                    showTrailingIcon = true,
+                    imeAction = ImeAction.Next,
+                    nextFocusRequester = emailFocusRequester,
+                    modifier = Modifier
+                      .semantics { contentType = ContentType.PersonLastName }
+                      .focusRequester(lastNameFocusRequester),
+                  )
                     // Email Input
                     AppInput(
                         formControl = state.form.controls.email,

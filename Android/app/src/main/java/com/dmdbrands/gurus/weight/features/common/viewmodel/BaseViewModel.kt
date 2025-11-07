@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.common.viewmodel
 import androidx.lifecycle.ViewModel
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
-import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

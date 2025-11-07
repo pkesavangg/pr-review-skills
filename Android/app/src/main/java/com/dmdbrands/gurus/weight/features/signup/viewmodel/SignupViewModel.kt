@@ -90,6 +90,7 @@ constructor(
             controls.zipcode.validate(),
             controls.birthday.validate(),
             controls.sex.validate(),
+            controls.useMetric.validate()
             // height doesn't have validators, so it's always valid
           ).all { it }
 
@@ -106,9 +107,10 @@ constructor(
 
     }
     val signupData: SignupData = stateValue.form.getValuesAsType()
+    AppLog.d(TAG, "Signup data: $signupData")
     viewModelScope.launch {
       try {
-        val isMetric = if (!stateValue.goalSkipped) signupData.unitMetric else false
+        val isMetric = signupData.useMetric
 
         // Create the basic account request (similar to newAccount in wgApp4-1)
         val signupRequest =

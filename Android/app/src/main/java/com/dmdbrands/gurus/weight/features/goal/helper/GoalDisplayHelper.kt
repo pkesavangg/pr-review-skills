@@ -52,24 +52,13 @@ object GoalDisplayHelper {
     latestEntryWeight: Double,
     weightless: Weightless? = null,
   ): String {
-    // Transform weights using weightPipe logic
-    val transformedGoalWeight =
-      transformWeight(
-        value = goalWeight,
-        showSymbol = false,
-        weightless = weightless,
-      ).toDoubleOrNull() ?: 0.0
-
-    val transformedLatestWeight =
-      transformWeight(
-        value = latestEntryWeight,
-        showSymbol = false,
-        weightless = weightless,
-      ).toDoubleOrNull() ?: 0.0
-    // Calculate toGoal exactly like Angular
-    val toGoal = transformedGoalWeight - transformedLatestWeight
-        // For lose/gain goals, return toGoal formatted to 1 decimal place
-       return String.format("%.1f", toGoal)
+    val toGoal = goalWeight - latestEntryWeight
+    // For lose/gain goals, return toGoal formatted to 1 decimal place
+    return transformWeight(
+      value = toGoal,
+      showSymbol = true,
+      weightless = weightless,
+    )
   }
 
   /**

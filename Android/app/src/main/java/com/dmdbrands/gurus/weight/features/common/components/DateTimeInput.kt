@@ -148,8 +148,6 @@ sealed class DateTimeValue() {
         Calendar
           .getInstance()
           .apply {
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
           }.timeInMillis
@@ -159,8 +157,6 @@ sealed class DateTimeValue() {
           .getInstance()
           .apply {
             timeInMillis = millis
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
           }.timeInMillis

@@ -69,6 +69,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     var skipDevices: [String] = []
+    private var blockedBroadcastIds: Set<String> = []
+    private var unblockTasks: [String: Task<Void, Never>] = [:]
     var reconnectAlertSkippedDevices: [String] = []
     
     
@@ -426,6 +428,41 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
     
+    /// Deletes the current app user's slot on the BT WiFi (R4) scale when possible.
+    /// Attempts to use the device token if available; otherwise fetches users and matches by preference/display name.
+    /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
+    func deleteCurrentUserFromScaleIfPossible(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        guard let broadcastId = device.broadcastIdString else {
+            logger.log(level: .error, tag: tag, message: "deleteCurrentUserFromScaleIfPossible - missing broadcastId")
+            return .failure(.invalidBroadcastId)
+        }
+        
+        // Prefer using a known token on the device model
+        if let token = device.token, !token.isEmpty {
+            logger.log(level: .debug, tag: tag, message: "Deleting scale user using persisted token")
+            if Task.isCancelled { return .failure(.timeout) }
+            return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+        }
+        
+        // Fallback: fetch users from the scale and try to match by display name and id
+        if Task.isCancelled { return .failure(.timeout) }
+        let listResult = await getScaleUserList(for: device)
+        switch listResult {
+        case .success(let users):
+            if Task.isCancelled { return .failure(.timeout) }
+            if let match = findUserToDelete(userList: users, discoveredScale: device), let token = match.token, !token.isEmpty {
+                logger.log(level: .debug, tag: tag, message: "Deleting matched scale user: \(match.name)")
+                return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+            } else {
+                logger.log(level: .error, tag: tag, message: "No matching user found to delete on scale for broadcastId \(broadcastId)")
+                return .failure(.deviceNotFound)
+            }
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to fetch user list before deletion: \(error.localizedDescription)")
+            return .failure(error)
+        }
+    }
+    
     // MARK: - Wi-Fi Configuration
     /**
      Retrieves the available Wi-Fi networks from the given device.
@@ -650,7 +687,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             let success = await ggBleSDK.updateProfile(profile: userProfile)
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
-            return .success(success)
+            // SDK returns Bool; protocol expects [String] status array. Return empty array for now.
+            return .success([])
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -682,11 +720,22 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<[DeviceUser], BluetoothServiceError>
      */
     func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+        // Check device connection status before attempting to fetch users
+        guard device.isConnected == true else {
+            logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(device.id)")
+            return .failure(.deviceNotConnected)
+        }
+        
         do {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let users = await ggBleSDK.getUsers(ggDevice)
+            
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let users = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getUsers(ggDevice)
+            }
+            
             let deviceUsers = users.user.map { user in
                 DeviceUser(
                     name: user.name,
@@ -699,6 +748,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to get user list: \(error.localizedDescription)")
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -709,15 +759,27 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<DeviceInfo, BluetoothServiceError>
      */
     func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
+        // Check device connection status before attempting to fetch device info
+        guard device.isConnected == true else {
+            logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(device.id)")
+            return .failure(.deviceNotConnected)
+        }
+        
         do {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let details = await ggBleSDK.getDeviceInfo(ggDevice)
+            
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let details = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getDeviceInfo(ggDevice)
+            }
+            
             return .success(DeviceInfo(sdk: details))
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -1028,19 +1090,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     /// Safely gets the scale type from a Device, handling potential SwiftData detachment issues
     private func getSafeScaleType(for device: Device) -> String? {
-        // Check if the device has a valid persistent identifier
-        guard device.persistentModelID != nil else {
-            logger.log(level: .debug, tag: tag, message: "Device \(device.id) has no persistent model ID")
-            return nil
-        }
+        // Note: `persistentModelID` is non-optional in SwiftData; no need to guard for nil here.
         
         // Try to access the scale type, but be prepared for potential detachment
         // We'll use a safer approach by checking if the bathScale relationship exists
         guard let bathScale = device.bathScale else {
             return nil
         }
-        
-        // Access the scaleType property
         return bathScale.scaleType
     }
     
@@ -1068,6 +1124,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     
     private func handleSmartScaleData(_ data: GGScanResponse) async {
+        // Broad blocked-broadcast check for all event data types we can identify
+        var bid: String? = nil
+        if let details = data.data as? GGDeviceDetails {
+            bid = details.broadcastIdString
+        } else if let entry = data.data as? GGWeightEntry {
+            bid = entry.broadcastIdString
+        }
+        if let bid = bid, blockedBroadcastIds.contains(bid) {
+            ggBleSDK.skipDevice(bid)
+            return
+        }
         guard let responseType = data.type else { return }
         let scanData = data.data
         switch responseType {
@@ -1586,6 +1653,20 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if !skipDevices.contains(broadcastId) {
             skipDevices.append(broadcastId)
         }
+        // Temporarily block device events to avoid reconnect race during deletion/unlink
+        blockedBroadcastIds.insert(broadcastId)
+        // Cancel any existing unblock task for this broadcastId to avoid duplicates
+        if let existing = unblockTasks[broadcastId] {
+            existing.cancel()
+        }
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.broadcastBlockDurationNs))
+            await MainActor.run { [weak self] in
+                _ = self?.blockedBroadcastIds.remove(broadcastId)
+                self?.unblockTasks.removeValue(forKey: broadcastId)
+            }
+        }
+        unblockTasks[broadcastId] = task
         canShowScaleDiscoveredModal = false
         Task {
             try await Task.sleep(nanoseconds: UInt64(timeoutConstants.discoveredScaleModalTimeout))
@@ -1593,7 +1674,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 self.canShowScaleDiscoveredModal = true
             }
         }
-        ggBleSDK.skipDevice(broadcastId, considerForSession)
+        ggBleSDK.skipDevice(broadcastId)
         return .success(())
     }
 
@@ -1607,9 +1688,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         skipDevices = skipDevices.filter { !pairedIdsUpper.contains($0.uppercased()) }
         
         for id in skipDevices {
-            // Normalize case to avoid mismatches
-            let normalized = id.uppercased()
-            ggBleSDK.skipDevice(id, true)
+            ggBleSDK.skipDevice(id)
         }
     }
 }
@@ -1665,6 +1744,38 @@ private extension BluetoothService {
             timeFormat: attached.timeFormat
         )
     }
+    
+    // MARK: - Timeout Helper
+    
+    /// Adds a timeout to an async operation to prevent continuation leaks
+    /// - Parameters:
+    ///   - seconds: Timeout duration in seconds
+    ///   - operation: The async operation to execute (can be non-throwing)
+    /// - Returns: The result of the operation
+    /// - Throws: BluetoothServiceError.timeout if the operation exceeds the timeout
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T) async throws -> T {
+        // Nanoseconds per second for Task.sleep conversion
+        let nanosecondsPerSecond: UInt64 = 1_000_000_000
+        
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            // Add the actual operation
+            group.addTask {
+                await operation()
+            }
+            
+            // Add timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds) * nanosecondsPerSecond)
+                throw BluetoothServiceError.timeout
+            }
+            
+            // Return the first result (operation or timeout)
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                throw BluetoothServiceError.timeout
+            }
+            group.cancelAll()
+            return result
+        }
+    }
 }
-
-

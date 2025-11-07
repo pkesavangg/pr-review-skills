@@ -21,16 +21,36 @@ final class UsersViewModel: ObservableObject {
     private let scale: Device
     private let tag = "UsersViewModel"
     private var cancellables = Set<AnyCancellable>()
+    private let initialUsersList: [DeviceUser]
+    
+    // Delay after user deletion to ensure scale processes the deletion before reloading
+    private let userDeletionDelayNanoseconds: UInt64 = 500_000_000 // 0.5 seconds
     
     var otherDeviceUsersList: [DeviceUser] {
-        return deviceUsers.filter { $0.token != currentDeviceUser?.token }
+        return deviceUsers.filter { user in
+            if let currentToken = currentDeviceUser?.token, !currentToken.isEmpty,
+               let token = user.token, !token.isEmpty {
+                return token != currentToken
+            } else if let currentName = currentDeviceUser?.name, !currentName.isEmpty {
+                return user.name.caseInsensitiveCompare(currentName) != .orderedSame
+            }
+            return false
+        }
     }
     
     init(scale: Device, initialUsersList: [DeviceUser] = []) {
         self.scale = scale
+        self.initialUsersList = initialUsersList
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
-            self.currentDeviceUser = initialUsersList.filter({$0.token == scale.token}).first
+            self.currentDeviceUser = findCurrentUser(in: initialUsersList)
+            // Pre-populate the form with the current user's name and user list
+            let currentName = self.currentDeviceUser?.name ?? ""
+            userNameForm.setDisplayName(currentName)
+            let scaleUsers = otherDeviceUsersList.map { deviceUser in
+                ScaleUser(name: deviceUser.name, token: deviceUser.token)
+            }
+            userNameForm.updateUserList(scaleUsers)
         }
         
         setupFormObservers()
@@ -41,9 +61,18 @@ final class UsersViewModel: ObservableObject {
     }
     
     func loadUsers() async {
-        // If users were already provided during initialization, don't fetch again
+        // Check device connection status before attempting to load users
         guard scale.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Scale is not connected, cannot load users")
+            await MainActor.run {
+                // Ensure loading state is reset even if device is not connected
+                isLoadingUsers = false
+                // If we don't have initial users, ensure we clear the state
+                if initialUsersList.isEmpty {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                }
+            }
             return
         }
         
@@ -57,8 +86,8 @@ final class UsersViewModel: ObservableObject {
             switch result {
             case .success(let users):
                 self.deviceUsers = users
-                // Find current user (typically the first one or the one that matches our account)
-                self.currentDeviceUser = users.filter({$0.token == scale.token}).first
+                // Find current user using unified matching logic
+                self.currentDeviceUser = self.findCurrentUser(in: users)
                 logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
                 let currentName = currentDeviceUser?.name ?? ""
                 userNameForm.setDisplayName(currentName)
@@ -68,12 +97,13 @@ final class UsersViewModel: ObservableObject {
                 userNameForm.updateUserList(scaleUsers)
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")
-                self.deviceUsers = []
-                self.currentDeviceUser = nil
+                // Only clear users if we don't have initial users from navigation
+                if initialUsersList.isEmpty {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                }
             }
             isLoadingUsers = false
-            
-
         }
     }
     
@@ -118,6 +148,18 @@ final class UsersViewModel: ObservableObject {
         notificationService.dismissLoader()
     }
     
+    // MARK: - Helpers
+    private func findCurrentUser(in users: [DeviceUser]) -> DeviceUser? {
+        if let token = scale.token, !token.isEmpty, let matchByToken = users.first(where: { $0.token == token }) {
+            return matchByToken
+        }
+        if let prefName = scale.r4ScalePreference?.displayName, !prefName.isEmpty,
+           let matchByName = users.first(where: { $0.name.caseInsensitiveCompare(prefName) == .orderedSame }) {
+            return matchByName
+        }
+        return nil
+    }
+
     func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
         let alert = AlertModel(
             title: AlertStrings.DeleteUserAlert.title(user.name),
@@ -146,18 +188,25 @@ final class UsersViewModel: ObservableObject {
         let result = await bluetoothService.deleteDevice(scale, disconnect: false)
         // Restore the original token to avoid side-effects elsewhere in the app
         scale.token = originalToken
+        
         switch result {
         case .success(_):
-            deviceUsers.removeAll { $0.token == user.token }
+            logger.log(level: .info, tag: tag, message: "User deleted successfully, reloading user list", data: ["userName": user.name])
+            
+            // Add a small delay to ensure the scale has processed the deletion
+            // This prevents race conditions where the user list might be fetched before the scale updates
+            try? await Task.sleep(nanoseconds: userDeletionDelayNanoseconds)
+            
+            // Reload users from the scale to get the updated list
+            // This ensures we have the most up-to-date data including correct isBodyMetricsEnabled values
+            await loadUsers()
+            
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
-            logger.log(level: .info, tag: tag, message: "User deleted successfully", data: ["userName": user.name])
-            Task {
-                await loadUsers()
-            }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to delete user: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorDeletingUser))
         }
+        
         notificationService.dismissLoader()
     }
     

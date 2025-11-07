@@ -143,6 +143,9 @@ class ProfileReducer : IReducer<ProfileState, ProfileIntent> {
                         birthday = intent.birthday
                     )
                 )
+                // Validate all controls after loading to ensure isValid is correct
+                // This ensures all fields are validated and errors are cleared if values are valid
+                updatedForm.validate()
                 state.copy(
                     form = updatedForm,
                     isLoading = false,

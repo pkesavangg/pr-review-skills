@@ -46,6 +46,9 @@ class EditProfileForm: ObservableForm {
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
 
+        if control === email && control.errors[.required] {
+            return FormErrorMessages.leaveBlank
+        }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }

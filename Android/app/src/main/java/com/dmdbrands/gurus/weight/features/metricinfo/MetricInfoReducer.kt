@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.metricinfo
 
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
@@ -13,6 +14,7 @@ data class MetricInfoState(
   val info: DashboardMetric? = null,
   val selectedMetricIndex: Int = 0,
   val isHeartRateOff: Boolean = false,
+  val dashboardType: DashboardType? = null,
 ) : IReducer.State
 
 /**
@@ -24,6 +26,7 @@ sealed interface MetricInfoIntent : IReducer.Intent {
   data class SetStat(val stat: Stat) : MetricInfoIntent
   data class SetSelectedIndex(val index: Int) : MetricInfoIntent
   data class SetHeartRateStatus(val heartRate: Boolean) : MetricInfoIntent
+  data class SetDashboardType(val dashboardType: DashboardType) : MetricInfoIntent
   data class OpenResource(val resource: String) : MetricInfoIntent
   object UpdateScaleMode : MetricInfoIntent
 }
@@ -49,6 +52,10 @@ class MetricInfoReducer : IReducer<MetricInfoState, MetricInfoIntent> {
     )
     is MetricInfoIntent.SetHeartRateStatus -> state.copy(
       isHeartRateOff = intent.heartRate,
+    )
+
+    is MetricInfoIntent.SetDashboardType -> state.copy(
+      dashboardType = intent.dashboardType,
     )
 
     else -> state

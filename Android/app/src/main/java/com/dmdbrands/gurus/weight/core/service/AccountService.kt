@@ -198,6 +198,7 @@ constructor(
     AppLog.d(TAG, "resetPassword() called for email: $email")
     try {
       AppLog.d(TAG, "Checking network availability for resetPassword()")
+      val email = email.trim()
       requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       val response = this.accountRepository.resetPassword(email)
       if (response.isSuccessful) {

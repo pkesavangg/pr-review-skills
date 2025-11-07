@@ -56,7 +56,7 @@ object FormValidations {
     fieldName: String = "Field",
   ): Validator<String> =
     { value ->
-      if (value.length < length) {
+      if (value.trim().length < length) {
         ValidationError(ValidationType.MIN_LENGTH, "Password must be $length characters long")
       } else {
         null
@@ -68,7 +68,7 @@ object FormValidations {
     fieldName: String = "Field",
   ): Validator<String> =
     { value ->
-      if (value.length > length) {
+      if (value.trim().length > length) {
         ValidationError(ValidationType.MAX_LENGTH, "Maximum value should be $length")
       } else {
         null

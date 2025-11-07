@@ -37,11 +37,9 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
@@ -67,6 +65,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -600,17 +600,27 @@ constructor(
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
                       val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
-                      ggDeviceService.deleteAccount(device.toGGBTDevice()) {}
-                        ggDeviceService.addCacheDevice(data.broadcastId, device)
-                        viewModelScope.launch {
-                          navigationService.navigateTo(
-                            AppRoute.ScaleSetup.BtWifiScaleSetup(
-                              data.getSKU(),
-                              BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                              data.broadcastId,
-                            ),
-                          )
+                      val userList = suspendCoroutine { continuation ->
+                        ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                          continuation.resume(response.user)
                         }
+                      }
+                      val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
+                      ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
+                        if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
+
+                          viewModelScope.launch {
+                            ggDeviceService.addCacheDevice(data.broadcastId, device)
+                              navigationService.navigateTo(
+                                AppRoute.ScaleSetup.BtWifiScaleSetup(
+                                  data.getSKU(),
+                                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                                  data.broadcastId,
+                                ),
+                              )
+                          }
+                        }
+                      }
                     }
                   },
                   onCancel = {
@@ -786,33 +796,9 @@ constructor(
             ),
           )
           ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
-          updateR4Profile(ggBTUserProfile)
           handleIntent(AppIntent.SetScanStatus(true))
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")
         }
-      }
-    }
-  }
-
-  private fun updateR4Profile(profile: GGBTUserProfile) {
-    viewModelScope.launch {
-      try {
-        ggDeviceService.updateProfile(
-          profile,
-          { it: GGUserActionResponseType ->
-            if (it == GGUserActionResponseType.USER_SELECTION_IN_PROGRESS) {
-              dialogQueueService.enqueue(
-                DialogModel.Alert(
-                  title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                  message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                  onDismiss = { dialogQueueService.dismissCurrent() },
-                ),
-              )
-            }
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.d(TAG, "updateR4Profile - Error updating profile to scale")
       }
     }
   }
@@ -928,6 +914,14 @@ constructor(
     when (event) {
       is IAMDialogEvent.ShowFeedModal -> {
         feedService.showIAMFeedModal(event.feedItem)
+      }
+
+      is IAMDialogEvent.PromoCodeCopied -> {
+        dialogQueueService.showToast(
+          Toast(
+            message = ToastStrings.Success.PromoCodeCopied.Message,
+          ),
+        )
       }
 
       else -> {}

@@ -316,6 +316,46 @@ object AppPermissionsHelper {
   }
 
   /**
+   * Gets the list of disabled permission types for the given scale setup type.
+   * Returns only the permissions that are not enabled.
+   *
+   * Note: For PERMANENTLY_DENIED permissions, the caller should handle them differently
+   * (e.g., redirect user to app settings) as they cannot be requested via the normal flow.
+   *
+   * @param permissionMap The permission state map
+   * @param sku The scale SKU to get disabled permissions for
+   * @param setupType The scale setup type (alternative to sku)
+   * @param requiredPermissionTypes The list of required permission types (optional, will be determined from setupType if not provided)
+   * @return List of permission type strings that are disabled (including permanently denied)
+   */
+  fun getDisabledPermissionsForSetupType(
+    permissionMap: GGPermissionStatusMap,
+    sku: String? = null,
+    setupType: ScaleSetupType? = null,
+    requiredPermissionTypes: List<String>? = null
+  ): List<String> {
+    if (sku == null && setupType == null) {
+      return emptyList()
+    }
+    val scaleSetupType = setupType ?: SCALES.find { it.sku == sku }!!.setupType
+    val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
+
+    return requiredPermissionTypes.filter { permissionType ->
+      // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
+      // But only for WiFi scale types (Wifi, EspTouchWifi)
+      val actualPermissionType = if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value &&
+        (scaleSetupType == ScaleSetupType.Wifi || scaleSetupType == ScaleSetupType.EspTouchWifi)) {
+        GGPermissionType.WIFI_SWITCH
+      } else {
+        permissionType
+      }
+      val permissionState = permissionMap[actualPermissionType] ?: PermissionState.NOT_DETERMINED
+      // Return true if permission is not enabled
+      permissionState != PermissionState.ENABLED
+    }
+  }
+
+  /**
    * Checks if the scan permissions are enabled or not.
    * @param permissions The map of permissions to check.
    */

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -111,13 +112,41 @@ constructor(
   /**
    * Initializes the feed notification listener for settings screen
    * Listens to feed notification changes and updates unread count and indicator visibility
+   * Observes both feedsChanged and notificationBadgeUpdated flows for real-time updates
    */
   private fun initFeedNotificationListener() {
+    // Observe feed items changes to update unread count
+    viewModelScope.launch {
+      try {
+        feedService.feedsChanged.collect {
+          AppLog.d(TAG, "Feed items changed, updating unread count")
+          updateUnreadFeedCount()
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing feedsChanged flow", e.toString())
+      }
+    }
+
+    // Observe notification badge updates for immediate indicator visibility updates
+    viewModelScope.launch {
+      try {
+        feedService.notificationBadgeUpdated.collect { shouldShow ->
+          AppLog.d(TAG, "Notification badge updated: $shouldShow")
+          val count = feedService.getUnreadFeedCount()
+          handleIntent(SettingsIntent.SetUnreadFeedCount(count))
+          handleIntent(SettingsIntent.SetShowUnreadFeedIndication(shouldShow))
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error observing notificationBadgeUpdated flow", e.toString())
+      }
+    }
+
+    // Initial update on init
     viewModelScope.launch {
       try {
         updateUnreadFeedCount()
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error in feed notification listener", e.toString())
+        AppLog.e(TAG, "Error in initial feed notification update", e.toString())
       }
     }
   }
@@ -371,8 +400,8 @@ constructor(
             zipcode = currentAccount.zipcode,
           )
         // Use offline handler service similar to Angular implementation
-        accountService.updateProfile(updatedCurrentProfile, showToast = false)
-        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
+         val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -384,18 +413,17 @@ constructor(
             )
           }
 
-          GGUserActionResponseType.CREATION_COMPLETED -> {
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
             dialogQueueService.showToast(
               Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
                 ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
               ),
             )
           }
 
           else -> {}
         }
-
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating biological sex", e)
@@ -404,6 +432,23 @@ constructor(
       }
     }
   }
+
+  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
+    val result = CompletableDeferred<GGUserActionResponseType>()
+    try {
+      ggDeviceService.updateProfile(
+        profile,
+      ) { responseType ->
+        result.complete(responseType)
+      }
+    } catch (e: Exception) {
+      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
+      result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
+    }
+
+    return result.await()
+  }
+
 
   /**
    * Shows the activity level selection modal.
@@ -519,30 +564,7 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition, false)
-        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
-        when (res) {
-          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
-            dialogQueueService.enqueue(
-              DialogModel.Alert(
-                title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                onDismiss = { dialogQueueService.dismissCurrent() },
-              ),
-            )
-          }
-
-          GGUserActionResponseType.CREATION_COMPLETED -> {
-            dialogQueueService.showToast(
-              Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
-                ToastStrings.Success.UpdateProfileSuccess.Message,
-              ),
-            )
-          }
-
-          else -> {}
-        }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating unit type", e)
@@ -635,30 +657,7 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit?.value ?: "lb",
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition, false)
-        val res = updateR4Profile(currentAccount.toGGBTUserProfile())
-        when (res) {
-          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
-            dialogQueueService.enqueue(
-              DialogModel.Alert(
-                title = AppPopupStrings.R4ProfileUpdatePending.Title,
-                message = AppPopupStrings.R4ProfileUpdatePending.Message,
-                onDismiss = { dialogQueueService.dismissCurrent() },
-              ),
-            )
-          }
-
-          GGUserActionResponseType.CREATION_COMPLETED -> {
-            dialogQueueService.showToast(
-              Toast(
-                ToastStrings.Success.UpdateProfileSuccess.Header,
-                ToastStrings.Success.UpdateProfileSuccess.Message,
-              ),
-            )
-          }
-
-          else -> {}
-        }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating height", e)
@@ -952,7 +951,7 @@ constructor(
         val notificationSettings = getNotificationSettingsFromOption(notificationOption)
         val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
         if (updatedAccount != null) {
-          dialogQueueService.showToast(Toast("Success!Notification settings updated"))
+          dialogQueueService.showToast(Toast("Notification settings updated", "Success!"))
           AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
           // The activeAccountFlow will automatically emit the updated account and update the UI
         } else {
@@ -1151,6 +1150,7 @@ constructor(
       title = "MAC Address Filter (0412 Scales)",
       options = macAddressOptions,
       selectedItem = state.value.selectedMacAddress,
+      maxHeight = 400.dp, // Enable scrolling for large lists
       onConfirm = { selectedMacAddress ->
         selectedMacAddress?.let { macAddress ->
           onMacAddressSelectionChange(macAddress)
@@ -1194,38 +1194,5 @@ constructor(
         dialogQueueService.dismissLoader()
       }
     }
-  }
-
-  private suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {
-    val result = CompletableDeferred<GGUserActionResponseType>()
-    try {
-      ggDeviceService.updateProfile(
-        profile,
-        { responseType ->
-          result.complete(responseType)
-        },
-      )
-    } catch (e: Exception) {
-      AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
-      result.complete(GGUserActionResponseType.CREATION_FAILED)
-    }
-
-    return result.await()
-  }
-
-  /**
-   * Gets the current MAC address filter display text.
-   * @return Current selected MAC address or "All" if not set
-   */
-  fun getMacAddressFilterDisplayText(): String {
-    return state.value.selectedMacAddress
-  }
-
-  /**
-   * Checks if MAC address filter is available (testing features enabled).
-   * @return True if MAC address filter should be shown in settings
-   */
-  fun isMacAddressFilterAvailable(): Boolean {
-    return state.value.enableTestingFeatures
   }
 }

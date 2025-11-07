@@ -17,7 +17,9 @@ import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
+import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper.rounded
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -162,6 +164,7 @@ constructor(
    */
   override suspend fun showGoalCompletionAlert(currentWeight: Double) {
     try {
+      val convertedCurrentWeight = if(account != null && account!!.weightUnit == WeightUnit.LB ) convertWeight(currentWeight, WeightUnit.LB, WeightUnit.KG) else currentWeight
       val currentGoal = getCurrentGoal().first() ?: return
       val account = accountRepository.getActiveAccount().first() ?: return
       val hasShownAlert = goalAlertDataStore.hasShownAlert(account.id)
@@ -170,9 +173,9 @@ constructor(
       // Match Angular's conditions: don't show alerts during setup
       if (!isShowingAlert && !hasShownAlert && !isSetupInProgress) {
         val shouldShowAlert = when (currentGoal.type.lowercase()) {
-          "gain" -> currentWeight >= currentGoal.goalWeight
-          "lose" -> currentWeight <= currentGoal.goalWeight
-          "maintain" -> currentWeight != currentGoal.goalWeight
+          "gain" -> convertedCurrentWeight >= currentGoal.goalWeight
+          "lose" -> convertedCurrentWeight <= currentGoal.goalWeight
+          "maintain" -> convertedCurrentWeight != currentGoal.goalWeight
           else -> false
         }
 
@@ -201,12 +204,13 @@ constructor(
       // Reset goal alert flag
       goalAlertDataStore.setAlertShown(account.id, false)
 
-      if (!setNewGoal) {
+      if (setNewGoal) {
         // User chose maintain - update goal to maintain at current weight
         val currentGoal = getCurrentGoal().first() ?: return
+        val convertedGoalWeight = GoalHelper.convertWeight(currentGoal.goalWeight, account.weightUnit, WeightUnit.LB).rounded()
         updateGoal(
-          goalWeight = currentGoal.goalWeight,
-          initialWeight = currentGoal.goalWeight, // Use goal weight as initial weight for maintain
+          goalWeight = convertedGoalWeight ?: 0.0,
+          initialWeight = convertedGoalWeight ?: 0.0, // Use goal weight as initial weight for maintain
           goalType = GoalType.MAINTAIN.value,
           wasMet = true,
         )
@@ -220,10 +224,14 @@ constructor(
   private suspend fun handleGoalLeave(updateGoal: Boolean) {
     if (updateGoal) {
       val currentGoal = getCurrentGoal().first() ?: return
+      val convertedGoalWeight = GoalHelper.convertWeight(currentGoal.goalWeight, account?.weightUnit ?: WeightUnit.LB, WeightUnit.LB).rounded()
+      val convertedInitialWeight = GoalHelper.convertWeight(currentGoal.initialWeight, account?.weightUnit
+        ?: WeightUnit.LB,
+                                                            WeightUnit.LB).rounded()
       // Update goal with met status
       updateGoal(
-        goalWeight = currentGoal.goalWeight,
-        initialWeight = currentGoal.initialWeight,
+        goalWeight = convertedGoalWeight ?: 0.0,
+        initialWeight = convertedInitialWeight ?: 0.0,
         goalType = currentGoal.type,
         wasMet = true,
       )
@@ -389,11 +397,14 @@ constructor(
           isShowingAlert = false
           CoroutineScope(Dispatchers.IO).launch {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
-            handleGoalMet(setNewGoal = true)
+            handleGoalMet(false)
           }
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
+          CoroutineScope(Dispatchers.IO).launch {
+            handleGoalMet(true)
+          }
           isShowingAlert = false
         },
       ),

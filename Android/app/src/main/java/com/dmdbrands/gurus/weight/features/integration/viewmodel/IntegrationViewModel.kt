@@ -86,6 +86,7 @@ class IntegrationViewModel @Inject constructor(
       is IntegrationIntent.OnBack -> onBack()
       is IntegrationIntent.NavigateToHealthConnect -> handleHealthConnectNavigation()
       is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
+      is IntegrationIntent.ToggleHealthConnectIntegration -> toggleHealthConnectIntegration(intent.integration)
       else -> {
         // Handle other intents that don't need special processing
       }
@@ -635,17 +636,55 @@ class IntegrationViewModel @Inject constructor(
     }
   }
 
+  /**
+   * Checks if Health Connect is out of sync.
+   * @return true if Health Connect is on but has no permissions granted
+   */
+  private suspend fun checkHealthConnectOutOfSync(): Boolean {
+    val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
+    val healthConnectData = currentAccount?.let { account ->
+      healthConnectRepository.getAccountByID(account.id)
+    }
+    val permissionList = healthConnectData?.grantedPermissionList ?: emptyList()
+    return isHealthConnectOn && permissionList.isEmpty()
+  }
+
+  /**
+   * Handles Health Connect toggle - normal toggle behavior regardless of sync status.
+   */
+  private fun toggleHealthConnectIntegration(integration: IntegrationItem) {
+    // Normal toggle behavior - same as before changes
+    if (integration.isConnected) {
+      handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+    } else {
+      handleIntent(IntegrationIntent.NavigateToHealthConnect)
+    }
+  }
+
+  /**
+   * Handles Health Connect icon click with out-of-sync check.
+   * If out of sync, shows out-of-sync alert.
+   * If not out of sync, behaves same as toggle click (normal toggle behavior).
+   */
   fun onHealthConnectIconClicked() {
     viewModelScope.launch {
-      val isHealthConnectOn = currentAccount?.isHealthConnectOn == true
-      // Get Health Connect data from local storage (like Angular service)
-      val healthConnectData = currentAccount?.let { account ->
-        healthConnectRepository.getAccountByID(account.id)
-      }
-      val permissionList = healthConnectData?.grantedPermissionList ?: emptyList()
-      val isOutOfSync = isHealthConnectOn && permissionList.isEmpty()
+      val isOutOfSync = checkHealthConnectOutOfSync()
       if (isOutOfSync) {
+        // If out of sync, show out-of-sync alert
         showOutOfSyncAlert()
+      } else {
+        // If not out of sync, behave same as toggle (normal toggle behavior)
+        val currentState = state.value
+        val healthConnectIntegration = currentState.integrations.find {
+          it.provider == IntegrationProvider.HealthConnect
+        }
+        healthConnectIntegration?.let { integration ->
+          if (integration.isConnected) {
+            handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+          } else {
+            handleIntent(IntegrationIntent.NavigateToHealthConnect)
+          }
+        }
       }
     }
   }

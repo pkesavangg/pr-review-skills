@@ -131,7 +131,11 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
-                            onCustomIconTap: { scaleStore.openHelp() },
+                                onCustomIconTap: {
+                                    focusedField = nil
+                                    hideKeyboard()
+                                    scaleStore.openHelp()
+                                },
                             maxLength: 4,
                             allowWholeNumbers: true,
                             showPrefixZero: true
@@ -205,6 +209,8 @@ struct MyScalesScreen: View {
                     case .setupFlow:
                         // A setup flow sheet is being presented → start setup tracking
                         scaleStore.updateSetupInProgressStatus(true)
+                        focusedField = nil
+                        hideKeyboard()
                     default:
                         break
                     }
@@ -254,7 +260,6 @@ struct MyScalesScreen: View {
         }
     }
     
-    // MARK: - Private Methods
     
 }
 

@@ -23,15 +23,15 @@ android {
     applicationId = "com.dmdbrands.gurus.weight"
     minSdk = 26
     targetSdk = 36
-    versionCode = 9000000
-    versionName = "1.0.0"
+    versionCode = 700327
+    versionName = "5.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance
     ndk {
       abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
     }
-    
+
     // Enable 16KB page alignment for Android 15 compliance
     externalNativeBuild {
       cmake {

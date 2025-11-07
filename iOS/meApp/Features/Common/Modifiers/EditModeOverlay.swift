@@ -18,6 +18,7 @@ struct EditModeOverlay: ViewModifier {
     let rowIndex: Int // Add row index for alternating wiggle timing
     let disableWiggle: Bool // New parameter to disable internal wiggle animation
     let iconOffset: CGSize 
+    let dimWhenRemoved: Bool
     
     @Environment(\.appTheme) private var theme
     @EnvironmentObject var themeManager: Theme
@@ -35,7 +36,7 @@ struct EditModeOverlay: ViewModifier {
     }
 
     var itemOpacity: Double {
-        isRemoved ? 0.75 : 1.0
+        (isRemoved && dimWhenRemoved) ? 0.75 : 1.0
     }
     
     var dropTargetScale: CGFloat {

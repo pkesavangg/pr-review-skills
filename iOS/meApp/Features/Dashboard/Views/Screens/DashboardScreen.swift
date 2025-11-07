@@ -40,12 +40,13 @@ struct DashboardScreen: View {
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
-            ScaleMetricsView(entry: entry, selectedMetric: selectedMetric ?? .bmi)
+            RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
-            ScaleMetricsView(
+            MetricInfoSheetWrapper(
                 entry: metricInfoEntry ?? store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
-                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel)
+                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel),
+                dashboardStore: store
             )
         }
         .task(id: selectedMetricInfo) {
@@ -177,7 +178,7 @@ store.restartWiggleAnimations()
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                     store.toggleEditMode()
                 })
-                if store.hasGoalSet {
+                if store.state.goal.goalType != .none {
                     ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
                         tabViewModel.navigateToGoalSetting()
                     })

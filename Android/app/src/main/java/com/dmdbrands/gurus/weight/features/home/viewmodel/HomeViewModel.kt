@@ -32,14 +32,17 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTSettingValue
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
+import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Activity
+import android.util.Log
 
 @HiltViewModel
 class HomeViewModel
@@ -54,6 +57,7 @@ constructor(
   private val feedService: IFeedService,
   private val accountFlagService: AccountFlagService,
   private val appReviewManager: AppReviewManager,
+  private val ggInAppMessagingService: IInAppMessagingService
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   private val TAG = "HomeViewModel"
   override fun provideInitialState(): HomeState = HomeState()
@@ -122,12 +126,21 @@ constructor(
 
   private fun observePermissions() {
     viewModelScope.launch {
-      ggPermissionService.permissionCallBackFlow.collect {
-        val isAppSyncPermissionsEnabled =
-          AppPermissionsHelper.areRequiredPermissionsEnabled(
-            it, setupType = ScaleSetupType.AppSync,
-          )
-        handleIntent(HomeIntent.isAppSyncPermissionsEnabled(isAppSyncPermissionsEnabled))
+      ggPermissionService.permissionCallBackFlow.collect { data ->
+        // Safely handle the flow data - it can be String or GGPermissionStatusMap
+        when (data) {
+          is GGPermissionStatusMap -> {
+            val isAppSyncPermissionsEnabled =
+              AppPermissionsHelper.areRequiredPermissionsEnabled(
+                data, setupType = ScaleSetupType.AppSync,
+              )
+            handleIntent(HomeIntent.isAppSyncPermissionsEnabled(isAppSyncPermissionsEnabled))
+          }
+          else -> {
+            // Ignore non-Map types in the observer
+            AppLog.d(TAG, "Permission flow emitted non-Map type: ${data?.javaClass?.simpleName}")
+          }
+        }
       }
     }
   }
@@ -137,23 +150,78 @@ constructor(
       onResult(true)
       return
     }
-    viewModelScope.launch {
 
-      dialogUtility.permissionAlert(
-        GGPermissionType.CAMERA,
-        onRequest = {
-          viewModelScope.launch {
-            ggPermissionService.requestPermission(GGPermissionType.CAMERA) {
-              val permissionStatus = it as GGPermissionStatusMap
-              val isEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
-                permissionStatus, setupType = ScaleSetupType.AppSync,
-              )
-              onResult(isEnabled)
+    viewModelScope.launch {
+      try {
+        var permissionResultReceived = false
+
+        // Launch a job to wait for the NEXT permission update from flow
+        val permissionJob = launch {
+          // Skip the current value and wait for the next update after permission request
+          ggPermissionService.permissionCallBackFlow
+            .drop(1) // Skip the current value
+            .first() // Wait for the next emission
+            .let { data ->
+              // Safely handle the flow data - it can be String or GGPermissionStatusMap
+              when (data) {
+                is GGPermissionStatusMap -> {
+                  val isEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
+                    data, setupType = ScaleSetupType.AppSync,
+                  )
+
+                  if (!permissionResultReceived) {
+                    permissionResultReceived = true
+                    onResult(isEnabled)
+                  }
+                }
+                is String -> {
+                  // Handle error message or denial
+                  AppLog.w(TAG, "Permission flow returned string: $data")
+                  if (!permissionResultReceived) {
+                    permissionResultReceived = true
+                    onResult(false)
+                  }
+                }
+                else -> {
+                  AppLog.w(TAG, "Unexpected permission flow type: ${data?.javaClass?.simpleName}")
+                  if (!permissionResultReceived) {
+                    permissionResultReceived = true
+                    onResult(false)
+                  }
+                }
+              }
             }
-          }
-        },
-        onDismiss = { onResult(false) },
-      )
+        }
+
+        dialogUtility.permissionAlert(
+          GGPermissionType.CAMERA,
+          onRequest = {
+            try {
+              // Call requestPermission without callback, just like AppPermissionsViewModel
+              // The library handles navigation to settings internally
+              ggPermissionService.requestPermission(GGPermissionType.CAMERA)
+              // The result will come through permissionCallBackFlow
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Error requesting camera permission", e.toString())
+              permissionJob.cancel()
+              if (!permissionResultReceived) {
+                permissionResultReceived = true
+                onResult(false)
+              }
+            }
+          },
+          onDismiss = {
+            permissionJob.cancel()
+            if (!permissionResultReceived) {
+              permissionResultReceived = true
+              onResult(false)
+            }
+          },
+        )
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error in checkAndRequestCameraPermission", e.toString())
+        onResult(false)
+      }
     }
   }
 
@@ -175,6 +243,8 @@ constructor(
         // Create ScaleEntry directly from AppSyncResult with calculated BMI
         val scaleEntry =
           result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
+        Log.i("CHECKING01", "$scaleEntry")
+        Log.i("CHECKING02", "${scaleEntry.toScaleApiEntry()}")
         appSyncService.setAppSyncData(storedEntry)
         dialogUtility.showEntrySyncPopup(
           entry = scaleEntry,
@@ -340,6 +410,7 @@ constructor(
         feedService.feedsChanged.collect {
           updateUnreadFeedIndicator()
         }
+
       } catch (e: Exception) {
         AppLog.e("HomeViewModel", "Failed to observe feed indicator", e.toString())
       }

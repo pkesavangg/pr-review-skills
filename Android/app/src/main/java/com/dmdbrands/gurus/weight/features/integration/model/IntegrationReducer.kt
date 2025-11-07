@@ -76,6 +76,11 @@ sealed class IntegrationIntent : IReducer.Intent {
   /** Remove Health Connect integration (special case). */
   object RemoveHealthConnectIntegration : IntegrationIntent()
 
+  /** Toggle Health Connect integration with out-of-sync check. */
+  data class ToggleHealthConnectIntegration(
+    val integration: IntegrationItem,
+  ) : IntegrationIntent()
+
 }
 
 /**
@@ -158,6 +163,10 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
       }
 
       is IntegrationIntent.RemoveHealthConnectIntegration ->{
+        state
+      }
+
+      is IntegrationIntent.ToggleHealthConnectIntegration -> {
         state
       }
 
