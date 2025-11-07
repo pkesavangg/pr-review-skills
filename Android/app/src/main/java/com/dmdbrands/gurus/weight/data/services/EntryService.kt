@@ -119,15 +119,17 @@ constructor(
   private var accountId: String? = null
   private var initialWeight: Double? = null
 
+
   /**
    * Initializes goal card monitoring by checking entry count and setting up listeners.
    * This function monitors the lastUpdated flow and checks if the user has enough entries
-   * to display the goal card.
+   * to display the goal card. Also refreshes entry data to trigger progress recalculation.
    */
   override fun initializeGoalCardMonitoring() {
     repositoryScope.launch {
-      lastUpdated.collect { lastUpdated ->
+      lastUpdated.collect { lastUpdatedValue ->
         try {
+          // This collector only handles goal card checking
           val entries = entryRepository.getEntriesByAccount(accountId ?: "", false)
           if (entries.size >= 3) {
             goalService.checkGoalCard()
@@ -223,6 +225,25 @@ constructor(
   }
 
   /**
+   * Refreshes all entry-related StateFlows to trigger progress recalculation.
+   * This should be called after sync operations to ensure streak values are updated.
+   * Adds a small delay to ensure database operations are fully committed before querying.
+   */
+  private suspend fun refreshEntryData() {
+    val currentAccountId = accountId ?: return
+    try {
+      updateLatestEntry(currentAccountId)
+      updateLast7Days(currentAccountId)
+      updateLast30Days(currentAccountId)
+      updateMonthYear(currentAccountId)
+
+      AppLog.d("EntryService", "Entry data refreshed - streak values should update")
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error refreshing entry data", e)
+    }
+  }
+
+  /**
    * Updates all entry-related data for the given account.
    * Fetches latest entry, last 7 and 30 days entries, and updates progress.
    * @param accountId The account ID to update data for.
@@ -273,6 +294,28 @@ constructor(
     // Add monthly average subscription
     repositoryScope.launch {
       updateMonthlyAverage(accountId)
+    }
+
+    // Set up collector to refresh entry data when lastUpdated changes
+    repositoryScope.launch {
+      var isFirstEmission = true
+      lastUpdated.collect { lastUpdatedValue ->
+        // Skip the first emission (initial/null value) to avoid redundant refresh
+        if (isFirstEmission) {
+          isFirstEmission = false
+          return@collect
+        }
+
+        // Only refresh if lastUpdated has a value
+        if (lastUpdatedValue != null) {
+          try {
+            AppLog.d("EntryService", "lastUpdated changed - triggering refreshEntryData()")
+            refreshEntryData()
+          } catch (e: Exception) {
+            AppLog.e("EntryService", "Error refreshing entry data from lastUpdated collector", e.toString())
+          }
+        }
+      }
     }
 
     // Check for goal card after account data is updated
@@ -556,6 +599,7 @@ constructor(
 
 
       // 7. Update last updated timestamp
+      // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error in syncOperations", e)
