@@ -293,7 +293,14 @@ fun WifiScaleSetupScreenContent(
               }
 
               SelectButton(
-                title = WifiScaleSetupStrings.WifiMode.Title,
+                title =  when {
+                  state.isGetMACSetup || state.permissionsSkipped -> {
+                    WifiScaleSetupStrings.WifiMode.APTitle
+                  }
+                  else -> {
+                    WifiScaleSetupStrings.WifiMode.Title
+                  }
+                },
                 subtitle = when {
                   state.isGetMACSetup || state.permissionsSkipped -> {
                     "Once your scale displays that is in AP mode, tap NEXT"
