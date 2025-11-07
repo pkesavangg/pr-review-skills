@@ -865,6 +865,7 @@ struct AppAssets {
     static let btStepOnGif = "btStepOnGif"
     static let accuCheck = "accuCheck"
     static let accuCheckTickLarge = "accuCheckTickLarge"
+    static let accuCheckTickLargeDark = "accuCheckTickLargeDark"
 
     
     // MARK: - Error Code Images
