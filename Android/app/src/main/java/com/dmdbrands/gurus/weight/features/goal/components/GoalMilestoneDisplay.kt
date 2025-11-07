@@ -268,13 +268,7 @@ private fun LoseGainGoalDisplay(
             if (progressPercentage >= 100) {
               toGoal = 0.toString()
               toGoal
-            } else if (toGoal
-                .startsWith('-')
-            ) {
-              toGoal
-            } else {
-              "+$toGoal"
-            },
+            } else toGoal,
           textType = TextType.CardTitle,
           // Always show negative for lose goal
           color = colorScheme.textHeading,

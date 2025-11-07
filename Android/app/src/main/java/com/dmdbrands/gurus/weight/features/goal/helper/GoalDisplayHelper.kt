@@ -56,7 +56,7 @@ object GoalDisplayHelper {
     // For lose/gain goals, return toGoal formatted to 1 decimal place
     return transformWeight(
       value = toGoal,
-      showSymbol = false,
+      showSymbol = true,
       weightless = weightless,
     )
   }
