@@ -119,7 +119,7 @@ protocol BluetoothServiceProtocol {
     // MARK: - Device Information
     /// Retrieves generic device information (model, serial, firmware, …).
     /// - Returns: Result<DeviceInfo, BluetoothServiceError>
-    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError>
+    func getDeviceInfo(for device: Device, skipConnectionCheck: Bool) async -> Result<DeviceInfo, BluetoothServiceError>
     /// Retrieves the Wi-Fi MAC address for an R4 scale.
     /// - Returns: Result<String, BluetoothServiceError>
     func getWifiMacAddress(for device: Device) async -> Result<String, BluetoothServiceError>
