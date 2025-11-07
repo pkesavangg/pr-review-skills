@@ -1699,7 +1699,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        let result = await bluetoothService.getScaleUserList(for: scale)
+        let result = await bluetoothService.getScaleUserList(for: scale, skipConnectionCheck: true)
         switch result {
         case .success(let users):
             // Filter out the current scale token

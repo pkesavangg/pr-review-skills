@@ -178,8 +178,6 @@ final class ScaleSettingsStore: ObservableObject {
         do {
             // Pause scans and mark setup in progress to avoid race with ongoing reconnect/pairing
             bluetoothService.isSetupInProgress = true
-            bluetoothService.pauseSmartScan()
-            bluetoothService.stopScan()
             if getScaleType() == .btWifiR4, let broadcastId = scale.broadcastIdString {
                 // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
                 let deletionTask = Task { @MainActor in
@@ -197,7 +195,9 @@ final class ScaleSettingsStore: ObservableObject {
             try await scaleService.deleteDevice(scaleId, showToast: true)
             await scaleService.pushLocalChangesToServer()
             await scaleService.syncAllScalesWithRemote()
+            let _ = await self.bluetoothService.resyncAndScan()
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
+            
             isSuccess = true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete scale: \(error.localizedDescription)", data: error)

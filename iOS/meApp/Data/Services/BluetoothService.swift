@@ -719,9 +719,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Retrieves the list of users stored on the scale (R4 only).
      - Returns: Result<[DeviceUser], BluetoothServiceError>
      */
-    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(for device: Device, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
         // Check device connection status before attempting to fetch users
-        guard device.isConnected == true else {
+        guard skipConnectionCheck || device.isConnected == true else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(device.id)")
             return .failure(.deviceNotConnected)
         }
@@ -927,7 +927,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         
         // Get user list from the scale
-        let userListResult = await getScaleUserList(for: discoveredScale)
+        let userListResult = await getScaleUserList(for: discoveredScale, skipConnectionCheck: true)
         guard case .success(let userList) = userListResult else {
             logger.log(level: .error, tag: tag, message: "Failed to get scale user list for device event alert")
             return

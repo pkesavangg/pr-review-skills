@@ -21,11 +21,7 @@ struct WifiSelectionView: View {
     private let itemHeight = 48
     
     var availableNetworks: [WifiDetails] {
-        wifiNetworks.filter { network in
-            guard let connectedNetwork = connectedWifiNetwork else { return true }
-            let isSame = store.isSameNetwork(network, connectedNetwork)
-            return !isSame
-        }
+        wifiNetworks
     }
     
     var availableNetworksHeight: CGFloat {

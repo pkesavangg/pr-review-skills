@@ -1076,7 +1076,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastVisibleOpsPeriod = state.selectedPeriod
         
         // Only log actual calculations, not cache hits
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
+        logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
         return visibleOps
     }
     

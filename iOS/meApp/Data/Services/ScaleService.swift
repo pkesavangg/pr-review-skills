@@ -156,7 +156,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // Step 3: Refresh published scales
         await refreshScalesFromLocal()
         isSyncing = false
-        logger.log(level: .info, tag: tag, message: "Scale sync completed")
+        
+        // Log scale count and info after sync
+        let scaleCount = scales.count
+        let scaleInfo = scales.map { formatScaleInfo($0) }.joined(separator: " ")
+        logger.log(level: .info, tag: tag, message: "Scale sync completed, scales count=\(scaleCount), scales=[\(scaleInfo)]")
     }
     
     // MARK: - DeviceServiceProtocol Implementation
@@ -678,6 +682,25 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     // MARK: - Internal Helpers
     
+    /// Formats scale information for logging
+    private func formatScaleInfo(_ scale: Device) -> String {
+        var info: [String] = []
+        info.append("id:\(scale.id)")
+        if let nickname = scale.nickname { info.append("nickname:\(nickname)") }
+        if let deviceName = scale.deviceName { info.append("deviceName:\(deviceName)") }
+        if let deviceType = scale.deviceType { info.append("type:\(deviceType)") }
+        if let sku = scale.sku { info.append("sku:\(sku)") }
+        if let mac = scale.mac { info.append("mac:\(mac)") }
+        if let broadcastId = scale.broadcastIdString { info.append("broadcastId:\(broadcastId)") }
+        if let wifiMac = scale.wifiMac { info.append("wifiMac:\(wifiMac)") }
+        if let userNumber = scale.userNumber { info.append("userNumber:\(userNumber)") }
+        info.append("connected:\(scale.isConnected ?? false)")
+        info.append("wifiConfigured:\(scale.isWifiConfigured ?? false)")
+        info.append("synced:\(scale.isSynced ?? false)")
+        info.append("hasServerID:\(scale.hasServerID)")
+        return "{\(info.joined(separator: ","))}"
+    }
+    
     /// Resets all scale connection statuses to false on app launch.
     /// Connection status is ephemeral and should only be true when confirmed by Bluetooth events.
     private func resetAllConnectionStatusOnLaunch() async {
@@ -691,7 +714,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
             
             try localRepository.context.save()
-            logger.log(level: .info, tag: tag, message: "Reset connection status for \(allScales.count) scales on app launch")
+            
+            // Build scale info string
+            let scaleInfo = allScales.map { formatScaleInfo($0) }.joined(separator: " ")
+            
+            logger.log(level: .info, tag: tag, message: "Reset connection status for \(allScales.count) scales on app launch, scales=[\(scaleInfo)]")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to reset connection statuses on launch: \(error.localizedDescription)")
         }
@@ -702,7 +729,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let accountId = try await getAccountId()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
             let activeScales = allScales.filter { $0.isSoftDeleted != true }
-            logger.log(level: .debug, tag: tag, message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId)")
+            
+            // Build scale info string
+            let scaleInfo = activeScales.map { formatScaleInfo($0) }.joined(separator: " ")
+            
+            logger.log(level: .debug, tag: tag, message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId), scales=[\(scaleInfo)]")
 
             self.scales = activeScales
         } catch {
@@ -729,6 +760,13 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// Pushes all local changes (creates, edits, deletes) to the server.
     /// Follows the sync rules for proper state management.
     public func pushLocalChangesToServer() async {
+        let accountId: String?
+        do {
+            accountId = try await getAccountId()
+        } catch {
+            accountId = nil
+        }
+        
         do {
             logger.log(level: .info, tag: tag, message: "Pushing local changes to server")
             // Handle deletions first
@@ -822,6 +860,13 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         logger.log(level: .error, tag: tag, message: "Failed to create device on server: \(error.localizedDescription)")
                     }
                 }
+            }
+            // Log scale count after pushing changes
+            if let accountId = accountId {
+                let scaleCount = try? await localRepository.listScales(forAccountId: accountId).filter { $0.isSoftDeleted != true }.count
+                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed, scales count=\(scaleCount ?? 0)")
+            } else {
+                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed")
             }
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to push local changes to server: \(error.localizedDescription)")

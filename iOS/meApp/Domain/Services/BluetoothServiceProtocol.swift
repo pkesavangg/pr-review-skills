@@ -137,7 +137,7 @@ protocol BluetoothServiceProtocol {
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>
     /// Retrieves the list of users stored on the scale (R4 only).
     /// - Returns: Result<[DeviceUser], BluetoothServiceError>
-    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError>
+    func getScaleUserList(for device: Device, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError>
     /// Retrieves device logs from the scale.
     /// - Returns: Result<DeviceLogs, BluetoothServiceError>
     func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError>
