@@ -323,7 +323,7 @@ fun ScaleDetailsScreenContent(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFi,
                     type = SettingsItemType.Action(state.connectedSSID),
-                    enabled = isWifiConfigured,
+                    enabled = isConnected,
                     onClick = {
                       handleIntent(
                         ScaleDetailsIntent.OpenWiFiSetup,
