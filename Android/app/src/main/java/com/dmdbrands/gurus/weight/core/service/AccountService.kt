@@ -527,8 +527,8 @@ constructor(
   ) {
     AppLog.v(TAG, "deleteAccount() called for accountId: $accountID, isActiveAccount: $isActiveAccount")
     AppLog.d(TAG, "Checking network availability for deleteAccount()")
-    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
     try {
+      requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       accountRepository.deleteAccount(accountID, isActiveAccount)
       AppLog.d(TAG, "Account deleted successfully")
     } catch (e: Exception) {

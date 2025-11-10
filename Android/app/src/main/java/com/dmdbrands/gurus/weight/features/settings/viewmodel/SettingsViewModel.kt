@@ -279,8 +279,7 @@ constructor(
         dialogQueueService.dismissLoader()
       } catch (e: Exception) {
         dialogQueueService.dismissLoader()
-      }
-      finally {
+      } finally {
         dialogQueueService.clear()
       }
     }
@@ -401,7 +400,7 @@ constructor(
           )
         // Use offline handler service similar to Angular implementation
         accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
-         val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -448,7 +447,6 @@ constructor(
 
     return result.await()
   }
-
 
   /**
    * Shows the activity level selection modal.

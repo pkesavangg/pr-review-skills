@@ -69,9 +69,8 @@ fun CameraPreview(
   onError: (String) -> Unit = {},
   onLowLightDetected: (Boolean) -> Unit = {},
 ) {
-  val context = LocalContext.current
+  LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
-  Log.i("CHECK", AppSyncStrings.Initializes)
 
   Box(modifier = Modifier.fillMaxSize()) {
     AndroidView(
@@ -97,7 +96,7 @@ fun CameraPreview(
               val preview =
                 Preview.Builder()
                   .build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
+                    it.surfaceProvider = previewView.surfaceProvider
                   }
 
               // Set up image analysis use case for frame processing
@@ -177,17 +176,20 @@ private fun processFrameWithJNI(
     if (imageProxy.format == ImageFormat.YUV_420_888) {
       // Convert YUV_420_888 to grayscale using proper stride handling
       val conversionResult = YUV420888ToGrayscaleConverter.convertToGrayscale(imageProxy)
-      
+
       if (conversionResult != null) {
         val (grayscaleData, width) = conversionResult
         val height = imageProxy.height
-        
+
         // Check for low light conditions using the converted luminance data
         val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, width, height)
         onLowLightDetected(isLowLight)
 
         // Call native detector to look for FS003 protocol patterns
-        Log.d("AppSyncScan", "Calling native detector with data size: ${grayscaleData.size}, dimensions: ${width}x${height}")
+        Log.d(
+          "AppSyncScan",
+          "Calling native detector with data size: ${grayscaleData.size}, dimensions: ${width}x${height}",
+        )
         val bits = CameraHandlerCallback.nativeDetector(grayscaleData, width, height)
         if (bits != null && bits.isNotEmpty()) {
           // Interpret the detected bits using FS003 protocol

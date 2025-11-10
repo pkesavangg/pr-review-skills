@@ -606,15 +606,30 @@ constructor(
    */
   override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
     // Call API to delete account
-    if (isActiveAccount) {
-      userAPI.deleteAccount()
-      accountDao.logoutAccount(accountID)
-      accountDao.deactivateAllAccounts()
+    try {
+      if (isActiveAccount) {
+        this.deleteAccountFromServer()
+        accountDao.deleteAccountById(accountID)
+        accountDao.deactivateAllAccounts()
+      }
+
+      // Clear all tokens and local data
+      userDataStore.clearAccountTokens(accountID)
+      tokenManager.clearTokens()
+      AppLog.d(TAG, "Account deleted in local data")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to delete account in local data", e)
+      throw e
     }
-    // Clear all tokens and local data
-    userDataStore.clearAccountTokens(accountID)
-    tokenManager.clearTokens()
-    AppLog.d(TAG, "Account deleted and local data cleared")
+  }
+
+  private suspend fun deleteAccountFromServer() {
+    try {
+      userAPI.deleteAccount()
+      AppLog.d(TAG, "Account deleted in server")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to delete account in server", e)
+    }
   }
 
   /**
