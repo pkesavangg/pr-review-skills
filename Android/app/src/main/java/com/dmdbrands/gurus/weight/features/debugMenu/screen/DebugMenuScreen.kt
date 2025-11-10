@@ -250,7 +250,7 @@ private fun ScaleTroubleshootingSection(
 private fun DebugMenuScreenPreview() {
   MeAppTheme {
     val previewState = com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuState(
-      appVersion = "1.0.0",
+      appVersion = "5.0.0",
       isNative = true,
       isAndroid = true,
       apiUrl = "https://api.weightgurus.com/v3/",
