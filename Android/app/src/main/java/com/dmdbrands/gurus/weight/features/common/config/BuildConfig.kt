@@ -18,8 +18,7 @@ object AppBuildConfig {
    * @return Formatted version string
    */
   fun getFormattedVersion(versionName: String?): String {
-    return "version $BUILD_NUMBER"
-    
+    return "Version $BUILD_NUMBER"
   }
 
   /**

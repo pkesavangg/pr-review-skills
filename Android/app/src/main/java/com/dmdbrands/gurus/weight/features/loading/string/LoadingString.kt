@@ -12,7 +12,7 @@ object LoadingString {
     const val FOOTER_BRAND = "me.health by greater goods"
 
     /** Footer version text. */
-    const val VERSION = "version ${BuildConfig.VERSION_NAME}"
+    const val VERSION = "Version ${BuildConfig.VERSION_NAME}"
 
     /** Base loading text. */
     const val LOADING = "loading"
