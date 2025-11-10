@@ -248,13 +248,21 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             displayValue = ConversionTools.convertStoredToLbs(Int(value))
         }
         
+        // Round to one decimal to determine if the displayed value is effectively zero
+        let roundedToOneDecimal = (displayValue * 10).rounded() / 10
+        
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 1
         formatter.maximumFractionDigits = 1
         formatter.positivePrefix = "+"
 
-        return formatter.string(from: NSNumber(value: displayValue)) ?? String(format: "%.1f", displayValue)
+        // If the rounded value is zero, suppress any '+' or '-' sign
+        if roundedToOneDecimal == 0 {
+            return String(format: "%.1f", roundedToOneDecimal)
+        }
+        
+        return formatter.string(from: NSNumber(value: roundedToOneDecimal)) ?? String(format: "%.1f", roundedToOneDecimal)
     }
 
     private func extractStreakValue(for label: String) -> Int {
