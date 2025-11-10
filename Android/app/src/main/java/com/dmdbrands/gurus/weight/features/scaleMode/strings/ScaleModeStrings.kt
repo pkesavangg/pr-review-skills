@@ -40,6 +40,13 @@ object ScaleModeStrings {
     const val Cancel = "Cancel"
   }
 
+  object UpdateAccountFailedAlert {
+    const val Title = "Update Failed"
+    const val Message = "Failed to update scale settings. Please try again."
+    const val Retry = "Retry"
+    const val Cancel = "Cancel"
+  }
+
   object WeightOnlyModeNotes {
     const val Title = "A user has Weight Only Mode on"
     const val Message = "You can temporarily enable All Body Metrics and/or review users from scale settings."
