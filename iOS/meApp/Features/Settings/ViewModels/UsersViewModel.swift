@@ -6,7 +6,7 @@
 //
 import Foundation
 import Combine
-import GGBluetoothSwiftPackage
+ 
 
 @MainActor
 final class UsersViewModel: ObservableObject {
@@ -169,10 +169,11 @@ final class UsersViewModel: ObservableObject {
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteUserAlert.cancelButton, type: .secondary) { _ in },
                 AlertButtonModel(title: AlertStrings.DeleteUserAlert.removeButton, type: .primary) { _ in
-                    // Check Bluetooth power state before proceeding with deletion
+                    // Check Bluetooth authorization and power state before proceeding with deletion
+                    let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
                     let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-                    guard isBluetoothOn else {
-                        self.logger.log(level: .info, tag: self.tag, message: "Bluetooth is OFF. Blocking user deletion and showing toast.")
+                    guard isBluetoothAuthorized && isBluetoothOn else {
+                        self.logger.log(level: .info, tag: self.tag, message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast.")
                         self.notificationService.showToast(
                             ToastModel(
                                 title: ToastStrings.bluetoothRequiredTitle,
