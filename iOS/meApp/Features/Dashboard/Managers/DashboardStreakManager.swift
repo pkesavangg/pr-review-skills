@@ -249,7 +249,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         }
         
         // Round to one decimal to determine if the displayed value is effectively zero
-        let roundedToOneDecimal = (displayValue * 10).rounded() / 10
+        let roundedToOneDecimal = ConversionTools.rounded(displayValue, toPlaces: 1)
         
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -262,7 +262,8 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             return String(format: "%.1f", roundedToOneDecimal)
         }
         
-        return formatter.string(from: NSNumber(value: roundedToOneDecimal)) ?? String(format: "%.1f", roundedToOneDecimal)
+        // Use the original displayValue for formatting (formatter will round to 1 decimal)
+        return formatter.string(from: NSNumber(value: displayValue)) ?? String(format: "%.1f", roundedToOneDecimal)
     }
 
     private func extractStreakValue(for label: String) -> Int {
