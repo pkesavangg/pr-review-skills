@@ -6,11 +6,13 @@
 //
 import Foundation
 import Combine
+import GGBluetoothSwiftPackage
 
 @MainActor
 final class UsersViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var bluetoothService: BluetoothService
+    @Injector var permissionsService: PermissionsService
     @Injector var scaleService: ScaleService
     @Injector var logger: LoggerService
     @Published var userNameForm = UserNameForm()
@@ -167,6 +169,19 @@ final class UsersViewModel: ObservableObject {
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteUserAlert.cancelButton, type: .secondary) { _ in },
                 AlertButtonModel(title: AlertStrings.DeleteUserAlert.removeButton, type: .primary) { _ in
+                    // Check Bluetooth power state before proceeding with deletion
+                    let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+                    guard isBluetoothOn else {
+                        self.logger.log(level: .info, tag: self.tag, message: "Bluetooth is OFF. Blocking user deletion and showing toast.")
+                        self.notificationService.showToast(
+                            ToastModel(
+                                title: ToastStrings.bluetoothRequiredTitle,
+                                message: ToastStrings.bluetoothRequiredMessage
+                            )
+                        )
+                        return
+                    }
+                    
                     Task {
                         await self.deleteUser(user)
                         onDelete()
