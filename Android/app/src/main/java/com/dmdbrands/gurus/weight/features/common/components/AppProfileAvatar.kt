@@ -73,10 +73,18 @@ fun AppProfileAvatar(
     }
 
     if (!isInfoIcon) {
-      val firstChar = text.trim().takeIf { it.isNotEmpty() }?.let {
-        val firstCodePoint = it.codePointAt(0)
-        String(Character.toChars(firstCodePoint))
-      } ?: ""
+        val avatarText = text.trim().takeIf { it.isNotEmpty() }?.let { input ->
+            var index = 0
+            while (index < input.length) {
+                val codePoint = input.codePointAt(index)
+                val charStr = String(Character.toChars(codePoint))
+                if (!charStr.isEmoji()) {
+                    return@let charStr.uppercase()
+                }
+                index += Character.charCount(codePoint)
+            }
+            "" // return blank if no non-emoji char found
+        } ?: ""
         // Default single avatar
         Box(
             modifier = modifier
@@ -88,7 +96,7 @@ fun AppProfileAvatar(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = firstChar.uppercase(),
+                text = avatarText.uppercase(),
                 style = MeTheme.typography.heading6,
                 color = textColor,
             )
@@ -143,4 +151,21 @@ fun AppProfileImagePreview() {
             }
         }
     }
+}
+
+private fun String.isEmoji(): Boolean {
+  if (this.isEmpty()) return false
+  val codePoint = this.codePointAt(0)
+  return when (codePoint) {
+    in 0x1F600..0x1F64F, // Emoticons 😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊 😋 😎 😍 😘 😗 😙 😚 ☺️
+    in 0x1F300..0x1F5FF, // Misc symbols and pictographs 🌀 🌁 🌂 🌃 🌄 🌅 🌆 🌇 🌈 🌉
+    in 0x1F680..0x1F6FF, // Transport and map symbols 🚀 🚁 🚂 🚃 🚄 🚅
+    in 0x2600..0x26FF,   // Misc symbols ☀️ ☁️ ☂️ ☃️
+    in 0x2700..0x27BF,   // Dingbats ✂️ ✈️ ✉️
+    in 0x1F900..0x1F9FF, // Supplemental Symbols and Pictographs 🧠 🧚 🧞
+    in 0x1FA70..0x1FAFF, // Symbols and Pictographs Extended-A 🪐 🪶 🪨
+    in 0x1F1E6..0x1F1FF  // Flags 🇦🇨 to 🇿🇼
+      -> true
+    else -> false
+  }
 }
