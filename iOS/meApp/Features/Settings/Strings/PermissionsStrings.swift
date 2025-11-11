@@ -43,5 +43,5 @@ struct PermissionsStrings {
     static let locationPermissionDescription = "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
 
     // Kept for backward compatibility with existing code references (will be removed once view is updated)
-    static let locationAccessNotAuthorized = "Authorize location access."
+    static let locationAccessNotAuthorized = "Authorize location access"
 } 

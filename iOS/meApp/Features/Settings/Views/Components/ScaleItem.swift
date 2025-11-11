@@ -55,7 +55,8 @@ struct ScaleItemView: View {
                 .scaledToFit()
                 .frame(width: 75, height: 75)
                 .opacity(isDisabled ? 0.5 : 1)
-            
+                .themeDropShadow()
+                
             VStack(alignment: .leading, spacing: .zero) {
                 Text(modelNumber)
                     .fontOpenSans(.heading5)

@@ -84,12 +84,16 @@ struct PermissionListView: View {
             title: PermissionsStrings.bluetooth,
             rows: [
                 (
-                    PermissionsStrings.bluetoothAccessAuthorized,
+                    viewModel.bluetoothAuthorized
+                        ? PermissionsStrings.bluetoothAccessAuthorized
+                        : PermissionsStrings.authorizeBluetoothAccess,
                     viewModel.bluetoothAuthorized,
                     .bluetooth
                 ),
                 (
-                    PermissionsStrings.bluetoothTurnedOn,
+                    viewModel.bluetoothPoweredOn
+                        ? PermissionsStrings.bluetoothTurnedOn
+                        : PermissionsStrings.turnOnBluetooth,
                     viewModel.bluetoothPoweredOn,
                     .bluetoothSwitch
                 )
@@ -102,12 +106,16 @@ struct PermissionListView: View {
         // Base rows for location services
         var rows: [(String, Bool, PermissionType)] = [
             (
-                PermissionsStrings.locationAccessEnabled,
+                viewModel.locationServicesEnabled
+                    ? PermissionsStrings.locationAccessEnabled
+                    : PermissionsStrings.enableLocationServices,
                 viewModel.locationServicesEnabled,
                 .locationSwitch
             ),
             (
-                PermissionsStrings.locationAccessNotAuthorized,
+                viewModel.locationAuthorized
+                    ? PermissionsStrings.locationAccessAuthorized
+                    : PermissionsStrings.authorizeLocationAccess,
                 viewModel.locationAuthorized,
                 .location
             )
@@ -137,7 +145,9 @@ struct PermissionListView: View {
             title: PermissionsStrings.camera,
             rows: [
                 (
-                    PermissionsStrings.cameraAccessAuthorized,
+                    viewModel.cameraAuthorized
+                        ? PermissionsStrings.cameraAccessAuthorized
+                        : PermissionsStrings.authorizeCameraAccess,
                     viewModel.cameraAuthorized,
                     .camera
                 )
@@ -166,7 +176,9 @@ struct PermissionListView: View {
             title: PermissionsStrings.notifications,
             rows: [
                 (
-                    PermissionsStrings.notificationsEnabled,
+                    viewModel.notificationsEnabled
+                        ? PermissionsStrings.notificationsEnabled
+                        : PermissionsStrings.enableNotifications,
                     viewModel.notificationsEnabled,
                     .notification
                 )
