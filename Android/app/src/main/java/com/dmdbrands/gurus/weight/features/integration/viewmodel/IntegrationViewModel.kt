@@ -63,7 +63,7 @@ class IntegrationViewModel @Inject constructor(
   init {
     // Update currentAccount variable for local use
     viewModelScope.launch {
-      accountService.activeAccountFlow.collectLatest { account ->
+      accountService.activeAccountFlow.collect { account ->
         currentAccount = account
         AppLog.d(TAG, "Active account updated: ${account?.id}")
       }
