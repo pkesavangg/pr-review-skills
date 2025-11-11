@@ -111,13 +111,7 @@ store.restartWiggleAnimations()
             if store.state.ui.isEditMode && newTab != .dash {
                 store.cancelEdit()
             }
-            if newTab == .dash {
-                Task { await store.reloadDashboardConfiguration(updateMetrics: true) }
-                
-                DispatchQueue.main.async { 
-                    store.resetGridLayout()
-                }
-            }
+
         }
     }
     
