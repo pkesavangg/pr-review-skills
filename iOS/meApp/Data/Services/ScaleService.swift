@@ -55,6 +55,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let migrationService = ScaleMigrationService()
     private var isSyncing = false
     private var cancellables = Set<AnyCancellable>()
+    private var lastAccountId: String?
     
     // MARK: - Published State
     @Published private(set) var scales: [Device] = []
@@ -83,6 +84,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             
             // Trigger sync on app launch to fetch scales from server
             if let account = try? await accountService.getActiveAccount() {
+                lastAccountId = account.accountId
                 await syncAllScalesWithRemote()
             }
         }
@@ -94,12 +96,23 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 .sink { [weak self] (newAccount: Account?) in
                     guard let self else { return }
                     Task { @MainActor in
+                        let currentAccountId = newAccount?.accountId
+                        let accountIdChanged = currentAccountId != self.lastAccountId
+                        
                         // Clear current list to avoid showing stale devices while switching
                         self.scales = []
                         // Refresh from local storage scoped to the new active account
                         await self.refreshScalesFromLocal()
                         // Trigger sync to fetch scales from server for the new account
                         await self.syncAllScalesWithRemote()
+                        
+                        // Only reset connection statuses when account ID changed (account switch) or was nil (new account)
+                        if accountIdChanged {
+                            await self.resetAllConnectionStatusOnLaunch()
+                        }
+                        
+                        // Update lastAccountId even if we don't reset
+                        self.lastAccountId = currentAccountId
                     }
                 }
                 .store(in: &cancellables)
