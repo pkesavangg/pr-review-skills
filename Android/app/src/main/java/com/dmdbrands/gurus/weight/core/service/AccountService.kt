@@ -298,11 +298,14 @@ constructor(
           // For other errors, show error toast
           val msg = when (e.code()) {
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileMessage
+            HttpErrorConfig.ResponseCode.BAD_REQUEST -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           val header = when (e.code()) {
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED, HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileHeader
+
             else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
           }
           showErrorToast(header, msg)
