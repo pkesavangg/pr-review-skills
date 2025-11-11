@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
             entity = AccountEntity::class,
             parentColumns = ["accountId"],
             childColumns = ["accountId"],
+            onDelete = ForeignKey.CASCADE
         ),
     ],
     indices = [

@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounde
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlin.math.roundToInt
+import android.util.Log
 
 /**
  * Helper for creating Stat objects from MetricKey and values, and for providing milestone stats.
@@ -183,6 +184,7 @@ object StatHelper {
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
+      Log.i("CHECKING", "value $value key $key")
       DashboardKey.Milestone(key).toStat(value, useShort, showMetricIcon = showMetricIcon)
     }
 
@@ -199,20 +201,20 @@ object StatHelper {
     return when (key) {
       MilestoneKey.CURRENT_STREAK -> progress.currentStreak.takeIf { it > 0 }
       MilestoneKey.LONGEST_STREAK -> progress.longestStreak.takeIf { it > 0 }
-      MilestoneKey.PER_WEEK -> progress.week.takeIf { it != 0.0 }?.let {
-        if (it > 0) "+${it.rounded()}" else it.rounded().toString()
+      MilestoneKey.PER_WEEK -> progress.week.takeIf { it != null }?.let {
+        if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.PER_MONTH -> progress.month.takeIf { it != 0.0 }?.let {
-        if (it > 0) "+${it.rounded()}" else it.rounded().toString()
+      MilestoneKey.PER_MONTH -> progress.month.takeIf { it != null }?.let {
+        if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.PER_YEAR -> progress.year.takeIf { it != 0.0 }?.let {
-        if (it > 0) "+${it.rounded()}" else it.rounded().toString()
+      MilestoneKey.PER_YEAR -> progress.year.takeIf { it != null }?.let {
+        if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.TOTAL_CHANGE -> progress.total.takeIf { it != 0.0 }?.let {
-        if (it > 0) "+${it.rounded()}" else it.rounded().toString()
+      MilestoneKey.TOTAL_CHANGE -> progress.total.takeIf { it != null }?.let {
+        if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
       else -> null
@@ -231,7 +233,7 @@ object StatHelper {
     MetricKeyConstants.SKELETAL_MUSCLE,
     MetricKeyConstants.BMR,
     MetricKeyConstants.METABOLIC_AGE,
-    MetricKeyConstants.HEART_RATE
+    MetricKeyConstants.HEART_RATE,
   )
 
   /**

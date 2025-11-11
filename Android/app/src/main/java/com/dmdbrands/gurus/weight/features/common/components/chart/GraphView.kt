@@ -25,6 +25,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -100,16 +101,18 @@ fun GraphView(
           val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
             it.toLong() in min..max
           }
-          val fallbackValues = scrollState.getInterpolatedYValues(
-            xValues = visibleLabels,
-            interpolationType = InterpolationType.CUBIC,
-          )
-          val fallbackData = state.createFallBackData(
-            segment = segment,
-            timeStamps = visibleLabels.map { it.toLong() },
-            fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-          )
-          viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          if (visibleLabels.isNotEmpty()) {
+            val fallbackValues = scrollState.getInterpolatedYValues(
+              xValues = visibleLabels,
+              interpolationType = InterpolationType.CUBIC,
+            )
+            val fallbackData = state.createFallBackData(
+              segment = segment,
+              timeStamps = visibleLabels.map { it.toLong() },
+              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+            )
+            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          }
         },
       )
     }
@@ -125,6 +128,10 @@ fun GraphView(
     if (state.markerIndex != null) {
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     }
+  }
+
+  LaunchedEffect(state.target) {
+    Log.i("CHECKING", state.target.toString())
   }
 
   LaunchedEffect(state.markerIndex) {
@@ -147,7 +154,8 @@ fun GraphView(
     state = state,
     segment = segment,
     onTargetsUpdate = {
-      viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+      if (it.isNotEmpty())
+        viewModel.handleIntent(GraphIntent.UpdateTarget(it))
     },
   )
 
