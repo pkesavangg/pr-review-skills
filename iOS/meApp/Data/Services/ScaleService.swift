@@ -56,6 +56,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private var isSyncing = false
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountId: String?
+    private var isInitialized = false
     
     // MARK: - Published State
     @Published private(set) var scales: [Device] = []
@@ -87,6 +88,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 lastAccountId = account.accountId
                 await syncAllScalesWithRemote()
             }
+            // Mark initialization complete after lastAccountId is set
+            isInitialized = true
         }
         
         // React to active account changes so the scales list reflects the correct account immediately.
@@ -96,6 +99,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 .sink { [weak self] (newAccount: Account?) in
                     guard let self else { return }
                     Task { @MainActor in
+                        // Ignore account changes until initialization completes to avoid race condition
+                        guard self.isInitialized else { return }
+                        
                         let currentAccountId = newAccount?.accountId
                         let accountIdChanged = currentAccountId != self.lastAccountId
                         
@@ -106,8 +112,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         // Trigger sync to fetch scales from server for the new account
                         await self.syncAllScalesWithRemote()
                         
-                        // Only reset connection statuses when account ID changed (account switch) or was nil (new account)
-                        if accountIdChanged {
+                        // Only reset connection statuses when switching to a different, non-nil account (not on logout)
+                        if accountIdChanged, let currentAccountId = currentAccountId {
                             await self.resetAllConnectionStatusOnLaunch()
                         }
                         
