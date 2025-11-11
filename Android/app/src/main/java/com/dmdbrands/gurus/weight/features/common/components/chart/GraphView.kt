@@ -25,7 +25,6 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -128,10 +127,6 @@ fun GraphView(
     if (state.markerIndex != null) {
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
     }
-  }
-
-  LaunchedEffect(state.target) {
-    Log.i("CHECKING", state.target.toString())
   }
 
   LaunchedEffect(state.markerIndex) {
