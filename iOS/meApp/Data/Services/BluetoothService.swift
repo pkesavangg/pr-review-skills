@@ -219,6 +219,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         bluetoothScales = filteredScales
         
+        // Check if banner should be shown/hidden after scale updates
+        if !isWeightOnlyModeAlertDismissed {
+            await checkCanShowWeightOnlyModeAlert()
+        }
+        
         if !isSetupInProgress {
             syncDevices(self.bluetoothScales)
         }
@@ -846,8 +851,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     
     func disconnectConnectedScales() async {
-        for scale in bluetoothScales where scale.isConnected == true {
+        let connectedScales = bluetoothScales.filter { $0.isConnected == true }
+        for scale in connectedScales {
+            // Clear weight-only mode status before disconnecting
             if let broadcastId = scale.broadcastIdString {
+                scale.isWeighOnlyModeEnabledByOthers = false
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
                 _ = await disconnectDevice(broadcastId: broadcastId)
             }
         }
@@ -874,6 +886,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // Delete each R4 scale and disconnect
         for scale in connectedR4Scales {
+            // Clear weight-only mode status before deleting
+            if let broadcastId = scale.broadcastIdString {
+                scale.isWeighOnlyModeEnabledByOthers = false
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
+            }
             // Delete the scale from the device
             let deleteResult = await deleteDevice(scale, disconnect: false)
             switch deleteResult {
@@ -1514,6 +1534,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
         for scale in deletedScales {
             if scale.isConnected ?? false {
+                // Clear weight-only mode status before deleting
+                if let broadcastId = scale.broadcastIdString {
+                    scale.isWeighOnlyModeEnabledByOthers = false
+                    await scaleService.updateConnectedDeviceWeightOnlyMode(
+                        broadcastId: broadcastId,
+                        isWeightOnlyModeEnabledByOthers: false
+                    )
+                }
                 // Delete the device from the scale for all scale types to avoid SwiftData detachment issues
                 _ = await deleteDevice(scale, disconnect: false)
                 
@@ -1523,6 +1551,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                     logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
                 }
             }
+        }
+        
+        // Check if banner should be hidden after disconnecting deleted scales
+        if !isWeightOnlyModeAlertDismissed {
+            await checkCanShowWeightOnlyModeAlert()
         }
     }
     
