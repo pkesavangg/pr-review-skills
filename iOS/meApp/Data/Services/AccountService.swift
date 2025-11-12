@@ -202,13 +202,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
         // Notify observers **before** performing the local logout so UI can react.
         if isAutoLogout, localAccount.isActiveAccount == true {
+            Task { try? await performLogout() }
             let userName = "\(localAccount.firstName ?? "")"
             let alert = AlertModel(
                 title: alertLang.title(userName),
                 message: alertLang.message,
                 buttons: [
                     AlertButtonModel(title: alertLang.okButton, type: .primary) { _ in
-                        Task { try? await performLogout() }
+                        
                     }
                 ]
             )
