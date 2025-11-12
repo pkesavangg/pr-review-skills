@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.Activity
-import android.util.Log
 
 @HiltViewModel
 class HomeViewModel
