@@ -392,9 +392,11 @@ constructor(
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
       startObservingEntries { entries ->
-        AppLog.d(TAG, "Measurement collected: ${entries.size} entries")
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        onNext()
+        // Only process if we're still on STEP_ON step to prevent multiple onNext() calls
+          AppLog.d(TAG, "Measurement collected: ${entries.size} entries")
+          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+          stopObservingEntries()
+          onNext()
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during measurement", e)

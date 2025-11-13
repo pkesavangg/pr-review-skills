@@ -219,6 +219,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         bluetoothScales = filteredScales
         
+        // Check if banner should be shown/hidden after scale updates
+        if !isWeightOnlyModeAlertDismissed {
+            await checkCanShowWeightOnlyModeAlert()
+        }
+        
         if !isSetupInProgress {
             syncDevices(self.bluetoothScales)
         }
@@ -846,8 +851,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     
     
     func disconnectConnectedScales() async {
-        for scale in bluetoothScales where scale.isConnected == true {
+        let connectedScales = bluetoothScales.filter { $0.isConnected == true }
+        for scale in connectedScales {
+            // Clear weight-only mode status before disconnecting
             if let broadcastId = scale.broadcastIdString {
+                scale.isWeighOnlyModeEnabledByOthers = false
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
                 _ = await disconnectDevice(broadcastId: broadcastId)
             }
         }
@@ -874,6 +886,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         
         // Delete each R4 scale and disconnect
         for scale in connectedR4Scales {
+            // Clear weight-only mode status before deleting
+            if let broadcastId = scale.broadcastIdString {
+                scale.isWeighOnlyModeEnabledByOthers = false
+                await scaleService.updateConnectedDeviceWeightOnlyMode(
+                    broadcastId: broadcastId,
+                    isWeightOnlyModeEnabledByOthers: false
+                )
+            }
             // Delete the scale from the device
             let deleteResult = await deleteDevice(scale, disconnect: false)
             switch deleteResult {
@@ -1507,15 +1527,40 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // Note: This method is now implemented above in the "Device Event Alert Handling" section
     
     private func disconnectDeletedScales(currentScales: [Device], newScales: [Device]) async {
-        let deletedScales = currentScales.filter { currentScale in
-            !newScales.contains { newScale in
+        let accountId = activeAccount?.accountId ?? "unknown"
+        
+        // CRITICAL FIX: Only compare scales that belong to the current active account
+        // This prevents scales from other accounts from being incorrectly marked as deleted
+        let currentScalesForAccount = currentScales.filter { $0.accountId == accountId }
+        let newScalesForAccount = newScales.filter { $0.accountId == accountId }
+        
+        let deletedScales = currentScalesForAccount.filter { currentScale in
+            let found = newScalesForAccount.contains { newScale in
                 currentScale.broadcastId == newScale.broadcastId
             }
+            return !found
         }
+        
         for scale in deletedScales {
+            // Safety check: Only process scales that belong to the current account
+            guard scale.accountId == accountId else {
+                continue
+            }
+            
             if scale.isConnected ?? false {
+                // Clear weight-only mode status before deleting
+                if let broadcastId = scale.broadcastIdString {
+                    scale.isWeighOnlyModeEnabledByOthers = false
+                    await scaleService.updateConnectedDeviceWeightOnlyMode(
+                        broadcastId: broadcastId,
+                        isWeightOnlyModeEnabledByOthers: false
+                    )
+                }
                 // Delete the device from the scale for all scale types to avoid SwiftData detachment issues
-                _ = await deleteDevice(scale, disconnect: false)
+                let deleteResult = await deleteDevice(scale, disconnect: false)
+                if case .failure(let error) = deleteResult {
+                    logger.log(level: .error, tag: tag, message: "Failed to delete device: \(error.localizedDescription)")
+                }
                 
                 guard let broadcastId = scale.broadcastIdString else { continue }
                 let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
@@ -1523,6 +1568,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                     logger.log(level: .error, tag: tag, message: "Failed to disconnect device: \(error.localizedDescription)")
                 }
             }
+        }
+        
+        // Check if banner should be hidden after disconnecting deleted scales
+        if !isWeightOnlyModeAlertDismissed {
+            await checkCanShowWeightOnlyModeAlert()
         }
     }
     
@@ -1732,16 +1782,23 @@ private extension BluetoothService {
     }
 
     func mapToGGPreference(deviceId: String, preference: R4ScalePreference?) -> GGDevicePreference? {
-        // Always try fetching via preference.id to ensure a context-attached object.
-        // This avoids touching properties on a potentially detached SwiftData instance.
-        guard let preference = preference else { return nil }
-        let attached = fetchAttachedPreference(by: preference.id) ?? preference
+        // Always fetch preference using deviceId instead of accessing preference.id
+        // When a scale is deleted, its R4ScalePreference is also deleted from SwiftData.
+        // Accessing properties (including .id) on a deleted SwiftData object causes a fatal crash.
+        // By using deviceId directly, we avoid touching the potentially deleted preference object.
+        
+        // If no preference reference was passed, try fetching by deviceId
+        // If preference was passed but deleted, fetchAttachedPreference will return nil safely
+        guard let attachedPreference = fetchAttachedPreference(by: deviceId) else {
+            return nil
+        }
+        
         return GGDevicePreference(
-            displayName: attached.displayName,
-            displayMetrics: attached.displayMetrics,
-            shouldMeasureImpedance: attached.shouldMeasureImpedance,
-            shouldMeasurePulse: attached.shouldMeasurePulse,
-            timeFormat: attached.timeFormat
+            displayName: attachedPreference.displayName,
+            displayMetrics: attachedPreference.displayMetrics,
+            shouldMeasureImpedance: attachedPreference.shouldMeasureImpedance,
+            shouldMeasurePulse: attachedPreference.shouldMeasurePulse,
+            timeFormat: attachedPreference.timeFormat
         )
     }
     

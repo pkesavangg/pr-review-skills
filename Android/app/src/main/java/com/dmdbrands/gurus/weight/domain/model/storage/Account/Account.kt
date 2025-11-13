@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calcul
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
+import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
@@ -120,5 +121,43 @@ fun Account?.toWeightless(): Weightless {
   return Weightless(
     isWeightlessOn = this?.isWeightlessOn ?: false,
     weightlessWeight = weightlessInLb.toFloat(),
+  )
+}
+
+/**
+ * Converts Account domain model to AccountInfo API model.
+ * Used for syncing local account data to database when offline.
+ */
+fun Account.toAccountInfo(): AccountInfo {
+  return AccountInfo(
+    id = this.id,
+    email = this.email,
+    firstName = this.firstName,
+    lastName = this.lastName,
+    gender = this.gender,
+    zipcode = this.zipcode,
+    weightUnit = this.weightUnit.value,
+    isWeightlessOn = this.isWeightlessOn ?: false,
+    height = this.height ?: 1700,
+    activityLevel = this.activityLevel ?: "normal",
+    dob = this.dob,
+    weightlessTimestamp = this.weightlessTimestamp,
+    weightlessWeight = this.weightlessWeight,
+    isStreakOn = this.isStreakOn ?: false,
+    dashboardType = this.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.value,
+    dashboardMetrics = this.dashboardMetrics ?: emptyList(),
+    goalType = this.goalType,
+    goalWeight = this.goalWeight?.toFloat(),
+    initialWeight = this.initialWeight.toFloat(),
+    metPreviousGoal = this.metPreviousGoal ?: false,
+    goalPercent = this.goalPercent.toInt(),
+    shouldSendEntryNotifications = this.shouldSendEntryNotifications ?: false,
+    shouldSendWeightInEntryNotifications = this.shouldSendWeightInEntryNotifications ?: false,
+    isFitbitOn = this.isFitbitOn,
+    isFitbitValid = this.isFitbitValid,
+    isHealthConnectOn = this.isHealthConnectOn,
+    isHealthKitOn = this.isHealthKitOn,
+    isMFPOn = this.isMFPOn,
+    isMFPValid = this.isMFPValid,
   )
 }

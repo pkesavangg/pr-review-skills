@@ -27,14 +27,13 @@ class GoalCardCell: UICollectionViewCell {
     private var isLongPressed: Bool = false
     private var suppressOverlay: Bool = false
     private var currentIsBeingDragged: Bool = false
+    private let goalProgressViewModel = GoalProgressViewModel()
     
     // MARK: - Initialization
     
     override init(frame: CGRect) {
         // Create a placeholder view that will be configured later
-        let placeholderView = AnyView(
-            GoalProgressView()
-        )
+        let placeholderView = AnyView(GoalProgressView(viewModel: GoalProgressViewModel()))
         
         self.hostingController = UIHostingController(rootView: placeholderView)
         super.init(frame: frame)
@@ -126,7 +125,7 @@ class GoalCardCell: UICollectionViewCell {
         // Set the removal state
         isRemoved = store.state.ui.isGoalCardRemoved
         
-        let goalCardView = GoalProgressView(isSetGoalButtonDisabled: store.state.ui.isEditMode)
+        let goalCardView = GoalProgressView(viewModel: goalProgressViewModel, isSetGoalButtonDisabled: store.state.ui.isEditMode)
 
         let viewWithOverlay: AnyView
         if store.state.ui.isEditMode {
@@ -170,9 +169,7 @@ class GoalCardCell: UICollectionViewCell {
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
         
         // Reset to placeholder view
-        let placeholderView = AnyView(
-            GoalProgressView()
-        )
+        let placeholderView = AnyView(GoalProgressView(viewModel: goalProgressViewModel))
         hostingController?.rootView = placeholderView
     }
     

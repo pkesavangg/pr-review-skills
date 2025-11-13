@@ -4,15 +4,12 @@ import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationData
-import com.dmdbrands.gurus.weight.features.integration.model.IntegrationState
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Repository interface for Health Connect data operations, abstracting HealthConnectDataStore.
  */
 interface IHealthConnectRepository {
-  val integrationState: Flow<IntegrationState>
-
   /** Gets the current map of account data. */
   suspend fun getAccountDataMap(): Map<String, HealthConnectData>
 
@@ -68,11 +65,6 @@ interface IHealthConnectRepository {
   /** Updates the modal state for an account. */
   suspend fun updateModalState(accountId: String, state: Boolean)
 
-  /** Updates the update timestamp for an account. */
-  suspend fun updateTimestamp(accountId: String, timestamp: String)
-
-  /** Updates the integration timestamp for an account. */
-  suspend fun updateIntegrationTimestamp(accountId: String, timestamp: String)
 
   /** Updates the granted permissions for an account. */
   suspend fun setHcPermissions(accountId: String, permissions: List<String>)
@@ -111,25 +103,9 @@ interface IHealthConnectRepository {
   suspend fun setHealthConnectIntegrationStatus(accountId: String, integrated: Boolean)
 
   /**
-   * Updates the integration state and optionally persists to local storage.
-   * This method should be called whenever the integration state changes.
-   */
-  fun updateIntegrationState(newState: IntegrationState)
-
-  /**
-   * Updates the Health Connect integration status in local storage and syncs the state.
-   */
-  suspend fun updateHealthConnectIntegrationStatus(accountId: String, integrated: Boolean)
-
-  /**
    * Updates the out of sync status in local storage and syncs the state.
    */
   suspend fun updateOutOfSyncStatus(accountId: String, outOfSync: Boolean)
 
-  /**
-   * Observes account changes and automatically updates integration state from local storage.
-   * This method should be called to start automatic state synchronization.
-   */
-  suspend fun observeAccountChanges()
   suspend fun syncEntry(entry: HealthConnectSyncEntry)
 }

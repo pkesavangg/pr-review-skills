@@ -94,12 +94,12 @@ fun LcbtScaleSetupScreenContent(
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
       leadingContent = {
-        if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS) {
+        if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.isLastStep) {
           AppButton(
             type = ButtonType.TextPrimary,
             label = ScaleSetupStrings.backButton,
             size = ButtonSize.Small,
-            enabled = !state.isFirstStep,
+            enabled = (!state.isFirstStep && !state.isLastStep),
             onClick = { onIntent(ScaleSetupIntent.Back) },
           )
         }

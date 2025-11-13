@@ -8,6 +8,7 @@ import SwiftUI
 
 struct AccuCheckInfoModalView: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
     let onClose: () -> Void
     let appAssets = AppAssets.self
     let lang = BtWifiScaleSetupStrings.AccuCheckInfoModalViewStrings.self
@@ -24,7 +25,7 @@ struct AccuCheckInfoModalView: View {
             .padding(.bottom, .spacingXS)
             
             VStack(spacing: .spacingSM) {
-                Image(appAssets.accuCheckTickLarge)
+                Image(colorScheme == .dark ? appAssets.accuCheckTickLargeDark : appAssets.accuCheckTickLarge)
                     .resizable()
                     .frame(width: 100, height: 100)
                 

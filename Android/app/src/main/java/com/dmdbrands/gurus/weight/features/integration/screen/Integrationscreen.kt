@@ -30,6 +30,7 @@ fun IntegrationScreen() {
     val state by viewmodel.state.collectAsState()
 
   LaunchedEffect(Unit) {
+    //check it can removable or not
     viewmodel.handleIntent(IntegrationIntent.LoadIntegrations)
   }
     BackHandler {

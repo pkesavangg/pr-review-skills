@@ -46,7 +46,7 @@ struct MetricsSectionView: View {
                     isOn: $metric.isEnabled,
                     text: metric.name,
                     icon: showIcon ? metric.imagePath : nil,
-                    isDisabled: !metric.isEnabled,
+                    isDisabled: shouldDisableToggle?(metric) ?? false,
                     disableToggle: shouldDisableToggle?(metric) ?? false
                 )
                 .id(metric.key + (metric.isEnabled ? "-on" : "-off"))

@@ -217,7 +217,7 @@ class GGInAppMessagingService @Inject constructor(
           false
         }
       } else {
-        return handleFeedModal(feedItem, currentTime)
+        handleFeedModal(feedItem, currentTime)
       }
     } catch (e: Exception) {
       false
@@ -245,25 +245,25 @@ class GGInAppMessagingService @Inject constructor(
   private suspend fun showFeedModalPopup(feedItem: FeedItem, triggerTime: Long) {
     try {
       // Preload image before showing modal - wait for it to complete
-      feedItem.titleImage?.let { imageUrl ->
-        try {
-          // Use Coil to preload the image and wait for it to complete
-          val imageLoader = coil.ImageLoader(context)
-          val request = coil.request.ImageRequest.Builder(context)
-            .data(imageUrl)
-            .target(
-              onStart = {},
-              onSuccess = {},
-              onError = {}
-            )
-            .build()
+      feedItem.titleImage.let { imageUrl ->
+          try {
+            // Use Coil to preload the image and wait for it to complete
+            val imageLoader = coil.ImageLoader(context)
+            val request = coil.request.ImageRequest.Builder(context)
+              .data(imageUrl)
+              .target(
+                onStart = {},
+                onSuccess = {},
+                onError = {}
+              )
+              .build()
 
-          // Execute and wait for the result
-          imageLoader.execute(request)
-        } catch (e: Exception) {
-          // If image fails to load, don't show modal
-          return
-        }
+            // Execute and wait for the result
+            imageLoader.execute(request)
+          } catch (e: Exception) {
+            // If image fails to load, don't show modal
+            return
+          }
       }
 
       // Store the trigger time
