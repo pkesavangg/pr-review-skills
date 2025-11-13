@@ -194,9 +194,9 @@ final class ScaleSettingsStore: ObservableObject {
                 bluetoothService.clearDevices()
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
-            await scaleService.pushLocalChangesToServer()
-            await scaleService.syncAllScalesWithRemote()
             bluetoothService.isSetupInProgress = false
+            await scaleService.pushLocalChangesToServer()
+            await scaleService.syncAllScalesWithRemote()           
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
         } catch {
