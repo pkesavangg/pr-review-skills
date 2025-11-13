@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -73,11 +72,11 @@ fun GoalStep(
 
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
-  // Initialize weight validators based on initial weight unit or metric toggle
-  LaunchedEffect(isMetric, initialWeightUnit) {
-    updateWeightValidators(currentWeightControl, isMetric)
-    updateWeightValidators(goalWeightControl, isMetric)
-  }
+  // // Initialize weight validators based on initial weight unit or metric toggle
+  // LaunchedEffect(isMetric, initialWeightUnit) {
+  //   updateWeightValidators(currentWeightControl, isMetric)
+  //   updateWeightValidators(goalWeightControl, isMetric)
+  // }
 
   // Goal type options
   val goalTypeOptions =

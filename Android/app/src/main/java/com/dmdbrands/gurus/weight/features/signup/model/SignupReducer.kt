@@ -155,12 +155,12 @@ data class SignupFormControls(
           currentWeight =
             FormControl.create(
               signupData.currentWeight,
-              listOf(weightValidator(WeightUnit.LB)),
+              emptyList(), // Dynamic validator will be added after formGroup creation
             ),
           goalWeight =
             FormControl.create(
               signupData.goalWeight,
-              listOf(FormValidations.required(), weightValidator(WeightUnit.LB)),
+              listOf(FormValidations.required()), // Dynamic validator will be added after formGroup creation
             ),
           useMetric =
             FormControl.create(
@@ -171,15 +171,12 @@ data class SignupFormControls(
 
       val formGroup = FormGroup(controls)
 
-      // Add password matching validation only to confirm password field
-      controls.confirmPassword.addValidator(createConfirmPasswordValidator { formGroup })
-
-      // Add dynamic weight validators
+      // Add dynamic weight validators that update based on metric setting
       controls.currentWeight.addValidator(createDynamicWeightValidator { formGroup })
       controls.goalWeight.addValidator(createDynamicWeightValidator { formGroup })
-      controls.currentWeight.addValidator(createRequiredCurrentWeightValidator { formGroup })
-      controls.goalWeight.addValidator(FormValidations.required())
 
+      // Add password matching validation only to confirm password field
+      controls.confirmPassword.addValidator(createConfirmPasswordValidator { formGroup })
       // Set up validation trigger - when password changes, validate confirm password
       controls.password.onValueChangeListener { _, _ ->
         // When password changes, trigger validation on confirm password if it has a value
@@ -190,35 +187,47 @@ data class SignupFormControls(
 
       // Set up metric toggle validation trigger
       controls.useMetric.onValueChangeListener { oldValue, newValue ->
-        val wasMetric = oldValue
-        val isMetric = newValue
 
         // Convert weight values when switching units
         if (controls.currentWeight.value.isNotEmpty()) {
           val convertedCurrentWeight =
             convertWeightValue(
               controls.currentWeight.value,
-              wasMetric,
-              isMetric,
+              oldValue,
+              newValue,
             )
           controls.currentWeight.onValueChange(convertedCurrentWeight)
+          // onValueChange() already calls validate(), but we explicitly validate again
+          // to ensure the dynamic validator closure reads the updated useMetric value
+          controls.currentWeight.validate()
+        } else {
+          // Re-validate empty fields to ensure validators are updated for future input
+          // This handles cases where user toggles unit before entering weight values
+          controls.currentWeight.validate()
         }
 
         if (controls.goalWeight.value.isNotEmpty()) {
           val convertedGoalWeight =
             convertWeightValue(
               controls.goalWeight.value,
-              wasMetric,
-              isMetric,
+              oldValue,
+              newValue,
             )
           controls.goalWeight.onValueChange(convertedGoalWeight)
+          // onValueChange() already calls validate(), but we explicitly validate again
+          // to ensure the dynamic validator closure reads the updated useMetric value
+          controls.goalWeight.validate()
+        } else {
+          // Re-validate empty fields to ensure validators are updated for future input
+          // This handles cases where user toggles unit before entering weight values
+          controls.goalWeight.validate()
         }
 
         // Update height input based on metric setting
         // Use proper rounding to preserve precision and prevent accumulation errors
         val currentHeight = controls.height.value
         val newHeight =
-          if (isMetric) {
+          if (newValue) {
             // Convert to metric (cm)
             when (currentHeight) {
               is HeightInput.FtIn -> {
@@ -474,7 +483,7 @@ fun SignupFormControls.getCurrentWeightUnit(): WeightUnit = if (useMetric.value)
 /**
  * Converts weight value between units when metric setting changes.
  * Preserves one decimal place precision to prevent accumulation errors.
- * 
+ *
  * Note: Weight values are stored as integers where the last digit represents the decimal place.
  * For example, "605" represents 60.5, "550" represents 55.0.
  */
@@ -492,7 +501,7 @@ fun convertWeightValue(
     } else {
       "0." + value
     }
-    
+
     val numericValue = decimalValue.toDoubleOrNull() ?: return value
 
     val convertedValue =

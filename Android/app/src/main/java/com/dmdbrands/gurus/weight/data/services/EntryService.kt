@@ -116,6 +116,7 @@ constructor(
   private val _lastUpdated = MutableStateFlow<Long?>(null)
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
+
   private var accountId: String? = null
   private var initialWeight: Double? = null
 
@@ -581,19 +582,6 @@ constructor(
           operationsFromApi,
           tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
-      }
-
-      lastValidOperation?.let {
-        // Get weight from the latest entry if it's a ScaleEntry
-        val latestWeight = when (val latest = _latestEntry.value) {
-          is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
-          else -> null
-        }
-        // Trigger goal alert if needed
-        latestWeight?.let { weight ->
-          goalService.showGoalCompletionAlert(weight * 10)
-        }
-
       }
 
       // 7. Update last updated timestamp
