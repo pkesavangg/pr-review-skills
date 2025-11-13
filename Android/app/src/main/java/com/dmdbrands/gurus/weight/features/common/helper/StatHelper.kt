@@ -18,7 +18,6 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounde
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlin.math.roundToInt
-import android.util.Log
 
 /**
  * Helper for creating Stat objects from MetricKey and values, and for providing milestone stats.
@@ -184,7 +183,6 @@ object StatHelper {
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
-      Log.i("CHECKING", "value $value key $key")
       DashboardKey.Milestone(key).toStat(value, useShort, showMetricIcon = showMetricIcon)
     }
 

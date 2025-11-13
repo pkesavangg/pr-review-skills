@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,7 +29,6 @@ import com.dmdbrands.gurus.weight.features.common.components.AppUserList
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -38,76 +37,75 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun MyAccountsScreen() {
-    val viewmodel: MyAccountsViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
-    MyAccountsScreenContent(
-        state = state,
-        handleIntent = viewmodel::handleIntent,
-        onNavigateBack = viewmodel::onNavigateBack
-    )
+  val viewmodel: MyAccountsViewModel = hiltViewModel()
+  val state by viewmodel.state.collectAsState()
+  rememberCoroutineScope()
+  MyAccountsScreenContent(
+    state = state,
+    handleIntent = viewmodel::handleIntent,
+    onNavigateBack = viewmodel::onNavigateBack,
+  )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyAccountsScreenContent(
-    state: MyAccountsState,
-    handleIntent: (MyAccountsIntent) -> Unit,
-    onNavigateBack: () -> Unit,
+  state: MyAccountsState,
+  handleIntent: (MyAccountsIntent) -> Unit,
+  onNavigateBack: () -> Unit,
 ) {
-    val backStack = LocalNavBackStack.current
-    val coroutineScope = rememberCoroutineScope()
+  val backStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
 
-    // Handle system back button
-    BackHandler {
+  // Handle system back button
+  BackHandler {
+    onNavigateBack() // Start scanning when navigating back
+    coroutineScope.launch {
+      backStack.removeLast()
+    }
+  }
+  AppScaffold(
+    title = MyAccountsScreenStrings.Title,
+    navigationIcon = {
+      AppIconButton(AppIcons.Default.Close) {
         onNavigateBack() // Start scanning when navigating back
         coroutineScope.launch {
-            backStack.removeLast()
+          backStack.removeLast()
         }
-    }
-    AppScaffold(
-        title = MyAccountsScreenStrings.Title,
-        navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
-                onNavigateBack() // Start scanning when navigating back
-                coroutineScope.launch {
-                    backStack.removeLast()
-                }
-            }
-        },
+      }
+    },
+  ) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize(),
+      verticalArrangement = Arrangement.Top,
+      horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize(),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            AppUserList(
-                accounts = state.accounts,
-                modifier = Modifier.background(Color.Green),
-                showAccountActivity = true,
-                canRemoveAccount = true,
-                onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
-                onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
-                onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },
-                contentPadding = PaddingValues(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
-                    AppButton(
-                        label = MyAccountsScreenStrings.LogIntoExistingAccount,
-                        type = ButtonType.PrimaryOutlined,
-                        onClick = { handleIntent(MyAccountsIntent.LoginToAccount()) },
-                    )
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-                    AppButton(
-                        label = MyAccountsScreenStrings.CreateNewAccount,
-                        type = ButtonType.TextPrimary,
-                        onClick = { handleIntent(MyAccountsIntent.CreateAccount) },
-                    )
-                }
-            }
+      AppUserList(
+        accounts = state.accounts,
+        modifier = Modifier.background(Color.Green),
+        showAccountActivity = true,
+        canRemoveAccount = true,
+        onDeleteRequest = { handleIntent(MyAccountsIntent.RequestRemoveAccount(it)) },
+        onAccountSelect = { handleIntent(MyAccountsIntent.SelectAccount(it)) },
+        onLoginRequest = { handleIntent(MyAccountsIntent.LoginToAccount(it)) },
+        contentPadding = PaddingValues(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+      ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+          Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+          AppButton(
+            label = MyAccountsScreenStrings.LogIntoExistingAccount,
+            type = ButtonType.PrimaryOutlined,
+            onClick = { handleIntent(MyAccountsIntent.LoginToAccount()) },
+          )
+          Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+          AppButton(
+            label = MyAccountsScreenStrings.CreateNewAccount,
+            type = ButtonType.TextPrimary,
+            onClick = { handleIntent(MyAccountsIntent.CreateAccount) },
+          )
         }
+      }
     }
+  }
 }

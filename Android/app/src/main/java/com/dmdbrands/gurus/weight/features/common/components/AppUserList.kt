@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,43 +85,43 @@ fun AppUserList(
     ) { item ->
         Swipeable { progress ->
             val isDragging = progress > 0f
+          key(isDragging) {
             val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
-            val animatedCornerRadius by animateDpAsState(
-                targetValue = targetCornerRadius,
-                animationSpec = tween(durationMillis = 250),
-            )
             val index = accounts.indexOf(item)
             val shape =
-                when {
-                    accounts.size == 1 -> RoundedCornerShape(animatedCornerRadius)
-                    index == 0 ->
-                        RoundedCornerShape(
-                            topStart = animatedCornerRadius,
-                            topEnd = animatedCornerRadius,
-                        )
-                    index == accounts.size - 1 ->
-                        RoundedCornerShape(
-                            bottomStart = animatedCornerRadius,
-                            bottomEnd = animatedCornerRadius,
-                        )
-                    else -> RectangleShape
-                }
+              when {
+                accounts.size == 1 -> RoundedCornerShape(targetCornerRadius)
+                index == 0 ->
+                  RoundedCornerShape(
+                    topStart = targetCornerRadius,
+                    topEnd = targetCornerRadius,
+                  )
+
+                index == accounts.size - 1 ->
+                  RoundedCornerShape(
+                    bottomStart = targetCornerRadius,
+                    bottomEnd = targetCornerRadius,
+                  )
+
+                else -> RectangleShape
+              }
             Column {
-                AppUser(
-                    account = item,
-                    modifier = Modifier.clip(shape),
-                    onAccountSelect = { onAccountSelect(item) },
-                    onLoginRequest = { onLoginRequest(item) },
-                    avatarAlpha = 1f - progress,
-                    showAccountActivity = showAccountActivity,
+              AppUser(
+                account = item,
+                modifier = Modifier.clip(shape),
+                onAccountSelect = { onAccountSelect(item) },
+                onLoginRequest = { onLoginRequest(item) },
+                avatarAlpha = 1f - progress,
+                showAccountActivity = showAccountActivity,
+              )
+              if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
+                HorizontalDivider(
+                  color = MeTheme.colorScheme.utility,
+                  thickness = .5.dp,
                 )
-                if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
-                    HorizontalDivider(
-                        color = MeTheme.colorScheme.utility,
-                        thickness = .5.dp,
-                    )
-                }
+              }
             }
+          }
         }
     }
 }
