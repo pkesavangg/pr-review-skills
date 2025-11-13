@@ -150,6 +150,8 @@ struct ToastStrings {
     static let resyncErrorTitle = "Not Connected to Wi-Fi"
     static let internetRequiredTitle = "Internet Required"
     static let internetRequiredMessage = "Internet required to connect Wi-Fi-scales"
+    static let bluetoothRequiredTitle = "Bluetooth Required"
+    static let bluetoothRequiredMessage = "Please turn on Bluetooth to delete users from the scale."
     static let genericError = "Sorry, something went wrong. Please try again later."
 }
 
