@@ -215,10 +215,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return allowedTypes.contains(type)
         }
         
-        // Disconnect deleted scales
-        await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
+        Task {
+            // Disconnect deleted scales in the background to avoid blocking the main thread
+            await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
+        }
         bluetoothScales = filteredScales
-        
         if !isSetupInProgress {
             syncDevices(self.bluetoothScales)
         }
@@ -1516,7 +1517,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             if scale.isConnected ?? false {
                 // Delete the device from the scale for all scale types to avoid SwiftData detachment issues
                 _ = await deleteDevice(scale, disconnect: false)
-                
                 guard let broadcastId = scale.broadcastIdString else { continue }
                 let disconnectResult = await disconnectDevice(broadcastId: broadcastId)
                 if case .failure(let error) = disconnectResult {
