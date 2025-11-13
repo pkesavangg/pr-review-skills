@@ -214,11 +214,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return allowedTypes.contains(type)
         }
-        
-        Task {
-            // Disconnect deleted scales in the background to avoid blocking the main thread
-            await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
-        }
         bluetoothScales = filteredScales
         if !isSetupInProgress {
             syncDevices(self.bluetoothScales)
