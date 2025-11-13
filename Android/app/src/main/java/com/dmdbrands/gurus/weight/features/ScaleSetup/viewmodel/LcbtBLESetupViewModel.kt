@@ -12,7 +12,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LCBTScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.LcbtScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
@@ -60,6 +59,23 @@ constructor(
     lazyInit()
   }
 
+  suspend fun saveScale(){
+    try {
+      if (discoveredScale != null) {
+        discoveredScale = discoveredScale!!.copy(
+          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale",
+        )
+        deviceService.saveScale(discoveredScale!!)
+        AppLog.i(TAG, "Successfully saved LCBT scale")
+      } else {
+        AppLog.w(TAG, "No discovered LCBT scale to save")
+      }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error saving LCBT scale", e)
+    } finally {
+    }
+  }
+
   override fun onNext() {
     val currentState = state.value
     AppLog.d(TAG, "Moving to next step from: ${currentState.step}")
@@ -83,35 +99,30 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
-    dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
-    try {
-      if (discoveredScale != null) {
-        discoveredScale = discoveredScale!!.copy(
-          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale",
-        )
-        deviceService.saveScale(discoveredScale!!)
-        AppLog.i(TAG, "Successfully saved LCBT scale")
-      } else {
-        AppLog.w(TAG, "No discovered LCBT scale to save")
-      }
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error saving LCBT scale", e)
-    } finally {
-      dialogQueueService.dismissLoader()
-    }
   }
 
   override fun onBack() {
     val currentState = state.value
-    AppLog.d(TAG, "Moving to previous step from: ${currentState.step}")
+    val currentStep = currentState.step
+    AppLog.d(TAG, "Moving to previous step from: $currentStep")
 
     if (currentState.isFirstStep) {
       AppLog.d(TAG, "At first step, navigating back to add/edit scales")
       navigateTo(AppRoute.AccountSettings.AddEditScales)
+      return
+    }
+
+    // Otherwise, go to previous step
+    val previousStep = currentState.previousStep
+    if (previousStep != null) {
+      AppLog.d(TAG, "Navigating to previous step: $previousStep")
+      handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
     } else {
-      AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
+      AppLog.d(TAG, "No previous step available, navigating back to add/edit scales")
+      navigateTo(AppRoute.AccountSettings.AddEditScales)
     }
   }
+
 
   override fun onSkip() {
     AppLog.d(TAG, "Skipping current step: ${state.value.scaleSetupState.setupState.step}")
@@ -233,6 +244,7 @@ constructor(
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        saveScale()
         AppLog.d(TAG, "Waiting 2 seconds before proceeding")
         onNext()
       } catch (e: Exception) {
