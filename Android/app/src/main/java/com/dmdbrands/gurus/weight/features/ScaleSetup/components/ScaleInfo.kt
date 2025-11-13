@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -36,23 +37,25 @@ fun ScaleInfo(
 ) {
   Column(
     modifier = Modifier
-      .fillMaxSize().verticalScroll(rememberScrollState())
+      .fillMaxSize()
+      .verticalScroll(rememberScrollState())
       .padding(horizontal = spacing.sm, vertical = spacing.md),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
+    verticalArrangement = Arrangement.Center,
   ) {
-    val scaleName = SCALES.find { it -> it.sku == sku }?.productName
+    val scaleName = SCALES.find { it.sku == sku }?.productName
     AppScaleImage(sku = sku, scaleImageSize = ScaleImageSize.Large)
     Spacer(modifier = Modifier.height(spacing.lg))
-    scaleName?.let { it ->
+    scaleName?.let {
       AppText(text = ScaleSetupStrings.ScaleInfo.Title(sku), textType = TextType.ListTitle2)
       AppText(text = scaleName, textType = TextType.Body)
     }
     Spacer(modifier = Modifier.height(spacing.lg))
     AppText(
-      text = ScaleSetupStrings.ScaleInfo.Subtitle(setupType = setupType),
+      text = ScaleSetupStrings.ScaleInfo.Subtitle,
       textType = TextType.Body,
       textAlign = TextAlign.Left,
+      modifier = Modifier.fillMaxWidth(),
     )
     if (buttonText != null && onButtonClick != null) {
       Spacer(modifier = Modifier.height(spacing.lg))
