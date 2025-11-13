@@ -59,6 +59,7 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -114,6 +115,7 @@ constructor(
   private var permissionSubscribeJob: Job? = null
   private var syncScaleJob: Job? = null
   private var deviceSubscribeJob: Job? = null
+  private var iamDialogListenerJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
 
@@ -872,11 +874,14 @@ constructor(
   /**
    * Initializes the IAM dialog events listener
    * Listens to dialog events from GGInAppMessagingService and shows appropriate dialogs
+   * Cancels any existing listener job before creating a new one to prevent duplicate triggers
    */
   private fun initIAMDialogListener() {
-    viewModelScope.launch {
+    // Cancel any existing listener job to prevent duplicate collectors
+    iamDialogListenerJob?.cancel()
+    iamDialogListenerJob = viewModelScope.launch {
       try {
-        ggInAppMessagingService.dialogEvents.collect { event ->
+        ggInAppMessagingService.dialogEvents.collectLatest { event ->
           handleIAMDialogEvent(event)
         }
       } catch (e: Exception) {

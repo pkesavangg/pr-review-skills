@@ -70,12 +70,12 @@ constructor(
     subscribeToWeightOnlyModeAlertDismissed()
     observeFeedIndicator()
     viewModelScope.launch {
+      ggInAppMessagingService.setAccountId(accountService.activeAccount.first()?.id ?: "")
       val isModalTriggered = feedService.checkAndTriggerFeedModal()
-      if(!isModalTriggered){
-      checkAccountFlags("login")
+      if (!isModalTriggered) {
+        checkAccountFlags("login")
       }
     }
-
   }
 
   override fun handleIntent(intent: HomeIntent) {
