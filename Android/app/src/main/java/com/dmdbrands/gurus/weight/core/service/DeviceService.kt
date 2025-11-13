@@ -32,7 +32,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
-import android.util.Log
 
 /**
  * Service for managing device/scale data operations.
@@ -347,12 +346,10 @@ constructor(
       preferences = updatedPrefs,
     )
 
-    Log.d("saveddevice333", "$device")
 
     return try {
       // Attempt API save (online path). If offline, this throws and we fall back.
       val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
-      Log.d("saveddevice444", "$savedDevice")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(

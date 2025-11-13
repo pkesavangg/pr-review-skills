@@ -126,7 +126,7 @@ kapt {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.24.0"
+    artifact = "com.google.protobuf:protoc:3.25.3"
   }
   generateProtoTasks {
     all().forEach {
