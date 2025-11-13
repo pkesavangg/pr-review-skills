@@ -324,7 +324,7 @@ constructor(
     if (!state.value.scaleNameForm.isValid) {
       return
     }
-    val scaleName = NameUtils.trimNameForSDK(state.value.scaleNameForm.controls.name.value)
+    val scaleName = state.value.scaleNameForm.controls.name.value
     dialogQueueService.showLoader(
       message = ScaleNameDialogStrings.LoaderMessage,
     )
