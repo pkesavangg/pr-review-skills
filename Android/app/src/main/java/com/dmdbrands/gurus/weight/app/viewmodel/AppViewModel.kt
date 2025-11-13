@@ -258,6 +258,7 @@ constructor(
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
             }
+            stopScan()
           }
 
           is AuthState.UnauthorizedLogout -> {

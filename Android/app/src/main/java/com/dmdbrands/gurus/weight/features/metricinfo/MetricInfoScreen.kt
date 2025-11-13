@@ -66,14 +66,22 @@ enum class MetricInfoSource {
  * Gets filtered metric keys based on dashboard type.
  * For 4-metric dashboard, returns only BMI, BODY_FAT, MUSCLE_MASS, BODY_WATER.
  * For 12-metric dashboard, returns all available metrics.
+ * WEIGHT is always included regardless of dashboard type.
  *
  * @param dashboardType The dashboard type to determine which metrics to show.
- * @return List of filtered MetricKey values.
+ * @return List of filtered MetricKey values with WEIGHT always included.
  */
 fun getFilteredMetricKeys(dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS): List<MetricKey> {
-  return when (dashboardType) {
+  val filteredMetrics = when (dashboardType) {
     DashboardType.DASHBOARD_4_METRICS -> MetricKey.getDefault4Metrics()
     DashboardType.DASHBOARD_12_METRICS -> MetricKey.getAllMetrics()
+  }
+
+  // Always include WEIGHT, placing it first if not already present
+  return if (filteredMetrics.contains(MetricKey.WEIGHT)) {
+    filteredMetrics
+  } else {
+    listOf(MetricKey.WEIGHT) + filteredMetrics
   }
 }
 
@@ -142,6 +150,7 @@ fun MetricInfoScreenContent(
 
   val dashboardType = metricInfoState.dashboardType ?: DashboardType.DASHBOARD_12_METRICS
   val filteredMetricKeys = getFilteredMetricKeys(dashboardType)
+
 
   val metricKeys = filteredMetricKeys.map {
     MetricInfoKey(
