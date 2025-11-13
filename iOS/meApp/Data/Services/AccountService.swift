@@ -197,7 +197,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Helper to perform the actual logout work (API + local updates)
         let performLogout: @Sendable () async throws -> Void = { [weak self] in
             guard let self else { return }
-            try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout)
+            try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
         }
 
         // Notify observers **before** performing the local logout so UI can react.
@@ -659,18 +659,50 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Deletes all accounts locally, logging out each account first.
+    /// Logs out non-active accounts first, then the active account last to prevent
+    /// premature navigation to the landing screen.
+    /// Uses batch logout to prevent state updates until all accounts are logged out.
     func logOutAllAccounts() async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Logout all accounts requested")
             let allAccounts = try await localRepo.fetchAllAccounts()
-            for account in allAccounts {
+            
+            // Separate accounts into active and non-active using isActiveAccount property
+            let nonActiveAccounts = allAccounts.filter { $0.isActiveAccount != true }
+            let activeAccountToLogout = allAccounts.first { $0.isActiveAccount == true }
+            
+            // Log out non-active accounts first (skip state updates to prevent navigation)
+            for account in nonActiveAccounts {
                 do {
-                    try await logOut(accountId: account.accountId)
-                } catch  {
+                    guard let localAccount = try await localRepo.fetchAccount(byId: account.accountId) else {
+                        continue
+                    }
+                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to logout non-active account \(account.accountId): \(error.localizedDescription)")
                     continue // Ignore errors during logout
                 }
             }
-        } catch {}
+            
+            // Log out the active account last (skip state update to prevent navigation)
+            if let activeAccount = activeAccountToLogout {
+                do {
+                    guard let localAccount = try await localRepo.fetchAccount(byId: activeAccount.accountId) else {
+                        // If account not found, just update state
+                        try await self.updatePublishedState()
+                        return
+                    }
+                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to logout active account \(activeAccount.accountId): \(error.localizedDescription)")
+                    // Continue even if active account logout fails
+                }
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Error during logout all accounts: \(error.localizedDescription)")
+        }
+        
+        // Update state only once at the end to prevent premature navigation
         try await self.updatePublishedState()
         logger.log(level: .info, tag: tag, message: "Logout all accounts completed")
     }
@@ -1101,7 +1133,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
     // MARK: - Private Helpers
     /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
-    private func executeLogout(on localAccount: Account, isAutoLogout: Bool) async throws {
+    /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
+    private func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Executing logout (API) for accountId=\(localAccount.accountId)")
             try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
@@ -1123,7 +1156,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
 
         // Attempt to refresh published state; propagate any errors to the caller
-        try await updatePublishedState()
+        // Skip state update during batch operations to prevent premature navigation
+        if !skipStateUpdate {
+            try await updatePublishedState()
+        }
     }
 
     // MARK: - Migration

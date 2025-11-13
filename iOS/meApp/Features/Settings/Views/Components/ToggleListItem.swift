@@ -69,7 +69,7 @@ struct ToggleListItem: View {
                 .disabled(disableToggle)
             
             // Hide divider when the row is disabled
-            if showDivider && !isDisabled {
+            if showDivider && isOn && !isDisabled {
                 HStack {
                     Divider()
                         .foregroundColor(theme.statusUtilityPrimary)
