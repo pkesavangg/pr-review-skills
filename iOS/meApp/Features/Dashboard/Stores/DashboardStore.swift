@@ -2362,8 +2362,6 @@ class DashboardStore: ObservableObject {
         // After positioning is complete, update Y-axis cache to ensure proper domain calculation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.updateYAxisCache()
-            // Force both grids to rebuild and recalc intrinsic size after re-appearing (fixes half-height issue)
-            self.resetGridLayout()
             self.objectWillChange.send()
         }
         

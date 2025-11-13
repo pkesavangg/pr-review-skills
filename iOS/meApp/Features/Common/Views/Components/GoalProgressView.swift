@@ -6,7 +6,7 @@ import SwiftUI
 struct GoalProgressView: View {
 
     // MARK: - State
-    @StateObject private var viewModel = GoalProgressViewModel()
+    @StateObject private var viewModel: GoalProgressViewModel
 
     // MARK: - Environment
     @Environment(\.appTheme) private var theme
@@ -25,7 +25,15 @@ struct GoalProgressView: View {
     // Optional control to disable the "Set Goal Weight" button from parent contexts
     let isSetGoalButtonDisabled: Bool?
 
+    // Default initializer creates its own model (used across most call sites)
     init(isSetGoalButtonDisabled: Bool? = nil) {
+        _viewModel = StateObject(wrappedValue: GoalProgressViewModel())
+        self.isSetGoalButtonDisabled = isSetGoalButtonDisabled
+    }
+
+    // New initializer allows injecting a persistent model (e.g., from cells)
+    init(viewModel: GoalProgressViewModel, isSetGoalButtonDisabled: Bool? = nil) {
+        _viewModel = StateObject(wrappedValue: viewModel)
         self.isSetGoalButtonDisabled = isSetGoalButtonDisabled
     }
 
@@ -80,16 +88,20 @@ struct GoalProgressView: View {
                 labelForegroundColor: theme.textSubheading
             )
         }
+        .padding(.vertical, .spacingXS)
     }
 
     // MARK: - Maintain goal UI (no progress bar)
     private var maintainGoalView: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            deltaText
-            Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
+        VStack{
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                deltaText
+                Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+            }
         }
+        .padding(.vertical, .spacingMD)
     }
 
     // MARK: - Sub-components
