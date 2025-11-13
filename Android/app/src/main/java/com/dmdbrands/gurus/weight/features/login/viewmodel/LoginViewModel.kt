@@ -101,7 +101,6 @@ constructor(
         handleIntent(LoginIntent.ShowMaxAccountAlert)
       } catch (e: Exception) {
         handleIntent(LoginIntent.Error(e.toString()))
-        AppLog.e(TAG, "Login failed", e)
       } finally {
         dialogQueueService.dismissLoader()
       }

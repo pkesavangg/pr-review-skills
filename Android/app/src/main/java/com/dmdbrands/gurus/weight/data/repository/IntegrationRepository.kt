@@ -26,10 +26,24 @@ class IntegrationRepository @Inject constructor(
   private val integrationAPI: IIntegrationAPI,
   private val accountDao: AccountDao
 ) : IIntegrationRepository {
+  private var integration: Integrations? = null
 
   init {
     CoroutineScope(Dispatchers.IO).launch {
       updateLocalAccount()
+      accountRepository.getActiveAccount().collect {
+        if(it !=null){
+          val integration = Integrations(
+            isFitbitOn = it.isFitbitOn,
+            isFitbitValid = it.isFitbitValid,
+            isHealthConnectOn = it.isHealthConnectOn,
+            healthkit = it.isHealthKitOn,
+            isMFPOn = it.isMFPOn,
+            isMFPValid = it.isMFPValid,
+          )
+          _integrations.value = integration
+        }
+      }
     }
   }
 
@@ -61,35 +75,74 @@ class IntegrationRepository @Inject constructor(
 
   override suspend fun updateLocalAccount() {
     try {
-      val remoteAccount = accountRepository.getActiveAccount().first()
-      if (remoteAccount == null) {
+      val localAccount = accountRepository.getActiveAccount().first()
+      if (localAccount == null) {
         _integrations.value = defaultIntegrations
         return
       }
-      val account = accountRepository.getAccountFromAPI(remoteAccount.id)
-      accountRepository.updateAccountInfo(account.id, account)
+      val remoteAccount = accountRepository.getAccountFromAPI(localAccount.id)
       // Convert to IntegrationsSettingsEntity
       val integrationsSettings = IntegrationsSettingsEntity(
-        accountId = account.id,
-        isFitbitOn = account.isFitbitOn,
-        isFitbitValid = account.isFitbitValid,
-        isHealthConnectOn = account.isHealthConnectOn,
-        isHealthKitOn = account.isHealthKitOn,
-        isMFPOn = account.isMFPOn,
-        isMFPValid = account.isMFPValid,
+        accountId = remoteAccount.id,
+        isFitbitOn = remoteAccount.isFitbitOn,
+        isFitbitValid = remoteAccount.isFitbitValid,
+        isHealthConnectOn = remoteAccount.isHealthConnectOn,
+        isHealthKitOn = remoteAccount.isHealthKitOn,
+        isMFPOn = remoteAccount.isMFPOn,
+        isMFPValid = remoteAccount.isMFPValid,
         isSynced = true,
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
       // Update the integrations flow
       _integrations.value = Integrations(
-        isFitbitOn = account.isFitbitOn,
-        isMFPOn = account.isMFPOn,
-        isFitbitValid = account.isFitbitValid,
-        isMFPValid = account.isMFPValid,
-        isHealthConnectOn = account.isHealthConnectOn,
+        isFitbitOn = remoteAccount.isFitbitOn,
+        isMFPOn = remoteAccount.isMFPOn,
+        isFitbitValid = remoteAccount.isFitbitValid,
+        isMFPValid = remoteAccount.isMFPValid,
+        isHealthConnectOn = remoteAccount.isHealthConnectOn,
       )
     } catch (e: Exception) {
       AppLog.d("IntegrationRepository", "Failed to update local account")
+    }
+  }
+
+  /**
+   * Updates Health Connect integration status offline.
+   * Sets isHealthConnectOn and marks as unsynced (isSynced = false).
+   * Similar to Angular's setHealthConnectIntegrationStatus method.
+   * @param isHealthConnectOn Whether Health Connect integration is enabled
+   */
+  override suspend fun updateHealthConnectIntegrationOffline(isHealthConnectOn: Boolean) {
+    try {
+      val activeAccount = accountRepository.getActiveAccount().first()
+      if (activeAccount == null) {
+        AppLog.w("IntegrationRepository", "No active account found for updating Health Connect integration")
+        return
+      }
+
+      val accountId = activeAccount.id
+
+      // Get current values or use defaults
+      val integrationsSettings = IntegrationsSettingsEntity(
+        accountId = accountId,
+        isFitbitOn = activeAccount.isFitbitOn,
+        isFitbitValid = activeAccount.isFitbitValid,
+        isHealthConnectOn = isHealthConnectOn,
+        isHealthKitOn = activeAccount.isHealthKitOn,
+        isMFPOn = activeAccount.isMFPOn,
+        isMFPValid = activeAccount.isMFPValid,
+        isSynced = false, // Mark as unsynced for offline update
+      )
+
+      // Update in database
+      accountDao.updateIntegrationsSettings(integrationsSettings)
+      AppLog.d("IntegrationRepository", "Updated Health Connect integration status offline: $isHealthConnectOn for account: $accountId")
+
+      // Update the integrations flow
+      val currentIntegrations = _integrations.value ?: defaultIntegrations
+      _integrations.value = currentIntegrations.copy(isHealthConnectOn = isHealthConnectOn)
+    } catch (e: Exception) {
+      AppLog.e("IntegrationRepository", "Failed to update Health Connect integration offline", e)
     }
   }
 }

@@ -598,7 +598,6 @@ constructor(
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
         _latestEntry.value = latest
-
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating latest entry", e)

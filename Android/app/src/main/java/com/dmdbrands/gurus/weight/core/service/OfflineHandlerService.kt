@@ -2,9 +2,9 @@ package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.goal.GoalData
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
@@ -13,10 +13,10 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
-import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -78,11 +78,8 @@ class OfflineHandlerService
      * Syncs profile data for accounts that have unsynced profile changes.
      */
     private suspend fun syncProfileData() {
-      val unSyncedAccount = accountRepository.getUnsyncedActiveAccount()
-      if(unSyncedAccount == null){
-        return
-      }
-        try {
+      val unSyncedAccount = accountRepository.getUnsyncedActiveAccount() ?: return
+      try {
           val profileUpdateRequest =
             ProfileUpdateRequest(
               id = unSyncedAccount.id,

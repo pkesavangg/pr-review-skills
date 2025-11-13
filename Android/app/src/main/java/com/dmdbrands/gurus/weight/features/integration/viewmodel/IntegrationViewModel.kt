@@ -452,21 +452,19 @@ class IntegrationViewModel @Inject constructor(
         AppLog.d(TAG, "Disconnecting from ${integration.provider}")
         // Show loading while disconnecting
         dialogQueueService.showLoader("Disconnecting...")
-
         // Attempt to disconnect
         integrationService.disconnectIntegration(integration.provider)
-
         // Only update UI after successful disconnection
         refreshIntegrationStatus() // This will get fresh state from server
-
         AppLog.d(TAG, "Successfully disconnected from ${integration.provider}")
         dialogQueueService.dismissLoader()
-
         // Show success toast
-        dialogQueueService.showToast(
-          Toast(
-            message = "Successfully disconnected from ${integration.name}",
-          ),
+        dialogQueueService.showDialog(
+          DialogModel.Alert(
+            "Done!","",
+            onDismiss = {dialogQueueService.dismissCurrent()}
+          )
+
         )
       } catch (e: Exception) {
         AppLog.e(
@@ -475,16 +473,6 @@ class IntegrationViewModel @Inject constructor(
           e,
         )
         dialogQueueService.dismissLoader()
-
-        // Show error toast
-        dialogQueueService.showToast(
-          Toast(
-            message = "Failed to disconnect from ${integration.name}",
-          ),
-        )
-
-        // Refresh to ensure UI shows correct state
-        refreshIntegrationStatus()
       }
     }
   }

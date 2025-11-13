@@ -236,9 +236,10 @@ interface IAccountRepository {
   /**
    * Syncs all account settings with server data.
    * Updates local database with the latest settings from server.
-   * @param accountInfo The account info from server containing latest settings
+   * @param accountInfo The account info from server or local account containing latest settings
+   * @param isOnline Whether the sync is from online API call (true) or offline local data (false)
    */
-  suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo)
+  suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo, isOnline: Boolean = true)
 
   /**
    * Gets whether the notification alert has been shown for the specified account.
