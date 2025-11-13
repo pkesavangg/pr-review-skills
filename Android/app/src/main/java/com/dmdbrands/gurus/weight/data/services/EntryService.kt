@@ -119,7 +119,6 @@ constructor(
   private var accountId: String? = null
   private var initialWeight: Double? = null
 
-
   /**
    * Initializes goal card monitoring by checking entry count and setting up listeners.
    * This function monitors the lastUpdated flow and checks if the user has enough entries
@@ -537,7 +536,7 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -571,7 +570,7 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -580,13 +579,13 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
       lastValidOperation?.let {
         // Get weight from the latest entry if it's a ScaleEntry
-        val latestWeight = when (val latest = _latestEntry.value ) {
+        val latestWeight = when (val latest = _latestEntry.value) {
           is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
           else -> null
         }
@@ -596,7 +595,6 @@ constructor(
         }
 
       }
-
 
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
@@ -670,13 +668,13 @@ constructor(
     }
 
     try {
-      var week = 0.0
+      var week: Double? = null
       var initWeek: Entry? = null
-      var month = 0.0
+      var month: Double? = null
       var initMonth: Entry? = null
-      var year = 0.0
+      var year: Double? = null
       var initYear: HistoryMonth? = null
-      var total = 0.0
+      var total: Double? = null
       var startingWeight: Double? = null
       var oldestEntry: Entry? = null
 
