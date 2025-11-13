@@ -35,7 +35,6 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
 import android.content.Context
-import android.util.Log
 
 /**
  * Main database class for the MeApp application.
@@ -103,8 +102,6 @@ abstract class AppDatabase : RoomDatabase() {
 
                   WorkManager.getInstance(context.applicationContext)
                     .enqueue(migrationWork)
-
-                  Log.i("AppDatabase", "Ionic migration worker started")
                 }
               },
             )

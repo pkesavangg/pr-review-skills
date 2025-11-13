@@ -243,8 +243,6 @@ constructor(
         // Create ScaleEntry directly from AppSyncResult with calculated BMI
         val scaleEntry =
           result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height)
-        Log.i("CHECKING01", "$scaleEntry")
-        Log.i("CHECKING02", "${scaleEntry.toScaleApiEntry()}")
         appSyncService.setAppSyncData(storedEntry)
         dialogUtility.showEntrySyncPopup(
           entry = scaleEntry,

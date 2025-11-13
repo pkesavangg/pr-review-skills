@@ -206,8 +206,6 @@ fun AppSyncScanScreen(
 
             // Main scanning interface when camera permission is granted
             hasCameraPermission -> {
-                Log.i("CHECK", AppSyncStrings.Initializes1)
-
                 // Camera preview component with callbacks
                 CameraPreview(
                     onCameraReady = { camera, cameraControl, cameraInfo ->
