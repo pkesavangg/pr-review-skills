@@ -66,7 +66,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -235,23 +234,12 @@ constructor(
   private fun replaceAccount(userName: String? = null) {
     try {
       viewModelScope.launch {
-        if (userName == null) {
-          ggDeviceService.deleteAccount(discoveredScale!!.toGGBTDevice()) {
-            // After deleting account, refresh the user list
-            refreshUserListAfterAccountChange()
-          }
-          handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-        } else {
           discoveredScale =
             discoveredScale!!.copy(
               preferences = discoveredScale!!.preferences?.copy(displayName = userName),
             )
-          // After updating account, refresh the user list
-          refreshUserListAfterAccountChange()
           handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
           handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
-        }
       }
     } catch (e: Exception) {
       AppLog.d(TAG, "Error replacing account ")
@@ -294,7 +282,6 @@ constructor(
         token = token,
       )
       ggDeviceService.deleteAccount(minimalDevice) {
-        refreshUserListAfterAccountChange()
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error deleting user with token: $token", e)
@@ -331,7 +318,6 @@ constructor(
         onConfirm = {
           // Delete duplicate users and restore account
           viewModelScope.launch {
-            checkDuplicateUserList()
             deleteUsers()
           }
         },
@@ -408,7 +394,7 @@ constructor(
 
             BtWifiSetupStep.DUPLICATES_FOUND -> {
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Save))
-              checkDuplicateUserList()
+
             }
 
             BtWifiSetupStep.GATHERING_NETWORK -> {
@@ -473,9 +459,22 @@ constructor(
     when (currentState.currentStep) {
       BtWifiSetupStep.SCALE_INFO -> {
         viewModelScope.launch {
-          permissionAccess()
+          // Check if all required permissions are already enabled
+          val areRequiredPermissionsEnabled =
+            AppPermissionsHelper.areRequiredPermissionsEnabled(
+              currentState.permissions,
+              setupType = ScaleSetupType.BtWifiR4,
+            )
+          if (areRequiredPermissionsEnabled) {
+            // All permissions enabled - skip PERMISSIONS step and go directly to WAKEUP
+            AppLog.d(TAG, "All permissions already enabled, skipping PERMISSIONS step")
+            handleIntent(SetCurrentStep(BtWifiSetupStep.WAKEUP))
+          } else {
+            // Some permissions missing - proceed to PERMISSIONS step
+            permissionAccess()
+            handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+          }
         }
-        handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
         return
       }
 
@@ -1057,13 +1056,18 @@ constructor(
 
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
               viewModelScope.launch {
+                fetchUserList()
+                AppLog.d(TAG, "Found duplicate user1: ${discoveredScale?.preferences?.displayName}")
+                AppLog.d(TAG, "Found duplicate user2: ${_state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }}")
+                AppLog.d(TAG, "Found duplicate user3: ${accountService.activeAccountFlow.first()?.firstName?.take(20)}")
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
                   ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
+                AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
+                checkDuplicateUserList()
                 if (duplicateUserName != null) {
                   AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
-                  fetchUserList(duplicateUserName = duplicateUserName)
                   handleIntent(SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND))
                 } else {
                   // If we still can't get a username, log error and show generic error
@@ -1108,12 +1112,15 @@ constructor(
    * Checks for duplicate users and creates a list of users to be deleted.
    * Similar to Angular's checkDuplicateUserList() method.
    */
-  private fun checkDuplicateUserList() {
+  private suspend fun checkDuplicateUserList() {
     try {
-      val currentUserName = _state.value.usernameForm.username.value
+      val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
       val currentUser = state.value.userList.find { user ->
         user.name.equals(currentUserName, ignoreCase = true)
       }
+      AppLog.e(TAG, "Error checking duplicate user list $currentUser")
+      AppLog.e(TAG, "Error checking duplicate user list ${state.value.userList}")
+      handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(currentUser))
 
       if (currentUser != null) {
         // Create a list of duplicate users (same name)
@@ -1127,12 +1134,10 @@ constructor(
     }
   }
 
-  private fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
+  private suspend fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
     try {
-      viewModelScope.launch {
         val userList = suspendCoroutine { continuation ->
           ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-
             if (duplicateUserName != null) {
               val user = response.user.first { it.name == duplicateUserName }
               // Don't update discoveredScale token here - keep the original token for proper filtering
@@ -1143,8 +1148,8 @@ constructor(
           }
         }
         val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
+        AppLog.e(TAG, " during fetching user list $userList")
         handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
-      }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e)
       // Show error state to user
@@ -1711,7 +1716,6 @@ constructor(
   }
 
   private suspend fun customizeDevice(ggDeviceDetail: GGDeviceDetail) {
-    Log.d("savedscale", "$ggDeviceDetail -hello$discoveredScale")
     val username =
       discoveredScale?.preferences?.displayName ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
       ?: "Default"
@@ -1772,10 +1776,8 @@ constructor(
               )
               ggDeviceService.deleteAccount(deleteDevice!!.toGGBTDevice()) {
                 // After deleting user, refresh the user list to keep it in sync
-                refreshUserListAfterAccountChange()
               }
-              handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-              handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+              restartConnection()
             }
           },
         ),

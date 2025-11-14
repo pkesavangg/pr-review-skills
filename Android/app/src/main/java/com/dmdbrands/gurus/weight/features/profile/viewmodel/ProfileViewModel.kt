@@ -141,7 +141,7 @@ class ProfileViewModel @Inject constructor(
               )
             }
 
-            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED, GGUserActionResponseType.EXCEPTION_ENCOUNTERED -> {
               dialogQueueService.showToast(
                 Toast(
                   ToastStrings.Success.UpdateProfileSuccess.Message,
