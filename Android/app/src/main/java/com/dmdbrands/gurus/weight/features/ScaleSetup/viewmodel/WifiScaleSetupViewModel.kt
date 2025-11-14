@@ -99,6 +99,8 @@ constructor(
     observeStepChanges()
     getNetworkInfo()
     getScaleToken()
+    // Start monitoring network status
+    monitorNetworkStatus()
     // Observe selectedWifiMode changes and update canProceedToNext in WIFI_MODE step
     viewModelScope.launch {
       state.collect { currentState ->
@@ -502,7 +504,7 @@ constructor(
         wifiStatus = status
 
         // Update SSID if it changed
-        if (status.ssid.isNotEmpty() && status.ssid != lastSsid) {
+        if (status.ssid.isNotEmpty()) {
           lastSsid = status.ssid
           handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
           updateFormValuesWithSsid(status.ssid)
@@ -526,12 +528,36 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-          lastSsid = status.ssid
           handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
           updateFormValuesWithSsid(status.ssid)
         handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
       } catch (e: Exception) {
       }
+    }
+  }
+
+  /**
+   * Monitors network status continuously, updating every 1.5 seconds.
+   * Equivalent to TypeScript monitorNetworkStatus()
+   * Runs until the ViewModel is destroyed.
+   */
+  private fun monitorNetworkStatus() {
+    viewModelScope.launch {
+      while (!isDestroyed) {
+        try {
+          updateNetworkStatus()
+
+          if (scaleToken.isNullOrEmpty()) {
+            getScaleToken()
+          }
+        } catch (err: Exception) {
+          AppLog.e(TAG, "monitorNetworkStatus - Error monitoring network status", err)
+        } finally {
+          // Wait 1.5 seconds before next iteration
+          delay(1500)
+        }
+      }
+      AppLog.d(TAG, "monitorNetworkStatus - Stopped monitoring (ViewModel destroyed)")
     }
   }
 
@@ -719,10 +745,6 @@ constructor(
     if (shouldAutoPopulate) {
       // Check if we're on early steps (index < 3) - equivalent to TypeScript condition
       val isEarlyStep = currentStepIndex < 3
-      AppLog.d(
-        TAG,
-        "updateFormValuesWithSsid - SSID: $ssid, currentStep: $currentStep, currentStepIndex: $currentStepIndex, isEarlyStep: $isEarlyStep, isWifiSwitchingContext: $isWifiSwitchingContext, arePermissionsCurrentlyEnabled: $arePermissionsCurrentlyEnabled",
-      )
       if (isEarlyStep) {
         // On early steps (index < 3), only fill WiFi password form
         // Update WiFi password form SSID if on relevant steps

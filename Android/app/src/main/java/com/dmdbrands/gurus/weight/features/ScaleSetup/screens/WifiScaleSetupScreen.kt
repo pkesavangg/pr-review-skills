@@ -207,20 +207,13 @@ fun WifiScaleSetupScreenContent(
                 toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
                 onToggleChanged = { isChecked ->
                   state.wifiPasswordForm.noPasswordNetwork.onValueChange(isChecked)
-                  // Update validation based on toggle state
                   if (isChecked) {
-                    // No password network - remove all password validators
-                    // Remove validators first (they check against current value)
                     state.wifiPasswordForm.password.removeValidator("required")
                     state.wifiPasswordForm.password.removeValidator("Invalid")
-                    // Then reset to clear value, error, touched, dirty, and pending states
-                    // Reset already clears errors, and validators are removed so no errors will be set
                     state.wifiPasswordForm.password.reset("")
                   } else {
-                    // Password network - add validators back
                     state.wifiPasswordForm.password.addValidator(FormValidations.required())
                     state.wifiPasswordForm.password.addValidator(FormValidations.minLength(1, LoginStrings.PasswordLabel))
-                    // Reset to clear any stale errors before validation runs
                     state.wifiPasswordForm.password.reset("")
                   }
                 },
