@@ -272,7 +272,11 @@ final class LoginStore: ObservableObject {
     func handleExit(router: Router<AuthRoute>? = nil) {
         if !loginForm.isDirty {
             if isFromAccountSwitching {
-                onAccountSwitchingExit?() ?? dismissAction?()
+                if let exitHandler = onAccountSwitchingExit {
+                    exitHandler()
+                } else {
+                    dismissAction?()
+                }
             } else {
                 router?.navigateBack()
             }
@@ -285,7 +289,11 @@ final class LoginStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: loginExitAlert.exitButton, type: .primary) { _ in
                     if self.isFromAccountSwitching {
-                        self.onAccountSwitchingExit?() ?? self.dismissAction?()
+                        if let exitHandler = self.onAccountSwitchingExit {
+                            exitHandler()
+                        } else {
+                            self.dismissAction?()
+                        }
                     } else {
                         router?.navigateBack()
                     }
