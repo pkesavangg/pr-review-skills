@@ -41,11 +41,7 @@ struct LoginScreen: View {
                     }
                 },
                 onLeadingTap: {
-                    if isFromAccountSwitching {
-                        store.handleExit()
-                    } else {
-                        router.navigateBack()
-                    }
+                    store.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
                 onTrailingTap: {  },
                 canShowBorder: isFromAccountSwitching,
@@ -187,6 +183,10 @@ struct LoginScreen: View {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {
                 store.dismissAction = dismiss
+                // Set up exit handler to dismiss the sheet
+                store.onAccountSwitchingExit = {
+                    dismiss()
+                }
             } else {
                 store.onLoginSuccess = { router.navigateBack() }
             }

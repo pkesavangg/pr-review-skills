@@ -426,8 +426,8 @@ struct AlertStrings {
     struct LoginExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let goBackButton = "Go Back"
-        static let yesExitButton = "Yes, Exit"
+        static let returnButton = "Return"
+        static let exitButton = "Exit"
     }
 
     struct DeleteUserAlert {

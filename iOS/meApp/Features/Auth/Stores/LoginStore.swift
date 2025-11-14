@@ -73,6 +73,7 @@ final class LoginStore: ObservableObject {
     var onOpenPrivacy: (() -> Void)?
     var onOpenTerms: (() -> Void)?
     var onOpenHelp: (() -> Void)?
+    var onAccountSwitchingExit: (() -> Void)?
 
     // Services (inject as needed)
     @Injector var accountService: AccountService
@@ -268,9 +269,13 @@ final class LoginStore: ObservableObject {
         ))
     }
     
-    func handleExit() {
+    func handleExit(router: Router<AuthRoute>? = nil) {
         if !loginForm.isDirty {
-            self.dismissAction?()
+            if isFromAccountSwitching {
+                onAccountSwitchingExit?() ?? dismissAction?()
+            } else {
+                router?.navigateBack()
+            }
             return
         }
         let loginExitAlert = alertLang.LoginExitAlert
@@ -278,10 +283,14 @@ final class LoginStore: ObservableObject {
             title: loginExitAlert.title,
             message: loginExitAlert.message,
             buttons: [
-                AlertButtonModel(title: loginExitAlert.yesExitButton, type: .primary) { _ in
-                    self.dismissAction?()
+                AlertButtonModel(title: loginExitAlert.exitButton, type: .primary) { _ in
+                    if self.isFromAccountSwitching {
+                        self.onAccountSwitchingExit?() ?? self.dismissAction?()
+                    } else {
+                        router?.navigateBack()
+                    }
                 },
-                AlertButtonModel(title: loginExitAlert.goBackButton, type: .secondary) { _ in }
+                AlertButtonModel(title: loginExitAlert.returnButton, type: .secondary) { _ in 
             ]
         )
         notificationService.showAlert(alert)
