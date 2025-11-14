@@ -1,6 +1,6 @@
 struct MetricStrings {
     static let weight = "Weight"
-    static let bmi = "Body Mass Index"
+    static let bmi = "bmi"
     static let bodyFat = "Body Fat"
     static let muscleMass = "Muscle Mass"
     static let bodyWater = "Body Water"
