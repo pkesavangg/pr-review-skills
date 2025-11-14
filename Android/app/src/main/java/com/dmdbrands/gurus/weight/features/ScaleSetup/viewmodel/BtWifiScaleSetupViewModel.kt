@@ -1057,9 +1057,6 @@ constructor(
             GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
               viewModelScope.launch {
                 fetchUserList()
-                AppLog.d(TAG, "Found duplicate user1: ${discoveredScale?.preferences?.displayName}")
-                AppLog.d(TAG, "Found duplicate user2: ${_state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }}")
-                AppLog.d(TAG, "Found duplicate user3: ${accountService.activeAccountFlow.first()?.firstName?.take(20)}")
                 // Get duplicate username from either scale preferences or active account
                 val duplicateUserName = discoveredScale?.preferences?.displayName
                   ?: _state.value.usernameForm.username.value.takeIf { it.isNotEmpty() }
