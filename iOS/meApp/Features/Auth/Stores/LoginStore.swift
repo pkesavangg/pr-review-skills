@@ -290,7 +290,8 @@ final class LoginStore: ObservableObject {
                         router?.navigateBack()
                     }
                 },
-                AlertButtonModel(title: loginExitAlert.returnButton, type: .secondary) { _ in 
+                AlertButtonModel(title: loginExitAlert.returnButton, type: .secondary) { _ in
+                }
             ]
         )
         notificationService.showAlert(alert)
