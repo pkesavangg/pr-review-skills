@@ -15,11 +15,18 @@ struct HistoryMetricItem: View {
 
     let metric: MetricData
     let value: Int
-    let isAlternate: Bool
+    let index: Int
+    let size: Int
     let onTap: () -> Void
     
     // iOS 17 fix: Prevent tap spam
     @State private var lastTapTime: Date = Date.distantPast
+   
+    // MARK: - Computed Properties
+    /// Returns the background color based on index and total size, matching Android implementation
+    private var backgroundColor: Color {
+        (size == 1 || index % 2 != 0) ? theme.backgroundPrimary : theme.backgroundSecondary
+    }
 
     // MARK: - Body
 
@@ -57,7 +64,7 @@ struct HistoryMetricItem: View {
         }
         .padding(.vertical, .spacingSM)
         .padding(.horizontal, .spacingSM)
-        .background(isAlternate ? theme.backgroundPrimary : theme.backgroundSecondary)
+        .background(backgroundColor)
         .contentShape(Rectangle()) // iOS 17 fix: Ensure consistent tap area
         .onTapGesture {
             // iOS 17 fix: Debounce taps to prevent rapid fire
@@ -76,7 +83,8 @@ struct HistoryMetricItem_Previews: PreviewProvider {
             HistoryMetricItem(
                 metric: BodyMetrics.config[.bmi]!,
                 value: 73,
-                isAlternate: false,
+                index: 0,
+                size: 1,
                 onTap: {}
             )
         }
