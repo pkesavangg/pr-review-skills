@@ -495,6 +495,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             
             // 6. Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
+            await checkGoalAlerts()
             
             await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
             
@@ -853,6 +854,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                   let weight = latestEntry.scaleEntry?.weight else { return }
             // Weight is stored as tenths of lbs – cast to Double for compatibility
             await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
+            
+            // Also check if "Set a Goal" card should be shown (when 3+ entries and no goal)
+            await goalAlertService.checkSetGoalCard()
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
         }
