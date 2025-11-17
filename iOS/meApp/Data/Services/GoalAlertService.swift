@@ -23,7 +23,6 @@ final class GoalAlertService: ObservableObject {
     @Injector private var accountService: AccountService
     @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
-    @Injector private var entryService: EntryService
 
     // MARK: - Public Callback
     /// Assigned by the UI layer (e.g. `BottomTabBarViewModel`) so the service can
@@ -94,7 +93,8 @@ final class GoalAlertService: ObservableObject {
     }
     
     /// Checks if the "Set a Goal" card should be shown when user has 3+ entries but no goal set.
-    func checkSetGoalCard() async {
+    /// - Parameter entryCount: The current number of entries for the user
+    func checkSetGoalCard(entryCount: Int) async {
         // Don't show if already showing an alert
         guard !isShowingAlert else { return }
         
@@ -113,40 +113,39 @@ final class GoalAlertService: ObservableObject {
         }
         
         // Check entries count
-        do {
-            let entries = try await entryService.getAllEntries()
-            guard entries.count >= 3 else { return }
-            
-            // Check if popup has been shown before
-            let storageKey = goalCardStatusStorageKey(for: account.accountId)
-            if let hasBeenShown = kv.getValue(forKey: storageKey) as? Bool, hasBeenShown {
-                return
-            }
-            
-            // Mark as shown
-            kv.setValue(true, forKey: storageKey)
-            
-            // Show the SetAGoalCardView modal
-            await presentSetGoalCard()
-        } catch {
-            await logger.log(level: .error, tag: tag, message: "Failed to check set goal card: \(error.localizedDescription)")
+        guard entryCount >= 3 else { return }
+        
+        // Check if popup has been shown before
+        let storageKey = goalCardStatusStorageKey(for: account.accountId)
+        if let hasBeenShown = kv.getValue(forKey: storageKey) as? Bool, hasBeenShown {
+            return
         }
+        
+        // Show the SetAGoalCardView modal (flag will be set after successful presentation)
+        await presentSetGoalCard(accountId: account.accountId)
     }
     
     private func goalCardStatusStorageKey(for accountId: String) -> String {
-        return "\(accountId)_goalCardStatus"
+        return "\(accountId)-goalCardStatus"
     }
     
-    private func presentSetGoalCard() async {
+    private func presentSetGoalCard(accountId: String) async {
         isShowingAlert = true
+        
+        let storageKey = goalCardStatusStorageKey(for: accountId)
         
         let cardView = SetAGoalCardView(
             onClose: { [weak self] in
-                self?.notificationService.dismissModal()
-                self?.isShowingAlert = false
+                guard let self else { return }
+                // Mark as shown when user closes the modal
+                self.kv.setValue(true, forKey: storageKey)
+                self.notificationService.dismissModal()
+                self.isShowingAlert = false
             },
             onSetGoal: { [weak self] in
                 guard let self else { return }
+                // Mark as shown when user taps "Set Goal"
+                self.kv.setValue(true, forKey: storageKey)
                 self.notificationService.dismissModal()
                 self.isShowingAlert = false
                 self.handleNewGoalAction()

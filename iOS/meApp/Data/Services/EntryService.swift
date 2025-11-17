@@ -856,7 +856,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await goalAlertService.showGoalMetMessage(currentWeight: Double(weight))
             
             // Also check if "Set a Goal" card should be shown (when 3+ entries and no goal)
-            await goalAlertService.checkSetGoalCard()
+            // Get entry count to pass as parameter (avoiding circular dependency)
+            let entryCount = try await getEntryCount()
+            await goalAlertService.checkSetGoalCard(entryCount: entryCount)
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to evaluate goal alerts: \(error.localizedDescription)")
         }
