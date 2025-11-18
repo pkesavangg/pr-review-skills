@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -98,6 +99,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
                     message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
                     confirmText = HistoryDetailScreenStrings.DeleteButton,
                     cancelText = HistoryDetailScreenStrings.CancelButton,
+                    primaryActionType = ButtonType.ErrorText,
                     onConfirm = {
                         AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
                         dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
