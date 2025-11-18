@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
@@ -89,7 +90,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
       if (canDisplayMilestone) {
         GoalMilestoneDisplay(
           account = state.account,
-          latestWeight = state.latestWeight,
+          latestWeight = AccountHelper.processStoredWeightToDisplay(state.latestWeight?.times(10), state.account.weightUnit),
           modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.md),
         )
       }

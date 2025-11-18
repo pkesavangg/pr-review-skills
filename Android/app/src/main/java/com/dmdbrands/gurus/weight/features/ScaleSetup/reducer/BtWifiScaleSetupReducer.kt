@@ -111,6 +111,7 @@ data class BtWifiScaleSetupState(
   val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
   val scaleMetrics: List<String> = ScaleMetricsHelper.getAllMetrics(),
   val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
+  val latestWeight: Double? = null, // Latest weight from entry service
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -219,6 +220,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
   data class UpdateUsernameForm(
     val username: String,
   ) : BtWifiScaleSetupIntent
+
+  data class SetLatestWeight(
+    val latestWeight: Double?,
+  ) : BtWifiScaleSetupIntent
 }
 
 /**
@@ -299,6 +304,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
           )
         )
       )
+      is BtWifiScaleSetupIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
 
       else -> state
     }

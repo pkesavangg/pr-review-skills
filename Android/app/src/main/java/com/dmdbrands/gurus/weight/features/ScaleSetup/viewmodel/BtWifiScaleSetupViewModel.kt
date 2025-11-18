@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApi
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -160,6 +161,7 @@ constructor(
     observePermissions()
     observeStepChanges()
     initializeSetup()
+    subscribeLatestWeight()
     viewModelScope.launch {
       accountId = accountService.activeAccountFlow.first()?.id
     }
@@ -371,8 +373,22 @@ constructor(
   }
 
   /**
-   * Observes step changes and triggers appropriate functions when steps change.
+   * Subscribes to the latest entry from entry service and updates latestWeight in state.
+   * Similar to DashboardViewModel's subscribeLatestWeight implementation.
    */
+  private fun subscribeLatestWeight() {
+    viewModelScope.launch {
+      entryService.latestEntry.collect { latestEntry ->
+        val latestWeight =
+          when (latestEntry) {
+            is ScaleEntry -> latestEntry.scale.scaleEntry.weight
+            else -> null
+          }
+        handleIntent(BtWifiScaleSetupIntent.SetLatestWeight(latestWeight))
+      }
+    }
+  }
+
   private fun observeStepChanges() {
     viewModelScope.launch {
       var previousStep: BtWifiSetupStep? = null

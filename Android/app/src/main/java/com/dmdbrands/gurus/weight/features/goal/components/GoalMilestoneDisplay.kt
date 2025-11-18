@@ -67,8 +67,7 @@ fun GoalMilestoneDisplay(
     type = goalType.value,
   ).process(targetUnit, null)
   val weightlessWeight = account.weightlessWeight
-  // we are sending goal weight and initial weight from account which is coming as stored weight
-  // Calculate goal percentage using the same logic as GoalViewModel and GoalService
+  // Assume  latest weight always comes from server
   val goalPercent =
   calculateGoalPercentage(
     goalType = goalType,
@@ -155,10 +154,10 @@ private fun MaintainGoalDisplay(
 ) {
   val isWeightlessOn = account.isWeightlessOn ?: false
   val weightUnit = account.weightUnit
-  val displayCurrentWeight =
-      AccountHelper.processStoredWeightToDisplay((currentWeight * 10), weightUnit)
-  val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
+  val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay((currentWeight * 10), weightUnit)
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, weightUnit)
+
+  val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
   val distanceText =
     GoalDisplayHelper.computeToGoal(
       displayGoalWeight,
