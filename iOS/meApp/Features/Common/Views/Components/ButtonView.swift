@@ -18,8 +18,9 @@ struct ButtonView: View {
     var alignment: Alignment = .center
     /// Optional override for background color for styles that support it (e.g., .filledPrimary)
     var backgroundColorOverride: Color? = nil
-    /// Debounce interval in seconds. Default is 0.5 seconds. Set to 0 to disable debouncing.
-    var debounceInterval: TimeInterval = 0.5
+    /// Throttle interval in seconds. Default is 0.5 seconds. Set to 0 to disable throttling.
+    /// With throttle, the first tap executes immediately, and subsequent taps within the interval are ignored.
+    var throttleInterval: TimeInterval = 0.5
     let action: () -> Void
     
     @State private var lastTapTime: Date = Date.distantPast
@@ -29,8 +30,8 @@ struct ButtonView: View {
             let now = Date()
             let timeSinceLastTap = now.timeIntervalSince(lastTapTime)
             
-            // If debounce is disabled (interval is 0) or enough time has passed, execute the action
-            if debounceInterval == 0 || timeSinceLastTap >= debounceInterval {
+            // Execute immediately if throttle is disabled or enough time has passed since last tap
+            if throttleInterval == 0 || timeSinceLastTap >= throttleInterval {
                 lastTapTime = now
                 action()
             }
