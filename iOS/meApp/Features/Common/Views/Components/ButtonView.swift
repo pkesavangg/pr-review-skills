@@ -18,10 +18,24 @@ struct ButtonView: View {
     var alignment: Alignment = .center
     /// Optional override for background color for styles that support it (e.g., .filledPrimary)
     var backgroundColorOverride: Color? = nil
+    /// Throttle interval in seconds. Default is 0.5 seconds. Set to 0 to disable throttling.
+    /// With throttle, the first tap executes immediately, and subsequent taps within the interval are ignored.
+    var throttleInterval: TimeInterval = 0.5
     let action: () -> Void
     
+    @State private var lastTapTime: Date = Date.distantPast
+    
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            let now = Date()
+            let timeSinceLastTap = now.timeIntervalSince(lastTapTime)
+            
+            // Execute immediately if throttle is disabled or enough time has passed since last tap
+            if throttleInterval == 0 || timeSinceLastTap >= throttleInterval {
+                lastTapTime = now
+                action()
+            }
+        }) {
             Text(text.uppercased())
                 .fontWeight(.bold)
                 .fontOpenSans(size == .large ? .button1 : .button2)
