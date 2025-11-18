@@ -253,7 +253,7 @@ constructor(
                     }
                   }
                 }
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Close"))
+                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               } else {
                 handleIntent(WifiScaleSetupIntent.SetNextButtonText("Save"))
