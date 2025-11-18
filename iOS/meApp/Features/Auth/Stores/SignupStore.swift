@@ -336,6 +336,9 @@ final class SignupStore: ObservableObject {
                 guard let self = self else { return }
                 let oldMetricValue = self.previousMetricValue
                 
+                // Update validators first to ensure validation uses correct unit constraints
+                self.updateWeightValidators(isMetric: isMetric)
+                
                 // Convert weight values when switching units
                 if !self.signupForm.currentWeight.value.isEmpty {
                     let convertedCurrentWeight = ConversionTools.convertDisplayWeightValue(
@@ -344,10 +347,6 @@ final class SignupStore: ObservableObject {
                         toMetric: isMetric
                     )
                     self.signupForm.currentWeight.value = convertedCurrentWeight
-                    // Re-validate after conversion
-                    self.signupForm.currentWeight.validate()
-                } else {
-                    // Re-validate empty fields to ensure validators are updated for future input
                     self.signupForm.currentWeight.validate()
                 }
                 
@@ -358,15 +357,10 @@ final class SignupStore: ObservableObject {
                         toMetric: isMetric
                     )
                     self.signupForm.goalWeight.value = convertedGoalWeight
-                    // Re-validate after conversion
-                    self.signupForm.goalWeight.validate()
-                } else {
-                    // Re-validate empty fields to ensure validators are updated for future input
                     self.signupForm.goalWeight.validate()
                 }
                 
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
-                self.updateWeightValidators(isMetric: isMetric)
                 
                 // Update previous value for next change
                 self.previousMetricValue = isMetric

@@ -89,6 +89,10 @@ final class ConversionTools {
     }
     
     /// Converts display weight value between units when metric setting changes.
+    /// - Parameters:
+    ///   - value: The weight value as a string to convert
+    ///   - fromMetric: Whether the source value is in metric units
+    ///   - toMetric: Whether to convert to metric units
     /// - Returns: Converted weight value as string with one decimal place
     static func convertDisplayWeightValue(_ value: String, fromMetric: Bool, toMetric: Bool) -> String {
         guard !value.isEmpty, fromMetric != toMetric else { return value }
