@@ -136,37 +136,40 @@ fun ScaleModeSettingsScreen(
       }
     } else {
       // Weight Only Mode UI
-      Row(
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-      ) {
-        AppIcon(
-          id = AppIcons.Default.WeightOnlyMode,
-          contentDescription = "Weight Only Mode",
-          type = AppIconType.Default,
-        )
-        AppText(
-          text = ScaleModeStrings.WeightOnlyIndicator,
-          textType = TextType.SubHeading,
-        )
-      }
       Column(
-        modifier = Modifier.align(Alignment.CenterHorizontally),
       ) {
-        Image(
-          painter =
-            painterResource(
-              id = AppIcons.Default.WeightOnlyModeScale,
-            ),
-          contentDescription = null,
-          modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally).padding(top = spacing.md, bottom = spacing.lg),
-        )
+        Row(
+          modifier = Modifier.align(Alignment.CenterHorizontally),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+        ) {
+          AppIcon(
+            id = AppIcons.Default.WeightOnlyMode,
+            contentDescription = "Weight Only Mode",
+            type = AppIconType.Default,
+          )
+          AppText(
+            text = ScaleModeStrings.WeightOnlyIndicator,
+            textType = TextType.SubHeading,
+          )
+        }
+        Column(
+          modifier = Modifier.align(Alignment.CenterHorizontally),
+        ) {
+          Image(
+            painter =
+              painterResource(
+                id = AppIcons.Default.WeightOnlyModeScale,
+              ),
+            contentDescription = null,
+            modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally).padding(bottom = spacing.lg),
+          )
 
-        AppNote(
-          message = ScaleModeStrings.NoteOtherUsers,
-          showNote = true,
-        )
+          AppNote(
+            message = ScaleModeStrings.NoteOtherUsers,
+            showNote = true,
+          )
+        }
       }
     }
   }
