@@ -15,7 +15,7 @@ import retrofit2.http.Path
  */
 interface IFeedAPI {
   companion object {
-    const val FEED = "feed/"
+    const val FEED = "feed"
     const val IAM = "iam"
     const val FEED_IAM = FEED + IAM // "feed/iam"
   }
@@ -24,7 +24,7 @@ interface IFeedAPI {
    * Fetches all feed items from the backend. (GET /feed/iam)
    * @return List of feed items
    */
-  @GET(FEED + IAM)
+  @GET(FEED)
   suspend fun fetchFeedItems(
     @Header(HttpClient.ACCOUNT_ID_HEADER) accountId: String,
   ): List<FeedItem>

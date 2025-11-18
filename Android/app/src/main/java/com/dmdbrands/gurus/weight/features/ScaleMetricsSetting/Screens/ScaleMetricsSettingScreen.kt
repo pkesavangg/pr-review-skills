@@ -51,7 +51,16 @@ fun ScaleMetricsSettingScreen(
         metric
       }
     }
-    mutableStateOf(updatedBodyMetrics)
+
+    // If heartRate is excluded, move it to the end
+    val reorderedMetrics = if (!includeHeartRate) {
+      val heartRateMetric = updatedBodyMetrics.find { it.key == "heartRate" }
+      val others = updatedBodyMetrics.filterNot { it.key == "heartRate" }
+      if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
+    } else {
+      updatedBodyMetrics
+    }
+    mutableStateOf(reorderedMetrics)
   }
   // Displayed list respects showAllMetrics, but state remains full
   val displayedBodyMetrics = if (showAllMetrics) {

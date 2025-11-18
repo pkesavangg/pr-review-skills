@@ -71,7 +71,7 @@ object HealthConnectStrings  {
   object FinishConnectStrings {
     const val Title = "Integration Connected"
     const val Description =
-      "Manage settings anytime by opening Health Connect and going to"
+      "Manage settings anytime by opening Health Connect and going to "
     const val AnnonatedDesc = "App Permissions → Weight Gurus."
   }
 

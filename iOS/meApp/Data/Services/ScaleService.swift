@@ -113,12 +113,14 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         await self.syncAllScalesWithRemote()
                         
                         // Only reset connection statuses when switching to a different, non-nil account (not on logout)
-                        if accountIdChanged, let currentAccountId = currentAccountId {
+                        if accountIdChanged, let currentAccountId = newAccount?.accountId {
                             await self.resetAllConnectionStatusOnLaunch()
+                            // Update lastAccountId when resetting
+                            self.lastAccountId = currentAccountId
+                        } else {
+                            // Update lastAccountId even if we don't reset
+                            self.lastAccountId = newAccount?.accountId
                         }
-                        
-                        // Update lastAccountId even if we don't reset
-                        self.lastAccountId = currentAccountId
                     }
                 }
                 .store(in: &cancellables)

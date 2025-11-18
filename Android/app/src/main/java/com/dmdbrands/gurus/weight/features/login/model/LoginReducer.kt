@@ -60,8 +60,8 @@ sealed class LoginIntent : IReducer.Intent {
   object OpenHelpModal : LoginIntent()
   object OnBack : LoginIntent()
   object ShowMaxAccountAlert : LoginIntent()
+  object OnRequestBack: LoginIntent()
   data class OpenInAppBrowser(val url: String) : LoginIntent()
-
   /** Show an error message. */
   data class Error(
     val message: String,

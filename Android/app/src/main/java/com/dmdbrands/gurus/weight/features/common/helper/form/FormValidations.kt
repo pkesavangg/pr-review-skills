@@ -305,7 +305,7 @@ object FormValidations {
       val goalTypeValue = goalTypeControl.value
 
       // Only validate if goal type is losegain and both weights have values
-      if (goalTypeValue == "losegain" &&
+      if ((goalTypeValue == "losegain" || goalTypeValue == "gain" || goalTypeValue == "lose") &&
           goalWeightValue.isNotEmpty() &&
           currentWeightValue.isNotEmpty() &&
           goalWeightValue == currentWeightValue) {

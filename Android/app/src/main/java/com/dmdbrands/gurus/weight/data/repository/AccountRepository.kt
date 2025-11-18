@@ -606,15 +606,30 @@ constructor(
    */
   override suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean) {
     // Call API to delete account
-    if (isActiveAccount) {
-      userAPI.deleteAccount()
-      accountDao.logoutAccount(accountID)
-      accountDao.deactivateAllAccounts()
+    try {
+      if (isActiveAccount) {
+        this.deleteAccountFromServer()
+        accountDao.deleteAccountById(accountID)
+        accountDao.deactivateAllAccounts()
+      }
+
+      // Clear all tokens and local data
+      userDataStore.clearAccountTokens(accountID)
+      tokenManager.clearTokens()
+      AppLog.d(TAG, "Account deleted in local data")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to delete account in local data", e)
+      throw e
     }
-    // Clear all tokens and local data
-    userDataStore.clearAccountTokens(accountID)
-    tokenManager.clearTokens()
-    AppLog.d(TAG, "Account deleted and local data cleared")
+  }
+
+  private suspend fun deleteAccountFromServer() {
+    try {
+      userAPI.deleteAccount()
+      AppLog.d(TAG, "Account deleted in server")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to delete account in server", e)
+    }
   }
 
   /**
@@ -716,10 +731,11 @@ constructor(
    * Syncs all account settings with server data.
    * Updates local database with the latest settings from server.
    * Follows the same pattern as addAccountFromResponse during login.
-   * @param accountInfo The account info from server containing latest settings
+   * @param accountInfo The account info from server or local account containing latest settings
+   * @param isOnline Whether the sync is from online API call (true) or offline local data (false)
    */
-  override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo) {
-    AppLog.d(TAG, "Syncing all settings for account: ${accountInfo.id}")
+  override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo, isOnline: Boolean) {
+    AppLog.d(TAG, "Syncing all settings for account: ${accountInfo.id}, isOnline: $isOnline")
 
     try {
       // Update basic account info first
@@ -778,8 +794,11 @@ constructor(
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
 
-      // Mark account as synced after all settings are updated
-      accountDao.markAccountSynced(accountInfo.id)
+      // Mark account as synced only when online (from server)
+      if (isOnline) {
+        accountDao.markAccountSynced(accountInfo.id)
+        AppLog.d(TAG, "Marked account as synced: ${accountInfo.id}")
+      }
       AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)

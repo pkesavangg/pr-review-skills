@@ -2,10 +2,12 @@ package com.dmdbrands.gurus.weight.features.goal.model
 
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
 
 /**
  * Controls for Goal form.
@@ -33,54 +35,81 @@ data class GoalFormControls(
   }
 
   companion object {
-    fun create(goalType: GoalType = GoalType.LOSE_GAIN) =
-      GoalFormControls(
-        goalType =
-          FormControl.create(
-            initialValue = goalType.value,  // Always default to LOSE_GAIN
-            validators = listOf(FormValidations.required()),
-          ),
-        startingWeight =
-          FormControl.create(
-            initialValue = "",
-            validators = if (goalType == GoalType.LOSE_GAIN) {
-              listOf(FormValidations.required(), FormValidations.weightValidator())
-            } else {
-              listOf(FormValidations.weightValidator()) // No required validation for disabled field
-            },
-          ),
-        goalWeight =
-          FormControl.create(
-            initialValue = "",
-            validators = listOf(
-              FormValidations.required(),
-              FormValidations.weightValidator(),
+    fun create(
+      goalType: GoalType = GoalType.LOSE_GAIN,
+      weightUnit: WeightUnit? = WeightUnit.LB,
+    ): GoalFormControls {
+      val startingWeightValidators = mutableListOf<Validator<String>>()
+      if (goalType == GoalType.LOSE_GAIN) {
+        startingWeightValidators.add(FormValidations.required())
+      }
+      startingWeightValidators.add(FormValidations.weightValidator(weightUnit))
+
+      val controls =
+        GoalFormControls(
+          goalType =
+            FormControl.create(
+              initialValue = goalType.value,  // Always default to LOSE_GAIN
+              validators = listOf(FormValidations.required()),
             ),
-          ),
-      )
+          startingWeight =
+            FormControl.create(
+              initialValue = "",
+              validators = startingWeightValidators,
+            ),
+          goalWeight =
+            FormControl.create(
+              initialValue = "",
+              validators = listOf(
+                FormValidations.required(),
+                FormValidations.weightValidator(weightUnit),
+              ),
+            ),
+        )
+
+      // Explicitly clear any errors to prevent showing errors on initial form load
+      // Fields are not touched yet, so errors shouldn't be displayed
+      if (!controls.startingWeight.touched) {
+        controls.startingWeight.reset(controls.startingWeight.value)
+      }
+      if (!controls.goalWeight.touched) {
+        controls.goalWeight.reset(controls.goalWeight.value)
+      }
+
+      return controls
+    }
 
     /**
      * Creates GoalFormControls with weight match validation.
      * This method should be used when you need cross-field validation between current weight and goal weight.
      */
-    fun createWithWeightMatchValidation(goalType: GoalType = GoalType.LOSE_GAIN): GoalFormControls {
+    fun createWithWeightMatchValidation(
+      goalType: GoalType = GoalType.LOSE_GAIN,
+      weightUnit: WeightUnit? = WeightUnit.LB,
+      initialStartingWeight: String = "",
+      initialGoalWeight: String = "",
+    ): GoalFormControls {
       val goalTypeControl = FormControl.create(
         initialValue = goalType.value,
         validators = listOf(FormValidations.required()),
       )
+
+      val startingWeightValidators = mutableListOf<Validator<String>>()
+      if (goalType == GoalType.LOSE_GAIN) {
+        startingWeightValidators.add(FormValidations.required())
+      }
+      startingWeightValidators.add(FormValidations.weightValidator(weightUnit))
+
       val startingWeightControl = FormControl.create(
-        initialValue = "",
-        validators = if (goalType == GoalType.LOSE_GAIN) {
-          listOf(FormValidations.required(), FormValidations.weightValidator())
-        } else {
-          listOf(FormValidations.weightValidator())
-        },
+        initialValue = initialStartingWeight,
+        validators = startingWeightValidators,
       )
+
       val goalWeightControl = FormControl.create(
-        initialValue = "",
+        initialValue = initialGoalWeight,
         validators = listOf(
           FormValidations.required(),
-          FormValidations.weightValidator(),
+          FormValidations.weightValidator(weightUnit),
           FormValidations.weightMatchValidator(startingWeightControl, goalTypeControl),
         ),
       )
@@ -93,6 +122,15 @@ data class GoalFormControls(
       // Set up cross-field validation: when goal type changes, re-validate goal weight
       goalTypeControl.onValueChangeListener { _, _ ->
         goalWeightControl.validate()
+      }
+
+      // Explicitly clear any errors to prevent showing errors on initial form load
+      // Fields are not touched yet, so errors shouldn't be displayed
+      if (!startingWeightControl.touched) {
+        startingWeightControl.reset(startingWeightControl.value)
+      }
+      if (!goalWeightControl.touched) {
+        goalWeightControl.reset(goalWeightControl.value)
       }
 
       return GoalFormControls(
@@ -198,14 +236,23 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         val controls = state.form.controls
         // Mark goalType as changed (dirty) and set new value
         controls.goalType.onValueChange(intent.goalType.value)
-
-        // Update startingWeight validators based on new goal type
+        // Update startingWeight validators based on new goal type BEFORE changing goal type
+        // This prevents validation errors from showing when switching
         if (intent.goalType == GoalType.MAINTAIN) {
           // Remove required validator for maintain mode
           controls.startingWeight.removeValidator("required")
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
+        }
+
+        // Clear errors for startingWeight and goalWeight to prevent showing errors
+        // when switching goal types without user interaction
+        if (!controls.startingWeight.touched) {
+          controls.startingWeight.reset(controls.startingWeight.value)
+        }
+        if (!controls.goalWeight.touched) {
+          controls.goalWeight.reset(controls.goalWeight.value)
         }
 
         state.copy() // same form reference; UI observes updated controls

@@ -37,7 +37,6 @@ import com.dmdbrands.gurus.weight.features.signup.components.GoalStep
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -68,7 +67,7 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
         GoalStrings.SaveGoalButton,
         type = ButtonType.InlineTextPrimary,
         size = ButtonSize.Small,
-        enabled = state.form.isDirty && state.form.controls.isValidForGoalType(),
+        enabled =  state.form.isDirty && state.form.controls.isValidForGoalType(),
       ) {
         keyboardController?.hide()
         handleIntent.invoke(GoalIntent.Submit)

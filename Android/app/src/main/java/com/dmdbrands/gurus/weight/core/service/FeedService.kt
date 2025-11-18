@@ -27,12 +27,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
-
 
 @Singleton
 class FeedService @Inject constructor(
@@ -67,7 +65,6 @@ class FeedService @Inject constructor(
   private val _localFeedItems = MutableStateFlow<List<FeedItem>>(emptyList())
   private val localFeedItems: Flow<List<FeedItem>> = _localFeedItems.asStateFlow()
 
-  private suspend fun accountId() = accountService.activeAccountFlow.first()?.id
 
   init {
 
@@ -280,6 +277,7 @@ class FeedService @Inject constructor(
    */
   override fun showIAMFeedModal(feedItem: FeedItem) {
     try {
+      AppLog.d(TAG, "Showing IAM feed modal for item: ${feedItem.elementId}")
       val dialog = DialogModel.Custom(
         contentKey = DialogType.IAMFeedModal,
         params = mapOf(
@@ -298,8 +296,8 @@ class FeedService @Inject constructor(
         },
       )
 
-      dialogQueueService.enqueue(dialog)
-      AppLog.d(TAG, "Enqueued IAM feed modal for item: ${feedItem.elementId}")
+      dialogQueueService.showDialog(dialog)
+      AppLog.d(TAG, "Display IAM feed modal for item: ${feedItem.elementId}")
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to show IAM feed modal", e.toString())
     }

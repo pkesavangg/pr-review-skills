@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -94,7 +95,7 @@ fun ScaleNameModal(
         focusManager.clearFocus()
         keyboardController?.hide()
       },
-      modifier = Modifier,
+      modifier = Modifier.fillMaxWidth(),
     )
   }
 }

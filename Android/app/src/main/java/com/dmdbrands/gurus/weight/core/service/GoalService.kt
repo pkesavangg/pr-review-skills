@@ -164,9 +164,9 @@ constructor(
    */
   override suspend fun showGoalCompletionAlert(currentWeight: Double) {
     try {
-      val convertedCurrentWeight = if(account != null && account!!.weightUnit == WeightUnit.LB ) convertWeight(currentWeight, WeightUnit.LB, WeightUnit.KG) else currentWeight
-      val currentGoal = getCurrentGoal().first() ?: return
       val account = accountRepository.getActiveAccount().first() ?: return
+      val convertedCurrentWeight =  convertWeight(currentWeight, WeightUnit.LB, account.weightUnit)
+      val currentGoal = getCurrentGoal().first() ?: return
       val hasShownAlert = goalAlertDataStore.hasShownAlert(account.id)
       val isSetupInProgress = deviceService.isSetupInProgress()
 

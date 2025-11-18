@@ -100,16 +100,18 @@ fun GraphView(
           val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
             it.toLong() in min..max
           }
-          val fallbackValues = scrollState.getInterpolatedYValues(
-            xValues = visibleLabels,
-            interpolationType = InterpolationType.CUBIC,
-          )
-          val fallbackData = state.createFallBackData(
-            segment = segment,
-            timeStamps = visibleLabels.map { it.toLong() },
-            fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
-          )
-          viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          if (visibleLabels.isNotEmpty()) {
+            val fallbackValues = scrollState.getInterpolatedYValues(
+              xValues = visibleLabels,
+              interpolationType = InterpolationType.CUBIC,
+            )
+            val fallbackData = state.createFallBackData(
+              segment = segment,
+              timeStamps = visibleLabels.map { it.toLong() },
+              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+            )
+            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+          }
         },
       )
     }
@@ -147,7 +149,8 @@ fun GraphView(
     state = state,
     segment = segment,
     onTargetsUpdate = {
-      viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+      if (it.isNotEmpty())
+        viewModel.handleIntent(GraphIntent.UpdateTarget(it))
     },
   )
 

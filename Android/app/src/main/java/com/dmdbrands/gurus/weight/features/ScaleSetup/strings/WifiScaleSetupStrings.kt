@@ -50,6 +50,7 @@ object WifiScaleSetupStrings {
   object WifiMode {
     const val Title =
       "Wait for the screen on your scale to change and tap the image that matches."
+    const val APTitle = "Wait for the scale to show it is in AP Mode"
     const val ApNote = "It can take up to two minutes for your scale to enter AP mode."
     const val CommonNote = "This can take up to two minutes."
   }

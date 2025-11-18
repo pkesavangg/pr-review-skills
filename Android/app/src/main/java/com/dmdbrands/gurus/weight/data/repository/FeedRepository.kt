@@ -34,7 +34,7 @@ class FeedRepository @Inject constructor(
       AppLog.i(TAG, "Successfully fetched feed items")
       feedItems
     } catch (error: Exception) {
-      AppLog.e(TAG, "Failed to fetch feed items", error.toString())
+      AppLog.e(TAG, "Failed to fetch feed items $error", error.toString())
       emptyList()
     }
   }

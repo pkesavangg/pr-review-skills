@@ -9,4 +9,11 @@ interface IIntegrationRepository {
   suspend fun getAccount(accountId: String): AccountInfo
   suspend fun removeIntegration(provider: String, suggestion: Map<String, String>)
   suspend fun updateLocalAccount()
+  /**
+   * Updates Health Connect integration status offline.
+   * Sets isHealthConnectOn and marks as unsynced (isSynced = false).
+   * Similar to Angular's setHealthConnectIntegrationStatus method.
+   * @param isHealthConnectOn Whether Health Connect integration is enabled
+   */
+  suspend fun updateHealthConnectIntegrationOffline(isHealthConnectOn: Boolean)
 }

@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -75,18 +73,30 @@ fun AppProfileAvatar(
     }
 
     if (!isInfoIcon) {
+        val avatarText = text.trim().takeIf { it.isNotEmpty() }?.let { input ->
+            var index = 0
+            while (index < input.length) {
+                val codePoint = input.codePointAt(index)
+                val charStr = String(Character.toChars(codePoint))
+                if (!charStr.isEmoji()) {
+                    return@let charStr.uppercase()
+                }
+                index += Character.charCount(codePoint)
+            }
+            "" // return blank if no non-emoji char found
+        } ?: ""
         // Default single avatar
         Box(
             modifier = modifier
-                .size(size)
-                .then(borderModifier)
-                .then(gestureModifier)
-                .clip(CircleShape)
-                .background(backgroundColor),
+              .size(size)
+              .then(borderModifier)
+              .then(gestureModifier)
+              .clip(CircleShape)
+              .background(backgroundColor),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = text.firstOrNull()?.uppercase() ?: "",
+                text = avatarText.uppercase(),
                 style = MeTheme.typography.heading6,
                 color = textColor,
             )
@@ -95,9 +105,9 @@ fun AppProfileAvatar(
         // Combined "K" + profile icon
         Box(
             modifier = modifier
-                .width(size * 2f) // more space for separation
+              .width(size * 2f) // more space for separation
                 .height(size)
-                .then(gestureModifier),
+              .then(gestureModifier),
             contentAlignment = Alignment.CenterStart,
         ) {
             AppIcon(
@@ -105,16 +115,16 @@ fun AppProfileAvatar(
                 contentDescription = "Profile",
                 type = AppIconType.Primary,
                 modifier = Modifier
-                    .size(size)
-                    .absoluteOffset(x = size * 0.6f), // this gives a slight overlap effect
+                  .size(size)
+                  .absoluteOffset(x = size * 0.6f), // this gives a slight overlap effect
             )
 
             Box(
                 modifier = Modifier
-                    .border(3.dp, colorScheme.inverseAction, shape = CircleShape)
-                    .size(size / 1.06f)
-                    .clip(CircleShape)
-                    .background(backgroundColor),
+                  .border(3.dp, colorScheme.inverseAction, shape = CircleShape)
+                  .size(size / 1.06f)
+                  .clip(CircleShape)
+                  .background(backgroundColor),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -141,4 +151,21 @@ fun AppProfileImagePreview() {
             }
         }
     }
+}
+
+private fun String.isEmoji(): Boolean {
+  if (this.isEmpty()) return false
+  val codePoint = this.codePointAt(0)
+  return when (codePoint) {
+    in 0x1F600..0x1F64F, // Emoticons 😀 😁 😂 🤣 😃 😄 😅 😆 😉 😊 😋 😎 😍 😘 😗 😙 😚 ☺️
+    in 0x1F300..0x1F5FF, // Misc symbols and pictographs 🌀 🌁 🌂 🌃 🌄 🌅 🌆 🌇 🌈 🌉
+    in 0x1F680..0x1F6FF, // Transport and map symbols 🚀 🚁 🚂 🚃 🚄 🚅
+    in 0x2600..0x26FF,   // Misc symbols ☀️ ☁️ ☂️ ☃️
+    in 0x2700..0x27BF,   // Dingbats ✂️ ✈️ ✉️
+    in 0x1F900..0x1F9FF, // Supplemental Symbols and Pictographs 🧠 🧚 🧞
+    in 0x1FA70..0x1FAFF, // Symbols and Pictographs Extended-A 🪐 🪶 🪨
+    in 0x1F1E6..0x1F1FF  // Flags 🇦🇨 to 🇿🇼
+      -> true
+    else -> false
+  }
 }

@@ -116,9 +116,9 @@ constructor(
   private val _lastUpdated = MutableStateFlow<Long?>(null)
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
+
   private var accountId: String? = null
   private var initialWeight: Double? = null
-
 
   /**
    * Initializes goal card monitoring by checking entry count and setting up listeners.
@@ -537,7 +537,7 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -571,7 +571,7 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -580,23 +580,9 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) }
+          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
-
-      lastValidOperation?.let {
-        // Get weight from the latest entry if it's a ScaleEntry
-        val latestWeight = when (val latest = _latestEntry.value ) {
-          is ScaleEntry -> latest.scale.scaleEntry.weight.toDouble()
-          else -> null
-        }
-        // Trigger goal alert if needed
-        latestWeight?.let { weight ->
-          goalService.showGoalCompletionAlert(weight * 10)
-        }
-
-      }
-
 
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
@@ -612,7 +598,6 @@ constructor(
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
         _latestEntry.value = latest
-
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating latest entry", e)
@@ -670,13 +655,13 @@ constructor(
     }
 
     try {
-      var week = 0.0
+      var week: Double? = null
       var initWeek: Entry? = null
-      var month = 0.0
+      var month: Double? = null
       var initMonth: Entry? = null
-      var year = 0.0
+      var year: Double? = null
       var initYear: HistoryMonth? = null
-      var total = 0.0
+      var total: Double? = null
       var startingWeight: Double? = null
       var oldestEntry: Entry? = null
 

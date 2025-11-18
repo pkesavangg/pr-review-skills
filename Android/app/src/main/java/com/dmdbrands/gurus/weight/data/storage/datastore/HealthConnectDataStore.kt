@@ -24,18 +24,6 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     dataStore = context.healthConnectDataStore,
 ) {
     /**
-     * Emits a Flow of all HealthConnectData entries keyed by accountId.
-     */
-    val healthConnectDataFlow: Flow<Map<String, HealthConnectData>> = dataFlow.map { it.dataMap }
-
-    /**
-     * Returns a Flow of the current active account ID.
-     */
-    val activeAccountIdFlow: Flow<String?> = dataFlow.map {
-        it.dataMap.entries.firstOrNull { entry -> entry.value.integrated }?.key
-    }
-
-    /**
      * Returns a Flow of HealthConnectData for a specific account.
      */
     fun getHealthConnectDataFlow(accountId: String): Flow<HealthConnectData?> =
@@ -59,6 +47,7 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
      * Removes a HealthConnectData entry for the given accountId.
      */
     suspend fun removeHealthConnectData(accountId: String) {
+      //TODO: NO NEED THIS WE DON'T REMOVE THE LOCALLY SAVED DATA
         updateData { current ->
             current.toBuilder().removeData(accountId).build()
         }
@@ -213,41 +202,6 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
             ).build()
         }
     }
-
-    /**
-     * Updates the update timestamp for an account.
-     */
-    suspend fun updateTimestamp(accountId: String, timestamp: String) {
-        updateData { current ->
-            current.toBuilder().putData(
-                accountId,
-                current.dataMap[accountId]?.toBuilder()
-                    ?.setUpdatedAt(timestamp)
-                    ?.build()
-                    ?: HealthConnectData.newBuilder()
-                        .setUpdatedAt(timestamp)
-                        .build(),
-            ).build()
-        }
-    }
-
-    /**
-     * Updates the integration timestamp for an account.
-     */
-    suspend fun updateIntegrationTimestamp(accountId: String, timestamp: String) {
-        updateData { current ->
-            current.toBuilder().putData(
-                accountId,
-                current.dataMap[accountId]?.toBuilder()
-                    ?.setIntegratedAt(timestamp)
-                    ?.build()
-                    ?: HealthConnectData.newBuilder()
-                        .setIntegratedAt(timestamp)
-                        .build(),
-            ).build()
-        }
-    }
-
     /**
      * Updates the granted permissions for an account.
      */

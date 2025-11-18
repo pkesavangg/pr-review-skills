@@ -87,7 +87,7 @@ class MetricInfoViewModel @AssistedInject constructor(
       }
 
       is MetricInfoIntent.UpdateScaleMode -> {
-        updateHeartRateStatus()
+        onUpdateScaleMode()
       }
 
       else -> Unit
@@ -109,16 +109,66 @@ class MetricInfoViewModel @AssistedInject constructor(
     }
   }
 
+  /**
+   * Handles navigation when user clicks update button for heart rate.
+   * If one R4 scale has heart rate ON, navigate to that scale's detail screen.
+   * If multiple R4 scales have heart rate OFF, navigate to My Scales screen.
+   * If only one R4 scale has heart rate OFF, navigate to that scale's detail screen.
+   */
   private fun onUpdateScaleMode() {
     viewModelScope.launch {
-      val scales = deviceService.pairedScales.first()
-      val scale = scales.firstOrNull { it ->
-        it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
-          && it.preferences?.shouldMeasurePulse == false && it.preferences.shouldMeasureImpedance == true
-          && !it.isWeighOnlyModeEnabledByOthers
-      }
-      scale?.id?.let { scaleId ->
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+      try {
+        val scales = deviceService.pairedScales.first()
+
+        // Filter R4 scales
+        val r4Scales = scales.filter {
+          it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
+            && it.preferences?.shouldMeasureImpedance == true
+            && !it.isWeighOnlyModeEnabledByOthers
+        }
+
+        if (r4Scales.isEmpty()) {
+          AppLog.d("MetricInfoViewModel", "No R4 scales found")
+          return@launch
+        }
+
+        // Separate scales by heart rate status
+        val scalesWithHeartRateOn = r4Scales.filter {
+          it.preferences?.shouldMeasurePulse == true
+        }
+
+        val scalesWithHeartRateOff = r4Scales.filter {
+          it.preferences?.shouldMeasurePulse == false
+        }
+
+        AppLog.d(
+          "MetricInfoViewModel",
+          "R4 scales - Heart rate ON: ${scalesWithHeartRateOn.size}, Heart rate OFF: ${scalesWithHeartRateOff.size}"
+        )
+
+        when {
+          // If multiple scales have heart rate OFF, navigate to My Scales screen
+          scalesWithHeartRateOff.size > 1 -> {
+            AppLog.d("MetricInfoViewModel", "Navigating to My Scales screen (multiple scales with heart rate OFF)")
+            navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales)
+          }
+
+          // If only one scale has heart rate OFF, navigate to that scale
+          scalesWithHeartRateOff.size == 1 -> {
+            val scaleId = scalesWithHeartRateOff.first().id
+            AppLog.d("MetricInfoViewModel", "Navigating to scale with heart rate OFF: $scaleId")
+            navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+          }
+
+          // All scales have heart rate ON (edge case)
+          else -> {
+            AppLog.d("MetricInfoViewModel", "All R4 scales have heart rate ON, navigating to first scale")
+            val scaleId = r4Scales.first().id
+            navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e("MetricInfoViewModel", "Failed to navigate to scale mode", e.toString())
       }
     }
   }

@@ -25,6 +25,7 @@ final class GoalProgressViewModel: ObservableObject {
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
+    private var hasLoadedOnce = false
     
     // MARK: - Init
     init() {
@@ -49,7 +50,11 @@ final class GoalProgressViewModel: ObservableObject {
     
     // MARK: - Data Loading
     private func loadData() async {
-        isLoaded = false
+        // Keep last-rendered UI visible after initial load to avoid flicker.
+        // Only gate the UI (isLoaded = false) before the very first load.
+        if !hasLoadedOnce {
+            isLoaded = false
+        }
         guard let account = accountService.activeAccount else { return }
         guard let goalSettings = account.goalSettings else {
             // No goal configured
@@ -113,6 +118,7 @@ final class GoalProgressViewModel: ObservableObject {
             progress = totalDistance > 0 ? CGFloat(min(clampedAchieved / totalDistance, 1)) : 1
         }
         isLoaded = true
+        hasLoadedOnce = true
     }
     
     // MARK: - Helpers

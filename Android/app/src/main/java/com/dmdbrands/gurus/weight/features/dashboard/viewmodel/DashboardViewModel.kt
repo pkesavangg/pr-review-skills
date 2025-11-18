@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -43,6 +44,7 @@ constructor(
   private val appNavigationService: IAppNavigationService,
   private val dashboardService: IDashboardService,
   private val healthConnectService: IHealthConnectService,
+  private val goalService: IGoalService
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
@@ -147,6 +149,10 @@ constructor(
             else -> null
           }
         handleIntent(DashboardIntent.SetLatestWeight(latestWeight))
+        // Trigger goal alert if needed
+        latestWeight?.let { weight ->
+          goalService.showGoalCompletionAlert(weight * 10)
+        }
       }
     }
   }

@@ -55,8 +55,13 @@ constructor(
 
   override fun provideInitialState(): GoalState {
     // Always initialize with LOSE_GAIN
+    // Default to LB unit - will be updated when account is loaded
     return GoalState(
-      form = FormGroup(GoalFormControls.createWithWeightMatchValidation()),  // Use weight match validation
+      form = FormGroup(
+        GoalFormControls.createWithWeightMatchValidation(
+          weightUnit = WeightUnit.LB // Default to LB, will be updated when account loads
+        )
+      ),  // Use weight match validation
     )
   }
 
@@ -97,46 +102,21 @@ constructor(
     ).process(targetUnit, null) // Process with target unit, no weightless needed for goals
     calculateGoalPercentage(currentAccount, state.value.latestWeight)
     // Create form controls with weight match validation
-    val goalTypeControl = FormControl.create(
-      initialValue = goalType.value,
-      validators = listOf(FormValidations.required()),
-    )
-    val startingWeightControl = FormControl.create(
-      initialValue = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString(),
-      validators = if (goalType != GoalType.MAINTAIN) {
-        listOf(FormValidations.required(), FormValidations.weightValidator())
-      } else {
-        listOf(FormValidations.weightValidator())
-      },
-    )
-    val goalWeightControl = FormControl.create(
-      initialValue = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString(),
-      validators = listOf(
-        FormValidations.required(),
-        FormValidations.weightValidator(),
-        FormValidations.weightMatchValidator(startingWeightControl, goalTypeControl),
-      ),
-    )
+    // Pass weightUnit and initial values directly, following EntryReducer pattern
+    // This ensures form is not marked as dirty initially
+    val initialStartingWeight = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString()
+    val initialGoalWeight = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString()
 
-    // Set up cross-field validation: when starting weight changes, re-validate goal weight
-    startingWeightControl.onValueChangeListener { _, _ ->
-      goalWeightControl.validate()
-    }
-
-    // Set up cross-field validation: when goal type changes, re-validate goal weight
-    goalTypeControl.onValueChangeListener { _, _ ->
-      goalWeightControl.validate()
-    }
+    val goalFormControls = GoalFormControls.createWithWeightMatchValidation(
+      goalType = goalType,
+      weightUnit = targetUnit,
+      initialStartingWeight = initialStartingWeight,
+      initialGoalWeight = initialGoalWeight,
+    )
 
     val newState =
       GoalState(
-        form = FormGroup(
-          GoalFormControls(
-            goalType = goalTypeControl,
-            startingWeight = startingWeightControl,
-            goalWeight = goalWeightControl,
-          )
-        ),
+        form = FormGroup(goalFormControls),
         account = currentAccount,
         latestWeight = state.value.latestWeight, // Preserve existing latestWeight
       )

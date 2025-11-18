@@ -112,7 +112,7 @@ final class ConversionTools {
     
     // MARK: - Internal helpers
     /// Rounds a Double to the given number of decimal places
-    private static func rounded(_ value: Double, toPlaces places: Int) -> Double {
+    static func rounded(_ value: Double, toPlaces places: Int) -> Double {
         let divisor = pow(10.0, Double(places))
         return (value * divisor).rounded() / divisor
     }

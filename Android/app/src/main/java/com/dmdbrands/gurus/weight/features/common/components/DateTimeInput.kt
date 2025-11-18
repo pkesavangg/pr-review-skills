@@ -256,6 +256,7 @@ object DateTimeInputDefaults {
       navigationContentColor = colorScheme.primaryAction,
       yearContentColor = colorScheme.textBody,
       currentYearContentColor = colorScheme.textBody,
+      disabledYearContentColor = colorScheme.utility,
       selectedYearContentColor = colorScheme.inverseAction,
       selectedYearContainerColor = colorScheme.primaryAction,
       headlineContentColor = colorScheme.textBody,

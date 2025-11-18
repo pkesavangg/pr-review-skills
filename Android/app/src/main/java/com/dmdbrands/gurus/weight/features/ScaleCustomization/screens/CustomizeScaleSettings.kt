@@ -100,6 +100,44 @@ fun CustomizeScaleSettings(
   val initialPreference = ScaleMetricsHelper.getDefaultPreference(state.usernameForm.username.value)
   var updatedPreference by remember { mutableStateOf(initialPreference) }
 
+  // Compute whether there are unsaved changes based on current page
+  val hasUnsavedChanges = remember(
+    pagerState.currentPage,
+    localUsernameFormControl.value,
+    isAllBodyMetrics,
+    isHeartRateOn,
+    scaleMetrics,
+    dashboardMetricKeys,
+    dashboardMilestoneKeys,
+    state.usernameForm.username.value,
+    state.isAllBodyMetrics,
+    state.isHeartRateOn,
+    state.scaleMetrics,
+    state.dashboardKeys,
+  ) {
+    when (pagerState.currentPage) {
+      CustomizeSettings.SCALE_USERNAME.ordinal -> {
+        localUsernameFormControl.value != state.usernameForm.username.value
+      }
+
+      CustomizeSettings.SCALE_MODE.ordinal -> {
+        isAllBodyMetrics != state.isAllBodyMetrics || isHeartRateOn != state.isHeartRateOn
+      }
+
+      CustomizeSettings.SCALE_METRICS.ordinal -> {
+        scaleMetrics != state.scaleMetrics
+      }
+
+      CustomizeSettings.DASHBOARD_METRICS.ordinal -> {
+        val currentMetricKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Metric>()
+        val currentMilestoneKeys = state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>()
+        dashboardMetricKeys != currentMetricKeys || dashboardMilestoneKeys != currentMilestoneKeys
+      }
+
+      else -> false
+    }
+  }
+
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
@@ -182,6 +220,7 @@ fun CustomizeScaleSettings(
             type = ButtonType.PrimaryFilled,
             label = ScaleSetupStrings.saveButton,
             size = ButtonSize.Small,
+            enabled = hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.SCALE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
             onClick = {
               hasSavedSettings.value = true
               scope.launch {

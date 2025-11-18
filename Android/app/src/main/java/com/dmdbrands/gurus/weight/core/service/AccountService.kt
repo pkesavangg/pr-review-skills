@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -298,11 +299,14 @@ constructor(
           // For other errors, show error toast
           val msg = when (e.code()) {
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileMessage
+            HttpErrorConfig.ResponseCode.BAD_REQUEST -> ToastStrings.Error.UpdateProfileError.ErrorUpdatingEmail
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           val header = when (e.code()) {
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED, HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileHeader
+
             else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
           }
           showErrorToast(header, msg)
@@ -342,6 +346,14 @@ constructor(
         AppLog.d(TAG, "Active account is expired in local DB. Returning false.")
         return false
       }
+      // Sync local account data to database when offline
+      try {
+        val accountInfo = activeAccount.toAccountInfo()
+        accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = false)
+        AppLog.d(TAG, "Synced local account data to database in offline mode")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to sync local account data in offline mode", e)
+      }
       AppLog.d(TAG, "Active account is valid in local DB. Returning true.")
       return true
     }
@@ -359,7 +371,7 @@ constructor(
       // from api
       val accountInfo = accountRepository.getAccountFromAPI(activeAccount.id)
       // Sync all settings with server data
-      accountRepository.syncAccountSettingsWithServer(accountInfo)
+      accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
       AppLog.d(TAG, "Active account login status check successful")
       true
     } catch (e: Exception) {
@@ -527,8 +539,8 @@ constructor(
   ) {
     AppLog.v(TAG, "deleteAccount() called for accountId: $accountID, isActiveAccount: $isActiveAccount")
     AppLog.d(TAG, "Checking network availability for deleteAccount()")
-    requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
     try {
+      requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
       accountRepository.deleteAccount(accountID, isActiveAccount)
       AppLog.d(TAG, "Account deleted successfully")
     } catch (e: Exception) {
@@ -647,7 +659,7 @@ constructor(
         AppLog.d(TAG, "Connection available, updating account from API")
         try {
           val accountInfo = accountRepository.getAccountFromAPI(currentAccount.id)
-          accountRepository.syncAccountSettingsWithServer(accountInfo)
+          accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
         } catch (e: Exception) {
           AppLog.w(TAG, "Error getting account from API during refresh, using cached data", e.toString())
         }
