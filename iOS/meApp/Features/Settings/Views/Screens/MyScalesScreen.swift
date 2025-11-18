@@ -172,7 +172,9 @@ struct MyScalesScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
-                .sheet(item: $activeSheet) { sheet in
+                .sheet(item: $activeSheet, onDismiss: {
+                    scaleStore.updateSetupInProgressStatus(false)
+                }) { sheet in
                     switch sheet {
                     case .scaleList:
                         ChooseYourScaleView { scale in

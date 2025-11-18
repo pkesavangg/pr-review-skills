@@ -214,9 +214,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return allowedTypes.contains(type)
         }
-        
-        // Disconnect deleted scales
-        await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
+        Task {
+            // Disconnect deleted scales in the background to avoid blocking the main thread
+            await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
+        }
         bluetoothScales = filteredScales
         
         // Check if banner should be shown/hidden after scale updates

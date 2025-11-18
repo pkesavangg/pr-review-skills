@@ -37,7 +37,8 @@ final class ScaleSettingsStore: ObservableObject {
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL? = nil
-    
+    let disconnectableScaleTypes: Set<ScaleSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
+
     
     // Strings
     private let loaderLang = LoaderStrings.self
@@ -178,7 +179,7 @@ final class ScaleSettingsStore: ObservableObject {
         do {
             // Pause scans and mark setup in progress to avoid race with ongoing reconnect/pairing
             bluetoothService.isSetupInProgress = true
-            if getScaleType() == .btWifiR4, let broadcastId = scale.broadcastIdString {
+            if let scaleType = getScaleType(), disconnectableScaleTypes.contains(scaleType), let broadcastId = scale.broadcastIdString {
                 // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
                 let deletionTask = Task { @MainActor in
                     _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(scale, disconnect: false)
@@ -193,9 +194,9 @@ final class ScaleSettingsStore: ObservableObject {
                 bluetoothService.clearDevices()
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
+            bluetoothService.isSetupInProgress = false
             await scaleService.pushLocalChangesToServer()
-            await scaleService.syncAllScalesWithRemote()
-            let _ = await self.bluetoothService.resyncAndScan()
+            await scaleService.syncAllScalesWithRemote()           
             notificationService.showToast(ToastModel(title: ToastStrings.deleted, message: ToastStrings.scaleDeleted))
             isSuccess = true
         } catch {
