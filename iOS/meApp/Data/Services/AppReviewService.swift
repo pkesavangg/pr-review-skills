@@ -60,7 +60,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
     private func requestReview() async {
         // Ensure we're on the main thread for UI operations
         if let windowScene = await getActiveWindowScene() {
-            SKStoreReviewController.requestReview(in: windowScene)
+            AppStore.requestReview(in: windowScene)
         } else {
             // Fallback to the deprecated method if window scene is not available
             SKStoreReviewController.requestReview()
