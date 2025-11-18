@@ -886,6 +886,34 @@ class DashboardStore: ObservableObject {
             // Force full recomputation of visible operations, Y-axis, and weight display
             self.forceCompleteRecalculationAfterScrollPosition()
             
+            // Check if selected point still exists after deletion
+            // If the selected point was deleted, clear selection and update metrics
+            // If it still exists, refresh it with the updated summary data
+            Task { @MainActor in
+                if let selectedPoint = self.state.graph.selectedPoint {
+                    let calendar = Calendar.current
+                    let updatedPoint: BathScaleWeightSummary? = {
+                        switch self.state.graph.selectedPeriod {
+                        case .week, .month:
+                            return self.continuousOperations.first { calendar.isDate($0.date, inSameDayAs: selectedPoint.date) }
+                        case .year, .total:
+                            return self.continuousOperations.first { calendar.isDate($0.date, equalTo: selectedPoint.date, toGranularity: .month) }
+                        }
+                    }()
+                    
+                    if let updatedPoint = updatedPoint {
+                        // Selected point still exists but may have updated values - refresh it
+                        self.graphManager.updateSelectedPoint(updatedPoint)
+                    } else {
+                        // Selected point was deleted - clear selection
+                        await self.graphManager.handleChartSelection(at: nil)
+                    }
+                }
+                
+                // Update metrics for current view (either selected point or averages)
+                self.updateMetricsForCurrentView()
+            }
+            
             // Also schedule a follow-up domain recalc after brief propagation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 self.updateYAxisCache()
