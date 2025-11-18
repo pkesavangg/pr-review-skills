@@ -88,6 +88,33 @@ final class ConversionTools {
         return Int(round(display * 2.20462 * 10))
     }
     
+    /// Converts display weight value between units when metric setting changes.
+    /// - Returns: Converted weight value as string with one decimal place
+    static func convertDisplayWeightValue(_ value: String, fromMetric: Bool, toMetric: Bool) -> String {
+        guard !value.isEmpty, fromMetric != toMetric else { return value }
+        
+        guard let numericValue = Double(value) else { return value }
+        
+        let convertedValue: Double
+        if fromMetric && !toMetric {
+            convertedValue = numericValue * 2.20462
+        } else if !fromMetric && toMetric {
+            convertedValue = numericValue / 2.20462
+        } else {
+            convertedValue = numericValue
+        }
+        
+        let roundedValue = round(convertedValue * 10.0) / 10.0
+        
+        // Snap to round number if difference is exactly 0.1 (rounding error from back-and-forth conversion)
+        let roundedToInteger = round(roundedValue)
+        let difference = abs(roundedValue - roundedToInteger)
+        let tolerance: Double = 0.001
+        let finalValue = abs(difference - 0.1) < tolerance ? roundedToInteger : roundedValue
+        
+        return String(format: "%.1f", finalValue)
+    }
+    
     // MARK: - BMI
     /// Calculates BMI from weight (tenths of lbs) and height (tenths of inches)
     /// Returns 0 if height is zero to avoid division by zero.

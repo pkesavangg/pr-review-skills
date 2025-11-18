@@ -48,10 +48,12 @@ final class SignupStore: ObservableObject {
     
     private let toastLang = ToastStrings.self
     private var cancellables = Set<AnyCancellable>()
+    private var previousMetricValue: Bool = false
     
     private let tag = "SignupStore"
     
     init() {
+        previousMetricValue = signupForm.useMetric.value
         setupFormObservers()
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
         updateHeightPickerValues(from: Int(signupForm.height.value))
@@ -332,8 +334,42 @@ final class SignupStore: ObservableObject {
             .dropFirst()
             .sink { [weak self] isMetric in
                 guard let self = self else { return }
+                let oldMetricValue = self.previousMetricValue
+                
+                // Convert weight values when switching units
+                if !self.signupForm.currentWeight.value.isEmpty {
+                    let convertedCurrentWeight = ConversionTools.convertDisplayWeightValue(
+                        self.signupForm.currentWeight.value,
+                        fromMetric: oldMetricValue,
+                        toMetric: isMetric
+                    )
+                    self.signupForm.currentWeight.value = convertedCurrentWeight
+                    // Re-validate after conversion
+                    self.signupForm.currentWeight.validate()
+                } else {
+                    // Re-validate empty fields to ensure validators are updated for future input
+                    self.signupForm.currentWeight.validate()
+                }
+                
+                if !self.signupForm.goalWeight.value.isEmpty {
+                    let convertedGoalWeight = ConversionTools.convertDisplayWeightValue(
+                        self.signupForm.goalWeight.value,
+                        fromMetric: oldMetricValue,
+                        toMetric: isMetric
+                    )
+                    self.signupForm.goalWeight.value = convertedGoalWeight
+                    // Re-validate after conversion
+                    self.signupForm.goalWeight.validate()
+                } else {
+                    // Re-validate empty fields to ensure validators are updated for future input
+                    self.signupForm.goalWeight.validate()
+                }
+                
                 self.updateHeightPickerValues(from: Int(self.signupForm.height.value))
                 self.updateWeightValidators(isMetric: isMetric)
+                
+                // Update previous value for next change
+                self.previousMetricValue = isMetric
             }
             .store(in: &cancellables)
     }
@@ -369,6 +405,7 @@ final class SignupStore: ObservableObject {
         isNextEnabled = false
         showHeightInchesPicker = false
         showHeightCmPicker = false
+        previousMetricValue = signupForm.useMetric.value
 
         // Sync height pickers with the default form height.
         updateHeightPickerValues(from: Int(signupForm.height.value))
