@@ -100,9 +100,12 @@ fun CameraPreview(
                   }
 
               // Set up image analysis use case for frame processing
+              // Use a good target resolution that works well for detection at all zoom levels
+              // 1280x720 is a good balance - high enough for detection, works with zoom
               val imageAnalyzer =
                 ImageAnalysis
                   .Builder()
+                  .setTargetResolution(android.util.Size(1280, 720))
                   .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                   .build()
               imageAnalyzer.setAnalyzer(
@@ -174,37 +177,56 @@ private fun processFrameWithJNI(
   try {
     // Only process YUV_420_888 format images
     if (imageProxy.format == ImageFormat.YUV_420_888) {
+      val width = imageProxy.width
+      val height = imageProxy.height
+
+      // Skip frames that are too small for reliable detection
+      // Minimum resolution for FS003 protocol detection
+      // Target is 1280x720, but accept reasonable variations for zoom levels
+      if (width < 480 || height < 360) {
+        Log.d("AppSyncScan", "Skipping frame: resolution too low (${width}x${height})")
+        return
+      }
+
       // Convert YUV_420_888 to grayscale using proper stride handling
+      // This works at any resolution/zoom level
       val conversionResult = YUV420888ToGrayscaleConverter.convertToGrayscale(imageProxy)
 
       if (conversionResult != null) {
-        val (grayscaleData, width) = conversionResult
-        val height = imageProxy.height
+        val (grayscaleData, convertedWidth) = conversionResult
+        val convertedHeight = height
+
+        // Validate data before processing
+        if (grayscaleData.isEmpty() || convertedWidth <= 0 || convertedHeight <= 0) {
+          Log.w("AppSyncScan", "Invalid converted data: size=${grayscaleData.size}, dimensions=${convertedWidth}x${convertedHeight}")
+          return
+        }
 
         // Check for low light conditions using the converted luminance data
-        val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, width, height)
+        val isLowLight = AppSyncLowLightDetector.isLowLight(grayscaleData, convertedWidth, convertedHeight)
         onLowLightDetected(isLowLight)
 
         // Call native detector to look for FS003 protocol patterns
-        Log.d(
-          "AppSyncScan",
-          "Calling native detector with data size: ${grayscaleData.size}, dimensions: ${width}x${height}",
-        )
-        val bits = CameraHandlerCallback.nativeDetector(grayscaleData, width, height)
-        if (bits != null && bits.isNotEmpty()) {
-          // Interpret the detected bits using FS003 protocol
-          val result = AppSyncFs003Interpreter.interpret(bits)
-          if (result != null) {
-            // Deliver the successful scan result
-            onScanResult(result)
-          } else {
-            // Interpreter failed to process the detected bits
-            Log.w("AppSyncScan", AppSyncStrings.InterpreterReturnedNull)
+        // Target resolution is 1280x720, works well at all zoom levels
+        try {
+          val bits = CameraHandlerCallback.nativeDetector(grayscaleData, convertedWidth, convertedHeight)
+          if (bits != null && bits.isNotEmpty()) {
+            Log.d("AppSyncScan", "✅ Pattern detected! Bits count: ${bits.size}, resolution: ${convertedWidth}x${convertedHeight}")
+            // Interpret the detected bits using FS003 protocol
+            val result = AppSyncFs003Interpreter.interpret(bits)
+            if (result != null) {
+              Log.i("AppSyncScan", "✅ Scan successful! Weight: ${result.weight}, Fat: ${result.fat}, Muscle: ${result.muscle}")
+              // Deliver the successful scan result
+              onScanResult(result)
+            } else {
+              // Interpreter failed to process the detected bits
+              Log.w("AppSyncScan", "⚠️ Pattern detected but interpreter returned null")
+            }
           }
-        } else {
-          // Native detector did not find any valid patterns
-          // This is normal and expected for most frames
-          Log.w("AppSyncScan", AppSyncStrings.NativeDetectorReturnedNull)
+          // Don't log null results - it's normal for most frames
+        } catch (e: Exception) {
+          // Prevent crashes from native detector
+          Log.e("AppSyncScan", "Error calling native detector: ${e.message}", e)
         }
       } else {
         Log.w("AppSyncScan", "Failed to convert YUV_420_888 to grayscale")

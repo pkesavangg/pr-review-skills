@@ -60,14 +60,27 @@ object YUV420888ToGrayscaleConverter {
             // Analyze YUV plane properties for debugging
             YUVConversionTestHelper.analyzeYUVPlaneProperties(rowStride, pixelStride, width, height)
             
+            // Calculate minimum buffer size needed
+            val minBufferSize = (height - 1) * rowStride + width * pixelStride
+            val actualBufferSize = yBuffer.remaining()
+            
+            Log.d(TAG, "Buffer size: $actualBufferSize, expected minimum: $minBufferSize")
+            
+            // Validate buffer has enough data
+            if (actualBufferSize < minBufferSize) {
+                Log.e(TAG, "Buffer too small: need $minBufferSize bytes, have $actualBufferSize")
+                return null
+            }
+            
             // Create output array for contiguous grayscale data
             val grayscaleData = ByteArray(width * height)
             
             // Copy Y-plane data row by row, respecting stride parameters
-            val yBufferArray = ByteArray(yBuffer.remaining())
+            val yBufferArray = ByteArray(actualBufferSize)
             yBuffer.get(yBufferArray)
             
             // Copy data row by row to handle non-contiguous buffers
+            var copiedPixels = 0
             for (row in 0 until height) {
                 val srcRowStart = row * rowStride
                 val dstRowStart = row * width
@@ -78,10 +91,14 @@ object YUV420888ToGrayscaleConverter {
                     
                     if (srcIndex < yBufferArray.size && dstIndex < grayscaleData.size) {
                         grayscaleData[dstIndex] = yBufferArray[srcIndex]
+                        copiedPixels++
+                    } else {
+                        Log.w(TAG, "Out of bounds access: srcIndex=$srcIndex (max=${yBufferArray.size}), dstIndex=$dstIndex (max=${grayscaleData.size})")
                     }
                 }
             }
             
+            Log.d(TAG, "Copied $copiedPixels pixels out of ${width * height} expected")
             Log.d(TAG, "Successfully converted YUV to grayscale: ${grayscaleData.size} bytes")
             
             // Validate the converted data
