@@ -29,6 +29,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * ViewModel for the BtScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -374,10 +375,16 @@ constructor(
         if(scaleToDelete != null){
           deviceService.deleteScale(scaleToDelete?.id ?: "")
         }
+        val scaleInfo = state.value.scaleSetupState.scaleInfo
+        val currentTime = Instant.now().toString()
         discoveredScale = discoveredScale?.copy(
           deviceType = ScaleSetupType.Bluetooth.value,
-          device = deviceInfo,
-          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale"
+          device = deviceInfo?.copy(
+            deviceName = deviceInfo.deviceName.ifEmpty { scaleInfo?.productName ?: "" },
+          ),
+          nickname = scaleInfo?.productName ?: "Bluetooth Smart Scale",
+          sku = scaleInit.sku,
+          createdAt = currentTime,
         )
         deviceService.saveScale(discoveredScale!!)
       AppLog.d(TAG, "Scale gets saved successfully")

@@ -12,7 +12,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -21,14 +22,20 @@ import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.permissionSettings.PermissionSettings
 import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleDetailsIntent
 import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleDetailsState
+import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleNameDialogFormControls
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.BluetoothSettingStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 
 @Composable
 fun BluetoothPermissionScreen(
@@ -69,7 +76,9 @@ fun BluetoothPermissionScreen(
         HorizontalDivider(thickness = 0.5.dp, color = colorScheme.utility)
         AppScaleCard(
           scale = state.scale?.toScaleInfo()!!,
+          horizontalSpacing = 0.dp,
           isSavedScale = true,
+          canShowRightCaret = false,
           onClick = {}
         )
       }
@@ -86,8 +95,70 @@ fun BluetoothPermissionScreen(
 
 @PreviewTheme
 @Composable
-fun BluetoothPermissionScreenPreview() {
+fun BluetoothPermissionScreenPreviewLight() {
   MeAppTheme {
+    val dummyDevice = Device(
+      id = "preview-device-1",
+      device = GGDeviceDetail(
+        deviceName = "AccuCheck Verve Smart Scale",
+        macAddress = "AA:BB:CC:DD:EE:FF",
+        identifier = "preview-identifier-1",
+      ),
+      connectionStatus = BLEStatus.CONNECTED,
+      nickname = "My Smart Scale",
+      deviceType = "bluetooth",
+      sku = "0375",
+      alreadyPaired = true,
+    )
+    val dummyPermissions: GGPermissionStatusMap = mutableMapOf(
+      GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.DISABLED,
+      GGPermissionType.NEARBY_DEVICE to GGPermissionState.DISABLED,
+    )
+    val dummyScaleNameForm = FormGroup(ScaleNameDialogFormControls.create())
+    val dummyState = ScaleDetailsState(
+      scale = dummyDevice,
+      scaleNameForm = dummyScaleNameForm,
+      permissions = dummyPermissions,
+    )
+    BluetoothPermissionScreen(
+      state = dummyState,
+      handleIntent = {},
+      onClose = {},
+    )
+  }
+}
 
+@PreviewTheme
+@Composable
+fun BluetoothPermissionScreenPreviewDark() {
+  MeAppTheme {
+    val dummyDevice = Device(
+      id = "preview-device-2",
+      device = GGDeviceDetail(
+        deviceName = "Weight Gurus Smart Scale",
+        macAddress = "11:22:33:44:55:66",
+        identifier = "preview-identifier-2",
+      ),
+      connectionStatus = BLEStatus.CONNECTED,
+      nickname = "Bathroom Scale",
+      deviceType = "bluetooth",
+      sku = "0412",
+      alreadyPaired = true,
+    )
+    val dummyPermissions: GGPermissionStatusMap = mutableMapOf(
+      GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.ENABLED,
+      GGPermissionType.NEARBY_DEVICE to GGPermissionState.DISABLED,
+    )
+    val dummyScaleNameForm = FormGroup(ScaleNameDialogFormControls.create())
+    val dummyState = ScaleDetailsState(
+      scale = dummyDevice,
+      scaleNameForm = dummyScaleNameForm,
+      permissions = dummyPermissions,
+    )
+    BluetoothPermissionScreen(
+      state = dummyState,
+      handleIntent = {},
+      onClose = {},
+    )
   }
 }

@@ -41,6 +41,7 @@ fun AppScaleCard(
   horizontalSpacing: Dp? = null,
   isSavedScale: Boolean,
   enabled: Boolean = true,
+  canShowRightCaret: Boolean = true,
   onClick: (ScaleInfo) -> Unit,
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
@@ -146,15 +147,16 @@ fun AppScaleCard(
         )
         Spacer(modifier = Modifier.width(spacing.sm))
       }
-
-      AppIcon(
-        id = AppIcons.Default.RightCaret,
-        contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
-        type = AppIconType.Primary,
-        modifier = Modifier.size(32.dp),
-        enabled = enabled,
-        onClick = { onClick(scale) },
-      )
+if(canShowRightCaret){
+  AppIcon(
+    id = AppIcons.Default.RightCaret,
+    contentDescription = if (isSavedScale) "Navigate" else "Scale type icon",
+    type = AppIconType.Primary,
+    modifier = Modifier.size(32.dp),
+    enabled = enabled,
+    onClick = { onClick(scale) },
+  )
+}
     }
   }
   HorizontalDivider(thickness = 0.5.dp, color = colorScheme.utility)

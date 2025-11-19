@@ -22,6 +22,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * ViewModel for the LcbtScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -62,8 +63,16 @@ constructor(
   suspend fun saveScale(){
     try {
       if (discoveredScale != null) {
+        val scaleInfo = state.value.scaleSetupState.scaleInfo
+        val currentTime = Instant.now().toString()
         discoveredScale = discoveredScale!!.copy(
-          nickname = state.value.scaleSetupState.scaleInfo?.productName ?: "Bluetooth Smart Scale",
+          nickname = scaleInfo?.productName ?: "Bluetooth Smart Scale",
+          deviceType = ScaleSetupType.Lcbt.value,
+          sku = sku,
+          createdAt = currentTime,
+          device = discoveredScale!!.device?.copy(
+            deviceName = discoveredScale!!.device?.deviceName ?: scaleInfo?.productName ?: "",
+          ),
         )
         deviceService.saveScale(discoveredScale!!)
         AppLog.i(TAG, "Successfully saved LCBT scale")

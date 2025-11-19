@@ -65,6 +65,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.time.Instant
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -1063,8 +1064,19 @@ constructor(
                     ConnectionState.Success,
                   ),
                 )
-                discoveredScale =
-                  deviceService.saveScale(discoveredScale!!.copy(connectionStatus = BLEStatus.CONNECTED))
+                val currentTime = Instant.now().toString()
+                // val scaleInfo = _state.value.sc
+                discoveredScale = discoveredScale!!.copy(
+                  connectionStatus = BLEStatus.CONNECTED,
+                  deviceType = ScaleSetupType.BtWifiR4.value,
+                  // nickname = discoveredScale!!.nickname.ifEmpty { scaleInfo?.productName ?: "Bluetooth Smart Scale" },
+                  sku = sku,
+                  createdAt = currentTime,
+                  // device = discoveredScale!!.device?.copy(
+                  //   deviceName = discoveredScale!!.device?.deviceName?.ifEmpty { scaleInfo?.productName ?: "" } ?: scaleInfo?.productName ?: "",
+                  // ),
+                )
+                discoveredScale = deviceService.saveScale(discoveredScale!!)
                 isScaleConnected = true
                 onNext()
               }
