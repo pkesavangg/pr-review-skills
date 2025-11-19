@@ -64,8 +64,9 @@ enum BodyMetrics {
         .visceralFatLevel: MetricData(
             unit: "",
             label: MetricStrings.visceralFat,
-            bodyCompositionRelated: true,
+            bodyCompositionRelated: false,
             icon: AppAssets.visceralFatIcon,
+            isWholeNumber: true,
             preLabel: "Lv."
         ),
         .subcutaneousFatPercent: MetricData(

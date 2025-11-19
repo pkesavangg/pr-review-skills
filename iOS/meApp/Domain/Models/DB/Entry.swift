@@ -126,6 +126,9 @@ final class Entry {
         if let subcutaneousFat = scaleEntryMetric?.subcutaneousFatPercent, subcutaneousFat != 0 {
             arr.append((subcutaneousFat, .subcutaneousFatPercent))
         }
+        if let proteinPercent = scaleEntryMetric?.proteinPercent, proteinPercent != 0 {
+            arr.append((proteinPercent, .proteinPercent))
+        }
         if let skeletalMuscles = scaleEntryMetric?.skeletalMusclePercent, skeletalMuscles != 0 {
             arr.append((skeletalMuscles, .skeletalMusclePercent))
         }

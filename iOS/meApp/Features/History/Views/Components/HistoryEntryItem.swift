@@ -102,7 +102,8 @@ struct HistoryEntryItem: View {
                         HistoryMetricItem(
                             metric: BodyMetrics.config[item.metric]!,
                             value: item.value,
-                            isAlternate: index % 2 == 1,
+                            index: index,
+                            size: entry.metricItems.count,
                             onTap: { onMetricTap(entry, item.metric) }
                         )
                         .id("\(entry.id.uuidString)-metric-\(index)") // iOS 17 fix: Stable metric IDs
