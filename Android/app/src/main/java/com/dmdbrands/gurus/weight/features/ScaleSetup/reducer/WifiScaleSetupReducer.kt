@@ -8,7 +8,6 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
-import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 
 /**
@@ -39,8 +38,6 @@ data class WifiScalePasswordFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
-          FormValidations.minLength(1, LoginStrings.PasswordLabel),
-          FormValidations.maxLength(50, LoginStrings.PasswordLabel),
         ),
       ),
       noPasswordNetwork = FormControl.create(initialValue = false),
@@ -608,8 +605,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           initialValue = intent.password,
           validators = listOf(
             FormValidations.required(),
-            FormValidations.minLength(6, LoginStrings.PasswordLabel),
-            FormValidations.maxLength(50, LoginStrings.PasswordLabel),
           ),
         )
         // Mark as touched and dirty to preserve form state

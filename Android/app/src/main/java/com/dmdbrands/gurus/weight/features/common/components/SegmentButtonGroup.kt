@@ -170,6 +170,7 @@ fun <T> SegmentButtonGroup(
   contentPadding: PaddingValues = PaddingValues(0.dp),
   size: SegmentButtonSize = SegmentButtonSize.Small,
   type: SegmentButtonType = SegmentButtonType.Single,
+  spacedBy: Dp = 0.dp,
   onSelected: (T) -> Unit,
 ) {
   val textStyle = SegmentButtonDefaults.textStyle(size)
@@ -220,6 +221,7 @@ fun <T> SegmentButtonGroup(
     LazyRow(
       state = listState,
       contentPadding = contentPadding,
+      horizontalArrangement = Arrangement.spacedBy(spacedBy),
       modifier = modifier,
     ) {
       items(

@@ -57,7 +57,7 @@ object FormValidations {
   ): Validator<String> =
     { value ->
       if (value.trim().length < length) {
-        ValidationError(ValidationType.MIN_LENGTH, "Password must be $length characters long")
+        ValidationError(ValidationType.MIN_LENGTH, "Minimum of $length characters needed")
       } else {
         null
       }

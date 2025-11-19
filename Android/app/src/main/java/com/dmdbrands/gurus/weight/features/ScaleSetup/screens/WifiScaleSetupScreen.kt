@@ -43,7 +43,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonDisplayValue
 import com.dmdbrands.gurus.weight.features.common.model.SelectButtonItem
-import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -216,7 +215,7 @@ fun WifiScaleSetupScreenContent(
                     state.wifiPasswordForm.password.reset("")
                   } else {
                     state.wifiPasswordForm.password.addValidator(FormValidations.required())
-                    state.wifiPasswordForm.password.addValidator(FormValidations.minLength(1, LoginStrings.PasswordLabel))
+                    // Reset to clear any stale errors before validation runs
                     state.wifiPasswordForm.password.reset("")
                   }
                 },

@@ -193,11 +193,6 @@ constructor(
                     expiresAt = userAccount.expiresAt,
                 )
         }
-
-      val accesstoken = getAccessToken("19b8tDRoc76p9pERxI2zW0")
-      val accesstoken2 = getAccessToken("2ErCi7sEthEa2WFTZgszLH")
-      AppLog.v(TAG, "accesstokeno $accesstoken $accesstoken2")
-
     }
 
   override suspend fun getCurrentAccountID(): String? {

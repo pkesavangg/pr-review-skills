@@ -105,7 +105,7 @@ data class SignupFormControls(
               signupData.password,
               listOf(
                 FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password"),
                 FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
               ),
             ),
@@ -114,7 +114,7 @@ data class SignupFormControls(
               signupData.confirmPassword,
               listOf(
                 FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword"),
                 FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
               ),
             ),

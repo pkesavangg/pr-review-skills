@@ -254,7 +254,6 @@ constructor(
           when (e.code()) {
             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
-            HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.MessageNotAuth
             else -> ToastStrings.Error.UpdateProfileError.updatePasswordFailedMessage
           }
         showErrorToast(ToastStrings.Error.UpdateProfileError.updatePasswordHeader, msg)

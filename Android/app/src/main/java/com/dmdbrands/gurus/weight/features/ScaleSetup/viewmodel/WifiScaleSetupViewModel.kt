@@ -29,7 +29,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
-import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
@@ -779,8 +778,6 @@ constructor(
       initialValue = "",
       validators = listOf(
         FormValidations.required(),
-        FormValidations.minLength(6, LoginStrings.PasswordLabel),
-        FormValidations.maxLength(50, LoginStrings.PasswordLabel),
       ),
     )
     val noPasswordControl = FormControl.create(

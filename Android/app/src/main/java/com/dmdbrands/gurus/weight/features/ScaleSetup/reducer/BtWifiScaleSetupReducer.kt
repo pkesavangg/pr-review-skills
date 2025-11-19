@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
@@ -35,8 +34,6 @@ data class WifiPasswordFormControls(
         initialValue = "",
         validators = listOf(
           FormValidations.required(),
-          FormValidations.minLength(1, LoginStrings.PasswordLabel),
-          FormValidations.maxLength(50, LoginStrings.PasswordLabel),
         ),
       ),
       noPasswordNetwork = FormControl.create(initialValue = false),
@@ -58,7 +55,6 @@ data class ScaleUsernameFormControls(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
           FormValidations.maxLength(20,),
-          FormValidations.minLength(1)
         ),
       ),
     )

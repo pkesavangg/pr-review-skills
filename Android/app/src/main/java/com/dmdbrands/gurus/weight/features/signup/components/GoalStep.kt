@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
  * Helper function to update weight validators when metric toggle changes
@@ -72,12 +73,6 @@ fun GoalStep(
 
   val weightUnit = if (isMetric) WeightUnit.KG.label else WeightUnit.LB.label
 
-  // // Initialize weight validators based on initial weight unit or metric toggle
-  // LaunchedEffect(isMetric, initialWeightUnit) {
-  //   updateWeightValidators(currentWeightControl, isMetric)
-  //   updateWeightValidators(goalWeightControl, isMetric)
-  // }
-
   // Goal type options
   val goalTypeOptions =
     listOf(
@@ -113,6 +108,7 @@ fun GoalStep(
         size = SegmentButtonSize.Small,
         type = SegmentButtonType.Scrollable,
         key = SegmentButtonData::label,
+        spacedBy = spacing.lg
       )
     }
     Spacer(modifier = Modifier.padding(vertical = MeTheme.spacing.sm))

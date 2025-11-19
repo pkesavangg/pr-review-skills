@@ -285,7 +285,7 @@ fun AppButton(
   label: String,
   modifier: Modifier = Modifier,
   type: ButtonType = ButtonType.PrimaryFilled,
-  size: ButtonSize = ButtonSize.Medium,
+  size: ButtonSize = ButtonSize.Large,
   enabled: Boolean = true,
   textTransform: TextTransform = TextTransform.UPPERCASE,
   onClick: () -> Unit,

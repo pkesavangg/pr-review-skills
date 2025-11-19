@@ -181,7 +181,6 @@ class LogRepository
                 AppLog.i("LogRepository", "Log sending initiated")
                 // Sync current account ID
               AppLog.i("LogRepository", "Current account ID: $currentAccountId")
-                AppLog.i("LogRepository", "Current account ID: ${getLogsByAccountId(currentAccountId).first()}")
                 // Get recent logs from the last 5 days for current account only
                 val recentLogEntities = getLogsByAccountId(currentAccountId).first()
                     .filter {
