@@ -711,7 +711,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         let useR4Endpoint = account.dashboardSettings?.dashboardType == DashboardType.dashboard12.rawValue
-        let _ = try? await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
+        let _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
     }
     
     // MARK: - Aggregation Helpers
