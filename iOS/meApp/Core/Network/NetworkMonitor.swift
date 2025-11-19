@@ -20,6 +20,7 @@ final class NetworkMonitor: ObservableObject {
     
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue.global(qos: .background)
+    private var previousWifiState: Bool? = nil
     
     private init() {
         startMonitoring()
@@ -28,8 +29,20 @@ final class NetworkMonitor: ObservableObject {
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
-                self?.isConnected = path.status == .satisfied
-                self?.connectionType = path.availableInterfaces.first?.type
+                guard let self = self else { return }
+                
+                let wasWifi = self.previousWifiState ?? (self.connectionType == .wifi)
+                self.isConnected = path.status == .satisfied
+                self.connectionType = path.availableInterfaces.first?.type
+                
+                // Check if WiFi interface is available
+                let isWifi = path.availableInterfaces.contains { $0.type == .wifi }
+                let isWifiActive = self.connectionType == .wifi && self.isConnected
+                
+                // Check if WiFi status changed
+                if wasWifi != isWifi {
+                    self.previousWifiState = isWifi
+                }
             }
         }
         monitor.start(queue: queue)
