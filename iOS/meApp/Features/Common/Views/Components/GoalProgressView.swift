@@ -71,7 +71,7 @@ struct GoalProgressView: View {
                     tabViewModel.navigateToGoalSetting()
                 }
             )
-            .padding(.bottom,.spacingXS)
+            .padding(.vertical,.spacingXS)
         }
         .frame(maxWidth: .infinity)
     }
@@ -89,6 +89,7 @@ struct GoalProgressView: View {
             )
         }
         .padding(.vertical, .spacingXS)
+        .padding(.horizontal, .spacingSM)
     }
 
     // MARK: - Maintain goal UI (no progress bar)
@@ -102,6 +103,7 @@ struct GoalProgressView: View {
             }
         }
         .padding(.vertical, .spacingMD)
+        .padding(.horizontal, .spacingSM)
     }
 
     // MARK: - Sub-components

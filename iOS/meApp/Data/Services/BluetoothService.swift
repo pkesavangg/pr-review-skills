@@ -1498,6 +1498,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         if protocolType == .R4 {
             sourceType = .btWifiR4
         }
+        
         // Create BathScaleEntry with basic scale data
         let scaleEntry = BathScaleEntry(
             weight: getWeightByProtocolType(protocolType: protocolType, weightInKg: ggEntry.weightInKg, weight: ggEntry.weight),
@@ -1509,7 +1510,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         )
         // Create BathScaleMetric with detailed metrics
         let scaleMetric = BathScaleMetric(
-            bmr: ggEntry.bmr,
+            bmr: ggEntry.bmr * 10, // Multiply by 10 to match storage format (scale sends 164, store as 1640)
             metabolicAge: ggEntry.metabolicAge,
             proteinPercent: roundMetric(ggEntry.proteinPercent),
             pulse: ggEntry.pulse,
@@ -1686,13 +1687,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
     
     // Rounds a Float? or Double? metric to Int? (x10 for storage)
+    // Uses round() instead of floor() to handle floating-point precision issues
+    // This ensures values like 45.0999984741 round to 451 (representing 45.1%) instead of 450
     func roundMetric(_ metric: Float?) -> Int? {
         guard let metric = metric else { return nil }
-        return Int(floor(Double(metric) * 10))
+        return Int(round(Double(metric) * 10))
     }
     func roundMetric(_ metric: Double?) -> Int? {
         guard let metric = metric else { return nil }
-        return Int(floor(metric * 10))
+        return Int(round(metric * 10))
     }
     
     /**
