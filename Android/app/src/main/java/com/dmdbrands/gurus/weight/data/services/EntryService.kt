@@ -54,6 +54,17 @@ data class WeightSettings(
   val goal: Goal?
 )
 
+/**
+ * Data class for intermediate progress calculation values.
+ */
+private data class ProgressInputs(
+  val latest: Entry?,
+  val last7: List<Entry>,
+  val last30: List<Entry>,
+  val monthYear: List<HistoryMonth>,
+  val weightSettings: WeightSettings
+)
+
 @Singleton
 class EntryService
 @Inject
@@ -155,27 +166,33 @@ constructor(
     }
 
   override val progress: Flow<Progress> = combine(
-    latestEntry,
-    last7Days,
-    last30Days,
-    weightSettingsFlow,
-    monthYear,
-  ) { latest, last7, last30, weightSettings, monthYear ->
+    combine(
+      latestEntry,
+      last7Days,
+      last30Days,
+      weightSettingsFlow,
+      monthYear
+    ) { latest, last7, last30, weightSettings, monthYear ->
+      ProgressInputs(latest, last7, last30, monthYear, weightSettings)
+    },
+    lastUpdated
+  ) { inputs, lastUpdated ->
     calculateProgress(
-      latest?.process(weightSettings.weightUnit, weightSettings.weightless),
-      last7.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
-      last30.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
-      monthYear.map { it.process(weightSettings.weightUnit, weightSettings.weightless) },
-      processWeight(this.initialWeight ?: 0.0, weightSettings.weightUnit, weightSettings.weightless),
-      goal = weightSettings.goal?.copy(
+      inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+      inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+      inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+      inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+      processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+      goal = inputs.weightSettings.goal?.copy(
         goalWeight = processWeight(
-          weightSettings.goal.goalWeight,
-          weightSettings.weightUnit,
-          weightSettings.weightless,
+          inputs.weightSettings.goal.goalWeight,
+          inputs.weightSettings.weightUnit,
+          inputs.weightSettings.weightless,
         ),
         account = accountRepository.getActiveAccount().first(),
       ),
-      unit = weightSettings.weightUnit ?: WeightUnit.LB,
+      unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
+      lastUpdated = lastUpdated,
     )
   }
 
@@ -648,7 +665,8 @@ constructor(
     months: List<HistoryMonth>,
     initialWeight: Double?,
     unit: WeightUnit,
-    goal: Goal?
+    goal: Goal?,
+    lastUpdated: Long?,
   ): Progress {
     if (accountId == null) {
       return Progress()
