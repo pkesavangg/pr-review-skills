@@ -693,8 +693,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             let success = await ggBleSDK.updateProfile(profile: userProfile)
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
-            // SDK returns Bool; protocol expects [String] status array. Return empty array for now.
-            return .success([])
+            return .success(success)
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
