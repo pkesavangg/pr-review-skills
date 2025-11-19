@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.strings.ForgotPa
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.viewmodel.ForgotPasswordDialogViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
  * Password Reset Dialog composable using BaseModal for consistent dialog styling.
@@ -94,6 +97,7 @@ fun PasswordResetModal(
                         onClick = { focusManager.clearFocus() }
                     ),
                 ) {
+                  Spacer(modifier = Modifier.padding(top = spacing.xs))
                     AppInput(
                         formControl = state.form.controls.email,
                         label = ForgotPasswordDialogStrings.EmailLabel,
