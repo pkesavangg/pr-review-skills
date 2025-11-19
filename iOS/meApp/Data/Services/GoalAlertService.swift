@@ -91,6 +91,74 @@ final class GoalAlertService: ObservableObject {
     private func goalAlertStorageKey(for accountId: String) -> String {
         return "\(accountId)-goalMetFlag"
     }
+    
+    /// Checks if the "Set a Goal" card should be shown when user has 3+ entries but no goal set.
+    /// - Parameter entryCount: The current number of entries for the user
+    func checkSetGoalCard(entryCount: Int) async {
+        // Don't show if already showing an alert
+        guard !isShowingAlert else { return }
+        
+        // Don't show if Bluetooth setup is in progress
+        guard !bluetoothService.isSetupInProgress else { return }
+        
+        // Get account - need it for accountId
+        guard let account = accountService.activeAccount else { return }
+        
+        // Check if goal type is null/none (no goal set)
+        if let goalSettings = account.goalSettings,
+           let goalType = goalSettings.goalType,
+           goalType != .none {
+            // User has a goal set, don't show the card
+            return
+        }
+        
+        // Check entries count
+        guard entryCount >= 3 else { return }
+        
+        // Check if popup has been shown before
+        let storageKey = goalCardStatusStorageKey(for: account.accountId)
+        if let hasBeenShown = kv.getValue(forKey: storageKey) as? Bool, hasBeenShown {
+            return
+        }
+        
+        // Show the SetAGoalCardView modal (flag will be set after successful presentation)
+        await presentSetGoalCard(accountId: account.accountId)
+    }
+    
+    private func goalCardStatusStorageKey(for accountId: String) -> String {
+        return "\(accountId)-goalCardStatus"
+    }
+    
+    private func presentSetGoalCard(accountId: String) async {
+        isShowingAlert = true
+        
+        let storageKey = goalCardStatusStorageKey(for: accountId)
+        
+        let cardView = SetAGoalCardView(
+            onClose: { [weak self] in
+                guard let self else { return }
+                // Mark as shown when user closes the modal
+                self.kv.setValue(true, forKey: storageKey)
+                self.notificationService.dismissModal()
+                self.isShowingAlert = false
+            },
+            onSetGoal: { [weak self] in
+                guard let self else { return }
+                // Mark as shown when user taps "Set Goal"
+                self.kv.setValue(true, forKey: storageKey)
+                self.notificationService.dismissModal()
+                self.isShowingAlert = false
+                self.handleNewGoalAction()
+            }
+        )
+        
+        let modal = ModalData(
+            presentedView: AnyView(cardView),
+            backdropDismiss: false
+        )
+        
+        notificationService.showModal(modal)
+    }
 
     // MARK: - Alert Builders
     private func presentGoalMetAlert() async {
