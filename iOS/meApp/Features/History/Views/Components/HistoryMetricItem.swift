@@ -25,7 +25,13 @@ struct HistoryMetricItem: View {
     // MARK: - Computed Properties
     /// Returns the background color based on index and total size, matching Android implementation
     private var backgroundColor: Color {
-        (size == 1 || index % 2 != 0) ? theme.backgroundPrimary : theme.backgroundSecondary
+        if size % 2 != 0 {
+            // Odd number of metrics: start with backgroundPrimary at index 0, then alternate
+            return index % 2 == 0 ? theme.backgroundPrimary : theme.backgroundSecondary
+        } else {
+            // Even number of metrics: use existing logic (start with backgroundSecondary at index 0)
+            return index % 2 != 0 ? theme.backgroundPrimary : theme.backgroundSecondary
+        }
     }
 
     // MARK: - Body
