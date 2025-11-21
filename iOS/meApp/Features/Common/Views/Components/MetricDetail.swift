@@ -47,12 +47,49 @@ struct MetricDetailView: View {
     private var formattedValue: String {
       if metric == .weight {
         return WeightValueConvertor.formatWeight(rawValue ?? 0, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
+        } else if metric == .bmr {
+            // BMR: entryDTO.bmr is stored scaled by 10 (e.g., 14508 for 1450.8), so divide by 10 for display
+            guard let bmrRaw = rawValue, abs(bmrRaw) > 0.001 else { return placeholder }
+            let bmrDisplayValue = bmrRaw / 10.0
+            guard abs(bmrDisplayValue) > 0.001 else { return placeholder }
+            let formatted = BodyMetricsConvertor.convert(
+                bmrDisplayValue,
+                shouldCompose: false,
+                wholeNumber: true
+            )
+            // Check if formatted result is "0" and return placeholder
+            if formatted == "0" || formatted == "0.0" {
+                return placeholder
+            }
+            return formatted
+        } else if metric == .visceralFatLevel {
+            // Visceral fat: entryDTO.visceralFatLevel is stored scaled by 10 (e.g., 200 for level 20), so divide by 10 for display
+            guard let visceralRaw = rawValue, abs(visceralRaw) > 0.001 else { return placeholder }
+            let visceralDisplayValue = visceralRaw / 10.0
+            guard abs(visceralDisplayValue) > 0.001 else { return placeholder }
+            let formatted = BodyMetricsConvertor.convert(
+                visceralDisplayValue,
+                shouldCompose: false,
+                wholeNumber: true
+            )
+            // Check if formatted result is "0" and return placeholder
+            if formatted == "0" || formatted == "0.0" {
+                return placeholder
+            }
+            return formatted
         } else {
-            return BodyMetricsConvertor.convert(
-                rawValue,
+            // For other metrics, check if value is 0 or nil and return placeholder
+            guard let value = rawValue, abs(value) > 0.001 else { return placeholder }
+            let formatted = BodyMetricsConvertor.convert(
+                value,
                 shouldCompose: config.bodyCompositionRelated,
                 wholeNumber: config.isWholeNumber
             )
+            // Check if formatted result is "0" or "0.0" and return placeholder
+            if formatted == "0" || formatted == "0.0" {
+                return placeholder
+            }
+            return formatted
         }
     }
 

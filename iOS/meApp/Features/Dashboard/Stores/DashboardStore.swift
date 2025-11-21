@@ -1695,7 +1695,14 @@ class DashboardStore: ObservableObject {
         // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
         let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
         let numericChars = String(String.UnicodeScalarView(numericScalars))
-        if let number = Double(numericChars), number == 0 {
+        // Check if value is placeholder or zero
+        let isPlaceholder = raw == DashboardStrings.placeholder || (numericChars.isEmpty == false && Double(numericChars) == 0)
+        
+        if isPlaceholder {
+            // If there's a preLabel (e.g., "Lv." for visceral fat), show "Lv. --" instead of just "--"
+            if let preLabel = metric.preLabel {
+                return "\(preLabel) \(DashboardStrings.placeholder)"
+            }
             return DashboardStrings.placeholder
         }
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
@@ -1959,13 +1966,13 @@ class DashboardStore: ObservableObject {
         )
 
         // Metric entry: visceralFat and bmr are stored scaled by 10
-        let avgBmr = scaled10OrNil(avg(ops.map { $0.bmr }))
+        let avgBmr = intOrNil(avg(ops.map { $0.bmr }))
         let avgMetAge = intOrNil(avg(ops.map { $0.metabolicAge }))
         let avgProtein = intOrNil(avg(ops.map { $0.proteinPercent }))
         let avgPulse = intOrNil(avg(ops.map { $0.pulse }))
         let avgSkel = intOrNil(avg(ops.map { $0.skeletalMusclePercent }))
         let avgSubFat = intOrNil(avg(ops.map { $0.subcutaneousFatPercent }))
-        let avgVisceral = scaled10OrNil(avg(ops.map { $0.visceralFatLevel }))
+        let avgVisceral = intOrNil(avg(ops.map { $0.visceralFatLevel }))
         let avgBone = intOrNil(avg(ops.map { $0.boneMass }))
 
         entry.scaleEntryMetric = BathScaleMetric(

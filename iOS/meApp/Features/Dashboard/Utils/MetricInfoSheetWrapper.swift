@@ -28,6 +28,18 @@ struct MetricInfoSheetWrapper: View {
         .task {
             await extractDTO()
         }
+        // Update entryDTO when time period changes
+        .task(id: dashboardStore.state.graph.selectedPeriod) {
+            await extractDTO()
+        }
+        // Update entryDTO when entry changes (e.g., when period changes and new entry is created)
+        .task(id: entry.id) {
+            await extractDTO()
+        }
+        // Update entryDTO when metrics change (which happens when period changes)
+        .task(id: dashboardStore.state.metrics.metrics) {
+            await extractDTO()
+        }
     }
     
     private func extractDTO() async {
