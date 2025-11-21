@@ -28,7 +28,6 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.util.Log
 
 /**
  * ViewModel for the AppsyncScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -181,7 +180,7 @@ constructor(
     AppLog.d(TAG, "Exit setup requested - isSetupFinished: $isSetupFinished, isLastStep: ${state.value.isLastStep}")
     // Clear setup in progress state when exiting
     deviceService.setSetupInProgress(false)
-    if (isSetupFinished || state.value.isLastStep) {
+    if (isSetupFinished && state.value.isLastStep) {
       AppLog.d(TAG, "Setup is finished, checking and saving scale")
       checkAndSaveScale()
     } else {
