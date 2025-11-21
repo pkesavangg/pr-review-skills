@@ -1802,12 +1802,17 @@ class DashboardStore: ObservableObject {
                     }
                 }
 
-                let formatted = BodyMetricsConvertor.convert(x, shouldCompose: false, wholeNumber: true)
+                // For BMR and visceral fat: x is in stored format (scaled by 10) from BathScaleWeightSummary
+                // Divide by 10 to get display format before formatting to properly detect zero values
+                // This aligns with how MetricDetailView displays these values
+                let displayValue = x / 10.0
+                let formatted = BodyMetricsConvertor.convert(displayValue, shouldCompose: false, wholeNumber: true)
 
                 if formatted == "0" || formatted == "0.0" || formatted == "--" {
                     return nil
                 }
-                let v = Int((x * 10.0).rounded())
+                // x is already in stored format (scaled by 10), so convert to Int directly
+                let v = Int(x.rounded())
                 return v == 0 ? nil : v
             }
 
