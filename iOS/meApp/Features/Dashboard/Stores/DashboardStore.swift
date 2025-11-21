@@ -1792,8 +1792,21 @@ class DashboardStore: ObservableObject {
                 let v = Int(x.rounded())
                 return v == 0 ? nil : v
             }
-            func scaled10OrNil(_ x: Double?) -> Int? {
+            func scaled10OrNil(_ x: Double?, metricLabel: String) -> Int? {
                 guard let x = x else { return nil }
+
+                if let metricItem = state.metrics.metrics.first(where: { $0.label == metricLabel }) {
+                    let tileValue = metricItem.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if tileValue == DashboardStrings.placeholder || tileValue == "0" || tileValue == "0.0" {
+                        return nil
+                    }
+                }
+
+                let formatted = BodyMetricsConvertor.convert(x, shouldCompose: false, wholeNumber: true)
+
+                if formatted == "0" || formatted == "0.0" || formatted == "--" {
+                    return nil
+                }
                 let v = Int((x * 10.0).rounded())
                 return v == 0 ? nil : v
             }
@@ -1815,13 +1828,13 @@ class DashboardStore: ObservableObject {
                 source: "dashboard"
             )
             entry.scaleEntryMetric = BathScaleMetric(
-                bmr: scaled10OrNil(point.bmr),
+                bmr: scaled10OrNil(point.bmr, metricLabel: DashboardStrings.bmrKcal),
                 metabolicAge: intOrNil(point.metabolicAge),
                 proteinPercent: intOrNil(point.proteinPercent),
                 pulse: intOrNil(point.pulse),
                 skeletalMusclePercent: intOrNil(point.skeletalMusclePercent),
                 subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
-                visceralFatLevel: scaled10OrNil(point.visceralFatLevel),
+                visceralFatLevel: scaled10OrNil(point.visceralFatLevel, metricLabel: DashboardStrings.visceralFat),
                 boneMass: intOrNil(point.boneMass),
                 impedance: nil,
                 unit: nil
