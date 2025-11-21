@@ -813,10 +813,11 @@ constructor(
       }
 
       WifiScaleSetupStep.WIFI_MODE -> {
-        when (currentState.selectedWifiMode) {
-          "apmode" -> {
-            handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
-          }
+        if(state.value.permissionsSkipped || state.value.isGetMACSetup){
+          WifiScaleSetupIntent.SelectWifiMode(wifiMode = "apmode")
+        }
+        if(state.value.selectedWifiMode == "apmode"){
+          handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
         }
         startSmartConnect()
         return

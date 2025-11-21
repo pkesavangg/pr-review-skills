@@ -142,14 +142,9 @@ data class WifiScaleSetupState(
 
       WifiScaleSetupStep.WIFI_MODE -> {
         when {
-          isGetMACSetup -> {
+          isGetMACSetup || permissionsSkipped -> {
             // MAC setup flow - only AP mode allowed
-            selectedWifiMode == "apmode"
-          }
-
-          permissionsSkipped -> {
-            // Permission skipped flow - only AP mode allowed
-            selectedWifiMode == "apmode"
+           true
           }
 
           else -> {

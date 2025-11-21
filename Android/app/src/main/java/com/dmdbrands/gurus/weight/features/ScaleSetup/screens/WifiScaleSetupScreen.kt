@@ -260,19 +260,20 @@ fun WifiScaleSetupScreenContent(
                       id = "wifi_ap_mode",
                       displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
                       emitValue = "apmode",
-                      isSelected = state.selectedWifiMode == "apmode",
+                      isSelected = true,
                     ),
                   )
                 }
 
                 state.permissionsSkipped -> {
+                  val image = if (state.sku == "0384") AppIcons.Setup.WifiAPModeFilled0384 else AppIcons.Setup.WifiAPModeSelected
                   // Permission skipped flow: Only AP mode available
                   listOf(
                     SelectButtonItem(
                       id = "wifi_ap_mode",
-                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
+                      displayValue = SelectButtonDisplayValue.Image(image),
                       emitValue = "apmode",
-                      isSelected = state.selectedWifiMode == "apmode",
+                      isSelected = true,
                     ),
                   )
                 }
@@ -309,6 +310,10 @@ fun WifiScaleSetupScreenContent(
                 isSelectable = true,
                 sku = state.sku,
                 onItemSelected = { value ->
+                  if(state.permissionsSkipped || state.isGetMACSetup){
+                    onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = "apmode"))
+                  }
+                  else
                   onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
                 },
                 noteMessage = if (state.isApMode) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
