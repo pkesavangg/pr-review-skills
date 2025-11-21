@@ -256,6 +256,15 @@ class HelpStore: ObservableObject {
         ))
     }
     
+    func openHelp() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(ModelNumberHelpModalView(){
+                self.notificationService.dismissModal()
+            }),
+            backdropDismiss: true
+        ))
+    }
+    
     deinit {
         cancellables.forEach { $0.cancel() }
     }
