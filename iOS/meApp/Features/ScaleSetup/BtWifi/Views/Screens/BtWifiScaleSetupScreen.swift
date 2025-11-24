@@ -82,9 +82,10 @@ struct BtWifiScaleSetupScreen: View {
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews,
                 shouldApplyHorizontalPadding: { index in
-                    // Omit horizontal padding ONLY for the Scale Metrics customization screen.
+                    // Omit horizontal padding for Scale Metrics and Dashboard Metrics customization screens.
                     !(setupStore.steps[index] == .viewSettings &&
-                      setupStore.currentCustomizeSetting == .scaleMetrics)
+                      (setupStore.currentCustomizeSetting == .scaleMetrics ||
+                       setupStore.currentCustomizeSetting == .dashboardMetrics))
                 }
             )
             
