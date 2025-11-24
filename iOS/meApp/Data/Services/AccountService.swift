@@ -261,8 +261,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Switch account requested to accountId=\(account.accountId)")
             let responseAccount = try await refreshAccount(accountId: account.accountId)
-            activeAccount = nil
             await bluetoothService.disconnectConnectedScales()
+            activeAccount = nil
             try await setActiveAccount(responseAccount)
             logger.log(level: .info, tag: tag, message: "Switched active account to accountId=\(responseAccount.accountId)")
         } catch {
