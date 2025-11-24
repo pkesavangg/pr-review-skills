@@ -143,15 +143,17 @@ final class ScaleSettingsStore: ObservableObject {
             return await existingTask.value
         }
         
-        // Start a new fetch task on MainActor to ensure @Published updates are visible
+        // Start a new fetch task
         isFetchingUsersList = true
         let task: Task<[DeviceUser], Never> = Task { [weak self] in
             guard let self = self else { return [] }
-            let fetchedUsers = await self.fetchUsersList()
-            self.isFetchingUsersList = false
-            self.usersListFetchTask = nil
-            return fetchedUsers
+            defer {
+                self.isFetchingUsersList = false
+                self.usersListFetchTask = nil
+            }
+            return await self.fetchUsersList()
         }
+
         usersListFetchTask = task
         let fetchedUsers = await task.value
         return fetchedUsers
