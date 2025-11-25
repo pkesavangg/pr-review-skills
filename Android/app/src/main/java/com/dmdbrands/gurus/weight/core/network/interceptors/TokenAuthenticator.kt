@@ -33,9 +33,8 @@ class TokenAuthenticator @Inject constructor(
 ) : Authenticator {
     companion object {
         private const val TAG = "TokenAuthenticator"
-        private const val TOKEN_EXPIRY_BUFFER_MINUTES = 5 // Same as Angular: 5 minutes buffer
+        private const val TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // Same as Angular: 5 minutes buffer in milliseconds
         private const val MAX_REFRESH_ATTEMPTS = 3 // Same as Angular: max 3 attempts
-        private const val MAX_RETRY_ATTEMPTS = 1 // Max retry attempts for 401 handling
     }
 
     private var isRefreshingToken = false
@@ -85,13 +84,13 @@ class TokenAuthenticator @Inject constructor(
 
                     if (isCurrentAccount) {
                         // For current account, logout and return null to fail the request
-                        logoutUser(accountId, isCurrentAccount)
+                        logoutUser(accountId, true)
                         return@runBlocking null
                     } else {
-                        // For non-active accounts, just log and let the API call proceed with original request
-                        AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
-                        // Don't return null - let the original request continue and fail naturally
-                        return@runBlocking response.request
+                        // For non-active accounts, fail fast to avoid blocking UI
+                        // The AccountService will handle marking the account as expired
+                        AppLog.w(TAG, "Non-active account token refresh failed: $accountId - failing fast")
+                        return@runBlocking null
                     }
                 }
 
@@ -108,13 +107,13 @@ class TokenAuthenticator @Inject constructor(
 
                 if (isCurrentAccount) {
                     // For current account, logout and return null to fail the request
-                    logoutUser(accountId, isCurrentAccount)
+                    logoutUser(accountId, true)
                     return@runBlocking null
                 } else {
-                    // For non-active accounts, just log and let the API call proceed with original request
-                    AppLog.w(TAG, "Non-active account token refresh failed: $accountId - letting API call proceed")
-                    // Don't return null - let the original request continue and fail naturally
-                    return@runBlocking response.request
+                    // For non-active accounts, fail fast to avoid blocking UI
+                    // The AccountService will handle marking the account as expired
+                    AppLog.w(TAG, "Non-active account token refresh failed: $accountId - failing fast")
+                    return@runBlocking null
                 }
             }
         }
@@ -136,7 +135,7 @@ class TokenAuthenticator @Inject constructor(
     private suspend fun isCurrentAccount(accountId: String?): Boolean {
         if (accountId == null) {
             AppLog.v(TAG, "No account ID provided, assuming current account")
-            return false // If no account ID, assume it's current account
+            return true // If no account ID, assume it's current account
         }
 
         val currentAccountId = tokenManager.getCurrentAccountID()
@@ -176,13 +175,12 @@ class TokenAuthenticator @Inject constructor(
             val tokenExpires = dateFormat.parse(expiresAt)
             val currentTime = Date()
             val timeUntilExpiry = tokenExpires!!.time - currentTime.time
-            val bufferTime = TOKEN_EXPIRY_BUFFER_MINUTES * 60 * 1000 // 5 minutes in milliseconds
 
-            AppLog.v(TAG, "Time until expiry: ${timeUntilExpiry}ms, buffer: ${bufferTime}ms")
-            val isExpired = timeUntilExpiry <= bufferTime
+            val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS
 
             if (isExpired) {
-                AppLog.v(TAG, "Token expires within ${TOKEN_EXPIRY_BUFFER_MINUTES} minutes")
+                val minutesUntilExpiry = timeUntilExpiry / (1000 * 60)
+                AppLog.v(TAG, "Token expires within ${TOKEN_EXPIRY_BUFFER_MS / (1000 * 60)} minutes (${minutesUntilExpiry} minutes remaining)")
             } else {
                 AppLog.v(TAG, "Token is still valid for ${timeUntilExpiry / (1000 * 60)} minutes")
             }
