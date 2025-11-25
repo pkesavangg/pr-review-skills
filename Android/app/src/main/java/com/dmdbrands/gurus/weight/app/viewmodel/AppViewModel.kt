@@ -630,7 +630,6 @@ constructor(
                       val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
                       ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
                         if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
-
                           viewModelScope.launch {
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                               navigationService.navigateTo(
@@ -683,17 +682,18 @@ constructor(
         return@launch
       }
       val accountId = currentAccountId ?: return@launch
-      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
-      if (device == null) {
-        return@launch
+      var device: Device? = null
+      //During setup scale list will be empty so ignoring this check during setup and allow all entries.
+      val isSetupInProgress = deviceService.isSetupInProgress()
+      if(!isSetupInProgress){
+        device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId) ?: return@launch
       }
-
       // Get user height for BMI calculation
       val activeAccount = accountService.activeAccountFlow.first()
       val userHeight = activeAccount?.height
 
       val entry = ggEntry.map { ggScaleEntry ->
-        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device.id)
+        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device?.id ?: "")
 
         // Check if BMI is 0.0 or null and calculate it if user height is available
         if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) && userHeight != null) {
@@ -717,11 +717,13 @@ constructor(
 
       try {
         entryService.addEntry(entry)
-        dialogQueueService.showToast(
-          Toast(
-            message = "entry saved successfully",
-          ),
-        )
+        if(!isSetupInProgress){
+          dialogQueueService.showToast(
+            Toast(
+              message = "entry saved successfully",
+            ),
+          )
+        }
         // Check for account flags after entry is saved
         checkAccountFlags("entry")
       } catch (e: Exception) {
