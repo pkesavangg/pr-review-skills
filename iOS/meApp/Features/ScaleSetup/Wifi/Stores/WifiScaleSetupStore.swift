@@ -402,10 +402,15 @@ final class WifiScaleSetupStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
+                    guard let self = self else { return }
                     // User chose to skip – flag this so smart-connect can bail.
-                    self?.permissionsSkipped = true
+                    self.permissionsSkipped = true
+                    // Clear the network form SSID when permissions are skipped and mark as pristine to avoid validation errors
+                    self.networkForm.clearSSIDAndMarkPristine()
+                    self.wifiStatus = nil
+                    logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
-                    self?.moveToNextStep()
+                    self.moveToNextStep()
                 }
             ]
         )
@@ -447,21 +452,33 @@ final class WifiScaleSetupStore: ObservableObject {
             let kvStorage = KvStorageService.shared
             let status = await wifiScaleService.getConnectedWifiInfo()
             
-            if let ssid = status.ssid, !ssid.isEmpty {
-                let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-                if let wifiStatus = localStatus {
-                    if ssid != wifiStatus.ssid {
+            // Check if we should auto-populate SSID
+            // Similar to Android: shouldAutoPopulate = !permissionsSkipped || isGetMACSetup || arePermissionsCurrentlyEnabled
+            // But per user requirement: if permissions were skipped, don't populate even if currently enabled (unless Get-MAC)
+            let shouldAutoPopulate = !permissionsSkipped || isForGetMac
+            
+            if !shouldAutoPopulate {
+                // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
+                self.networkForm.clearSSIDAndMarkPristine()
+                self.wifiStatus = nil
+                logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
+            } else {
+                // Normal flow: update WiFi status and populate SSID
+                if let ssid = status.ssid, !ssid.isEmpty {
+                    let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+                    if let wifiStatus = localStatus {
+                        if ssid != wifiStatus.ssid {
+                            kvStorage.setCodable(status, forKey: ssidTempKey)
+                        }
+                    } else {
                         kvStorage.setCodable(status, forKey: ssidTempKey)
                     }
-                } else {
-                    kvStorage.setCodable(status, forKey: ssidTempKey)
                 }
+                let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+                self.wifiStatus = wifiStatus
+                self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
+                logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
             }
-            
-            let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-            self.wifiStatus = wifiStatus
-            self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
-            logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
         }
     }
     
