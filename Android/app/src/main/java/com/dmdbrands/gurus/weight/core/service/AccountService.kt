@@ -21,13 +21,18 @@ import com.dmdbrands.gurus.weight.proto.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -418,21 +423,38 @@ constructor(
         _checkIntegrations.value = false
         return true
       }
-      for (account in loggedInAccounts) {
-        try {
-          AppLog.d(TAG, "Checking login status for account: ${account.id}")
-          // Get account info from API and update tokens for background operations
-          val accountInfo = accountRepository.getAccountFromAPI(account.id)
-          // Update account data with API response
-          accountRepository.updateAccountInfo(account.id, accountInfo)
-          AppLog.d(TAG, "Account ${account.id} login status check successful")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Account ${account.id} login status check failed", e)
-          // Mark account as expired in database
-          accountRepository.markAccountExpired(account.id)
-          // Clear tokens for this account
-          accountRepository.removeAccount(account.id)
-        }
+      // Run account checks in parallel with timeout to avoid blocking UI
+      coroutineScope {
+        val checkResults = loggedInAccounts.map { account ->
+          async {
+            try {
+              AppLog.d(TAG, "Checking login status for account: ${account.id}")
+              // Add timeout to prevent blocking (3 seconds per account)
+              withTimeout(3000) {
+                // Get account info from API and update tokens for background operations
+                val accountInfo = accountRepository.getAccountFromAPI(account.id)
+                // Update account data with API response
+                accountRepository.updateAccountInfo(account.id, accountInfo)
+                AppLog.d(TAG, "Account ${account.id} login status check successful")
+                true
+              }
+            } catch (e: TimeoutCancellationException) {
+              AppLog.w(TAG, "Account ${account.id} login status check timed out")
+              // Mark account as expired in database
+              accountRepository.markAccountExpired(account.id)
+              // Clear tokens for this account
+              accountRepository.removeAccount(account.id)
+              false
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Account ${account.id} login status check failed", e)
+              // Mark account as expired in database
+              accountRepository.markAccountExpired(account.id)
+              // Clear tokens for this account
+              accountRepository.removeAccount(account.id)
+              false
+            }
+          }
+        }.awaitAll()
       }
       AppLog.d(TAG, "Logged-in accounts status check completed.")
       // Emit true to trigger integration checks

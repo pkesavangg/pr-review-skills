@@ -62,6 +62,15 @@ class TokenAuthenticator @Inject constructor(
                 accountId = tokenManager.getCurrentAccountID()
               }
 
+                // Check if this is a non-active account early to skip refresh attempt
+                val isCurrentAccount = isCurrentAccount(accountId)
+                if (!isCurrentAccount) {
+                    // For non-active accounts, skip token refresh entirely to avoid blocking
+                    // The AccountService will handle marking the account as expired
+                    AppLog.v(TAG, "Skipping token refresh for non-active account: $accountId - failing fast")
+                    return@runBlocking null
+                }
+
                 val expiresAt = if (accountId != null) {
                     tokenManager.getAccountExpiresAt(accountId)
                 } else {
@@ -80,18 +89,9 @@ class TokenAuthenticator @Inject constructor(
 
                 if (refreshResult == null) {
                     AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
-                    val isCurrentAccount = isCurrentAccount(accountId)
-
-                    if (isCurrentAccount) {
-                        // For current account, logout and return null to fail the request
-                        logoutUser(accountId, true)
-                        return@runBlocking null
-                    } else {
-                        // For non-active accounts, fail fast to avoid blocking UI
-                        // The AccountService will handle marking the account as expired
-                        AppLog.w(TAG, "Non-active account token refresh failed: $accountId - failing fast")
-                        return@runBlocking null
-                    }
+                    // For current account, logout and return null to fail the request
+                    logoutUser(accountId, true)
+                    return@runBlocking null
                 }
 
                 // Build new request with fresh access token (retry the original request)
@@ -103,18 +103,10 @@ class TokenAuthenticator @Inject constructor(
                 return@runBlocking newRequest
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
-                val isCurrentAccount = isCurrentAccount(accountId)
-
-                if (isCurrentAccount) {
-                    // For current account, logout and return null to fail the request
-                    logoutUser(accountId, true)
-                    return@runBlocking null
-                } else {
-                    // For non-active accounts, fail fast to avoid blocking UI
-                    // The AccountService will handle marking the account as expired
-                    AppLog.w(TAG, "Non-active account token refresh failed: $accountId - failing fast")
-                    return@runBlocking null
-                }
+                // At this point, we know it's the current account (non-active accounts are skipped earlier)
+                // For current account, logout and return null to fail the request
+                logoutUser(accountId, true)
+                return@runBlocking null
             }
         }
     }
