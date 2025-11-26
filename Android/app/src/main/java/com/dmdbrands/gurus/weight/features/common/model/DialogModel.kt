@@ -73,6 +73,8 @@ sealed class DialogModel(
         val onConfirm: ((Any) -> Unit)? = null,
         val customPriority: Int = 1,
         val customDelayMillis: Long = 0L,
+        val dismissOnBackPress: Boolean = false,
+        val dismissOnClickOutside: Boolean = false,
     ) : DialogModel(priority = customPriority, delayMillis = customDelayMillis)
 
     override fun compareTo(other: DialogModel): Int = this.priority.compareTo(other.priority)

@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -92,21 +91,19 @@ fun DialogQueueHost(
 
             is DialogModel.Custom -> {
                 if (customDialogContent != null) {
-                    Dialog(
-                        onDismissRequest = {
+                    // Use ModalDialog for Custom dialogs to get backdrop support
+                    ModalDialog(
+                        onDismiss = {
                             dialog.onDismiss?.let { it() }
                             dialogQueueViewModel.dismissCurrent()
                         },
-                        properties = DialogProperties(
-                            dismissOnBackPress = false,
-                            dismissOnClickOutside = false,
-                        ),
-                        content = {
-                            customDialogContent(
-                                dialog,
-                            )
-                        },
-                    )
+                        dismissOnBackPress = dialog.dismissOnBackPress,
+                        dismissOnClickOutside = dialog.dismissOnClickOutside,
+                    ) {
+                        customDialogContent(
+                            dialog,
+                        )
+                    }
                 } else {
                     // Fallback: treat as alert
                     AlertDialog(
@@ -126,8 +123,8 @@ fun DialogQueueHost(
                             }
                         },
                         properties = DialogProperties(
-                            dismissOnBackPress = false,
-                            dismissOnClickOutside = false,
+                            dismissOnBackPress = dialog.dismissOnBackPress,
+                            dismissOnClickOutside = dialog.dismissOnClickOutside,
                         ),
                     )
                 }

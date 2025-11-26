@@ -87,6 +87,8 @@ constructor(
     onDismiss: (() -> Unit)?,
     priority: Int,
     delayMillis: Long,
+    dismissOnBackPress: Boolean = false,
+    dismissOnClickOutside: Boolean = false,
   ) {
     dialogQueueService.enqueue(
       DialogModel.Custom(
@@ -95,6 +97,8 @@ constructor(
         onDismiss = onDismiss,
         customPriority = priority,
         customDelayMillis = delayMillis,
+        dismissOnBackPress = dismissOnBackPress,
+        dismissOnClickOutside = dismissOnClickOutside,
       ),
     )
   }
