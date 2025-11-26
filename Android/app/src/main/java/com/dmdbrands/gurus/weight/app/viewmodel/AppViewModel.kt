@@ -254,6 +254,7 @@ constructor(
           is AuthState.LoggedOut -> {
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
+              dialogQueueService.clear()
             }
             stopScan()
           }
