@@ -88,6 +88,7 @@ fun DatePickerDialogContent(
   onOk: (Long) -> Unit,
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
+  hasError: Boolean = false,
 ) {
   val minDateMillis = minValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
   val maxDateMillis = maxValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
@@ -119,6 +120,7 @@ fun DatePickerDialogContent(
       Column {
         AppButton(
           label = "OK",
+          enabled = datePickerState.selectedDateMillis != null && !hasError,
           onClick = {
             datePickerState.selectedDateMillis?.let { utcMillis ->
               // Convert UTC date millis back to local date millis

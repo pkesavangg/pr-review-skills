@@ -414,6 +414,7 @@ fun DateTimeInput(
           ?: (localState as? DateTimeValue.DateTime)?.millis
           ?: System.currentTimeMillis(),
       onCancel = { isDateDialogOpen = false },
+      hasError = isError,
       onOk = { millis ->
         isToday = DateUtils.isToday(millis)
         isDateDialogOpen = false
@@ -461,6 +462,7 @@ fun DateTimeInput(
           },
       isToday = isToday,
       onCancel = { isTimeDialogOpen = false },
+      hasError = isError,
       onOk = { hour, minute ->
         isTimeDialogOpen = false
         val (clampedHour, clampedMinute) = if (isToday) clampTime(hour, minute, minTime, maxTime) else Pair(
