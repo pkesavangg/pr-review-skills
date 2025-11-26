@@ -87,7 +87,7 @@ constructor(
 
     AppLog.d(
       tag,
-      "onDeviceUpdate called for device ${macAddress}  with WiFi configured: ${deviceDetail.isWifiConfigured}",
+      "onDeviceUpdate called for device $macAddress  with WiFi configured: ${deviceDetail.isWifiConfigured}",
     )
 
     // Update connection status map
@@ -107,7 +107,7 @@ constructor(
           isWifiConfigured = deviceDetail.isWifiConfigured,
           wifiMacAddress = if (deviceDetail.isWifiConfigured == true) deviceDetail.wifiMacAddress else null,
         ),
-        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && (deviceDetail.impedanceSwitchState == false),
+        isWeighOnlyModeEnabledByOthers = device.preferences?.shouldMeasureImpedance == true && deviceDetail.impedanceSwitchState == false,
       )
       currentDevices[deviceIndex] = updatedDevice
       _pairedScales.value = currentDevices
@@ -206,7 +206,6 @@ constructor(
     try {
       // 1. Get locally stored devices
       val storedDevices = deviceRepository.getDevices(currentAccountId!!, false).first().toMutableList()
-
       // 2. Inject a temporary new device if passed
       tempDevice?.let { td ->
         // ✅ FIX: Only mark as unsynced if it's actually not synced yet
@@ -319,7 +318,6 @@ constructor(
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }
-
       // 8. Refresh the pairedScales StateFlow to reflect changes in UI
       fetchScales(currentAccountId)
     } catch (e: Exception) {
@@ -362,7 +360,6 @@ constructor(
         val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
         savedDevice.copy(preferences = updatedPreferences)
       } else savedDevice
-
       // Let sync handle the rest; it will also remove any temp rows if IDs differ.
       syncDevices(adjusted)
       AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")

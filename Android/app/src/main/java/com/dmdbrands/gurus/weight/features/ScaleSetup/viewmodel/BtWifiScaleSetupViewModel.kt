@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -66,6 +67,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
+import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -1452,15 +1454,6 @@ constructor(
         if (isScaleConnected)
           deviceService.saveScale(scale)
       }
-      val deviceDetail = scale.device
-      if (deviceDetail != null) {
-        AppLog.d(
-          TAG,
-          "Triggering onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
-        )
-        deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
-        AppLog.d(TAG, "Triggered onDeviceUpdate for WiFi configuration change")
-      }
     }
   }
 
@@ -1539,6 +1532,50 @@ constructor(
     return hasChanges
   }
 
+  /**
+   * Gets the timezone offset in minutes.
+   * @return The timezone offset in minutes
+   */
+  private fun getTimeZoneInMinutes(): Int {
+    val timeZone = TimeZone.getDefault()
+    val offsetInMillis = timeZone.getOffset(System.currentTimeMillis())
+    return offsetInMillis / (60 * 1000) // convert milliseconds to minutes
+  }
+
+  /**
+   * Updates scale preferences for a specific device.
+   * This method overrides the default behavior to ensure syncDevices is awaited before proceeding.
+   *
+   * @param deviceId The ID of the device
+   * @param preferences The preferences to update
+   * @return True if successful, false otherwise
+   */
+  private suspend fun updateScalePreferences(
+    deviceId: String,
+    preferences: R4ScalePreferenceApiModel,
+  ): Boolean {
+    AppLog.d(TAG, "Updating scale preferences for device: $deviceId")
+    return try {
+      val updatedPreference =
+        preferences.copy(
+          wifiFotaScheduleTime = 0,
+          tzOffset = getTimeZoneInMinutes(),
+        )
+
+
+      // Save preferences to API
+      deviceRepository.saveScalePreferencesToApi(updatedPreference)
+      // Await syncDevices before proceeding
+      deviceService.syncDevices()
+
+      AppLog.d(TAG, "Scale preferences updated successfully")
+      true
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error updating scale preferences", e)
+      false
+    }
+  }
+
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
     viewModelScope.launch {
       try {
@@ -1585,7 +1622,7 @@ constructor(
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
                 viewModelScope.launch {
                   timeoutJob.cancel()
-                  deviceService.updateScalePreferences(
+                  updateScalePreferences(
                     discoveredScale?.id ?: "",
                     discoveredScale?.preferences!!.toR4ScalePreferenceApiModel(),
                   )
@@ -1595,6 +1632,7 @@ constructor(
                       ConnectionState.Success,
                     ),
                   )
+                  ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
                   onNext()
                 }
               }
@@ -1613,7 +1651,7 @@ constructor(
             }
           }
           if (!state.value.hasSavedSettings) {
-            deviceService.updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
+            updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
           }
         }
       } catch (e: Exception) {

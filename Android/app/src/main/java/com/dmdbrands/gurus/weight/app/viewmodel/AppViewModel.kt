@@ -116,8 +116,10 @@ constructor(
   private var syncScaleJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var iamDialogListenerJob: Job? = null
+  private var pairedScalesSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
+  private var latestPairedScales: List<Device> = emptyList()
 
   init {
     // Initialize and maintain currentAccountId globally
@@ -387,6 +389,7 @@ constructor(
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
+        pairedScalesSubscribeJob?.cancel()
         accountService.subscribeAccount()
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
@@ -402,6 +405,7 @@ constructor(
         updateUnRead()
         subscribePermissions()
         subscribeDeviceCallback()
+        subscribePairedScales()
         syncScales()
       } else {
         routeToLandingOrApp()
@@ -473,6 +477,22 @@ constructor(
 
           else -> null
         }
+      }
+    }
+  }
+
+  /**
+   * Subscribes to paired scales flow and stores the latest value.
+   * This ensures we always have the most up-to-date paired scales for weight-only mode checks.
+   */
+  private fun subscribePairedScales() {
+    pairedScalesSubscribeJob?.cancel()
+    pairedScalesSubscribeJob = viewModelScope.launch {
+      deviceService.pairedScales.collect { pairedScales ->
+        latestPairedScales = pairedScales
+        AppLog.d(TAG, "Updated latest paired scales: ${pairedScales.size} devices")
+        // Check if weight-only mode alert should be shown when paired scales are updated
+        checkCanShowWeightOnlyModeAlert()
       }
     }
   }
@@ -821,11 +841,14 @@ constructor(
   /**
    * Checks if weight-only mode alert should be shown and emits appropriate events.
    * Similar to checkCanShowWeightOnlyModeAlert() in Angular BluetoothService.
+   * Uses the latest paired scales collected from the flow.
    */
   private fun checkCanShowWeightOnlyModeAlert() {
     viewModelScope.launch {
       try {
-        val pairedScales = deviceService.pairedScales.first()
+        // Use the latest paired scales collected from the flow
+        // This ensures we always have the most up-to-date data
+        val pairedScales = latestPairedScales
         pairedScales.forEach { device ->
           AppLog.d(
             TAG,
@@ -835,7 +858,7 @@ constructor(
           )
         }
 
-        val connectedScales = pairedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
+        val connectedScales = pairedScales.filter { it.connectionStatus == BLEStatus.CONNECTED && it.sku == "0412" }
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()

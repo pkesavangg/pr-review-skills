@@ -213,7 +213,7 @@ fun ScaleDetailsScreenContent(
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (device?.isWeighOnlyModeEnabledByOthers == true) {
+        if (state.scale?.isWeighOnlyModeEnabledByOthers == true) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
