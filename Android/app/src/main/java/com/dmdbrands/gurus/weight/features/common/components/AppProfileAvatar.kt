@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 
 /**
  * A circular profile avatar that displays the first letter of the provided text and supports active/inactive states.
@@ -121,7 +120,7 @@ fun AppProfileAvatar(
 
             Box(
                 modifier = Modifier
-                  .border(3.dp, colorScheme.inverseAction, shape = CircleShape)
+                  // .border(3.dp, colorScheme.inverseAction, shape = CircleShape)
                   .size(size / 1.06f)
                   .clip(CircleShape)
                   .background(backgroundColor),
