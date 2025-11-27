@@ -15,6 +15,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Injector private var scaleService: ScaleService
     @Injector private var pushNotificationService: PushNotificationService
     @Injector private var httpClient: HTTPClient
+    @Injector private var bluetoothService: BluetoothService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -239,6 +240,9 @@ final class WifiScaleSetupStore: ObservableObject {
         // Start at intro
         currentStepIndex = 0
         
+        // Set setup in progress flag to prevent goal modals during setup
+        bluetoothService.isSetupInProgress = true
+        
         // Evaluate initial next-button state
         updateNextEnabled()
     }
@@ -421,6 +425,8 @@ final class WifiScaleSetupStore: ObservableObject {
     func cleanUp() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        // Clear setup in progress flag when setup is dismissed
+        bluetoothService.isSetupInProgress = false
     }
     
     /// Starts observing the network form changes to update the next button state.
@@ -612,11 +618,17 @@ final class WifiScaleSetupStore: ObservableObject {
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }
+                
+                // Clear setup in progress flag after scale is saved
+                bluetoothService.isSetupInProgress = false
+                
                 moveToNextStep()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+                // Clear setup in progress flag even on error
+                bluetoothService.isSetupInProgress = false
             }
         }
     }
