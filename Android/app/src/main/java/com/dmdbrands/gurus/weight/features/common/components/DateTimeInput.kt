@@ -152,14 +152,16 @@ sealed class DateTimeValue() {
             set(Calendar.MINUTE, minute)
           }.timeInMillis
 
-      is DateTime ->
-        Calendar
-          .getInstance()
-          .apply {
-            timeInMillis = millis
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-          }.timeInMillis
+      is DateTime -> {
+        val now = Calendar.getInstance()
+        Calendar.getInstance().apply {
+          timeInMillis = millis
+          set(Calendar.HOUR_OF_DAY, hour)
+          set(Calendar.MINUTE, minute)
+          set(Calendar.SECOND, now.get(Calendar.SECOND))
+          set(Calendar.MILLISECOND, now.get(Calendar.MILLISECOND))
+        }.timeInMillis
+      }
     }
 
   companion object {
