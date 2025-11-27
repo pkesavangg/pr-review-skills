@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
-import com.dmdbrands.gurus.weight.core.service.WifiSetupType
 import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
@@ -83,7 +82,6 @@ data class WifiScaleSetupState(
     WifiScaleSetupStep.TROUBLE_SHOOTING,
   ),
   val isLoading: Boolean = false,
-  val error: String? = null,
   val isSetupFinished: Boolean = false,
   val isConnected: Boolean = false,
   val shouldGetMacAddress: Boolean = false,
@@ -95,7 +93,6 @@ data class WifiScaleSetupState(
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val wifiPasswordForm: WifiScalePasswordFormControls = WifiScalePasswordFormControls.create(),
   val scaleNetworkForm: ScaleNetworkForm = ScaleNetworkForm.create(),
-  val setupResult: SetupPath? = null,
   val showApMode: Boolean = false,
   val showError: Boolean = false,
   val permissionsSkipped: Boolean = false,
@@ -105,9 +102,8 @@ data class WifiScaleSetupState(
   val wifiStatus: WifiStatus? = null,
   val scaleToken: String? = null,
   val macAddress: String = "AA:BB:CC:DD:EE:FF",
-  val isConnectedToScaleWifi: Boolean = false,
   val isLastStep: Boolean = false,
-  val scaleWifiSsid: String = "gg_SmartScale_33",
+  val scaleWifiSsid: String = "gg_SmartScale_##",
   val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
@@ -124,10 +120,8 @@ data class WifiScaleSetupState(
 
       WifiScaleSetupStep.PERMISSIONS -> {
         if (isGetMACSetup) {
-          // MAC setup flow - check permissions only
           AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
         } else {
-          // Normal flow - check permissions
           AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = ScaleSetupType.Wifi)
         }
       }
@@ -206,19 +200,6 @@ data class WifiScaleSetupState(
         // These steps can always proceed
         canProceedToNext
 
-      else -> canProceedToNext
-    }
-
-  /**
-   * Computed property to determine if the skip button should be shown for the current step
-   */
-  val showSkipButton: Boolean
-    get() = when (currentStep) {
-      WifiScaleSetupStep.PERMISSIONS ->
-        // Only show skip button for normal flow (not MAC setup)
-        !isGetMACSetup
-
-      else -> false
     }
 }
 
@@ -228,35 +209,27 @@ data class WifiScaleSetupState(
 sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class SetScaleSku(val sku: String) : WifiScaleSetupIntent()
   data class SetCurrentStep(val step: WifiScaleSetupStep) : WifiScaleSetupIntent()
-  data class SetError(val error: String?) : WifiScaleSetupIntent()
   data class SelectUser(val userNumber: Int) : WifiScaleSetupIntent()
   data class SelectWifiMode(val wifiMode: String) : WifiScaleSetupIntent()
   data class SelectErrorCode(val errorCode: String) : WifiScaleSetupIntent()
   data class RequestPermission(val permissionType: String) : WifiScaleSetupIntent()
   data class SetPermissions(val permissions: GGPermissionStatusMap) : WifiScaleSetupIntent()
-  data class SetNewStep(val step: WifiScaleSetupStep) : WifiScaleSetupIntent()
   data class SetCanProceedToNext(val canProceed: Boolean) : WifiScaleSetupIntent()
-  data class SetScaleToken(val token: String) : WifiScaleSetupIntent()
   data class SetWifiStatus(val wifiStatus: WifiStatus) : WifiScaleSetupIntent()
   data class SetWifiSsid(val ssid: String) : WifiScaleSetupIntent()
-  data class SetWifiSetupType(val setupType: WifiSetupType) : WifiScaleSetupIntent()
   data class SetUserNumber(val userNumber: Int) : WifiScaleSetupIntent()
-  data class SetWifiPassword(val password: String) : WifiScaleSetupIntent()
   data class SetWifiPasswordFormSsid(val ssid: String) : WifiScaleSetupIntent()
   data class SetWifiPasswordFormPassword(val password: String) : WifiScaleSetupIntent()
   data class SetWifiPasswordFormNoPassword(val noPassword: Boolean) : WifiScaleSetupIntent()
   data class SetWifiPasswordForm(val form: WifiScalePasswordFormControls) : WifiScaleSetupIntent()
   data class SetScaleNetworkFormSsid(val ssid: String) : WifiScaleSetupIntent()
   data class SetConnectionSuccess(val isSuccess: Boolean) : WifiScaleSetupIntent()
-  data class SetConnectionError(val error: String) : WifiScaleSetupIntent()
   data class HandleUserConfirmSelected(val result: SetupPath) : WifiScaleSetupIntent()
   data class HandleErrorCodeSelected(val code: String) : WifiScaleSetupIntent()
-  data class SetSetupResult(val result: SetupPath?) : WifiScaleSetupIntent()
   data class SetShowApMode(val show: Boolean) : WifiScaleSetupIntent()
   data class SetShowError(val show: Boolean) : WifiScaleSetupIntent()
   data class SetPermissionsSkipped(val skipped: Boolean) : WifiScaleSetupIntent()
   data class SetNextButtonText(val text: String) : WifiScaleSetupIntent()
-  data class SetConnectedToScaleWifi(val isConnected: Boolean) : WifiScaleSetupIntent()
   data class SetMacAddress(val macAddress: String) : WifiScaleSetupIntent()
   data class OnGetScaleMacAddress(val macAddress: String = "") : WifiScaleSetupIntent()
   data class OnCopyMacAddress(val macAddress: String) : WifiScaleSetupIntent()
@@ -291,7 +264,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         isNavigating = false, // Clear navigation state after direct step change
       )
 
-      is WifiScaleSetupIntent.SetError -> state.copy(error = intent.error)
       is WifiScaleSetupIntent.Next -> {
         // Prevent double-clicks during navigation
         if (state.isNavigating) {
@@ -300,13 +272,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
         // Handle special navigation cases first
         val nextStep = when (state.currentStep) {
-          WifiScaleSetupStep.SCALE_INFO -> {
-            // Normal +1 navigation - MAC setup flag will be handled separately
-            if (state.currentStepIndex < state.steps.size - 1) {
-              state.steps[state.currentStepIndex + 1]
-            } else null
-          }
-
           WifiScaleSetupStep.WIFI_MODE -> {
             // Handle different WiFi mode selections - skip steps based on mode
             when (state.selectedWifiMode) {
@@ -346,13 +311,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             }
           }
 
-          WifiScaleSetupStep.SCALE_COUNTS -> {
-            // For MAC setup flows, this step shouldn't be reached
-            // For normal flows, continue normally
-            if (state.currentStepIndex < state.steps.size - 1) {
-              state.steps[state.currentStepIndex + 1]
-            } else null
-          }
 
           WifiScaleSetupStep.MAC_ADDRESS -> {
             if (state.isGetMACSetup) {
@@ -385,34 +343,22 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         }
 
         if (nextStep != null) {
-          // Clear error state when returning to normal flow from error flows
-          val updatedState = if (state.currentStep == WifiScaleSetupStep.ERROR_CODE_SELECTED &&
-            nextStep == WifiScaleSetupStep.WIFI_MODE
-          ) {
-            state.copy(
-              selectedErrorCode = null,
-              showError = false,
-            )
-          } else {
-            state
-          }
 
           // Handle MAC setup flag update for SCALE_INFO step
           val finalState =  if (state.currentStep == WifiScaleSetupStep.WIFI_MODE && state.selectedWifiMode == "apmode") {
             // Set showApMode flag when proceeding from WIFI_MODE with AP mode selected
-            updatedState.copy(showApMode = true)
+            state.copy(showApMode = true)
           } else if (nextStep == WifiScaleSetupStep.ACTIVATE_SCALE) {
             // Clear flags when entering ACTIVATE_SCALE step
-            updatedState.copy(showApMode = false, setupResult = null)
+            state.copy(showApMode = false,)
           } else {
-            updatedState
+            state
           }
 
           finalState.copy(
             currentStep = nextStep,
             isNavigating = true, // Set navigation state during transition
             canProceedToNext = false,
-            error = null,
             isLastStep = nextStep == WifiScaleSetupStep.SETUP_FINISHED || nextStep == WifiScaleSetupStep.TROUBLE_SHOOTING,
           )
         } else {
@@ -525,7 +471,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             isNavigating = true, // Set navigation state during transition
             canProceedToNext = false,
             nextButtonText = "Next", // Reset button text to default when going back
-            error = null,
             isLastStep = false,
           )
         } else {
@@ -534,7 +479,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         }
       }
 
-      is WifiScaleSetupIntent.Skip -> state.copy()
       is WifiScaleSetupIntent.ExitSetup ->
         state.copy(
           isSetupFinished = intent.isSetupFinished,
@@ -572,19 +516,13 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         canProceedToNext = intent.errorCode.isNotEmpty(),
       )
 
-      is WifiScaleSetupIntent.RequestPermission -> state.copy() // No change for now, permission handling is separate
       is WifiScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
-      is WifiScaleSetupIntent.SetNewStep -> state.copy(currentStep = intent.step)
       is WifiScaleSetupIntent.SetCanProceedToNext -> state.copy(
         canProceedToNext = intent.canProceed,
       )
 
-      is WifiScaleSetupIntent.SetScaleToken -> state.copy()
       is WifiScaleSetupIntent.SetWifiStatus -> state.copy(wifiStatus = intent.wifiStatus)
-      is WifiScaleSetupIntent.SetWifiSsid -> state.copy()
-      is WifiScaleSetupIntent.SetWifiSetupType -> state.copy()
       is WifiScaleSetupIntent.SetUserNumber -> state.copy(selectedUser = intent.userNumber)
-      is WifiScaleSetupIntent.SetWifiPassword -> state.copy()
       is WifiScaleSetupIntent.SetWifiPasswordFormSsid -> {
         // Create a new form control with the updated value while preserving validators
         val updatedSsid = FormControl.create(
@@ -646,20 +584,14 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
       }
 
       is WifiScaleSetupIntent.SetConnectionSuccess -> state.copy(isConnected = intent.isSuccess)
-      is WifiScaleSetupIntent.SetConnectionError -> state.copy(error = intent.error)
 
       // New reducer cases for user confirmation and setup flow
       is WifiScaleSetupIntent.HandleUserConfirmSelected -> state.copy(
-        setupResult = intent.result,
         showApMode = intent.result == SetupPath.AP_MODE,
       )
 
       is WifiScaleSetupIntent.HandleErrorCodeSelected -> state.copy(
         selectedErrorCode = intent.code,
-      )
-
-      is WifiScaleSetupIntent.SetSetupResult -> state.copy(
-        setupResult = intent.result,
       )
 
       is WifiScaleSetupIntent.SetShowApMode -> state.copy(
@@ -678,18 +610,9 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         nextButtonText = intent.text,
       )
 
-      is WifiScaleSetupIntent.SetConnectedToScaleWifi -> state.copy(
-        isConnectedToScaleWifi = intent.isConnected,
-      )
-
       is WifiScaleSetupIntent.SetMacAddress -> state.copy(
         macAddress = intent.macAddress,
       )
-
-      is WifiScaleSetupIntent.GoToWifiSettings -> {
-        // This intent will be handled by the ViewModel to open WiFi settings
-        state.copy()
-      }
 
       is WifiScaleSetupIntent.ClearNavigationState -> {
         // Clear navigation state to allow button clicks again
