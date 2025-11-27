@@ -110,7 +110,7 @@ fun ScaleDisplayMetricsScreenContent(
               handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
             },
             includeHeartRate = scale.preferences?.shouldMeasurePulse == true,
-            showAllMetrics = !scale.isWeighOnlyModeEnabledByOthers || scale.preferences?.shouldMeasureImpedance == false ,
+            showAllMetrics =  scale.preferences?.shouldMeasureImpedance == true ,
           )
         }
       }
