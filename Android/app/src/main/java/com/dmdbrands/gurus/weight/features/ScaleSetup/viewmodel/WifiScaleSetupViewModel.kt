@@ -845,8 +845,6 @@ constructor(
       WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
         // Clear error state and exit
         handleIntent(WifiScaleSetupIntent.SetShowError(false))
-        // handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
-
         startExitSetup(true)
         return
       }
