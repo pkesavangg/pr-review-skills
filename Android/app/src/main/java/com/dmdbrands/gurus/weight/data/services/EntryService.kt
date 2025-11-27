@@ -44,6 +44,7 @@ import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Data class combining weight unit and weightless settings for efficient flow operations.
@@ -148,6 +149,8 @@ constructor(
           } else {
             AppLog.d("EntryService", "User has only  scale entries, not enough for goal card")
           }
+          // Set up collector to refresh entry data when lastUpdated changes
+         refreshEntryData()
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
         }
@@ -167,15 +170,15 @@ constructor(
 
   override val progress: Flow<Progress> = combine(
     combine(
-      latestEntry,
-      last7Days,
-      last30Days,
+      _latestEntry,
+      _last7Days,
+      _last30Days,
       weightSettingsFlow,
-      monthYear
+      _monthYear
     ) { latest, last7, last30, weightSettings, monthYear ->
       ProgressInputs(latest, last7, last30, monthYear, weightSettings)
     },
-    lastUpdated
+    _lastUpdated
   ) { inputs, lastUpdated ->
     calculateProgress(
       inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
@@ -246,7 +249,7 @@ constructor(
    * This should be called after sync operations to ensure streak values are updated.
    * Adds a small delay to ensure database operations are fully committed before querying.
    */
-  private suspend fun refreshEntryData() {
+  override suspend fun refreshEntryData() {
     val currentAccountId = accountId ?: return
     try {
       updateLatestEntry(currentAccountId)
@@ -313,27 +316,7 @@ constructor(
       updateMonthlyAverage(accountId)
     }
 
-    // Set up collector to refresh entry data when lastUpdated changes
-    repositoryScope.launch {
-      var isFirstEmission = true
-      lastUpdated.collect { lastUpdatedValue ->
-        // Skip the first emission (initial/null value) to avoid redundant refresh
-        if (isFirstEmission) {
-          isFirstEmission = false
-          return@collect
-        }
 
-        // Only refresh if lastUpdated has a value
-        if (lastUpdatedValue != null) {
-          try {
-            AppLog.d("EntryService", "lastUpdated changed - triggering refreshEntryData()")
-            refreshEntryData()
-          } catch (e: Exception) {
-            AppLog.e("EntryService", "Error refreshing entry data from lastUpdated collector", e.toString())
-          }
-        }
-      }
-    }
 
     // Check for goal card after account data is updated
     repositoryScope.launch {
@@ -614,6 +597,7 @@ constructor(
   private suspend fun updateLatestEntry(accountId: String) {
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
+        Log.d("CHECKINGPRO2latest", "${latest}")
         _latestEntry.value = latest
       }
     } catch (e: Exception) {
@@ -671,7 +655,6 @@ constructor(
     if (accountId == null) {
       return Progress()
     }
-
     try {
       var week: Double? = null
       var initWeek: Entry? = null
@@ -682,12 +665,16 @@ constructor(
       var total: Double? = null
       var startingWeight: Double? = null
       var oldestEntry: Entry? = null
+      Log.d("CHECKINGPROold", "${oldestEntry}")
+      Log.d("CHECKINGcalcatest", "${latestEntry}")
 
       // Get initial entries for each period
       initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
       initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
       initYear = if (months.isNotEmpty()) months.last() else null
-
+     Log.d("CHECKINGINITW","$initWeek")
+      Log.d("CHECKINGINITM","$initMonth")
+      Log.d("CHECKINGINITY","$initYear")
       // Calculate week and month progress
       if (latestEntry != null && initWeek != null && latestEntry is ScaleEntry && initWeek is ScaleEntry) {
         week = latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
@@ -757,7 +744,22 @@ constructor(
       val currentStreak = getCurrentStreak()
       val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
       val totalCount = entryRepository.getTotalCount(accountId!!)
-
+      Log.d("CHECKINGlastvalue","${Progress(
+        latest = latestEntry,
+        goal = goal,
+        currentStreak = currentStreak,
+        longestStreak = longestStreak,
+        count = totalCount,
+        initWt = initialWeight ?: 0.0,
+        week = week,
+        month = month,
+        year = year,
+        total = total,
+        unit = unit,
+        initWeek = initWeek,
+        initMonth = initMonth,
+        initYear = initYear,
+      )}")
       return Progress(
         latest = latestEntry,
         goal = goal,

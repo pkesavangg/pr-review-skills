@@ -143,6 +143,7 @@ fun DashboardMilestoneGrid(
         }
       },
     ) { milestone ->
+
       ReorderableItem(
         state = reorderableState,
         key = getMilestoneKey(milestone, isVisible = true),
