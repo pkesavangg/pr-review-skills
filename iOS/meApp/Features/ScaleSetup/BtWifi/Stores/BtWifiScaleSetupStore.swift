@@ -1428,9 +1428,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 await upgradeDashboardTypeFrom4To12PreservingRemovalState()
             }
             
+            // Clear setup in progress flag after scale is saved
+            bluetoothService.isSetupInProgress = false
+            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
             connectionState = .failure
+            // Clear setup in progress flag even on error
+            bluetoothService.isSetupInProgress = false
         }
     }
     

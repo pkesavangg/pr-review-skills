@@ -39,7 +39,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var cachedXAxisLabels: [Date: String] = [:]
     
     // MARK: - Configuration
-    private let yAxisLabelWidth: CGFloat = 40
+    private var yAxisLabelWidth: CGFloat {
+        if viewModel.chartOperations.isEmpty && viewModel.timePeriod != .total {
+            return 30
+        }
+        return 40
+    }
     private let goalChipTrailingPadding: CGFloat = 20
     private var isScrollable: Bool {
         viewModel.hasXAxis
@@ -255,7 +260,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             dashboardStore: dashboardStore,
             localSelectedXValue: $localSelectedXValue
         )
-        .graphViewStyle(canAddPadding: !viewModel.hasXAxis)
+        .graphViewStyle(canAddPadding: !viewModel.hasXAxis, canAddTrailingPadding: !viewModel.chartOperations.isEmpty)
     }
     
     // MARK: - Chart Content Builders

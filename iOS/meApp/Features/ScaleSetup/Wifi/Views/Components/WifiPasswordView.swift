@@ -34,15 +34,21 @@ struct WifiPasswordView: View {
                         AppInputField(
                             config: TextInputConfig(
                                 label: labels.networkName,
-                                inputType: .text,
+                                placeholder: store.permissionsSkipped ? "" : nil, inputType: .text,
                                 submitLabel: .next,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.ssid),
-                                focusField: .networkName,
+                                focusField: .networkName
                             ),
                             value: $store.networkForm.ssid.value,
                             focusedField: $focusedField
                         ) {
                             focusedField = .password
+                        }
+                        // If permissionsSkipped, clear the SSID value and mark as pristine to avoid validation errors
+                        .onAppear {
+                            if store.permissionsSkipped {
+                                store.networkForm.clearSSIDAndMarkPristine()
+                            }
                         }
                         
                         AppInputField(
