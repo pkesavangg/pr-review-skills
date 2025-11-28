@@ -171,6 +171,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         resetDiscoveryState()
+        // Set setup in progress flag to prevent goal modals during setup
+        bluetoothService.isSetupInProgress = true
     }
     
     // MARK: - Exit / Help
@@ -495,8 +497,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             
+            // Clear setup in progress flag after scale is saved
+            bluetoothService.isSetupInProgress = false
+            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+            // Clear setup in progress flag even on error
+            bluetoothService.isSetupInProgress = false
         }
         notificationService.dismissLoader()
         dismissAction?()
@@ -601,5 +608,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         resetDiscoveryState()
         // Re-apply skipped devices to BLE SDK, excluding paired scales
         bluetoothService.reapplySkipDevicesExcludingPaired()
+        // Clear setup in progress flag when setup is dismissed
+        bluetoothService.isSetupInProgress = false
     }
 }

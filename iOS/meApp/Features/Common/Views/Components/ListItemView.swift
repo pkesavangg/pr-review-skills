@@ -99,6 +99,7 @@ struct ListItemView<Trailing: View>: View {
                     .onTapGesture(perform: {onTap?()})
             }
         }
+        .onTapGesture(perform: {onTap?()})
         .padding(.vertical, verticalPadding)
         .padding(.horizontal, .spacingSM)
         .background(theme.backgroundPrimary)
