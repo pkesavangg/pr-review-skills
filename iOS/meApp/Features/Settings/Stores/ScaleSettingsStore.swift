@@ -25,6 +25,7 @@ final class ScaleSettingsStore: ObservableObject {
     // Users list
     @Published var usersList: [DeviceUser] = []
     @Published var isFetchingUsersList: Bool = false
+    private var usersListFetchTask: Task<[DeviceUser], Never>?
     
     // Additional device info
     @Published var firmwareVersion: String? = nil
@@ -134,11 +135,28 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     /// Ensures users list is fetched if not already available
-    func ensureUsersList() async {
-        guard !isFetchingUsersList else { return }
+    /// If a fetch is already in progress, waits for it to complete
+    /// Returns the fetched users list
+    func ensureUsersList() async -> [DeviceUser] {
+        // If a fetch is already in progress, wait for it to complete and return its result
+        if let existingTask = usersListFetchTask {
+            return await existingTask.value
+        }
+        
+        // Start a new fetch task
         isFetchingUsersList = true
-        await fetchUsersList()
-        isFetchingUsersList = false
+        let task: Task<[DeviceUser], Never> = Task { [weak self] in
+            guard let self = self else { return [] }
+            defer {
+                self.isFetchingUsersList = false
+                self.usersListFetchTask = nil
+            }
+            return await self.fetchUsersList()
+        }
+
+        usersListFetchTask = task
+        let fetchedUsers = await task.value
+        return fetchedUsers
     }
     
     /// Checks device info and WiFi configuration for scale SKU 0412
@@ -235,10 +253,12 @@ final class ScaleSettingsStore: ObservableObject {
     }
     
     /// Fetches the users list from the scale via Bluetooth
-    private func fetchUsersList() async {
+    /// Returns the fetched users list and updates the published property
+    private func fetchUsersList() async -> [DeviceUser] {
         guard getScaleType() == .btWifiR4 && isDeviceConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot fetch users list - scale not connected or not R4 type")
-            return
+            usersList = []
+            return []
         }
         
         let result = await bluetoothService.getScaleUserList(for: scale)
@@ -246,9 +266,11 @@ final class ScaleSettingsStore: ObservableObject {
         case .success(let users):
             usersList = users
             logger.log(level: .info, tag: tag, message: "Successfully fetched \(users.count) users from scale")
+            return users
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to fetch users list: \(error.localizedDescription)", data: error)
             usersList = []
+            return []
         }
     }
     
