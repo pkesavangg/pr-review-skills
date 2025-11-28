@@ -54,23 +54,23 @@ struct StreakCardView: View {
     
     /// Computes the icon size based on the label
     private var iconSize: IconSize {
-        // Base sizes: mini phones use 32, small phones use 37, large phones use 45
-        let baseSize: CGFloat
-        if DevicePlatform.isMiniPhone {
-            baseSize = 24
-        } else if DevicePlatform.isSmallPhone {
-            baseSize = 32
-        } else {
-            baseSize = 40
-        }
-        
-        let labelLower = label.lowercased()
-        if labelLower == DashboardStrings.currentStreak.lowercased() {
-            // Current streak: increase both width and height by 5px
+        let baseSize: CGFloat = {
+            if DevicePlatform.isMiniPhone { return 24 }
+            if DevicePlatform.isSmallPhone { return 32 }
+            return 40
+        }()
+
+        let lower = label.lowercased()
+
+        switch lower {
+        case DashboardStrings.currentStreak.lowercased():
             return IconSize(width: baseSize + 5, height: baseSize + 5)
-        } else if labelLower == DashboardStrings.longestStreak.lowercased() {
-            // Longest streak: increase height by 5px only, keep width same
+
+        case DashboardStrings.longestStreak.lowercased():
             return IconSize(width: baseSize, height: baseSize + 5)
+
+        default:
+            return IconSize(width: baseSize, height: baseSize)
         }
     }
     
