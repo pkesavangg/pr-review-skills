@@ -85,6 +85,7 @@ fun HistoryDetailItemHeader(
     onClick: () -> Unit,
 ) {
     val rotation by animateFloatAsState(targetValue = if (isExpanded) -90f else 90f, label = "")
+  val tintColor = if(isExpanded) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.primaryAction
     val backgroundColor =
         if (isExpanded) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.secondaryBackground
     val textColor =
@@ -160,10 +161,11 @@ fun HistoryDetailItemHeader(
         }
         if (canExpand) {
             AppIcon(
-                id = AppIcons.Default.RightCaret,
-                onClick = null,
-                contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
-                modifier =
+              id = AppIcons.Default.RightCaret,
+              onClick = null,
+              contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
+              tintColor = tintColor,
+              modifier =
                     Modifier
                         .padding(start = MeTheme.spacing.sm)
                         .rotate(rotation),
