@@ -144,7 +144,8 @@ final class A6ScaleSetupStore: ObservableObject {
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
         
-        
+        // Set setup in progress flag to prevent goal modals during setup
+        bluetoothService.isSetupInProgress = true
         
         // Set the starting step (defaults to intro, but may be connectingBluetooth for direct flow)
         let startStep: A6ScaleSetupStep = discoveredScale != nil && discoveryEvent != nil ? .connectingBluetooth : .intro
@@ -311,9 +312,14 @@ final class A6ScaleSetupStore: ObservableObject {
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             
+            // Clear setup in progress flag after scale is saved
+            bluetoothService.isSetupInProgress = false
+            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
             self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+            // Clear setup in progress flag even on error
+            bluetoothService.isSetupInProgress = false
         }
     }
     
@@ -420,6 +426,8 @@ final class A6ScaleSetupStore: ObservableObject {
         resetDiscoveryState()
         // Re-apply skipped devices to BLE SDK, excluding paired scales
         bluetoothService.reapplySkipDevicesExcludingPaired()
+        // Clear setup in progress flag when setup is dismissed
+        bluetoothService.isSetupInProgress = false
     }
     
     // Cancel active Combine subscription before releasing it.
