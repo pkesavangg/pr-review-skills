@@ -189,7 +189,7 @@ private fun MaintainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = 20.dp, horizontal = spacing.sm),
+        .padding(vertical = 35.dp, horizontal = 30.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
@@ -252,7 +252,7 @@ private fun LoseGainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(top = spacing.sm, bottom = 21.dp),
+        .padding(vertical = 35.dp, horizontal = 30.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,

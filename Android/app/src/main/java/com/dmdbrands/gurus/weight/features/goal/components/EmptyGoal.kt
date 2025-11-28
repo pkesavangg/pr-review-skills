@@ -50,7 +50,7 @@ fun EmptyGoal(
         Modifier
           .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
           .background(colorScheme.primaryBackground)
-          .padding(vertical = spacing.md, horizontal = spacing.sm),
+          .padding(vertical = spacing.md, horizontal = 30.dp),
     ) {
       Column(
         horizontalAlignment = Alignment.CenterHorizontally,
