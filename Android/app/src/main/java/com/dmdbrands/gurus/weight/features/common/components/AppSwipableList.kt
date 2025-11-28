@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import kotlin.math.min
 
 // --- Constants ---
 object SwipeDefaults {
@@ -90,13 +90,23 @@ fun <T> AppSwipeableList(
     var measuredItemHeight by remember { mutableStateOf(0.dp) }
     var hasMeasured by remember { mutableStateOf(false) }
 
-    val heightModifier by remember {
-        derivedStateOf {
-            if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp && items.size > 1) {
-                Modifier.height(measuredItemHeight * min(items.size, maxVisibleItems))
-            } else {
-                Modifier
-            }
+    // Reset measurement when items change
+    LaunchedEffect(items.size, maxVisibleItems) {
+        if (items.isEmpty() || maxVisibleItems == null) {
+            hasMeasured = false
+            measuredItemHeight = 0.dp
+        }
+    }
+
+    val heightModifier by derivedStateOf {
+        // Only apply height constraint when there are more items than maxVisibleItems
+        // This allows the list to size naturally and be centered when there are fewer items
+        if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp && items.size > maxVisibleItems) {
+            // Calculate height based on maxVisibleItems
+            val calculatedHeight = measuredItemHeight * maxVisibleItems
+            Modifier.height(calculatedHeight)
+        } else {
+            Modifier
         }
     }
 
@@ -136,11 +146,14 @@ fun <T> AppSwipeableList(
               velocityThreshold = velocityThreshold,
             ) { progress ->
                 val swipeableContent = scope.buildSwipeable(progress)
-                if (index == 0 && !hasMeasured) {
+                // Measure the first item that gets positioned (not just index 0)
+                // This ensures measurement happens even if first item is not visible initially
+                if (!hasMeasured && maxVisibleItems != null) {
                     Box(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
                             val height = with(density) { coordinates.size.height.toDp() }
-                            if (height > 0.dp) {
+                            // Only set if we haven't measured yet and height is valid
+                            if (height > 0.dp && !hasMeasured) {
                                 measuredItemHeight = height
                                 hasMeasured = true
                             }
