@@ -85,7 +85,7 @@ object AppPopupStrings {
 
       GGPermissionType.NEARBY_DEVICE ->
         "Android requires apps that connect to a Bluetooth LE device ask for permission that determines " +
-          "the relative location of nearby devices. Sorry for the inconvenience, but we don\\'t store or use any of this information."
+          "the relative location of nearby devices. Sorry for the inconvenience, but we don't store or use any of this information."
 
       GGPermissionType.LOCATION_SWITCH ->
         "Android requires any app that connects to a Bluetooth / Wi-Fi device to ask " +
