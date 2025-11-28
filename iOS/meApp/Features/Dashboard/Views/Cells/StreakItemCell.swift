@@ -111,7 +111,7 @@ class StreakCardCell: UICollectionViewCell {
                         isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
                         rowIndex: rowIndex,
                         disableWiggle: isRemoved, 
-                        iconOffset: CGSize(width: 5, height: -14) 
+                        iconOffset: CGSize(width: 12, height: -22) 
                     )
             )
         } else {
