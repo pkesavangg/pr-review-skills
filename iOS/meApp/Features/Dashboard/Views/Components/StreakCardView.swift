@@ -60,13 +60,11 @@ struct StreakCardView: View {
             return 40
         }()
 
-        let lower = label.lowercased()
-
-        switch lower {
-        case DashboardStrings.currentStreak.lowercased():
+        switch label {
+        case DashboardStrings.currentStreak:
             return IconSize(width: baseSize + 5, height: baseSize + 5)
 
-        case DashboardStrings.longestStreak.lowercased():
+        case DashboardStrings.longestStreak:
             return IconSize(width: baseSize, height: baseSize + 5)
 
         default:
