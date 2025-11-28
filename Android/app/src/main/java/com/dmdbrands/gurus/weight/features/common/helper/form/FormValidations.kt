@@ -69,7 +69,7 @@ object FormValidations {
   ): Validator<String> =
     { value ->
       if (value.trim().length > length) {
-        ValidationError(ValidationType.MAX_LENGTH, "Maximum value should be $length")
+        ValidationError(ValidationType.MAX_LENGTH, "Password should not exceed $length characters")
       } else {
         null
       }
