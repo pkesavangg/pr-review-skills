@@ -44,15 +44,45 @@ struct MetricDetailView: View {
         }
     }
 
+    // Helper to format metrics that are stored as scaled integers (e.g., BMR, visceral fat)
+    // These metrics are stored scaled by 10 in the database and need to be divided by 10 for display
+    private func formatScaledMetric(_ rawValue: Double?, scalingFactor: Double = 10.0) -> String {
+        guard let raw = rawValue, abs(raw) > 0.001 else { return placeholder }
+        let displayValue = raw / scalingFactor
+        guard abs(displayValue) > 0.001 else { return placeholder }
+        let formatted = BodyMetricsConvertor.convert(
+            displayValue,
+            shouldCompose: false,
+            wholeNumber: true
+        )
+        if formatted == "0" || formatted == "0.0" {
+            return placeholder
+        }
+        return formatted
+    }
+
     private var formattedValue: String {
       if metric == .weight {
         return WeightValueConvertor.formatWeight(rawValue ?? 0, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
+        } else if metric == .bmr {
+            // BMR: entryDTO.bmr is stored scaled by 10 (e.g., 14508 for 1450.8), so divide by 10 for display
+            return formatScaledMetric(rawValue, scalingFactor: 10.0)
+        } else if metric == .visceralFatLevel {
+            // Visceral fat: entryDTO.visceralFatLevel is stored scaled by 10 (e.g., 200 for level 20), so divide by 10 for display
+            return formatScaledMetric(rawValue, scalingFactor: 10.0)
         } else {
-            return BodyMetricsConvertor.convert(
-                rawValue,
+            // For other metrics, check if value is 0 or nil and return placeholder
+            guard let value = rawValue, abs(value) > 0.001 else { return placeholder }
+            let formatted = BodyMetricsConvertor.convert(
+                value,
                 shouldCompose: config.bodyCompositionRelated,
                 wholeNumber: config.isWholeNumber
             )
+            // Check if formatted result is "0" or "0.0" and return placeholder
+            if formatted == "0" || formatted == "0.0" {
+                return placeholder
+            }
+            return formatted
         }
     }
 

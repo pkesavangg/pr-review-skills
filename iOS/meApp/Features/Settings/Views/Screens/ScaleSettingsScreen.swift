@@ -158,8 +158,8 @@ struct ScaleSettingsScreen: View {
                         isDisabled: !scaleSettingsStore.isDeviceConnected,
                         onTap: {
                             Task {
-                                await scaleSettingsStore.ensureUsersList()
-                                router.navigate(to: .users(scale: scale, usersList: scaleSettingsStore.usersList))
+                                let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
+                                router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
                             }
                         }
                     )

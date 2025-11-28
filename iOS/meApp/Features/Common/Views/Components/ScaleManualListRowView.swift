@@ -19,6 +19,8 @@ struct ScaleManualListRowView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 75, height: 75)
+                .themeDropShadow()
+            
             VStack(alignment: .leading, spacing: 0) {
                 Text(scale.sku)
                     .fontOpenSans(.heading5)

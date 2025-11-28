@@ -189,60 +189,61 @@ public final class HealthKitService: HealthKitServiceProtocol {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         for entry in entries {
-            guard let scaleEntry = entry.scaleEntry else { continue }
-            
-            // Normalize timestamp to include fractional seconds if missing
-            let normalizedTimestamp = normalizeTimestamp(entry.entryTimestamp)
-            guard let timestamp = formatter.date(from: normalizedTimestamp) else {
-                continue
-            }
-            
-            if let weight = scaleEntry.weight {
-                healthKitData.append(HealthKitData(
-                    type: .weight,
-                    value: ConversionTools.convertStoredToLbs(weight),
-                    timestamp: timestamp
-                ))
-            }
-            
-            if let bodyFat = scaleEntry.bodyFat {
-                healthKitData.append(HealthKitData(
-                    type: .bodyFat,
-                    value: ConversionTools.convertStoredToLbs(bodyFat),
-                    timestamp: timestamp
-                ))
-            }
-            
-            if let muscleMass = scaleEntry.muscleMass {
-                healthKitData.append(HealthKitData(
-                    type: .leanBodyMass,
-                    value: ConversionTools.convertStoredToLbs(muscleMass),
-                    timestamp: timestamp
-                ))
-            }
-            
-            if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
-                let convertedWeight = ConversionTools.convertStoredToLbs(weight)
-                let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
-                let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
-                healthKitData.append(HealthKitData(
-                    type: .leanBodyMass,
-                    value: leanBodyMass,
-                    timestamp: timestamp
-                ))
-            }
-            
-            if let bmi = scaleEntry.bmi {
-                healthKitData.append(HealthKitData(
-                    type: .bmi,
-                    value: ConversionTools.convertStoredToLbs(bmi),
-                    timestamp: timestamp
-                ))
-            }
+          guard let scaleEntry = entry.scaleEntry else { continue }
+           
+          // Normalize timestamp to include fractional seconds if missing
+          let normalizedTimestamp = normalizeTimestamp(entry.entryTimestamp)
+          guard let timestamp = formatter.date(from: normalizedTimestamp) else {
+            continue
+          }
+           
+          if let weight = scaleEntry.weight {
+            healthKitData.append(HealthKitData(
+              type: .weight,
+              value: ConversionTools.convertStoredToLbs(weight),
+              timestamp: timestamp
+            ))
+          }
+           
+          if let bodyFat = scaleEntry.bodyFat {
+            healthKitData.append(HealthKitData(
+              type: .bodyFat,
+              value: ConversionTools.convertStoredToLbs(bodyFat),
+              timestamp: timestamp
+            ))
+          }
+           
+          if let pulse = entry.scaleEntryMetric?.pulse {
+            healthKitData.append(HealthKitData(
+              type: .heartRate,
+              value: Double(pulse),
+              timestamp: timestamp
+            ))
+          }
+           
+          if let weight = scaleEntry.weight, let bodyFat = scaleEntry.bodyFat {
+            let convertedWeight = ConversionTools.convertStoredToLbs(weight)
+            let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
+            let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
+            healthKitData.append(HealthKitData(
+              type: .leanBodyMass,
+              value: leanBodyMass,
+              timestamp: timestamp
+            ))
+          }
+           
+          if let bmi = scaleEntry.bmi {
+            healthKitData.append(HealthKitData(
+              type: .bmi,
+              value: ConversionTools.convertStoredToLbs(bmi),
+              timestamp: timestamp
+            ))
+          }
+           
         }
-        
+         
         return healthKitData
-    }
+      }
 
     /// Converts export items into `HealthKitData` payloads without touching SwiftData models.
     private func buildHealthKitData(from exports: [HealthKitExport]) -> [HealthKitData] {

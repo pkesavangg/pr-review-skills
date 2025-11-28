@@ -25,8 +25,18 @@ struct MetricInfoSheetWrapper: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task {
+        .task(id: entry.id) {
             await extractDTO()
+        }
+        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+            Task {
+                await extractDTO()
+            }
+        }
+        .onChange(of: dashboardStore.state.metrics.metrics) { _, _ in
+            Task {
+                await extractDTO()
+            }
         }
     }
     
