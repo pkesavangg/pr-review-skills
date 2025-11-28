@@ -36,6 +36,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SwipeableListItemScope
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper.getMetrics
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getDate
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTime
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -145,7 +146,7 @@ fun HistoryDetailItemHeader(
                 Text(
                     text = buildString {
                         item.scale.scaleEntry.prefix?.let { append(it) }  // append prefix if not null
-                        append(item.scale.scaleEntry.weight.toString())        // always append value with sign
+                        append(formatWeightValue(item.scale.scaleEntry.weight))        // always append value with sign
                     },
                     style = MeTheme.typography.heading3,
                     color = textColor,

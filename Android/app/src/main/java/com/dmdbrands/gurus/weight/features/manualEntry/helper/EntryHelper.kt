@@ -104,6 +104,25 @@ object EntryHelper {
   fun Float.toDouble1dp(rounding: RoundingMode = RoundingMode.HALF_UP): Double =
     if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
 
+  /**
+   * Formats a weight value to display without decimal point if it's a whole number.
+   * For example: 60.0 -> "60", 60.5 -> "60.5"
+   *
+   * @param weight The weight value to format.
+   * @param decimals Number of decimal places to show (default: 1).
+   * @return Formatted weight string without trailing zeros if whole number.
+   */
+  fun formatWeightValue(weight: Double?, decimals: Int = 1): String {
+    if (weight == null) return ""
+    val formatted = String.format("%.${decimals}f", weight)
+    // Remove trailing zeros and decimal point if it's a whole number
+    return if (formatted.endsWith(".0")) {
+      formatted.dropLast(2)
+    } else {
+      formatted.trimEnd('0').trimEnd('.')
+    }
+  }
+
   fun ScaleEntry.getDate(): String {
     val instant = Instant.parse(entry.entryTimestamp)
     return dateFormatter.format(instant)

@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter
  * Strings used in the Metric Info screen.
  */
 object MetricInfoStrings {
-  const val AppBarTitle = "Metric Info"
+  const val AppBarTitle = "Body Metrics"
   const val MeasurementNotTaken = "no measurement available"
 
   const val ResourcesTitle = "Resources"

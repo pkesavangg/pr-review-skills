@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.strings.MetricLabels
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -112,7 +113,16 @@ object StatHelper {
     }
 
     val valueStr = when (value) {
-      is Number -> if (value == 0.0 || value == 0) null else value.toString()
+      is Number -> {
+        if (value == 0.0 || value == 0) {
+          null
+        } else if (this is DashboardKey.Metric && this.key == MetricKey.WEIGHT) {
+          // Format weight values to remove .0 if whole number
+          formatWeightValue(value.toDouble())
+        } else {
+          value.toString()
+        }
+      }
       is String -> if (value.isBlank() || value == "0") null else value
       else -> null
     }

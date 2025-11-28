@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -92,10 +93,7 @@ fun GraphPagerView(
 
       LaunchedEffect(graphState.target) {
         val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
-        labelData = if (graphState.target.isEmpty()) "000.0" else String.format(
-          "%.1f",
-          averageWeight,
-        )
+        labelData = if (graphState.target.isEmpty()) "000.0" else formatWeightValue(averageWeight)
         if (averageWeight > 0 && state.weightless?.isWeightlessOn == true) {
           labelData = ("+").plus(labelData)
         }
