@@ -15,6 +15,7 @@ final class WifiScaleSetupStore: ObservableObject {
     @Injector private var scaleService: ScaleService
     @Injector private var pushNotificationService: PushNotificationService
     @Injector private var httpClient: HTTPClient
+    @Injector private var bluetoothService: BluetoothService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -239,6 +240,9 @@ final class WifiScaleSetupStore: ObservableObject {
         // Start at intro
         currentStepIndex = 0
         
+        // Set setup in progress flag to prevent goal modals during setup
+        bluetoothService.isSetupInProgress = true
+        
         // Evaluate initial next-button state
         updateNextEnabled()
     }
@@ -402,10 +406,15 @@ final class WifiScaleSetupStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
+                    guard let self = self else { return }
                     // User chose to skip – flag this so smart-connect can bail.
-                    self?.permissionsSkipped = true
+                    self.permissionsSkipped = true
+                    // Clear the network form SSID when permissions are skipped and mark as pristine to avoid validation errors
+                    self.networkForm.clearSSIDAndMarkPristine()
+                    self.wifiStatus = nil
+                    logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
-                    self?.moveToNextStep()
+                    self.moveToNextStep()
                 }
             ]
         )
@@ -416,6 +425,8 @@ final class WifiScaleSetupStore: ObservableObject {
     func cleanUp() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        // Clear setup in progress flag when setup is dismissed
+        bluetoothService.isSetupInProgress = false
     }
     
     /// Starts observing the network form changes to update the next button state.
@@ -447,21 +458,33 @@ final class WifiScaleSetupStore: ObservableObject {
             let kvStorage = KvStorageService.shared
             let status = await wifiScaleService.getConnectedWifiInfo()
             
-            if let ssid = status.ssid, !ssid.isEmpty {
-                let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-                if let wifiStatus = localStatus {
-                    if ssid != wifiStatus.ssid {
+            // Check if we should auto-populate SSID
+            // Similar to Android: shouldAutoPopulate = !permissionsSkipped || isGetMACSetup || arePermissionsCurrentlyEnabled
+            // But per user requirement: if permissions were skipped, don't populate even if currently enabled (unless Get-MAC)
+            let shouldAutoPopulate = !permissionsSkipped || isForGetMac
+            
+            if !shouldAutoPopulate {
+                // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
+                self.networkForm.clearSSIDAndMarkPristine()
+                self.wifiStatus = nil
+                logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
+            } else {
+                // Normal flow: update WiFi status and populate SSID
+                if let ssid = status.ssid, !ssid.isEmpty {
+                    let localStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+                    if let wifiStatus = localStatus {
+                        if ssid != wifiStatus.ssid {
+                            kvStorage.setCodable(status, forKey: ssidTempKey)
+                        }
+                    } else {
                         kvStorage.setCodable(status, forKey: ssidTempKey)
                     }
-                } else {
-                    kvStorage.setCodable(status, forKey: ssidTempKey)
                 }
+                let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+                self.wifiStatus = wifiStatus
+                self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
+                logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
             }
-            
-            let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-            self.wifiStatus = wifiStatus
-            self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
-            logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
         }
     }
     
@@ -595,11 +618,17 @@ final class WifiScaleSetupStore: ObservableObject {
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }
+                
+                // Clear setup in progress flag after scale is saved
+                bluetoothService.isSetupInProgress = false
+                
                 moveToNextStep()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+                // Clear setup in progress flag even on error
+                bluetoothService.isSetupInProgress = false
             }
         }
     }

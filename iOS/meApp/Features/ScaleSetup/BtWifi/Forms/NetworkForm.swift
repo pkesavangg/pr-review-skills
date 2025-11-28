@@ -30,6 +30,12 @@ class NetworkForm: ObservableForm {
         self.ssid.value = ssid
     }
     
+    /// Clear SSID and mark as pristine (used when permissions are skipped to avoid validation errors)
+    func clearSSIDAndMarkPristine() {
+        self.ssid.value = ""
+        self.ssid.markAsPristine()
+    }
+    
     func isValidApModeSSID() -> Bool {
         return !ssid.value.isEmpty && (ssid.value.contains(apModeSSIDPrefix))
     }
