@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SelectButton
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiItem
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupState
@@ -259,7 +260,7 @@ fun WifiScaleSetupScreenContent(
                     SelectButtonItem(
                       id = "wifi_ap_mode",
                       displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                      emitValue = "apmode",
+                      emitValue = WifiModes.AP_MODE.value,
                       isSelected = true,
                     ),
                   )
@@ -272,7 +273,7 @@ fun WifiScaleSetupScreenContent(
                     SelectButtonItem(
                       id = "wifi_ap_mode",
                       displayValue = SelectButtonDisplayValue.Image(image),
-                      emitValue = "apmode",
+                      emitValue = WifiModes.AP_MODE.value,
                       isSelected = true,
                     ),
                   )
@@ -311,7 +312,7 @@ fun WifiScaleSetupScreenContent(
                 sku = state.sku,
                 onItemSelected = { value ->
                   if(state.permissionsSkipped || state.isGetMACSetup){
-                    onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = "apmode"))
+                    onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value))
                   }
                   else
                   onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
@@ -378,7 +379,7 @@ fun WifiScaleSetupScreenContent(
                       onClick = {
                         onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                       },
-                      label = "Go to wi-fi settings",
+                      label = WifiScaleSetupStrings.SwitchWifi.goToWifiSettings,
                       type = ButtonType.PrimaryFilled,
                       size = ButtonSize.Large,
                       enabled = true,

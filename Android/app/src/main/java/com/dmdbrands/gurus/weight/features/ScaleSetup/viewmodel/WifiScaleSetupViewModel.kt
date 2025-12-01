@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupPath
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScalePasswordFormControls
@@ -86,9 +87,9 @@ constructor(
   init {
     // Convert wifiSetupTypeString to WifiSetupType enum
     wifiSetupType = when (wifiSetupTypeString) {
-      "espTouchWifi" -> WifiSetupType.ESP_TOUCH_WIFI
-      "join" -> WifiSetupType.JOIN
-      "change" -> WifiSetupType.CHANGE
+      WifiModes.ESP_TOUCH_WIFI.value -> WifiSetupType.ESP_TOUCH_WIFI
+     WifiModes.JOIN.value -> WifiSetupType.JOIN
+      WifiModes.CHANGE.value -> WifiSetupType.CHANGE
       else -> WifiSetupType.FIRST
     }
     // Set setup in progress when initialization starts
@@ -214,7 +215,7 @@ constructor(
             WifiScaleSetupStep.WIFI_MODE -> {
               if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
                 // Only AP mode available for MAC setup and permission skipped flows
-                val canProceed = currentState.selectedWifiMode == "apmode"
+                val canProceed = currentState.selectedWifiMode == WifiModes.AP_MODE.value
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
               } else {
                 // Normal flow - both modes available
@@ -234,7 +235,7 @@ constructor(
 
             WifiScaleSetupStep.MAC_ADDRESS -> {
               if (currentState.isGetMACSetup) {
-                if (currentState.selectedWifiMode == "apmode") {
+                if (currentState.selectedWifiMode == WifiModes.AP_MODE.value) {
                   viewModelScope.launch {
                     try {
                       val macAddress = getMacAddress()
@@ -814,9 +815,9 @@ constructor(
 
       WifiScaleSetupStep.WIFI_MODE -> {
         if(state.value.permissionsSkipped || state.value.isGetMACSetup){
-          WifiScaleSetupIntent.SelectWifiMode(wifiMode = "apmode")
+          WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value)
         }
-        if(state.value.selectedWifiMode == "apmode"){
+        if(state.value.selectedWifiMode == WifiModes.AP_MODE.value){
           handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
         }
         startSmartConnect()
