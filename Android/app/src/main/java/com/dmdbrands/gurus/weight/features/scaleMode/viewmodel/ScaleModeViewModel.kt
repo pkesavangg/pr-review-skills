@@ -211,10 +211,10 @@ constructor(
           retryCount = 0
           AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
           dialogQueueService.dismissLoader()
-          showToast(ScaleModeStrings.Toast.Success)
           // Refresh scale data to get updated preferences
           deviceService.syncDevices()
           navigateBack()
+          showToast(ScaleModeStrings.Toast.Success)
         } else {
           AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
           showToast(ScaleModeStrings.Toast.Error)
