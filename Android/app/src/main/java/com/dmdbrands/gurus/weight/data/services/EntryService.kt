@@ -44,7 +44,6 @@ import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Data class combining weight unit and weightless settings for efficient flow operations.
@@ -597,7 +596,6 @@ constructor(
   private suspend fun updateLatestEntry(accountId: String) {
     try {
       entryRepository.getLatestEntry(accountId)?.collect { latest ->
-        Log.d("CHECKINGPRO2latest", "${latest}")
         _latestEntry.value = latest
       }
     } catch (e: Exception) {
@@ -665,16 +663,11 @@ constructor(
       var total: Double? = null
       var startingWeight: Double? = null
       var oldestEntry: Entry? = null
-      Log.d("CHECKINGPROold", "${oldestEntry}")
-      Log.d("CHECKINGcalcatest", "${latestEntry}")
 
       // Get initial entries for each period
       initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
       initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
       initYear = if (months.isNotEmpty()) months.last() else null
-     Log.d("CHECKINGINITW","$initWeek")
-      Log.d("CHECKINGINITM","$initMonth")
-      Log.d("CHECKINGINITY","$initYear")
       // Calculate week and month progress
       if (latestEntry != null && initWeek != null && latestEntry is ScaleEntry && initWeek is ScaleEntry) {
         week = latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
@@ -744,22 +737,6 @@ constructor(
       val currentStreak = getCurrentStreak()
       val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
       val totalCount = entryRepository.getTotalCount(accountId!!)
-      Log.d("CHECKINGlastvalue","${Progress(
-        latest = latestEntry,
-        goal = goal,
-        currentStreak = currentStreak,
-        longestStreak = longestStreak,
-        count = totalCount,
-        initWt = initialWeight ?: 0.0,
-        week = week,
-        month = month,
-        year = year,
-        total = total,
-        unit = unit,
-        initWeek = initWeek,
-        initMonth = initMonth,
-        initYear = initYear,
-      )}")
       return Progress(
         latest = latestEntry,
         goal = goal,
