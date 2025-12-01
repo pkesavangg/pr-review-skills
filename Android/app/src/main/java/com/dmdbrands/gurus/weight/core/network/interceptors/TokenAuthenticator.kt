@@ -43,18 +43,13 @@ class TokenAuthenticator @Inject constructor(
 
     override fun authenticate(route: Route?, response: Response): Request? {
         val request = response.request
-        if (NetworkConfig.isPublicEndpoint(request.url.encodedPath) || responseCount(response) > 1) {
+        if (NetworkConfig.isPublicEndpoint(request.url.encodedPath)) {
             AppLog.v(TAG, "Skipping token refresh for public endpoint or repeated attempt")
-            return null
+          return null
         }
       var accountId = request.header(HttpClient.ACCOUNT_ID_HEADER)
 
       AppLog.v(TAG, "Attempting token refresh for account: $accountId")
-        // Skip refresh for login endpoint (same as Angular)
-        if (request.url.encodedPath.contains("/account/login")) {
-            AppLog.v(TAG, "Skipping token refresh for login endpoint")
-            return null
-        }
         // Try to refresh the token (same as Angular: proactive + reactive)
         return runBlocking {
             try {
@@ -62,17 +57,8 @@ class TokenAuthenticator @Inject constructor(
                 accountId = tokenManager.getCurrentAccountID()
               }
 
-                // Check if this is a non-active account early to skip refresh attempt
-                val isCurrentAccount = isCurrentAccount(accountId)
-                if (!isCurrentAccount) {
-                    // For non-active accounts, skip token refresh entirely to avoid blocking
-                    // The AccountService will handle marking the account as expired
-                    AppLog.v(TAG, "Skipping token refresh for non-active account: $accountId - failing fast")
-                    return@runBlocking null
-                }
-
                 val expiresAt = if (accountId != null) {
-                    tokenManager.getAccountExpiresAt(accountId)
+                  tokenManager.getAccountExpiresAt(accountId)
                 } else {
                   tokenManager.getCurrentAcccountExpiresAt()
                 }
@@ -89,8 +75,7 @@ class TokenAuthenticator @Inject constructor(
 
                 if (refreshResult == null) {
                     AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
-                    // For current account, logout and return null to fail the request
-                    logoutUser(accountId, true)
+                    logoutUser(accountId, isCurrentAccount(accountId))
                     return@runBlocking null
                 }
 
@@ -105,20 +90,10 @@ class TokenAuthenticator @Inject constructor(
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
                 // At this point, we know it's the current account (non-active accounts are skipped earlier)
                 // For current account, logout and return null to fail the request
-                logoutUser(accountId, true)
-                return@runBlocking null
+              logoutUser(accountId, isCurrentAccount(accountId))
+              return@runBlocking null
             }
         }
-    }
-
-    private fun responseCount(response: Response): Int {
-        var count = 1
-        var currentResponse = response
-        while (currentResponse.priorResponse != null) {
-            count++
-            currentResponse = currentResponse.priorResponse!!
-        }
-        return count
     }
 
     /**
