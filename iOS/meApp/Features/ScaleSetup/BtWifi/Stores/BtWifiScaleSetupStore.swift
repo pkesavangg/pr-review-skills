@@ -1240,11 +1240,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Only handle errors for steps that have been reached
         switch currentStep {
-        case .wakeup, .connectingBluetooth:
-            // For early steps, navigate to permissions without showing WiFi errors
-            resetDiscoveryState()
-            navigateToStep(.permissions)
-
         case .gatheringNetwork, .availableWifiList, .wifiPassword, .connectingWifi:
             // Only show WiFi errors if scale is connected (user has reached WiFi steps)
             // This matches Android's behavior where setGatheringNetworkFailed() checks isScaleConnected
