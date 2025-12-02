@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.components.ScaleMetricItem
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
 import com.dmdbrands.gurus.weight.features.common.components.AppDraggableList
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -80,6 +81,53 @@ fun ScaleMetricsSettingScreen(
     onMetricsChanged(allEnabledKeys)
   }
 
+  /**
+   * Handles toggle operation for a metric item gracefully.
+   * When toggled off, moves the item above the disabled heart rate (if present).
+   * When toggled on, moves the item to the bottom of all enabled items.
+   *
+   * @param metricsList The mutable list of metrics to update.
+   * @param metricKey The key of the metric to toggle.
+   * @param isEnabled The new enabled state for the metric.
+   * @return The updated list with the metric repositioned appropriately.
+   */
+  fun handleMetricToggle(
+    metricsList: MutableList<ScaleMetric>,
+    metricKey: String,
+    isEnabled: Boolean,
+  ): List<ScaleMetric> {
+    val updatedList = metricsList.toMutableList()
+    val itemIndex = updatedList.indexOfFirst { it.key == metricKey }
+    if (itemIndex == -1) {
+      // Metric not found, return original list
+      return updatedList
+    }
+    val updatedItem = updatedList[itemIndex].copy(isEnabled = isEnabled)
+    updatedList.removeAt(itemIndex)
+    if (!isEnabled) {
+      // Toggled off: move above disabled heart rate (if present), otherwise to bottom
+      val heartRateIndex = updatedList.indexOfFirst { it.key == "heartRate" && !it.isIncluded }
+      if (heartRateIndex != -1) {
+        // Heart rate is disabled and at bottom: insert above it
+        updatedList.add(heartRateIndex, updatedItem)
+      } else {
+        // No disabled heart rate: add to bottom
+        updatedList.add(updatedItem)
+      }
+    } else {
+      // Toggled on: move to bottom of enabled items
+      val lastEnabledIndex = updatedList.indexOfLast { it.isEnabled }
+      if (lastEnabledIndex != -1) {
+        // Found enabled items: insert right after the last enabled one
+        updatedList.add(lastEnabledIndex + 1, updatedItem)
+      } else {
+        // No enabled items exist: place at the beginning
+        updatedList.add(0, updatedItem)
+      }
+    }
+    return updatedList
+  }
+
   Column(
     modifier = modifier
       .fillMaxSize(),
@@ -109,10 +157,11 @@ fun ScaleMetricsSettingScreen(
             isDragging = isDragging,
             dragHandleModifier = modifier,
             onToggle = { isEnabled ->
-              bodyMetricsState =
-                bodyMetricsState.map {
-                  if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
-                }
+              bodyMetricsState = handleMetricToggle(
+                metricsList = bodyMetricsState.toMutableList(),
+                metricKey = metric.key,
+                isEnabled = isEnabled,
+              )
               emitCombinedMetrics()
             },
           )
@@ -144,10 +193,11 @@ fun ScaleMetricsSettingScreen(
             isDragging = isDragging,
             dragHandleModifier = modifier,
             onToggle = { isEnabled ->
-              otherMetricsState =
-                otherMetricsState.map {
-                  if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
-                }
+              otherMetricsState = handleMetricToggle(
+                metricsList = otherMetricsState.toMutableList(),
+                metricKey = metric.key,
+                isEnabled = isEnabled,
+              )
               emitCombinedMetrics()
             },
           )
