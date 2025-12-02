@@ -1219,32 +1219,48 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Handles permission changes during the setup flow
+    /// Matches Android behavior: only show WiFi errors when on WiFi-related steps AND scale is connected
     private func handlePermissionChange() {
         let missingPermissions = !hasAllBtPermissions()
         let noNetwork = !networkMonitor.isConnected
         
-        if noNetwork && currentStep == .wakeup {
+        // For early steps (before WiFi), navigate to permissions if network/permissions are missing
+        if (noNetwork || missingPermissions) && (currentStep == .wakeup || currentStep == .connectingBluetooth) {
             resetDiscoveryState()
             navigateToStep(.permissions)
             return
         }
         
-        guard missingPermissions else { return }
+        guard missingPermissions || noNetwork else { return }
         
+        // Only handle errors for steps that have been reached
         switch currentStep {
         case .wakeup, .connectingBluetooth:
+            // For early steps, navigate to permissions without showing WiFi errors
             resetDiscoveryState()
             navigateToStep(.permissions)
 
-        case .gatheringNetwork:
-            scaleSetupError = .wifiConnectionFailed
-            navigateToStep(.availableWifiList)
+        case .gatheringNetwork, .availableWifiList, .wifiPassword, .connectingWifi:
+            // Only show WiFi errors if scale is connected (user has reached WiFi steps)
+            // This matches Android's behavior where setGatheringNetworkFailed() checks isScaleConnected
+            if savedScale != nil {
+                scaleSetupError = .wifiConnectionFailed
+                // Only navigate if we're not already on a WiFi error screen
+                if currentStep != .availableWifiList {
+                    navigateToStep(.availableWifiList)
+                }
+            } else {
+                // Scale not connected yet, go back to permissions
+                resetDiscoveryState()
+                navigateToStep(.permissions)
+            }
             
         case .stepOn where scaleSetupError != .updateSettingsFailed:
             scaleSetupError = .collectMeasurementFailed
             moveToNextStep()
             
         default:
+            // For other steps, don't automatically navigate
             break
         }
     }
