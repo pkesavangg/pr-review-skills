@@ -686,10 +686,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .customizeSettings:
             handleCustomizeSettingsNext()
         case .scaleConnected:
-            // Post notification to refresh dashboard when setup completes, right before dismissing
+            // Post notification to refresh dashboard when setup completes
+            // Add a small delay to ensure connection status updates have propagated to UI
+            // This prevents flicker where scales show as "not connected" briefly
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-                self.dismissAction?()
+                // Small delay to allow connection status updates to complete and propagate to UI
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.dismissAction?()
+                }
             }
         default:
             moveToNextStep()
@@ -1432,6 +1437,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
             self.savedScale = savedScale
             await self.scaleService.syncAllScalesWithRemote()
+            
+            // Ensure connection status is updated after sync completes
+            // This prevents UI flicker when navigating back to MyScalesScreen
+            do {
+                try await scaleService.updateAllScalesStatus()
+            } catch {
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to update scales status after save: \(error.localizedDescription)")
+            }
             
             Task {
                 await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
