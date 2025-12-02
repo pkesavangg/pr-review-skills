@@ -57,17 +57,24 @@ struct EditModeOverlay: ViewModifier {
                     (themeManager.isDarkMode ? AppAssets.plusCircleDark : AppAssets.plusCircle) :
                     (themeManager.isDarkMode ? AppAssets.minusCircleDark : AppAssets.minusCircle)
                 
-                ThemedImage(name: iconName, isSingleMode: true)
-                    .frame(width: 28, height: 28)
-                    .offset(x: iconOffset.width, y: iconOffset.height)
-                    .wiggling(shouldWiggle, rowIndex: rowIndex)
-                    .opacity(iconOpacity)
-                    .animation(.easeInOut(duration: 0.2), value: iconOpacity)
-                    .allowsHitTesting(isEditMode)
-                    .zIndex(999)
-                    .onTapGesture {
-                        onToggleRemoval()
-                    }
+                ZStack {
+                    // Rectangular background overlay to improve tap target
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 40, height: 40)
+
+                    ThemedImage(name: iconName, isSingleMode: true)
+                        .frame(width: 28, height: 28)
+                }
+                .offset(x: iconOffset.width, y: iconOffset.height)
+                .wiggling(shouldWiggle, rowIndex: rowIndex)
+                .opacity(iconOpacity)
+                .animation(.easeInOut(duration: 0.2), value: iconOpacity)
+                .allowsHitTesting(isEditMode)
+                .zIndex(999)
+                .onTapGesture {
+                    onToggleRemoval()
+                }
             }
         }
     }

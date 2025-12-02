@@ -776,8 +776,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             
             // Add timeout to prevent continuation leaks if SDK callback never fires
-            let details = try await withTimeout(seconds: 10) {
+            let detailsOptional = try await withTimeout(seconds: 10) {
                 await self.ggBleSDK.getDeviceInfo(ggDevice)
+            }
+            
+            guard let details = detailsOptional else {
+                logger.log(level: .error, tag: tag, message: "Device info not available for device: \(device.id)")
+                return .failure(.deviceNotFound)
             }
             
             return .success(DeviceInfo(sdk: details))

@@ -52,12 +52,32 @@ struct StreakCardView: View {
 
     }
     
+    /// Computes the icon size based on the label
+    private var iconSize: IconSize {
+        let baseSize: CGFloat = {
+            if DevicePlatform.isMiniPhone { return 24 }
+            if DevicePlatform.isSmallPhone { return 32 }
+            return 40
+        }()
+
+        switch label {
+        case DashboardStrings.currentStreak:
+            return IconSize(width: baseSize + 5, height: baseSize + 5)
+
+        case DashboardStrings.longestStreak:
+            return IconSize(width: baseSize, height: baseSize + 5)
+
+        default:
+            return IconSize(width: baseSize, height: baseSize)
+        }
+    }
+    
     private func content() -> some View {
         HStack(alignment: .center, spacing: 8) {
             if let icon = icon {
                 AppIconView(
                     icon: icon,
-                    size: DevicePlatform.isSmallPhone ? IconSize(width: 32, height: 32) : IconSize(width: 40, height: 40)
+                    size: iconSize
                 )
                 .foregroundColor(isRemoved ? theme.statusIconSecondary : theme.statusStreak)
                 .padding(.trailing, 2)
