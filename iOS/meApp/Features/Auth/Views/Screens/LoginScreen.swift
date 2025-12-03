@@ -36,8 +36,8 @@ struct LoginScreen: View {
                     Button {
                         store.openHelp()
                     } label: {
-                        Image(AppAssets.helpCircle)
-                            .frame(width: 24, height: 24)
+                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
+                            .foregroundColor(theme.statusIconPrimary)
                     }
                 },
                 onLeadingTap: {

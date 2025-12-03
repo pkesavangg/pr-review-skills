@@ -52,7 +52,7 @@ struct SignupScreen: View {
                     Button {
                         signupStore.showHelpModal()
                     } label: {
-                        AppIconView(icon: AppAssets.helpCircle)
+                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 },
