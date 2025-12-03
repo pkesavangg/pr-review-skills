@@ -18,7 +18,7 @@ class LoginForm: ObservableForm {
         if control.errors[.required] { return lang.leaveBlank }
         if control.errors[.email] { return lang.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
-            return lang.minLength(minLength)
+            return lang.passwordMinLength
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
             if control === password {

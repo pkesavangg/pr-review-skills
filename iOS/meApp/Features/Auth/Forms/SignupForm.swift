@@ -84,22 +84,22 @@ class SignupForm: ObservableForm {
     }
     
     func getError<T>(for control: FormControl<T>) -> String? {
-        guard control.isDirty else { return nil }
+        guard control.isTouched || control.isDirty else { return nil }
 
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
         }
-        if (control === email || control === password || control === confirmPassword || control === zipcode) && control.errors[.required] {
+        if (control === email || control === password || control === confirmPassword || control === zipcode || control === firstName || control === lastName) && control.errors[.required] {
             return FormErrorMessages.leaveBlank
         }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
-            return FormErrorMessages.minLength(minLength)
+            return FormErrorMessages.passwordMinLength
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
-            // Use custom message for password field
-            if control === password {
+            // Use custom message for password fields
+            if control === password || control === confirmPassword {
                 return FormErrorMessages.passwordMaxLength
             } else {
                 return FormErrorMessages.maxLength(maxLength)
