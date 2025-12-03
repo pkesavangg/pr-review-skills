@@ -43,7 +43,8 @@ fun WifiMacAddress(
     Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
       AppNote(
         message = macAddress,
-        messageType = TextType.Message
+        messageType = TextType.Message,
+        isCenter = true
       )
 
       AppButton(

@@ -40,6 +40,7 @@ data class ScaleDetailsState(
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val settingsScreenStep: ScaleSettingSteps = ScaleSettingSteps.NONE,
   val connectedSSID: String? = null,
+  val wifiMacAddress: String? = null,
   val deviceInfo: GGDeviceDetail? = null,
   val isSessionImpedanceEnabled: Boolean = false,
   val enableTestingFeatures: Boolean = false,
@@ -58,6 +59,7 @@ sealed interface ScaleDetailsIntent : IReducer.Intent {
   ) : ScaleDetailsIntent
 
   data class SetConnectedSSID(val connectedSSID: String?) : ScaleDetailsIntent
+  data class SetWifiMacAddress(val macAddress: String) : ScaleDetailsIntent
 
   object EditName : ScaleDetailsIntent
 
@@ -114,6 +116,7 @@ class ScaleDetailsReducer : IReducer<ScaleDetailsState, ScaleDetailsIntent> {
   ): ScaleDetailsState? =
     when (intent) {
       is ScaleDetailsIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.connectedSSID)
+      is ScaleDetailsIntent.SetWifiMacAddress -> state.copy(wifiMacAddress = intent.macAddress)
       is ScaleDetailsIntent.SetScaleInfo -> state.copy(scale = intent.scale)
       ScaleDetailsIntent.EditName -> state.copy()
       ScaleDetailsIntent.DeleteScale -> state.copy()

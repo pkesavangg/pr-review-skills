@@ -335,7 +335,8 @@ fun ScaleDetailsScreenContent(
                   SettingsItem(
                     title = ScaleDetailsStrings.WiFiMacAddress,
                     type = SettingsItemType.Action(),
-                    enabled = isWifiConfigured,
+                    enabled = isConnected,
+
                     onClick = {
                       handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))
                       bottomSheetVisible = true
