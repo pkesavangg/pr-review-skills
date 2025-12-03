@@ -155,7 +155,7 @@ data class SignupFormControls(
           currentWeight =
             FormControl.create(
               signupData.currentWeight,
-              emptyList(), // Dynamic validator will be added after formGroup creation
+              emptyList(), // Dynamic validators will be added after formGroup creation
             ),
           goalWeight =
             FormControl.create(
@@ -173,6 +173,7 @@ data class SignupFormControls(
 
       // Add dynamic weight validators that update based on metric setting
       controls.currentWeight.addValidator(createDynamicWeightValidator { formGroup })
+      controls.currentWeight.addValidator(createRequiredCurrentWeightValidator { formGroup })
       controls.goalWeight.addValidator(createDynamicWeightValidator { formGroup })
 
       // Add password matching validation only to confirm password field
@@ -474,11 +475,6 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
 /**
  * Extension functions for SignupFormControls to support metric conversions
  */
-
-/**
- * Gets the current weight unit based on metric setting
- */
-fun SignupFormControls.getCurrentWeightUnit(): WeightUnit = if (useMetric.value) WeightUnit.KG else WeightUnit.LB
 
 /**
  * Converts weight value between units when metric setting changes.

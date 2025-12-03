@@ -94,11 +94,11 @@ data class GoalFormControls(
         validators = listOf(FormValidations.required()),
       )
 
-      val startingWeightValidators = mutableListOf<Validator<String>>()
-      if (goalType == GoalType.LOSE_GAIN) {
-        startingWeightValidators.add(FormValidations.required())
+      val startingWeightValidators = if (goalType == GoalType.LOSE_GAIN) {
+       listOf(FormValidations.required(), FormValidations.weightValidator(weightUnit))
+      } else {
+        listOf(FormValidations.weightValidator(weightUnit))
       }
-      startingWeightValidators.add(FormValidations.weightValidator(weightUnit))
 
       val startingWeightControl = FormControl.create(
         initialValue = initialStartingWeight,

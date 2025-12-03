@@ -129,11 +129,13 @@ fun GoalStep(
         modifier = Modifier.focusRequester(currentWeightFocusRequester),
         // Enable for any non-maintain variant (lose, gain, lose_gain)
         enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
+        maxLength = 4,
       )
     }
 
     AppInput(
       formControl = goalWeightControl,
+      maxLength = 4,
       type = AppInputType.BODY_COMP,
       label = SignupStrings.goalStepGoalWeightDynamic.format(weightUnit),
       imeAction = ImeAction.Next,
