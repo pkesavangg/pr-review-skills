@@ -206,6 +206,140 @@ object GraphUtil {
     return previousPoint?.y?.value?.toLong()
   }
 
+  /**
+   * Normalizes secondary metric values to the weight Y-axis range (iOS-style normalization).
+   * Maps metric values proportionally to the weight scale for visual comparison.
+   *
+   * Formula: normalizedValue = weightMin + (clampedValue - effectiveMetricMin) ×
+   *                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+   *
+   * @param metricGraphLine The secondary metric graph line to normalize
+   * @param weightMin Minimum value of weight Y-axis domain
+   * @param weightMax Maximum value of weight Y-axis domain
+   * @param minX Minimum X timestamp for visible range
+   * @param maxX Maximum X timestamp for visible range
+   * @return GraphLine with normalized Y values mapped to weight scale
+   */
+  fun normalizeMetricToWeightRange(
+    metricGraphLine: GraphLine,
+    weightMin: Double,
+    weightMax: Double,
+    minX: Long,
+    maxX: Long
+  ): GraphLine {
+    if (metricGraphLine.points.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Validate Y-axis range - must be finite and valid
+    if (!weightMin.isFinite() || !weightMax.isFinite() || weightMin >= weightMax) {
+      return metricGraphLine
+    }
+
+    // Get all metric values (including previous/next for range calculation)
+    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
+      .map { it.toDouble() }
+      .filter { it.isFinite() } // Filter out NaN and infinite values
+
+    if (allMetricValues.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Get visible and bracketing points for range calculation
+    val visiblePoints = metricGraphLine.points.filter {
+      it.x.value.toLong() in minX..maxX
+    }
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
+
+    // Collect metric values for range calculation (visible + bracketing)
+    val metricValuesForRange = buildList {
+      previousPoint?.let { add(it.toDouble()) }
+      addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
+      nextPoint?.let { add(it.toDouble()) }
+    }
+
+    if (metricValuesForRange.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Calculate metric range
+    val metricMin = metricValuesForRange.minOrNull() ?: return metricGraphLine
+    val metricMax = metricValuesForRange.maxOrNull() ?: return metricGraphLine
+    val metricRange = metricMax - metricMin
+
+    // Handle single point or minimal variation
+    val isSingleMetricPoint = metricRange < 0.01
+    val effectiveMetricMin: Double
+    val effectiveMetricMax: Double
+
+    if (isSingleMetricPoint) {
+      // Use static ranges for single points (similar to iOS)
+      // For now, use a small range around the single value
+      val padding = 1.0
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
+    } else {
+      // Add 5% padding (matching iOS implementation)
+      val padding = metricRange * 0.05
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
+    }
+
+    val metricRangeSpan = effectiveMetricMax - effectiveMetricMin
+    if (metricRangeSpan <= 0) {
+      return metricGraphLine
+    }
+
+    val yAxisSpan = weightMax - weightMin
+    val epsilon = yAxisSpan * 0.001 // 0.1% margin for safety bounds
+
+    // Normalize each point
+    val normalizedPoints = metricGraphLine.points.map { point ->
+      val metricValue = (point.y.value as? Number)?.toDouble()
+
+      // Skip points with invalid values
+      if (metricValue == null || !metricValue.isFinite()) {
+        return@map point
+      }
+
+      // For single points, place at fixed position (60% of Y-axis height, matching iOS)
+      if (isSingleMetricPoint) {
+        val positionInRange = weightMin + (yAxisSpan * 0.6)
+        val safePosition = if (positionInRange.isFinite()) positionInRange else (weightMin + weightMax) / 2.0
+        point.copy(
+          y = point.y.copy(value = safePosition)
+        )
+      } else {
+        // Clamp value to effective range
+        val clampedValue = maxOf(effectiveMetricMin, minOf(effectiveMetricMax, metricValue))
+
+        // Normalize to weight range
+        val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                              yAxisSpan / metricRangeSpan
+
+        // Apply safety bounds (keep slightly inside bounds)
+        val safeMin = weightMin + epsilon
+        val safeMax = weightMax - epsilon
+        val finalValue = maxOf(safeMin, minOf(safeMax, normalizedValue))
+
+        // Ensure finite value - always return a valid finite number
+        val safeValue = if (finalValue.isFinite()) {
+          finalValue
+        } else {
+          // Fallback to middle of weight range
+          (weightMin + weightMax) / 2.0
+        }
+
+        point.copy(
+          y = point.y.copy(value = safeValue)
+        )
+      }
+    }
+
+    return metricGraphLine.copy(points = normalizedPoints)
+  }
+
   fun averageYValuesInRange(
     graphLines: List<GraphLine>,
     min: Long,

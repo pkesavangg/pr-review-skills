@@ -143,6 +143,8 @@ internal fun primaryLayer(
 
 /**
  * Convenience function for creating secondary layer.
+ * Secondary metrics are normalized to weight Y-axis range (iOS-style),
+ * so they use the same Y-axis as primary (weight).
  */
 @Composable
 internal fun secondaryLayer(
@@ -150,11 +152,13 @@ internal fun secondaryLayer(
   yRangeValues: CartesianRangeValues? = null,
   handleIntent: (GraphIntent) -> Unit
 ): LineCartesianLayer {
+  // Secondary metrics now use the same Y-axis as primary (normalized values)
+  // Use End position to share the same axis as primary
   return rememberLineLayerWithConnection(
     segment = segment,
     lineColor = MeTheme.colorScheme.secondaryAction,
-    verticalAxisPosition = Axis.Position.Vertical.Start,
-    yRangeValues = yRangeValues,
+    verticalAxisPosition = Axis.Position.Vertical.End, // Same axis as primary
+    yRangeValues = yRangeValues, // Same range as primary (weight)
     handleIntent = handleIntent,
   )
 }

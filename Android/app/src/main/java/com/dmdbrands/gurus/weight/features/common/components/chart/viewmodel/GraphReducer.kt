@@ -29,6 +29,8 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdateSecondaryYAxis -> state.copy(secondaryYAxis = intent.yRangeValues)
 
+    is GraphIntent.UpdateCachedPrimaryYAxis -> state.copy(cachedPrimaryYAxis = intent.yRangeValues)
+
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 
     is GraphIntent.UpdateIsUpdating -> state.copy(isUpdating = intent.isUpdating)

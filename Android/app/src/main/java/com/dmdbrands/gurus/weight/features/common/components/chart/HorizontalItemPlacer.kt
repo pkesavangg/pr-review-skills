@@ -23,6 +23,12 @@ internal fun rememberHorizontalAxisItemPlacer(
       fullXRange: ClosedFloatingPointRange<Double>,
       maxLabelWidth: Float,
     ): List<Double> {
+      println("hellofullxrange ${fullXRange.monthStartTimestampsMillis()}")
+      println("hellovisiblexrange $visibleXRange")
+      println("hellomaxlabelwidth $maxLabelWidth")
+      println("hellogetlabelvalues ${defaultPlacer.getLabelValues(
+        context, visibleXRange, fullXRange, maxLabelWidth,
+      )}")
       return if (segment == GraphSegment.YEAR)
         fullXRange.monthStartTimestampsMillis()
       else defaultPlacer.getLabelValues(
@@ -36,6 +42,12 @@ internal fun rememberHorizontalAxisItemPlacer(
       fullXRange: ClosedFloatingPointRange<Double>,
       maxLabelWidth: Float
     ): List<Double>? {
+      println("hellofullxrange2 ${fullXRange.monthStartTimestampsMillis()}")
+      println("hellovisiblexrange2 $visibleXRange")
+      println("hellomaxlabelwidth2 $maxLabelWidth")
+      println("hellogetlabelvalues2 ${defaultPlacer.getLineValues(
+        context, visibleXRange, fullXRange, maxLabelWidth,
+      )}")
       return if (segment == GraphSegment.YEAR)
         fullXRange.monthStartTimestampsMillis()
       else defaultPlacer.getLabelValues(

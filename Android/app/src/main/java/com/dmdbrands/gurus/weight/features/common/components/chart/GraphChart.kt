@@ -50,9 +50,11 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
+  // Secondary metrics are normalized to weight Y-axis range (iOS-style)
+  // They use the same Y-axis as primary (weight)
   val secondaryLayer = secondaryLayer(
     segment = segment,
-    yRangeValues = state.secondaryYAxis,
+    yRangeValues = state.primaryYAxis, // Use primary Y-axis range (normalized values)
     handleIntent = handleIntent,
   )
 

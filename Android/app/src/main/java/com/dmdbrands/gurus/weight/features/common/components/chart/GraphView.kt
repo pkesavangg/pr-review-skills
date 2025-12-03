@@ -64,6 +64,7 @@ fun GraphView(
 
   val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
+  println("helloinitialStartX: $initialStartX")
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
@@ -77,6 +78,7 @@ fun GraphView(
       }
     }
   }
+  println("helloscrollTarget: $scrollTarget")
 
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
@@ -88,10 +90,13 @@ fun GraphView(
       ),
     ),
   )
+  println("helloscrollState: ${scrollState.value}")
+
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
     )
+
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
@@ -117,6 +122,8 @@ fun GraphView(
     }
   }
 
+
+
   // LaunchedEffect(Unit) {
   //   scrollState.interactionEvents.collect {
   //     if (it is ChartInteractionEvent.)
@@ -130,10 +137,16 @@ fun GraphView(
   }
 
   LaunchedEffect(state.markerIndex) {
+    println("helloscrollupdatelaunch, max - ${state.maxTarget} min - ${state.minTarget},")
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
   }
+
+  // iOS-style: Trigger renormalization when cached Y-axis changes
+  // This ensures secondary metrics are renormalized when visible window changes on scroll
+  // Note: Renormalization is handled in ViewModel.handleIntent when UpdateCachedPrimaryYAxis is dispatched
+  // This LaunchedEffect is not needed as the ViewModel already handles it
 
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
