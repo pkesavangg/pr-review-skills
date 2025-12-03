@@ -682,12 +682,12 @@ constructor(
         return@launch
       }
       val accountId = currentAccountId ?: return@launch
-      var device: Device? = null
       //During setup scale list will be empty so ignoring this check during setup and allow all entries.
       val isSetupInProgress = deviceService.isSetupInProgress()
-      if(!isSetupInProgress){
-        device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId) ?: return@launch
-      }
+      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
+
+      if (device == null && !isSetupInProgress) return@launch
+
       // Get user height for BMI calculation
       val activeAccount = accountService.activeAccountFlow.first()
       val userHeight = activeAccount?.height
