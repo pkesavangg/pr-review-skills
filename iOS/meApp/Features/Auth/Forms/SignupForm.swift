@@ -95,7 +95,11 @@ class SignupForm: ObservableForm {
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
-            return FormErrorMessages.passwordMinLength
+            if control === password || control === confirmPassword {
+                return FormErrorMessages.passwordMinLength
+            } else {
+                return FormErrorMessages.minLength(minLength)
+            }
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
             // Use custom message for password fields
