@@ -323,8 +323,8 @@ struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let goBackButton = "Go back"
-        static let exitButton = "Yes, exit"
+        static let returnButton = "Return"
+        static let exitButton = "Exit"
     }
 
     struct ResetPasswordAlert {
