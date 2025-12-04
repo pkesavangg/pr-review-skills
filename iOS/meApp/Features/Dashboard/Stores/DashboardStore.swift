@@ -94,14 +94,22 @@ class DashboardStore: ObservableObject {
         // Sync metrics manager state to centralized state
         metricsManager.$state
             .sink { [weak self] metricsState in
-                self?.state.metrics = metricsState
+                guard let self = self else { return }
+                // Suppress UI updates during reset to prevent flickering
+                if !self.state.ui.isResettingDashboard {
+                    self.state.metrics = metricsState
+                }
             }
             .store(in: &cancellables)
         
         // Sync streak manager state to centralized state
         streakManager.$state
             .sink { [weak self] streakState in
-                self?.state.streak = streakState
+                guard let self = self else { return }
+                // Suppress UI updates during reset to prevent flickering
+                if !self.state.ui.isResettingDashboard {
+                    self.state.streak = streakState
+                }
             }
             .store(in: &cancellables)
         
@@ -1284,23 +1292,17 @@ class DashboardStore: ObservableObject {
         // Ensure loader is visible via global notification system
         notificationService.showLoader(LoaderModel(text: lang.saving))
         
-        state.ui.selectedMetricLabel = nil
-        state.ui.isEditMode = false
-        state.ui.resetDragState()
+        // Set flag to suppress UI updates during reset to prevent flickering
+        state.ui.isResettingDashboard = true
         
         // Reset the saved order to restore default order
         resetGridOrder()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-                self.notificationService.dismissLoader()
-                
-                // Delegate reset operations to managers
-                Task {
-                    try? await self.metricsManager.resetMetricsToDefaults()
-                    try? await self.streakManager.resetStreakData()
+            Task { @MainActor in
+                do {
+                    try await self.metricsManager.resetMetricsToDefaults()
+                    try await self.streakManager.resetStreakData()
                     
                     // Reset metrics to their original body metrics order
                     self.metricsManager.resetOrderToDefault()
@@ -1310,35 +1312,53 @@ class DashboardStore: ObservableObject {
                         try? await self.metricsManager.updateMetrics(with: latestEntry)
                     }
                     
+                    try await self.streakManager.refreshStreakData()
+                    self.syncRemovalStateFromMetricsManager()
+                    self.syncRemovalStateFromStreakManager()
+                    
                     // Save the reset configuration to API
-                    try? await self.metricsManager.saveMetricsToAPI()
-                }
-                
-                self.state.ui.isGoalCardRemoved = false
-                
-                Task {
-                    do {
-                        try await self.streakManager.refreshStreakData()
-                        try await self.metricsManager.saveMetricsToAPI()
-                        
-                        // Sync the removal state from both managers after reset
-                        await MainActor.run {
-                            self.syncRemovalStateFromMetricsManager()
-                            self.syncRemovalStateFromStreakManager()
-                        }
-                    } catch {
-                        self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
+                    try await self.metricsManager.saveMetricsToAPI()
+                    
+                    // Now manually sync manager states to UI state since we suppressed updates
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+                    
+                    // Now batch all UI state changes together to prevent flickering
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
                     }
+                    
+                    self.notificationService.dismissLoader()
+                    
+                    // Single UI update after all state changes are complete
+                    self.objectWillChange.send()
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+                    
+                    // Manually sync manager states even on error
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+                    
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                    }
+                    self.notificationService.dismissLoader()
+                    self.objectWillChange.send()
                 }
-                
-                self.state.ui.selectedMetricLabel = nil
-                self.state.graph.clearSelection()
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.hasEditSnapshot = false
-                
-                // Force UI update to reflect the reset state
-                self.objectWillChange.send()
             }
         }
     }

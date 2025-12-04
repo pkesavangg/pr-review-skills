@@ -58,6 +58,11 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Disable system drag interaction; we use interactive movement with a clamped gesture
         uiView.dragInteractionEnabled = false
 
+        // Suppress reloads during reset to prevent flickering
+        if store.state.ui.isResettingDashboard {
+            return
+        }
+
         if coordinator.suppressNextReload && contentChanged && !layoutChanged && !removalStateChanged {
             coordinator.lastItemIds = newIds
             coordinator.lastDashboardType = newDashboardType
