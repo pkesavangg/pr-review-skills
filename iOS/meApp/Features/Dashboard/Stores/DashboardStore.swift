@@ -1352,9 +1352,13 @@ class DashboardStore: ObservableObject {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         self.state.ui.isLoading = false
                         self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
                         self.state.ui.isEditMode = false
                         self.state.ui.resetDragState()
                         self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
                     self.objectWillChange.send()
