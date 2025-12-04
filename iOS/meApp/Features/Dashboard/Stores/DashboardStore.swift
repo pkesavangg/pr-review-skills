@@ -1963,10 +1963,20 @@ class DashboardStore: ObservableObject {
 
         // Weight average in stored units
         let avgStoredWeightOpt: Int? = {
-            let ws = ops.map { Double($0.weight) }
-            guard let mean = avg(ws) else { return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored }
-            let v = Int(mean.rounded())
-            return v == 0 ? nil : v
+            // Convert each weight to display format and calculate average
+            let weightValues = ops.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
+            guard !weightValues.isEmpty else { 
+                return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored 
+            }
+            let sum = weightValues.reduce(0, +)
+            let average = sum / Double(weightValues.count)
+
+            let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+            
+            // Convert back to stored format
+            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+            let stored = ConversionTools.convertDisplayToStored(roundedAverage, isMetric: unit == .kg)
+            return stored == 0 ? nil : stored
         }()
 
         // Build scaleEntry from averages (convert display doubles to stored Ints where appropriate)
