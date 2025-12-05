@@ -38,39 +38,6 @@ object GraphUtil {
   /** Number of milliseconds in one day. */
   const val ONE_DAY_MILLIS = 24 * 60 * 60 * 1000L // 86,400,000 milliseconds
 
-  /**
-   * Metric-specific static ranges for normalization fallback when data has minimal variation.
-   * These ranges match iOS DashboardConstants.MetricRanges for consistency.
-   */
-  private object MetricRanges {
-    val BMI = 18.0..35.0
-    val PERCENTAGE = 0.0..100.0
-    val HEART_RATE = 40.0..200.0
-    val VISCERAL_FAT = 1.0..30.0
-    val BMR = 1000.0..3000.0
-    val METABOLIC_AGE = 15.0..80.0
-  }
-
-  /**
-   * Gets static metric ranges as fallback for cases with minimal data variation.
-   * Matches iOS getStaticMetricRange implementation.
-   *
-   * @param metricKey The metric key to get the range for
-   * @return Pair of (min, max) for the metric's static range
-   */
-  private fun getStaticMetricRange(metricKey: MetricKey): Pair<Double, Double> {
-    return when (metricKey) {
-      MetricKey.BMI -> Pair(MetricRanges.BMI.start, MetricRanges.BMI.endInclusive)
-      MetricKey.BODY_FAT, MetricKey.MUSCLE_MASS, MetricKey.BODY_WATER,
-      MetricKey.BONE_MASS, MetricKey.SUBCUTANEOUS_FAT, MetricKey.PROTEIN,
-      MetricKey.SKELETAL_MUSCLE -> Pair(MetricRanges.PERCENTAGE.start, MetricRanges.PERCENTAGE.endInclusive)
-      MetricKey.HEART_RATE -> Pair(MetricRanges.HEART_RATE.start, MetricRanges.HEART_RATE.endInclusive)
-      MetricKey.VISCERAL_FAT -> Pair(MetricRanges.VISCERAL_FAT.start, MetricRanges.VISCERAL_FAT.endInclusive)
-      MetricKey.BMR -> Pair(MetricRanges.BMR.start, MetricRanges.BMR.endInclusive)
-      MetricKey.METABOLIC_AGE -> Pair(MetricRanges.METABOLIC_AGE.start, MetricRanges.METABOLIC_AGE.endInclusive)
-      else -> Pair(MetricRanges.PERCENTAGE.start, MetricRanges.PERCENTAGE.endInclusive) // Default to percentage range
-    }
-  }
   // endregion
 
   // region Cached Formatters
@@ -263,7 +230,6 @@ object GraphUtil {
     weightMax: Double,
     minX: Long,
     maxX: Long,
-    metricKey: MetricKey? = null
   ): GraphLine {
     if (metricGraphLine.points.isEmpty()) {
       return metricGraphLine
@@ -312,19 +278,9 @@ object GraphUtil {
     val effectiveMetricMax: Double
 
     if (isSingleMetricPoint) {
-      // Use metric-specific static ranges for single points (matching iOS getStaticMetricRange)
-      // This provides realistic bounds for normalization when data has minimal variation
-      if (metricKey != null) {
-        val (staticMin, staticMax) = getStaticMetricRange(metricKey)
-        // Use the wider range between actual data and static range (matching iOS)
-        effectiveMetricMin = minOf(metricMin, staticMin)
-        effectiveMetricMax = maxOf(metricMax, staticMax)
-      } else {
-        // Fallback to fixed padding if metricKey is not provided (backward compatibility)
         val padding = 1.0
         effectiveMetricMin = metricMin - padding
         effectiveMetricMax = metricMax + padding
-      }
     } else {
       // Add 5% padding (matching iOS implementation)
       val padding = metricRange * 0.05
@@ -354,9 +310,9 @@ object GraphUtil {
         return@mapNotNull null
       }
 
-      // For single points, place at fixed position (60% of Y-axis height, matching iOS)
+      // For single points, place at fixed position (70% of Y-axis height, matching iOS)
       if (isSingleMetricPoint) {
-        val positionInRange = weightMin + (yAxisSpan * 0.6)
+        val positionInRange = weightMin + (yAxisSpan * 0.7)
         // Validate position is finite before using (matching iOS guard checks)
         if (positionInRange.isFinite()) {
           point.copy(

@@ -59,37 +59,33 @@ class GraphViewModel @AssistedInject constructor(
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
-      is GraphIntent.UpdateCachedPrimaryYAxis -> {
-        // iOS-style: Trigger renormalization when cached Y-axis changes
-        // Only renormalize if Y-axis actually changed (avoid unnecessary work)
-        val currentCached = _state.value.cachedPrimaryYAxis
-        val hasChanged = currentCached == null ||
-                        currentCached.minY != intent.yRangeValues.minY ||
-                        currentCached.maxY != intent.yRangeValues.maxY
-
-        if (hasChanged) {
-          // Use the new Y-axis from intent, not from state (state not updated yet)
-          handleRenormalizationOnYAxisChange(intent.yRangeValues)
-        }
-      }
-      is GraphIntent.UpdateWeightUnit -> {
-        // Reprocess goal with new unit when weight unit changes
-        val currentGoal = _state.value.goal
-        val currentAccount = accountService.activeAccount.value
-        if (currentGoal != null && currentAccount != null) {
-          // Get the raw goal from account (in LB format) and reprocess with new unit
-          val rawGoal = currentAccount.toGoal()
-          val processedGoal = rawGoal?.process(intent.weightUnit, currentAccount.toWeightless())
-          if (processedGoal != null) {
-            super.handleIntent(GraphIntent.UpdateGoal(processedGoal))
-            // Reinitialize graph with processed goal to update display
-            val currentData = _state.value.data
-            val currentSecondaryKey = _state.value.secondaryKey
-            initializeGraph(currentData, processedGoal, currentSecondaryKey)
-          }
-        }
-      }
+      is GraphIntent.UpdateWeightUnit -> handleUpdateWeightUnit(intent.weightUnit)
       else -> null
+    }
+  }
+
+
+  /**
+   * Handles UpdateWeightUnit intent.
+   * Reprocesses goal with new unit when weight unit changes.
+   * Updates goal display and reinitializes graph to reflect the unit change.
+   *
+   * @param weightUnit The new weight unit to use for goal conversion.
+   */
+  private fun handleUpdateWeightUnit(weightUnit: com.dmdbrands.gurus.weight.domain.model.common.WeightUnit) {
+    val currentGoal = _state.value.goal
+    val currentAccount = accountService.activeAccount.value
+    if (currentGoal != null && currentAccount != null) {
+      // Get the raw goal from account (in LB format) and reprocess with new unit
+      val rawGoal = currentAccount.toGoal()
+      val processedGoal = rawGoal?.process(weightUnit, currentAccount.toWeightless())
+      if (processedGoal != null) {
+        super.handleIntent(GraphIntent.UpdateGoal(processedGoal))
+        // Reinitialize graph with processed goal to update display
+        val currentData = _state.value.data
+        val currentSecondaryKey = _state.value.secondaryKey
+        initializeGraph(currentData, processedGoal, currentSecondaryKey)
+      }
     }
   }
 
@@ -338,7 +334,7 @@ class GraphViewModel @AssistedInject constructor(
         // Cache the Y-axis for future scroll updates (iOS-style)
         if (currentState.cachedPrimaryYAxis == null) {
           withContext(Dispatchers.Main) {
-            super.handleIntent(GraphIntent.UpdateCachedPrimaryYAxis(yRangeValues = primaryYAxisRange))
+           handleRenormalizationOnYAxisChange(primaryYAxisRange)
           }
         }
 
@@ -352,14 +348,12 @@ class GraphViewModel @AssistedInject constructor(
                                                    primaryYAxisRange.maxY!!.isFinite() &&
                                                    primaryYAxisRange.minY!! < primaryYAxisRange.maxY!!) {
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
-          val metricKey = (secondaryStat as? DashboardKey.Metric)?.key
           GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
             weightMin = primaryYAxisRange.minY!!,
             weightMax = primaryYAxisRange.maxY!!,
             minX = startX,
             maxX = endX,
-            metricKey = metricKey
           )
         } else null
 
@@ -379,7 +373,6 @@ class GraphViewModel @AssistedInject constructor(
         // Validate Y-axis range is finite before using
         if (primaryYAxisRange.minY == null || primaryYAxisRange.maxY == null ||
             !primaryYAxisRange.minY!!.isFinite() || !primaryYAxisRange.maxY!!.isFinite()) {
-          Log.e("GraphViewModel", "Invalid primary Y-axis range: ${primaryYAxisRange.minY} - ${primaryYAxisRange.maxY}")
           withContext(Dispatchers.Main) {
             super.handleIntent(GraphIntent.UpdateIsLoading(false))
           }
@@ -549,10 +542,8 @@ class GraphViewModel @AssistedInject constructor(
           )
 
 
-          // iOS-style: Cache Y-axis on scroll end to enable renormalization
           // This triggers renormalization when Y-axis domain changes
           withContext(Dispatchers.Main) {
-            super.handleIntent(GraphIntent.UpdateCachedPrimaryYAxis(yRangeValues = primaryYAxis))
             // Directly call renormalization with current scroll range to avoid reading stale state values
             handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)
           }
@@ -619,14 +610,12 @@ class GraphViewModel @AssistedInject constructor(
           val originalValues = secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
 
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
-          val metricKey = (secondaryKey as? DashboardKey.Metric)?.key
           val normalized = GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
             weightMin = cachedYAxis.minY!!,
             weightMax = cachedYAxis.maxY!!,
             minX = startX,
             maxX = endX,
-            metricKey = metricKey
           )
 
           val normalizedValues = normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }

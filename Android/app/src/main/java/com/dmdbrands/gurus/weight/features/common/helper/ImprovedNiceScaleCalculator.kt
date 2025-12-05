@@ -12,7 +12,7 @@ data class AxisMeta(
 object ImprovedNiceScaleCalculator {
   // Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
 
-  private val niceNumbers = listOf(1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0)
+  private val niceNumbers = listOf(1.0, 2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0)
 
   fun generateNiceScale(
     minValue: Double,
