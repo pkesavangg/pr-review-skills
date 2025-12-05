@@ -290,12 +290,6 @@ object GraphUtil {
     val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
     val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
 
-    // Collect metric values for range calculation (visible + bracketing)
-    // val metricValuesForRange = buildList {
-    //   previousPoint?.let { val d = it.toDouble(); if (d.isFinite()) add(d) }
-    //   addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() }.filter { it.isFinite() })
-    //   nextPoint?.let { val d = it.toDouble(); if (d.isFinite()) add(d) }
-    // }
 
     val metricValuesForRange = buildList {
       previousPoint?.let { add(it.toDouble()) }

@@ -552,7 +552,6 @@ class GraphViewModel @AssistedInject constructor(
           // iOS-style: Cache Y-axis on scroll end to enable renormalization
           // This triggers renormalization when Y-axis domain changes
           withContext(Dispatchers.Main) {
-            Log.d("GraphViewModel", "Scroll: Caching Y-axis - min: ${primaryYAxis.minY}, max: ${primaryYAxis.maxY}")
             super.handleIntent(GraphIntent.UpdateCachedPrimaryYAxis(yRangeValues = primaryYAxis))
             // Directly call renormalization with current scroll range to avoid reading stale state values
             handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)

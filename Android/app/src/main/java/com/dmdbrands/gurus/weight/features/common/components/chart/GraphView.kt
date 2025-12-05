@@ -64,7 +64,6 @@ fun GraphView(
 
   val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  println("helloinitialStartX: $initialStartX")
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
@@ -78,7 +77,6 @@ fun GraphView(
       }
     }
   }
-  println("helloscrollTarget: $scrollTarget")
 
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL,
@@ -90,7 +88,6 @@ fun GraphView(
       ),
     ),
   )
-  println("helloscrollState: ${scrollState.value}")
 
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
@@ -124,12 +121,6 @@ fun GraphView(
 
 
 
-  // LaunchedEffect(Unit) {
-  //   scrollState.interactionEvents.collect {
-  //     if (it is ChartInteractionEvent.)
-  //   }
-  // }
-
   LaunchedEffect(scrollState.value) {
     if (state.markerIndex != null) {
       viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
@@ -137,7 +128,6 @@ fun GraphView(
   }
 
   LaunchedEffect(state.markerIndex) {
-    println("helloscrollupdatelaunch, max - ${state.maxTarget} min - ${state.minTarget},")
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
