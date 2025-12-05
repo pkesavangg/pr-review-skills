@@ -23,7 +23,10 @@ import android.graphics.Typeface
 import android.text.Layout
 
 @Composable
-fun rememberGoalMarker(goal: Goal? = null): VerticalAxis.MarkerDecoration? {
+fun rememberGoalMarker(
+  goal: Goal? = null,
+  isWeightlessOn: Boolean = false
+): VerticalAxis.MarkerDecoration? {
   if (goal == null || goal.goalWeight == 0.0) return null
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
@@ -43,11 +46,23 @@ fun rememberGoalMarker(goal: Goal? = null): VerticalAxis.MarkerDecoration? {
         ),
     )
 
-  return remember(goal){
+  return remember(goal, isWeightlessOn) {
+    val goalValue = goal.goalWeight.div(10).roundToInt()
+    // Format label with + or - prefix when weightless mode is on
+    val labelText = if (isWeightlessOn) {
+      when (goal.type.lowercase()) {
+        "gain" -> "+$goalValue"
+        "lose" -> "-$goalValue"
+        else -> goalValue.toString() // maintain or unknown - no prefix
+      }
+    } else {
+      goalValue.toString()
+    }
+    
     VerticalAxis.MarkerDecoration(
-      y = { goal.goalWeight.div(10).roundToInt().toDouble() },
+      y = { goalValue.toDouble() },
       markerComponent = labelComponent,
-      label = { goal.goalWeight.div(10).roundToInt().toString() },
+      label = { labelText },
       horizontalLabelPosition = VerticalAxis.HorizontalLabelPosition.Outside,
       verticalLabelPosition = Position.Vertical.Center,
       outsideRangeOffset = 60f

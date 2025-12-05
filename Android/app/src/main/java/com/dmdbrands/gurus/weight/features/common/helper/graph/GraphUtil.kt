@@ -37,6 +37,40 @@ object GraphUtil {
   // region Constants
   /** Number of milliseconds in one day. */
   const val ONE_DAY_MILLIS = 24 * 60 * 60 * 1000L // 86,400,000 milliseconds
+
+  /**
+   * Metric-specific static ranges for normalization fallback when data has minimal variation.
+   * These ranges match iOS DashboardConstants.MetricRanges for consistency.
+   */
+  private object MetricRanges {
+    val BMI = 18.0..35.0
+    val PERCENTAGE = 0.0..100.0
+    val HEART_RATE = 40.0..200.0
+    val VISCERAL_FAT = 1.0..30.0
+    val BMR = 1000.0..3000.0
+    val METABOLIC_AGE = 15.0..80.0
+  }
+
+  /**
+   * Gets static metric ranges as fallback for cases with minimal data variation.
+   * Matches iOS getStaticMetricRange implementation.
+   *
+   * @param metricKey The metric key to get the range for
+   * @return Pair of (min, max) for the metric's static range
+   */
+  private fun getStaticMetricRange(metricKey: MetricKey): Pair<Double, Double> {
+    return when (metricKey) {
+      MetricKey.BMI -> Pair(MetricRanges.BMI.start, MetricRanges.BMI.endInclusive)
+      MetricKey.BODY_FAT, MetricKey.MUSCLE_MASS, MetricKey.BODY_WATER,
+      MetricKey.BONE_MASS, MetricKey.SUBCUTANEOUS_FAT, MetricKey.PROTEIN,
+      MetricKey.SKELETAL_MUSCLE -> Pair(MetricRanges.PERCENTAGE.start, MetricRanges.PERCENTAGE.endInclusive)
+      MetricKey.HEART_RATE -> Pair(MetricRanges.HEART_RATE.start, MetricRanges.HEART_RATE.endInclusive)
+      MetricKey.VISCERAL_FAT -> Pair(MetricRanges.VISCERAL_FAT.start, MetricRanges.VISCERAL_FAT.endInclusive)
+      MetricKey.BMR -> Pair(MetricRanges.BMR.start, MetricRanges.BMR.endInclusive)
+      MetricKey.METABOLIC_AGE -> Pair(MetricRanges.METABOLIC_AGE.start, MetricRanges.METABOLIC_AGE.endInclusive)
+      else -> Pair(MetricRanges.PERCENTAGE.start, MetricRanges.PERCENTAGE.endInclusive) // Default to percentage range
+    }
+  }
   // endregion
 
   // region Cached Formatters
@@ -209,6 +243,7 @@ object GraphUtil {
   /**
    * Normalizes secondary metric values to the weight Y-axis range (iOS-style normalization).
    * Maps metric values proportionally to the weight scale for visual comparison.
+   * Matches iOS generateNormalizedMetricSeriesWithDomain implementation.
    *
    * Formula: normalizedValue = weightMin + (clampedValue - effectiveMetricMin) ×
    *                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
@@ -218,6 +253,8 @@ object GraphUtil {
    * @param weightMax Maximum value of weight Y-axis domain
    * @param minX Minimum X timestamp for visible range
    * @param maxX Maximum X timestamp for visible range
+   * @param metricKey The metric key to determine static ranges for single points (iOS-style).
+   *                  If null, falls back to fixed padding (backward compatibility).
    * @return GraphLine with normalized Y values mapped to weight scale
    */
   fun normalizeMetricToWeightRange(
@@ -225,13 +262,14 @@ object GraphUtil {
     weightMin: Double,
     weightMax: Double,
     minX: Long,
-    maxX: Long
+    maxX: Long,
+    metricKey: MetricKey? = null
   ): GraphLine {
     if (metricGraphLine.points.isEmpty()) {
       return metricGraphLine
     }
 
-    // Validate Y-axis range - must be finite and valid
+    // Validate input parameters are finite (matching iOS defensive checks)
     if (!weightMin.isFinite() || !weightMax.isFinite() || weightMin >= weightMax) {
       return metricGraphLine
     }
@@ -239,7 +277,7 @@ object GraphUtil {
     // Get all metric values (including previous/next for range calculation)
     val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
       .map { it.toDouble() }
-      .filter { it.isFinite() } // Filter out NaN and infinite values
+      .filter { it.isFinite() } // Filter out NaN/Infinity values
 
     if (allMetricValues.isEmpty()) {
       return metricGraphLine
@@ -253,6 +291,12 @@ object GraphUtil {
     val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
 
     // Collect metric values for range calculation (visible + bracketing)
+    // val metricValuesForRange = buildList {
+    //   previousPoint?.let { val d = it.toDouble(); if (d.isFinite()) add(d) }
+    //   addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() }.filter { it.isFinite() })
+    //   nextPoint?.let { val d = it.toDouble(); if (d.isFinite()) add(d) }
+    // }
+
     val metricValuesForRange = buildList {
       previousPoint?.let { add(it.toDouble()) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
@@ -266,19 +310,27 @@ object GraphUtil {
     // Calculate metric range
     val metricMin = metricValuesForRange.minOrNull() ?: return metricGraphLine
     val metricMax = metricValuesForRange.maxOrNull() ?: return metricGraphLine
-    val metricRange = metricMax - metricMin
 
-    // Handle single point or minimal variation
+    val metricRange = metricMax - metricMin
+    // Handle single point or minimal variation (matching iOS: metricRange < 0.01)
     val isSingleMetricPoint = metricRange < 0.01
     val effectiveMetricMin: Double
     val effectiveMetricMax: Double
 
     if (isSingleMetricPoint) {
-      // Use static ranges for single points (similar to iOS)
-      // For now, use a small range around the single value
-      val padding = 1.0
-      effectiveMetricMin = metricMin - padding
-      effectiveMetricMax = metricMax + padding
+      // Use metric-specific static ranges for single points (matching iOS getStaticMetricRange)
+      // This provides realistic bounds for normalization when data has minimal variation
+      if (metricKey != null) {
+        val (staticMin, staticMax) = getStaticMetricRange(metricKey)
+        // Use the wider range between actual data and static range (matching iOS)
+        effectiveMetricMin = minOf(metricMin, staticMin)
+        effectiveMetricMax = maxOf(metricMax, staticMax)
+      } else {
+        // Fallback to fixed padding if metricKey is not provided (backward compatibility)
+        val padding = 1.0
+        effectiveMetricMin = metricMin - padding
+        effectiveMetricMax = metricMax + padding
+      }
     } else {
       // Add 5% padding (matching iOS implementation)
       val padding = metricRange * 0.05
@@ -294,22 +346,37 @@ object GraphUtil {
     val yAxisSpan = weightMax - weightMin
     val epsilon = yAxisSpan * 0.001 // 0.1% margin for safety bounds
 
+    // Calculate safe fallback value once (middle of weight range)
+    // Validate it's finite to use as fallback (matching iOS defensive checks)
+    val safeFallbackValue = (weightMin + weightMax) / 2.0
+    val useFallback = safeFallbackValue.isFinite()
+
     // Normalize each point
-    val normalizedPoints = metricGraphLine.points.map { point ->
+    val normalizedPoints = metricGraphLine.points.mapNotNull { point ->
       val metricValue = (point.y.value as? Number)?.toDouble()
 
-      // Skip points with invalid values
+      // Skip points with null or non-finite metric values (matching iOS: skip missing/invalid values)
       if (metricValue == null || !metricValue.isFinite()) {
-        return@map point
+        return@mapNotNull null
       }
 
       // For single points, place at fixed position (60% of Y-axis height, matching iOS)
       if (isSingleMetricPoint) {
         val positionInRange = weightMin + (yAxisSpan * 0.6)
-        val safePosition = if (positionInRange.isFinite()) positionInRange else (weightMin + weightMax) / 2.0
-        point.copy(
-          y = point.y.copy(value = safePosition)
-        )
+        // Validate position is finite before using (matching iOS guard checks)
+        if (positionInRange.isFinite()) {
+          point.copy(
+            y = point.y.copy(value = positionInRange)
+          )
+        } else if (useFallback) {
+          // Fallback to middle of weight range (validated above)
+          point.copy(
+            y = point.y.copy(value = safeFallbackValue)
+          )
+        } else {
+          // If fallback is also invalid, skip this point entirely
+          null
+        }
       } else {
         // Clamp value to effective range
         val clampedValue = maxOf(effectiveMetricMin, minOf(effectiveMetricMax, metricValue))
@@ -323,17 +390,20 @@ object GraphUtil {
         val safeMax = weightMax - epsilon
         val finalValue = maxOf(safeMin, minOf(safeMax, normalizedValue))
 
-        // Ensure finite value - always return a valid finite number
-        val safeValue = if (finalValue.isFinite()) {
-          finalValue
+        // Ensure finite value (matching iOS guard checks)
+        if (finalValue.isFinite()) {
+          point.copy(
+            y = point.y.copy(value = finalValue)
+          )
+        } else if (useFallback) {
+          // Fallback to middle of weight range (validated above)
+          point.copy(
+            y = point.y.copy(value = safeFallbackValue)
+          )
         } else {
-          // Fallback to middle of weight range
-          (weightMin + weightMax) / 2.0
+          // If fallback is also invalid, skip this point entirely
+          null
         }
-
-        point.copy(
-          y = point.y.copy(value = safeValue)
-        )
       }
     }
 

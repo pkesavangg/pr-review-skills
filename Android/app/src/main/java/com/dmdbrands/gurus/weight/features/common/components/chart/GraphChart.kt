@@ -27,7 +27,9 @@ fun rememberGraphChart(
   onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
 ): CartesianChart {
-  val goalMarker = rememberGoalMarker(goal = state.goal)
+  // Get weightless mode from goal's account if available
+  val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
+  val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
   val markerIndex = state.markerIndex
   val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
   val intervalCount = if (segment != GraphSegment.TOTAL) segment.intervalCount() else {

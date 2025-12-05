@@ -168,7 +168,7 @@ object FormValidations {
           if (value.length > 1) {
             value.dropLast(1) + "." + value.takeLast(1)
           } else {
-            "0." + value
+            "0.$value"
           }
         val v = decimalValue.toFloatOrNull()
         if (v == null) {

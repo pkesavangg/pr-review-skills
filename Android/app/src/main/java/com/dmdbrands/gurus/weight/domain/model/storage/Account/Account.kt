@@ -111,6 +111,7 @@ fun Account?.toGoal(): Goal? {
     type = activeAccount.goalType ?: "",
     percent = activeAccount.goalPercent,
     metPreviousGoal = activeAccount.metPreviousGoal ?: false,
+    account = activeAccount, // Include account for weightless info access
   )
 }
 
