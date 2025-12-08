@@ -25,6 +25,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     @Injector private var scaleService: ScaleService
     @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var entryService: EntryService
+    @Injector private var goalAlertService: GoalAlertService
     
     let networkMonitor = NetworkMonitor.shared
     
@@ -520,12 +522,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Log setup state similar to Angular version
         LoggerService.shared.log(level: .info, tag: tag, message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)")
         
+        // Set setup in progress flag immediately for ALL setup flows to prevent goal modals from appearing during setup
+        self.bluetoothService.isSetupInProgress = true
+        
         // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
         if let savedScaleParam = saveScale {
             self.savedScale = savedScaleParam
             self.scaleToken = savedScaleParam.token
             self.isWifiSetupOnly = !isReconnect
-            self.bluetoothService.isSetupInProgress = true
         } else {
             self.isWifiSetupOnly = false
         }
@@ -580,10 +584,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
         
+        // Clear setup flag and dismiss the sheet
+        bluetoothService.isSetupInProgress = false
         dismissAction?()
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
-        self.bluetoothService.isSetupInProgress = false
+        checkGoalModalAfterSetup()
         
         // Clean up the store to break retain cycles
         cleanup()
@@ -708,7 +714,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
                 // Small delay to allow connection status updates to complete and propagate to UI
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Clear setup flag and dismiss the sheet
+                    self.bluetoothService.isSetupInProgress = false
                     self.dismissAction?()
+                    self.checkGoalModalAfterSetup()
                 }
             }
         default:
@@ -1563,14 +1572,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 await upgradeDashboardTypeFrom4To12PreservingRemovalState()
             }
             
-            // Clear setup in progress flag after scale is saved
-            bluetoothService.isSetupInProgress = false
             
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
             connectionState = .failure
-            // Clear setup in progress flag even on error
-            bluetoothService.isSetupInProgress = false
         }
     }
     
@@ -2357,6 +2362,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Cleanup Methods
     
+    /// Checks if "Set a Goal" modal should be shown after setup completes
+    /// This handles the case where the 3rd entry was taken during setup
+    private func checkGoalModalAfterSetup() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Add delay of 1.5 seconds after setup is closed, similar to other scale setups
+            try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+            do {
+                let entryCount = try await self.entryService.getEntryCount()
+                await self.goalAlertService.checkSetGoalCard(entryCount: entryCount)
+            } catch {
+                // Silently ignore errors - goal modal check is not critical
+            }
+        }
+    }
+    
     /// Cleans up the store and breaks any retain cycles
     func cleanup() {
         // Clear the dismiss action to break retain cycle
@@ -2383,6 +2404,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Cancel all cancellables
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+
+        bluetoothService.isSetupInProgress = false
         
         // Clear other references
         discoveredScale = nil
