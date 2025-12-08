@@ -242,10 +242,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             DuplicateUserView().environmentObject(self)
                         default:
                             if self.savedScale != nil {
-                                ConnectionPromptView(
-                                    title: ScaleSetupStrings.gatheringNetworksTitle,
-                                    image: AppAssets.wifi
-                                )
+                                // Show WifiConnectionView when connectionState is .noNetworks or .failure
+                                if self.connectionState == .noNetworks || self.connectionState == .failure {
+                                    WifiConnectionView(
+                                        state: self.connectionState,
+                                        setupType: .btWifiR4,
+                                        onTryAgain: { [weak self] in
+                                            self?.tryAgainButtonHandler()
+                                        },
+                                        onSupport: { [weak self] in
+                                            self?.handleSkipWifiStep()
+                                        }
+                                    )
+                                } else {
+                                    // Show loading state with ConnectionPromptView
+                                    ConnectionPromptView(
+                                        title: ScaleSetupStrings.gatheringNetworksTitle,
+                                        image: AppAssets.wifi
+                                    )
+                                }
                             } else {
                                 EmptyView()
                             }
@@ -1126,6 +1141,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Handles the network selection from the WiFi list
     private func handleNetworkSelection(_ network: WifiDetails) {
+        // Check permissions before navigating to password step
+        let missingPermissions = !hasAllBtPermissions()
+        let noNetwork = !networkMonitor.isConnected
+        
+        if missingPermissions || noNetwork {
+            // Show error when permissions are missing (similar to Android behavior)
+            // Navigate back to gathering network which will show the error screen
+            connectionState = .noNetworks
+            navigateToStep(.gatheringNetwork)
+            return
+        }
+        
         selectedWifiNetwork = network
         networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
         navigateToStep(.wifiPassword)
@@ -1170,6 +1197,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func tryAgainButtonHandler(isFromBtConnection: Bool = false) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.scaleSetupError = .none
+            self.connectionState = .loading
         }
         
         // Determine which step to navigate to based on the error type
@@ -1185,9 +1213,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } else if scaleSetupError == .updateSettingsFailed {
             targetStep = .customizeSettings
         } else {
-            if !hasAllBtPermissions() {
-                return
-            }
+            // For gathering network errors, always navigate to gatheringNetwork step
+            // This allows fetchWifiNetworks() to check permissions and show appropriate error
             targetStep = .gatheringNetwork
         }
         navigateToStep(targetStep)
@@ -1206,9 +1233,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
         case .gatheringNetwork:
+            // Set loading state when entering gathering network step
+            if scaleSetupError != .maxUserReached && scaleSetupError != .duplicatesFound {
+                self.connectionState = .loading
+            }
+            
             // Only show gathering network if there's no error
-            if let savedScale = self.savedScale, (scaleSetupError != .maxUserReached || scaleSetupError != .duplicatesFound) {
-                // If we have a saved scale and success state, show BluetoothConnectionView for 2 seconds first
+            if let savedScale = self.savedScale, (scaleSetupError != .maxUserReached && scaleSetupError != .duplicatesFound) {
+                // If we have a saved scale and success state, fetch WiFi networks
                 Task {
                     await self.fetchWifiNetworks(for: savedScale)
                 }
@@ -1306,7 +1338,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Only handle errors for steps that have been reached
         switch currentStep {
-        case .gatheringNetwork, .availableWifiList, .wifiPassword, .connectingWifi:
+        case .gatheringNetwork:
+            // Only show WiFi errors if scale is connected (user has reached WiFi steps)
+            // This matches Android's behavior where setGatheringNetworkFailed() checks isScaleConnected
+            if savedScale != nil {
+                // Set connection state to .noNetworks when permissions are missing
+                connectionState = .noNetworks
+            } else {
+                // Scale not connected yet, go back to permissions
+                resetDiscoveryState()
+                navigateToStep(.permissions)
+            }
+        case .availableWifiList:
+            break
+        case .wifiPassword, .connectingWifi:
             // Only show WiFi errors if scale is connected (user has reached WiFi steps)
             // This matches Android's behavior where setGatheringNetworkFailed() checks isScaleConnected
             if savedScale != nil {
@@ -1548,6 +1593,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Fetches WiFi networks from the scale and handles error cases
     private func fetchWifiNetworks(for scale: Device) async {
+        // Check permissions before attempting to fetch WiFi networks
+        let missingPermissions = !hasAllBtPermissions()
+        let noNetwork = !networkMonitor.isConnected
+        
+        if missingPermissions || noNetwork {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Cannot fetch WiFi networks: permissions missing or network unavailable")
+            await MainActor.run {
+                self.connectionState = .noNetworks
+            }
+            return
+        }
+        
+        // Set loading state
+        await MainActor.run {
+            self.connectionState = .loading
+        }
+        
         do {
             // Get connected WiFi SSID first
             let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
@@ -1584,8 +1646,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Check if no networks were found
                 if networks.isEmpty {
                     self.scaleSetupError = .noNetworkFound
+                    self.connectionState = .noNetworks
                 } else {
                     self.scaleSetupError = .none
+                    self.connectionState = .success
                 }
                 
                 // Navigate to available WiFi list
@@ -1596,8 +1660,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi networks: \(error.localizedDescription)")
             await MainActor.run {
-                self.scaleSetupError = .noNetworkFound
-                self.navigateToStep(.availableWifiList)
+                // Check if failure is due to missing permissions
+                let missingPermissions = !self.hasAllBtPermissions()
+                let noNetwork = !self.networkMonitor.isConnected
+                
+                if missingPermissions || noNetwork {
+                    self.connectionState = .noNetworks
+                } else {
+                    self.connectionState = .failure
+                    self.scaleSetupError = .noNetworkFound
+                }
             }
         }
     }
