@@ -722,15 +722,52 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 AlertButtonModel(title: alertStrings.backButton, type: .secondary) { _ in },
                 AlertButtonModel(title: alertStrings.restoreButton, type: .primary) { [weak self] _ in
                     Task {
-                        await self?.deleteUsers()
-                        // Reset to normal state and retry connection
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                            self?.scaleSetupError = .none
-                            Task {
-                                await self?.restartConnection()
-                            }
+                        guard let self = self else { return }
+                        guard let scale = self.discoveredScale else {
+                            self.scaleSetupError = .duplicatesFound
+                            return
                         }
-                        self?.navigateToStep(.connectingBluetooth)
+                        
+                        // Get the account name to restore (use firstName or duplicateUserName)
+                        let accountName = self.duplicateUserName.isEmpty ? (self.firstName ?? "User") : self.duplicateUserName
+                        // Scale truncates names to 20 characters, so truncate account name for comparison
+                        let maxNameLength = 20
+                        let truncatedAccountName = String(accountName.prefix(maxNameLength))
+                        
+                        // Get fresh user list to find the matching user
+                        let userListResult = await self.bluetoothService.getScaleUserList(for: scale, skipConnectionCheck: true)
+                        guard case .success(let allUsers) = userListResult else {
+                            self.scaleSetupError = .duplicatesFound
+                            return
+                        }
+                        
+                        // Find the user matching the account name (compare truncated names)
+                        // Try exact match first, then truncated match
+                        let matchingUser = allUsers.first(where: { $0.name.lowercased() == accountName.lowercased() }) 
+                            ?? allUsers.first(where: { $0.name.lowercased() == truncatedAccountName.lowercased() })
+                        
+                        guard let matchingUser = matchingUser else {
+                            self.scaleSetupError = .duplicatesFound
+                            return
+                        }
+                        
+                        // Delete the matching user
+                        scale.token = matchingUser.token
+                        let deleteResult = await self.bluetoothService.deleteDevice(scale, disconnect: false)
+                        
+                        switch deleteResult {
+                        case .success:
+                            // Reset to normal state and retry connection
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.scaleSetupError = .none
+                                Task {
+                                    await self.restartConnection()
+                                }
+                            }
+                            self.navigateToStep(.connectingBluetooth)
+                        case .failure:
+                            self.scaleSetupError = .duplicatesFound
+                        }
                     }
                 }
             ]
@@ -1653,20 +1690,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Deletes duplicate users from the scale
     private func deleteUsers() async {
         guard let scale = discoveredScale else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - no discovered scale")
             return
         }
         
         // Delete all users in the duplicate list
         for user in duplicateList {
-            scale.token = user.token
-            let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-            switch result {
-            case .success:
-                LoggerService.shared.log(level: .info, tag: tag, message: "deleteUsers - deleted user: \(user.name)")
-            case .failure(let error):
-                LoggerService.shared.log(level: .error, tag: tag, message: "deleteUsers - error deleting user: \(error.localizedDescription)")
+            guard let userToken = user.token else {
+                continue
             }
+            
+            scale.token = userToken
+            _ = await bluetoothService.deleteDevice(scale, disconnect: false)
         }
         
         // Reset display name to first name
@@ -1720,6 +1754,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Reset the form
         self.userNameForm.reset()
+        
+        // Ensure we have a discovered scale and discovery event for re-pairing
+        guard discoveredScale != nil, discoveryEvent != nil else {
+            return
+        }
+        
+        // Reset connection state to loading to trigger pairing
+        await MainActor.run {
+            self.connectionState = .loading
+        }
     }
     
     private func getUserList() async {
