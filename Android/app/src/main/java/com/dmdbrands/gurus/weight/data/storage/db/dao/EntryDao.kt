@@ -332,8 +332,8 @@ interface EntryDao {
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-        AND strftime('%Y-%m', datetime(entryTimestamp)) = :month
-        ORDER BY datetime(entryTimestamp) DESC
+        AND strftime('%Y-%m', datetime(entryTimestamp,'utc', 'localtime')) = :month
+        ORDER BY datetime(entryTimestamp, 'utc', 'localtime') DESC
     """,
   )
   fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
@@ -379,8 +379,8 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
-          datetime(MIN(e.entryTimestamp), 'start of month') AS entryTimestamp,
+          strftime('%Y-%m', datetime(e.entryTimestamp, "utc","localtime")) AS period,
+          datetime(MIN(e.entryTimestamp), 'utc', 'localtime','start of month') AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
           AVG(bse.muscleMass) AS muscleMass,
@@ -418,7 +418,7 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp,"utc","localtime")) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -443,7 +443,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp))
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp, "utc","localtime"))
           )
         ORDER BY period DESC
     """,
@@ -455,8 +455,8 @@ interface EntryDao {
   @Query(
     """
     SELECT
-      strftime('%Y-%m-%d', e.entryTimestamp) AS period,
-      datetime(MIN(e.entryTimestamp), 'start of day') AS entryTimestamp,
+      strftime('%Y-%m-%d', datetime(e.entryTimestamp,'utc', 'localtime')) AS period,
+      datetime(MIN(e.entryTimestamp),'utc', 'localtime', 'start of day') AS entryTimestamp,
       AVG(bse.weight) AS weight,
       AVG(bse.bodyFat) AS bodyFat,
       AVG(bse.muscleMass) AS muscleMass,
@@ -476,7 +476,7 @@ interface EntryDao {
     LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
     LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
     WHERE e.accountId = :accountId
-    GROUP BY strftime('%Y-%m-%d', e.entryTimestamp)
+    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, "utc","localtime"))
     ORDER BY period DESC
   """,
   )
@@ -495,7 +495,7 @@ interface EntryDao {
     """
 WITH daily_entries AS (
   SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS day,
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp,"utc","localtime")) AS day,
     e.entryTimestamp,
     e.unit,
     bse.weight,
@@ -601,7 +601,7 @@ ORDER BY d.day DESC
         SELECT
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp)) AS period
+            strftime('%Y-%m', datetime(e.entryTimestamp, "utc", "localtime")) AS period
         FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
@@ -628,7 +628,7 @@ ORDER BY d.day DESC
         LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
-        firstTimestamp AS entryTimestamp,
+        strftime('%Y-%m-%dT%H:%M:%SZ', datetime(firstTimestamp, 'utc', 'localtime')) AS entryTimestamp,
         avgWeight,
         entryCount,
         CASE
@@ -660,11 +660,12 @@ ORDER BY d.day DESC
    */
   @Query(
     """
-        SELECT entryTimestamp
+         SELECT
+        strftime('%Y-%m-%dT%H:%M:%S.000Z', datetime(entryTimestamp, 'utc', 'localtime')) AS entryTimestamp
         FROM entry_view
         WHERE accountId = :accountId
-        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
-        ORDER BY entryTimestamp DESC
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, "utc",'localtime'))
+        ORDER BY datetime(entryTimestamp, "utc",'localtime') DESC
         """,
   )
   suspend fun getStreakData(accountId: String): List<String>
@@ -738,9 +739,9 @@ ORDER BY d.day DESC
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-          AND datetime(entryTimestamp) >= datetime(:startDate)
-          AND datetime(entryTimestamp) <= datetime(:endDate)
-        ORDER BY datetime(entryTimestamp) DESC
+          AND datetime(entryTimestamp, "utc","localtime") >= datetime(:startDate)
+          AND datetime(entryTimestamp, "utc","localtime") <= datetime(:endDate)
+        ORDER BY datetime(entryTimestamp, "utc","localtime") DESC
     """,
   )
   suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>

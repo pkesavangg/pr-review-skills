@@ -84,6 +84,7 @@ class EntryRepository @Inject constructor(
   /**
    * Gets valid entries for an account within a time range.
    */
+  //TODO: Not used anywhere
   override fun getEntriesByTimeRange(
     accountId: String,
     startTime: String,
@@ -107,6 +108,7 @@ class EntryRepository @Inject constructor(
    * @param days Number of days to look back
    * @return Flow of list of Entry objects
    */
+  //TODO: Not used anywhere
   override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
     val calendar = Calendar.getInstance()
     val endDate = calendar.timeInMillis.toString()
