@@ -104,6 +104,9 @@ fun GraphPagerView(
         onSelected(graphState.target)
       }
 
+      LaunchedEffect(graphState.markerIndex) {
+        onMarkerIndexChange(graphState.markerIndex)
+      }
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
         if (graphState.minTarget != null && graphState.maxTarget != null) {
