@@ -234,8 +234,9 @@ constructor(
 
   private suspend fun updateMonthYear(accountId: String) {
     try {
-      val months = entryRepository.getMonthlyAverage(accountId).first()
-      _monthYear.value = months
+      entryRepository.getMonthlyAverage(accountId).collect {
+        _monthYear.value = it
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating month year", e)
     }

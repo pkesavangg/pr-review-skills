@@ -18,6 +18,7 @@ import java.time.Instant
 import java.time.Month
 import java.time.Period
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Date
@@ -53,6 +54,42 @@ object GraphUtil {
    * Converts a list of [PeriodBodyScaleSummary] to a [GraphLine] for weight.
    * @return [GraphLine] representing weight over time.
    */
+  /**
+   * Converts a local time ISO string to Long timestamp.
+   * Since entryTimestamp is already in local time from the database,
+   * we just need to parse it and convert to milliseconds without timezone conversion.
+   *
+   * @param isoString ISO string in local time (e.g., "2025-11-15T10:30:00" or "2025-11-15 10:30:00")
+   * @return Timestamp in milliseconds, or 0L if conversion fails
+   */
+  private fun localIsoToTimestamp(isoString: String?): Long {
+    if (isoString == null) return 0L
+    return try {
+      val localDateTime = when {
+        isoString.contains('T') -> {
+          java.time.LocalDateTime.parse(isoString, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        }
+        isoString.contains(' ') -> {
+          java.time.LocalDateTime.parse(isoString, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        }
+        else -> {
+          java.time.LocalDate.parse(isoString, java.time.format.DateTimeFormatter.ISO_DATE)
+            .atStartOfDay()
+        }
+      }
+      localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli()
+    } catch (e: Exception) {
+      android.util.Log.e("GraphUtil", "Failed to format the local timestamp: $isoString", e)
+      0L
+    }
+  }
+
+  /**
+   * Converts a list of [PeriodBodyScaleSummary] to a [GraphLine] for weight.
+   * entryTimestamp is already in local time from database, so we use a simple conversion.
+   *
+   * @return [GraphLine] representing weight over time.
+   */
   fun List<PeriodBodyScaleSummary>.toWeightGraphPoints(): GraphLine =
     GraphLine(
       name = "Weight",
@@ -61,7 +98,7 @@ object GraphUtil {
           GraphPoint(
             x =
               Label(
-                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
+                value = localIsoToTimestamp(entry.entryTimestamp),
                 label = entry.period,
               ),
             y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
@@ -88,7 +125,7 @@ object GraphUtil {
         value.let {
           GraphPoint(
             x = Label(
-              value = DateTimeConverter.isoToTimestamp(summary.entryTimestamp),
+              value = localIsoToTimestamp(summary.entryTimestamp),
               label = summary.entryTimestamp,
             ),
             y = Label(value = it, label = "$it"),
@@ -443,7 +480,6 @@ object GraphUtil {
     val endDateTime = Instant.ofEpochMilli(endTimestamp).atZone(zone)
     val startDate = startDateTime.toLocalDate()
     val endDate = endDateTime.toLocalDate()
-
     return when (segment) {
       GraphSegment.YEAR -> {
         if (startDate.month == Month.JANUARY) {

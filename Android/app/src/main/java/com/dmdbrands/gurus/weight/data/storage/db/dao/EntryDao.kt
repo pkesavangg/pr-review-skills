@@ -404,8 +404,8 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-          datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
+          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
+          datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
           AVG(bse.muscleMass) AS muscleMass,
