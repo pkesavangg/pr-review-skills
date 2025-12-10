@@ -30,7 +30,7 @@ import kotlin.math.roundToInt
 object EntryHelper {
   private val dateFormatter: DateTimeFormatter =
     DateTimeFormatter
-      .ofPattern("MMM-dd")
+      .ofPattern("MMM dd")
       .withZone(ZoneId.systemDefault())
 
   private val timeFormatter: DateTimeFormatter =
