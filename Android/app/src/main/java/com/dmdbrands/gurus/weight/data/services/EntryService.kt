@@ -891,7 +891,7 @@ constructor(
 
       // Parse the first entry date
       val firstEntryDate = Calendar.getInstance().apply {
-        time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        time = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
           .parse(firstEntryTimestamp) ?: return 0
       }
 
@@ -908,7 +908,7 @@ constructor(
       // Check all remaining entries
       for (entryTimestamp in remainingDates) {
         val entryDate = Calendar.getInstance().apply {
-          time = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+          time = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             .parse(entryTimestamp)
         }
 

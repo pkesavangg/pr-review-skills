@@ -28,6 +28,31 @@ import java.util.Map.entry
  */
 @Dao
 interface EntryDao {
+  companion object {
+    /**
+     * SQLite datetime modifier constants.
+     */
+    const val UTC = "'utc'"
+    const val LOCAL_TIME = "'localtime'"
+    const val START_OF_DAY = "'start of day'"
+
+    /**
+     * Month abbreviation constants for SQL CASE statements.
+     */
+    const val MONTH_JAN = "'Jan'"
+    const val MONTH_FEB = "'Feb'"
+    const val MONTH_MAR = "'Mar'"
+    const val MONTH_APR = "'Apr'"
+    const val MONTH_MAY = "'May'"
+    const val MONTH_JUN = "'Jun'"
+    const val MONTH_JUL = "'Jul'"
+    const val MONTH_AUG = "'Aug'"
+    const val MONTH_SEP = "'Sep'"
+    const val MONTH_OCT = "'Oct'"
+    const val MONTH_NOV = "'Nov'"
+    const val MONTH_DEC = "'Dec'"
+  }
+
   /**
    * Insert an Entry with related BpmEntry and BodyScaleEntry in a single transaction.
    * @param entry The complete entry data to insert
@@ -332,8 +357,8 @@ interface EntryDao {
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-        AND strftime('%Y-%m', datetime(entryTimestamp,'utc', 'localtime')) = :month
-        ORDER BY datetime(entryTimestamp, 'utc', 'localtime') DESC
+        AND strftime('%Y-%m', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME})) = :month
+        ORDER BY datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}) DESC
     """,
   )
   fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
@@ -379,8 +404,8 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp, "utc","localtime")) AS period,
-          datetime(MIN(e.entryTimestamp), 'utc', 'localtime','start of month') AS entryTimestamp,
+          strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+          datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
           AVG(bse.weight) AS weight,
           AVG(bse.bodyFat) AS bodyFat,
           AVG(bse.muscleMass) AS muscleMass,
@@ -418,7 +443,7 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp,"utc","localtime")) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -443,7 +468,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp, "utc","localtime"))
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}))
           )
         ORDER BY period DESC
     """,
@@ -455,8 +480,8 @@ interface EntryDao {
   @Query(
     """
     SELECT
-      strftime('%Y-%m-%d', datetime(e.entryTimestamp,'utc', 'localtime')) AS period,
-      datetime(MIN(e.entryTimestamp),'utc', 'localtime', 'start of day') AS entryTimestamp,
+      strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
+      datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
       AVG(bse.weight) AS weight,
       AVG(bse.bodyFat) AS bodyFat,
       AVG(bse.muscleMass) AS muscleMass,
@@ -476,7 +501,7 @@ interface EntryDao {
     LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
     LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
     WHERE e.accountId = :accountId
-    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, "utc","localtime"))
+    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY period DESC
   """,
   )
@@ -495,7 +520,7 @@ interface EntryDao {
     """
 WITH daily_entries AS (
   SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp,"utc","localtime")) AS day,
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS day,
     e.entryTimestamp,
     e.unit,
     bse.weight,
@@ -601,7 +626,7 @@ ORDER BY d.day DESC
         SELECT
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp, "utc", "localtime")) AS period
+            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
         FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
@@ -628,7 +653,20 @@ ORDER BY d.day DESC
         LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
-        strftime('%Y-%m-%dT%H:%M:%SZ', datetime(firstTimestamp, 'utc', 'localtime')) AS entryTimestamp,
+        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+            WHEN 1 THEN $MONTH_JAN
+            WHEN 2 THEN $MONTH_FEB
+            WHEN 3 THEN $MONTH_MAR
+            WHEN 4 THEN $MONTH_APR
+            WHEN 5 THEN $MONTH_MAY
+            WHEN 6 THEN $MONTH_JUN
+            WHEN 7 THEN $MONTH_JUL
+            WHEN 8 THEN $MONTH_AUG
+            WHEN 9 THEN $MONTH_SEP
+            WHEN 10 THEN $MONTH_OCT
+            WHEN 11 THEN $MONTH_NOV
+            WHEN 12 THEN $MONTH_DEC
+        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
         avgWeight,
         entryCount,
         CASE
@@ -661,11 +699,11 @@ ORDER BY d.day DESC
   @Query(
     """
          SELECT
-        strftime('%Y-%m-%dT%H:%M:%S.000Z', datetime(entryTimestamp, 'utc', 'localtime')) AS entryTimestamp
+        strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
         FROM entry_view
         WHERE accountId = :accountId
-        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, "utc",'localtime'))
-        ORDER BY datetime(entryTimestamp, "utc",'localtime') DESC
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME}))
+        ORDER BY datetime(entryTimestamp,${UTC},${LOCAL_TIME}) DESC
         """,
   )
   suspend fun getStreakData(accountId: String): List<String>
@@ -687,10 +725,10 @@ ORDER BY d.day DESC
     """
         WITH RECURSIVE dates AS (
             SELECT
-                strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime')) AS date
+                strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS date
             FROM entry_view
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
             ORDER BY date ASC
         ),
         streak_calc AS (
