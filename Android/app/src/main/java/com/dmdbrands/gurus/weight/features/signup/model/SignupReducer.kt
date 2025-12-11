@@ -429,6 +429,9 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
 
       is SignupIntent.Skip -> {
         if (state.currentStep == SignupStep.GOAL) {
+          state.form.controls.currentWeight.reset()
+          state.form.controls.goalWeight.reset()
+          state.form.controls.goalType.reset()
           val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
           state.copy(
             currentStep = state.steps[nextIndex],
