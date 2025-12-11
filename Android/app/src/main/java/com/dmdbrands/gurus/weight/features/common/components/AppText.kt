@@ -51,6 +51,11 @@ enum class TextType {
   CardTitle
 }
 
+data class AppTextSegment(
+  val text: String,
+  val spanStyle: SpanStyle? = null,
+)
+
 object TextTypeDefaults {
   @Composable
   fun appearance(
@@ -241,6 +246,52 @@ fun AppText(
           ),
       )
     }
+    Spacer(modifier = Modifier.height(spacing))
+  }
+}
+
+@Composable
+fun AppRichText(
+  segments: List<AppTextSegment>,
+  textType: TextType,
+  modifier: Modifier = Modifier,
+  spacing: Dp = LocalSpacing.current.none,
+  textAlign: TextAlign = TextAlign.Start,
+  softWrap: Boolean = true,
+  textOverflow: TextOverflow = TextOverflow.Clip,
+  maxLines: Int = Int.MAX_VALUE,
+  color: Color? = null,
+) {
+  val appearance = TextTypeDefaults.appearance(textType)
+
+  val annotated = remember(segments) {
+    buildAnnotatedString {
+      segments.forEach { segment ->
+        if (segment.spanStyle != null) {
+          withStyle(segment.spanStyle) {
+            append(segment.text)
+          }
+        } else {
+          append(segment.text)
+        }
+      }
+    }
+  }
+
+  Column(
+    modifier = Modifier.wrapContentSize(),
+    horizontalAlignment = Alignment.Start,
+  ) {
+    Text(
+      text = annotated,
+      style = appearance.style,
+      color = color ?: appearance.color,
+      textAlign = textAlign,
+      softWrap = softWrap,
+      overflow = textOverflow,
+      maxLines = maxLines,
+      modifier = modifier,
+    )
     Spacer(modifier = Modifier.height(spacing))
   }
 }
