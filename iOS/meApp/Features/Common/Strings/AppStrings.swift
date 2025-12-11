@@ -330,7 +330,7 @@ struct AlertStrings {
 
     struct ResetPasswordAlert {
         static let passwordResetTitle = "Password Reset"
-        static let enterEmailMessage = "Enter your email below."
+        static let enterEmailMessage = "Enter your email"
     }
 
     struct ManualEntryExitAlert {
