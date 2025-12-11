@@ -81,14 +81,17 @@ constructor(
     viewModelScope.launch {
       try {
         deviceService.pairedScales.collect { devices ->
+          // Avoid overwriting local toggles while the user is making changes or saving.
+          if (state.value.hasModeChanged) {
+            AppLog.d(TAG, "Skipping remote scale update because mode change is in progress")
+            return@collect
+          }
           val device = devices.find { it.id == scaleId }
           device?.let { scaleDevice ->
             AppLog.d(TAG, "Setting scale device: ${scaleDevice.id}")
             handleIntent(ScaleModeIntent.SetScale(scaleDevice))
-
             val shouldMeasureImpedance = scaleDevice.preferences?.shouldMeasureImpedance == true
             val shouldMeasurePulse = scaleDevice.preferences?.shouldMeasurePulse == true
-
             AppLog.d(TAG, "Setting mode - Impedance: $shouldMeasureImpedance, Pulse: $shouldMeasurePulse")
             handleIntent(ScaleModeIntent.SetMode(shouldMeasureImpedance, false))
             handleIntent(ScaleModeIntent.SetHeartRate(shouldMeasurePulse, false))
@@ -210,9 +213,8 @@ constructor(
         if (success) {
           retryCount = 0
           AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
-          dialogQueueService.dismissLoader()
           // Refresh scale data to get updated preferences
-          deviceService.syncDevices()
+          dialogQueueService.dismissLoader()
           navigateBack()
           showToast(ScaleModeStrings.Toast.Success)
         } else {
