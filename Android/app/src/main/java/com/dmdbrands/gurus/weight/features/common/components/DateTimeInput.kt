@@ -264,6 +264,7 @@ object DateTimeInputDefaults {
       headlineContentColor = colorScheme.textBody,
       dateTextFieldColors =
         TextFieldDefaults.colors(
+          errorContainerColor = colorScheme.primaryBackground,
           focusedContainerColor = colorScheme.primaryBackground,
           unfocusedContainerColor = colorScheme.primaryBackground,
           unfocusedTextColor = colorScheme.textBody,
