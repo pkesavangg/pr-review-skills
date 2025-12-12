@@ -2,10 +2,13 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
@@ -153,6 +156,14 @@ fun DatePickerDialogContent(
       DatePickerDefaults.colors(
         containerColor = MeTheme.colorScheme.primaryBackground,
       ),
+    modifier = Modifier.then(
+      if(datePickerState.displayMode == DisplayMode.Picker){
+        Modifier.fillMaxSize()
+      }
+      else{
+        Modifier.fillMaxSize().imePadding()
+      }
+    )
   ) {
     val pickerColor = DateTimeInputDefaults.getDatePickerColor()
     DatePicker(state = datePickerState, colors = pickerColor)
