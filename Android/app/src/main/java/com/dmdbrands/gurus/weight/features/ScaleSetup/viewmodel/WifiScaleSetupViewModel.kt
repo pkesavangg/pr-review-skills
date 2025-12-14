@@ -785,22 +785,12 @@ constructor(
   private fun onNext() {
     val currentState = state.value
 
-    // Prevent double-clicks during navigation
-    if (currentState.isNavigating || currentState.isLoading) {
-      AppLog.d(TAG, "Ignoring next click - navigation in progress")
-      return
-    }
 
     AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
 
     // Handle actions that need to happen before/during navigation
     when (currentState.currentStep) {
-      WifiScaleSetupStep.SCALE_INFO -> {
-        state.value.copy(
-          isGetMACSetup = false,
-          shouldGetMacAddress = false
-        )
-      }
+
       WifiScaleSetupStep.PERMISSIONS -> {
         if (!checkScaleToken()) {
           return
@@ -815,7 +805,7 @@ constructor(
 
       WifiScaleSetupStep.WIFI_MODE -> {
         if(state.value.permissionsSkipped || state.value.isGetMACSetup){
-          WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value)
+          handleIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value))
         }
         if(state.value.selectedWifiMode == WifiModes.AP_MODE.value){
           handleIntent(WifiScaleSetupIntent.SetShowApMode(true))

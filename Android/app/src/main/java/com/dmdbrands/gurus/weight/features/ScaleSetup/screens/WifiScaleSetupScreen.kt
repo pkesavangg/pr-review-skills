@@ -254,19 +254,7 @@ fun WifiScaleSetupScreenContent(
             WifiScaleSetupStep.WIFI_MODE -> {
               // Show different buttons based on the flow type
               val wifiButtons = when {
-                state.isGetMACSetup -> {
-                  // MAC setup flow: Only AP mode available
-                  listOf(
-                    SelectButtonItem(
-                      id = "wifi_ap_mode",
-                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                      emitValue = WifiModes.AP_MODE.value,
-                      isSelected = true,
-                    ),
-                  )
-                }
-
-                state.permissionsSkipped -> {
+                state.isGetMACSetup || state.permissionsSkipped -> {
                   val image = if (state.sku == "0384") AppIcons.Setup.WifiAPModeFilled0384 else AppIcons.Setup.WifiAPModeSelected
                   // Permission skipped flow: Only AP mode available
                   listOf(
@@ -317,7 +305,7 @@ fun WifiScaleSetupScreenContent(
                   else
                   onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
                 },
-                noteMessage = if (state.isApMode) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
+                noteMessage = if (state.permissionsSkipped || state.isGetMACSetup) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
                 supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
                 onSupportingButtonClick = {
                   // Navigate to error guide step
@@ -393,13 +381,11 @@ fun WifiScaleSetupScreenContent(
                       } else {
                         WifiScaleSetupStrings.SwitchWifi.ChangeNetwork
                       },
-                      isConfigured = !state.scaleNetworkForm.ssid.value.isEmpty(),
+                      isConfigured = false,
                       index = 0,
                       total = 1,
                       onClick = {
-                        if (state.scaleNetworkForm.ssid.value.isEmpty()) {
-                          onIntent(WifiScaleSetupIntent.GoToWifiSettings)
-                        }
+                        onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                       },
                     )
                   }

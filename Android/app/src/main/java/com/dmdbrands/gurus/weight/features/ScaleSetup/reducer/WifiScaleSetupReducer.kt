@@ -89,7 +89,6 @@ data class WifiScaleSetupState(
   val selectedWifiMode: String? = null,
   val selectedErrorCode: String? = null,
   val canProceedToNext: Boolean = false,
-  val isApMode: Boolean = false,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   val wifiPasswordForm: WifiScalePasswordFormControls = WifiScalePasswordFormControls.create(),
   val scaleNetworkForm: ScaleNetworkForm = ScaleNetworkForm.create(),
@@ -346,9 +345,11 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           } else if (nextStep == WifiScaleSetupStep.ACTIVATE_SCALE) {
             // Clear flags when entering ACTIVATE_SCALE step
             state.copy(showApMode = false,)
-          } else {
-            state
+          } else if(state.currentStep == WifiScaleSetupStep.SCALE_INFO) {
+            state.copy(isGetMACSetup = false, permissionsSkipped = false, shouldGetMacAddress = false)
           }
+          else
+            state
 
           finalState.copy(
             currentStep = nextStep,
@@ -447,6 +448,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           // Handle MAC setup flag reset for PERMISSIONS step
           val updatedState = if (state.currentStep == WifiScaleSetupStep.PERMISSIONS && state.isGetMACSetup) {
             state.copy(isGetMACSetup = false)
+          } else if(state.currentStep == WifiScaleSetupStep.SCALE_INFO) {
+            state.copy(isGetMACSetup = false, permissionsSkipped = false )
           } else {
             state
           }
