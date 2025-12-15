@@ -28,7 +28,7 @@ object SignupStrings {
   // Goal step strings
   const val goalStepTitle = "Set a goal!"
   const val goalStepSubtitle =
-    "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
+    "This can be helpful feature to utilize on your journey. Goals can always be changed in the app settings."
   const val goalStepMaintain = "Maintain"
   const val goalStepLoseGain = "Lose/Gain"
   const val goalStepUseMetric = "Use Metric Units"
