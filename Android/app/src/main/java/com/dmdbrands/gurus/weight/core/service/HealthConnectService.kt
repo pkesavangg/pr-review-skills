@@ -349,46 +349,73 @@ class HealthConnectService @Inject constructor(
   }
 
   override suspend fun syncData(entries: List<PeriodBodyScaleSummary>) {
+    val isIntegrated = checkIfAlreadyUsed()
+    if (!isIntegrated) {
+      AppLog.w(tag, "Health Connect not integrated with current account")
+      dialogQueueService.dismissLoader()
+      return
+    }
+
     val finalData = mutableListOf<HealthConnectData>()
     for (entry in entries) {
-      entry.weight.let {
-        finalData.add(HealthConnectData(DataType.Weight, it, timeStamp = Instant.parse(entry.entryTimestamp)))
+      val timestamp = Instant.parse(entry.entryTimestamp)
+
+      // Only add weight if it's not zero
+      if (entry.weight > 0.0) {
+        finalData.add(HealthConnectData(DataType.Weight, entry.weight, timeStamp = timestamp))
       }
 
-      entry.bodyFat.let {
-        finalData.add(HealthConnectData(DataType.BodyFat, it, timeStamp = Instant.parse(entry.entryTimestamp)))
+      // Only add body fat if it's not null and not zero
+      entry.bodyFat?.let { bodyFat ->
+        if (bodyFat > 0.0) {
+          finalData.add(HealthConnectData(DataType.BodyFat, bodyFat, timeStamp = timestamp))
+
+          // Calculate and add lean body mass only if body fat is valid
+          val leanBodyMass = calculateLeanBodyMass(entry.weight, bodyFat)
+          if (leanBodyMass > 0.0) {
+            finalData.add(
+              HealthConnectData(
+                DataType.LeanBodyMass,
+                leanBodyMass,
+                timeStamp = timestamp,
+              ),
+            )
+          }
+        }
       }
 
-      if (entry.bodyFat != null) {
-        val leanBodyMass = calculateLeanBodyMass(entry.weight, entry.bodyFat)
-        finalData.add(
-          HealthConnectData(
-            DataType.LeanBodyMass,
-            leanBodyMass,
-            timeStamp = Instant.parse(entry.entryTimestamp),
-          ),
-        )
+      // Only add bone mass if it's not null and calculated value is not zero
+      entry.boneMass?.let { boneMass ->
+        val boneMassValue = (boneMass * entry.weight) / 100
+        if (boneMassValue > 0.0) {
+          finalData.add(
+            HealthConnectData(
+              DataType.BoneMass,
+              boneMassValue,
+              timeStamp = timestamp,
+            ),
+          )
+        }
       }
-      entry.boneMass.let {
-        finalData.add(
-          HealthConnectData(
-            DataType.BoneMass,
-            (it?.times(entry.weight))?.div(100),
-            timeStamp = Instant.parse(entry.entryTimestamp),
-          ),
-        )
+
+      // Only add BMR if it's not null and not zero
+      entry.bmr?.let { bmr ->
+        if (bmr > 0.0) {
+          finalData.add(
+            HealthConnectData(
+              DataType.BasalMetabolicRate,
+              bmr,
+              timeStamp = timestamp,
+            ),
+          )
+        }
       }
-      entry.bmr.let {
-        finalData.add(
-          HealthConnectData(
-            DataType.BasalMetabolicRate,
-            it,
-            timeStamp = Instant.parse(entry.entryTimestamp),
-          ),
-        )
-      }
-      entry.pulse.let {
-        finalData.add(HealthConnectData(DataType.RestingHeartRate, it, timeStamp = Instant.parse(entry.entryTimestamp)))
+
+      // Only add pulse if it's not null and not zero
+      entry.pulse?.let { pulse ->
+        if (pulse > 0.0) {
+          finalData.add(HealthConnectData(DataType.RestingHeartRate, pulse, timeStamp = timestamp))
+        }
       }
     }
     try {
