@@ -59,35 +59,10 @@ class GraphViewModel @AssistedInject constructor(
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
-      is GraphIntent.UpdateWeightUnit -> handleUpdateWeightUnit(intent.weightUnit)
       else -> null
     }
   }
 
-
-  /**
-   * Handles UpdateWeightUnit intent.
-   * Reprocesses goal with new unit when weight unit changes.
-   * Updates goal display and reinitializes graph to reflect the unit change.
-   *
-   * @param weightUnit The new weight unit to use for goal conversion.
-   */
-  private fun handleUpdateWeightUnit(weightUnit: com.dmdbrands.gurus.weight.domain.model.common.WeightUnit) {
-    val currentGoal = _state.value.goal
-    val currentAccount = accountService.activeAccount.value
-    if (currentGoal != null && currentAccount != null) {
-      // Get the raw goal from account (in LB format) and reprocess with new unit
-      val rawGoal = currentAccount.toGoal()
-      val processedGoal = rawGoal?.process(weightUnit, currentAccount.toWeightless())
-      if (processedGoal != null) {
-        super.handleIntent(GraphIntent.UpdateGoal(processedGoal))
-        // Reinitialize graph with processed goal to update display
-        val currentData = _state.value.data
-        val currentSecondaryKey = _state.value.secondaryKey
-        initializeGraph(currentData, processedGoal, currentSecondaryKey)
-      }
-    }
-  }
 
   @AssistedFactory
   interface Factory {
@@ -110,10 +85,6 @@ class GraphViewModel @AssistedInject constructor(
     observeDataChanges()
     subscribeWeightUnit()
   }
-
-  private fun initInialize() {
-  }
-
   /**
    * Initializes the graph with immediate data from services without suspension.
    * This provides instant initialization while the async flows are being set up.
@@ -126,8 +97,8 @@ class GraphViewModel @AssistedInject constructor(
       val rawGoal = currentAccount?.toGoal()
       // Process goal with current unit and weightless mode to ensure correct unit conversion
       val immediateGoal = rawGoal?.let { goal ->
-        val weightUnit = currentAccount?.weightUnit
-        val weightless = currentAccount?.toWeightless()
+        val weightUnit = currentAccount.weightUnit
+        val weightless = currentAccount.toWeightless()
         goal.process(weightUnit, weightless)
       }
       val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
@@ -243,6 +214,8 @@ class GraphViewModel @AssistedInject constructor(
           if (graphMeta != null) {
             handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
           }
+          withContext(Dispatchers.Main) {
+
           currentState.modelProducer.runTransaction {
             lineSeries {
               series(
@@ -256,14 +229,11 @@ class GraphViewModel @AssistedInject constructor(
               )
             }
           }
+          }
         }
       } catch (e: Exception) {
         // Log error but don't crash the UI
         Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
-        // Clear loading state on error
-        withContext(Dispatchers.Main) {
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
-        }
       }
     }
   }
@@ -327,19 +297,7 @@ class GraphViewModel @AssistedInject constructor(
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
         // Pre-calculate Y-axis range for weight (primary) only
-        // Secondary metrics will be normalized to this range (iOS-style)
-        // iOS-style: Use cached Y-axis if available, otherwise calculate fresh
         val primaryYAxisRange = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
-
-        // Cache the Y-axis for future scroll updates (iOS-style)
-        if (currentState.cachedPrimaryYAxis == null) {
-          withContext(Dispatchers.Main) {
-           handleRenormalizationOnYAxisChange(primaryYAxisRange)
-          }
-        }
-
-        // Normalize secondary metric values to weight Y-axis range (iOS-style normalization)
-        // Validate Y-axis range values are finite before normalization (matching iOS defensive checks)
         val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
                                                    secondaryGraphLines.points.isNotEmpty() &&
                                                    primaryYAxisRange.minY != null &&
@@ -359,7 +317,6 @@ class GraphViewModel @AssistedInject constructor(
 
 
         // Pre-calculate series data on background thread
-        // Filter out NaN/Infinity values and invalid X/Y pairs (matching iOS defensive checks)
         val primaryYDataPairs = xLabels.zip(ySeries).mapNotNull { (xLabel, yLabel) ->
           val xValue = xLabel.value as? Long
           val yValue = yLabel.value as? Double
@@ -373,9 +330,6 @@ class GraphViewModel @AssistedInject constructor(
         // Validate Y-axis range is finite before using
         if (primaryYAxisRange.minY == null || primaryYAxisRange.maxY == null ||
             !primaryYAxisRange.minY!!.isFinite() || !primaryYAxisRange.maxY!!.isFinite()) {
-          withContext(Dispatchers.Main) {
-            super.handleIntent(GraphIntent.UpdateIsLoading(false))
-          }
           return@launch
         }
 
@@ -422,10 +376,6 @@ class GraphViewModel @AssistedInject constructor(
       } catch (e: Exception) {
         // Log error but don't crash the UI
         Log.e("GraphViewModel", "Error setting up chart model producer", e)
-        // Clear loading state on error
-        withContext(Dispatchers.Main) {
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
-        }
       }
     }
   }
@@ -546,11 +496,11 @@ class GraphViewModel @AssistedInject constructor(
           withContext(Dispatchers.Main) {
             // Directly call renormalization with current scroll range to avoid reading stale state values
             handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)
+            super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
           }
 
 
           // Update UI on main thread
-          super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
         }
       } catch (e: Exception) {
         Log.e("GraphViewModel", "Error handling scroll", e)
@@ -579,7 +529,7 @@ class GraphViewModel @AssistedInject constructor(
     val data = currentState.data
 
     // Use provided Y-axis or fallback to cached from state
-    val cachedYAxis = newYAxisRange ?: currentState.cachedPrimaryYAxis
+    val cachedYAxis = newYAxisRange
 
     // Only renormalize if we have secondary metrics and Y-axis
     // Validate Y-axis values are finite before use (matching iOS defensive checks)

@@ -29,13 +29,6 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update primary Y-axis */
   data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
 
-  /**
-   * Update cached primary Y-axis range.
-   * Used for iOS-style renormalization: cache Y-axis domain on scroll end,
-   * then trigger renormalization when domain changes.
-   */
-  data class UpdateCachedPrimaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
-
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
 

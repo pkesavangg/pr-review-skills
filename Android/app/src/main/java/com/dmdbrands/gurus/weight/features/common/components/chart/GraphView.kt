@@ -133,11 +133,6 @@ fun GraphView(
     }
   }
 
-  // iOS-style: Trigger renormalization when cached Y-axis changes
-  // This ensures secondary metrics are renormalized when visible window changes on scroll
-  // Note: Renormalization is handled in ViewModel.handleIntent when UpdateCachedPrimaryYAxis is dispatched
-  // This LaunchedEffect is not needed as the ViewModel already handles it
-
   // LaunchedEffect(scrollTarget) {
   //   if (scrollTarget != null) {
   //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
