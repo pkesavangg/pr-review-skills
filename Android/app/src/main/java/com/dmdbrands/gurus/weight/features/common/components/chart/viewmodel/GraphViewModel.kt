@@ -80,6 +80,7 @@ class GraphViewModel @AssistedInject constructor(
   private var renormalizationJob: Job? = null
 
   init {
+    // Set loading state immediately to prevent blank screen
     initializeWeightUnit()
     initializeImmediateData()
     observeDataChanges()
@@ -175,35 +176,39 @@ class GraphViewModel @AssistedInject constructor(
     scrollDebounceJob?.cancel()
 
     // Setup chart model producer
-    if (data.isNotEmpty())
+    if (data.isNotEmpty()) {
       setupChartModelProducer(data, secondaryKey, goal)
-    else
+    }
+    else {
       setupEmptyModelProducer(goal)
+    }
   }
 
   /**
    * Sets up an empty chart model producer when no data is available.
-  Sets up an empty chart model producer when no data is available.
+   * Optimized to set empty state immediately and update model producer asynchronously.
    */
   private fun setupEmptyModelProducer(goal: Goal?) {
     val currentState = state.value
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
 
-    // Set empty model producer
+    // Set empty state immediately to avoid blank screen
+    handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+    val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
+    val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+    if (startx != null && endx != null) {
+      super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
+    }
+    super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
+
+    // Set empty model producer asynchronously
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         // Check if job is still active before running transaction
         if (isActive) {
           val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
-          handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
-          val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
-          val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-          if (startx != null && endx != null) {
-            super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
-          }
-          super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
           val graphMeta = if (goal != null) generateNiceScale(
             goal.goalWeight.div(10.0) - 10.0,
             goal.goalWeight.div(10.0) + 10.0,
@@ -215,20 +220,19 @@ class GraphViewModel @AssistedInject constructor(
             handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
           }
           withContext(Dispatchers.Main) {
-
-          currentState.modelProducer.runTransaction {
-            lineSeries {
-              series(
-                listOf(0.0), listOf(0.0),
-                ranges = CartesianRangeValues(
-                  minY = graphMeta?.min ?: 2.0,
-                  maxY = graphMeta?.max ?: 3.0,
-                  minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-                  maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-                ),
-              )
+            currentState.modelProducer.runTransaction {
+              lineSeries {
+                series(
+                  listOf(0.0), listOf(0.0),
+                  ranges = CartesianRangeValues(
+                    minY = graphMeta?.min ?: 2.0,
+                    maxY = graphMeta?.max ?: 3.0,
+                    minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                    maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                  ),
+                )
+              }
             }
-          }
           }
         }
       } catch (e: Exception) {
@@ -326,12 +330,6 @@ class GraphViewModel @AssistedInject constructor(
         }
         val primaryXDataFiltered = primaryYDataPairs.map { it.first }
         val primaryYDataFiltered = primaryYDataPairs.map { it.second }
-
-        // Validate Y-axis range is finite before using
-        if (primaryYAxisRange.minY == null || primaryYAxisRange.maxY == null ||
-            !primaryYAxisRange.minY!!.isFinite() || !primaryYAxisRange.maxY!!.isFinite()) {
-          return@launch
-        }
 
         // Check if job is still active before running transaction
         if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&

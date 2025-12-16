@@ -55,12 +55,6 @@ data class GraphState(
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,
   val primaryYStep: Double? = null,
-  /**
-   * Cached primary Y-axis range for normalization.
-   * Updated on scroll end to enable renormalization of secondary metrics.
-   * iOS-style: cache Y-axis domain to trigger renormalization when visible window changes.
-   */
-  val cachedPrimaryYAxis: CartesianRangeValues? = null,
   val goal: Goal? = null,
   val isEmptyGraph: Boolean = false,
   val modelProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
