@@ -249,7 +249,7 @@ struct FormErrorMessages {
     static let required = "must not be left blank"
     static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
-    static let emailMaxLength = "Email should not exceed 100 characters"
+    static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
     static let passwordMinLength = "password must be 6 characters long"
     static let minLength = { (length: Int) in "minimum value should be \(length)" }
@@ -324,8 +324,8 @@ struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let returnButton = "Return"
-        static let exitButton = "Exit"
+        static let returnButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
 
     struct ResetPasswordAlert {
@@ -427,8 +427,8 @@ struct AlertStrings {
     struct LoginExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let returnButton = "Return"
-        static let exitButton = "Exit"
+        static let returnButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
 
     struct DeleteUserAlert {
