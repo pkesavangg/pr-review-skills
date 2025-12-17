@@ -123,7 +123,7 @@ struct LandingScreen: View {
                                         router.navigate(to: .login(nil))
                                     }
                                 }
-                                .padding(.top, .spacingSM)
+                                .padding(.vertical, .spacingSM)
                                 
                                 ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                     if landingStore.canAddMoreAccounts() {

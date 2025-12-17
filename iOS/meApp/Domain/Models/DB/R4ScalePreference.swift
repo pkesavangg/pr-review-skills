@@ -20,7 +20,7 @@ import SwiftData
 final class R4ScalePreference {
     @Attribute(.unique) var id: String // Unique scale ID (PK, FK to scale)
     var displayName: String // Display name
-    var displayMetrics: [String] // Displayed metrics
+    var displayMetrics: [String] = [] // Displayed metrics
     var shouldFactoryReset: Bool // Factory reset flag
     var shouldMeasureImpedance: Bool // Impedance measurement flag
     var shouldMeasurePulse: Bool // Pulse measurement flag

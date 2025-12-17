@@ -22,7 +22,7 @@ class SignupForm: ObservableForm {
     var goalWeight = FormControl("", validators: [.required, .minValue()])
     var useMetric = FormControl(false)
     var height = FormControl(Double(700))
-    var email = FormControl("", validators: [.required, .email, .maxLength(200)])
+    var email = FormControl("", validators: [.required, .email, .maxLength(100)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
@@ -84,23 +84,29 @@ class SignupForm: ObservableForm {
     }
     
     func getError<T>(for control: FormControl<T>) -> String? {
-        guard control.isDirty else { return nil }
+        guard control.isTouched || control.isDirty else { return nil }
 
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
         }
-        if (control === email || control === password || control === confirmPassword || control === zipcode) && control.errors[.required] {
+        if (control === email || control === password || control === confirmPassword || control === zipcode || control === firstName || control === lastName) && control.errors[.required] {
             return FormErrorMessages.leaveBlank
         }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
-            return FormErrorMessages.minLength(minLength)
+            if control === password || control === confirmPassword {
+                return FormErrorMessages.passwordMinLength
+            } else {
+                return FormErrorMessages.minLength(minLength)
+            }
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
-            // Use custom message for password field
-            if control === password {
+            // Use custom message for password fields
+            if control === password || control === confirmPassword {
                 return FormErrorMessages.passwordMaxLength
+            } else if control === email {
+                return FormErrorMessages.emailMaxLength
             } else {
                 return FormErrorMessages.maxLength(maxLength)
             }

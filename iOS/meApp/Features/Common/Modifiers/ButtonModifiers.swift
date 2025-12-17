@@ -9,9 +9,12 @@ import SwiftUI
 
 struct BasicButtonStyle: ViewModifier {
     var foreGroundColor: Color
+    var buttonSize: ButtonSize? = nil
+    var padding: Bool = false
     @Environment(\.appTheme) var theme
     func body(content: Content) -> some View {
         content
+            .padding(.horizontal, padding && buttonSize != nil ? (buttonSize == .small ? .spacingXS : .spacingLG) : 0)
             .foregroundColor(foreGroundColor)
     }
 }
@@ -39,15 +42,16 @@ struct FlatButtonStyle: ViewModifier {
     var foregroundColor: Color
     var backgroundColor: Color
     var buttonSize: ButtonSize
+    var verticalPadding: Bool = false
     
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
+            .padding(.vertical, verticalPadding ? .spacingXS/4 : 0)
             .foregroundColor(foregroundColor)
             .background(backgroundColor)
             .cornerRadius(.radiusPill)
             .contentShape(Rectangle())
-         
     }
 }
 
@@ -62,7 +66,17 @@ struct AppPressableButtonStyle: ButtonStyle {
     let type: ButtonType
     let size: ButtonSize
     let backgroundColorOverride: Color?
+    let verticalPadding: Bool
+    let padding: Bool
     @Environment(\.appTheme) private var theme
+    
+    init(type: ButtonType, size: ButtonSize, backgroundColorOverride: Color? = nil, verticalPadding: Bool = false, padding: Bool = false) {
+        self.type = type
+        self.size = size
+        self.backgroundColorOverride = backgroundColorOverride
+        self.verticalPadding = verticalPadding
+        self.padding = padding
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         let isPressed = configuration.isPressed
@@ -90,7 +104,8 @@ struct AppPressableButtonStyle: ButtonStyle {
                     .modifier(FlatButtonStyle(
                         foregroundColor: fg,
                         backgroundColor: bg,
-                        buttonSize: size
+                        buttonSize: size,
+                        verticalPadding: verticalPadding
                     ))
             )
 
@@ -144,7 +159,7 @@ struct AppPressableButtonStyle: ButtonStyle {
             let fg = isPressed ? theme.actionPrimaryPressed : baseFg
             return AnyView(
                 configuration.label
-                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+                    .modifier(BasicButtonStyle(foreGroundColor: fg, buttonSize: size, padding: padding))
             )
 
         case .textSecondary, .inlineTextSecondary:
@@ -152,7 +167,7 @@ struct AppPressableButtonStyle: ButtonStyle {
             let fg = isPressed ? theme.actionInversePressed : baseFg
             return AnyView(
                 configuration.label
-                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+                    .modifier(BasicButtonStyle(foreGroundColor: fg, buttonSize: size, padding: padding))
             )
 
         case .textTertiary, .inlineTextTertiary:
@@ -160,7 +175,7 @@ struct AppPressableButtonStyle: ButtonStyle {
             let fg = isPressed ? theme.actionTertiaryPressed : baseFg
             return AnyView(
                 configuration.label
-                    .modifier(BasicButtonStyle(foreGroundColor: fg))
+                    .modifier(BasicButtonStyle(foreGroundColor: fg, buttonSize: size, padding: padding))
             )
         }
     }

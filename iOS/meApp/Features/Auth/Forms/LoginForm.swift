@@ -14,15 +14,21 @@ class LoginForm: ObservableForm {
     }
     
     func getError<T>(for control: FormControl<T>) -> String? {
-        guard control.isDirty else { return nil }
+        guard control.isTouched || control.isDirty else { return nil }
         if control.errors[.required] { return lang.leaveBlank }
         if control.errors[.email] { return lang.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
-            return lang.minLength(minLength)
+            if control === password {
+                return lang.passwordMinLength
+            } else {
+                return lang.minLength(minLength)
+            }
         }
         if control.errors[.maxLength], let maxLength = control.errors.value(for: .maxLength) as? Int {
             if control === password {
                 return lang.passwordMaxLength
+            } else if control === email {
+                return lang.emailMaxLength
             } else {
                 return lang.maxLength(maxLength)
             }
