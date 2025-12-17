@@ -1585,7 +1585,7 @@ class DashboardStore: ObservableObject {
         let ticks = xAxisValuesWithBuffer(for: period)
         let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
 
-        // Derive the label from the X-axis tick window (not from entry dates),
+        // Derive the label from the X-axis tick window (not from entry dates).
         let anchorDate = visibleTicks.isEmpty ? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period) / 2.0)
                                               : visibleTicks[visibleTicks.count / 2]
         if let yearInterval = Calendar.current.dateInterval(of: .year, for: anchorDate) {
@@ -1624,7 +1624,7 @@ class DashboardStore: ObservableObject {
         let ticks = xAxisValuesWithBuffer(for: period)
         let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
 
-        // Derive the month from the X-axis ticks (not from entry dates), and always show
+        // Derive the month from the X-axis ticks (not from entry dates), and always show a single full-month label based on that derived month.
         let anchorDate = visibleTicks.isEmpty ? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period) / 2.0)
                                               : visibleTicks[visibleTicks.count / 2]
         if let monthInterval = Calendar.current.dateInterval(of: .month, for: anchorDate) {
