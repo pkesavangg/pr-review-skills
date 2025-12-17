@@ -55,6 +55,9 @@ public class FormControl<Value: Equatable>: AbstractControl {
     /// A Boolean value indicating whether the ``value`` of the control has been changed.
     @Published public private(set) var isDirty: Bool = false
     
+    /// A Boolean value indicating whether the control has been touched (focused).
+    @Published public private(set) var isTouched: Bool = false
+    
     /// Creates a form control with the provided value and its validators.
     public init(
         _ value: Value,
@@ -123,5 +126,10 @@ public class FormControl<Value: Equatable>: AbstractControl {
     /// Marks the control as dirty and also recalculates pristine state of its parent.
     public func markAsDirty() {
         isPristine = false
+    }
+    
+    /// Marks the control as touched (focused).
+    public func markAsTouched() {
+        isTouched = true
     }
 } 

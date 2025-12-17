@@ -37,11 +37,11 @@ struct WeightValueConvertor {
         var weight: Double
 
         // Convert the input value to stored format (tenths of lbs)
-        let storedValue = Int(value)
+        let storedValue = Int(round(value))
 
         // Apply weightless adjustment if needed
         if let weightless = weightless, weightless.isWeightlessOn {
-          let weightlessValue = Int(weightless.weightlessWeight ?? 0)
+          let weightlessValue = Int(round(weightless.weightlessWeight ?? 0))
             weight = ConversionTools.convertStoredToDisplay(storedValue - weightlessValue, isMetric: weightUnit == .kg)
             // Force show symbol for weightless mode
             return formatWithSymbol(weight, showSymbol: true)
