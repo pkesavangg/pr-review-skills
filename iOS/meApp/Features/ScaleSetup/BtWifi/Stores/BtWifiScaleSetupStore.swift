@@ -836,7 +836,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             message: alertStrings.message(user.name),
             buttons: [
                 AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
-                AlertButtonModel(title: alertStrings.deleteButton, type: .primary) { [weak self] _ in
+                AlertButtonModel(title: alertStrings.deleteButton, type: .danger) { [weak self] _ in
                     Task {
                         await self?.deleteUserFromScale(user)
                         // Reset to normal state and retry connection
