@@ -65,10 +65,10 @@ class ChangePasswordForm: ObservableForm {
 
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.minLength], let min = control.errors.value(for: .minLength) as? Int {
-            return FormErrorMessages.minLength(min)
+            return FormErrorMessages.passwordMinLength
         }
         if control.errors[.maxLength] {
-            return FormErrorMessages.passwordMaxLength
+            return FormErrorMessages.maxLength(50)
         }
 
         if control === newPassword,

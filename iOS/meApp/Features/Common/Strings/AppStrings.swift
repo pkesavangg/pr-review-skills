@@ -252,6 +252,7 @@ struct FormErrorMessages {
     static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
     static let passwordMinLength = "password must be 6 characters long"
+    static let signupPasswordMinLength = "minimum of 6 characters needed"
     static let minLength = { (length: Int) in "minimum value should be \(length)" }
     static let maxLength = { (length: Int) in "maximum value should be \(length)" }
     static let min = { (value: Int) in "value must be at least \(value)" }
