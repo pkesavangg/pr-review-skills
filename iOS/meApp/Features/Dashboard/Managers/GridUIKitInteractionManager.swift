@@ -14,9 +14,7 @@ struct GridUIKitInteractionManager {
     static func applyCommonCollectionViewConfiguration(_ collectionView: CustomCollectionView) {
         collectionView.backgroundColor = .clear
         collectionView.hideDragPlatter = true
-        if #available(iOS 11.0, *) {
-            collectionView.reorderingCadence = .immediate
-        }
+        collectionView.reorderingCadence = .immediate
 
         // Allow the lifted item overlay to render beyond bounds without clipping
         collectionView.clipsToBounds = false
