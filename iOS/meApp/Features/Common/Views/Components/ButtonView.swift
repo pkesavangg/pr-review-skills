@@ -18,6 +18,10 @@ struct ButtonView: View {
     var alignment: Alignment = .center
     /// Optional override for background color for styles that support it (e.g., .filledPrimary)
     var backgroundColorOverride: Color? = nil
+    /// Optional vertical padding for filled primary buttons. Default is false.
+    var verticalPadding: Bool = false
+    /// Optional horizontal padding for text buttons. Default is false.
+    var padding: Bool = false
     /// Throttle interval in seconds. Default is 0.5 seconds. Set to 0 to disable throttling.
     /// With throttle, the first tap executes immediately, and subsequent taps within the interval are ignored.
     var throttleInterval: TimeInterval = 0.5
@@ -47,7 +51,9 @@ struct ButtonView: View {
         .buttonStyle(AppPressableButtonStyle(
             type: type,
             size: size,
-            backgroundColorOverride: backgroundColorOverride
+            backgroundColorOverride: backgroundColorOverride,
+            verticalPadding: verticalPadding,
+            padding: padding
         ))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)

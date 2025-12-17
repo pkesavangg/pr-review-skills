@@ -22,8 +22,10 @@ struct DashboardMetricsSection: View {
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
-                    Text(DashboardStrings.customizeDashboardSubtitle)
-                        .foregroundColor(theme.textBody)
+                    VStack{
+                        Text(DashboardStrings.customizeDashboardSubtitle)
+                            .foregroundColor(theme.textBody)
+                    }
                     
                 }
             }

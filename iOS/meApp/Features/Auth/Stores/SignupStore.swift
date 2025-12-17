@@ -184,7 +184,7 @@ final class SignupStore: ObservableObject {
                         self.resetForm()
                     }
                 },
-                AlertButtonModel(title: alertLang.SignupExitAlert.goBackButton, type: .secondary) { _ in
+                AlertButtonModel(title: alertLang.SignupExitAlert.returnButton, type: .secondary) { _ in
                 }
             ]
         )

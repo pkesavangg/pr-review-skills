@@ -52,7 +52,7 @@ struct SignupScreen: View {
                     Button {
                         signupStore.showHelpModal()
                     } label: {
-                        AppIconView(icon: AppAssets.helpCircle)
+                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 },
@@ -97,6 +97,7 @@ struct SignupScreen: View {
                        type: .textPrimary,
                        size: .small,
                        isDisabled: signupStore.currentStep == SignupStep.name,
+                       padding: true,
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -110,6 +111,7 @@ struct SignupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
+                       verticalPadding: true,
                        action: {
                 withAnimation {
                     hideKeyboard()
