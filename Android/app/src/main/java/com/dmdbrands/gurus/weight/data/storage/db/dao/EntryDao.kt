@@ -683,6 +683,77 @@ ORDER BY d.day DESC
   ): Flow<List<HistoryMonth>>
 
   /**
+   * Get monthly history for an account for the last 365 days.
+   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
+   * @param accountId The account ID
+   * @return Flow of list of monthly history for the last 365 days
+   */
+  @Query(
+    """
+    WITH entries_with_period AS (
+        SELECT
+            e.entryTimestamp,
+            bse.weight,
+            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
+        FROM entry_view e
+        LEFT JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId
+          AND bse.weight IS NOT NULL
+          AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
+          AND datetime(e.entryTimestamp) <= datetime('now')
+    ),
+    first_last AS (
+        SELECT
+            period,
+            MIN(entryTimestamp) AS firstTimestamp,
+            MAX(entryTimestamp) AS lastTimestamp
+        FROM entries_with_period
+        GROUP BY period
+    ),
+    joined AS (
+        SELECT
+            fl.period,
+            fl.firstTimestamp,
+            fl.lastTimestamp,
+            first_entry.weight AS firstWeight,
+            last_entry.weight AS lastWeight,
+            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
+            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
+        FROM first_last fl
+        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
+        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
+    )
+    SELECT
+        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+            WHEN 1 THEN $MONTH_JAN
+            WHEN 2 THEN $MONTH_FEB
+            WHEN 3 THEN $MONTH_MAR
+            WHEN 4 THEN $MONTH_APR
+            WHEN 5 THEN $MONTH_MAY
+            WHEN 6 THEN $MONTH_JUN
+            WHEN 7 THEN $MONTH_JUL
+            WHEN 8 THEN $MONTH_AUG
+            WHEN 9 THEN $MONTH_SEP
+            WHEN 10 THEN $MONTH_OCT
+            WHEN 11 THEN $MONTH_NOV
+            WHEN 12 THEN $MONTH_DEC
+        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        avgWeight,
+        entryCount,
+        CASE
+            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
+            THEN lastWeight - firstWeight
+            ELSE NULL
+        END AS change
+    FROM joined
+    ORDER BY period DESC
+    """,
+  )
+  fun getMonthlyHistoryLastYear(
+    accountId: String
+  ): Flow<List<HistoryMonth>>
+
+  /**
    * Get the oldest entry for an account.
    * @param accountId The account ID
    * @return The oldest entry if found, null otherwise

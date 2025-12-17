@@ -208,6 +208,14 @@ class EntryRepository @Inject constructor(
   }
 
   /**
+   * Gets monthly history for an account for the last 365 days.
+   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
+   */
+  override fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>> {
+    return entryDao.getMonthlyHistoryLastYear(accountId).map { list -> list.map { it.convertToDisplay() } }
+  }
+
+  /**
    * Gets the operation count for an account.
    * @param accountId The account ID
    * @return The number of operations

@@ -234,7 +234,7 @@ constructor(
 
   private suspend fun updateMonthYear(accountId: String) {
     try {
-      entryRepository.getMonthlyAverage(accountId).collect {
+      entryRepository.getMonthlyHistoryLastYear(accountId).collect {
         _monthYear.value = it
       }
     } catch (e: Exception) {
@@ -688,7 +688,6 @@ constructor(
       initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
       initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
       initYear = if (months.isNotEmpty()) months.last() else null
-
       // Calculate week and month progress
       if (latestEntry != null && initWeek != null && latestEntry is ScaleEntry && initWeek is ScaleEntry) {
         week = latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
@@ -712,6 +711,7 @@ constructor(
       if (latestEntry != null && startingWeight != null && latestEntry is ScaleEntry) {
         total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeight
       }
+
 
       val thirtyDaysAgoDate = Calendar.getInstance().apply {
         add(Calendar.DAY_OF_YEAR, -30) // Fixed: subtract 30 days, not add
@@ -758,7 +758,6 @@ constructor(
       val currentStreak = getCurrentStreak()
       val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
       val totalCount = entryRepository.getTotalCount(accountId!!)
-
       return Progress(
         latest = latestEntry,
         goal = goal,
@@ -934,25 +933,7 @@ enum class OperationType {
 }
 
 internal object EntryServiceHelper {
-  /**
-   * Creates an operation entry for syncing with the server.
-   * @param entry The entry to create an operation for.
-   * @param type The operation type (CREATE or DELETE).
-   * @return The operation entry.
-   */
-  fun createOperation(
-    entry: Entry,
-    type: OperationType,
-  ): Entry {
-    val updatedEntry =
-      entry.entry.copy(
-        operationType = type.name,
-        isSynced = false,
-      )
-    return entry.updateEntry(
-      entry = updatedEntry,
-    )
-  }
+
 
   fun processWeight(
     weight: Double,
@@ -1045,178 +1026,5 @@ internal object EntryServiceHelper {
       AppLog.e("EntryService", "Error executing operations", e)
       throw e
     }
-  }
-
-  /**
-   * Calculates the current streak of consecutive days with entries.
-   * @param entries The list of entries.
-   * @return The current streak count.
-   */
-  fun calculateCurrentStreak(entries: List<Entry>): Int {
-    if (entries.isEmpty()) return 0
-
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val today = Calendar.getInstance()
-    var currentDate = today.clone() as Calendar
-    var streak = 0
-
-    val sortedEntries = entries.sortedByDescending { it.entry.entryTimestamp }
-    for (entry in sortedEntries) {
-      val entryDate = Calendar.getInstance()
-      entryDate.time = dateFormat.parse(entry.entry.entryTimestamp.toString())!!
-
-      if (entryDate.get(Calendar.YEAR) == currentDate.get(Calendar.YEAR) &&
-        entryDate.get(Calendar.DAY_OF_YEAR) == currentDate.get(Calendar.DAY_OF_YEAR)
-      ) {
-        streak++
-        currentDate.add(Calendar.DAY_OF_YEAR, -1)
-      } else {
-        break
-      }
-    }
-
-    return streak
-  }
-
-  /**
-   * Calculates the longest streak of consecutive days with entries.
-   * @param entries The list of entries.
-   * @return The longest streak count.
-   */
-  fun calculateLongestStreak(entries: List<Entry>): Int {
-    if (entries.isEmpty()) return 0
-
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val sortedEntries =
-      entries
-        .map { dateFormat.parse(it.entry.entryTimestamp.toString())!! }
-        .map { date ->
-          Calendar.getInstance().apply { time = date }
-        }.distinctBy { "${it.get(Calendar.YEAR)}-${it.get(Calendar.DAY_OF_YEAR)}" }
-        .sortedByDescending { it.timeInMillis }
-
-    var longestStreak = 1
-    var currentStreak = 1
-
-    for (i in 1 until sortedEntries.size) {
-      val previous = sortedEntries[i - 1]
-      val current = sortedEntries[i]
-
-      val expected = previous.clone() as Calendar
-      expected.add(Calendar.DAY_OF_YEAR, -1)
-
-      if (current.get(Calendar.YEAR) == expected.get(Calendar.YEAR) &&
-        current.get(Calendar.DAY_OF_YEAR) == expected.get(Calendar.DAY_OF_YEAR)
-      ) {
-        currentStreak++
-      } else {
-        longestStreak = maxOf(longestStreak, currentStreak)
-        currentStreak = 1
-      }
-    }
-
-    return maxOf(longestStreak, currentStreak)
-  }
-
-  /**
-   * Updates the progress state for the current account.
-   * Calculates week, month, year, and total progress using only ScaleEntry weights.
-   * Ignores non-scale entries (e.g., BpmEntry).
-   *
-   * @param latestEntry The latest scale entry (nullable).
-   * @param last7Days The last 7 days of entries (may include nulls or non-scale entries).
-   * @param last30Days The last 30 days of entries (may include nulls or non-scale entries).
-   * @param initialWeight The initial weight for total progress calculation (nullable).
-   * @param setProgress Lambda to set the progress value.
-   */
-  fun updateProgress(
-    latestEntry: ScaleEntry?,
-    last7Days: List<Entry>,
-    last30Days: List<Entry>,
-    initialWeight: Double?,
-    setProgress: (Progress) -> Unit,
-  ) {
-    // Filter only non-null ScaleEntry for calculations
-    val last7ScaleEntries = last7Days.map { it as ScaleEntry }
-    val last30ScaleEntries = last30Days.map { it as ScaleEntry }
-
-    // Get the oldest (last) scale entry in each period for comparison
-    val initWeek = last7ScaleEntries.lastOrNull()
-    val initMonth = last30ScaleEntries.lastOrNull()
-    val initYear: HistoryMonth? = null // Placeholder: adjust if you have a year list
-
-    // Calculate week, month, year, and total progress (all as Double)
-    val week =
-      if (latestEntry != null && initWeek != null) {
-        latestEntry.scale.scaleEntry.weight
-          .toDouble() -
-          initWeek.scale.scaleEntry.weight
-            .toDouble()
-      } else {
-        0.0
-      }
-
-    val month =
-      if (latestEntry != null && initMonth != null) {
-        latestEntry.scale.scaleEntry.weight
-          .toDouble() -
-          initMonth.scale.scaleEntry.weight
-            .toDouble()
-      } else {
-        0.0
-      }
-
-    val year =
-      if (latestEntry != null && initYear != null) {
-        latestEntry.scale.scaleEntry.weight
-          .toDouble() -
-          initYear.avgWeight!!
-      } else {
-        0.0
-      }
-
-    val total =
-      if (latestEntry != null && initialWeight != null) {
-        latestEntry.scale.scaleEntry.weight
-          .toDouble() - initialWeight
-      } else {
-        0.0
-      }
-
-    setProgress(
-      Progress(
-        latest = latestEntry,
-        currentStreak = calculateCurrentStreak(last30ScaleEntries),
-        longestStreak = calculateLongestStreak(last30ScaleEntries),
-        count = last30ScaleEntries.size,
-        initWt = initialWeight ?: 0.0,
-        week = week,
-        month = month,
-        year = year,
-        total = total,
-        initWeek = initWeek,
-        initMonth = initMonth,
-        initYear = null,
-      ),
-    )
-  }
-
-  /**
-   * Clears all cached entry data and progress.
-   * @param setLatestEntry Lambda to set the latest entry value.
-   * @param setLast7Days Lambda to set the last 7 days value.
-   * @param setLast30Days Lambda to set the last 30 days value.
-   * @param setProgress Lambda to set the progress value.
-   */
-  fun clearAllData(
-    setLatestEntry: (Entry?) -> Unit,
-    setLast7Days: (List<Entry>) -> Unit,
-    setLast30Days: (List<Entry>) -> Unit,
-    setProgress: (Progress?) -> Unit,
-  ) {
-    setLatestEntry(null)
-    setLast7Days(emptyList())
-    setLast30Days(emptyList())
-    setProgress(null)
   }
 }

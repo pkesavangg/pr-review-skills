@@ -64,7 +64,7 @@ fun DashboardMilestone(
   ).reorderGrid(
     spanCount = spanCount,
   )
-  val allMilestones = StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false)
+  val allMilestones = StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false,unit = progress.unit,)
   val hiddenMilestones = allMilestones.filter { it !in visibleMilestones }
 
   val onMilestoneMoved = { isAdded: Boolean, milestone: Stat ->

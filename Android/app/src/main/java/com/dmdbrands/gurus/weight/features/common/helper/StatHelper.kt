@@ -193,7 +193,7 @@ object StatHelper {
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
-      DashboardKey.Milestone(key).toStat(value, useShort, showMetricIcon = showMetricIcon)
+      DashboardKey.Milestone(key).toStat(value, useShort,unit, showMetricIcon = showMetricIcon)
     }
 
     return if (filterNulls) stats.filter { it.value != null } else stats
