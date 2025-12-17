@@ -547,6 +547,15 @@ class SettingsStore: ObservableObject {
     /// Call this from `onEditingChanged` for fields where we want to validate on blur.
     func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
         guard !isEditing else { return }
+        
+        switch field {
+        case .currentPassword where changePasswordForm.currentPassword.isTouched,
+             .newPassword where changePasswordForm.newPassword.isTouched,
+             .confirmNewPassword where changePasswordForm.confirmNewPassword.isTouched:
+            return
+        default:
+            break
+        }
         touchAndValidate(field: field)
     }
     

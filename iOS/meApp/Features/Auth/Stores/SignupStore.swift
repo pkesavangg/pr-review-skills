@@ -169,6 +169,12 @@ final class SignupStore: ObservableObject {
     /// or presses the keyboard "Next/Done" button.
     func touchAndValidate(field: FocusField) {
         switch field {
+        case .firstName:
+            signupForm.firstName.markAsTouched()
+            signupForm.firstName.validate()
+        case .lastName:
+            signupForm.lastName.markAsTouched()
+            signupForm.lastName.validate()
         case .password:
             signupForm.password.markAsTouched()
             signupForm.password.validate()
