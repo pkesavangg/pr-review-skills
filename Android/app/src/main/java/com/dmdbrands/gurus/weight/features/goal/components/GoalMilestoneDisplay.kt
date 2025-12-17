@@ -19,12 +19,11 @@ import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppLinearProgressIndicator
 import com.dmdbrands.gurus.weight.features.common.components.AppLinearProgressType
-import com.dmdbrands.gurus.weight.features.common.components.AppRichText
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
-import com.dmdbrands.gurus.weight.features.common.components.AppTextSegment
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper
@@ -185,6 +184,8 @@ private fun MaintainGoalDisplay(
       }
     }
 
+  val fullText = "$distanceText ${weightUnit.label} ${GoalStrings.To} ${displayWeight(goalWeight)} ${weightUnit.label} ${GoalStrings.GoalWeight}"
+
   AppStyledCard(
     modifier =
       Modifier
@@ -195,24 +196,12 @@ private fun MaintainGoalDisplay(
     Row(
       verticalAlignment = Alignment.Bottom,
       horizontalArrangement = Arrangement.Start,
-      // modifier = Modifier.fillMaxWidth()
     ) {
-      AppRichText(
-        segments =
-          listOf(
-            AppTextSegment(
-              text = distanceText,
-              spanStyle =
-                MeTheme.typography.heading3
-                  .toSpanStyle()
-                  .copy(color = colorScheme.textHeading),
-            ),
-            AppTextSegment(
-              text = " ${weightUnit.label} ${GoalStrings.To} ${displayWeight(goalWeight)} ${weightUnit.label} ${GoalStrings.GoalWeight}",
-              spanStyle = MeTheme.typography.subHeading2.toSpanStyle().copy(color = colorScheme.textSubheading),
-            ),
-          ),
-        // Base style not used for color because we set colors per segment
+      AppText(
+        text = fullText,
+        annotatedText = distanceText,
+        annotationPosition = AnnotationPosition.Start,
+        spanStyle = MeTheme.typography.heading3.toSpanStyle().copy(color = colorScheme.textHeading),
         textType = TextType.ListSubtitle,
         maxLines = 2,
       )
@@ -240,6 +229,11 @@ private fun LoseGainGoalDisplay(
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
   if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
   var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
+  val toGoalText = if (progressPercentage >= 100) {
+    toGoal = 0.toString()
+    toGoal
+  } else toGoal
+  val fullGoalText = "$toGoalText $weightUnit ${GoalStrings.Goal}"
    fun displayWeight(weight: Double): String {
      val processedWeight = if (isWeightlessOn && weightlessWeight != null) {
        weight - weightlessWeight
@@ -276,31 +270,13 @@ private fun LoseGainGoalDisplay(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Bottom,
           horizontalArrangement = Arrangement.SpaceBetween) {
-        AppRichText(
-          segments =
-            listOf(
-              AppTextSegment(
-                text = if (progressPercentage >= 100) {
-                  toGoal = 0.toString()
-                  toGoal
-                } else toGoal,
-                spanStyle =
-                  MeTheme.typography.heading3
-                    .toSpanStyle()
-                    .copy(color = colorScheme.textHeading),
-              ),
-              AppTextSegment(
-                text = " $weightUnit ${GoalStrings.Goal}",
-                spanStyle =
-                  MeTheme.typography.subHeading2
-                    .toSpanStyle()
-                    .copy(color = colorScheme.textSubheading),
-              ),
-            ),
-          // Colors are set per segment
+        AppText(
+          text = fullGoalText,
+          annotatedText = toGoalText,
+          annotationPosition = AnnotationPosition.Start,
+          spanStyle = MeTheme.typography.heading3.toSpanStyle().copy(color = colorScheme.textHeading),
           textType = TextType.ListSubtitle,
           maxLines = 2,
-          // modifier = Modifier.offset(y = 5.dp),
         )
         if(progressPercentage >= 100) {
           AppText(
@@ -309,7 +285,6 @@ private fun LoseGainGoalDisplay(
             color = colorScheme.textSubheading,
             textAlign = TextAlign.End,
             modifier = Modifier.padding(bottom = spacing.x2s),
-            // .padding(top = spacing.x3s),
           )
         }
       }
@@ -334,12 +309,12 @@ private fun LoseGainGoalDisplay(
         AppText(
           text = "${displayWeight(account.initialWeight) } $weightUnit",
           textType = TextType.ListSubtitle,
-          color = colorScheme.textHeading,
+          color = colorScheme.textSubheading,
         )
         AppText(
           text = "${displayWeight(goalWeight)} $weightUnit",
           textType = TextType.ListSubtitle,
-          color = colorScheme.textHeading,
+          color = colorScheme.textSubheading,
         )
     }
   }
