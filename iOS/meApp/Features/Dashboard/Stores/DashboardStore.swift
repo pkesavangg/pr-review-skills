@@ -1583,18 +1583,17 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
         let ticks = xAxisValuesWithBuffer(for: period)
-        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
-
-        // Derive the label from the X-axis tick window (not from entry dates).
-        let anchorDate = visibleTicks.isEmpty ? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period) / 2.0)
-                                              : visibleTicks[visibleTicks.count / 2]
-        if let yearInterval = Calendar.current.dateInterval(of: .year, for: anchorDate) {
-            return DateTimeTools.formatter("yyyy").string(from: yearInterval.start)
+        let inclusiveRightEdge = rightEdge.addingTimeInterval(12 * 60 * 60) // 12 hours
+        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= inclusiveRightEdge }.sorted(by: { $0 < $1 })
+        let startDate: Date
+        let endDate: Date
+        if let first = visibleTicks.first, let last = visibleTicks.last {
+            startDate = first
+            endDate = last
+        } else {
+            startDate = leftEdge
+            endDate = rightEdge
         }
-
-        // Fallback: keep previous behavior if interval lookup fails
-        let startDate = visibleTicks.first ?? leftEdge
-        let endDate = visibleTicks.last ?? rightEdge
         return formatYearRangeLabel(from: startDate, to: endDate)
     }
 
@@ -1616,35 +1615,35 @@ class DashboardStore: ObservableObject {
     // New: Month label based on visible X-axis gridlines instead of chart points
     private func labelForMonthGridlines() -> String {
         let period: TimePeriod = .month
-        // Visible window boundaries (strict)
+        // Visible window boundaries (left edge + domain length)
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
 
-        // Get generated X-axis values (may include buffer); filter to strictly visible window
+        // 1) If there are entries in the visible region, derive the label from the visible entries.
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        if let minDate = visibleOps.min(by: { $0.date < $1.date })?.date,
+           let maxDate = visibleOps.max(by: { $0.date < $1.date })?.date {
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+        }
+
+        // 2) If there are no entries in the visible region, fall back to X-axis ticks within the window.
+        // This keeps the label stable during empty stretches (interpolated segments).
         let ticks = xAxisValuesWithBuffer(for: period)
         let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
 
-        // Derive the month from the X-axis ticks (not from entry dates), and always show a single full-month label based on that derived month.
-        let anchorDate = visibleTicks.isEmpty ? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period) / 2.0)
-                                              : visibleTicks[visibleTicks.count / 2]
-        if let monthInterval = Calendar.current.dateInterval(of: .month, for: anchorDate) {
-            let startOfMonth = monthInterval.start
-            let endOfMonthInclusive = Calendar.current.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
-            return formatFullMonthLabel(from: startOfMonth, to: endOfMonthInclusive)
+        if let firstTick = visibleTicks.first, let lastTick = visibleTicks.last {
+            let domainLength = graphManager.visibleDomainLength(for: period)
+            let midPoint = leftEdge.addingTimeInterval(max(0, domainLength / 2))
+            if let monthInterval = Calendar.current.dateInterval(of: .month, for: midPoint) {
+                let start = max(firstTick, monthInterval.start)
+                let end = min(lastTick, monthInterval.end)
+                return graphManager.formatDateRange(minDate: start, maxDate: end, for: period)
+            }
+            return graphManager.formatDateRange(minDate: firstTick, maxDate: lastTick, for: period)
         }
 
-        // Fallback: use window edges when we can't resolve a month interval
-        let startDate = visibleTicks.first ?? leftEdge
-        let endDate = visibleTicks.last ?? rightEdge
-        return formatMonthRangeLabel(from: startDate, to: endDate)
-    }
-
-    private func formatFullMonthLabel(from startOfMonth: Date, to endOfMonthInclusive: Date) -> String {
-        let calendar = Calendar.current
-        let endDay = calendar.component(.day, from: endOfMonthInclusive)
-        let year = calendar.component(.year, from: startOfMonth)
-        let startFmt = DateTimeTools.formatter("MMM d")
-        return "\(startFmt.string(from: startOfMonth)) – \(endDay), \(year)"
+        // 3) Final fallback: use window edges.
+        return graphManager.formatDateRange(minDate: leftEdge, maxDate: rightEdge, for: period)
     }
 
     private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
@@ -1684,7 +1683,8 @@ class DashboardStore: ObservableObject {
         let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: period))
         switch period {
         case .week:
-            return formatWeekRangeLabel(from: minDate, to: maxDate)
+            // Use shared range formatter (it applies inclusive end-day handling to match Android)
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
         default:
             // For other periods, use existing methods
             return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)

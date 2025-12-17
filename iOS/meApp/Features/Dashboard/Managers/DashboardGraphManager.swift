@@ -1573,60 +1573,52 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
             }
         }
-        
         // Special handling for month: snap range to actual month boundaries based on the center
         if period == .month {
-            let span = endDate.timeIntervalSince(startDate)
-            let center = startDate.addingTimeInterval(max(0, span / 2))
-            
-            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
-                let startOfMonth = monthInterval.start
-                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
-                
-                let startDay = calendar.component(.day, from: startOfMonth)
-                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
-                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
-                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
-                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
-                
-                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            let startDay = calendar.component(.day, from: startDate)
+            if startDay == 1 {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
             }
+
+            let startYear = calendar.component(.year, from: startDate)
+            let endYear = calendar.component(.year, from: endDate)
+            let startMonth = calendar.component(.month, from: startDate)
+            let endMonth = calendar.component(.month, from: endDate)
+            let endDay = calendar.component(.day, from: endDate)
+
+            if startYear != endYear {
+                let fmt = DateTimeTools.formatter("MMM d, yyyy")
+                return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
+            }
+
+            if startMonth != endMonth {
+                let startFmt = DateTimeTools.formatter("MMM d")
+                let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+                return "\(startFmt.string(from: startDate)) – \(endFmt.string(from: endDate))"
+            }
+
+            let startFmt = DateTimeTools.formatter("MMM d")
+            return "\(startFmt.string(from: startDate)) – \(endDay), \(startYear)"
         }
-        
-        // For year: clamp to full month boundaries inside the visible window
+
         if period == .year {
-            // Robust: derive the label purely from the mid-point year, ignoring phantom edges
-            let span = endDate.timeIntervalSince(startDate)
-            let mid = startDate.addingTimeInterval(max(0, span / 2))
-            let year = calendar.component(.year, from: mid)
-            
-            // Jan 1 of the year and Dec 1 of the same year
-            let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? minDate
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startOfYear).lowercased()
-            let startYear = year
-            
-            let decOfYear = calendar.date(from: DateComponents(year: year, month: 12, day: 1)) ?? maxDate
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: decOfYear).lowercased()
-            let endYear = year
-            
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+            let startMonth = calendar.component(.month, from: startDate)
+            if startMonth == 1 {
+                return DateTimeTools.formatter("yyyy").string(from: startDate)
+            }
+
+            let startFmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(startFmt.string(from: startDate)) – \(startFmt.string(from: endDate))"
         }
         
-        // For total: snap both ends to month starts for stability (independent of any phantom months)
+
         if period == .total {
-            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
-            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
-            
-            if endMonthStart < startMonthStart {
-                endMonthStart = startMonthStart
+            if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
             }
-            
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
-            let startYear = calendar.component(.year, from: startMonthStart)
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
-            let endYear = calendar.component(.year, from: endMonthStart)
-            
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+
+            let fmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
         }
         
         // Default (week) with inclusive end-day handling
