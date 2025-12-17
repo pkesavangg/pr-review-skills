@@ -523,7 +523,32 @@ class SettingsStore: ObservableObject {
         populateEditFormIfNeeded()
     }
     
-    // MARK: - Change Password Helpers
+    // MARK: - Field Touch / Validation
+    
+    /// Marks a specific field as touched and triggers validation.
+    /// Used by input views to show field errors as soon as the user leaves a field
+    /// or presses the keyboard "Next/Done" button.
+    func touchAndValidate(field: FocusField) {
+        switch field {
+        case .currentPassword:
+            changePasswordForm.currentPassword.markAsTouched()
+            changePasswordForm.currentPassword.validate()
+        case .newPassword:
+            changePasswordForm.newPassword.markAsTouched()
+            changePasswordForm.newPassword.validate()
+        case .confirmNewPassword:
+            changePasswordForm.confirmNewPassword.markAsTouched()
+            changePasswordForm.confirmNewPassword.validate()
+        default:
+            break
+        }
+    }
+    
+    /// Call this from `onEditingChanged` for fields where we want to validate on blur.
+    func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
+        guard !isEditing else { return }
+        touchAndValidate(field: field)
+    }
     
     /// Presents a Change-Password exit confirmation alert using shared strings.
     /// - Parameters:

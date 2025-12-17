@@ -161,6 +161,33 @@ final class SignupStore: ObservableObject {
     func getError<T>(for control: FormControl<T>) -> String? {
         signupForm.getError(for: control)
     }
+
+    // MARK: - Field Touch / Validation (Signup)
+    
+    /// Marks a specific field as touched and triggers validation.
+    /// Used by signup input views to show field errors as soon as the user leaves a field
+    /// or presses the keyboard "Next/Done" button.
+    func touchAndValidate(field: FocusField) {
+        switch field {
+        case .password:
+            signupForm.password.markAsTouched()
+            signupForm.password.validate()
+        case .confirmPassword:
+            signupForm.confirmPassword.markAsTouched()
+            signupForm.confirmPassword.validate()
+        case .zipCode:
+            signupForm.zipcode.markAsTouched()
+            signupForm.zipcode.validate()
+        default:
+            break
+        }
+    }
+    
+    /// Call this from `onEditingChanged` for fields where we want to validate on blur.
+    func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
+        guard !isEditing else { return }
+        touchAndValidate(field: field)
+    }
     
     func handleExit(router: Router<AuthRoute>? = nil) {
         // If the form is not dirty, dismiss the signup screen

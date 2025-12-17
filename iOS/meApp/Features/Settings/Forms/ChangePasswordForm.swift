@@ -61,7 +61,7 @@ class ChangePasswordForm: ObservableForm {
     // MARK: - Error helpers
     /// Convenience helper used by screens/stores to map Validator errors into human-readable strings.
     func getError<T>(for control: FormControl<T>) -> String? {
-        guard control.isDirty else { return nil }
+        guard control.isTouched || control.isDirty else { return nil }
 
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.minLength], let min = control.errors.value(for: .minLength) as? Int {

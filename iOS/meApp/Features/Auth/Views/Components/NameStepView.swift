@@ -55,6 +55,8 @@ struct NameStepView: View {
                         value: $signupStore.signupForm.lastName.value,
                         focusedField: $focusedField
                     ) {
+                        signupStore.signupForm.lastName.markAsTouched()
+                        signupStore.signupForm.lastName.validate()
                         focusedField = nil
                         if signupStore.isNextEnabled {
                             signupStore.moveToNextStep()
