@@ -65,11 +65,11 @@ object FormValidations {
 
   fun maxLength(
     length: Int,
-    fieldName: String = "Field",
+    fieldName: String? = null,
   ): Validator<String> =
     { value ->
       if (value.trim().length > length) {
-        ValidationError(ValidationType.MAX_LENGTH, "Password should not exceed $length characters")
+        ValidationError(ValidationType.MAX_LENGTH, if(fieldName.isNullOrEmpty()) "maximum value should be $length" else "$fieldName should not exceed $length characters")
       } else {
         null
       }
