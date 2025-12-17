@@ -21,6 +21,7 @@ struct UIState {
     var selectedMetricLabel: String? = nil
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
+    var isResettingDashboard: Bool = false // Flag to suppress UI updates during reset
 
     var removedMetrics: Set<String> = [] 
     var removedStreaks: Set<String> = [] 
