@@ -176,6 +176,14 @@ data class SignupFormControls(
       controls.currentWeight.addValidator(createRequiredCurrentWeightValidator { formGroup })
       controls.goalWeight.addValidator(createDynamicWeightValidator { formGroup })
 
+      // Add weight match validator for lose/gain goal types
+      controls.goalWeight.addValidator(
+        FormValidations.weightMatchValidator(
+          currentWeightControl = controls.currentWeight,
+          goalTypeControl = controls.goalType
+        )
+      )
+
       // Add password matching validation only to confirm password field
       controls.confirmPassword.addValidator(createConfirmPasswordValidator { formGroup })
       // Set up validation trigger - when password changes, validate confirm password
@@ -184,6 +192,28 @@ data class SignupFormControls(
         if (controls.confirmPassword.value.isNotEmpty()) {
           controls.confirmPassword.validate()
         }
+      }
+
+      // Set up validation triggers for weight match validator
+      // When goal type changes, validate goal weight
+      controls.goalType.onValueChangeListener { _, _ ->
+        if (controls.goalWeight.value.isNotEmpty() && controls.currentWeight.value.isNotEmpty()) {
+          controls.goalWeight.validate()
+        }
+      }
+
+      // When current weight changes, validate goal weight (for lose/gain goals)
+      controls.currentWeight.onValueChangeListener { _, _ ->
+        val goalType = controls.goalType.value
+        if ((goalType == GoalType.LOSE.value || goalType == GoalType.GAIN.value || goalType == GoalType.LOSE_GAIN.value) &&
+            controls.goalWeight.value.isNotEmpty()) {
+          controls.goalWeight.validate()
+        }
+      }
+
+      // When goal weight changes, validate it (already handled by onValueChange, but ensure it's validated)
+      controls.goalWeight.onValueChangeListener { _, _ ->
+        // Validation is already triggered by onValueChange, but this ensures weight match validator runs
       }
 
       // Set up metric toggle validation trigger
@@ -408,23 +438,35 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
   ): SignupState =
     when (intent) {
       is SignupIntent.Next -> {
-        if (state.isLastStep) {
-          // On submit, if goal type is maintain, clear starting weight (currentWeight)
-          val controls = state.form.controls
-          if (controls.goalType.value == GoalType.MAINTAIN.value) {
-            controls.currentWeight.reset("")
-          }
-          state.copy(isLoading = true, error = null)
+        if(!state.isLastStep){
+          val updatedState =
+            if (state.currentStep == SignupStep.GOAL) {
+              state.copy(goalSkipped = false)
+            } else {
+              state
+            }
+          val nextIndex = (updatedState.currentStepIndex + 1)
+            .coerceAtMost(updatedState.steps.lastIndex)
+
+          val newStep = updatedState.steps[nextIndex]
+          updatedState.copy(
+            currentStep = newStep,
+            error = null
+          )
         } else {
-          val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
-          val newStep = state.steps[nextIndex]
-          state.copy(currentStep = newStep, error = null)
+          state.copy(isLoading = false, error = null)
         }
       }
 
       is SignupIntent.Back -> {
-        val prevIndex = (state.currentStepIndex - 1).coerceAtLeast(0)
-        state.copy(currentStep = state.steps[prevIndex], error = null)
+        val updatedState = if (state.currentStep == SignupStep.GOAL || state.currentStep == SignupStep.EMAIL) {
+          state.copy(goalSkipped = false)
+        } else {
+          state
+        }
+
+        val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
+        updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
       }
 
       is SignupIntent.Skip -> {
@@ -491,7 +533,7 @@ fun convertWeightValue(
   fromMetric: Boolean,
   toMetric: Boolean,
 ): String {
-  if (value.isBlank() || fromMetric == toMetric) return value
+  if (value.isBlank()) return value
 
   return try {
     // Convert integer format (e.g., "605") to decimal format (e.g., "60.5")

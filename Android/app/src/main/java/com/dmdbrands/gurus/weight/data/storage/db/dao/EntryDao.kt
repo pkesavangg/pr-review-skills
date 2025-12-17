@@ -104,7 +104,7 @@ interface EntryDao {
    */
   @Transaction
   @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
-  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
+  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry?>
 
   /**
    * Get all entries with their related details for a specific account.

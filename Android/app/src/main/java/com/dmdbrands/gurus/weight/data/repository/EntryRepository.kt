@@ -15,7 +15,6 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.conver
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,8 +72,8 @@ class EntryRepository @Inject constructor(
   /**
    * Gets the latest valid entry for an account.
    */
-  override suspend fun getLatestEntry(accountId: String): Flow<Entry>? =
-    entryDao.getLatestEntry(accountId)?.mapNotNull { it.toEntry() }
+  override suspend fun getLatestEntry(accountId: String): Flow<Entry?> =
+    entryDao.getLatestEntry(accountId).map { it?.toEntry() }
 
   /**
    * Gets all valid entries for an account.

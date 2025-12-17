@@ -43,7 +43,7 @@ interface IEntryRepository {
    * @param accountId The account ID.
    * @return The latest valid entry, or null if not found.
    */
-  suspend fun getLatestEntry(accountId: String): Flow<Entry>?
+  suspend fun getLatestEntry(accountId: String): Flow<Entry?>
 
   /**
    * Gets all valid entries for an account.

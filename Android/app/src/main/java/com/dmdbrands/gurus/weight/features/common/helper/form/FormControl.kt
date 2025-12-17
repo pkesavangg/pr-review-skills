@@ -63,9 +63,7 @@ class FormControl<T> private constructor(
     private val _asyncValidators = mutableStateOf<List<AsyncValidatorWrapper<T>>>(emptyList())
 
     private var onValueChangeCallback: OnValueChangeCallback<T>? = onValueChangeCallback
-    // Prevent the immediate blur after a programmatic reset from marking the control as touched.
     private var suppressNextBlurTouch: Boolean = false
-
     /**
      * Sets a callback to be notified when the value changes
      * @param callback The callback function that receives both old and new values
@@ -89,15 +87,15 @@ class FormControl<T> private constructor(
      * Marks the control as touched and triggers validation
      */
     fun onBlur(isTouched: Boolean = true) {
-        if (suppressNextBlurTouch) {
-            // Consume the first blur after reset so the control stays untouched.
-            suppressNextBlurTouch = false
-            _touched.value = false
-            _error.value = null
-            _pending.value = false
-            return
-        }
-        _touched.value = isTouched
+      if (suppressNextBlurTouch) {
+        // Consume the first blur after reset so the control stays untouched.
+        suppressNextBlurTouch = false
+        _touched.value = false
+        _error.value = null
+        _pending.value = false
+        return
+      }
+      _touched.value = isTouched
         validate()
     }
 
@@ -240,7 +238,7 @@ class FormControl<T> private constructor(
         _touched.value = false
         _dirty.value = false
         _pending.value = false
-        suppressNextBlurTouch = true
+      suppressNextBlurTouch = true
         validationJob?.cancel()
     }
 
