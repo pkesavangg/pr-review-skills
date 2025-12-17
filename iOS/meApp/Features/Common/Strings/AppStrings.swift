@@ -93,7 +93,7 @@ struct ToastStrings {
     static let invalidEmailMessage = "Enter a valid email address."
     static let invalidCredentials = "Your Email or password is incorrect. Please try again."
     static let passwordResetSuccessMessage = { (email: String) in
-        "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 10 minutes."
+        "An email with a link to reset your password has been sent to \(email). The link will be valid for the next 30 minutes."
     }
     static let forgotPassword = { (email: String) in
         "Password reset link sent to \(email)."
@@ -249,6 +249,7 @@ struct FormErrorMessages {
     static let required = "must not be left blank"
     static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
+    static let emailMaxLength = "Email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
     static let passwordMinLength = "password must be 6 characters long"
     static let minLength = { (length: Int) in "minimum value should be \(length)" }
@@ -257,8 +258,7 @@ struct FormErrorMessages {
     static let max = { (value: Int) in "value must not exceed \(value)" }
     static let noWhiteSpace = "must not be left blank"
     static let futureDate = "future dates not accepted"
-    static let passwordMatch = "passwords do not match"
-    static let bothPasswordsMatch = "both passwords must match"
+    static let passwordMatch = "Both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
     static let minWeightLb = "value should be greater than 0 lbs"
@@ -330,7 +330,7 @@ struct AlertStrings {
 
     struct ResetPasswordAlert {
         static let passwordResetTitle = "Password Reset"
-        static let enterEmailMessage = "Enter your email below."
+        static let enterEmailMessage = "Enter your email"
     }
 
     struct ManualEntryExitAlert {

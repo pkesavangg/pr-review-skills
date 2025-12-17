@@ -33,6 +33,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             return
         }
 
+        // Suppress reloads during reset to prevent flickering
+        if store.state.ui.isResettingDashboard {
+            return
+        }
+
         // Rebuild model and compare to previous for minimal updates
         let newModel = buildGridModelFromStoreState()
         let newIsEditMode = store.state.ui.isEditMode

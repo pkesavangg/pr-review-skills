@@ -146,7 +146,7 @@ enum SampleFormErrorMessages {
     static let noWhiteSpace = "Field cannot contain only whitespace."
     static let futureDate = "Date cannot be in the future."
     static let requiredTrue = "This checkbox must be checked."
-    static let passwordMatch = "Passwords do not match."
+    static let passwordMatch = "Both passwords must match"
     static let url = "Please enter a valid URL."
 } 
 

@@ -22,7 +22,7 @@ class SignupForm: ObservableForm {
     var goalWeight = FormControl("", validators: [.required, .minValue()])
     var useMetric = FormControl(false)
     var height = FormControl(Double(700))
-    var email = FormControl("", validators: [.required, .email, .maxLength(200)])
+    var email = FormControl("", validators: [.required, .email, .maxLength(100)])
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
@@ -105,6 +105,8 @@ class SignupForm: ObservableForm {
             // Use custom message for password fields
             if control === password || control === confirmPassword {
                 return FormErrorMessages.passwordMaxLength
+            } else if control === email {
+                return FormErrorMessages.emailMaxLength
             } else {
                 return FormErrorMessages.maxLength(maxLength)
             }
