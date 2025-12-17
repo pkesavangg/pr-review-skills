@@ -159,7 +159,6 @@ private fun LoginContent(
             handleIntent(LoginIntent.Submit)
           },
         )
-        Spacer(Modifier.height(spacing.md))
         AppButton(
           label = LoginStrings.ForgotPassword,
           type = ButtonType.TextPrimary,
