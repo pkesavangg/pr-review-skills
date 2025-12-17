@@ -1598,27 +1598,15 @@ class DashboardStore: ObservableObject {
 
     private func formatYearRangeLabel(from start: Date, to end: Date) -> String {
         let cal = Calendar.current
-        let sameYear = cal.isDate(start, equalTo: end, toGranularity: .year)
-        if sameYear {
-            // Full calendar year (Jan..Dec) → show just "yyyy"
-            let startMonth = cal.component(.month, from: start)
-            let endMonth = cal.component(.month, from: end)
-            if startMonth == 1 && endMonth == 12 {
-                return DateTimeTools.formatter("yyyy").string(from: start)
-            }
-            // Same calendar year partial → "MMM - MMM, yyyy" (or "MMM yyyy" if same month)
-            let sameMonth = cal.isDate(start, equalTo: end, toGranularity: .month)
-            if sameMonth {
-                return DateTimeTools.formatter("MMM yyyy").string(from: start)
-            }
-            let startStr = DateTimeTools.formatter("MMM").string(from: start)
-            let endStr = DateTimeTools.formatter("MMM, yyyy").string(from: end)
-            return "\(startStr) - \(endStr)"
+        let startMonth = cal.component(.month, from: start)
+        if startMonth == 1 {
+            return DateTimeTools.formatter("yyyy").string(from: start)
         }
-        // Cross-year → "MMM yyyy - MMM, yyyy"
-        let s = DateTimeTools.formatter("MMM yyyy").string(from: start)
-        let e = DateTimeTools.formatter("MMM, yyyy").string(from: end)
-        return "\(s) - \(e)"
+        
+        // Otherwise show "MMM yyyy – MMM yyyy"
+        let startStr = DateTimeTools.formatter("MMM yyyy").string(from: start)
+        let endStr = DateTimeTools.formatter("MMM yyyy").string(from: end)
+        return "\(startStr) – \(endStr)"
     }
 
     
@@ -1658,29 +1646,73 @@ class DashboardStore: ObservableObject {
 
     private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
         let calendar = Calendar.current
-        let sameYear = calendar.isDate(start, equalTo: end, toGranularity: .year)
-        let sameMonth = calendar.isDate(start, equalTo: end, toGranularity: .month)
+        let startDay = calendar.component(.day, from: start)
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+        let startMonth = calendar.component(.month, from: start)
+        let endMonth = calendar.component(.month, from: end)
+        let endDay = calendar.component(.day, from: end)
 
-        // Cross-year: include years on both sides
-        if !sameYear {
-            let fmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
-        }
-
-        // Same month (within same year): always show "MMM yyyy"
-        if sameMonth {
+        // Match Android: if start day is 1st, show "MMM yyyy"
+        if startDay == 1 {
             return DateTimeTools.formatter("MMM yyyy").string(from: start)
         }
 
-        // Cross-month within same year: omit year on sides → "MMM d - MMM d"
-        let fmt = DateTimeTools.formatter("MMM d")
-        return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
+        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
+        if startYear != endYear {
+            let fmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
+        }
+
+        // Cross-month within same year: "MMM d – MMM d, yyyy"
+        if startMonth != endMonth {
+            let startFmt = DateTimeTools.formatter("MMM d")
+            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
+        }
+
+        // Same month: "MMM d – d, yyyy"
+        let startFmt = DateTimeTools.formatter("MMM d")
+        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
     }
 
     private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {
         let minDate = lastScrollPosition
         let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+        switch period {
+        case .week:
+            return formatWeekRangeLabel(from: minDate, to: maxDate)
+        default:
+            // For other periods, use existing methods
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+        }
+    }
+    
+    private func formatWeekRangeLabel(from start: Date, to end: Date) -> String {
+        let calendar = Calendar.current
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+        let startMonth = calendar.component(.month, from: start)
+        let endMonth = calendar.component(.month, from: end)
+        let endDay = calendar.component(.day, from: end)
+
+        // Match Android WEEK formatting logic
+        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
+        if startYear != endYear {
+            let fmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
+        }
+
+        // Cross-month: "MMM d – MMM d, yyyy"
+        if startMonth != endMonth {
+            let startFmt = DateTimeTools.formatter("MMM d")
+            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
+        }
+
+        // Same month: "MMM d – d, yyyy"
+        let startFmt = DateTimeTools.formatter("MMM d")
+        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
     }
 
     // Delegate weight formatting to GoalManager

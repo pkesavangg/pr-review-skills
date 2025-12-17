@@ -29,7 +29,7 @@ struct SetupLoaderView: View {
     var body: some View {
         VStack(spacing: 15) {
             ForEach(0..<5, id: \.self) { index in
-                if (connectionState == .success || connectionState == .failure), index == 2 {
+                if (connectionState == .success || connectionState == .failure || connectionState == .noNetworks), index == 2 {
                     AppIconView(
                         icon: connectionState == .success ? AppAssets.filledTickCircle : AppAssets.filledCloseCircle,
                         size: IconSize(width: 30, height: 30)
@@ -71,6 +71,9 @@ struct StatusIndicationLoaderView_Previews: PreviewProvider {
 
             SetupLoaderView(connectionState: .failure)
                 .previewDisplayName("Failure")
+            
+            SetupLoaderView(connectionState: .noNetworks)
+                .previewDisplayName("No Networks")
         }
     }
 }
