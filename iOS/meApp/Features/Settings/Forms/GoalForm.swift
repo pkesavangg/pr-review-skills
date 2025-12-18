@@ -20,15 +20,6 @@ final class GoalForm: ObservableForm {
     /// Goal weight as string (display units).
     var goalWeight = FormControl("", validators: [.required, .minValue()])
     
-    // MARK: - Cancellables
-    private var cancellables: Set<AnyCancellable> = []
-    
-    // MARK: - Initialization
-    override init() {
-        super.init()
-        setupWeightValidationTriggers()
-    }
-    
     // MARK: - Change Publisher
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
@@ -37,31 +28,6 @@ final class GoalForm: ObservableForm {
             goalWeight.$value.map { _ in () }.eraseToAnyPublisher(),
         ])
         .eraseToAnyPublisher()
-    }
-    
-    // MARK: - Setup
-    /// Sets up validation triggers to ensure form-level validation runs immediately when weight values change
-    private func setupWeightValidationTriggers() {
-        // Trigger form validation when currentWeight changes
-        currentWeight.$value
-            .sink { [weak self] _ in
-                self?.validateForm()
-            }
-            .store(in: &cancellables)
-        
-        // Trigger form validation when goalWeight changes
-        goalWeight.$value
-            .sink { [weak self] _ in
-                self?.validateForm()
-            }
-            .store(in: &cancellables)
-        
-        // Trigger form validation when goalType changes
-        goalType.$value
-            .sink { [weak self] _ in
-                self?.validateForm()
-            }
-            .store(in: &cancellables)
     }
     
     // MARK: - Validation
@@ -207,11 +173,6 @@ final class GoalForm: ObservableForm {
     private func getFormLevelError<T>(for control: FormControl<T>) -> String? {
         guard isLoseGainMode && formErrors[.weightEqual] else { return nil }
         guard control === goalWeight else { return nil }
-        
-        let current = parseWeight(currentWeight.value)
-        let goal = parseWeight(goalWeight.value)
-        
-        guard areWeightsEqual(current: current, goal: goal) else { return nil }
         guard goalWeight.isDirty || currentWeight.isDirty else { return nil }
         
         return FormErrorMessages.valueShouldNotBeEqual
