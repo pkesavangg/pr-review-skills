@@ -27,6 +27,57 @@ class SignupForm: ObservableForm {
     var confirmPassword = FormControl("", validators: [.required, .noEmoji, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
     
+    // MARK: - Cancellables
+    private var cancellables: Set<AnyCancellable> = []
+    
+    // MARK: - Initialization
+    override init() {
+        super.init()
+        setupWeightValidationTriggers()
+        setupPasswordValidationTriggers()
+    }
+    
+    // MARK: - Setup
+    /// Sets up validation triggers to ensure form-level validation runs immediately when weight values change
+    private func setupWeightValidationTriggers() {
+        // Trigger form validation when currentWeight changes
+        currentWeight.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+        
+        // Trigger form validation when goalWeight changes
+        goalWeight.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+        
+        // Trigger form validation when goalType changes
+        goalType.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// Sets up validation triggers for password matching
+    private func setupPasswordValidationTriggers() {
+        // Trigger form validation when password changes
+        password.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+        
+        // Trigger form validation when confirmPassword changes
+        confirmPassword.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+    }
     
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
@@ -61,17 +112,15 @@ class SignupForm: ObservableForm {
             }
         }
         
-        // TODO: Need to add the weight check logic to the common validation method
-        
-        // TODO: Need to move the goal validation logic to a common method
         // Check if goal weight equals current weight when in lose/gain mode
         if goalType.value != GoalType.maintain.rawValue {
-            if !currentWeight.errors[.required] && !goalWeight.errors[.required] {
-                // Convert to Double to compare numerically
-                let current = Double(currentWeight.value) ?? 0.0
-                let goal = Double(goalWeight.value) ?? 0.0
+           // Convert to Double to compare numerically
+            let current = Double(currentWeight.value) ?? 0.0
+            let goal = Double(goalWeight.value) ?? 0.0
 
-                if current > 0 && goal > 0 && current == goal {
+
+            if current > 0 && goal > 0 && current == goal {
+                if currentWeight.isDirty || goalWeight.isDirty || isDirty {
                     errors.update(
                         for: Validator<Any>(type: .weightEqual) { _ in false },
                         value: false
@@ -82,6 +131,31 @@ class SignupForm: ObservableForm {
         
         updateFormErrors(errors)
     }
+    
+    // MARK: - Form State Helpers
+    
+    var isTouched: Bool {
+        goalType.isTouched || currentWeight.isTouched || goalWeight.isTouched
+    }
+    
+    var isGoalValidForSave: Bool {
+        let isAnyGoalFieldDirty =
+        goalType.isDirty || currentWeight.isDirty || goalWeight.isDirty
+        guard isAnyGoalFieldDirty else { return false }
+        
+        guard isTouched || goalType.isDirty else { return false }
+        
+        let isMaintainMode = goalType.value == GoalType.maintain.rawValue
+        
+        if !isMaintainMode, formErrors[.weightEqual] {
+            return false
+        }
+        
+        return isMaintainMode
+        ? goalWeight.isValid
+        : currentWeight.isValid && goalWeight.isValid
+    }
+
     
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isTouched || control.isDirty else { return nil }
@@ -129,8 +203,16 @@ class SignupForm: ObservableForm {
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
         }
-        if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
-            return FormErrorMessages.valueShouldNotBeEqual
+
+        if goalType.value == GoalTypeSegment.losegainValue && formErrors[.weightEqual] {
+            let current = Double(currentWeight.value) ?? 0.0
+            let goal = Double(goalWeight.value) ?? 0.0
+            
+            if current > 0 && goal > 0 && current == goal {
+                if control === goalWeight && (goalWeight.isTouched || goalWeight.isDirty || currentWeight.isTouched || currentWeight.isDirty) {
+                    return FormErrorMessages.valueShouldNotBeEqual
+                }
+            }
         }
 
         return nil

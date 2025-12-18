@@ -375,13 +375,11 @@ class SettingsStore: ObservableObject {
     }
     
     var isGoalFormValid: Bool {
-        guard goalForm.isDirty else { return false }
-        
-        if goalForm.goalType.value == GoalTypeSegment.losegainValue {
-            return !goalForm.isInvalid
-        } else {
-            return !goalForm.goalWeight.isInvalid
-        }
+        goalForm.isValidForSave()
+    }
+    
+    func isGoalFormValid(focusedField: FocusField?) -> Bool {
+        goalForm.isValidForSave(focusedField: focusedField)
     }
     
     var isWeightLessFormValid: Bool {
@@ -1328,6 +1326,8 @@ class SettingsStore: ObservableObject {
             goalForm.goalType.value = newGoalTypeValue
             // Explicitly mark as dirty to ensure the form recognizes the change
             goalForm.goalType.markAsDirty()
+            // Mark as touched so form is considered interacted with
+            goalForm.goalType.markAsTouched()
         }
         
         // Force form validation to update computed properties

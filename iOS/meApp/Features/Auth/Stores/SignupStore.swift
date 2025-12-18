@@ -275,13 +275,8 @@ final class SignupStore: ObservableObject {
     
     // MARK: - Private Methods
     private func isGoalStepValid() -> Bool {
-        if signupForm.goalType.value == GoalType.maintain.rawValue {
-            return signupForm.goalWeight.isValid
-        } else {
-            return signupForm.currentWeight.isValid &&
-            signupForm.goalWeight.isValid &&
-            !signupForm.formErrors[.weightEqual]
-        }
+        // Use the form's isGoalValidForSave which checks: dirty, touched, and no errors
+        signupForm.isGoalValidForSave
     }
     
     private func generateProfile() -> Profile {

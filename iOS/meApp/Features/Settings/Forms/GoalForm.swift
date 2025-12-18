@@ -19,7 +19,16 @@ final class GoalForm: ObservableForm {
     var currentWeight = FormControl("", validators: [.required, .minValue()])
     /// Goal weight as string (display units).
     var goalWeight = FormControl("", validators: [.required, .minValue()])
-
+    
+    // MARK: - Cancellables
+    private var cancellables: Set<AnyCancellable> = []
+    
+    // MARK: - Initialization
+    override init() {
+        super.init()
+        setupWeightValidationTriggers()
+    }
+    
     // MARK: - Change Publisher
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
@@ -29,46 +38,182 @@ final class GoalForm: ObservableForm {
         ])
         .eraseToAnyPublisher()
     }
-
+    
+    // MARK: - Setup
+    /// Sets up validation triggers to ensure form-level validation runs immediately when weight values change
+    private func setupWeightValidationTriggers() {
+        // Trigger form validation when currentWeight changes
+        currentWeight.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+        
+        // Trigger form validation when goalWeight changes
+        goalWeight.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+        
+        // Trigger form validation when goalType changes
+        goalType.$value
+            .sink { [weak self] _ in
+                self?.validateForm()
+            }
+            .store(in: &cancellables)
+    }
+    
     // MARK: - Validation
+    
     override func validateForm() {
         var errors = ValidationErrors<Any>()
-
-        // Weight-equality check (only for lose / gain mode).
-        if goalType.value != GoalType.maintain.rawValue {
-            if !currentWeight.errors[.required] && !goalWeight.errors[.required] {
-                let current = Double(currentWeight.value) ?? 0.0
-                let goal    = Double(goalWeight.value) ?? 0.0
-                if current > 0 && goal > 0 && current == goal {
-                    errors.update(for: Validator<Any>(type: .weightEqual) { _ in false }, value: false)
-                }
-            }
+        
+        if isLoseGainMode {
+            validateWeightEquality(into: &errors)
         }
-
+        
         updateFormErrors(errors)
     }
-
-    // MARK: - Error helpers
-    /// Maps validator errors to human-readable strings (leverages `FormErrorMessages`).
+    
+    private func validateWeightEquality(into errors: inout ValidationErrors<Any>) {
+        let current = parseWeight(currentWeight.value)
+        let goal = parseWeight(goalWeight.value)
+        
+        guard areWeightsEqual(current: current, goal: goal) else { return }
+        guard hasUserInteractedWithWeights() else { return }
+        
+        errors.update(
+            for: Validator<Any>(type: .weightEqual) { _ in false },
+            value: false
+        )
+    }
+    
+    private func parseWeight(_ value: String) -> Double {
+        Double(value) ?? 0.0
+    }
+    
+    private func areWeightsEqual(current: Double, goal: Double) -> Bool {
+        current > 0 && goal > 0 && current == goal
+    }
+    
+    private func hasUserInteractedWithWeights() -> Bool {
+        currentWeight.isDirty || goalWeight.isDirty || isDirty
+    }
+    
+    private var isLoseGainMode: Bool {
+        goalType.value != GoalType.maintain.rawValue
+    }
+    
+    // MARK: - Form State Helpers
+    
+    var isTouched: Bool {
+        goalType.isTouched || currentWeight.isTouched || goalWeight.isTouched
+    }
+    
+    /// Returns true if the form is valid for saving.
+    /// - Parameter focusedField: Optional focused field to enable save while typing.
+    func isValidForSave(focusedField: FocusField? = nil) -> Bool {
+        guard isDirty else { return false }
+        
+        if let focused = focusedField, isValidWhileFocused(focusedField: focused) {
+            return true
+        }
+        
+        guard isTouched || goalType.isDirty else { return false }
+        return isValidForCurrentGoalType()
+    }
+    
+    // MARK: - Private Validation Helpers
+    
+    private func isValidWhileFocused(focusedField: FocusField) -> Bool {
+        switch focusedField {
+        case .currentWeight:
+            return isValidForCurrentWeightFocused()
+        case .goalWeight:
+            return isValidForGoalWeightFocused()
+        default:
+            return false
+        }
+    }
+    
+    private func isValidForCurrentWeightFocused() -> Bool {
+        guard goalType.value == GoalTypeSegment.losegainValue else { return false }
+        guard currentWeight.isDirty && currentWeight.isValid else { return false }
+        guard !formErrors[.weightEqual] else { return false }
+        return !goalWeight.value.isEmpty && goalWeight.isValid
+    }
+    
+    private func isValidForGoalWeightFocused() -> Bool {
+        guard goalWeight.isDirty && goalWeight.isValid else { return false }
+        
+        if goalType.value == GoalTypeSegment.losegainValue {
+            guard !formErrors[.weightEqual] else { return false }
+            return !currentWeight.value.isEmpty && currentWeight.isValid
+        } else {
+            return true
+        }
+    }
+    
+    private func isValidForCurrentGoalType() -> Bool {
+        if goalType.value == GoalTypeSegment.losegainValue {
+            guard !formErrors[.weightEqual] else { return false }
+            return currentWeight.isValid && goalWeight.isValid
+        } else {
+            return goalWeight.isValid
+        }
+    }
+    
+    
+    // MARK: - Error Helpers
+    
+    /// Returns error message for a control, if any.
+    /// - Parameters:
+    ///   - control: The form control to check.
     func getError<T>(for control: FormControl<T>, isMetric: Bool) -> String? {
-        // Only show errors for fields the user has interacted with
-        guard control.isDirty else { return nil }
-        // Skip current-weight error when maintain mode is selected.
-        if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
+        if control === currentWeight && !isLoseGainMode {
             return nil
         }
-
-        if control.errors[.required] { return FormErrorMessages.required }
-        if control.errors[.minValue] {
-            return isMetric ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb
+        
+        if let fieldError = getFieldLevelError(for: control, isMetric: isMetric) {
+            return fieldError
         }
-        if control.errors[.maxValue] {
-            return isMetric ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
-        }
-        if (goalType.value == GoalTypeSegment.losegainValue && control === goalWeight) && formErrors[.weightEqual] {
-            return FormErrorMessages.valueShouldNotBeEqual
+        
+        if let formError = getFormLevelError(for: control) {
+            return formError
         }
         
         return nil
     }
-} 
+    
+    private func getFieldLevelError<T>(for control: FormControl<T>, isMetric: Bool) -> String? {
+        guard control.isDirty else { return nil }
+        
+        if control.errors[.required] {
+            return FormErrorMessages.required
+        }
+        
+        if control.errors[.minValue] {
+            return isMetric ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb
+        }
+        
+        if control.errors[.maxValue] {
+            return isMetric ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
+        }
+        
+        return nil
+    }
+    
+    private func getFormLevelError<T>(for control: FormControl<T>) -> String? {
+        guard isLoseGainMode && formErrors[.weightEqual] else { return nil }
+        guard control === goalWeight else { return nil }
+        
+        let current = parseWeight(currentWeight.value)
+        let goal = parseWeight(goalWeight.value)
+        
+        guard areWeightsEqual(current: current, goal: goal) else { return nil }
+        guard goalWeight.isDirty || currentWeight.isDirty else { return nil }
+        
+        return FormErrorMessages.valueShouldNotBeEqual
+    }
+}
