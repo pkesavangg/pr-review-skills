@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.asSharedFlow
  * Implements [IAppNavigationService].
  */
 class AppNavigationService : IAppNavigationService {
-  private val _navigationIntent = MutableSharedFlow<NavigationIntent>(replay = 1)
+  // replay = 0 prevents old intents from being replayed on app restart after finishAffinity
+  private val _navigationIntent = MutableSharedFlow<NavigationIntent>()
 
   // Auth event flow for authentication events (login, logout, etc.)
   private val _authEvent = MutableSharedFlow<AuthState>(replay = 1)
