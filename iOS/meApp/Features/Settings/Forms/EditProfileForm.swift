@@ -50,6 +50,7 @@ class EditProfileForm: ObservableForm {
             return FormErrorMessages.leaveBlank
         }
         if control.errors[.required] { return FormErrorMessages.required }
+        // Email validator already checks for emojis, so .email error will be set if emojis are present
         if control.errors[.email] { return FormErrorMessages.email }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }

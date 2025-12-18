@@ -23,8 +23,8 @@ class SignupForm: ObservableForm {
     var useMetric = FormControl(false)
     var height = FormControl(Double(700))
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
-    var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
-    var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
+    var password = FormControl("", validators: [.required, .noEmoji, .minLength(6), .maxLength(50)])
+    var confirmPassword = FormControl("", validators: [.required, .noEmoji, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
     
     
@@ -94,6 +94,7 @@ class SignupForm: ObservableForm {
         }
         if control.errors[.required] { return FormErrorMessages.required }
         if control.errors[.email] { return FormErrorMessages.email }
+        if (control === password || control === confirmPassword) && control.errors[.noEmoji] { return FormErrorMessages.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
             if control === password || control === confirmPassword {
                 return FormErrorMessages.signupPasswordMinLength
