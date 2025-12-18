@@ -270,7 +270,7 @@ struct FormErrorMessages {
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
-    static let modelNumberInvalid = "Model Number Invalid"
+    static let modelNumberInvalid = "model number invalid"
     static let duplicate = "the scale can’t have duplicate user names"
     static let namePattern = "please enter a valid name"
     static let userNameUnavailable = "user name is unavailable"
