@@ -23,6 +23,7 @@ import com.patrykandpatrick.vico.core.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import android.graphics.Typeface
+import android.util.Log
 
 @Composable
 internal fun rememberDefaultMarker(
@@ -30,7 +31,7 @@ internal fun rememberDefaultMarker(
   segment: GraphSegment,
   onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit
 ): CartesianMarker {
-
+Log.d("labelcallback","${state.data}")
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     val data = state.data.filter {
       DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == state.markerIndex?.toDouble()
