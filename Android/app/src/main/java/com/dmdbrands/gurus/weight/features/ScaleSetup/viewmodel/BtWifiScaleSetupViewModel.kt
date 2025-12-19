@@ -126,6 +126,8 @@ constructor(
   private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
   private var wifiMac: String? = discoveredScale?.device?.wifiMacAddress
   private var isWifiConfigured: Boolean = discoveredScale?.device?.isWifiConfigured == true
+  private var isAlreadyExited = false
+
 
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
@@ -1420,8 +1422,8 @@ constructor(
                 cont.resume(mac)
               }
             }
-            if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
-              onExitSetup(true)
+            if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
+              navigateBack()
               return@launch
             }
             onNext()
@@ -1520,9 +1522,14 @@ constructor(
     // Save the scale with updated WiFi configuration to ensure UI updates properly
     discoveredScale?.let { scale ->
       AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
-      supervisorScope.launch {
-        if (isScaleConnected)
-          deviceService.saveScale(scale)
+      val deviceDetail = scale.device
+      if (deviceDetail != null) {
+        AppLog.d(
+          TAG,
+          "Triggering onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
+        )
+        deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
+        AppLog.d(TAG, "Triggered onDeviceUpdate for WiFi configuration change")
       }
     }
   }
