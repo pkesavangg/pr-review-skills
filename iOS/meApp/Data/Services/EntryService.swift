@@ -222,7 +222,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // Extract relevant weights and DTOs in a MainActor context
         let ext: (latestEntry: Entry, weekStart: Entry?, monthStart: Entry?, firstEntry: Entry?) = try await sync {
             (
-                latestEntry: refetched[latestEntry.id]!,
+                latestEntry: refetched[latestEntry.id] ?? latestEntry,
                 weekStart: safe(weekEntries.first?.id) as Entry?,
                 monthStart: safe(monthEntries.first?.id) as Entry?,
                 firstEntry: safe(sortedEntries.first?.id) as Entry?
@@ -285,9 +285,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return (0, nil, "")
         }
         
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        guard let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) else {
+            await logger.log(level: .error, tag: tag, message: "Failed to calculate date 30 days ago for year delta calculation.")
+            return (0, nil, "")
+        }
         let (initYearDate, yearKey) = parseYearKeyAndDate(from: initYearMonth.entryTimestamp, id: initYearMonth.id)
-        let isWithin30Days = ISOString(from: initYearDate) >= ISOString(from: thirtyDaysAgo)
+        let isWithin30Days = isoString(from: initYearDate) >= isoString(from: thirtyDaysAgo)
         let initYearWeightStored = Int(round(initYearWeight))
         
         let delta = isWithin30Days
@@ -316,11 +319,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return (Date(), timestamp)
     }
     
-    private func ISOString(from date: Date) -> String {
+    private static let isoDayFormatter: DateFormatter = {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
         df.timeZone = TimeZone(secondsFromGMT: 0)
-        return df.string(from: date)
+        return df
+    }()
+    
+    private func isoString(from date: Date) -> String {
+        return Self.isoDayFormatter.string(from: date)
     }
     
     private func makeYearDTO(key: String, avgWeight: Int, accountId: String) -> BathScaleOperationDTO? {
@@ -676,7 +683,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 let duplicateEntry = potentialDuplicates.first!
                 let updated: Entry = {
-                    let entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    var entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     entry.id = duplicateEntry.id
                     return entry
                 }()
@@ -717,6 +724,23 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
     
     // MARK: - Aggregation Helpers
+    
+    /// Helper function for all metrics (excludes zero values)
+    private func avgNonZero(_ values: [Double?]) -> Double? {
+        let vals = values.compactMap { $0 }.filter { $0 > 0 }
+        return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
+    }
+    
+    /// Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
+    /// This matches the logic in buildHistoryMonth to ensure consistent rounding
+    private func avgWeight(_ values: [Int]) -> Double {
+        guard !values.isEmpty else { return 0 }
+        let filtered = values.filter { $0 > 0 }
+        guard !filtered.isEmpty else { return 0 }
+        // Round average to whole tenths of lbs, then convert to Double
+        return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
+    }
+    
     /// Aggregate entries by day, returning BathScaleWeightSummary for each day
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
@@ -739,22 +763,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
-            
-            // Helper function for all metrics (excludes zero values)
-            func avgNonZero(_ values: [Double?]) -> Double? {
-                let vals = values.compactMap { $0 }.filter { $0 > 0 }
-                return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
-            }
-            
-            // Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
-            // This matches the logic in buildHistoryMonth to ensure consistent rounding
-            func avgWeight(_ values: [Int]) -> Double {
-                guard !values.isEmpty else { return 0 }
-                let filtered = values.filter { $0 > 0 }
-                guard !filtered.isEmpty else { return 0 }
-                // Round average to whole tenths of lbs, then convert to Double
-                return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
-            }
             
             return BathScaleWeightSummary(
                 accountId: accountId,
@@ -806,22 +814,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
-            
-            // Helper function for all metrics (excludes zero values)
-            func avgNonZero(_ values: [Double?]) -> Double? {
-                let vals = values.compactMap { $0 }.filter { $0 > 0 }
-                return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
-            }
-            
-            // Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
-            // This matches the logic in buildHistoryMonth to ensure consistent rounding
-            func avgWeight(_ values: [Int]) -> Double {
-                guard !values.isEmpty else { return 0 }
-                let filtered = values.filter { $0 > 0 }
-                guard !filtered.isEmpty else { return 0 }
-                // Round average to whole tenths of lbs, then convert to Double
-                return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
-            }
             
             return BathScaleWeightSummary(
                 accountId: accountId,
