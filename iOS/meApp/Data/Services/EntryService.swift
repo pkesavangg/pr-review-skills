@@ -1,7 +1,6 @@
 import Foundation
 import Combine
 
-//@MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var goalAlertService: GoalAlertService
@@ -158,180 +157,109 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func getMonthYear() async throws -> [HistoryMonth] {
         let accountId = try await getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        // Get last 12 months
+        // Get entries from last 365 days (matching TypeScript: entry."entryTimestamp" >= getIntervalDatetimeIsoString(365))
         let calendar = Calendar.current
         let now = Date()
-        let months = (0..<12).map { offset -> String in
-            let date = calendar.date(byAdding: .month, value: -offset, to: now)!
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            return String(format: "%04d-%02d", comps.year ?? 0, comps.month ?? 0)
+        let oneYearAgo = calendar.date(byAdding: .day, value: -365, to: now) ?? now
+        
+        // Filter entries from last 365 days
+        let filteredEntries = entries.filter { entry in
+            guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
+            return entryDate >= oneYearAgo && entryDate <= now
         }
-        let grouped = Dictionary(grouping: entries) { (entry) -> String in
+        
+        // Group by month (YYYY-MM)
+        let grouped = Dictionary(grouping: filteredEntries) { (entry) -> String in
             DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         }
+        
+        // Build HistoryMonth for each month that has entries, sorted by timestamp DESC (newest first)
         var result: [HistoryMonth] = []
-        for month in months {
-            guard let monthEntries = grouped[month], !monthEntries.isEmpty else { continue }
-            result.append(Self.buildHistoryMonth(monthKey: month, monthEntries: monthEntries))
+        for (monthKey, monthEntries) in grouped {
+            guard !monthEntries.isEmpty else { continue }
+            result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
         }
-        return result
+        
+        // Sort descending by entryTimestamp (newest first, matching TypeScript ORDER BY DESC)
+        return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
     
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
-        
-        // Fetch entries and immediately extract values before leaving fetch context
-        // We need to extract SwiftData properties synchronously within the fetch context
         let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         let sortedEntries = allEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
         
-        // Extract values immediately after fetching, before any async continuation
         guard let latestEntry = sortedEntries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
-
-        // Get entries for the last 7 and 30 days
-        let last7DaysRaw = try await localRepo.fetchEntries(lastNDays: 7, userId: accountId)
-        let last30DaysRaw = try await localRepo.fetchEntries(lastNDays: 30, userId: accountId)
         
-        let sorted7Days = last7DaysRaw.sorted { $0.entryTimestamp < $1.entryTimestamp }
-        let sorted30Days = last30DaysRaw.sorted { $0.entryTimestamp < $1.entryTimestamp }
-        let weekStartEntry = sorted7Days.first
-        let monthStartEntry = sorted30Days.first
-        let firstEntry = sortedEntries.first
+        // Helper: Gets and sorts entries in the last N days
+        func sortedRecentEntries(_ days: Int) async throws -> [Entry] {
+            try await localRepo.fetchEntries(lastNDays: days, userId: accountId).sorted { $0.entryTimestamp < $1.entryTimestamp }
+        }
         
-        // Refetch entries using main actor's ModelContext to safely access SwiftData properties
-        // Extract entry IDs that we need to refetch
-        let latestEntryId = latestEntry.id
-        let weekStartEntryId = weekStartEntry?.id
-        let monthStartEntryId = monthStartEntry?.id
-        let firstEntryId = firstEntry?.id
+        let weekEntries = try await sortedRecentEntries(7)
+        let monthEntries = try await sortedRecentEntries(30)
         
-        let entryIdsToRefetch = [
-            latestEntryId,
-            weekStartEntryId,
-            monthStartEntryId,
-            firstEntryId
+        // Prepare entry IDs to refetch in main actor context for SwiftData safety
+        let idSet = [
+            latestEntry.id,
+            weekEntries.first?.id,
+            monthEntries.first?.id,
+            sortedEntries.first?.id
         ].compactMap { $0 }
         
-        // Refetch using repository's main actor context method
-        // Ensure localRepo is of type EntryRepository before calling refetchEntriesOnMainActor
         guard let entryRepo = localRepo as? EntryRepository else {
-            throw NSError(
-                domain: "EntryService",
-                code: 500,
-                userInfo: [NSLocalizedDescriptionKey: "localRepo is not of type EntryRepository"]
-            )
+            throw NSError(domain: "EntryService", code: 500, userInfo: [NSLocalizedDescriptionKey: "localRepo is not of type EntryRepository"])
         }
-        let refetchedEntries = try await entryRepo.refetchEntriesOnMainActor(entryIds: entryIdsToRefetch)
+        let refetched = try await entryRepo.refetchEntriesOnMainActor(entryIds: idSet)
         
-        // Extract values from refetched entries synchronously on main actor
-        let extractedValues = try await MainActor.run {
-            guard let latestEntryMain = refetchedEntries[latestEntryId] else {
-                throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Latest entry not found in main context"])
-            }
-            
-            // Access all SwiftData properties synchronously within MainActor.run
-            let latestWeight = latestEntryMain.scaleEntry?.weight ?? 0
-            let latestDTO = latestEntryMain.toOperationDTO()
-            
-            let weekStartEntryMain = weekStartEntryId.flatMap { refetchedEntries[$0] }
-            let monthStartEntryMain = monthStartEntryId.flatMap { refetchedEntries[$0] }
-            let firstEntryMain = firstEntryId.flatMap { refetchedEntries[$0] }
-            
-            let weekStartWeight = weekStartEntryMain?.scaleEntry?.weight
-            let monthStartWeight = monthStartEntryMain?.scaleEntry?.weight
-            let firstEntryWeight = firstEntryMain?.scaleEntry?.weight
-            
-            let weekDTO = weekStartEntryMain?.toOperationDTO()
-            let monthDTO = monthStartEntryMain?.toOperationDTO()
-            let firstDTO = firstEntryMain?.toOperationDTO()
-            
-            let monthKey = monthStartEntryMain.map { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) } ?? ""
-            
-            return (
-                latestWeight: latestWeight,
-                latestDTO: latestDTO,
-                weekStartWeight: weekStartWeight,
-                monthStartWeight: monthStartWeight,
-                firstEntryWeight: firstEntryWeight,
-                weekDTO: weekDTO,
-                monthDTO: monthDTO,
-                firstDTO: firstDTO,
-                monthKey: monthKey
+        // Helper: Safe extraction utilities
+        func safe<T>(_ id: UUID?) -> T? { id.flatMap { refetched[$0] as? T } }
+        func sync<T>(_ block: @Sendable () throws -> T) async rethrows -> T { try await MainActor.run(body: block) }
+        
+        // Extract relevant weights and DTOs in a MainActor context
+        let ext: (latestEntry: Entry, weekStart: Entry?, monthStart: Entry?, firstEntry: Entry?) = try await sync {
+            (
+                latestEntry: refetched[latestEntry.id]!,
+                weekStart: safe(weekEntries.first?.id) as Entry?,
+                monthStart: safe(monthEntries.first?.id) as Entry?,
+                firstEntry: safe(sortedEntries.first?.id) as Entry?
             )
         }
         
-        // Use extracted values
-        let latestWeight = extractedValues.latestWeight
-        let latestDTO = extractedValues.latestDTO
-        let weekStartWeight = extractedValues.weekStartWeight
-        let monthStartWeight = extractedValues.monthStartWeight
-        let firstEntryWeight = extractedValues.firstEntryWeight
-        let weekDTO = extractedValues.weekDTO
-        let monthDTO = extractedValues.monthDTO
-        let firstDTO = extractedValues.firstDTO
-        let monthKey = extractedValues.monthKey
-
-        // Build 12-month data for yearly baseline
-        let monthSeries = try await getMonthYear()
-        let oldestMonth = monthSeries.last
-        let yearKey = oldestMonth?.id ?? oldestMonth?.entryTimestamp ?? ""
-        let yearAvgWeight = oldestMonth?.weight.map(Int.init)
-
-        // Construct a synthetic entry for the year start
-        let yearStartDTO: BathScaleOperationDTO? = {
-            guard !yearKey.isEmpty else { return nil }
-            let date = DateTimeTools.formatter("yyyy-MM").date(from: yearKey) ?? Date()
-            return BathScaleOperationDTO(
-                accountId: accountId,
-                bmr: nil,
-                bmi: nil,
-                bodyFat: nil,
-                boneMass: nil,
-                entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
-                impedance: nil,
-                metabolicAge: nil,
-                muscleMass: nil,
-                operationType: OperationType.create.rawValue,
-                proteinPercent: nil,
-                pulse: nil,
-                serverTimestamp: nil,
-                skeletalMusclePercent: nil,
-                source: "monthly",
-                subcutaneousFatPercent: nil,
-                unit: nil,
-                visceralFatLevel: nil,
-                water: nil,
-                weight: yearAvgWeight.map { Double($0) }
-            )
-        }()
+        let latestWeight = ext.latestEntry.scaleEntry?.weight ?? 0
+        let weekStartWeight = ext.weekStart?.scaleEntry?.weight
+        let monthStartWeight = ext.monthStart?.scaleEntry?.weight
+        let firstEntryWeight = ext.firstEntry?.scaleEntry?.weight
         
-        // Continue with calculations (can be off main actor)
+        let weekDTO = ext.weekStart?.toOperationDTO()
+        let monthDTO = ext.monthStart?.toOperationDTO()
+        let firstDTO = ext.firstEntry?.toOperationDTO()
+        let latestDTO = ext.latestEntry.toOperationDTO()
+        
         let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
         let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)
-
-        // Year delta adjustment
-        let now = Date()
-        let initYearDate = yearStartDTO?.entryTimestamp.flatMap { DateTimeTools.parse($0) }
-        let useMonthAsYearAnchor = initYearDate.map { $0 >= Calendar.current.date(byAdding: .day, value: -30, to: now)! } ?? false
-        let yearAnchorWeight = useMonthAsYearAnchor ? monthStartWeight : yearAvgWeight
-        let yearDelta = latestWeight - (yearAnchorWeight ?? latestWeight)
-
-        // Total progress since start
+        
+        // -- Year delta logic, extracted to a helper for clarity --
+        let monthSeries = try await getMonthYear()
+        let yearDeltaResult = try await calculateYearDelta(latestWeight: latestWeight, monthStartWeight: monthStartWeight, monthSeries: monthSeries)
+        let yearDelta = yearDeltaResult.yearDelta
+        let yearStartDTO = yearDeltaResult.yearStartDTO
+        let yearKey = yearDeltaResult.yearKey
+        
         let account = try await accountService.getActiveAccount()
         let initialWeight = account?.goalSettings?.initialWeight.map(Int.init) ?? firstEntryWeight
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
-
+        
         let streak = try await getStreak()
-
+        
         await logger.log(
-            level: .debug,
-            tag: tag,
-            message: "Progress(year): latest=\(latestWeight), initMonthKey=\(monthKey), initYearKey=\(yearKey), yearAvg=\(yearAvgWeight ?? 0), weekDelta=\(weekDelta), monthDelta=\(monthDelta), yearDelta=\(yearDelta)"
+            level: .debug, tag: tag,
+            message: "Progress(year): latest=\(latestWeight), yearKey=\(yearKey), yearDelta=\(yearDelta)"
         )
-
+        
         return Progress(
             count: sortedEntries.count,
             currentStreak: streak.current,
@@ -346,6 +274,79 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             total: Double(totalDelta),
             week: weekDelta,
             year: yearDelta
+        )
+    }
+    
+    // MARK: - Modular Year Delta Calculation
+    private func calculateYearDelta(
+        latestWeight: Int, monthStartWeight: Int?, monthSeries: [HistoryMonth]
+    ) async throws -> (yearDelta: Int, yearStartDTO: BathScaleOperationDTO?, yearKey: String) {
+        guard let initYearMonth = monthSeries.last, let initYearWeight = initYearMonth.weight else {
+            return (0, nil, "")
+        }
+        
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let (initYearDate, yearKey) = parseYearKeyAndDate(from: initYearMonth.entryTimestamp, id: initYearMonth.id)
+        let isWithin30Days = ISOString(from: initYearDate) >= ISOString(from: thirtyDaysAgo)
+        let initYearWeightStored = Int(round(initYearWeight))
+        
+        let delta = isWithin30Days
+        ? latestWeight - (monthStartWeight ?? latestWeight)
+        : latestWeight - initYearWeightStored
+        
+        let yearAvgWeight = Int(round(initYearWeight))
+        let yearStartDTO = makeYearDTO(
+            key: yearKey, avgWeight: yearAvgWeight, accountId: try await getAccountId()
+        )
+        
+        return (delta, yearStartDTO, yearKey)
+    }
+    
+    private func parseYearKeyAndDate(from timestamp: String, id: String) -> (Date, String) {
+        let fmt = DateTimeTools.formatter("yyyy-MM")
+        if let date = fmt.date(from: timestamp) {
+            return (date, id)
+        }
+        // Fallback, parse manually
+        let comps = timestamp.split(separator: "-")
+        if comps.count == 2, let y = Int(comps[0]), let m = Int(comps[1]) {
+            var dc = DateComponents(); dc.year = y; dc.month = m; dc.day = 1
+            if let dt = Calendar.current.date(from: dc) { return (dt, timestamp) }
+        }
+        return (Date(), timestamp)
+    }
+    
+    private func ISOString(from date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        return df.string(from: date)
+    }
+    
+    private func makeYearDTO(key: String, avgWeight: Int, accountId: String) -> BathScaleOperationDTO? {
+        guard !key.isEmpty else { return nil }
+        let date = DateTimeTools.formatter("yyyy-MM").date(from: key) ?? Date()
+        return BathScaleOperationDTO(
+            accountId: accountId,
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: DateTimeTools.isoFormatter().string(from: date),
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: OperationType.create.rawValue,
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: "monthly",
+            subcutaneousFatPercent: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: Double(avgWeight)
         )
     }
 
@@ -675,7 +676,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 let duplicateEntry = potentialDuplicates.first!
                 let updated: Entry = {
-                    var entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    let entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     entry.id = duplicateEntry.id
                     return entry
                 }()
@@ -739,9 +740,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
             
-            func avg(_ values: [Double?]) -> Double? {
-                let vals = values.compactMap { $0 }
+            // Helper function for all metrics (excludes zero values)
+            func avgNonZero(_ values: [Double?]) -> Double? {
+                let vals = values.compactMap { $0 }.filter { $0 > 0 }
                 return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
+            }
+            
+            // Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
+            // This matches the logic in buildHistoryMonth to ensure consistent rounding
+            func avgWeight(_ values: [Int]) -> Double {
+                guard !values.isEmpty else { return 0 }
+                let filtered = values.filter { $0 > 0 }
+                guard !filtered.isEmpty else { return 0 }
+                // Round average to whole tenths of lbs, then convert to Double
+                return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
             }
             
             return BathScaleWeightSummary(
@@ -750,20 +762,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryTimestamp: latestTimestamp,
                 date: date,
                 count: count,
-                weight: avg(validEntries.compactMap { $0.scaleEntry?.weight.map(Double.init) }) ?? 0,
-                bodyFat: avg(validEntries.compactMap { $0.scaleEntry?.bodyFat.map(Double.init) }),
-                muscleMass: avg(validEntries.compactMap { $0.scaleEntry?.muscleMass.map(Double.init) }),
-                water: avg(validEntries.compactMap { $0.scaleEntry?.water.map(Double.init) }),
-                bmi: avg(validEntries.compactMap { $0.scaleEntry?.bmi.map(Double.init) }),
-                bmr: avg(validEntries.compactMap { $0.scaleEntryMetric?.bmr.map(Double.init) }),
-                metabolicAge: avg(validEntries.compactMap { $0.scaleEntryMetric?.metabolicAge.map(Double.init) }),
-                proteinPercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.proteinPercent.map(Double.init) }),
-                pulse: avg(validEntries.compactMap { $0.scaleEntryMetric?.pulse.map(Double.init) }),
-                skeletalMusclePercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.skeletalMusclePercent.map(Double.init) }),
-                subcutaneousFatPercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init) }),
-                visceralFatLevel: avg(validEntries.compactMap { $0.scaleEntryMetric?.visceralFatLevel.map(Double.init) }),
-                boneMass: avg(validEntries.compactMap { $0.scaleEntryMetric?.boneMass.map(Double.init) }),
-                impedance: avg(validEntries.compactMap { $0.scaleEntryMetric?.impedance.map(Double.init) })
+                weight: avgWeight(validEntries.compactMap { $0.scaleEntry?.weight }),
+                bodyFat: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bodyFat.map(Double.init) }),
+                muscleMass: avgNonZero(validEntries.compactMap { $0.scaleEntry?.muscleMass.map(Double.init) }),
+                water: avgNonZero(validEntries.compactMap { $0.scaleEntry?.water.map(Double.init) }),
+                bmi: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bmi.map(Double.init) }),
+                bmr: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.bmr.map(Double.init) }),
+                metabolicAge: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.metabolicAge.map(Double.init) }),
+                proteinPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.proteinPercent.map(Double.init) }),
+                pulse: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.pulse.map(Double.init) }),
+                skeletalMusclePercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.skeletalMusclePercent.map(Double.init) }),
+                subcutaneousFatPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init) }),
+                visceralFatLevel: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.visceralFatLevel.map(Double.init) }),
+                boneMass: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.boneMass.map(Double.init) }),
+                impedance: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.impedance.map(Double.init) })
             )
         }.sorted { $0.period < $1.period }
     }
@@ -795,9 +807,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let latestTimestamp = validEntries.map { $0.entryTimestamp }.max() ?? ""
             let count = validEntries.count
             
-            func avg(_ values: [Double?]) -> Double? {
-                let vals = values.compactMap { $0 }
+            // Helper function for all metrics (excludes zero values)
+            func avgNonZero(_ values: [Double?]) -> Double? {
+                let vals = values.compactMap { $0 }.filter { $0 > 0 }
                 return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
+            }
+            
+            // Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
+            // This matches the logic in buildHistoryMonth to ensure consistent rounding
+            func avgWeight(_ values: [Int]) -> Double {
+                guard !values.isEmpty else { return 0 }
+                let filtered = values.filter { $0 > 0 }
+                guard !filtered.isEmpty else { return 0 }
+                // Round average to whole tenths of lbs, then convert to Double
+                return Double(Int(round(Double(filtered.reduce(0, +)) / Double(filtered.count))))
             }
             
             return BathScaleWeightSummary(
@@ -806,20 +829,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryTimestamp: latestTimestamp,
                 date: date,
                 count: count,
-                weight: avg(validEntries.compactMap { $0.scaleEntry?.weight.map(Double.init) }) ?? 0,
-                bodyFat: avg(validEntries.compactMap { $0.scaleEntry?.bodyFat.map(Double.init) }),
-                muscleMass: avg(validEntries.compactMap { $0.scaleEntry?.muscleMass.map(Double.init) }),
-                water: avg(validEntries.compactMap { $0.scaleEntry?.water.map(Double.init) }),
-                bmi: avg(validEntries.compactMap { $0.scaleEntry?.bmi.map(Double.init) }),
-                bmr: avg(validEntries.compactMap { $0.scaleEntryMetric?.bmr.map(Double.init) }),
-                metabolicAge: avg(validEntries.compactMap { $0.scaleEntryMetric?.metabolicAge.map(Double.init) }),
-                proteinPercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.proteinPercent.map(Double.init) }),
-                pulse: avg(validEntries.compactMap { $0.scaleEntryMetric?.pulse.map(Double.init) }),
-                skeletalMusclePercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.skeletalMusclePercent.map(Double.init) }),
-                subcutaneousFatPercent: avg(validEntries.compactMap { $0.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init) }),
-                visceralFatLevel: avg(validEntries.compactMap { $0.scaleEntryMetric?.visceralFatLevel.map(Double.init) }),
-                boneMass: avg(validEntries.compactMap { $0.scaleEntryMetric?.boneMass.map(Double.init) }),
-                impedance: avg(validEntries.compactMap { $0.scaleEntryMetric?.impedance.map(Double.init) })
+                weight: avgWeight(validEntries.compactMap { $0.scaleEntry?.weight }),
+                bodyFat: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bodyFat.map(Double.init) }),
+                muscleMass: avgNonZero(validEntries.compactMap { $0.scaleEntry?.muscleMass.map(Double.init) }),
+                water: avgNonZero(validEntries.compactMap { $0.scaleEntry?.water.map(Double.init) }),
+                bmi: avgNonZero(validEntries.compactMap { $0.scaleEntry?.bmi.map(Double.init) }),
+                bmr: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.bmr.map(Double.init) }),
+                metabolicAge: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.metabolicAge.map(Double.init) }),
+                proteinPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.proteinPercent.map(Double.init) }),
+                pulse: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.pulse.map(Double.init) }),
+                skeletalMusclePercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.skeletalMusclePercent.map(Double.init) }),
+                subcutaneousFatPercent: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.subcutaneousFatPercent.map(Double.init) }),
+                visceralFatLevel: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.visceralFatLevel.map(Double.init) }),
+                boneMass: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.boneMass.map(Double.init) }),
+                impedance: avgNonZero(validEntries.compactMap { $0.scaleEntryMetric?.impedance.map(Double.init) })
             )
         }.sorted { $0.period < $1.period }
     }
@@ -872,8 +895,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         let weightsConcat = weightPairs.joined(separator: ",")
         
-        // Numeric helpers
-        let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.map(Double.init)
+        // Numeric helpers - filter out zero values for average calculation
+        let weightValues = monthEntries.compactMap { $0.scaleEntry?.weight }.filter { $0 > 0 }.map(Double.init)
         let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
         let minWeight = weightValues.min()
         let maxWeight = weightValues.max()

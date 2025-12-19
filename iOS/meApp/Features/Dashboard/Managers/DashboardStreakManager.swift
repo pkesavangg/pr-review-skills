@@ -57,7 +57,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
             // Current streak
             updatedStreakItems.append(MetricItem(
-                value: "\(progress.currentStreak)",
+                value: progress.currentStreak == 0 ? DashboardStrings.placeholder : "\(progress.currentStreak)",
                 label: DashboardStrings.currentStreak,
                 unit: nil,
                 preLabel: nil,
@@ -66,7 +66,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
             // Longest streak
             updatedStreakItems.append(MetricItem(
-                value: "\(progress.longestStreak)",
+                value: progress.longestStreak == 0 ? DashboardStrings.placeholder : "\(progress.longestStreak)",
                 label: DashboardStrings.longestStreak,
                 unit: nil,
                 preLabel: nil,
@@ -251,16 +251,16 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Round to one decimal to determine if the displayed value is effectively zero
         let roundedToOneDecimal = ConversionTools.rounded(displayValue, toPlaces: 1)
         
+        // If the rounded value is zero, show placeholder instead
+        if roundedToOneDecimal == 0 {
+            return DashboardStrings.placeholder
+        }
+        
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.minimumFractionDigits = 1
         formatter.maximumFractionDigits = 1
         formatter.positivePrefix = "+"
-
-        // If the rounded value is zero, suppress any '+' or '-' sign
-        if roundedToOneDecimal == 0 {
-            return String(format: "%.1f", roundedToOneDecimal)
-        }
         
         // Use the original displayValue for formatting (formatter will round to 1 decimal)
         return formatter.string(from: NSNumber(value: displayValue)) ?? String(format: "%.1f", roundedToOneDecimal)

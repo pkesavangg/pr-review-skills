@@ -873,9 +873,13 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
         // Helper to compute average for a metric label from summaries
         func averageForMetric(_ label: String) -> Double? {
+            // For all metrics, only include values > 0 (exclude zero values)
             let values: [Double] = visibleOperations.compactMap { summary in
                 getMetricValue(for: label, from: summary)
+            }.filter { value in
+                value > 0
             }
+            
             guard !values.isEmpty else { return nil }
             
             // Calculate raw average
