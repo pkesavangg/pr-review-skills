@@ -1382,7 +1382,7 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(
                     ToastModel(
                         title: toastLang.success,
-                        message: toastLang.forgotPassword(trimmedEmail)
+                        message: toastLang.passwordResetSuccessMessage(trimmedEmail)
                     )
                 )
             } catch {
