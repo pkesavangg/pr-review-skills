@@ -84,19 +84,19 @@ struct PermissionListView: View {
             title: PermissionsStrings.bluetooth,
             rows: [
                 (
-                    viewModel.bluetoothAuthorized
-                        ? PermissionsStrings.bluetoothAccessAuthorized
-                        : PermissionsStrings.authorizeBluetoothAccess,
-                    viewModel.bluetoothAuthorized,
-                    .bluetooth
-                ),
-                (
                     viewModel.bluetoothPoweredOn
                         ? PermissionsStrings.bluetoothTurnedOn
                         : PermissionsStrings.turnOnBluetooth,
                     viewModel.bluetoothPoweredOn,
                     .bluetoothSwitch
-                )
+                ),
+                (
+                    viewModel.bluetoothAuthorized
+                        ? PermissionsStrings.bluetoothAccessAuthorized
+                        : PermissionsStrings.authorizeBluetoothAccess,
+                    viewModel.bluetoothAuthorized,
+                    .bluetooth
+                )                
             ],
             category: .bluetooth
         )
@@ -173,7 +173,7 @@ struct PermissionListView: View {
     
     private var notificationSection: some View {
         sectionView(
-            title: PermissionsStrings.notifications,
+            title: PermissionsStrings.notification,
             rows: [
                 (
                     viewModel.notificationsEnabled

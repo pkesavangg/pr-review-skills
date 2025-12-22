@@ -144,7 +144,7 @@ final class Account {
         // Create associated NotificationSettings
         let notificationSettings = NotificationSettings(
             accountId: dto.id,
-            shouldSendEntryNotifications: dto.shouldSendEntryNotifications ?? false,
+            shouldSendEntryNotifications: dto.shouldSendEntryNotifications ?? true,
             shouldSendWeightInEntryNotifications: dto.shouldSendWeightInEntryNotifications ?? false,
             isSynced: false
         )

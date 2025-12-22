@@ -60,6 +60,7 @@ struct CommonStrings {
     static let emailAlreadyInUse = "Email already in use"
     static let why = "Why?"
     static let back = "Back"
+    static let returnButton = "return"
 }
 
 /// Constants for entry strings used in the app
@@ -587,7 +588,7 @@ struct AlertStrings {
         static let wifiDisabledMessage = "1. Open Settings on your phone\n2. Tap Wi-Fi\n3. Toggle Wi-Fi on\n4. Return to this app"
 
         // MARK: - Camera
-        static let cameraDisabledTitle = "Camera Access is Disabled"
+        static let cameraDisabledTitle = "You have not given permission to access camera"
         static let cameraDisabledMessage = "You will not be able to pair or sync with your AppSync scale. Please enable Camera access in Settings."
 
         // MARK: - Notification
