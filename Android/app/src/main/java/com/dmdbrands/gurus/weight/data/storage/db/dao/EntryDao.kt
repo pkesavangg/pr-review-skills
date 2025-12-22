@@ -35,6 +35,7 @@ interface EntryDao {
     const val UTC = "'utc'"
     const val LOCAL_TIME = "'localtime'"
     const val START_OF_DAY = "'start of day'"
+    const val START_OF_MONTH = "'start of month'"
 
     /**
      * Month abbreviation constants for SQL CASE statements.
@@ -405,7 +406,7 @@ interface EntryDao {
     """
         SELECT
           strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
-          datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
+          datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_MONTH}) AS entryTimestamp,
           AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
           AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
           AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
