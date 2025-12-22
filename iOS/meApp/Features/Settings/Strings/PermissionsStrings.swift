@@ -7,7 +7,7 @@ struct PermissionsStrings {
     // Section titles
     static let bluetooth  = "Bluetooth"
     static let location   = "Location"
-    static let camera     = "Camera for App Sync Scales"
+    static let camera     = "Camera (AppSync)"
     static let notification = "Notification"
 
     // Internet
