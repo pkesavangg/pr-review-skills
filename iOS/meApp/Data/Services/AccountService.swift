@@ -423,19 +423,37 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.update(from: response)
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
-            try await updatePublishedState()
-            notifyActiveAccountChanged()
+            if let freshAccount = try await localRepo.fetchAccount(byId: localAccount.accountId) {
+                if activeAccount?.accountId == freshAccount.accountId {
+                    activeAccount = freshAccount
+                }
+            }
+            try await updatePublishedState(forceRefresh: true)
+            let finalWeightUnit = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
+            
+            await MainActor.run {
+                NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
+            }
+            
             logger.log(level: .info, tag: tag, message: "Update bodyComp successful for accountId=\(accountId)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
+                let offlineWeightUnitBeforeUpdate = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
                 localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
                 localAccount.weightSettings?.height = String(bodyComp.height)
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
                 try await localRepo.updateAccount(localAccount)
-                try await updatePublishedState()
-                notifyActiveAccountChanged()
+                if activeAccount?.accountId == localAccount.accountId {
+                    activeAccount = localAccount
+                }
+                try await updatePublishedState(forceRefresh: true)
+                let finalWeightUnit = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
+                
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
+                }
                 logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId)")
                 return localAccount
             } else {
@@ -1075,7 +1093,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func updatePublishedState(forceRefresh: Bool = false) async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
-        
+
         
         if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
