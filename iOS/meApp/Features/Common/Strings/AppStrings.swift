@@ -146,7 +146,7 @@ struct ToastStrings {
     static let scaleNameUpdated = "Scale name updated."
     static let copiedToClipboard = "Copied to clipboard"
     static let logsSent = "Logs sent to Greater Goods"
-    static let synced = "Entries successfully resynced."
+    static let synced = "Entries resynced."
     static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
     static let resyncErrorTitle = "Not Connected to Wi-Fi"
     static let internetRequiredTitle = "Internet Required"
