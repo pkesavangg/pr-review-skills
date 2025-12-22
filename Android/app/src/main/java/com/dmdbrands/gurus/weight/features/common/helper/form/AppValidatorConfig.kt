@@ -1,12 +1,11 @@
 package com.dmdbrands.gurus.weight.features.common.helper.form
 
-import android.util.Patterns
-
 class AppValidatorConfig {
     object Email {
         const val MIN_LENGTH = 1
         const val MAX_LENGTH = 100
-        val PATTERN = Patterns.EMAIL_ADDRESS.toRegex()
+        val PATTERN = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})$"""
+        .toRegex(RegexOption.IGNORE_CASE)
     }
 
     object Password {

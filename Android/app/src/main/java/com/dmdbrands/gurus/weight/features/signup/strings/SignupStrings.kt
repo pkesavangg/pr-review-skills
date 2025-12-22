@@ -84,5 +84,14 @@ object SignupStrings {
       "Something went wrong. Please try again. If the problem continues, contact customer service."
     const val MessageNoConn = "Unable to find a network connection at this time. Please try again later."
     const val accountExist = "Email address is already in use"
+      const val emailBlank = "must not leave blank"
+      const val blank = "must not be left blank"
+      const val maxName = "maximum value should be 100"
+      const val invalidemail = "must use a valid email"
+      const val maxLengthEmail = "email should not exceed 100 characters"
+      const val passwordlen = "minimum of 6 characters needed"
+      const val maxLengthPassword = "password should not exceed 50 characters"
+      const val maxZipcode = "maximum value should be 20"
+      const val required = "this field is required"
   }
 }

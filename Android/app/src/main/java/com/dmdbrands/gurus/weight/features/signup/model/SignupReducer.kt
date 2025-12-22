@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -61,7 +62,7 @@ data class SignupFormControls(
       if (currentGoalType == GoalType.MAINTAIN.value) {
         null
       } else {
-        FormValidations.required().invoke(value)
+        FormValidations.required(SignupStrings.Error.required).invoke(value)
       }
     }
 
@@ -77,55 +78,54 @@ data class SignupFormControls(
             FormControl.create(
               signupData.firstName,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
+                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
               ),
             ),
           lastName =
             FormControl.create(
               signupData.lastName,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
+                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH,customMessage = SignupStrings.Error.maxName),
               ),
             ),
           email =
             FormControl.create(
               signupData.email,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.emailBlank),
                 FormValidations.email(),
-                FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH),
+                FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, SignupStrings.Error.maxLengthEmail),
               ),
             ),
           password =
             FormControl.create(
               signupData.password,
               listOf(
-                FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password"),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
+                FormValidations.required(SignupStrings.Error.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = SignupStrings.Error.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = SignupStrings.Error.maxLengthPassword),
               ),
             ),
           confirmPassword =
             FormControl.create(
               signupData.confirmPassword,
               listOf(
-                FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword"),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
+                FormValidations.required(SignupStrings.Error.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = SignupStrings.Error.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = SignupStrings.Error.maxLengthPassword),
               ),
             ),
           zipcode =
             FormControl.create(
               signupData.zipcode,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.emailBlank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.minLength(AppValidatorConfig.ZipCode.MIN_LENGTH),
-              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH),
+              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
               ),
             ),
           birthday =
@@ -160,7 +160,7 @@ data class SignupFormControls(
           goalWeight =
             FormControl.create(
               signupData.goalWeight,
-              listOf(FormValidations.required()), // Dynamic validator will be added after formGroup creation
+              listOf(FormValidations.required(SignupStrings.Error.required)), // Dynamic validator will be added after formGroup creation
             ),
           useMetric =
             FormControl.create(

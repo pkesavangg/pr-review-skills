@@ -25,6 +25,7 @@ object ValidationMessages {
   const val RANGE = "value must be between %d and %d"
   const val INVALID_NUMBER = "invalid number"
   const val INVALID_EMAIL = "must use a valid email"
+  const val EMAIL_INVALID_FORMAT = "must use a valid email"
   const val PATTERN = "invalid"
   const val NOT_SAME = "value should not be same as other field"
   const val GREATER_THAN = "value should be greater than %s"
@@ -38,14 +39,14 @@ object ValidationMessages {
   const val INVALID_WEIGHT = "invalid weight"
   const val KG_RANGE = "Value should be between 0 kg and 450 kg"
   const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
-  const val WEIGHT_MATCH = "value should not be equal to current weight"
+  const val WEIGHT_MATCH = "value should not be equal to starting weight"
 }
 
 object FormValidations {
-  fun required(): Validator<Any> =
+  fun required(customMessage: String? = null): Validator<Any> =
     { value ->
       if (value.toString().isEmpty()) {
-        ValidationError(ValidationType.REQUIRED, ValidationMessages.REQUIRED)
+        ValidationError(ValidationType.REQUIRED, customMessage ?: ValidationMessages.REQUIRED)
       } else {
         null
       }
@@ -54,10 +55,11 @@ object FormValidations {
   fun minLength(
     length: Int,
     fieldName: String = "Field",
+    customMessage: String? = null,
   ): Validator<String> =
     { value ->
       if (value.trim().length < length) {
-        ValidationError(ValidationType.MIN_LENGTH, "Minimum of $length characters needed")
+        ValidationError(ValidationType.MIN_LENGTH, customMessage ?: "Minimum of $length characters needed")
       } else {
         null
       }
@@ -66,19 +68,24 @@ object FormValidations {
   fun maxLength(
     length: Int,
     fieldName: String? = null,
+    customMessage: String? = null,
   ): Validator<String> =
     { value ->
       if (value.trim().length > length) {
-        ValidationError(ValidationType.MAX_LENGTH, if(fieldName.isNullOrEmpty()) "maximum value should be $length" else "$fieldName should not exceed $length characters")
+        ValidationError(
+          ValidationType.MAX_LENGTH,
+          customMessage ?: if(fieldName.isNullOrEmpty()) "maximum value should be $length" else "$fieldName should not exceed $length characters"
+        )
       } else {
         null
       }
     }
 
-  fun email(): Validator<String> =
+  fun email(customMessage: String? = null): Validator<String> =
     { value ->
-      if (!AppValidatorConfig.Email.PATTERN.matches(value.trim())) {
-        ValidationError(ValidationType.EMAIL, ValidationMessages.INVALID_EMAIL)
+      val trimmedValue = value.trim()
+      if (!AppValidatorConfig.Email.PATTERN.matches(trimmedValue)) {
+        ValidationError(ValidationType.EMAIL, customMessage ?: ValidationMessages.EMAIL_INVALID_FORMAT)
       } else {
         null
       }
