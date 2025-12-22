@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
+import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -49,6 +50,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
+import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -62,14 +64,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
 import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -161,6 +168,7 @@ constructor(
     // Set setup in progress when initialization starts
     deviceService.setSetupInProgress(true)
     loadScaleInfo()
+    initializePermissionsImmediately()
     observePermissions()
     observeStepChanges()
     initializeSetup()
@@ -168,6 +176,58 @@ constructor(
     viewModelScope.launch {
       accountId = accountService.activeAccountFlow.first()?.id
     }
+  }
+
+  /**
+   * Initializes permissions immediately with current values.
+   * This ensures permissions are set even before the flow starts emitting, especially important in offline mode.
+   */
+  private fun initializePermissionsImmediately() {
+    viewModelScope.launch {
+      try {
+        val currentPermissions = permissionService.permissionCallBackFlow.value
+        // Try to get network state, but use default offline state if unavailable
+        val networkState = try {
+          connectivityObserver.observe().first()
+        } catch (e: Exception) {
+          AppLog.d(TAG, "Network state unavailable during initialization (offline mode)")
+          NetworkState(available = false, unAvailable = true)
+        }
+        updatePermissionsState(currentPermissions, networkState.available)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error initializing permissions immediately", e)
+      }
+    }
+  }
+
+  /**
+   * Updates permissions state with the given permissions map and network availability.
+   */
+  private fun updatePermissionsState(
+    permissions: GGPermissionStatusMap,
+    isNetworkAvailable: Boolean,
+  ) {
+    val networkStatus = if (isNetworkAvailable) GGPermissionState.ENABLED else GGPermissionState.DISABLED
+    val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
+
+    AppLog.d(TAG, "Updating permissions - Network: $networkStatus, WiFi switch: $wifiSwitchStatus")
+
+    // WiFi switch is enabled if either network is available OR WiFi switch is enabled
+    val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
+      wifiSwitchStatus == GGPermissionState.ENABLED
+    ) {
+      GGPermissionState.ENABLED
+    } else {
+      GGPermissionState.DISABLED
+    }
+
+    AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
+    val updatedPermissions = permissions.toMutableMap().apply {
+      put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
+    }
+
+    handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
+    Log.d("permissionssetup", "Initial permissions: $permissions - Updated: $updatedPermissions")
   }
 
   private fun initializeSetup() {
@@ -340,36 +400,46 @@ constructor(
 
   private fun observePermissions() {
     viewModelScope.launch {
+      // Create a network state flow that always emits, even in offline mode
+      // Start with a default offline state, then merge with actual network observations
+      val defaultNetworkState = NetworkState(available = false, unAvailable = true)
+      val networkStateFlow = merge(
+        // Emit default state immediately to ensure combine() works even in offline mode
+        flowOf(defaultNetworkState),
+        // Then observe actual network state changes
+        connectivityObserver.observe()
+          .catch { e ->
+            // In offline mode or if network check fails, emit default offline state
+            AppLog.d(TAG, "Network state unavailable (offline mode), using default: ${e.message}")
+            emit(defaultNetworkState)
+          }
+      )
+
       // Use the same logic as ScaleSetupViewmodel.subscribePermissions to handle WIFI_SWITCH properly
       combine(
-        permissionService.permissionCallBackFlow,
-        connectivityObserver.observe(),
+        permissionService.permissionCallBackFlow.onStart {
+          // Ensure permissions flow emits immediately
+          AppLog.d(TAG, "Starting permission observation")
+        },
+        networkStateFlow,
       ) { permissions, networkState ->
-        val networkStatus = if (networkState.available) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
-
-        AppLog.d(TAG, "Network status: $networkStatus, WiFi switch status: $wifiSwitchStatus")
-
-        // WiFi switch is enabled if either network is available OR WiFi switch is enabled
-        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-          wifiSwitchStatus == GGPermissionState.ENABLED
-        ) {
-          GGPermissionState.ENABLED
-        } else {
-          GGPermissionState.DISABLED
-        }
-
-        AppLog.d(TAG, "Updated WiFi switch status: $updatedWifiSwitchStatus")
-        val updatedPermissions = permissions.toMutableMap().apply {
-          put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
-        }
-
-        handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
+        updatePermissionsState(permissions, networkState.available)
         val areRequiredPermissionsEnabled =
-          AppPermissionsHelper.areRequiredPermissionsEnabled(updatedPermissions, setupType = ScaleSetupType.BtWifiR4)
+          AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.BtWifiR4)
         if (!areRequiredPermissionsEnabled) {
           // Use comprehensive permission-based error handling
           handlePermissionBasedErrors()
+        }
+      }.catch { e ->
+        // Handle any errors in the combine flow gracefully
+        AppLog.e(TAG, "Error in permission observation flow", e)
+        // Still try to update permissions with current state, assuming offline
+        try {
+          val currentPermissions = permissionService.permissionCallBackFlow.value
+          updatePermissionsState(currentPermissions, false) // Assume offline
+          AppLog.d(TAG, "Updated permissions in offline mode after error")
+        } catch (updateError: Exception) {
+          AppLog.e(TAG, "Error updating permissions in offline mode", updateError)
         }
       }.collect { }
     }
@@ -1437,7 +1507,7 @@ constructor(
     AppLog.d(TAG, "All required permissions are enabled")
   }
 
-  private suspend fun updateWifiDetails() {
+  private fun updateWifiDetails() {
     val supervisorJob = SupervisorJob()
     val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
     discoveredScale = discoveredScale?.copy(
