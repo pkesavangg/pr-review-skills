@@ -68,6 +68,9 @@ class SettingsStore: ObservableObject {
     // MARK: - Log Out All Accounts
     @Published var canShowLogOutAllItems = false
     
+    // MARK: - Entry State
+    @Published var hasEntries: Bool = false
+    
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -142,6 +145,20 @@ class SettingsStore: ObservableObject {
             .store(in: &cancellables)
         
         self.observeNotificationBadgeChanges()
+        Task { await self.checkEntries() }
+        
+        // Listen to entry changes to update hasEntries
+        entryService.entrySaved
+            .sink { [weak self] _ in
+                Task { await self?.checkEntries() }
+            }
+            .store(in: &cancellables)
+        
+        entryService.entryDeleted
+            .sink { [weak self] _ in
+                Task { await self?.checkEntries() }
+            }
+            .store(in: &cancellables)
     }
     
     func handleLogout() {
@@ -1424,7 +1441,7 @@ class SettingsStore: ObservableObject {
                 }
             )
             
-            if let account = self.accountService.activeAccount {
+            if self.accountService.activeAccount != nil {
                 self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
             }
         }
@@ -1435,6 +1452,16 @@ class SettingsStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
+    }
+    
+    // MARK: - Entry Check
+    private func checkEntries() async {
+        do {
+            let months = try await entryService.getMonthsAll()
+            hasEntries = !months.isEmpty
+        } catch {
+            hasEntries = false
+        }
     }
 
     // MARK: - Picker Presentation Helpers

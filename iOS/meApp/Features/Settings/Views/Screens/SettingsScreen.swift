@@ -203,9 +203,14 @@ struct SettingsScreen: View {
                 router.navigate(to: .integrations)
             }))
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
-                settingsStore.handleExport()
-            }))
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.exportData,
+                chevronType: .none,
+                isDisabled: !settingsStore.hasEntries,
+                onTap: {
+                    settingsStore.handleExport()
+                }
+            ))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
                                                             onTap: {
