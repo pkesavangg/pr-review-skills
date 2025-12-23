@@ -153,7 +153,9 @@ constructor(
             dialogQueueService.enqueue(
               DialogModel.Confirm(
                 title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                message = AppPopupStrings.UnsavedChanges.Message,
+                message = AppPopupStrings.UnsavedChanges.ManualEntryMessage,
+                confirmText = AppPopupStrings.UnsavedChanges.Exit,
+                cancelText = AppPopupStrings.UnsavedChanges.Return,
                 onConfirm = {
                   if (!isResumed) {
                     isResumed = true
@@ -162,7 +164,7 @@ constructor(
                     cont.resume(true)
                   }
                 },
-                onCancel = {
+              onCancel = {
                   if (!isResumed) {
                     isResumed = true
                     cont.resume(false)
@@ -188,7 +190,9 @@ constructor(
             dialogQueueService.enqueue(
               DialogModel.Confirm(
                 title = AppPopupStrings.UnsavedChanges.ManualEntryTitle,
-                message = AppPopupStrings.UnsavedChanges.Message,
+                message = AppPopupStrings.UnsavedChanges.ManualEntryMessage,
+                confirmText = AppPopupStrings.UnsavedChanges.Exit,
+                cancelText = AppPopupStrings.UnsavedChanges.Return,
                 onConfirm = {
                   if (!isResumed) {
                     isResumed = true

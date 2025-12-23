@@ -12,6 +12,7 @@ object AppPopupStrings {
     const val Title = "Confirm"
     const val ManualEntryTitle = "Your entry has not been saved!"
     const val Message = "Are you sure you want to leave?"
+    const val ManualEntryMessage = "Are you sure you want to exit?"
     const val Return = "Return"
     const val Exit = "Exit"
   }
