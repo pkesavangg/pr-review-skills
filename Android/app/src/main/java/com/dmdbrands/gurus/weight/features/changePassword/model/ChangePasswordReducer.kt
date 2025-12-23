@@ -74,14 +74,14 @@ data class ChangePasswordFormControls(
                             initialValue = "",
                             validators =
                                 listOf(
-                                    FormValidations.required(),
+                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
                                     FormValidations.minLength(
                                         AppValidatorConfig.Password.MIN_LENGTH,
-                                        ChangePasswordStrings.CurrentPasswordLabel,
+                                        customMessage = ChangePasswordStrings.PasswordMin,
                                     ),
                                     FormValidations.maxLength(
                                         AppValidatorConfig.Password.MAX_LENGTH,
-                                        ChangePasswordStrings.CurrentPasswordLabel,
+                                        customMessage = ChangePasswordStrings.PasswordMax,
                                     ),
                                 ),
                         ),
@@ -90,14 +90,14 @@ data class ChangePasswordFormControls(
                             initialValue = "",
                             validators =
                                 listOf(
-                                    FormValidations.required(),
+                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
                                     FormValidations.minLength(
-                                        AppValidatorConfig.Password.MIN_LENGTH,
-                                        ChangePasswordStrings.NewPasswordLabel,
+                                      AppValidatorConfig.Password.MIN_LENGTH,
+                                      customMessage = ChangePasswordStrings.PasswordMin,
                                     ),
                                     FormValidations.maxLength(
-                                        AppValidatorConfig.Password.MAX_LENGTH,
-                                        ChangePasswordStrings.NewPasswordLabel,
+                                      AppValidatorConfig.Password.MAX_LENGTH,
+                                      customMessage = ChangePasswordStrings.PasswordMax,
                                     ),
                                 ),
                         ),
@@ -106,14 +106,14 @@ data class ChangePasswordFormControls(
                             initialValue = "",
                             validators =
                                 listOf(
-                                    FormValidations.required(),
+                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
                                     FormValidations.minLength(
-                                        AppValidatorConfig.Password.MIN_LENGTH,
-                                        ChangePasswordStrings.ConfirmPasswordLabel,
+                                      AppValidatorConfig.Password.MIN_LENGTH,
+                                      customMessage = ChangePasswordStrings.PasswordMin,
                                     ),
                                     FormValidations.maxLength(
-                                        AppValidatorConfig.Password.MAX_LENGTH,
-                                        ChangePasswordStrings.ConfirmPasswordLabel,
+                                      AppValidatorConfig.Password.MAX_LENGTH,
+                                      customMessage = ChangePasswordStrings.PasswordMax,
                                     ),
                                 ),
                         ),
