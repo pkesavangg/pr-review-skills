@@ -93,6 +93,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.ExportData,
               type = SettingsItemType.None,
+              enabled = state.isExportEnabled,
               onClick = {
                 handleIntent.invoke(SettingsIntent.ExportData)
               },
