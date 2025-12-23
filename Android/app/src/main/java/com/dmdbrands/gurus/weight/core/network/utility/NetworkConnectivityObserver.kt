@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.core.network.utility
 
-import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -14,7 +13,6 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.os.Build
 
 /**
  * Represents the current network state.
@@ -33,7 +31,6 @@ data class NetworkState(
  *
  * @constructor Injects the application context for system service access.
  */
-@RequiresApi(Build.VERSION_CODES.M)
 class NetworkConnectivityObserver
     @Inject
     constructor(

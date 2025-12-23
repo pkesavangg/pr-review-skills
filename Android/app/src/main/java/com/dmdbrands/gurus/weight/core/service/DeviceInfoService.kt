@@ -57,14 +57,26 @@ constructor(
 
   /**
    * Starts monitoring network connectivity to auto-sync when network becomes available.
+   * Handles both initial state and state changes, including when app starts offline.
    */
   private fun startNetworkMonitoring() {
     serviceScope.launch {
+      // Get initial network state to handle app starting offline
+      val initialNetworkState = connectivityObserver.getCurrentNetworkState()
+      AppLog.d(TAG, "Initial network state: available=${initialNetworkState.available}")
+
+      // Handle initial state if offline
+      if (!initialNetworkState.available) {
+        AppLog.d(TAG, "App started offline, showing network error")
+        showNetworkError()
+      }
+
+      // Monitor network state changes
       connectivityObserver
         .observe()
         .distinctUntilChanged()
         .collect { networkState ->
-          AppLog.d(TAG, "Network state changed: available=${!networkState.unAvailable}")
+          AppLog.d(TAG, "Network state changed: available=${networkState.available}")
 
           // When network becomes available, check for pending sync
           if (networkState.available) {
