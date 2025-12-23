@@ -278,6 +278,7 @@ private fun rememberThrottledClick(
  * @param size Button size
  * @param enabled Whether the button is enabled
  * @param textTransform Text transformation
+ * @param maxLines Maximum number of lines for the button text. Defaults to 1 for most buttons, 2 for text buttons.
  * @param onClick Click handler
  */
 @Composable
@@ -288,6 +289,7 @@ fun AppButton(
   size: ButtonSize = ButtonSize.Large,
   enabled: Boolean = true,
   textTransform: TextTransform = TextTransform.UPPERCASE,
+  maxLines: Int = if (type == ButtonType.TextPrimary || type == ButtonType.TextSecondary || type == ButtonType.TextTertiary || type == ButtonType.ErrorText) 2 else 1,
   onClick: () -> Unit,
 ) {
   // Get style values from defaults
@@ -306,18 +308,28 @@ fun AppButton(
   val text = AppButtonDefaults.transformText(label, textTransform)
   val minWidth = AppButtonDefaults.minWidth(size)
   val shape = RoundedCornerShape(50)
-  val vPadding = 0.dp
-  val maxLines = 1
+  // Add vertical padding for multi-line text buttons to prevent text from touching edges
+  val isMultiLineTextButton = maxLines > 1 && (type == ButtonType.TextPrimary || type == ButtonType.TextSecondary || type == ButtonType.TextTertiary || type == ButtonType.ErrorText)
+  val vPadding = if (isMultiLineTextButton) MeTheme.spacing.xs else 0.dp
 
+  // For text buttons with multi-line text, don't enforce minWidth to allow wrapping
+  val shouldEnforceMinWidth = maxLines == 1 || (type != ButtonType.TextPrimary && type != ButtonType.TextSecondary && type != ButtonType.TextTertiary && type != ButtonType.ErrorText)
+  
   val buttonModifier = modifier
     .then(
-      if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
-        Modifier.height(height)
-      } else {
-        Modifier
+      when {
+        type == ButtonType.InlineTextPrimary || type == ButtonType.InlineTextSecondary -> Modifier
+        isMultiLineTextButton -> Modifier.defaultMinSize(minHeight = height)
+        else -> Modifier.height(height)
       },
     )
-    .defaultMinSize(minWidth = minWidth)
+    .then(
+      if (shouldEnforceMinWidth) {
+        Modifier.defaultMinSize(minWidth = minWidth)
+      } else {
+        Modifier
+      }
+    )
 
   // Create interaction source for focus state
   val interactionSource = remember { MutableInteractionSource() }

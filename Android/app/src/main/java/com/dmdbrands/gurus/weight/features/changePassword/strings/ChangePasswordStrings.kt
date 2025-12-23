@@ -6,7 +6,7 @@ package com.dmdbrands.gurus.weight.features.changePassword.strings
 object ChangePasswordStrings {
     const val Title = "Change Password"
     const val CurrentPasswordLabel = "current password"
-    const val NewPasswordLabel = "new password"
+    const val NewPasswordLabel = "create new password"
     const val ConfirmPasswordLabel = "confirm new password"
     const val ForgotPasswordLabel = "forgot password?"
     const val LoaderMessage = "Saving..."
