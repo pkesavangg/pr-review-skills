@@ -175,31 +175,33 @@ object FormValidations {
           ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_WEIGHT)
         } else {
           if (unitType == WeightUnit.KG) {
+            val unit = "kg"
             when {
               v <= AppValidatorConfig.WeightKg.MIN  ->
                 ValidationError(
                   ValidationType.GREATER,
-                  String.format(ValidationMessages.GREATER_THAN, AppValidatorConfig.WeightKg.MIN)
+                  String.format(ValidationMessages.GREATER_THAN, "${AppValidatorConfig.WeightKg.MIN} $unit")
                 )
               v >= AppValidatorConfig.WeightKg.MAX ->
                 ValidationError(
                   ValidationType.LESSER,
-                  String.format(ValidationMessages.LESS_THAN, AppValidatorConfig.WeightKg.MAX)
+                  String.format(ValidationMessages.LESS_THAN, "${AppValidatorConfig.WeightKg.MAX} $unit")
                 )
 
               else -> null
             }
           } else {
+            val unit = "lbs"
             when {
               v <= AppValidatorConfig.WeightLb.MIN  ->
                 ValidationError(
                   ValidationType.GREATER,
-                  String.format(ValidationMessages.GREATER_THAN, AppValidatorConfig.WeightLb.MIN)
+                  String.format(ValidationMessages.GREATER_THAN, "${AppValidatorConfig.WeightLb.MIN} $unit")
                 )
               v >= AppValidatorConfig.WeightLb.MAX ->
                 ValidationError(
                   ValidationType.LESSER,
-                  String.format(ValidationMessages.LESS_THAN, AppValidatorConfig.WeightLb.MAX)
+                  String.format(ValidationMessages.LESS_THAN, "${AppValidatorConfig.WeightLb.MAX} $unit")
                 )
 
               else -> null
