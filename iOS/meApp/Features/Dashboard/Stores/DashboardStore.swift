@@ -45,8 +45,6 @@ class DashboardStore: ObservableObject {
     private let dataManager: DashboardDataManager
     
     var shouldShowGoalCardOrStreaks: Bool {
-        // Don't show goal card or streaks until progress metrics are loaded
-        guard state.ui.hasLoadedProgressMetrics else { return false }
         return !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
     }
     // MARK: - Initialization
@@ -268,9 +266,6 @@ class DashboardStore: ObservableObject {
     }
     
     var streakItemsToShow: [MetricItem] {
-        // Don't show streaks until progress metrics are loaded from API
-        guard state.ui.hasLoadedProgressMetrics else { return [] }
-        
         let allStreaks = streakManager.state.streakItems
         let nonRemoved = allStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
         let removed = allStreaks.filter { state.ui.removedStreaks.contains($0.label) }

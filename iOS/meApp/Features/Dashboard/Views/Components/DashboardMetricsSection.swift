@@ -30,23 +30,19 @@ struct DashboardMetricsSection: View {
                 }
             }
 
-            // Show body metrics first when dashboard config is loaded
-            if store.state.ui.hasLoadedDashboardConfig {
-                if !store.metricsToShow.isEmpty {
-                    metricsGridSection()
-                }
-                
-                // Show divider and progress metrics (goal card + streaks) only after progress metrics are loaded
-                if store.state.ui.hasLoadedProgressMetrics {
-                    if store.state.ui.isEditMode ||
-                        (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
-                        dividerSection()
-                    }
+            if !store.metricsToShow.isEmpty {
+                metricsGridSection()
+            }
+            
+            if store.state.ui.isEditMode ||
+                (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
+                dividerSection()
+            }
 
-                    if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
-                        goalStreakSection()
-                    }
-                }
+            let hasStreaks = !store.streakItemsToShow.isEmpty
+            let hasValidGoal = !store.state.ui.isGoalCardRemoved && store.hasGoalSet
+            if hasStreaks || hasValidGoal {
+                goalStreakSection()
             }
             
         }
@@ -67,10 +63,8 @@ struct DashboardMetricsSection: View {
         }
         .onChange(of: parentView) { _, newValue in
             if newValue == .R4ScaleSetup {
-                store.state.ui.isEditMode = true
-                Task {
-                    try? await store.streakManager.refreshStreakData()
-                    await store.loadProgressMetricsFromAccount()
+                if !store.state.ui.isEditMode {
+                    store.state.ui.isEditMode = true
                 }
             }
         }
