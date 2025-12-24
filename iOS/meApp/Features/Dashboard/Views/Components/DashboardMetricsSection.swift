@@ -56,13 +56,14 @@ struct DashboardMetricsSection: View {
                 }
                 store.metricsManager.resetActiveMetricsCountToShowAll()
                 store.syncRemovalStateFromMetricsManager()
-                store.objectWillChange.send()
             }
         }
         .onChange(of: parentView) { _, newValue in
             if newValue == .R4ScaleSetup {
-                if !store.state.ui.isEditMode {
-                    store.state.ui.isEditMode = true
+                store.state.ui.isEditMode = true
+                Task {
+                    try? await store.streakManager.refreshStreakData()
+                    await store.loadProgressMetricsFromAccount()
                 }
             }
         }

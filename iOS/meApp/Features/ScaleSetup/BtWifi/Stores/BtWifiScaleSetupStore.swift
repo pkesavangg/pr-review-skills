@@ -2309,6 +2309,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
             await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
         }
         
+        // Ensure streak data is refreshed and progress metrics are loaded before edit mode
+        try? await dashboardStore.streakManager.refreshStreakData()
+        await dashboardStore.loadProgressMetricsFromAccount()
+        
         await MainActor.run {
             dashboardStore.beginEdit()
             dashboardStore.state.ui.isEditMode = true

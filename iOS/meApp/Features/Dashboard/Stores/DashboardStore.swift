@@ -259,13 +259,18 @@ class DashboardStore: ObservableObject {
     }
     
     var streakItemsToShow: [MetricItem] {
-        let baseStreaks = streakManager.getStreakItemsToShow(isEditMode: state.ui.isEditMode)
-        
-        // In edit mode, show all streaks so users can toggle removal state
-        // In non-edit mode, filter out removed streaks
+        // Match body metrics pattern: in edit mode, show all streaks (non-removed first, then removed)
+        // In non-edit mode, only show non-removed streaks
         if state.ui.isEditMode {
-            return baseStreaks
+            // In edit mode, show all streaks (both removed and non-removed) so users can manage them
+            // Non-removed streaks first, then removed streaks (matching body metrics pattern)
+            let allStreaks = streakManager.state.streakItems
+            let nonRemovedStreaks = allStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
+            let removedStreaksArray = allStreaks.filter { state.ui.removedStreaks.contains($0.label) }
+            return nonRemovedStreaks + removedStreaksArray
         } else {
+            // In non-edit mode, only show non-removed streaks
+            let baseStreaks = streakManager.getStreakItemsToShow(isEditMode: false)
             return baseStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
         }
     }
@@ -707,8 +712,10 @@ class DashboardStore: ObservableObject {
         await loadDashboardConfigurationFromAPI()
         
         // Ensure removal state is synced after API loading
+        // Note: syncRemovalStateFromStreakManager() is NOT called here because
+        // loadProgressMetricsFromAccount() (called from loadDashboardConfigurationFromAPI)
+        // already sets the removal state correctly from the account data
         syncRemovalStateFromMetricsManager()
-        syncRemovalStateFromStreakManager()
 
         // Load other data
         loadLatestEntryData()
@@ -798,6 +805,9 @@ class DashboardStore: ObservableObject {
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
             
+            // Load progress metrics configuration from API
+            await loadProgressMetricsFromAccount()
+            
             // Mark loading as complete
             await MainActor.run {
                 objectWillChange.send()
@@ -812,6 +822,215 @@ class DashboardStore: ObservableObject {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
         }
     }
+    
+    /// Loads progress metrics order from the account and restores the UI state.
+    /// This method parses the progressMetrics array from the account and restores:
+    /// - goalCardPosition: Position of goal card in the combined grid (goal + streaks)
+    /// - streakGridOrder: Ordered array of streak item IDs
+    /// - isGoalCardRemoved: Whether the goal card is removed
+    /// - removedStreaks: Set of streak labels that are removed (not in the array)
+    func loadProgressMetricsFromAccount() async {
+        guard let account = accountService.activeAccount,
+              let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+            // No progress metrics saved, use defaults
+            logger.log(level: .debug, tag: "DashboardStore", message: "No progress metrics found in account, using defaults")
+            await MainActor.run {
+                // Set default order if no saved metrics
+                setupDefaultProgressMetricsOrder()
+            }
+            return
+        }
+        
+        let progressMetrics = progressMetricsString.split(separator: ",").map { String($0) }
+        
+        await MainActor.run {
+            // Ensure streak items are loaded before mapping
+            let allStreaks = streakManager.state.streakItems
+            guard !allStreaks.isEmpty else {
+                logger.log(level: .info, tag: "DashboardStore", message: "No streak items available for progress metrics mapping")
+                setupDefaultProgressMetricsOrder()
+                return
+            }
+            
+            // Helper to map API value to streak label
+            // This must match the exact label from allStreaks to ensure proper removal state
+            func mapAPIValueToStreakLabel(_ apiValue: String) -> String? {
+                switch apiValue {
+                case "currentStreak":
+                    return DashboardStrings.currentStreak
+                case "longestStreak":
+                    return DashboardStrings.longestStreak
+                case "weeklyChange":
+                    // Find the exact label that contains "/week"
+                    return allStreaks.first(where: { $0.label.contains("/week") })?.label
+                case "monthlyChange":
+                    // Find the exact label that contains "/month"
+                    return allStreaks.first(where: { $0.label.contains("/month") })?.label
+                case "yearlyChange":
+                    // Find the exact label that contains "/year"
+                    return allStreaks.first(where: { $0.label.contains("/year") })?.label
+                case "totalChange":
+                    // Find the exact label that contains "/total"
+                    return allStreaks.first(where: { $0.label.contains("/total") })?.label
+                default:
+                    return nil
+                }
+            }
+            
+            var goalCardPosition: Int? = nil
+            var orderedStreakIds: [String] = []
+            var foundStreakLabels: Set<String> = []
+            
+            // Parse the progressMetrics array to restore order
+            // The array contains: [goal, currentStreak, longestStreak, weeklyChange, ...]
+            // We need to extract goal position and streak order
+            for (index, apiValue) in progressMetrics.enumerated() {
+                if apiValue == "goal" {
+                    goalCardPosition = index
+                } else if let streakLabel = mapAPIValueToStreakLabel(apiValue),
+                          let streakItem = allStreaks.first(where: { $0.label == streakLabel }) {
+                    orderedStreakIds.append(streakItem.id.uuidString)
+                    foundStreakLabels.insert(streakLabel)
+                    logger.log(level: .debug, tag: "DashboardStore", message: "Mapped API value '\(apiValue)' to streak label '\(streakLabel)' with ID '\(streakItem.id.uuidString)'")
+                } else {
+                    logger.log(level: .error, tag: "DashboardStore", message: "Could not map API value '\(apiValue)' to a streak label. Available streaks: \(allStreaks.map { $0.label })")
+                }
+            }
+            
+            // Update UI state with restored values
+            if let goalPos = goalCardPosition {
+                state.ui.goalCardPosition = goalPos
+                state.ui.isGoalCardRemoved = false
+            } else {
+                // Goal not found in array, it's removed
+                state.ui.isGoalCardRemoved = true
+                state.ui.goalCardPosition = 0
+            }
+            
+            // Update streak order - this determines the order of streak items in the grid
+            // Only include streaks that are actually present (not removed)
+            state.ui.streakGridOrder = orderedStreakIds
+            
+            // Mark streaks not in the array as removed
+            let allStreakLabels = Set(allStreaks.map { $0.label })
+            let removedStreaks = allStreakLabels.subtracting(foundStreakLabels)
+            state.ui.removedStreaks = removedStreaks
+            
+            // Log detailed information for debugging
+            logger.log(level: .info, tag: "DashboardStore", message: "Progress metrics loaded from account: goalPosition=\(goalCardPosition ?? -1), streakCount=\(orderedStreakIds.count), removedCount=\(removedStreaks.count)")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Found streak labels: \(foundStreakLabels)")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Removed streak labels: \(Array(removedStreaks))")
+            logger.log(level: .debug, tag: "DashboardStore", message: "All streak labels: \(Array(allStreakLabels))")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Setting removedStreaks in state.ui to: \(Array(removedStreaks))")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Metrics array: \(progressMetrics)")
+            
+            // Verify each streak's removal state
+            for streak in allStreaks {
+                let isRemoved = removedStreaks.contains(streak.label)
+                let isInFound = foundStreakLabels.contains(streak.label)
+                logger.log(level: .debug, tag: "DashboardStore", message: "Streak '\(streak.label)' isRemoved=\(isRemoved), isInFound=\(isInFound), in removedStreaks set=\(removedStreaks.contains(streak.label))")
+            }
+            
+            // Double-check that state.ui.removedStreaks was set correctly
+            logger.log(level: .debug, tag: "DashboardStore", message: "Final state.ui.removedStreaks: \(Array(state.ui.removedStreaks))")
+            
+            // Trigger UI update to reflect the restored order
+            objectWillChange.send()
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Progress metrics loaded from account: goalPosition=\(goalCardPosition ?? -1), streakCount=\(orderedStreakIds.count), removedCount=\(removedStreaks.count), metrics=\(progressMetrics)")
+        }
+    }
+    
+    /// Resets progress metrics to default order and clears removal state.
+    /// Default order: goal, currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
+    /// This ensures the saved order matches: ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+    func resetProgressMetricsToDefaults() async {
+        await MainActor.run {
+            let allStreaks = streakManager.state.streakItems
+            
+            // Helper to find streak by label pattern
+            func findStreakByPattern(_ pattern: String) -> MetricItem? {
+                return allStreaks.first(where: { $0.label.contains(pattern) })
+            }
+            
+            // Build default order matching the expected API order:
+            // currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
+            // Goal will be inserted at position 0 by saveProgressMetricsToAPI()
+            var defaultOrder: [String] = []
+            
+            // Add streaks in the exact default order
+            if let currentStreak = allStreaks.first(where: { $0.label == DashboardStrings.currentStreak }) {
+                defaultOrder.append(currentStreak.id.uuidString)
+            }
+            if let longestStreak = allStreaks.first(where: { $0.label == DashboardStrings.longestStreak }) {
+                defaultOrder.append(longestStreak.id.uuidString)
+            }
+            if let weeklyChange = findStreakByPattern("/week") {
+                defaultOrder.append(weeklyChange.id.uuidString)
+            }
+            if let monthlyChange = findStreakByPattern("/month") {
+                defaultOrder.append(monthlyChange.id.uuidString)
+            }
+            if let yearlyChange = findStreakByPattern("/year") {
+                defaultOrder.append(yearlyChange.id.uuidString)
+            }
+            if let totalChange = findStreakByPattern("/total") {
+                defaultOrder.append(totalChange.id.uuidString)
+            }
+            
+            // Set default state
+            // goalCardPosition = 0 means goal will be inserted at the beginning of the combined array
+            state.ui.goalCardPosition = 0
+            state.ui.isGoalCardRemoved = false
+            state.ui.streakGridOrder = defaultOrder
+            state.ui.removedStreaks = []
+            
+            logger.log(level: .info, tag: "DashboardStore", message: "Progress metrics reset to defaults: goalPosition=0, streakGridOrder count=\(defaultOrder.count), removedStreaks=0")
+            logger.log(level: .debug, tag: "DashboardStore", message: "Reset streakGridOrder IDs: \(defaultOrder)")
+        }
+    }
+    
+    /// Sets up default progress metrics order when no saved order exists.
+    /// Default order: goal, currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
+    private func setupDefaultProgressMetricsOrder() {
+        let allStreaks = streakManager.state.streakItems
+        
+        // Helper to find streak by label pattern
+        func findStreakByPattern(_ pattern: String) -> MetricItem? {
+            return allStreaks.first(where: { $0.label.contains(pattern) })
+        }
+        
+        // Build default order
+        var defaultOrder: [String] = []
+        
+        // Add streaks in default order
+        if let currentStreak = allStreaks.first(where: { $0.label == DashboardStrings.currentStreak }) {
+            defaultOrder.append(currentStreak.id.uuidString)
+        }
+        if let longestStreak = allStreaks.first(where: { $0.label == DashboardStrings.longestStreak }) {
+            defaultOrder.append(longestStreak.id.uuidString)
+        }
+        if let weeklyChange = findStreakByPattern("/week") {
+            defaultOrder.append(weeklyChange.id.uuidString)
+        }
+        if let monthlyChange = findStreakByPattern("/month") {
+            defaultOrder.append(monthlyChange.id.uuidString)
+        }
+        if let yearlyChange = findStreakByPattern("/year") {
+            defaultOrder.append(yearlyChange.id.uuidString)
+        }
+        if let totalChange = findStreakByPattern("/total") {
+            defaultOrder.append(totalChange.id.uuidString)
+        }
+        
+        // Set default state
+        state.ui.goalCardPosition = 0 // Goal at first position
+        state.ui.isGoalCardRemoved = false
+        state.ui.streakGridOrder = defaultOrder
+        state.ui.removedStreaks = []
+        
+        logger.log(level: .debug, tag: "DashboardStore", message: "Default progress metrics order set: goalPosition=0, streakCount=\(defaultOrder.count)")
+    }
 
     // MARK: - View Helpers moved from DashboardScreen
     func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
@@ -821,8 +1040,11 @@ class DashboardStore: ObservableObject {
         }
         await MainActor.run {
             self.objectWillChange.send()
-            if fullRefresh { self.refreshDashboardState() }
+            if fullRefresh { 
+                self.refreshDashboardState()
+            }
         }
+        // Note: Progress metrics reload is handled by handleSettingsChange() which is called by refreshDashboardState()
     }
 
     func refreshAll() async {
@@ -1018,7 +1240,9 @@ class DashboardStore: ObservableObject {
     /// Returns true if the streak with the given label is currently removed
     func isStreakRemoved(_ streakLabel: String) -> Bool {
         // Check if the streak is in the removed streaks set
-        return state.ui.removedStreaks.contains(streakLabel)
+        let isRemoved = state.ui.removedStreaks.contains(streakLabel)
+        logger.log(level: .debug, tag: "DashboardStore", message: "isStreakRemoved('\(streakLabel)') = \(isRemoved), removedStreaks=\(Array(state.ui.removedStreaks))")
+        return isRemoved
     }
     
     // MARK: - Toggle Removal Methods for UIKit Views
@@ -1205,6 +1429,10 @@ class DashboardStore: ObservableObject {
                 self.updateYAxisCache()
                 self.objectWillChange.send()
             }
+            
+            // Reload progress metrics from account to restore removal state
+            // (syncRemovalStateFromStreakManager overwrites removal state, so we need to restore it)
+            await loadProgressMetricsFromAccount()
         }
     }
     
@@ -1228,6 +1456,11 @@ class DashboardStore: ObservableObject {
                 try await streakManager.refreshStreakDataForUnitChange()
                 logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed streak data for unit change")
                 
+                // Reload progress metrics from account to map removal state to new labels
+                // This ensures that removed streaks are correctly identified after unit change
+                await loadProgressMetricsFromAccount()
+                logger.log(level: .debug, tag: "DashboardStore", message: "Reloaded progress metrics after unit change")
+                
                 // Refresh goal data with new unit
                 try await goalManager.refreshGoalDataForUnitChange()
                 logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed goal data for unit change")
@@ -1242,7 +1475,8 @@ class DashboardStore: ObservableObject {
         }
     }
     
-    // Delegate save operations to MetricsManager
+    /// Saves all dashboard changes (metrics and progress metrics) to the API.
+    /// After successful save, reloads progress metrics from account to ensure UI state is synchronized.
     func saveChanges() {
         state.ui.selectedMetricLabel = nil
         state.ui.resetDragState()
@@ -1251,14 +1485,123 @@ class DashboardStore: ObservableObject {
         Task {
             defer { notificationService.dismissLoader() }
             do {
+                // Save dashboard metrics first
                 try await metricsManager.saveMetricsToAPI()
+                
+                // Save progress metrics (goal card and streak items)
+                // Note: AccountService.updateProgressMetrics() already updates activeAccount via updatePublishedState()
+                try await saveProgressMetricsToAPI()
+                
                 logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
+                
+                // Reload progress metrics from already-updated account to sync UI state.
+                // This ensures that streaks added back in edit mode are properly reflected when exiting edit mode.
+                await loadProgressMetricsFromAccount()
+                
                 commonPostSaveUIReset()
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
                 commonPostSaveUIReset()
             }
         }
+    }
+    
+    /// Saves progress metrics (goal card and streak items) to the API.
+    /// Maps UI labels to API values and preserves the order from the current state.
+    func saveProgressMetricsToAPI() async throws {
+        guard accountService.activeAccount != nil else {
+            throw DashboardError.noActiveAccount
+        }
+        
+        // Get all streak items
+        let allStreakItems = streakManager.state.streakItems
+        let streakOrder = state.ui.streakGridOrder
+        let goalCardPosition = state.ui.goalCardPosition
+        let isGoalCardRemoved = state.ui.isGoalCardRemoved
+        let removedStreaks = state.ui.removedStreaks
+        
+        // Helper to map streak label to API value
+        func mapStreakLabelToAPI(_ label: String) -> String? {
+            if label == DashboardStrings.currentStreak {
+                return "currentStreak"
+            } else if label == DashboardStrings.longestStreak {
+                return "longestStreak"
+            } else if label.contains("/week") {
+                return "weeklyChange"
+            } else if label.contains("/month") {
+                return "monthlyChange"
+            } else if label.contains("/year") {
+                return "yearlyChange"
+            } else if label.contains("/total") {
+                return "totalChange"
+            }
+            return nil
+        }
+        
+        // Reconstruct ordered streaks from saved order
+        var orderedStreaks: [MetricItem] = []
+        if !streakOrder.isEmpty {
+            // Map IDs to actual streak items preserving order
+            orderedStreaks = streakOrder.compactMap { id in
+                allStreakItems.first(where: { $0.id.uuidString == id })
+            }
+            // Add any streaks not in the order list (new streaks)
+            let missingStreaks = allStreakItems.filter { item in
+                !streakOrder.contains(item.id.uuidString)
+            }
+            orderedStreaks.append(contentsOf: missingStreaks)
+        } else {
+            // No saved order, use default order
+            orderedStreaks = allStreakItems
+        }
+        
+        // Filter out removed streaks
+        let activeStreaks = orderedStreaks.filter { !removedStreaks.contains($0.label) }
+        
+        // Build combined order: goal card + streaks
+        // The goalCardPosition is the index in the combined grid (goal + all streaks)
+        var progressMetrics: [String] = []
+        
+        if !isGoalCardRemoved {
+            // Build combined array: insert goal at goalCardPosition
+            var combinedItems: [String] = []
+            
+            // Add streaks first
+            for streak in activeStreaks {
+                if let apiValue = mapStreakLabelToAPI(streak.label) {
+                    combinedItems.append(apiValue)
+                }
+            }
+            
+            // Insert goal at goalCardPosition (clamped to valid range)
+            let clampedPosition = min(goalCardPosition, combinedItems.count)
+            combinedItems.insert("goal", at: clampedPosition)
+            
+            progressMetrics = combinedItems
+        } else {
+            // Goal is removed, just add all active streaks
+            for streak in activeStreaks {
+                if let apiValue = mapStreakLabelToAPI(streak.label) {
+                    progressMetrics.append(apiValue)
+                }
+            }
+        }
+        
+        // If no metrics, use default order
+        if progressMetrics.isEmpty {
+            progressMetrics = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        }
+        
+        // Validate: only allow allowed values
+        let allowedValues: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        progressMetrics = progressMetrics.filter { allowedValues.contains($0) }
+        
+        // Log the order being saved for debugging
+        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics)")
+        
+        // Save to API
+        _ = try await accountService.updateProgressMetrics(metrics: progressMetrics)
+        logger.log(level: .info, tag: "DashboardStore", message: "Progress metrics saved to API successfully: \(progressMetrics)")
     }
 
     private func commonPostSaveUIReset() {
@@ -1316,8 +1659,14 @@ class DashboardStore: ObservableObject {
                     self.syncRemovalStateFromMetricsManager()
                     self.syncRemovalStateFromStreakManager()
                     
+                    // Reset progress metrics to default order: goal, currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
+                    // Must be called AFTER refreshStreakData() to ensure streak items are available
+                    await self.resetProgressMetricsToDefaults()
+                    
                     // Save the reset configuration to API
+                    // Save dashboard metrics first, then progress metrics
                     try await self.metricsManager.saveMetricsToAPI()
+                    try await self.saveProgressMetricsToAPI()
                     
                     // Now manually sync manager states to UI state since we suppressed updates
                     self.state.metrics = self.metricsManager.state

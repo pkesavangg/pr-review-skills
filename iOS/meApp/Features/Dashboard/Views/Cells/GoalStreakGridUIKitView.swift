@@ -181,11 +181,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let isEditMode = store.state.ui.isEditMode
 
         func orderedStreaks(from all: [MetricItem], using order: [String]) -> [MetricItem] {
-            guard !order.isEmpty else { return all }
-            var ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
-            let missing = all.filter { s in !order.contains(s.id.uuidString) }
-            ordered.append(contentsOf: missing)
-            return ordered
+            if isEditMode {
+                // In edit mode, show ALL streaks (including removed ones)
+                // Order them according to the saved order, then append any missing ones at the end
+                var ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                let missing = all.filter { streak in !order.contains(streak.id.uuidString) }
+                ordered.append(contentsOf: missing)
+                return ordered
+            } else {
+                // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
+                guard !order.isEmpty else { return all }
+                return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+            }
         }
 
         func splitByRemoval(_ streaks: [MetricItem]) -> (active: [MetricItem], removed: [MetricItem]) {

@@ -171,6 +171,11 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             return Array(state.streakItems.prefix(state.activeStreakItemsCount))
         }
     }
+    
+    /// Resets the active streak items count to show all streaks (useful for R4 setup)
+    func resetActiveStreakItemsCountToShowAll() {
+        state.activeStreakItemsCount = state.streakItems.count
+    }
 
     func toggleStreakVisibility(at index: Int) async throws {
         guard index < state.streakItems.count else {
