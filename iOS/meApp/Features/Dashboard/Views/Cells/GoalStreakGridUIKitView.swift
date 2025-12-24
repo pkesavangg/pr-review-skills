@@ -174,6 +174,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     /// Builds the grid model using the saved order from DashboardStore UI state
     private func buildGridModelFromStoreState() -> MileStoneGridModel {
+        // Don't build model until progress metrics are loaded to prevent empty goal card from showing
+        guard store.state.ui.hasLoadedProgressMetrics else {
+            return MileStoneGridModel(mileStones: [])
+        }
+        
         let allStreaks = store.streakItemsToShow
         let goalCardPos = store.state.ui.goalCardPosition
         let streakOrder = store.state.ui.streakGridOrder

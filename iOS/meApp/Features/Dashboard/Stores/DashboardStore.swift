@@ -45,16 +45,22 @@ class DashboardStore: ObservableObject {
     private let dataManager: DashboardDataManager
     
     var shouldShowGoalCardOrStreaks: Bool {
-            !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
-        }
+        // Don't show goal card or streaks until progress metrics are loaded
+        guard state.ui.hasLoadedProgressMetrics else { return false }
+        return !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
+    }
     // MARK: - Initialization
     init() {
-        // Initialize managers
-        self.metricsManager = DashboardMetricsManager()
+        // Initialize managers without default metrics to prevent flash of stale data
+        // Defaults will be set only if API load fails
+        self.metricsManager = DashboardMetricsManager(skipInitialSetup: true)
         self.graphManager = DashboardGraphManager()
-        self.streakManager = DashboardStreakManager()
+        self.streakManager = DashboardStreakManager(skipInitialSetup: true)
         self.dataManager = DashboardDataManager()
         self.goalManager = DashboardGoalManager()
+        
+        // Suppress reactive updates during initialization to prevent AttributeGraph cycles
+        state.ui.isResettingDashboard = true
         
         // Set up reactive bindings
         setupBindings()
@@ -236,6 +242,9 @@ class DashboardStore: ObservableObject {
     }
     
     var metricsToShow: [MetricItem] {
+        // Don't show metrics until dashboard config is loaded from API to prevent flash of stale data
+        guard state.ui.hasLoadedDashboardConfig else { return [] }
+        
         let result = metricsManager.getMetricsToShow(
             isEditMode: state.ui.isEditMode,
             dashboardType: effectiveDashboardType,
@@ -259,6 +268,9 @@ class DashboardStore: ObservableObject {
     }
     
     var streakItemsToShow: [MetricItem] {
+        // Don't show streaks until progress metrics are loaded from API
+        guard state.ui.hasLoadedProgressMetrics else { return [] }
+        
         let allStreaks = streakManager.state.streakItems
         let nonRemoved = allStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
         let removed = allStreaks.filter { state.ui.removedStreaks.contains($0.label) }
@@ -691,15 +703,54 @@ class DashboardStore: ObservableObject {
     // MARK: - Dashboard Initialization
     
     private func initializeDashboard() async {
+        // Set flags to suppress reactive updates during initialization
+        await MainActor.run {
+            state.ui.isResettingDashboard = true
+            state.ui.hasLoadedProgressMetrics = false
+        }
+        
         // Determine dashboard type based on account dashboardType
         let dashboardType = determineDashboardTypeFromAccount()
         state.metrics.dashboardType = dashboardType
         metricsManager.updateDashboardType(dashboardType)
         
+        // Load metrics from local account immediately so they show right away
+        // This provides instant feedback while API loads in background
+        await loadMetricsFromLocalAccount()
+        
         // Initialize data manager to set up bindings
         await initializeDataManager()
         
-        // Load dashboard configuration from API
+        // Sync entries first to ensure we have latest data from all devices
+        // This ensures metric values (like BMI) are consistent across devices
+        await syncEntries()
+        
+        // Load progress metrics FIRST (before dashboard config)
+        // This ensures they're ready before UI renders, preventing gaps
+        do {
+            // Refresh account data to ensure we have latest dashboard settings
+            try? await accountService.refreshAccount()
+            
+            // Refresh streak data with real values from API
+            try await streakManager.refreshStreakData()
+            
+            // Load progress metrics configuration from API
+            await loadProgressMetricsFromAccount()
+            
+            // Load goal card data to ensure it's ready before showing
+            try? await goalManager.loadGoalData()
+            
+            // Mark progress metrics as loaded so they appear immediately
+            await MainActor.run {
+                state.ui.hasLoadedProgressMetrics = true
+            }
+        } catch {
+            // On error, still mark as loaded so UI can show defaults
+            await MainActor.run {
+                state.ui.hasLoadedProgressMetrics = true
+            }
+        }
+        
         await loadDashboardConfigurationFromAPI()
         
         // Ensure removal state is synced after API loading
@@ -708,11 +759,25 @@ class DashboardStore: ObservableObject {
         // already sets the removal state correctly from the account data
         syncRemovalStateFromMetricsManager()
 
-        // Load other data
+        // Load other data - metrics will be updated via updateMetricsForCurrentView() based on visible region
         loadLatestEntryData()
         
-        // Initialize chart - data will be available from ContentView loading
-        initializeChart()
+        // Initialize chart AFTER all metrics are loaded
+        // This ensures graph and metrics appear together, preventing gaps
+        await MainActor.run {
+            initializeChart()
+        }
+        
+        // Re-enable reactive updates after initialization completes
+        await MainActor.run {
+            state.ui.isResettingDashboard = false
+            // Update metrics after initialization is complete and chart is initialized
+            // If visibleOperations is empty, it will correctly show placeholders
+            if state.ui.hasInitializedChart {
+                updateMetricsForCurrentView()
+            }
+            objectWillChange.send()
+        }
     }
     
     // MARK: - Dashboard Type Management   
@@ -782,9 +847,51 @@ class DashboardStore: ObservableObject {
         }
     }
     
+    // Load metrics from local account immediately (synchronous, fast)
+    // This allows body metrics to show immediately while API loads in background
+    private func loadMetricsFromLocalAccount() async {
+        await MainActor.run {
+            // Try to load from local account if available
+            if let account = accountService.activeAccount {
+                let dashboardTypeString = account.dashboardSettings?.dashboardType
+                let dashboardType: DashboardType
+                switch dashboardTypeString {
+                case "dashboard4":
+                    dashboardType = .dashboard4
+                case "dashboard12":
+                    dashboardType = .dashboard12
+                default:
+                    dashboardType = .dashboard12
+                }
+                metricsManager.updateDashboardType(dashboardType)
+                state.metrics.dashboardType = dashboardType
+                
+                // Load metrics order from local account if available
+                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                    let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
+                    metricsManager.updateMetricsOrder(from: metricArray)
+                } else {
+                    // Set up default metrics if no local data
+                    metricsManager.setupInitialMetrics()
+                }
+            } else {
+                // Set up default metrics if no account
+                metricsManager.setupInitialMetrics()
+            }
+        }
+    }
+    
     // Delegate configuration loading to respective managers
     func loadDashboardConfigurationFromAPI() async {
         do {
+            // Refresh account data from API to ensure we have latest dashboard settings
+            try? await accountService.refreshAccount()
+            
+            // Sync entries before loading metrics to ensure we have latest entry data from all devices
+            // This ensures metric values (like BMI) are consistent across devices
+            // Note: This may be a no-op if already synced in initializeDashboard
+            await syncEntries()
+            
             // Load dashboard metrics configuration from API
             try await metricsManager.loadMetricsFromAPI()
             
@@ -793,21 +900,68 @@ class DashboardStore: ObservableObject {
                 state.metrics.dashboardType = metricsManager.state.dashboardType
             }
             
-            // Refresh streak data with real values from API
-            try await streakManager.refreshStreakData()
+            // Load progress metrics (goal card + streaks) only if not already loaded
+            // This prevents duplicate loading when called from initializeDashboard
+            let progressMetricsAlreadyLoaded = await MainActor.run {
+                state.ui.hasLoadedProgressMetrics
+            }
             
-            // Load progress metrics configuration from API
-            await loadProgressMetricsFromAccount()
+            if !progressMetricsAlreadyLoaded {
+                // Refresh streak data with real values from API
+                try await streakManager.refreshStreakData()
+                
+                // Load progress metrics configuration from API
+                await loadProgressMetricsFromAccount()
+                
+                // Load goal card data to ensure it's ready before showing
+                try? await goalManager.loadGoalData()
+                
+                // Mark progress metrics as loaded so they appear after body metrics
+                await MainActor.run {
+                    state.ui.hasLoadedProgressMetrics = true
+                }
+            }
+            
+            // Mark body metrics as loaded AFTER progress metrics check
+            // This ensures both are ready before UI renders (when called from initializeDashboard)
+            // For other callers (like onAppearActions), this still works as expected
+            await MainActor.run {
+                state.ui.hasLoadedDashboardConfig = true
+            }
+            
+            // Note: Metric values will be updated via updateMetricsForCurrentView() based on visible region
+            // This ensures BMI and other metrics use the average from visible region, not latest entry
             
             // Mark loading as complete
             await MainActor.run {
                 objectWillChange.send()
             }
             
+            // Update metrics after config is loaded and chart is initialized
+            await MainActor.run {
+                if state.ui.hasInitializedChart {
+                    updateMetricsForCurrentView()
+                }
+            }
+            
             logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
-            // Even on error, update UI state
+            // On error, set up default metrics and streaks to prevent empty state
             await MainActor.run {
+                if metricsManager.state.metrics.isEmpty {
+                    metricsManager.setupInitialMetrics()
+                    syncRemovalStateFromMetricsManager()
+                }
+                // Mark body metrics as loaded even on error so UI can show defaults
+                state.ui.hasLoadedDashboardConfig = true
+                
+                // Set up default streaks if empty
+                if streakManager.state.streakItems.isEmpty {
+                    streakManager.setupInitialStreakItems()
+                }
+                // Mark progress metrics as loaded even on error so UI can show defaults
+                state.ui.hasLoadedProgressMetrics = true
+                
                 objectWillChange.send()
             }
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to load dashboard configuration from API: \(error)")
@@ -1512,10 +1666,6 @@ class DashboardStore: ObservableObject {
                     // Reset metrics to their original body metrics order
                     self.metricsManager.resetOrderToDefault()
                     
-                    // After resetting metrics to defaults, update them with latest data
-                    if let latestEntry = try? await self.dataManager.getLatestEntry() {
-                        try? await self.metricsManager.updateMetrics(with: latestEntry)
-                    }
                     
                     try await self.streakManager.refreshStreakData()
                     self.syncRemovalStateFromMetricsManager()
@@ -2589,6 +2739,12 @@ class DashboardStore: ObservableObject {
     /// Update metrics to show values for current view (visible region or selected point)
     @MainActor
     func updateMetricsForCurrentView() {
+        // Don't update metrics during initialization or if config hasn't loaded yet
+        // This prevents flickering and showing stale/placeholder values
+        guard !state.ui.isResettingDashboard && state.ui.hasLoadedDashboardConfig else {
+            return
+        }
+        
         if let selectedPoint = state.graph.selectedPoint {
             // Exact data point selected - show its values
             Task {
@@ -2679,17 +2835,32 @@ class DashboardStore: ObservableObject {
     /// Perform actions when dashboard appears
     /// Loads latest data, goal card, and ensures proper initialization
     func onAppearActions() {
+        // Don't hide metrics during refresh - keep showing current values and update in place
+        // Only hide metrics on initial app launch (handled in initializeDashboard)
+        
         loadLatestEntryData()
         loadGoalCardData()
-        // Handle any settings changes
-        handleSettingsChange()
         
         // Refresh dashboard configuration from API to ensure latest changes are reflected
         Task {
+            // Sync entries first to ensure we have the latest data from all devices
+            await syncEntries()
+            
             await loadDashboardConfigurationFromAPI()
+            // Sync removal state after loading from API to ensure it reflects the latest account data
             await MainActor.run {
+                self.syncRemovalStateFromMetricsManager()
                 self.objectWillChange.send()
             }
+            // Update metrics after config is loaded and chart is initialized
+            // This updates values in place without hiding metrics
+            await MainActor.run {
+                if state.ui.hasInitializedChart {
+                    self.updateMetricsForCurrentView()
+                }
+            }
+            // Handle any settings changes after syncing removal state
+            self.handleSettingsChange()
         }
         
         // After positioning is complete, update Y-axis cache to ensure proper domain calculation

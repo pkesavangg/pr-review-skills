@@ -30,17 +30,23 @@ struct DashboardMetricsSection: View {
                 }
             }
 
-            if !store.metricsToShow.isEmpty {
-                metricsGridSection()
-            }
-            
-            if store.state.ui.isEditMode ||
-                (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
-                dividerSection()
-            }
+            // Show body metrics first when dashboard config is loaded
+            if store.state.ui.hasLoadedDashboardConfig {
+                if !store.metricsToShow.isEmpty {
+                    metricsGridSection()
+                }
+                
+                // Show divider and progress metrics (goal card + streaks) only after progress metrics are loaded
+                if store.state.ui.hasLoadedProgressMetrics {
+                    if store.state.ui.isEditMode ||
+                        (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
+                        dividerSection()
+                    }
 
-            if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
-                goalStreakSection()
+                    if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+                        goalStreakSection()
+                    }
+                }
             }
             
         }
