@@ -2305,13 +2305,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         if isDashboardFour {
             await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+            // Ensure streak data is refreshed and progress metrics are loaded for dashboard 4 upgrade
+            try? await dashboardStore.streakManager.refreshStreakData()
+            await dashboardStore.loadProgressMetricsFromAccount()
         } else {
+            // reloadDashboardConfiguration already calls loadProgressMetricsFromAccount via loadDashboardConfigurationFromAPI
             await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
         }
-        
-        // Ensure streak data is refreshed and progress metrics are loaded before edit mode
-        try? await dashboardStore.streakManager.refreshStreakData()
-        await dashboardStore.loadProgressMetricsFromAccount()
         
         await MainActor.run {
             dashboardStore.beginEdit()

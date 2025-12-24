@@ -56,6 +56,7 @@ struct DashboardMetricsSection: View {
                 }
                 store.metricsManager.resetActiveMetricsCountToShowAll()
                 store.syncRemovalStateFromMetricsManager()
+                store.objectWillChange.send()
             }
         }
         .onChange(of: parentView) { _, newValue in
