@@ -198,12 +198,20 @@ object GraphUtil {
     }
 
   fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
-    val immediatePoint = graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }
+    // Find the point with the minimum timestamp that is still greater than the search timestamp
+    // This works regardless of list order (ascending or descending)
+    val immediatePoint = graphLines.points
+      .filter { it.x.value.toLong() > timeStamp }
+      .minByOrNull { it.x.value.toLong() }
     return immediatePoint?.y?.value?.toLong()
   }
 
   fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
-    val previousPoint = graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }
+    // Find the point with the maximum timestamp that is still less than the search timestamp
+    // This works regardless of list order (ascending or descending)
+    val previousPoint = graphLines.points
+      .filter { it.x.value.toLong() < timeStamp }
+      .maxByOrNull { it.x.value.toLong() }
     return previousPoint?.y?.value?.toLong()
   }
 
@@ -231,6 +239,7 @@ object GraphUtil {
     minX: Long,
     maxX: Long,
   ): GraphLine {
+
     if (metricGraphLine.points.isEmpty()) {
       return metricGraphLine
     }
@@ -302,16 +311,15 @@ object GraphUtil {
     val useFallback = safeFallbackValue.isFinite()
 
     // Normalize each point
-    val normalizedPoints = metricGraphLine.points.mapNotNull { point ->
+    val normalizedPoints = metricGraphLine.points.mapIndexedNotNull { index, point ->
       val metricValue = (point.y.value as? Number)?.toDouble()
 
       // Skip points with null or non-finite metric values (matching iOS: skip missing/invalid values)
       if (metricValue == null || !metricValue.isFinite()) {
-        return@mapNotNull null
+        return@mapIndexedNotNull null
       }
 
-      // For single points, place at fixed position (70% of Y-axis height, matching iOS)
-      if (isSingleMetricPoint) {
+      val normalizedPoint = if (isSingleMetricPoint) {
         val positionInRange = weightMin + (yAxisSpan * 0.7)
         // Validate position is finite before using (matching iOS guard checks)
         if (positionInRange.isFinite()) {
@@ -355,6 +363,7 @@ object GraphUtil {
           null
         }
       }
+      normalizedPoint
     }
 
     return metricGraphLine.copy(points = normalizedPoints)
