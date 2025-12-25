@@ -204,6 +204,9 @@ constructor(
         )
         val currentDashboardType = state.value.dashboardType
         dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
+        // Clear secondary metric selection when resetting dashboard (matching iOS behavior)
+        // Clear both UI state (selectedStat) and service state (selectedKey)
+        handleIntent(DashboardIntent.SetSelectedStat(null))
       } catch (e: Exception) {
       } finally {
         delay(300)
