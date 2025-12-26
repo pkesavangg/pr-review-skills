@@ -73,7 +73,7 @@ final class LandingStore: ObservableObject {
             }
             do {
                 try await accountService.switchAccount(to: account)
-                let userName = account.firstName?.isEmpty == false ? account.firstName! : account.email
+                let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {

@@ -1419,17 +1419,20 @@ class SettingsStore: ObservableObject {
         let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
         guard !hasSeen else { return }
         
-        guard let initialChar = activeAccount?.firstName?.first else { return }
-        let initial = String(initialChar)
-        guard accountService.activeAccount != nil else { return }
-        
-        kvStore.setValue(true, forKey: flagKey)
+        guard accountService.activeAccount != nil,
+              let initialChar = activeAccount?.firstName?.first else {
+            return
+        }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             guard self.accountService.allAccounts.count == 1,
-                  self.accountService.activeAccount != nil else {
+                  let activeAccount = self.accountService.activeAccount,
+                  let initialChar = activeAccount.firstName?.first else {
                 return
             }
+            
+            let initial = String(initialChar)
+            self.kvStore.setValue(true, forKey: flagKey)
             
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,

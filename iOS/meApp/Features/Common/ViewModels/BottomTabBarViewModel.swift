@@ -57,6 +57,8 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
+    /// Prevents concurrent execution of checkSetGoalCardPrompt
+    private var isCheckingSetGoalCard: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
@@ -116,6 +118,7 @@ class BottomTabBarViewModel: ObservableObject {
         }
         
         $selectedTab
+            .dropFirst()
             .sink { [weak self] tab in
                 if tab == .dash {
                     Task { [weak self] in
@@ -472,8 +475,12 @@ class BottomTabBarViewModel: ObservableObject {
     /// Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
     private func checkSetGoalCardPrompt() async {
         guard !hasShownSetGoalCardThisSession else { return }
+        guard !isCheckingSetGoalCard else { return }
         guard selectedTab == .dash else { return }
         guard let account = accountService.activeAccount else { return }
+        
+        isCheckingSetGoalCard = true
+        defer { isCheckingSetGoalCard = false }
         
         if account.goalSettings?.goalType != nil { return }
         
@@ -495,6 +502,9 @@ class BottomTabBarViewModel: ObservableObject {
         
         await MainActor.run { [weak self] in
             guard let self else { return }
+            guard self.selectedTab == .dash else { return }
+            guard self.accountService.activeAccount != nil else { return }
+            
             self.presentSetGoalCard()
         }
     }

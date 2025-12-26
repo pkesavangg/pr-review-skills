@@ -60,15 +60,13 @@ struct SettingsScreen: View {
                     router.navigateToRoot()
                 }
             }
-            .onChange(of: tabViewModel.selectedTab) { _, newTab in
-                if newTab == .settings {
+            .onChange(of: tabViewModel.selectedTab) { oldTab, newTab in
+                if newTab == .settings && oldTab != .settings {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
                 }
             }
             .onChange(of: router.stack) { _, newStack in
                 if newStack.isEmpty && tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
                     if tabViewModel.settingsNavigationSourceTab != nil {
                         tabViewModel.returnToSettingsSourceTab()
                     }
