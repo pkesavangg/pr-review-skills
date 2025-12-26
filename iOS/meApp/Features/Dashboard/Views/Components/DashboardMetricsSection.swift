@@ -30,18 +30,15 @@ struct DashboardMetricsSection: View {
                 }
             }
 
-            if !store.metricsToShow.isEmpty {
+            if store.hasBodyMetrics {
                 metricsGridSection()
             }
             
-            if store.state.ui.isEditMode ||
-                (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
+            if store.shouldShowDivider {
                 dividerSection()
             }
 
-            let hasStreaks = !store.streakItemsToShow.isEmpty
-            let hasValidGoal = !store.state.ui.isGoalCardRemoved && store.hasGoalSet
-            if hasStreaks || hasValidGoal {
+            if store.shouldShowGoalStreakSection {
                 goalStreakSection()
             }
             

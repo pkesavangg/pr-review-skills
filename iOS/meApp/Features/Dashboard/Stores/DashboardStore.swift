@@ -47,6 +47,33 @@ class DashboardStore: ObservableObject {
     var shouldShowGoalCardOrStreaks: Bool {
         return !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
     }
+    
+    // MARK: - Display State Computed Properties
+    
+    /// Whether there are body metrics to display
+    var hasBodyMetrics: Bool {
+        !metricsToShow.isEmpty
+    }
+    
+    /// Whether the divider should be shown between body metrics and goal/streak section.
+    /// Shows divider in edit mode or when both body metrics and goal/streak items are present.
+    var shouldShowDivider: Bool {
+        guard state.ui.hasLoadedDashboardConfig else { return state.ui.isEditMode }
+        return state.ui.isEditMode || (hasBodyMetrics && hasGoalOrStreaks)
+    }
+    
+    /// Whether the goal/streak section should be shown.
+    /// Only shows after body metrics configuration is loaded to prevent premature display.
+    var shouldShowGoalStreakSection: Bool {
+        state.ui.hasLoadedDashboardConfig && hasGoalOrStreaks
+    }
+    
+    // MARK: - Private Helpers
+    
+    /// Whether there are goal or streak items available to display
+    private var hasGoalOrStreaks: Bool {
+        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && hasGoalSet)
+    }
     // MARK: - Initialization
     init() {
         // Initialize managers without default metrics to prevent flash of stale data
