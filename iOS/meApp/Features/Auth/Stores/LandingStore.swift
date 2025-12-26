@@ -23,6 +23,7 @@ final class LandingStore: ObservableObject {
     let loadingLang = LoaderStrings.self
     private let alertStrings = AlertStrings.self
     private let appConstants = AppConstants.self
+    private let toastLang = ToastStrings.self
     
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
@@ -72,8 +73,17 @@ final class LandingStore: ObservableObject {
             }
             do {
                 try await accountService.switchAccount(to: account)
+                let userName = account.firstName?.isEmpty == false ? account.firstName! : account.email
+                notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
+                logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch account", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                }
             }
         }
     }

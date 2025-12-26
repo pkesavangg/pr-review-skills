@@ -1413,23 +1413,24 @@ class SettingsStore: ObservableObject {
     // MARK: - Multiple Accounts Educational Modal
     /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
     func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
-        // Ensure we have exactly one account logged in
         guard accountService.allAccounts.count == 1 else { return }
         
-        // Check persistent flag – bail if user has already seen the modal
         let flagKey = hasSeenAddMultipleAccountsModalKey
         let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
         guard !hasSeen else { return }
         
-        // We need an initial to render inside the icon cluster
         guard let initialChar = activeAccount?.firstName?.first else { return }
         let initial = String(initialChar)
+        guard accountService.activeAccount != nil else { return }
         
-        // Set the flag immediately to avoid repeated triggers
         kvStore.setValue(true, forKey: flagKey)
         
-        // Delay presentation by 1 second
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            guard self.accountService.allAccounts.count == 1,
+                  self.accountService.activeAccount != nil else {
+                return
+            }
+            
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,
                 onClose: {
@@ -1441,9 +1442,7 @@ class SettingsStore: ObservableObject {
                 }
             )
             
-            if self.accountService.activeAccount != nil {
-                self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
-            }
+            self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
         }
     }
     
