@@ -545,9 +545,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Called when settings change (unit, weightless mode, etc.)
     func handleSettingsChange() {
-        // Invalidate cache since display values may have changed
+        //Update store's Y-axis cache FIRST before invalidating local cache
+        dashboardStore?.updateYAxisCache(force: true)
+        
         invalidateCache()
         updateYAxisConfiguration()
+        syncYAxisFromStore()
         clearSelection() // Clear selection as values may have changed
     }
     
