@@ -207,13 +207,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.currentUnit) { _, _ in
-            //Update store's Y-axis cache FIRST to ensure chartSeriesData uses correct domain
-            dashboardStore.updateYAxisCache(force: true)
-            
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {
-                viewModel.syncYAxisFromStore()
                 self.updateCachedChartData()
                 // Clear label caches since unit change affects formatting
                 self.invalidateLabelCaches()
@@ -222,14 +219,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
-            //Update store's Y-axis cache FIRST to ensure chartSeriesData uses correct domain
-            dashboardStore.updateYAxisCache(force: true)
-            
-            // ViewModel will invalidate cache in handleSettingsChange()
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {
-                viewModel.syncYAxisFromStore()
                 self.updateCachedChartData()
                 // Clear label caches since weightless mode affects formatting
                 self.invalidateLabelCaches()
