@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import kotlinx.coroutines.flow.Flow
@@ -62,12 +63,21 @@ class DashboardRepository @Inject constructor(
 
   /**
    * Gets a Flow of visible milestone keys for the given account.
+   * Similar to getVisibleMetricKeys but milestones don't depend on dashboard type.
    */
   override fun getVisibleMilestoneKeys(accountId: String): Flow<List<MilestoneKey>> =
     accountDao.getDashboardSettings(accountId).map { settings ->
-      settings?.dashboardMilestones
-        ?.mapNotNull { MilestoneKey.fromString(it) }
+      // Get visible milestones from server (camelCase format)
+      val visibleMilestonesFromServer = settings?.dashboardMilestones
+        ?.mapNotNull { ProgressKeyConstants.CAMEL_CASE_TO_ENUM[it] }
         ?: emptyList()
+
+      // Debug: Log what we're getting
+      AppLog.d("DashboardRepository", "Raw dashboardMilestones: ${settings?.dashboardMilestones}")
+      AppLog.d("DashboardRepository", "Parsed milestones: ${visibleMilestonesFromServer.map { it.name }}")
+
+      // Return all valid milestones (no filtering needed - milestones don't depend on dashboard type)
+      visibleMilestonesFromServer
     }
 
   /**
@@ -119,7 +129,7 @@ class DashboardRepository @Inject constructor(
     accountRepository.updateDashboardSettings(
       accountId = accountId,
       dashboardMetrics = metricsList,
-      dashboardMilestones = milestonesList.map { it.name.lowercase() },
+      dashboardMilestones = milestonesList.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
       dashboardType = dashboardType,
     )
   }
@@ -167,7 +177,7 @@ class DashboardRepository @Inject constructor(
     accountRepository.updateDashboardSettings(
       accountId = accountId,
       dashboardMetrics = metricsList,
-      dashboardMilestones = defaultMilestones.map { it.name.lowercase() },
+      dashboardMilestones = defaultMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
       dashboardType = dashboardType,
     )
   }

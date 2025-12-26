@@ -73,6 +73,12 @@ interface IAccountRepository {
   suspend fun updateDashboardMetrics(dashboardKeys: List<String>)
 
   /**
+   * Updates the progress metrics for the active account.
+   * @param progressKeys The list of progress metric keys to update
+   */
+  suspend fun updateProgressMetrics(progressKeys: List<String>)
+
+  /**
    * Updates the dashboard type for the active account.
    * @param dashboardType The new dashboard type
    */

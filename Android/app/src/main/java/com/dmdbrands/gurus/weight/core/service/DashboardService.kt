@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 /**
  * Implementation of IDashboardService for dashboard visible metrics and milestones management.
@@ -78,30 +80,34 @@ constructor(
         ?: DashboardType.DASHBOARD_4_METRICS
 
       // Get dashboard metrics from server (already in camelCase format)
-      val serverMetrics = account.dashboardMetrics ?: emptyList()
+      val serverMetrics = account.dashboardMetrics
+
+      // Get progress metrics from server (already in camelCase format)
+      val serverProgressMetrics = account.progressMetrics
 
       AppLog.d("DashboardService", "Server dashboardType: ${dashboardType.value}")
       AppLog.d("DashboardService", "Server dashboardMetrics: $serverMetrics")
-
-      // Update local database with server data
+      AppLog.d("DashboardService", "Server progressMetrics: $serverProgressMetrics")
       serverMetrics.joinToString(",")
-
-      // Get current milestones from database, or use defaults if not set
-      val currentMilestones = try {
-        dashboardRepository.getVisibleMilestoneKeys(accountId).first()
-      } catch (e: Exception) {
-        emptyList<MilestoneKey>()
+      // Convert server progress metrics (camelCase strings) to MilestoneKey enums, or use defaults
+      val serverMilestones = if (serverProgressMetrics.isNotEmpty()) {
+        serverProgressMetrics.mapNotNull { camelCase ->
+          ProgressKeyConstants.CAMEL_CASE_TO_ENUM[camelCase]
+        }
+      } else {
+        // If server doesn't have progress metrics, use defaults
+        MilestoneKey.getDefaultMilestones()
       }
-
+      serverMilestones.joinToString(",")
       AppLog.d(
         "DashboardService",
-        "Using milestones: ${if (currentMilestones.isNotEmpty()) currentMilestones else MilestoneKey.getDefaultMilestones()}",
+        "Using milestones from server: $serverMilestones",
       )
 
       accountRepository.updateDashboardSettings(
         accountId = accountId,
         dashboardMetrics = serverMetrics,
-        dashboardMilestones = currentMilestones.map { it.name.lowercase() },
+        dashboardMilestones = serverMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
         dashboardType = dashboardType,
       )
 
@@ -163,6 +169,7 @@ constructor(
    * Updates the visible milestone keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO:Need to remove
   override suspend fun updateVisibleMilestoneKeys(
     accountId: String?,
     keys: List<MilestoneKey>,
@@ -174,7 +181,7 @@ constructor(
   override suspend fun updateVisibleKeys(accountId: String?, keys: List<DashboardKey>, dashboardType: DashboardType) {
     try {
       val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
-
+      Log.d("DashboardService", "Updating visible keys for account: $keys")
       AppLog.d("DashboardService", "Updating visible keys with dashboardType: ${dashboardType.value}")
 
       val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
@@ -184,18 +191,19 @@ constructor(
       accountRepository.updateDashboardSettings(
         accountId = id,
         dashboardMetrics = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
-        dashboardMilestones = milestones.map { it.name.lowercase() },
+        dashboardMilestones = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
         dashboardType = dashboardType,
       )
 
       // Update both dashboard metrics and dashboard type via API
       val dashboardKeys = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
-
+      val progressKeys = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+      AppLog.d("DashboardService", "progress keys to server - $progressKeys")
       AppLog.d("DashboardService", "Sending to server - dashboardKeys: $dashboardKeys")
       AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
 
       accountRepository.updateDashboardMetrics(dashboardKeys)
-
+      accountRepository.updateProgressMetrics(progressKeys)
       // Refresh the visible keys StateFlow to notify subscribers
       refreshVisibleKeysFromDatabase(id)
     } catch (e: Exception) {
