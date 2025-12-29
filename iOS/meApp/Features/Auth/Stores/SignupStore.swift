@@ -92,12 +92,28 @@ final class SignupStore: ObservableObject {
     }
     
     func updateFormHeight(fromMetric: Bool, values: [String]) {
+        // Validate height before updating
+        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
+            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
+            return
+        }
+        
         if fromMetric {
             let cm = Int(values.joined()) ?? 178
+            // Double-check cm is valid
+            guard ConversionTools.isValidHeightCm(cm) else {
+                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
+                return
+            }
             signupForm.height.value = Double(ConversionTools.convertCmToStoredHeight(cm))
         } else {
             let feet = Int(values[0]) ?? 5
             let inches = Int(values[1]) ?? 10
+            // Double-check feet/inches is valid
+            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
+                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
+                return
+            }
             let totalInches = (feet * 12) + inches
             signupForm.height.value = Double(ConversionTools.convertInchesToStoredHeight(totalInches))
         }
@@ -148,13 +164,28 @@ final class SignupStore: ObservableObject {
         case .sex:
             isNextEnabled = signupForm.gender.isValid
         case .height:
-            isNextEnabled = signupForm.height.isValid
+            isNextEnabled = isHeightValid
         case .goal:
             isNextEnabled = isGoalStepValid()
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
             isNextEnabled = (signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid)
+        }
+    }
+    
+    /// Checks if the current height value is valid.
+    /// For metric: height must be >= 100 cm
+    /// For imperial: height must be >= 2'0" (24 inches)
+    private var isHeightValid: Bool {
+        let storedHeight = Int(signupForm.height.value)
+        
+        if signupForm.useMetric.value {
+            let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
+            return ConversionTools.isValidHeightCm(cm)
+        } else {
+            let feetInches = ConversionTools.convertStoredHeightToFeet(storedHeight)
+            return ConversionTools.isValidHeightInches(feet: feetInches[0], inches: feetInches[1])
         }
     }
     
@@ -226,15 +257,9 @@ final class SignupStore: ObservableObject {
     
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(
-                HStack {
-                    Spacer()
-                    HelpModalView {
-                        self.notificationService.dismissModal()
-                    }
-                    Spacer()
-                }
-            )
+            presentedView: AnyView(HelpModalView {
+                self.notificationService.dismissModal()
+            })
         ))
     }
     
@@ -275,13 +300,8 @@ final class SignupStore: ObservableObject {
     
     // MARK: - Private Methods
     private func isGoalStepValid() -> Bool {
-        if signupForm.goalType.value == GoalType.maintain.rawValue {
-            return signupForm.goalWeight.isValid
-        } else {
-            return signupForm.currentWeight.isValid &&
-            signupForm.goalWeight.isValid &&
-            !signupForm.formErrors[.weightEqual]
-        }
+        // Use the form's isGoalValidForSave which checks: dirty, touched, and no errors
+        signupForm.isGoalValidForSave
     }
     
     private func generateProfile() -> Profile {

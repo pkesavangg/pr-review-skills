@@ -70,6 +70,12 @@ protocol AccountRepositoryAPIProtocol {
     /// - Returns: AccountResponse (from { account })
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse
 
+    /// Partially updates progress metrics (PATCH /account/progress-metrics).
+    /// - Parameter metrics: The new progress metrics as an array of strings. Allowed values:
+    ///   "goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"
+    /// - Returns: AccountResponse (from { account })
+    func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse
+
     /// Partially updates streak (PATCH /account/streak).
     /// - Parameter isStreakOn: A boolean indicating if the streak is on or off.
     /// - Parameter streakTimestamp: The timestamp of the streak in ISO 8601 format.

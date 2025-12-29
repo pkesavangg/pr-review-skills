@@ -102,6 +102,12 @@ protocol AccountServiceProtocol {
     ///   - metrics: Array of metric strings to display on dashboard.
     ///   - Returns: The updated Account object.
     func updateDashboardMetrics(metrics: [String]) async throws -> Account
+    
+    /// Updates the progress metrics for the active account.
+    /// - Parameter metrics: The new progress metrics as an array of strings. Allowed values:
+    ///   "goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"
+    /// - Returns: The updated Account object
+    func updateProgressMetrics(metrics: [String]) async throws -> Account
 
     /// Updates the streak status for the specified account.
     /// - Parameters:

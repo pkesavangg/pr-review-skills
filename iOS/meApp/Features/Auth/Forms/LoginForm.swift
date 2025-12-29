@@ -3,7 +3,7 @@ import Combine
 
 class LoginForm: ObservableForm {
     var email = FormControl("", validators: [.required, .email, .maxLength(100)])
-    var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
+    var password = FormControl("", validators: [.required, .noEmoji, .minLength(6), .maxLength(50)])
     let lang = FormErrorMessages.self
     
     var formDidChange: AnyPublisher<Void, Never> {
@@ -17,6 +17,7 @@ class LoginForm: ObservableForm {
         guard control.isTouched || control.isDirty else { return nil }
         if control.errors[.required] { return lang.leaveBlank }
         if control.errors[.email] { return lang.email }
+        if control === password && control.errors[.noEmoji] { return lang.email }
         if control.errors[.minLength], let minLength = control.errors.value(for: .minLength) as? Int {
             if control === password {
                 return lang.passwordMinLength

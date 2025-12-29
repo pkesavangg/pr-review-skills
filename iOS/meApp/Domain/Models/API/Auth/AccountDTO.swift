@@ -18,6 +18,7 @@ struct AccountDTO: Codable {
     let streakTimestamp: String?
     let dashboardType: DashboardType?
     let dashboardMetrics: [BodyMetric]?
+    let progressMetrics: [String]?
     let goalType: GoalType?
     let goalWeight: Double?
     let goalPercent: Double?
