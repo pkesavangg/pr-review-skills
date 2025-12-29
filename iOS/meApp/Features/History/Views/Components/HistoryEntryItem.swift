@@ -22,10 +22,6 @@ struct HistoryEntryItem: View {
     let onMetricTap: (Entry, BodyMetric) -> Void
     var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
     
-    // iOS 17 fix: Stable animation state
-    @State private var animationPhase: UUID = UUID()
-    @State private var isAnimating = false
-    
     // MARK: - Computed Properties
     
     // MARK: - Body
@@ -62,8 +58,9 @@ struct HistoryEntryItem: View {
                 
                 // Expansion chevron (only if metrics exist)
                 if !entry.metricItems.isEmpty {
-                    AppIconView(icon: isExpanded ? AppAssets.chevronUp : AppAssets.chevronDown)
+                    AppIconView(icon: AppAssets.chevronDown)
                         .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .padding(.leading, .spacingSM)
                 }
             }
@@ -94,10 +91,9 @@ struct HistoryEntryItem: View {
             Divider()
                 .foregroundColor(theme.actionPrimary)
             
-            //            // iOS 17 fix: Stable expanded metrics section with proper animation
+            // Expanded metrics section with smooth animation
             if isExpanded, !entry.metricItems.isEmpty {
                 VStack(spacing: 0) {
-                    // iOS 17 fix: Use regular VStack instead of LazyVStack to prevent layout churn
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         HistoryMetricItem(
                             metric: BodyMetrics.config[item.metric]!,
@@ -106,17 +102,13 @@ struct HistoryEntryItem: View {
                             size: entry.metricItems.count,
                             onTap: { onMetricTap(entry, item.metric) }
                         )
-                        .id("\(entry.id.uuidString)-metric-\(index)") // iOS 17 fix: Stable metric IDs
+                        .id("\(entry.id.uuidString)-metric-\(index)")
                     }
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .move(edge: .top)),
-                    removal: .opacity.combined(with: .move(edge: .top))
-                ))
+                .transition(.opacity)
             }
         }
-        // TODO: iOS 17 fix: Remove conflicting animations need to be handled carefully later
-        .animation(.easeOut(duration: 0.25), value: animationPhase)
+        .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
             guard !entry.metricItems.isEmpty else { return }
