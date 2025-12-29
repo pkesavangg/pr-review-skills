@@ -264,19 +264,38 @@ final class EntryStore: ObservableObject {
     }
 
     private func initializeObservers() {
+        // Observe account changes directly to catch all updates
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] data in
+            .sink { [weak self] account in
                 guard let self = self else { return }
-                if let unit = data?.weightSettings?.weightUnit {
-                    self.weightUnit = unit
-                    self.updateWeightValidators()
-                } else {
-                    self.weightUnit = .lb
-                }
-                self.calculateBMI()
+                self.updateWeightUnitFromAccount(account)
             }
             .store(in: &cancellables)
+        
+        // Observe NotificationCenter for weightUnit changes (catches cases where @Published doesn't emit)
+        NotificationCenter.default.publisher(for: .accountWeightUnitChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                // Check and update weightUnit from current account
+                self.updateWeightUnitFromAccount(self.accountService.activeAccount)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func updateWeightUnitFromAccount(_ account: Account?) {
+        let unit = account?.weightSettings?.weightUnit ?? .lb
+        
+        if self.weightUnit != unit {
+            self.weightUnit = unit
+            self.updateWeightValidators()
+            self.calculateBMI()
+            // Force UI update
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
     }
 
     private func setupBmiObservers() {
@@ -351,6 +370,8 @@ final class EntryStore: ObservableObject {
         showDatePicker = false
         showTimePicker = false
         hasUserAdjustedTime = false
+        // CRITICAL: Re-initialize observers after reset, otherwise weightUnit changes won't be detected
+        initializeObservers()
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
