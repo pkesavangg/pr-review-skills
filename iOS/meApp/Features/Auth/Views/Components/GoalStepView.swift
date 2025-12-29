@@ -28,6 +28,11 @@ struct GoalStepView: View {
                 )
                 .onChange(of: selectedSegment) { oldValue, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
+                    // Mark as dirty and touched when goal type changes
+                    signupStore.signupForm.goalType.markAsDirty()
+                    signupStore.signupForm.goalType.markAsTouched()
+                    // Trigger validation to clear form-level errors when switching modes
+                    signupStore.signupForm.validate()
                 }
                 
                 VStack(spacing: 4) {

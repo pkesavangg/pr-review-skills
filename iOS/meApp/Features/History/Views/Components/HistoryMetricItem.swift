@@ -38,8 +38,7 @@ struct HistoryMetricItem: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: .spacingSM) {
-            // Title
-            Text(metric.label)
+            Text(metric.expandedLabel ?? metric.label)
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
                 .lineLimit(1)

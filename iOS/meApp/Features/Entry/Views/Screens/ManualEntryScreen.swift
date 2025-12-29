@@ -23,6 +23,7 @@ struct ManualEntryScreen: View {
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
+    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
@@ -32,19 +33,23 @@ struct ManualEntryScreen: View {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         // Weight Input Field
                         MetricInputField(
-                            config: TextInputConfig(
-                                label: labels.weightLabel(entryStore.weightUnit == .kg),
-                                inputType: .metric,
-                                errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
-                                focusField: .weight,
-                                maxLength: 4,
-                                maxValue: 999.9
-                            ),
+                            config: {
+                                let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
+                                return TextInputConfig(
+                                    label: weightLabel,
+                                    inputType: .metric,
+                                    errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
+                                    focusField: .weight,
+                                    maxLength: 4,
+                                    maxValue: 999.9
+                                )
+                            }(),
                             value: $entryStore.manualEntryForm.weight.value,
                             focusedField: $focusedField
                         ) {
                             focusedField = nil
                         }
+                        .id(entryStore.weightUnit)
                         
                         Text(labels.date)
                             .fontOpenSans(.heading4)
@@ -332,6 +337,8 @@ struct ManualEntryScreen: View {
                         // Ask the user via the store's confirmation helper.
                         return await entryStore.confirmDiscardChanges()
                     }
+                }
+                .onChange(of: entryStore.weightUnit) { _, _ in
                 }
                 .onDisappear {
                     // Stop periodic time sync when leaving screen

@@ -57,6 +57,8 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
+    /// Prevents concurrent execution of checkSetGoalCardPrompt
+    private var isCheckingSetGoalCard: Bool = false
     private var notificationOnlyAlertShown: Bool {
         get {
             guard let accountId = accountService.activeAccount?.accountId else { return false }
@@ -99,13 +101,12 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Perform Apple Health integration check on launch
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) {
             Task { [weak self] in
                 await self?.checkAppleHealthIntegrationStatus()
-                await self?.checkSetGoalCardPrompt()
-                // Observe permission/state changes to decide when to show the *Permission Disabled* alert.
+                if self?.selectedTab == .dash {
+                    await self?.checkSetGoalCardPrompt()
+                }
                 self?.evaluateAndShowPermissionAlert()
                 let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
                 if notificationsRequired {
@@ -115,6 +116,17 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             }
         }
+        
+        $selectedTab
+            .dropFirst()
+            .sink { [weak self] tab in
+                if tab == .dash {
+                    Task { [weak self] in
+                        await self?.checkSetGoalCardPrompt()
+                    }
+                }
+            }
+            .store(in: &cancellables)
         
         // Update the app sync tab based on the app sync scale defined in the paired scale list
         scaleService.$scales
@@ -147,6 +159,11 @@ class BottomTabBarViewModel: ObservableObject {
         // Connect GoalAlertService navigation callback
         goalAlertService.onNavigateToGoalSetting = { [weak self] in
             self?.navigateToGoalSetting()
+        }
+        
+        // Set callback for GoalAlertService to check if we're on Dashboard tab
+        goalAlertService.isOnDashboardTab = { [weak self] in
+            return self?.selectedTab == .dash
         }
         
         // Connect BluetoothService scale setup navigation callback
@@ -277,6 +294,13 @@ class BottomTabBarViewModel: ObservableObject {
         }
         
         selectedTab = tab
+        
+        // Check for Set Goal card when dashboard tab is selected
+        if tab == .dash {
+            Task { [weak self] in
+                await self?.checkSetGoalCardPrompt()
+            }
+        }
     }
 
     /// Restores the most recent non-AppSync tab selection
@@ -450,56 +474,62 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Set Goal Card Prompt
     /// Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
     private func checkSetGoalCardPrompt() async {
-        // Avoid duplicate prompts within the same session
         guard !hasShownSetGoalCardThisSession else { return }
-        
-        // Ensure we have an active account and goal settings
+        guard !isCheckingSetGoalCard else { return }
+        guard selectedTab == .dash else { return }
         guard let account = accountService.activeAccount else { return }
         
-        // 1. Goal type must be nil (no goal set)
+        isCheckingSetGoalCard = true
+        defer { isCheckingSetGoalCard = false }
+        
         if account.goalSettings?.goalType != nil { return }
         
-        // 2. At least 3 entries must exist
         let entryCount: Int
         do {
             entryCount = try await entryService.getEntryCount()
         } catch {
-            return // Could not fetch entry count – silently ignore
+            return
         }
         guard entryCount >= 3 else { return }
         
-        // 3. Check KvStorage flag to see if popup already shown for this account
         let key = KvStorageKeys.setAGoalModalFlagKey(for: account.accountId)
         if (KvStorageService.shared.getValue(forKey: key) as? Bool) == true {
-            return // Already shown previously
+            return
         }
-        // Persist flag so it won't show again across launches
+        
         KvStorageService.shared.setValue(true, forKey: key)
         hasShownSetGoalCardThisSession = true
         
         await MainActor.run { [weak self] in
-            // Only check self; presentSetGoalCard will check account existence
             guard let self else { return }
+            guard self.selectedTab == .dash else { return }
+            guard self.accountService.activeAccount != nil else { return }
+            
             self.presentSetGoalCard()
         }
     }
     
     /// Presents the Set a Goal card modal.
     private func presentSetGoalCard() {
-        // Ensure active account exists before showing modal
         guard accountService.activeAccount != nil else { return }
         
-        let modalView = SetAGoalCardView(
-            onClose: { [weak notificationService] in
-                notificationService?.dismissModal()
-            },
-            onSetGoal: { [weak self] in
-                guard let self else { return }
-                self.notificationService.dismissModal()
-                self.navigateToGoalSetting()
-            }
-        )
-        let modalData = ModalData(presentedView: AnyView(modalView))
-        notificationService.showModal(modalData)
+        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) { [weak self] in
+            guard let self else { return }
+            guard self.selectedTab == .dash else { return }
+            guard self.accountService.activeAccount != nil else { return }
+            
+            let modalView = SetAGoalCardView(
+                onClose: { [weak notificationService] in
+                    notificationService?.dismissModal()
+                },
+                onSetGoal: { [weak self] in
+                    guard let self else { return }
+                    self.notificationService.dismissModal()
+                    self.navigateToGoalSetting()
+                }
+            )
+            let modalData = ModalData(presentedView: AnyView(modalView))
+            self.notificationService.showModal(modalData)
+        }
     }
 }

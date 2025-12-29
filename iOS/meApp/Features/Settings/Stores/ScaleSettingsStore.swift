@@ -207,9 +207,8 @@ final class ScaleSettingsStore: ObservableObject {
                 // This is a 'fire-and-forget with timeout' pattern; the operation may still complete after cancellation.
                 try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.scaleDeletionGraceTimeoutNs))
                 deletionTask.cancel()
-                // Then forcefully disconnect and clear plugin cache to avoid reconnect
+                // Disconnects only the scale being deleted and prevents it from reconnecting.
                 let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
-                bluetoothService.clearDevices()
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
             bluetoothService.isSetupInProgress = false
