@@ -1103,13 +1103,32 @@ class SettingsStore: ObservableObject {
     ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
     ///   - values: Picker column values chosen by the user.
     func updateHeight(fromMetric: Bool, values: [String]) {
+        // Validate height before updating
+        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
+            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
+            notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+            return
+        }
+        
         let storedHeight: Int
         if fromMetric {
             let cm = Int(values.joined()) ?? 178
+            // Double-check cm is valid
+            guard ConversionTools.isValidHeightCm(cm) else {
+                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+                return
+            }
             storedHeight = ConversionTools.convertCmToStoredHeight(cm)
         } else {
             let feet = Int(values[0]) ?? 5
             let inches = Int(values[1]) ?? 10
+            // Double-check feet/inches is valid
+            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
+                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+                return
+            }
             let totalInches = (feet * 12) + inches
             storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
         }
