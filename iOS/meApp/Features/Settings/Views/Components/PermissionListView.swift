@@ -255,11 +255,11 @@ struct PermissionListView: View {
                         !viewModel.locationServicesEnabled &&
                         (permissionType == .location || permissionType == .wifiSwitch)
                     )
-                    let showsChevron = !isRowDisabled && !isEnabled
+                    let showsChevron = !isEnabled
 
                     ActionListItemView(config: ActionListItemConfig(
                         title: label,
-                        chevronType: isRowDisabled ? .none : (isEnabled ? .none : .right),
+                        chevronType: isEnabled ? .none : .right,
                         leadingIcon: statusIcon(
                             for: isRowDisabled ? false : isEnabled,
                             required: isRowDisabled ? false : isRequired(category),
