@@ -30,6 +30,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var yAxisDomain: ClosedRange<Double> = 0...100
     var yAxisTicks: [Double] = []
     
+    // MARK: - X-Axis Caching (Performance Optimization)
+    /// Cached X-axis values to avoid regeneration during scroll
+    private var _cachedXAxisValues: [Date] = []
+    /// Last scroll position when X-axis was cached
+    private var _lastXAxisScrollPosition: Date?
+    /// Last time period when X-axis was cached
+    private var _lastXAxisPeriod: TimePeriod?
+    /// Threshold for considering scroll position "same" (1 second tolerance)
+    private let xAxisCacheThreshold: TimeInterval = 1.0
+    
     // MARK: - Dependencies (injected from parent)
     var dashboardStore: DashboardStore?
     
@@ -96,19 +106,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     var dateRange: ClosedRange<Date> {
         // Default implementation for scrollable views - use visible domain
-        let operations = chartOperations
-        guard !operations.isEmpty else {
+        // Use cached bounds for O(1) lookup instead of O(n) map + min/max
+        guard let store = dashboardStore,
+              let bounds = store.dataManager.getDateBounds(for: timePeriod) else {
             let now = Date()
             return now...now
         }
         
-        let dates = operations.map { $0.date }
-        guard let minDate = dates.min(), let maxDate = dates.max() else {
-            let now = Date()
-            return now...now
-        }
-        
-        return minDate...maxDate
+        return bounds.min...bounds.max
     }
     
     // MARK: - Common Computed Properties
@@ -175,8 +180,17 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return dashboardStore?.weightLabel ?? ""
     }
     
-    /// X-axis values with buffer
+    /// X-axis values with buffer.
+    /// Uses aggressive caching to avoid regeneration during scroll.
     var xAxisValues: [Date] {
+        // Return cached values if scroll position hasn't changed significantly
+        if let lastPos = _lastXAxisScrollPosition,
+           _lastXAxisPeriod == timePeriod,
+           abs(scrollPosition.timeIntervalSince(lastPos)) < xAxisCacheThreshold,
+           !_cachedXAxisValues.isEmpty {
+            return _cachedXAxisValues
+        }
+        
         // If we have the store, try generating ticks from graphManager first
         if let store = dashboardStore {
             // Use the live scroll position from this view model so axis ticks (including
@@ -189,26 +203,46 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 scrollPosition: liveScrollPosition
             )
             // If manager returned ticks, use them; otherwise fall back to calendar-based ticks
-            if !ticks.isEmpty { return ticks.sorted() }
+            if !ticks.isEmpty {
+                let sortedTicks = ticks.sorted()
+                // Update cache
+                _cachedXAxisValues = sortedTicks
+                _lastXAxisScrollPosition = scrollPosition
+                _lastXAxisPeriod = timePeriod
+                return sortedTicks
+            }
         }
         // Fallback: generate calendar-based ticks so X-axis labels show even with no data
-        return fallbackXAxisValues().sorted()
+        let fallbackTicks = fallbackXAxisValues().sorted()
+        // Cache fallback values too
+        _cachedXAxisValues = fallbackTicks
+        _lastXAxisScrollPosition = scrollPosition
+        _lastXAxisPeriod = timePeriod
+        return fallbackTicks
     }
     
-    /// Determines if the chart is scrolled to the leftmost boundary
+    /// Invalidates the X-axis cache, forcing regeneration on next access.
+    /// Call when time period changes or when data significantly changes.
+    func invalidateXAxisCache() {
+        _cachedXAxisValues = []
+        _lastXAxisScrollPosition = nil
+        _lastXAxisPeriod = nil
+    }
+    
+    /// Determines if the chart is scrolled to the leftmost boundary.
+    /// Uses cached date bounds for O(1) performance instead of mapping all operations.
     var isAtLeftBoundary: Bool {
-        guard dashboardStore != nil, !chartOperations.isEmpty else { return true }
+        guard let store = dashboardStore else { return true }
         
-        let operations = chartOperations
-        let allDates = operations.map { $0.date }
-        guard let minDate = allDates.min() else { return true }
+        // Use cached bounds from DataManager for O(1) lookup
+        guard let bounds = store.dataManager.getDateBounds(for: timePeriod) else { return true }
         
         let domainLength = visibleDomainLength
         let visibleStart = scrollPosition.addingTimeInterval(-domainLength / 2)
         
         // Consider at boundary if visible start is at or before the minimum data date
         let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
-        return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
+        return visibleStart <= bounds.min.addingTimeInterval(boundaryThreshold)
     }
     
     // MARK: - Initialization and Configuration
@@ -217,10 +251,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         
         // For scrollable periods, ensure we show recent entries by using optimal scroll position
         if hasXAxis {
+            // Use cached bounds for O(1) lookup
             let optimalPosition = store.graphManager.calculateOptimalScrollPosition(
                 for: timePeriod,
                 from: store.continuousOperations,
-                showingLatest: true
+                showingLatest: true,
+                cachedBounds: store.dataManager.getDateBounds(for: timePeriod)
             )
             self.scrollPosition = optimalPosition
             // Also update the store's scroll position to match

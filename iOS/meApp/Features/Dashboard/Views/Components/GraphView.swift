@@ -92,10 +92,12 @@ struct GraphView: View {
             }
             
             // Ensure most recent entries are shown for the selected period
+            // Use cached bounds for O(1) lookup
             let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
                 for: newValue,
                 from: dashboardStore.continuousOperations,
-                showingLatest: true
+                showingLatest: true,
+                cachedBounds: dashboardStore.dataManager.getDateBounds(for: newValue)
             )
             dashboardStore.graphManager.updateScrollPosition(to: optimal)
             dashboardStore.updateSelectedPeriod(newValue)

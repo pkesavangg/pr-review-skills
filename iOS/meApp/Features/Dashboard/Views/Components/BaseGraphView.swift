@@ -11,12 +11,12 @@ import Charts
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
-    
+
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
-    
+
     // MARK: - Local State
     @State private var localSelectedXValue: Date?
     @State private var hasDetectedScrollInCurrentGesture = false
@@ -27,17 +27,31 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var enableYAxisAnimation: Bool = false
     // Scroll position debouncing
     @State private var scrollUpdateWorkItem: DispatchWorkItem?
-    
+
+    // MARK: - Throttling State (Performance Optimization)
+    /// Last time updateCachedChartData was called
+    @State private var lastCacheUpdateTime: Date = .distantPast
+    /// Minimum interval between cache updates during scroll (50ms)
+    private let cacheUpdateThrottle: TimeInterval = 0.05
+    /// Work item for delayed/debounced cache updates
+    @State private var cacheUpdateWorkItem: DispatchWorkItem?
+
+    // MARK: - Scroll End Transition State
+    /// Tracks if we're in post-scroll transition (to disable animations)
+    @State private var isInScrollEndTransition: Bool = false
+    /// Counter that increments on scroll end to force chart identity change
+    @State private var chartRebuildToken: Int = 0
+
     // MARK: - Cached Chart Data (Performance Optimization)
     @State private var cachedChartPoints: [GraphSeries] = []
     @State private var cachedGroupedPoints: [String: [GraphSeries]] = [:]
     @State private var lastDataHash: Int = 0
     @State private var cachedPlottedPoints: [String: [PlottedGraphSeries]] = [:]
-    
+
     // MARK: - Cached Labels (Performance Optimization)
     @State private var cachedYAxisLabels: [Double: String] = [:]
     @State private var cachedXAxisLabels: [Date: String] = [:]
-    
+
     // MARK: - Configuration
     private var yAxisLabelWidth: CGFloat {
         if viewModel.chartOperations.isEmpty && viewModel.timePeriod != .total {
@@ -49,7 +63,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     private var isScrollable: Bool {
         viewModel.hasXAxis
     }
-    
+
     // MARK: - Visibility Helpers
     private var shouldShowYAxisLabels: Bool {
         // Show labels if there are entries regardless of goal presence
@@ -58,7 +72,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let goal = viewModel.goalWeight
         return goal != nil
     }
-    
+
     // MARK: - Equatable Implementation
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Only compare essential properties that should trigger re-renders
@@ -66,11 +80,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         let rhsHash = rhs.createViewModelHash()
         return lhsHash == rhsHash
     }
-    
+
     // MARK: - Local State (add these)
     @State private var lastChartFrame: CGRect = .zero
     @State private var lastChartHeight: CGFloat = .zero
-    
+
     // Create a comprehensive hash of properties that affect rendering
     private func createViewModelHash() -> Int {
         var hasher = Hasher()
@@ -84,7 +98,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
         return hasher.finalize()
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -101,7 +115,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
                 .transaction { t in
-                    if viewModel.isScrolling { t.animation = nil }
+                    // Disable ALL animations during scroll and scroll-end transition
+                    if viewModel.isScrolling || isInScrollEndTransition {
+                        t.animation = nil
+                    }
                 }
                 // Conditional chart modifiers based on scrollability
                 .conditionalModifiers(
@@ -139,9 +156,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         )
                 )
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
+                // Disable animations during scroll and scroll-end transition to prevent stutter
+                .animation((enableYAxisAnimation && !isInScrollEndTransition) ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData && !isInScrollEndTransition) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
+                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData && !isInScrollEndTransition) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
@@ -153,14 +171,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture,
                     dashboardStore: dashboardStore
                 )
-                
+
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
                    let displayWeight = viewModel.displayWeight,
                    viewModel.showCrosshair {
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
-                
+
                 // Goal chip overlay: show when goal is set (non-nil)
                 // In weightless mode, goal of 0 is valid (maintain anchor weight)
                 if viewModel.goalWeight != nil {
@@ -178,7 +196,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             precomputeLabels()
             // Flip on animation after first frame so the initial mount does not animate
             DispatchQueue.main.async { enableYAxisAnimation = true }
-            
+
             // Force chart to sync with the initial scroll position after configuration
             if isScrollable {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -197,6 +215,25 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Cancel any pending scroll updates to prevent memory leaks
             scrollUpdateWorkItem?.cancel()
             scrollUpdateWorkItem = nil
+            // Cancel any pending cache updates
+            cacheUpdateWorkItem?.cancel()
+            cacheUpdateWorkItem = nil
+        }
+        // Track scroll end transition to disable animations during Y-axis recalculation
+        .onChange(of: viewModel.isScrolling) { oldValue, newValue in
+            // Detect scroll end (was scrolling, now not)
+            if oldValue && !newValue {
+                // Increment rebuild token to force chart identity change
+                chartRebuildToken += 1
+
+                // Enter transition state - disable animations and force rebuild
+                isInScrollEndTransition = true
+
+                // Exit transition state after Y-axis has settled (match the processing delay)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    isInScrollEndTransition = false
+                }
+            }
         }
         .onChange(of: dashboardStore.continuousOperations) { _, _ in
             // ViewModel will invalidate cache in refreshData()
@@ -246,11 +283,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         // are re-plotted against the latest domain
         .onChange(of: viewModel.yAxisDomain) { _, _ in
             DispatchQueue.main.async {
-                self.updateCachedChartData()
+                // Use throttled update to prevent excessive updates during scroll
+                self.updateCachedChartDataThrottled()
                 // Clear Y-axis label cache since domain change affects tick values
                 self.cachedYAxisLabels.removeAll()
-                // Precompute Y-axis labels with new domain
-                self.precomputeLabels()
             }
         }
         // Conditional scroll position syncing
@@ -262,9 +298,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         )
         .graphViewStyle(canAddPadding: !viewModel.hasXAxis, canAddTrailingPadding: !viewModel.chartOperations.isEmpty)
     }
-    
+
     // MARK: - Chart Content Builders
-    
+
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
         ForEach(viewModel.yAxisTicks, id: \.self) { tick in
@@ -277,7 +313,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .zIndex(-1)
         }
     }
-    
+
     // Helper: Adjusts a tick value to avoid overlap with axis baselines
     private func adjustedTick(_ tick: Double) -> Double {
         guard viewModel.hasXAxis else { return tick }
@@ -297,7 +333,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         }
         return tick
     }
-    
+
     @ChartContentBuilder
     private var xAxisGridLinesSolid: some ChartContent {
         let referenceDate = viewModel.hasXAxis ?
@@ -309,13 +345,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let secondsPerPoint = domainLength / Double(width)
             let halfPointOffset = secondsPerPoint * 0.5
             let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
-            
+
             RuleMark(x: .value("XGrid", effectiveDate))
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .foregroundStyle(theme.statusIconSecondaryDisabled)
         }
     }
-    
+
     @ChartContentBuilder
     private var yAxisBaseline: some ChartContent {
         // Show baseline only for Total view (no X-axis)
@@ -327,7 +363,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let width = max(1, viewModel.chartFrame.width)
             let secondsPerPoint = domainLength / Double(width)
             let halfPointOffset = secondsPerPoint * 0.5
-            
+
             let leadingX = domain.lowerBound.addingTimeInterval(halfPointOffset)
             let trailingX = domain.upperBound.addingTimeInterval(-halfPointOffset)
 
@@ -341,27 +377,30 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .zIndex(-1)
         }
     }
-    
+
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
-        // Use cached grouped data to prevent re-creation of LineMark/PointMark on every scroll
-        ForEach(Array(cachedPlottedPoints.keys.sorted()), id: \.self) { seriesName in
+        // Use cached grouped data with render-time filtering
+        // This ensures ALL visible points are shown while limiting buffer points
+        ForEach(Array(cachedPlottedPoints.keys), id: \.self) { seriesName in
             if let seriesPoints = cachedPlottedPoints[seriesName] {
-                chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
+                // Filter to visible + downsampled buffer for this series
+                let pointsToRender = getPointsToRender(from: seriesPoints)
+                chartContentForSeries(seriesName: seriesName, seriesPoints: pointsToRender)
             }
         }
     }
-    
+
     @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate  // Use precomputed
-            
+
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
-            
+
             // Line mark
             LineMark(
                 x: .value("Date", xDate),
@@ -373,7 +412,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                              : theme.actionSecondary)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
-            
+
             // Visible point mark
             PointMark(
                 x: .value("Date", xDate),
@@ -385,7 +424,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                              : theme.actionSecondary)
         }
     }
-    
+
     @ChartContentBuilder
     private var crosshairContent: some ChartContent {
         if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue), viewModel.showCrosshair {
@@ -396,9 +435,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .lineStyle(StrokeStyle(lineWidth: 1))
         }
     }
-    
+
     // MARK: - Y-Axis Marks
-    
+
     private var yAxisMarks: some AxisContent {
         AxisMarks(values: viewModel.yAxisTicks) { value in
             if let doubleValue = value.as(Double.self) {
@@ -415,7 +454,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
     }
-    
+
     // MARK: - Selection Callout
     @ViewBuilder
     private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
@@ -424,7 +463,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let isOnLeftSide = chartPosition.x < viewModel.chartFrame.width / 2
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
             let finalXPosition = chartPosition.x + baseOffset
-            
+
             Text((viewModel.formatSelectedXAxisLabel() ?? "").lowercased())
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
@@ -434,13 +473,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 )
         }
     }
-    
+
     // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
         if let goalWeight = viewModel.goalWeight {
             let goalPosition = viewModel.getGoalChipPosition()
-            
+
             goalWeightChip(goalWeight)
                 .position(
                     x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
@@ -452,9 +491,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 )
         }
     }
-    
+
     // MARK: - Goal Chip UI
-    
+
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
         // Round value for display, then format for weightless sign semantics
@@ -474,9 +513,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             .padding(.vertical, 2)
             .background(Capsule().fill(theme.statusSuccess))
     }
-    
+
     // MARK: - Cache Management
-    
+
     /// Updates cached chart data only when underlying data actually changes
     private func updateCachedChartData() {
         let newData = viewModel.getCachedSeriesData()
@@ -504,18 +543,19 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         let newHash = hasher.finalize()
-        
+
         // Only update cache if data actually changed
         if newHash != lastDataHash || cachedChartPoints.isEmpty {
+            // Store ALL points in cache - filtering happens during render
             cachedChartPoints = newData
-            
+
             // Pre-group, sort, and precompute xDates
             let grouped = Dictionary(grouping: cachedChartPoints) { $0.series }
             cachedGroupedPoints = grouped.mapValues { seriesPoints in
                 seriesPoints.sorted { $0.date < $1.date }
             }
-            
-            // New: Precompute plotted dates
+
+            // Precompute plotted dates for ALL points
             cachedPlottedPoints = cachedGroupedPoints.mapValues { points in
                 points.map { point in
                     PlottedGraphSeries(original: point, xDate: viewModel.plotXDate(for: point.date))
@@ -524,14 +564,111 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             lastDataHash = newHash
         }
     }
-    
+
+    /// Returns points to render: ALL visible points + downsampled buffer
+    /// Called during render to ensure visible window always shows all points
+    private func getPointsToRender(from points: [PlottedGraphSeries]) -> [PlottedGraphSeries] {
+        // For small datasets, render everything (already sorted)
+        guard points.count > 200 else { return points }
+
+        let visibleStart = viewModel.scrollPosition
+        let visibleEnd = viewModel.scrollPosition.addingTimeInterval(viewModel.visibleDomainLength)
+
+        // Separate into visible and buffer regions
+        var visible: [PlottedGraphSeries] = []
+        var leftBuffer: [PlottedGraphSeries] = []
+        var rightBuffer: [PlottedGraphSeries] = []
+
+        for point in points {
+            let date = point.original.date
+            if date >= visibleStart && date <= visibleEnd {
+                visible.append(point)
+            } else if date < visibleStart {
+                leftBuffer.append(point)
+            } else {
+                rightBuffer.append(point)
+            }
+        }
+
+        // Keep ALL visible points
+        var result = visible
+
+        // Downsample buffers to ~30 points each for line continuity
+        let maxBufferPoints = 30
+
+        if leftBuffer.count > maxBufferPoints {
+            let step = leftBuffer.count / maxBufferPoints
+            var sampled: [PlottedGraphSeries] = []
+            for i in stride(from: 0, to: leftBuffer.count, by: step) {
+                sampled.append(leftBuffer[i])
+            }
+            // Always include the point closest to visible area
+            if let last = leftBuffer.last, sampled.last?.original.date != last.original.date {
+                sampled.append(last)
+            }
+            result.append(contentsOf: sampled)
+        } else {
+            result.append(contentsOf: leftBuffer)
+        }
+
+        if rightBuffer.count > maxBufferPoints {
+            let step = rightBuffer.count / maxBufferPoints
+            var sampled: [PlottedGraphSeries] = []
+            // Always include the point closest to visible area
+            if let first = rightBuffer.first {
+                sampled.append(first)
+            }
+            for i in stride(from: step, to: rightBuffer.count, by: step) {
+                sampled.append(rightBuffer[i])
+            }
+            result.append(contentsOf: sampled)
+        } else {
+            result.append(contentsOf: rightBuffer)
+        }
+
+        // CRITICAL: Sort by date so chart draws lines correctly
+        return result.sorted { $0.original.date < $1.original.date }
+    }
+
     /// Invalidates cache when data changes externally
     private func invalidateCache() {
         cachedChartPoints = []
         cachedGroupedPoints = [:]
         lastDataHash = 0
     }
-    
+
+    // MARK: - Throttled Updates (Performance Optimization)
+
+    /// Throttled version of updateCachedChartData.
+    /// Limits how often cache updates run during rapid changes (e.g., scrolling).
+    private func updateCachedChartDataThrottled() {
+        let now = Date()
+
+        // If enough time has passed, update immediately
+        guard now.timeIntervalSince(lastCacheUpdateTime) > cacheUpdateThrottle else {
+            // Schedule a delayed update if not already scheduled
+            scheduleDelayedCacheUpdate()
+            return
+        }
+
+        lastCacheUpdateTime = now
+        updateCachedChartData()
+    }
+
+    /// Schedules a delayed cache update, cancelling any previous pending update.
+    /// Ensures cache eventually updates even during rapid changes.
+    private func scheduleDelayedCacheUpdate() {
+        cacheUpdateWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [self] in
+            self.updateCachedChartData()
+            self.precomputeLabels()
+        }
+        cacheUpdateWorkItem = workItem
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + cacheUpdateThrottle, execute: workItem)
+    }
+
     // MARK: - Animation Token
     /// Lightweight hash token that changes when the cached chart data changes,
     /// so we can animate line updates even when the Y-axis domain is unchanged.
@@ -540,19 +677,19 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         // Use the cached data hash for animation token since it only changes when data actually changes
         return lastDataHash
     }
-    
+
     // MARK: - Label Caching Helpers
-    
+
     /// Returns cached Y-axis label (read-only during rendering)
     private func getCachedYAxisLabel(_ value: Double) -> String {
         return cachedYAxisLabels[value] ?? dashboardStore.formatYAxisTickLabel(value)
     }
-    
+
     /// Returns cached X-axis label (read-only during rendering)
     private func getCachedXAxisLabel(_ date: Date) -> String? {
         return cachedXAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date)
     }
-    
+
     /// Precomputes and caches all labels before rendering
     private func precomputeLabels() {
         // Cache Y-axis labels
@@ -561,13 +698,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 cachedYAxisLabels[tick] = dashboardStore.formatYAxisTickLabel(tick)
             }
         }
-        
+
         // Cache goal weight label if present (non-nil)
         // In weightless mode, goal of 0 is valid (maintain anchor weight)
         if let goalWeight = viewModel.goalWeight, cachedYAxisLabels[goalWeight] == nil {
             cachedYAxisLabels[goalWeight] = dashboardStore.formatYAxisTickLabel(goalWeight)
         }
-        
+
         // Cache X-axis labels for scrollable views
         if isScrollable {
             for date in viewModel.xAxisValues {
@@ -577,13 +714,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
     }
-    
+
     /// Clears label caches when formatting context changes
     private func invalidateLabelCaches() {
         cachedYAxisLabels.removeAll()
         cachedXAxisLabels.removeAll()
     }
-    
+
     // MARK: - Helpers
     @inline(__always)
     private func assignFrameIfChanged(_ newFrame: CGRect) {
@@ -594,7 +731,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             viewModel.updateChartFrame(r)
         }
     }
-    
+
     @inline(__always)
     private func assignHeightIfChanged(_ newHeight: CGFloat) {
         let h = round(newHeight) // avoid tiny float wiggles
@@ -610,7 +747,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 // MARK: - View Extensions for Conditional Modifiers
 
 extension View {
-    
+
     @ViewBuilder
     func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
         isScrollable: Bool,
@@ -630,13 +767,26 @@ extension View {
                 .conditionalEmptyDomain(viewModel: viewModel)
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
-                    get: { 
+                    get: {
                         viewModel.scrollPosition
                     },
                     set: { newPosition in
+                        // Apply boundary clamping to prevent over-scrolling
+                        let clampedPosition: Date
+                        if let bounds = dashboardStore.dataManager.getDateBounds(for: viewModel.timePeriod) {
+                            clampedPosition = dashboardStore.graphManager.clampScrollPosition(
+                                newPosition,
+                                for: viewModel.timePeriod,
+                                minDate: bounds.min,
+                                maxDate: bounds.max
+                            )
+                        } else {
+                            clampedPosition = newPosition
+                        }
+
                         // Debounce scroll position updates to prevent multiple updates per frame
                         DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(newPosition)
+                            viewModel.handleScrollPositionChange(clampedPosition)
                         }
                     }
                 ))
@@ -659,7 +809,7 @@ extension View {
                             AxisTick()
                         }
                     }
-                    
+
                     // Labels for all tick values
                     AxisMarks(values: adjustedLabelTicks) { value in
                         AxisValueLabel {
@@ -742,7 +892,7 @@ extension View {
                         }
                         localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
-                        
+
                         // Update dashboard store selection using snapped date when available
                         if let rawDate = newValue {
                             if viewModel.showCrosshair {
@@ -774,7 +924,7 @@ extension View {
             self
         }
     }
-    
+
     @ViewBuilder
     func conditionalPreferenceChange(isScrollable: Bool, dashboardStore: DashboardStore) -> some View {
         if isScrollable {
@@ -785,7 +935,7 @@ extension View {
             self
         }
     }
-    
+
     @ViewBuilder
     func conditionalTouchModifiers(
         isScrollable: Bool,
@@ -809,7 +959,7 @@ extension View {
             self
         }
     }
-    
+
     /// Returns the appropriate chart scroll target behavior based on the time period
     /// - Parameter period: The time period for the chart
     /// - Returns: ChartScrollTargetBehavior configured for the specific period
@@ -845,7 +995,7 @@ extension View {
             )
         }
     }
-    
+
     @ViewBuilder
     func conditionalScrollSyncing<ViewModel: SectionViewModelProtocol>(
         isScrollable: Bool,

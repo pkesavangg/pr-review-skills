@@ -16,6 +16,22 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - Cached Sorted Data (Performance Optimization)
+    /// Pre-sorted daily summaries to avoid repeated sorting on every access
+    private var cachedSortedDailySummaries: [BathScaleWeightSummary] = []
+    /// Pre-sorted monthly summaries to avoid repeated sorting on every access
+    private var cachedSortedMonthlySummaries: [BathScaleWeightSummary] = []
+
+    // MARK: - Cached Date Bounds (Performance Optimization)
+    /// Cached minimum date for daily summaries
+    private(set) var cachedDailyMinDate: Date?
+    /// Cached maximum date for daily summaries
+    private(set) var cachedDailyMaxDate: Date?
+    /// Cached minimum date for monthly summaries
+    private(set) var cachedMonthlyMinDate: Date?
+    /// Cached maximum date for monthly summaries
+    private(set) var cachedMonthlyMaxDate: Date?
+
     // MARK: - Initialization
     init(initialState: DataState = DataState()) {
         self.state = initialState
@@ -50,14 +66,34 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
 
     // MARK: - Data Retrieval
+
+    /// Returns pre-sorted operations for the given time period.
+    /// Uses cached sorted arrays to avoid repeated sorting on every access.
+    /// - Parameter period: The time period to get operations for
+    /// - Returns: Pre-sorted array of weight summaries
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary] {
         switch period {
         case .week, .month:
-            // For week view, use daily summaries
-            return state.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+            // Return pre-sorted daily summaries (sorted once when data changes)
+            return cachedSortedDailySummaries
         case .year, .total:
-            // For year view, use monthly summaries but limit to 12 values per year
-            return state.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+            // Return pre-sorted monthly summaries (sorted once when data changes)
+            return cachedSortedMonthlySummaries
+        }
+    }
+
+    /// Returns cached date bounds for the given time period.
+    /// Uses pre-calculated min/max dates to avoid repeated O(n) calculations.
+    /// - Parameter period: The time period to get bounds for
+    /// - Returns: Tuple of (min, max) dates, or nil if no data
+    func getDateBounds(for period: TimePeriod) -> (min: Date, max: Date)? {
+        switch period {
+        case .week, .month:
+            guard let min = cachedDailyMinDate, let max = cachedDailyMaxDate else { return nil }
+            return (min, max)
+        case .year, .total:
+            guard let min = cachedMonthlyMinDate, let max = cachedMonthlyMaxDate else { return nil }
+            return (min, max)
         }
     }
 
@@ -91,13 +127,22 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     func clearCache() async throws {
         logger.log(level: .debug, tag: "DashboardDataManager", message: "Clearing dashboard cache")
 
-
         // Clear local state
         state.dailyCache.removeAll()
         state.monthlyCache.removeAll()
         state.dailySummaries.removeAll()
         state.monthlySummaries.removeAll()
         state.latestWeightStored = 0
+
+        // Clear sorted caches
+        cachedSortedDailySummaries.removeAll()
+        cachedSortedMonthlySummaries.removeAll()
+
+        // Clear date bounds
+        cachedDailyMinDate = nil
+        cachedDailyMaxDate = nil
+        cachedMonthlyMinDate = nil
+        cachedMonthlyMaxDate = nil
 
         logger.log(level: .debug, tag: "DashboardDataManager", message: "Cache cleared successfully")
     }
@@ -147,20 +192,38 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // Update state from EntryService published properties
         state.dailySummaries = dailySummaries.map { $0 }
 
+        // Pre-sort once and cache (eliminates repeated sorting on every getContinuousOperations call)
+        cachedSortedDailySummaries = dailySummaries.sorted { $0.date < $1.date }
+
+        // Cache date bounds (eliminates repeated min/max calculations)
+        cachedDailyMinDate = cachedSortedDailySummaries.first?.date
+        cachedDailyMaxDate = cachedSortedDailySummaries.last?.date
+
         // Update cache for backward compatibility
         state.dailyCache = Dictionary(
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
+
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")")
     }
 
     private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
         // Update state from EntryService published properties
         state.monthlySummaries = monthlySummaries.map { $0 }
 
+        // Pre-sort once and cache (eliminates repeated sorting on every getContinuousOperations call)
+        cachedSortedMonthlySummaries = monthlySummaries.sorted { $0.date < $1.date }
+
+        // Cache date bounds (eliminates repeated min/max calculations)
+        cachedMonthlyMinDate = cachedSortedMonthlySummaries.first?.date
+        cachedMonthlyMaxDate = cachedSortedMonthlySummaries.last?.date
+
         // Update cache for backward compatibility
         state.monthlyCache = Dictionary(
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )
+
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")")
     }
 
     private func calculateDateRange() -> DateRange? {
