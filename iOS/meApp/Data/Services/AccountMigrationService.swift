@@ -861,6 +861,7 @@ final class AccountMigrationService {
             streakTimestamp: nil, // Not in the provided data
             dashboardType: DashboardType(rawValue: ionicData.dashboardType.replacingOccurrences(of: "_", with: "")) ?? .dashboard4,
             dashboardMetrics: ionicData.dashboardMetrics.compactMap { BodyMetric(rawValue: $0) },
+            progressMetrics: nil, // Not available in Ionic migration data
             goalType: GoalType(rawValue: ionicData.goalType ?? "") ?? .maintain,
             goalWeight: ionicData.goalWeight != nil ? Double(ionicData.goalWeight!) : nil,
             goalPercent: nil,

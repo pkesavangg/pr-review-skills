@@ -83,6 +83,11 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(dashboardMetrics: metrics), needsAuth: true)
     }
 
+    func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse {
+        struct ProgressMetricsRequest: Codable { let progressMetrics: [String] }
+        return try await httpClient.send(.updateProgressMetrics, method: .patch, body: ProgressMetricsRequest(progressMetrics: metrics), needsAuth: true)
+    }
+
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {
         struct StreakRequest: Codable { let isStreakOn: Bool, streakTimestamp: String }
         return try await httpClient.send(.updateStreak, method: .patch, body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp), needsAuth: true)

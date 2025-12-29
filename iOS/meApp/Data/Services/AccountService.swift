@@ -943,34 +943,44 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
-    /// Updates the dashboard metrics for the active account or a specific account by ID.
     @discardableResult
     func updateDashboardMetrics(metrics: [String]) async throws -> Account {
-        // use current logged in account
+        try await updateMetrics(metrics, type: "dashboard", apiCall: apiRepo.patchDashboardMetrics)
+    }
+    
+    @discardableResult
+    func updateProgressMetrics(metrics: [String]) async throws -> Account {
+        try await updateMetrics(metrics, type: "progress", apiCall: apiRepo.patchProgressMetrics)
+    }
+    
+    private func updateMetrics(
+        _ metrics: [String],
+        type: String,
+        apiCall: ([String]) async throws -> AccountResponse
+    ) async throws -> Account {
         guard let accountId = activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else { throw AccountError.accountNotFound(id: accountId) }
+        
+        guard let localAccount = try await localRepo.fetchAccount(byId: accountId) else {
+            throw AccountError.accountNotFound(id: accountId)
+        }
+        
         do {
-            logger.log(level: .info, tag: tag, message: "Update dashboard metrics requested for accountId=\(accountId), count=\(metrics.count)")
-            let response = try await apiRepo.patchDashboardMetrics(metrics)
+            logger.log(level: .info, tag: tag, message: "Update \(type) metrics: accountId=\(accountId), count=\(metrics.count)")
+            let response = try await apiCall(metrics)
             localAccount.update(from: response)
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Update dashboard metrics successful for accountId=\(accountId)")
+            logger.log(level: .info, tag: tag, message: "Update \(type) metrics successful: accountId=\(accountId)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                localAccount.dashboardSettings?.dashboardMetrics = metrics.joined(separator: ",")
-                try await localRepo.updateAccount(localAccount)
-                try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update dashboard metrics saved offline for accountId=\(accountId)")
-                return localAccount
-            } else {
-                logger.log(level: .error, tag: tag, message: "Update dashboard metrics failed for accountId=\(accountId): \(error.localizedDescription)")
-                throw error
+                try? await localRepo.updateAccount(localAccount)
             }
+            logger.log(level: .error, tag: tag, message: "Failed to update \(type) metrics: \(error)")
+            throw error
         }
     }
 

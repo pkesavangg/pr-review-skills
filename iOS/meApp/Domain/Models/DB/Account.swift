@@ -154,6 +154,7 @@ final class Account {
         let dashboardSettings = DashboardSettings(
             accountId: dto.id,
             dashboardMetrics: dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
+            progressMetrics: dto.progressMetrics?.joined(separator: ","),
             dashboardType: dto.dashboardType != nil ? String(describing: dto.dashboardType!) : nil,
             isSynced: false
         )
@@ -192,6 +193,7 @@ final class Account {
             streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardSettings?.dashboardType.flatMap { DashboardType(rawValue: $0) },
             dashboardMetrics: self.dashboardSettings?.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
+            progressMetrics: self.dashboardSettings?.progressMetrics?.split(separator: ",").map { String($0) },
             goalType: self.goalSettings?.goalType,
             goalWeight: self.goalSettings?.goalWeight.flatMap { Double($0) },
             goalPercent: self.goalSettings?.goalPercent,
@@ -247,6 +249,9 @@ extension Account {
         if let dashboardSettings = self.dashboardSettings {
             if let dashboardMetrics = response.dashboardMetrics {
                 dashboardSettings.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+            }
+            if let progressMetrics = response.progressMetrics {
+                dashboardSettings.progressMetrics = progressMetrics.joined(separator: ",")
             }
             if let dashboardType = response.dashboardType {
                 dashboardSettings.dashboardType = String(describing: dashboardType)
