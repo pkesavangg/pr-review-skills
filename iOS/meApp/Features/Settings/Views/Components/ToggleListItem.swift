@@ -42,9 +42,9 @@ struct ToggleListItem: View {
     }
 
     private var textForegroundColor: Color {
-        isOn
-            ? theme.textBody
-            : theme.statusIconSecondary
+        isDisabled
+            ? theme.statusIconSecondary
+            : theme.textBody
     }
     
     var body: some View {
