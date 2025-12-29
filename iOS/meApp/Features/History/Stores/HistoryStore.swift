@@ -16,6 +16,7 @@ final class HistoryStore: ObservableObject {
     @Injector private var entryService: EntryService
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
+    @Injector private var accountService: AccountService
     
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -113,6 +114,8 @@ final class HistoryStore: ObservableObject {
     }
     
     func refreshAllEntries() async {
+        // Refresh account data to ensure we have latest unit settings
+        try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal()
         if let selectedMonth {

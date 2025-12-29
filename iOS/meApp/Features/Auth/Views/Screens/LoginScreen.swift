@@ -145,7 +145,11 @@ struct LoginScreen: View {
                                         isDisabled: false,
                                         action: {
                                             focusedField = nil
-                                            store.showPasswordResetPrompt()
+                                            hideKeyboard()
+                                            Task { @MainActor in
+                                                try? await Task.sleep(nanoseconds: 100_000_000)
+                                                store.showPasswordResetPrompt()
+                                            }
                                         }
                                     )
                                 }
@@ -203,8 +207,21 @@ struct LoginScreen: View {
                 store.onLoginSuccess = { router.navigateBack() }
             }
             
+            // Set up callback to clear focus when password reset alert is dismissed
+            store.onPasswordResetAlertDismissed = {
+                focusedField = nil
+                hideKeyboard()
+            }
+            
             // Prefill email if provided
             store.prefillEmailIfNeeded(prefilledEmail)
+        }
+        .onChange(of: store.isPasswordResetAlertVisible) { oldValue, newValue in
+            // When alert is dismissed (goes from true to false), ensure focus is cleared
+            if oldValue && !newValue {
+                focusedField = nil
+                hideKeyboard()
+            }
         }
     }
 }

@@ -163,7 +163,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                 message: AlertStrings.PermissionAlerts.bluetoothAuthDisabledMessage,
                 buttons: [
                     // Cancel → just return the current state without requesting permissions
-                    AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    AlertButtonModel(title: CommonStrings.dismiss, type: .secondary) { [weak self] _ in
                         guard let self else { return }
                         let current = self.getPermissionState(.BLUETOOTH) ?? .DISABLED
                         continuation.resume(returning: current)
@@ -239,7 +239,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                 title: AlertStrings.PermissionAlerts.cameraDisabledTitle,
                 message: AlertStrings.PermissionAlerts.cameraDisabledMessage,
                 buttons: [
-                    AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    AlertButtonModel(title: CommonStrings.returnButton, type: .secondary) { [weak self] _ in
                         guard let self else { return }
                         let current = self.getPermissionState(.CAMERA) ?? .DISABLED
                         continuation.resume(returning: current)

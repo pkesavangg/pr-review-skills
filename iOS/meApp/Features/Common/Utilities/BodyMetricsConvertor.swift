@@ -9,43 +9,32 @@ enum BodyMetricsConvertor {
     ///   - fallbackValue: Optional fallback value to use if primary value is zero/nil
     /// - Returns: Formatted string representation of the metric
     static func convert(_ value: Double?, shouldCompose: Bool = true, wholeNumber: Bool = false, fallbackValue: Double? = nil) -> String {
-        // Try to use the primary value first
-        if let value = value {
-            // Apply composition transformation if needed
-            let processedValue = shouldCompose ? value / 10.0 : value
-            
-
-            // Check if the processed value is valid (not NaN, infinite, or unreasonably negative)
-            if !processedValue.isNaN && !processedValue.isInfinite && processedValue >= 0 {
-                // Apply robust rounding logic for 1 decimal place
-                let roundedValue = (processedValue * 10).rounded(.toNearestOrAwayFromZero) / 10
+        // Helper to process the value
+        func format(_ val: Double?) -> String? {
+            // Try to use the primary value first
+            if let v = val {
+                // Apply composition transformation if needed
+                let processedValue = shouldCompose ? v / 10.0 : v
                 
-                // Format the value based on requirements
-                if wholeNumber {
-                    return String(format: "%.0f", roundedValue)
-                } else {
-                    return String(format: "%.1f", roundedValue)
+                // Check if the processed value is valid (not NaN, infinite, or unreasonably negative)
+                if !processedValue.isNaN && !processedValue.isInfinite && processedValue >= 0 {
+                    // Apply robust rounding logic for 1 decimal place
+                    let roundedValue = (processedValue * 10).rounded(.toNearestOrAwayFromZero) / 10
+                    
+                    // If the rounded value is zero, return placeholder instead of "0" or "0.0"
+                    if roundedValue == 0 {
+                        return "--"
+                    }
+                    
+                    // Format the value based on requirements
+                    return wholeNumber
+                    ? String(format: "%.0f", roundedValue)
+                    : String(format: "%.1f", roundedValue)
                 }
             }
+            return nil
         }
-
-        // If primary value is invalid, try fallback value
-        if let fallbackValue = fallbackValue {
-            let processedFallback = shouldCompose ? fallbackValue / 10.0 : fallbackValue
-
-            if !processedFallback.isNaN && !processedFallback.isInfinite && processedFallback >= 0 {
-                // Apply robust rounding logic for 1 decimal place
-                let roundedFallback = (processedFallback * 10).rounded(.toNearestOrAwayFromZero) / 10
-                
-                if wholeNumber {
-                    return String(format: "%.0f", roundedFallback)
-                } else {
-                    return String(format: "%.1f", roundedFallback)
-                }
-            }
-        }
-
-        // If both primary and fallback values are invalid, return placeholder
-        return "--"
+        
+        return format(value) ?? format(fallbackValue) ?? "--"
     }
 }
