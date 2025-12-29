@@ -46,9 +46,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - Initialization
-    init(initialState: MetricsState = MetricsState()) {
+    init(initialState: MetricsState = MetricsState(), skipInitialSetup: Bool = false) {
         self.state = initialState
-        setupInitialMetrics()
+        if !skipInitialSetup {
+            setupInitialMetrics()
+        }
     }
 
     // MARK: - Setup Methods
@@ -638,7 +640,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
     }
 
-    private func updateMetricsOrder(from apiMetrics: [String]) {
+    func updateMetricsOrder(from apiMetrics: [String]) {
 
         let displayMetrics = apiMetrics.compactMap { apiMetric -> String? in
             switch apiMetric {
